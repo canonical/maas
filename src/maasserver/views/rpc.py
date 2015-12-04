@@ -7,15 +7,6 @@ Each region controller process starts its own RPC endpoint, and this
 provides the means for clusters to discover what they are.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "info",
 ]

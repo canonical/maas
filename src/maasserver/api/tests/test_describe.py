@@ -3,21 +3,11 @@
 
 """Tests for the `describe` view."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 from operator import itemgetter
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 import django.core.urlresolvers
 from django.core.urlresolvers import (
@@ -29,6 +19,7 @@ from maasserver.api.doc import get_api_description_hash
 from maasserver.api.doc_handler import describe
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
@@ -55,22 +46,22 @@ class TestDescribe(MAASServerTestCase):
              response.content,
              response.content),
             MatchesListwise(
-                (Equals(httplib.OK),
+                (Equals(http.client.OK),
                  Equals("application/json"),
                  StartsWith(b'{'),
-                 Contains('name'))),
+                 Contains(b'name'))),
             response)
 
     def test_describe(self):
         response = self.client.get(reverse('describe'))
-        description = json.loads(response.content)
+        description = json_load_bytes(response.content)
         self.assertSetEqual(
             {"doc", "handlers", "resources", "hash"}, set(description))
         self.assertIsInstance(description["handlers"], list)
 
     def test_describe_hash_is_the_api_hash(self):
         response = self.client.get(reverse('describe'))
-        description = json.loads(response.content)
+        description = json_load_bytes(response.content)
         self.assertThat(
             description["hash"], Equals(
                 get_api_description_hash()))
@@ -108,10 +99,10 @@ class TestDescribeAbsoluteURIs(MAASServerTestCase):
         request = RequestFactory().get(path, **params)
         response = describe(request)
         self.assertEqual(
-            httplib.OK, response.status_code,
+            http.client.OK, response.status_code,
             "API description failed with code %s:\n%s"
             % (response.status_code, response.content))
-        return json.loads(response.content)
+        return json_load_bytes(response.content)
 
     def patch_script_prefix(self, script_name):
         """Patch up Django's and Piston's notion of the script_name prefix.

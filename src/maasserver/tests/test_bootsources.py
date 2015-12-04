@@ -3,15 +3,6 @@
 
 """Test maasserver.bootsources."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from os import environ
@@ -192,7 +183,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
     def test__has_env_GNUPGHOME_set(self):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
-        factory.make_BootSource(keyring_data='1234')
+        factory.make_BootSource(keyring_data=b'1234')
         cache_boot_sources()
         self.assertEqual(
             bootsources.get_maas_user_gpghome(),
@@ -203,7 +194,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         Config.objects.set_config('http_proxy', proxy_address)
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
-        factory.make_BootSource(keyring_data='1234')
+        factory.make_BootSource(keyring_data=b'1234')
         cache_boot_sources()
         self.assertEqual(
             (proxy_address, proxy_address),
@@ -215,14 +206,14 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         Config.objects.set_config('enable_http_proxy', False)
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
-        factory.make_BootSource(keyring_data='1234')
+        factory.make_BootSource(keyring_data=b'1234')
         cache_boot_sources()
         self.assertEqual(
             ("", ""),
             (capture.env['http_proxy'], capture.env['https_proxy']))
 
     def test__returns_clears_entire_cache(self):
-        source = factory.make_BootSource(keyring_data='1234')
+        source = factory.make_BootSource(keyring_data=b'1234')
         factory.make_BootSourceCache(source)
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
@@ -231,7 +222,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         self.assertEqual(0, BootSourceCache.objects.all().count())
 
     def test__returns_adds_entries_to_cache_for_source(self):
-        source = factory.make_BootSource(keyring_data='1234')
+        source = factory.make_BootSource(keyring_data=b'1234')
         os = factory.make_name('os')
         releases = [factory.make_name('release') for _ in range(3)]
         image_specs = [
@@ -239,6 +230,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
         mock_download.return_value = make_boot_image_mapping(image_specs)
+
         cache_boot_sources()
         cached_releases = [
             cache.release
@@ -257,7 +249,7 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
 
     def test__catches_connection_errors_and_sets_component_error(self):
         sources = [
-            factory.make_BootSource(keyring_data='1234') for _ in range(3)]
+            factory.make_BootSource(keyring_data=b'1234') for _ in range(3)]
         download_image_descriptions = self.patch(
             download_descriptions_module, 'download_image_descriptions')
         error_text = factory.make_name("error_text")
@@ -278,7 +270,7 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
     def test__clears_component_error_when_successful(self):
         register_persistent_error(
             COMPONENT.REGION_IMAGE_IMPORT, factory.make_string())
-        [factory.make_BootSource(keyring_data='1234') for _ in range(3)]
+        [factory.make_BootSource(keyring_data=b'1234') for _ in range(3)]
         download_image_descriptions = self.patch(
             download_descriptions_module, 'download_image_descriptions')
         # Make all of the downloads successful.

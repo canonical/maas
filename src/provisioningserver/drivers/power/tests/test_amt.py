@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.amt`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from os.path import (
@@ -78,6 +69,10 @@ def make_parameters():
 
 class TestAMTPowerDriver(MAASTestCase):
 
+    def setUp(self):
+        super(TestAMTPowerDriver, self).setUp()
+        self.patch(amt_module, "sleep")
+
     def patch_popen(self, return_value=(None, None), returncode=0):
         process = Mock()
         process.returncode = returncode
@@ -115,7 +110,7 @@ class TestAMTPowerDriver(MAASTestCase):
             state.text = power_states[power_change]
             print(etree.tostring(tree))
 
-            self.assertEquals(result, etree.tostring(tree))
+            self.assertEqual(result, etree.tostring(tree))
 
     def test_get_power_state_gets_state(self):
         amt_power_driver = AMTPowerDriver()
@@ -141,14 +136,14 @@ class TestAMTPowerDriver(MAASTestCase):
         result = amt_power_driver.get_power_state(
             xml % namespaces['h'].encode('utf-8'))
 
-        self.assertEquals(result, '8')
+        self.assertEqual(result, '8')
 
     def test__get_amt_environment_sets_amt_password(self):
         power_pass = factory.make_name('power_pass')
         amt_power_driver = AMTPowerDriver()
         env = amt_power_driver._get_amt_environment(power_pass)
 
-        self.assertEquals(env['AMT_PASSWORD'], power_pass)
+        self.assertEqual(env['AMT_PASSWORD'], power_pass)
 
     def test__run_runs_command(self):
         amt_power_driver = AMTPowerDriver()
@@ -571,26 +566,26 @@ class TestAMTPowerDriver(MAASTestCase):
     def test__get_amttool_boot_mode_local_boot(self):
         amt_power_driver = AMTPowerDriver()
         result = amt_power_driver._get_amttool_boot_mode('local')
-        self.assertEquals(result, '')
+        self.assertEqual(result, '')
 
     def test__get_ammtool_boot_mode_pxe_booting(self):
         amt_power_driver = AMTPowerDriver()
         boot_mode = factory.make_name('boot_mode')
         result = amt_power_driver._get_amttool_boot_mode(boot_mode)
-        self.assertEquals(result, boot_mode)
+        self.assertEqual(result, boot_mode)
 
     def test__get_ip_address_returns_ip_address(self):
         amt_power_driver = AMTPowerDriver()
         power_address = factory.make_name('power_address')
         ip_address = factory.make_ipv4_address()
         result = amt_power_driver._get_ip_address(power_address, ip_address)
-        self.assertEquals(result, ip_address)
+        self.assertEqual(result, ip_address)
 
     def test__get_ip_address_returns_power_address(self):
         amt_power_driver = AMTPowerDriver()
         power_address = factory.make_name('power_address')
         result = amt_power_driver._get_ip_address(power_address, None)
-        self.assertEquals(result, power_address)
+        self.assertEqual(result, power_address)
 
     def test__get_ip_address_raises_no_host_provided(self):
         amt_power_driver = AMTPowerDriver()

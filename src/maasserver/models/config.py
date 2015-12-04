@@ -3,15 +3,6 @@
 
 """Configuration items."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Config',
     ]
@@ -164,7 +155,7 @@ class Config(Model):
 
     objects = ConfigManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s: %s" % (self.name, self.value)
 
 

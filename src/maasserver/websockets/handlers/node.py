@@ -3,15 +3,6 @@
 
 """The node handler for the WebSocket connection."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "NodeHandler",
 ]
@@ -127,7 +118,7 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('blockdevice_set__physicalblockdevice')
                 .prefetch_related('blockdevice_set__virtualblockdevice'))
         pk = 'system_id'
-        pk_type = unicode
+        pk_type = str
         allowed_methods = [
             'list',
             'get',
@@ -239,7 +230,7 @@ class NodeHandler(TimestampedModelHandler):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
         data["status"] = obj.display_status()
-        data["actions"] = compile_node_actions(obj, self.user).keys()
+        data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["memory"] = obj.display_memory()
 
         data["extra_macs"] = [
@@ -552,10 +543,10 @@ class NodeHandler(TimestampedModelHandler):
             data['summary_yaml'] = None
         else:
             data['summary_xml'] = etree.tostring(
-                probed_details, encoding=unicode, pretty_print=True)
+                probed_details, encoding=str, pretty_print=True)
             data['summary_yaml'] = XMLToYAML(
                 etree.tostring(
-                    probed_details, encoding=unicode,
+                    probed_details, encoding=str,
                     pretty_print=True)).convert()
         return data
 
@@ -683,7 +674,7 @@ class NodeHandler(TimestampedModelHandler):
         # Cleanup any fields that have a None value.
         new_params = {
             key: value
-            for key, value in new_params.viewitems()
+            for key, value in new_params.items()
             if value is not None
         }
 

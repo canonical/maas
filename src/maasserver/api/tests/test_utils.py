@@ -3,15 +3,6 @@
 
 """Tests for API helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
@@ -40,10 +31,10 @@ class TestExtractBool(MAASServerTestCase):
         self.assertRaises(AssertionError, extract_bool, 0)
 
     def test_0_means_False(self):
-        self.assertEquals(extract_bool('0'), False)
+        self.assertEqual(extract_bool('0'), False)
 
     def test_1_means_True(self):
-        self.assertEquals(extract_bool('1'), True)
+        self.assertEqual(extract_bool('1'), True)
 
     def test_rejects_other_numeric_strings(self):
         self.assertRaises(ValueError, extract_bool, '00')

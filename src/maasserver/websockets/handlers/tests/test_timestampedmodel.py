@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.timestampedmodel`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import datetime
@@ -47,13 +38,13 @@ class TestTimeStampedModelHandler(MAASTestCase):
     def test_dehydrate_created_converts_datetime_to_string(self):
         now = datetime.now()
         handler = TimestampedModelHandler(None, {})
-        self.assertEquals(
+        self.assertEqual(
             now.strftime('%a, %d %b. %Y %H:%M:%S'),
             handler.dehydrate_created(now))
 
     def test_dehydrate_updated_converts_datetime_to_string(self):
         now = datetime.now()
         handler = TimestampedModelHandler(None, {})
-        self.assertEquals(
+        self.assertEqual(
             now.strftime('%a, %d %b. %Y %H:%M:%S'),
             handler.dehydrate_updated(now))

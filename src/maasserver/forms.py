@@ -3,15 +3,6 @@
 
 """Forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "AdminNodeForm",
     "AdminNodeWithMACAddressesForm",
@@ -1053,6 +1044,12 @@ def merge_error_messages(summary, errors, limit=MAX_MESSAGES):
         the summary error message.
     :type limit: int
     """
+    # Django might pass an django.forms.utils.ErrorList instance, which
+    # pretends to be a list but then misbehaves. See ErrorList.__getitem__ for
+    # an example. A work-around is to first get the messages out... which we
+    # can do by listifying it.
+    errors = list(errors)
+
     ellipsis_msg = ''
     if len(errors) > limit:
         nb_errors = len(errors) - limit
@@ -1275,14 +1272,14 @@ class ConfigForm(Form):
 
     def _load_initials(self):
         self.initial = {}
-        for name in self.fields.keys():
+        for name in self.fields:
             conf = Config.objects.get_config(name)
             if conf is not None:
                 self.initial[name] = conf
 
     def clean(self):
         cleaned_data = super(Form, self).clean()
-        for config_name in cleaned_data.keys():
+        for config_name in cleaned_data:
             consider_field = (
                 self.config_fields is None or
                 config_name in self.config_fields
@@ -1750,9 +1747,10 @@ class NodeGroupInterfaceForm(MAASModelForm):
                 ip_address = self.cleaned_data['ip']
                 ip_version = IPAddress(ip_address).version
                 sha = hashlib.sha256()
-                sha.update(name)
-                sha.update(ip_address)
-                sha.update(self.cleaned_data['subnet_mask'])
+                enc = lambda string: string.encode("utf-8")
+                sha.update(enc(name))
+                sha.update(enc(ip_address))
+                sha.update(enc(self.cleaned_data['subnet_mask']))
                 sha.update(os.urandom(32))
                 digest = sha.hexdigest()
                 for i in range(4, 65):
@@ -1895,7 +1893,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
             netmask = cleaned_data.get('subnet_mask')
             if netmask in (None, ''):
                 netmask = 'ffff:ffff:ffff:ffff::'
-            cleaned_data['subnet_mask'] = unicode(netmask)
+            cleaned_data['subnet_mask'] = str(netmask)
         new_management = cleaned_data.get('management')
         new_subnet_mask = self.get_subnet_mask(cleaned_data)
         if new_management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
@@ -1913,7 +1911,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
         subnet_mask = self.get_subnet_mask(cleaned_data)
         ip = cleaned_data.get('ip')
         if subnet_mask and ip:
-            return IPNetwork(unicode(ip) + '/' + unicode(subnet_mask))
+            return IPNetwork(str(ip) + '/' + str(subnet_mask))
         else:
             return None
 
@@ -1948,7 +1946,7 @@ class NodeGroupInterfaceForm(MAASModelForm):
                 else:
                     if ipaddr not in network:
                         msg = "%s not in the %s network" % (
-                            ip, unicode(network.cidr))
+                            ip, str(network.cidr))
                         set_form_error(self, field, msg)
 
     def clean_dependent_ip_ranges(self, cleaned_data):
@@ -2500,7 +2498,7 @@ class BulkNodeActionForm(forms.Form):
         )
 
         # Create `concurrency` co-iterators. Each draws work from `tasks`.
-        deferreds = (coiterate(tasks) for _ in xrange(concurrency))
+        deferreds = (coiterate(tasks) for _ in range(concurrency))
         # Capture the moment when all the co-iterators have finished.
         done = DeferredList(deferreds, consumeErrors=True)
         # Return only the `results` mapping; ignore the result from `done`.
@@ -2519,27 +2517,16 @@ class BulkNodeActionForm(forms.Form):
         # There is a lot of valuable information in `results`, including
         # failures, but currently we're only interested in basic stats.
         stats = Counter(
-            result for result in results.viewvalues()
+            result for result in results.values()
             if not isinstance(result, Failure))
         return stats["done"], stats["not_actionable"], stats["not_permitted"]
-
-    def get_selected_zone(self):
-        """Return the zone which the user has selected (or `None`).
-
-        Used for the "set zone" bulk action.
-        """
-        zone_name = self.cleaned_data['zone']
-        if zone_name is None or zone_name == '':
-            return None
-        else:
-            return Zone.objects.get(name=zone_name)
 
     def set_zone(self, system_ids):
         """Custom bulk action: set zone on identified nodes.
 
         :return: A tuple as returned by `save`.
         """
-        zone = self.get_selected_zone()
+        zone = self.cleaned_data['zone']
         Node.objects.filter(system_id__in=system_ids).update(zone=zone)
         return (len(system_ids), 0, 0)
 

@@ -3,15 +3,6 @@
 
 """Supporting infrastructure for Piston-based APIs in MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'admin_method',
     'AnonymousOperationsHandler',
@@ -161,14 +152,14 @@ class OperationsHandlerType(HandlerMetaClass):
         # Create a signature:function mapping for CRUD operations.
         crud = {
             (http_method, None): getattr(cls, method)
-            for http_method, method in OperationsResource.crudmap.items()
+            for http_method, method in list(OperationsResource.crudmap.items())
             if getattr(cls, method, None) is not None
             }
 
         # Create a signature:function mapping for non-CRUD operations.
         operations = {
             attribute.export: attribute
-            for attribute in vars(cls).values()
+            for attribute in list(vars(cls).values())
             if getattr(attribute, "export", None) is not None
             }
 
@@ -223,7 +214,7 @@ class OperationsHandlerMixin:
         """
         cls.exports = {
             name: func(export)
-            for name, export in cls.exports.viewitems()
+            for name, export in cls.exports.items()
         }
         # Now also decorate the anonymous handler, if present.
         if cls.anonymous is not None and bool(cls.anonymous):
@@ -232,17 +223,15 @@ class OperationsHandlerMixin:
 
 
 class OperationsHandler(
-        OperationsHandlerMixin, BaseHandler):
+        OperationsHandlerMixin, BaseHandler,
+        metaclass=OperationsHandlerType):
     """Base handler that supports operation dispatch."""
-
-    __metaclass__ = OperationsHandlerType
 
 
 class AnonymousOperationsHandler(
-        OperationsHandlerMixin, AnonymousBaseHandler):
+        OperationsHandlerMixin, AnonymousBaseHandler,
+        metaclass=OperationsHandlerType):
     """Anonymous base handler that supports operation dispatch."""
-
-    __metaclass__ = OperationsHandlerType
 
 
 def method_fields_reserved_fields_patch(self, handler, fields):
@@ -263,7 +252,7 @@ def method_fields_reserved_fields_patch(self, handler, fields):
         field_method = field
         if field in Emitter.RESERVED_FIELDS:
             field_method = "_%s" % field_method
-        t = getattr(handler, unicode(field_method), None)
+        t = getattr(handler, str(field_method), None)
         if t and callable(t):
             ret[field] = t
     return ret

@@ -3,15 +3,6 @@
 
 """DNS zone generator."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'ZoneGenerator',
     ]
@@ -97,7 +88,7 @@ WARNING_MESSAGE = (
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
     if IPAddress(ip).is_loopback():
-        logger.warn(WARNING_MESSAGE % ip)
+        logger.warning(WARNING_MESSAGE % ip)
 
 
 def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
@@ -245,7 +236,8 @@ class ZoneGenerator:
     def _gen_reverse_zones(nodegroups, serial, mappings, networks):
         """Generator of reverse zones, sorted by network."""
         get_domain = lambda nodegroup: nodegroup.name
-        reverse_nodegroups = sorted(nodegroups, key=networks.get)
+        get_network = lambda nodegroup: networks[nodegroup]
+        reverse_nodegroups = sorted(nodegroups, key=get_network)
         for nodegroup in reverse_nodegroups:
             for network, dynamic_range in networks[nodegroup]:
                 mapping = mappings[nodegroup]

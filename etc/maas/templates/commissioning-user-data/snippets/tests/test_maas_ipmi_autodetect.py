@@ -3,15 +3,6 @@
 
 """Tests for maas_ipmi_autodetect.py."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import OrderedDict
@@ -56,7 +47,9 @@ class TestRunCommand(MAASTestCase):
 
         output = run_command(['bash', '-c', command])
 
-        self.assertEqual([test_stdout, test_stderr], output.split())
+        self.assertEqual(
+            [test_stdout, test_stderr],
+            output.decode("ascii").split())
 
     def test_exception_on_failure(self):
         """"Failed commands should raise an exception."""
@@ -222,7 +215,7 @@ def make_user(update=None):
     return base
 
 
-def make_attributes(attributes_update=None):
+def make_attributes(*attributes_update):
     """Base user records with updates in an OrderedDict."""
 
     attributes_template = {
@@ -236,9 +229,7 @@ def make_attributes(attributes_update=None):
     }
 
     base = OrderedDict(attributes_template)
-
-    if attributes_update is not None:
-        base.update(attributes_update)
+    base.update(attributes_update)
 
     return base
 
@@ -251,34 +242,41 @@ class TestPickUserNumberFromList(MAASTestCase):
             user_attributes={},
             expected=None)),
         ('Existing MAAS user', dict(
-            user_attributes=make_attributes({
-                'User4': make_user(),
-                'User5': {'Username': 'maas'}}),
+            user_attributes=make_attributes(
+                ('User4', make_user()),
+                ('User5', {'Username': 'maas'})
+            ),
             expected='User5')),
         ('One blank user', dict(
             user_attributes=make_attributes(
-                {'User7': make_user()}),
+                ('User7', make_user()),
+            ),
             expected='User7')),
         ('Multiple blank users', dict(
-            user_attributes=make_attributes({
-                'User7': make_user(),
-                'User8': make_user()}),
+            user_attributes=make_attributes(
+                ('User7', make_user()),
+                ('User8', make_user()),
+            ),
             expected='User7')),
         ('One not blank user', dict(
             user_attributes=make_attributes(
-                {'User7': make_user({'Username': 'foo'})}),
+                ('User7', make_user({'Username': 'foo'})),
+            ),
             expected=None)),
         ('Username is (Empty User)', dict(
             user_attributes=make_attributes(
-                {'User7': make_user({'Username': '(Empty User)'})}),
+                ('User7', make_user({'Username': '(Empty User)'})),
+            ),
             expected='User7')),
         ('One enabled blank user', dict(
-            user_attributes=make_attributes({
-                'User7': {'Enable_User': 'Yes'}}),
+            user_attributes=make_attributes(
+                ('User7', {'Enable_User': 'Yes'}),
+            ),
             expected='User7')),
         ('Skip User1', dict(
             user_attributes=make_attributes(
-                {'User1': make_user()}),
+                ('User1', make_user()),
+            ),
             expected=None))
     ]
 
@@ -290,7 +288,7 @@ class TestPickUserNumberFromList(MAASTestCase):
         """Ensure the correct user, if any, is chosen."""
         self.patch(maas_ipmi_autodetect,
                    'bmc_user_get').side_effect = self.bmc_user_get
-        current_users = self.user_attributes.keys()
+        current_users = list(self.user_attributes.keys())
         user = pick_user_number_from_list('maas', current_users)
         self.assertEqual(self.expected, user)
 
@@ -329,7 +327,7 @@ class TestVerifyIpmiUserSettings(MAASTestCase):
             "IPMI user setting verification failures: "
             "for '%s', expected '%s', actual 'None'."
         ) % (key, value)
-        self.assertEqual(expected_message, ipmi_error.message)
+        self.assertEqual(expected_message, str(ipmi_error))
 
     def test_fail_incorrect_keys(self):
         """Ensure settings that don't match raise an IPMIError."""
@@ -349,17 +347,18 @@ class TestVerifyIpmiUserSettings(MAASTestCase):
         ipmi_error = self.assertRaises(IPMIError, verify_ipmi_user_settings,
                                        'User2', expected_settings)
 
-        self.assertRegexpMatches(ipmi_error.message,
-                                 r'^IPMI user setting verification failures: ')
+        self.assertRegex(
+            str(ipmi_error),
+            r'^IPMI user setting verification failures: ')
 
-        for setting, expected_value in bad_settings.iteritems():
+        for setting, expected_value in bad_settings.items():
             expected_match = r"for '%s', expected '%s', actual 'No" % (
                 setting, expected_value)
-            self.assertRegexpMatches(ipmi_error.message, expected_match)
+            self.assertRegex(str(ipmi_error), expected_match)
 
-        for setting in good_settings.keys():
+        for setting in good_settings:
             unexpected_match = r"for '%s'" % (setting)
-            self.assertNotRegexpMatches(ipmi_error.message, unexpected_match)
+            self.assertNotRegexpMatches(str(ipmi_error), unexpected_match)
 
     def test_accept_some_missing_keys(self):
         """Ensure no exception is raised if these keys are missing.
@@ -397,7 +396,7 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         user_settings = {'Username': user_number, 'b': 2}
         apply_ipmi_user_settings(user_settings)
 
-        for key, value in user_settings.iteritems():
+        for key, value in user_settings.items():
             self.assertThat(bus_mock, MockAnyCall(user_number, key, value))
 
         self.assertThat(
@@ -415,7 +414,7 @@ class TestApplyIpmiUserSettings(MAASTestCase):
         apply_ipmi_user_settings(user_settings)
         expected_calls = (
             call(user_number, key, value)
-            for key, value in user_settings.iteritems()
+            for key, value in user_settings.items()
         )
         self.assertThat(bus_mock, MockCallsMatch(*expected_calls))
 
@@ -430,15 +429,15 @@ class TestMakeIPMIUserSettings(MAASTestCase):
             'Username', 'Password', 'Enable_User',
             'Lan_Privilege_Limit', 'Lan_Enable_IPMI_Msgs'
         ]
-        self.assertEqual(expected, settings.keys())
+        self.assertEqual(expected, list(settings.keys()))
 
     def test_uses_username_and_password(self):
         """Ensure username and password supplied are used."""
         username = 'user'
         password = 'pass'
         settings = make_ipmi_user_settings(username, password)
-        self.assertEquals(username, settings['Username'])
-        self.assertEquals(password, settings['Password'])
+        self.assertEqual(username, settings['Username'])
+        self.assertEqual(password, settings['Password'])
 
 
 class TestConfigureIPMIUser(MAASTestCase):

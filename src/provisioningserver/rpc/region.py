@@ -6,15 +6,6 @@
 These are commands that a region controller ought to respond to.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Authenticate",
     "CreateNode",
@@ -41,6 +32,7 @@ __all__ = [
 ]
 
 from provisioningserver.rpc.arguments import (
+    AmpList,
     Bytes,
     CompressedAmpList,
     ParsedURL,
@@ -59,7 +51,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
     NoSuchNode,
 )
-from twisted.protocols import amp
+from provisioningserver.twisted.protocols import amp
 
 
 class Register(amp.Command):
@@ -73,7 +65,7 @@ class Register(amp.Command):
 
     arguments = [
         (b"uuid", amp.Unicode()),
-        (b"networks", amp.AmpList([
+        (b"networks", AmpList([
             (b"interface", amp.Unicode()),
             (b"ip", amp.Unicode()),
             (b"subnet_mask", amp.Unicode()),
@@ -97,7 +89,7 @@ class ReportBootImages(amp.Command):
     arguments = [
         # The cluster UUID.
         (b"uuid", amp.Unicode()),
-        (b"images", amp.AmpList(
+        (b"images", AmpList(
             [(b"architecture", amp.Unicode()),
              (b"subarchitecture", amp.Unicode()),
              (b"release", amp.Unicode()),
@@ -119,10 +111,10 @@ class GetBootSources(amp.Command):
         (b"uuid", amp.Unicode()),
     ]
     response = [
-        (b"sources", amp.AmpList(
+        (b"sources", AmpList(
             [(b"url", amp.Unicode()),
              (b"keyring_data", Bytes()),
-             (b"selections", amp.AmpList(
+             (b"selections", AmpList(
                  [(b"release", amp.Unicode()),
                   (b"arches", amp.ListOf(amp.Unicode())),
                   (b"subarches", amp.ListOf(amp.Unicode())),
@@ -144,10 +136,10 @@ class GetBootSourcesV2(amp.Command):
         (b"uuid", amp.Unicode()),
     ]
     response = [
-        (b"sources", amp.AmpList(
+        (b"sources", AmpList(
             [(b"url", amp.Unicode()),
              (b"keyring_data", Bytes()),
-             (b"selections", amp.AmpList(
+             (b"selections", AmpList(
                  [(b"os", amp.Unicode()),
                   (b"release", amp.Unicode()),
                   (b"arches", amp.ListOf(amp.Unicode())),
@@ -241,7 +233,7 @@ class ListNodePowerParameters(amp.Command):
         (b"uuid", amp.Unicode()),
     ]
     response = [
-        (b"nodes", amp.AmpList(
+        (b"nodes", AmpList(
             [(b"system_id", amp.Unicode()),
              (b"hostname", amp.Unicode()),
              (b"power_state", amp.Unicode()),
@@ -353,7 +345,7 @@ class GetClusterInterfaces(amp.Command):
         (b"cluster_uuid", amp.Unicode()),
     ]
     response = [
-        (b"interfaces", amp.AmpList(
+        (b"interfaces", AmpList(
             [(b"name", amp.Unicode()),
              (b"interface", amp.Unicode()),
              (b"ip", amp.Unicode())]))

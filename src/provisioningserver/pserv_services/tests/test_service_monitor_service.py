@@ -4,15 +4,6 @@
 """Tests for
 :py:module:`~provisioningserver.pserv_services.service_monitor_service`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maastesting.matchers import (

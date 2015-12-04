@@ -3,15 +3,6 @@
 
 """The base class that all handlers must extend."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "HandlerError",
     "HandlerPKError",
@@ -100,7 +91,7 @@ class HandlerOptions(object):
 
         # Construct the new object with the overrides from meta.
         return object.__new__(
-            type(b'HandlerOptions', (cls,), overrides))
+            type('HandlerOptions', (cls,), overrides))
 
 
 class HandlerMetaclass(type):
@@ -133,7 +124,7 @@ class HandlerMetaclass(type):
         return new_class
 
 
-class Handler:
+class Handler(metaclass=HandlerMetaclass):
     """Base handler for all handlers in the WebSocket protocol.
 
     Each handler should extend this class to get the basic implementation of
@@ -149,8 +140,6 @@ class Handler:
                 queryset = Sample.objects.all()
 
     """
-
-    __metaclass__ = HandlerMetaclass
 
     def __init__(self, user, cache):
         self.user = user
@@ -177,7 +166,7 @@ class Handler:
         data = {}
         for field in self._meta.object_class._meta.fields:
             # Convert the field name to unicode as some are stored in bytes.
-            field_name = unicode(field.name)
+            field_name = str(field.name)
 
             # Skip fields that are not allowed.
             if allowed_fields is not None and field_name not in allowed_fields:

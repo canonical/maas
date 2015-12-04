@@ -3,19 +3,10 @@
 
 """Tests for `maascli.cli`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from cStringIO import StringIO
 import doctest
+from io import StringIO
 import sys
 from textwrap import dedent
 
@@ -58,7 +49,7 @@ class TestLogin(MAASTestCase):
         error = self.assertRaises(SystemExit, login, options)
         self.assertEqual(
             "The MAAS server rejected your API key.",
-            unicode(error))
+            str(error))
         self.assertThat(check_key, MockCalledOnceWith(
             options.url, convert_string_to_tuple(options.credentials),
             options.insecure))
@@ -72,7 +63,7 @@ class TestLogin(MAASTestCase):
         check_key.side_effect = check_key_error
         login = cli.cmd_login(parser)
         error = self.assertRaises(SystemExit, login, options)
-        self.assertEqual(check_key_error_message, unicode(error))
+        self.assertEqual(check_key_error_message, str(error))
 
     def test_print_whats_next(self):
         profile = {

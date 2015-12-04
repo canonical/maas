@@ -3,18 +3,7 @@
 
 """Tests for `maasserver.websockets.handlers.device`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
-
-import re
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -54,6 +43,11 @@ from testtools.matchers import (
 
 class TestDeviceHandler(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestDeviceHandler, self).setUp()
+        # Prevent actual, real-world, updates to host maps.
+        self.patch_autospec(interface_module, "update_host_maps")
+
     def dehydrate_ip_assignment(self, device):
         boot_interface = device.get_boot_interface()
         if boot_interface is None:
@@ -85,7 +79,7 @@ class TestDeviceHandler(MAASServerTestCase):
     def dehydrate_device(self, node, user, for_list=False):
         boot_interface = node.get_boot_interface()
         data = {
-            "actions": compile_node_actions(node, user).keys(),
+            "actions": list(compile_node_actions(node, user).keys()),
             "created": dehydrate_datetime(node.created),
             "extra_macs": [
                 "%s" % mac_address.mac_address
@@ -129,7 +123,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 "ip_address",
                 "ip_assignment",
                 ]
-            for key in data.keys():
+            for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
         return data
@@ -159,7 +153,6 @@ class TestDeviceHandler(MAASServerTestCase):
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.DHCP, ip="", interface=interface)
         else:
-            self.patch_autospec(interface_module, "update_host_maps")
             subnet = factory.make_Subnet(vlan=interface.vlan)
             factory.make_NodeGroupInterface(
                 nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
@@ -179,7 +172,7 @@ class TestDeviceHandler(MAASServerTestCase):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
         device = self.make_device_with_ip_address(owner=owner)
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_device(device, owner),
             handler.get({"system_id": device.system_id}))
 
@@ -215,7 +208,6 @@ class TestDeviceHandler(MAASServerTestCase):
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_devices(self):
-        self.patch(interface_module, "update_host_maps")
         owner = factory.make_User()
         handler = DeviceHandler(owner, {})
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -229,15 +221,14 @@ class TestDeviceHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, 7,
             "Number of queries has changed; make sure this is expected.")
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of nodes.")
 
     def test_list_returns_devices_only_viewable_by_user(self):
-        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         # Create another user.
         factory.make_User()
@@ -254,7 +245,7 @@ class TestDeviceHandler(MAASServerTestCase):
         owner = factory.make_User()
         device = self.make_device_with_ip_address(owner=owner)
         handler = DeviceHandler(admin, {})
-        self.assertEquals(
+        self.assertEqual(
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
 
@@ -262,7 +253,7 @@ class TestDeviceHandler(MAASServerTestCase):
         owner = factory.make_User()
         device = self.make_device_with_ip_address(owner=owner)
         handler = DeviceHandler(owner, {})
-        self.assertEquals(
+        self.assertEqual(
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
 
@@ -296,10 +287,10 @@ class TestDeviceHandler(MAASServerTestCase):
         params = {
             "hostname": factory.make_name("hostname"),
             }
-        with ExpectedException(
-                HandlerValidationError,
-                re.escape("{u'mac_addresses': [u'This field is required.']}")):
-            handler.create(params)
+        error = self.assertRaises(
+            HandlerValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'mac_addresses': ['This field is required.']}))
 
     def test_create_creates_device_with_dynamic_ip_assignment(self):
         user = factory.make_User()
@@ -347,7 +338,6 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_creates_device_with_static_ip_assignment_implicit(self):
-        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
@@ -379,7 +369,6 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_creates_device_with_static_ip_assignment_explicit(self):
-        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         mac = factory.make_mac_address()
@@ -413,7 +402,6 @@ class TestDeviceHandler(MAASServerTestCase):
             Equals(1), "StaticIPAddress was not created.")
 
     def test_create_creates_device_with_static_and_external_ip(self):
-        self.patch(interface_module, "update_host_maps")
         user = factory.make_User()
         handler = DeviceHandler(user, {})
         hostname = factory.make_name("hostname")

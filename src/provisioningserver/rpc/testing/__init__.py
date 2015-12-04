@@ -3,15 +3,6 @@
 
 """Testing helpers for RPC implementations."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "are_valid_tls_parameters",
     "call_responder",
@@ -49,6 +40,7 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
     set_shared_secret_on_filesystem,
 )
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -71,7 +63,6 @@ from twisted.internet.defer import (
 )
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
-from twisted.protocols import amp
 from twisted.python import reflect
 from twisted.python.failure import Failure
 from twisted.test import iosim
@@ -116,14 +107,12 @@ are_valid_tls_parameters = MatchesDict({
 })
 
 
-class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
+class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
     """Patch in a stub region RPC implementation to enable end-to-end testing.
 
     This is an abstract base class. Derive concrete fixtures from this by
     implementing the `connect` method.
     """
-
-    __metaclass__ = ABCMeta
 
     starting = None
     stopping = None
@@ -269,7 +258,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         Describes event-loops only for those event-loops already known to the
         service, thus new connections must be injected into the service.
         """
-        connections = self.rpc_service.connections.viewitems()
+        connections = self.rpc_service.connections.items()
         return {
             "eventloops": {
                 eventloop: [client.address]
@@ -357,7 +346,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
     def setUp(self):
         self.sockdir = TempDirectory()  # Place for UNIX sockets.
-        self.socknames = itertools.imap(unicode, itertools.count(1))
+        self.socknames = map(str, itertools.count(1))
         return super(MockLiveClusterToRegionRPCFixture, self).setUp()
 
     def asyncStart(self):
@@ -432,8 +421,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
 # An iterable of names for new dynamically-created AMP protocol factories.
 amp_protocol_factory_names = (
-    "AMPTestProtocol#%d".encode("ascii") % seq
-    for seq in itertools.count(1))
+    "AMPTestProtocol#%d" % seq for seq in itertools.count(1))
 
 
 def make_amp_protocol_factory(*commands):
@@ -443,13 +431,14 @@ def make_amp_protocol_factory(*commands):
         super(cls, self).__init__()
         self._commandDispatch = self._commandDispatch.copy()
         for command in commands:
+            command_name = command.commandName.decode("ascii")
             # Get a class-level responder, if set.
-            responder = getattr(self, command.commandName, None)
+            responder = getattr(self, command_name, None)
             if responder is None:
                 # There's no class-level responder, so create an
                 # instance-level responder using a Mock.
-                responder = Mock(name=command.commandName)
-                setattr(self, command.commandName, responder)
+                responder = Mock(name=command_name)
+                setattr(self, command_name, responder)
             # Register whichever responder we've found.
             self._commandDispatch[command.commandName] = (command, responder)
 

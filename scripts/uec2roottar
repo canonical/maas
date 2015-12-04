@@ -8,16 +8,6 @@ This requires root privileges, because it needs to loop-mount the image file
 in order to read its contents.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from provisioningserver.import_images import uec2roottar
 
 

@@ -3,15 +3,6 @@
 
 """Generic utilities for dealing with files and the filesystem."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'atomic_delete',
     'atomic_symlink',
@@ -49,7 +40,6 @@ from subprocess import (
     PIPE,
     Popen,
 )
-import sys
 import tempfile
 import threading
 from time import (
@@ -61,6 +51,7 @@ from provisioningserver.utils import sudo
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor
+from twisted.python.filepath import FilePath
 from twisted.python.lockfile import FilesystemLock
 
 
@@ -123,6 +114,9 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
         is True.
     :param mode: Access permissions for the file, if written.
     """
+    if not isinstance(content, bytes):
+        raise TypeError("Content must be bytes, got: %r" % (content, ))
+
     temp_file = _write_temp_file(content, filename)
     os.chmod(temp_file, mode)
 
@@ -251,6 +245,7 @@ def incremental_write(content, filename, mode=0o600):
     """Write the given `content` into the file `filename` and
     increment the modification time by 1 sec.
 
+    :type content: `bytes`
     :param mode: Access permissions for the file.
     """
     old_mtime = get_mtime(filename)
@@ -272,22 +267,25 @@ def get_mtime(filename):
             raise
 
 
-def sudo_write_file(filename, contents, encoding='utf-8', mode=0o644):
+def sudo_write_file(filename, contents, mode=0o644):
     """Write (or overwrite) file as root.  USE WITH EXTREME CARE.
 
     Runs an atomic update using non-interactive `sudo`.  This will fail if
     it needs to prompt for a password.
+
+    :type contents: `bytes`.
     """
-    raw_contents = contents.encode(encoding)
+    if not isinstance(contents, bytes):
+        raise TypeError("Content must be bytes, got: %r" % (contents, ))
     maas_provision_cmd = get_maas_provision_command()
     command = [
         maas_provision_cmd,
         'atomic-write',
         '--filename', filename,
-        '--mode', oct(mode),
+        '--mode', "%.4o" % mode,
     ]
     proc = Popen(sudo(command), stdin=PIPE)
-    stdout, stderr = proc.communicate(raw_contents)
+    stdout, stderr = proc.communicate(contents)
     if proc.returncode != 0:
         raise ExternalProcessError(proc.returncode, command, stderr)
 
@@ -325,7 +323,7 @@ def ensure_dir(path):
 
 
 @contextmanager
-def tempdir(suffix=b'', prefix=b'maas-', location=None):
+def tempdir(suffix='', prefix='maas-', location=None):
     """Context manager: temporary directory.
 
     Creates a temporary directory (yielding its path, as `unicode`), and
@@ -345,9 +343,7 @@ def tempdir(suffix=b'', prefix=b'maas-', location=None):
     False
     """
     path = tempfile.mkdtemp(suffix, prefix, location)
-    if isinstance(path, bytes):
-        path = path.decode(sys.getfilesystemencoding())
-    assert isinstance(path, unicode)
+    assert isinstance(path, str)
     try:
         yield path
     finally:
@@ -365,7 +361,7 @@ def write_text_file(path, text, encoding='utf-8'):
 
     If the file existed, it will be overwritten.
     """
-    with codecs.open(path, 'w', encoding) as outfile:
+    with open(path, 'w', encoding=encoding) as outfile:
         outfile.write(text)
 
 
@@ -484,11 +480,12 @@ class FileLock(SystemLock):
     """Always create a lock file at ``${path}.lock``."""
 
     def __init__(self, path):
-        super(FileLock, self).__init__(abspath(path) + ".lock")
+        lockpath = FilePath(path).asTextMode().path + ".lock"
+        super(FileLock, self).__init__(lockpath)
 
 
 def _ensure_bytes(string):
-    if isinstance(string, unicode):
+    if isinstance(string, str):
         return string.encode("utf-8")
     elif isinstance(string, bytes):
         return string
@@ -507,5 +504,5 @@ class RunLock(SystemLock):
 
     def __init__(self, path):
         discriminator = urlsafe_b64encode(abspath(_ensure_bytes(path)))
-        lockpath = b"/run/lock/maas.%s.lock" % discriminator
+        lockpath = "/run/lock/maas.%s.lock" % discriminator.decode("ascii")
         super(RunLock, self).__init__(lockpath)

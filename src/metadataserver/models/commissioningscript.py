@@ -4,15 +4,6 @@
 """Custom commissioning scripts, and their database backing."""
 
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
@@ -85,19 +76,10 @@ def make_function_call_script(function, *args, **kwargs):
     :return: `bytes`
     """
     template = dedent("""\
-    #!/usr/bin/python
+    #!/usr/bin/python3.5
     # -*- coding: utf-8 -*-
 
-    from __future__ import (
-        absolute_import,
-        print_function,
-        unicode_literals,
-        )
-
     import json
-
-    __metaclass__ = type
-    __all__ = [{function_name!r}]
 
     {function_source}
 
@@ -107,10 +89,10 @@ def make_function_call_script(function, *args, **kwargs):
         {function_name}(*args, **kwargs)
     """)
     script = template.format(
-        function_name=function.__name__.decode('ascii'),
-        function_source=dedent(getsource(function).decode('utf-8')).strip(),
-        function_args=json.dumps(args).decode('utf-8'),
-        function_kwargs=json.dumps(kwargs).decode('utf-8'),
+        function_name=function.__name__,
+        function_source=dedent(getsource(function)).strip(),
+        function_args=json.dumps(args),  # ASCII.
+        function_kwargs=json.dumps(kwargs),  # ASCII.
     )
     return script.encode("utf-8")
 
@@ -455,6 +437,8 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     import shlex
     from subprocess import check_output
 
+    # XXX: Set LC_* and LANG environment variables to C.UTF-8 explicitly.
+
     def _path_to_idpath(path):
         """Searches dev_disk_byid for a device symlinked to /dev/[path]"""
         if os.path.exists(dev_disk_byid):
@@ -468,6 +452,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     blockdevs = []
     block_list = check_output(
         ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA"))
+    block_list = block_list.decode("utf-8")
     for blockdev in block_list.splitlines():
         tokens = shlex.split(blockdev)
         current_block = {}
@@ -490,6 +475,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         block_name = block_info["NAME"].replace("!", "/")
         udev_info = check_output(
             ("udevadm", "info", "-q", "all", "-n", block_name))
+        udev_info = udev_info.decode("utf-8")
         for info_line in udev_info.splitlines():
             info_line = info_line.strip()
             if info_line == "":
@@ -522,12 +508,12 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
             ("blockdev", "--getsize64", block_path))
         device_block_size = check_output(
             ("blockdev", "--getbsz", block_path))
-        block_info["SIZE"] = device_size.strip()
-        block_info["BLOCK_SIZE"] = device_block_size.strip()
+        block_info["SIZE"] = device_size.decode("utf-8").strip()
+        block_info["BLOCK_SIZE"] = device_block_size.decode("utf-8").strip()
 
     # Output block device information in json
     json_output = json.dumps(blockdevs, indent=True)
-    print(json_output)
+    print(json_output)  # json_outout is ASCII-only.
 
 
 def get_tags_from_block_info(block_info):
@@ -585,7 +571,7 @@ def update_node_physical_block_devices(node, output, exit_status):
         return
 
     try:
-        blockdevs = json.loads(output)
+        blockdevs = json.loads(output.decode("ascii"))
     except ValueError as e:
         raise ValueError(e.message + ': ' + output)
     previous_block_devices = list(
@@ -602,7 +588,7 @@ def update_node_physical_block_devices(node, output, exit_status):
         if not id_path:
             # Fallback to the dev path if id_path missing.
             id_path = block_info["PATH"]
-        size = long(block_info["SIZE"])
+        size = int(block_info["SIZE"])
         block_size = int(block_info["BLOCK_SIZE"])
         tags = get_tags_from_block_info(block_info)
         block_device = get_matching_block_device(
@@ -742,7 +728,7 @@ def add_script_to_archive(tarball, name, content, mtime):
     tarinfo = tarfile.TarInfo(name=os.path.join(ARCHIVE_PREFIX, name))
     tarinfo.size = len(content)
     # Mode 0755 means: u=rwx,go=rx
-    tarinfo.mode = 0755
+    tarinfo.mode = 0o755
     # Modification time defaults to Epoch, which elicits annoying
     # warnings when decompressing.
     tarinfo.mtime = mtime
@@ -753,7 +739,7 @@ class CommissioningScriptManager(Manager):
     """Utility for the collection of `CommissioningScript`s."""
 
     def _iter_builtin_scripts(self):
-        for script in BUILTIN_COMMISSIONING_SCRIPTS.itervalues():
+        for script in BUILTIN_COMMISSIONING_SCRIPTS.values():
             yield script['name'], script['content']
 
     def _iter_user_scripts(self):

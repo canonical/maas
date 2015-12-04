@@ -3,15 +3,6 @@
 
 """Configuration items definition and utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'CONFIG_ITEMS',
     'CONFIG_ITEMS_KEYS',
@@ -384,12 +375,12 @@ CONFIG_ITEMS = {
 }
 
 
-CONFIG_ITEMS_KEYS = CONFIG_ITEMS.keys()
+CONFIG_ITEMS_KEYS = list(CONFIG_ITEMS)
 
 
 INVALID_SETTING_MSG_TEMPLATE = (
     "%s is not a valid config setting (valid settings are: " +
-    "%s)." % ', '.join(CONFIG_ITEMS.keys()))
+    "%s)." % ', '.join(CONFIG_ITEMS))
 
 
 def validate_config_name(config_name):

@@ -3,23 +3,14 @@
 
 """Tests for the NodeGroups API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import random
 from textwrap import dedent
 
 import bson
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
@@ -45,6 +36,7 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -87,7 +79,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
         nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroups_handler'), {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             [{
                 'uuid': nodegroup.uuid,
@@ -95,7 +87,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
                 'name': nodegroup.name,
                 'cluster_name': nodegroup.cluster_name,
             }],
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
 
 class TestNodeGroupAPI(APITestCase):
@@ -109,16 +101,16 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            nodegroup.uuid, json.loads(response.content).get('uuid'))
+            nodegroup.uuid, json_load_bytes(response.content).get('uuid'))
 
     def test_GET_returns_404_for_unknown_node_group(self):
         response = self.client.get(
             reverse(
                 'nodegroup_handler',
                 args=[factory.make_name('nodegroup')]))
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_PUT_reserved_to_admin_users(self):
         nodegroup = factory.make_NodeGroup()
@@ -126,7 +118,7 @@ class TestNodeGroupAPI(APITestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': factory.make_name("new-name")})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_nodegroup(self):
         # The api allows the updating of a NodeGroup.
@@ -147,7 +139,8 @@ class TestNodeGroupAPI(APITestCase):
                 'default_disable_ipv4': not old_disable_ipv4,
             })
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         nodegroup = reload_object(nodegroup)
         self.assertEqual(
             (new_name, new_cluster_name, new_status),
@@ -162,9 +155,9 @@ class TestNodeGroupAPI(APITestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': new_name})
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn(
             "Can't rename DNS zone",
             parsed_result['name'][0])
@@ -176,7 +169,8 @@ class TestNodeGroupAPI(APITestCase):
         response = self.client.put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': nodegroup.name})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(
             old_value,
             reload_object(nodegroup).default_disable_ipv4)
@@ -192,11 +186,13 @@ class TestNodeGroupAPI(APITestCase):
                 'uuid': uuids,
             })
         self.assertEqual(
-            (httplib.OK, "Nodegroup(s) accepted."),
-            (response.status_code, response.content))
+            (http.client.OK, "Nodegroup(s) accepted."),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
         self.assertThat(
             [nodegroup.status for nodegroup in
-             reload_objects(NodeGroup, nodegroups)],
+             reload_objects(
+                 NodeGroup, nodegroups)],
             AllMatch(Equals(NODEGROUP_STATUS.ENABLED)))
 
     def test_accept_reserved_to_admin(self):
@@ -206,7 +202,7 @@ class TestNodeGroupAPI(APITestCase):
                 'op': 'accept',
                 'uuid': factory.make_string(),
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_reject_rejects_nodegroup(self):
         nodegroups = [factory.make_NodeGroup() for _ in range(3)]
@@ -219,8 +215,9 @@ class TestNodeGroupAPI(APITestCase):
                 'uuid': uuids,
             })
         self.assertEqual(
-            (httplib.OK, "Nodegroup(s) rejected."),
-            (response.status_code, response.content))
+            (http.client.OK, "Nodegroup(s) rejected."),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
         self.assertThat(
             [nodegroup.status for nodegroup in
              reload_objects(NodeGroup, nodegroups)],
@@ -233,7 +230,7 @@ class TestNodeGroupAPI(APITestCase):
                 'op': 'reject',
                 'uuid': factory.make_string(),
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_import_boot_images_schedules_import_to_clusters(self):
         from maasserver.clusterrpc import boot_images
@@ -243,8 +240,8 @@ class TestNodeGroupAPI(APITestCase):
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
         self.assertThat(
             boot_images.ClustersImporter.schedule,
             MockCalledOnceWith())
@@ -255,8 +252,8 @@ class TestNodeGroupAPI(APITestCase):
         response = client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def test_report_download_progress_accepts_new_download(self):
         nodegroup = factory.make_NodeGroup()
@@ -270,8 +267,8 @@ class TestNodeGroupAPI(APITestCase):
                 'filename': filename,
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         progress = DownloadProgress.objects.get(nodegroup=nodegroup)
         self.assertEqual(nodegroup, progress.nodegroup)
@@ -293,8 +290,8 @@ class TestNodeGroupAPI(APITestCase):
                 'bytes_downloaded': new_bytes_downloaded,
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         progress = reload_object(progress)
         self.assertEqual(new_bytes_downloaded, progress.bytes_downloaded)
@@ -311,8 +308,8 @@ class TestNodeGroupAPI(APITestCase):
                 'bytes_downloaded': -1,
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code,
-            explain_unexpected_response(httplib.BAD_REQUEST, response))
+            http.client.BAD_REQUEST, response.status_code,
+            explain_unexpected_response(http.client.BAD_REQUEST, response))
 
     def test_probe_and_enlist_hardware_adds_seamicro(self):
         self.become_admin()
@@ -343,8 +340,8 @@ class TestNodeGroupAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             client,
@@ -379,8 +376,8 @@ class TestNodeGroupAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             client,
@@ -417,8 +414,8 @@ class TestNodeGroupAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             client,
@@ -456,8 +453,8 @@ class TestNodeGroupAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             rpc_client,
@@ -500,8 +497,8 @@ class TestNodeGroupAPIForUCSM(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             client,
@@ -543,8 +540,8 @@ class TestNodeGroupAPIForMSCM(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
         self.expectThat(
             client,
@@ -586,14 +583,14 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]))
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
     def test_nodegroup_list_nodes_requires_authentication(self):
         nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'list_nodes'})
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
     def test_nodegroup_list_nodes_does_not_work_for_normal_user(self):
         nodegroup = factory.make_NodeGroup()
@@ -604,8 +601,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'list_nodes'})
 
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def test_nodegroup_list_nodes_works_for_nodegroup_worker(self):
         nodegroup = factory.make_NodeGroup()
@@ -617,9 +614,9 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'list_nodes'})
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        parsed_result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
     def test_nodegroup_list_nodes_works_for_admin(self):
@@ -633,9 +630,9 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'list_nodes'})
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        parsed_result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
     def test_nodegroup_import_boot_images_schedules_import_to_cluster(self):
@@ -650,8 +647,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'import_boot_images'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
         self.assertThat(
             boot_images.ClustersImporter.schedule,
             MockCalledOnceWith(nodegroup.uuid))
@@ -666,8 +663,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'import_boot_images'})
 
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def make_details_request(self, client, nodegroup):
         system_ids = {node.system_id for node in nodegroup.node_set.all()}
@@ -678,15 +675,15 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
     def test_details_requires_authentication(self):
         nodegroup = factory.make_NodeGroup()
         response = self.make_details_request(self.client, nodegroup)
-        self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
+        self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
     def test_details_refuses_nonworker(self):
         log_in_as_normal_user(self.client)
         nodegroup = factory.make_NodeGroup()
         response = self.make_details_request(self.client, nodegroup)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def test_details_returns_details(self):
         nodegroup = factory.make_NodeGroup()
@@ -699,13 +696,13 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'details', 'system_ids': [node.system_id]})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
         self.assertDictEqual(
             {
                 node.system_id: {
-                    "lshw": self.example_lshw_details_bin,
-                    "lldp": self.example_lldp_details_bin,
+                    "lshw": self.example_lshw_details,
+                    "lldp": self.example_lldp_details,
                 },
             },
             parsed_result)
@@ -720,7 +717,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'details', 'system_ids': [node.system_id]})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
         self.assertDictEqual(
             {
@@ -743,13 +740,13 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'details', 'system_ids': [node.system_id]})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
         self.assertDictEqual(
             {
                 node.system_id: {
-                    "lshw": bson.binary.Binary(b""),
-                    "lldp": bson.binary.Binary(b""),
+                    "lshw": b'',
+                    "lldp": b'',
                 },
             },
             parsed_result)
@@ -768,12 +765,12 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'details',
              'system_ids': [node_mine.system_id, node_theirs.system_id]})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
         self.assertDictEqual(
             {
                 node_mine.system_id: {
-                    "lshw": self.example_lshw_details_bin,
+                    "lshw": self.example_lshw_details,
                     "lldp": None,
                 },
             },
@@ -784,7 +781,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         client = make_worker_client(nodegroup)
         response = self.make_details_request(client, nodegroup)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = bson.BSON(response.content).decode()
         self.assertDictEqual({}, parsed_result)
 
@@ -801,8 +798,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
 
     def test_POST_report_download_progress_does_not_work_for_normal_user(self):
         nodegroup = factory.make_NodeGroup()
@@ -816,8 +813,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             })
 
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
     def test_POST_report_download_progress_does_work_for_other_cluster(self):
         filename = factory.make_string()
@@ -832,5 +829,5 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             })
 
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))

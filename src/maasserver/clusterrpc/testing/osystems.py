@@ -3,15 +3,6 @@
 
 """Helpers for osystem rpc testing."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "make_rpc_release",
     "make_rpc_osystem",

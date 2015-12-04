@@ -3,15 +3,6 @@
 
 """Test for :py:mod:`maasserver.clusterrpc.power`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.clusterrpc.power import (
@@ -62,11 +53,11 @@ class TestPowerNode(MAASServerTestCase):
                 node.get_effective_power_info())
 
         io.flush()
-        self.assertEquals({}, extract_result(d))
+        self.assertEqual({}, extract_result(d))
 
         power_info = node.get_effective_power_info()
         self.assertThat(
-            getattr(cluster, self.command.commandName),
+            getattr(cluster, self.command.commandName.decode("ascii")),
             MockCalledOnceWith(
                 ANY, system_id=node.system_id, hostname=node.hostname,
                 power_type=power_info.power_type,

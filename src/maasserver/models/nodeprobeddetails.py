@@ -7,13 +7,6 @@ For example, hardware information as reported by ``lshw`` and network
 topology information derived from LLDP.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-__metaclass__ = type
 __all__ = [
     "get_probed_details",
     "get_single_probed_details",
@@ -49,7 +42,7 @@ def get_single_probed_details(system_id):
     :return: A `dict` of the form ``{"lshw": b"<.../>", "lldp":
         b"<.../>"}``, where values are byte strings of XML.
     """
-    assert isinstance(system_id, unicode)
+    assert isinstance(system_id, str)
     probe_details = get_probed_details((system_id,))
     return probe_details[system_id]
 
@@ -61,7 +54,7 @@ def get_probed_details(system_ids):
         inner dictionaries have the same form as those returned by
         `get_single_probed_details`.
     """
-    assert not isinstance(system_ids, (bytes, unicode))
+    assert not isinstance(system_ids, (bytes, str))
 
     if not isinstance(system_ids, Sequence):
         system_ids = list(system_ids)

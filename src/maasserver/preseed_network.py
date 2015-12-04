@@ -3,15 +3,6 @@
 
 """Preseed generation for curtin network."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 
@@ -98,7 +89,7 @@ class CurtinNetworkGenerator:
 
     def _get_param_value(self, value):
         """Return correct value based on type of `value`."""
-        if isinstance(value, (bytes, unicode)):
+        if isinstance(value, (bytes, str)):
             return value
         elif isinstance(value, bool):
             return 1 if value else 0
@@ -145,7 +136,7 @@ class CurtinNetworkGenerator:
             "id": interface.get_name(),
             "type": "physical",
             "name": interface.get_name(),
-            "mac_address": unicode(interface.mac_address),
+            "mac_address": str(interface.mac_address),
         })
         if addrs:
             physical_operation["subnets"] = addrs
@@ -204,7 +195,7 @@ class CurtinNetworkGenerator:
                 self.gateway_ipv4_set = True
             elif ip_family == IPADDRESS_FAMILY.IPv6:
                 self.gateway_ipv6_set = True
-            subnet_operation["gateway"] = unicode(gateway)
+            subnet_operation["gateway"] = str(gateway)
 
     def _is_link_up(self, addresses):
         """Return True if the interface is setup to be in LINK_UP mode."""
@@ -235,7 +226,7 @@ class CurtinNetworkGenerator:
                     subnet_len = subnet.cidr.split('/')[1]
                     subnet_operation = {
                         "type": "static",
-                        "address": "%s/%s" % (unicode(address.ip), subnet_len)
+                        "address": "%s/%s" % (str(address.ip), subnet_len)
                     }
                     self._set_default_gateway(iface, subnet, subnet_operation)
                     if subnet.dns_servers is not None:
@@ -280,7 +271,7 @@ class CurtinNetworkGenerator:
             "id": iface.get_name(),
             "type": "bond",
             "name": iface.get_name(),
-            "mac_address": unicode(iface.mac_address),
+            "mac_address": str(iface.mac_address),
             "bond_interfaces": [parent.get_name() for parent in
                                 iface.parents.order_by('id')],
             "params": self._get_bond_params(iface),
@@ -303,7 +294,7 @@ class CurtinNetworkGenerator:
             "id": iface.get_name(),
             "type": "bridge",
             "name": iface.get_name(),
-            "mac_address": unicode(iface.mac_address),
+            "mac_address": str(iface.mac_address),
             "bridge_interfaces": [parent.get_name() for parent in
                                   iface.parents.order_by('id')]
         })

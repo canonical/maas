@@ -48,15 +48,6 @@ state UP mode DEFAULT group default qlen 1000
                 valid_lft forever preferred_lft forever
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'parse_ip_addr',
     'get_first_and_last_usable_host_in_network',
@@ -64,7 +55,6 @@ __all__ = [
 
 import os
 import re
-import string
 
 from netaddr import (
     IPAddress,
@@ -88,7 +78,7 @@ def _get_settings_dict(settings_line):
     if num_tokens % 2 != 0:
         settings = settings[:-1]
     return {
-        settings[2 * i]: settings[2 * i + 1] for i in range(num_tokens / 2)
+        settings[2 * i]: settings[2 * i + 1] for i in range(num_tokens // 2)
         }
 
 
@@ -104,8 +94,7 @@ def _parse_interface_definition(line):
 
     # This line is in the format:
     # <interface_index>: <interface_name>: <properties>
-    [index, name, properties] = map(
-        string.strip, line.split(':'))
+    [index, name, properties] = map(str.strip, line.split(':'))
 
     interface['index'] = int(index)
     names = name.split('@')
@@ -163,8 +152,8 @@ def parse_ip_addr(output):
     """
     # It's possible, though unlikely, that unicode characters will appear
     # in interface names.
-    if not isinstance(output, unicode):
-        output = unicode(output, "utf-8")
+    if not isinstance(output, str):
+        output = str(output, "utf-8")
 
     interfaces = {}
     interface = None

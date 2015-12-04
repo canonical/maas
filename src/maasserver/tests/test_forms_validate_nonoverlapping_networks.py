@@ -3,16 +3,6 @@
 
 """Tests for `validate_nonoverlapping_networks`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
@@ -98,7 +88,7 @@ class TestValidateNonoverlappingNetworks(TestCase):
         error = self.assertRaises(
             ValidationError,
             validate_nonoverlapping_networks, definitions)
-        self.assertIn("Conflicting networks", unicode(error))
+        self.assertIn("Conflicting networks", str(error))
 
     def test_detects_conflict_regardless_of_order(self):
         definitions = [

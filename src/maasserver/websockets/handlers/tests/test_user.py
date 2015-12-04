@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.user`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.contrib.auth.models import User
@@ -40,14 +31,14 @@ class TestUserHandler(MAASServerTestCase):
         user = factory.make_User()
         admin = factory.make_admin()
         handler = UserHandler(admin, {})
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_user(user),
             handler.get({"id": user.id}))
 
     def test_get_for_user_getting_self(self):
         user = factory.make_User()
         handler = UserHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_user(user),
             handler.get({"id": user.id}))
 
@@ -83,6 +74,6 @@ class TestUserHandler(MAASServerTestCase):
     def test_auth_user(self):
         user = factory.make_User()
         handler = UserHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_user(user),
             handler.auth_user({}))

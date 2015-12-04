@@ -3,22 +3,14 @@
 
 """Test maasserver images views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import datetime
-import httplib
+import http.client
 import json
 import random
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.enum import (
@@ -148,7 +140,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.client_log_in()
         response = self.client.post(
             reverse('images'), {'ubuntu_images': 1})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_import_calls_import_resources(self):
         self.client_log_in(as_admin=True)
@@ -157,7 +149,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         mock_import = self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'ubuntu_images': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertThat(mock_import, MockCalledOnceWith())
 
     def test_import_sets_empty_selections(self):
@@ -167,7 +159,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'ubuntu_images': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(1))
@@ -185,7 +177,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'ubuntu_images': 1, 'release': releases})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(len(releases)))
@@ -203,7 +195,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         response = self.client.post(
             reverse('images'),
             {'ubuntu_images': 1, 'release': releases, 'arch': arches})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(len(releases)))
@@ -224,7 +216,7 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'ubuntu_images': 1, 'release': [release]})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
 
@@ -378,7 +370,7 @@ class OtherImagesTest(MAASServerTestCase):
         self.client_log_in()
         response = self.client.post(
             reverse('images'), {'other_images': 1})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_post_clears_all_other_os_selections(self):
         self.client_log_in(as_admin=True)
@@ -390,7 +382,7 @@ class OtherImagesTest(MAASServerTestCase):
         self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'other_images': 1, 'image': []})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNotNone(reload_object(ubuntu_selection))
         self.assertIsNone(reload_object(other_selection))
 
@@ -408,7 +400,7 @@ class OtherImagesTest(MAASServerTestCase):
         self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'other_images': 1, 'image': images})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
 
         selection = get_one(BootSourceSelection.objects.filter(
             boot_source=source, os=os, release=release))
@@ -420,7 +412,7 @@ class OtherImagesTest(MAASServerTestCase):
         mock_import = self.patch(images_view, 'import_resources')
         response = self.client.post(
             reverse('images'), {'other_images': 1, 'image': []})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertThat(mock_import, MockCalledOnceWith())
 
 
@@ -593,7 +585,8 @@ class TestImageAjax(MAASServerTestCase):
         self.patch(
             images_view, 'is_import_resources_running').return_value = True
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertTrue(json_obj['region_import_running'])
 
     def test__returns_region_import_running_False(self):
@@ -601,7 +594,8 @@ class TestImageAjax(MAASServerTestCase):
         self.patch(
             images_view, 'is_import_resources_running').return_value = False
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertFalse(json_obj['region_import_running'])
 
     def test__returns_cluster_import_running_True(self):
@@ -609,7 +603,8 @@ class TestImageAjax(MAASServerTestCase):
         self.patch(
             images_view, 'is_import_boot_images_running').return_value = True
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertTrue(json_obj['cluster_import_running'])
 
     def test__returns_cluster_import_running_False(self):
@@ -617,7 +612,8 @@ class TestImageAjax(MAASServerTestCase):
         self.patch(
             images_view, 'is_import_boot_images_running').return_value = False
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertFalse(json_obj['cluster_import_running'])
 
     def test_returns_resources(self):
@@ -625,7 +621,8 @@ class TestImageAjax(MAASServerTestCase):
         resources = [factory.make_usable_boot_resource() for _ in range(3)]
         resource_ids = [resource.id for resource in resources]
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_ids = [
             json_resource['id']
             for json_resource in json_obj['resources']
@@ -637,7 +634,8 @@ class TestImageAjax(MAASServerTestCase):
         self.client_log_in()
         resource = factory.make_usable_boot_resource()
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_updated = datetime.datetime.strptime(
             json_obj['resources'][0]['lastUpdate'], "%a, %d %b. %Y %H:%M:%S")
         self.assertEqual(resource.updated.timetuple(),
@@ -647,7 +645,8 @@ class TestImageAjax(MAASServerTestCase):
         self.client_log_in()
         factory.make_usable_boot_resource()
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertThat(
             json_resource,
@@ -664,7 +663,8 @@ class TestImageAjax(MAASServerTestCase):
         factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(version, json_resource['title'])
 
@@ -680,7 +680,8 @@ class TestImageAjax(MAASServerTestCase):
                 osystem=os_name, distro_series=series,
                 architecture=resource.architecture)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
@@ -697,7 +698,8 @@ class TestImageAjax(MAASServerTestCase):
                 status=NODE_STATUS.DEPLOYED,
                 architecture=resource.architecture)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
@@ -719,7 +721,8 @@ class TestImageAjax(MAASServerTestCase):
                 osystem=os_name, distro_series=series,
                 architecture=node_architecture)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
@@ -733,7 +736,8 @@ class TestImageAjax(MAASServerTestCase):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name, architecture='%s/%s' % (arch, subarch))
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             1, len(json_obj['resources']),
             'More than one resource was returned.')
@@ -751,7 +755,8 @@ class TestImageAjax(MAASServerTestCase):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
             format_size(largefile.total_size), json_resource['size'])
@@ -778,7 +783,8 @@ class TestImageAjax(MAASServerTestCase):
                 architecture=node_architecture)
 
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
@@ -797,7 +803,8 @@ class TestImageAjax(MAASServerTestCase):
             BootResource.objects,
             'get_resources_matching_boot_images').return_value = resources
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertTrue(json_resource['complete'])
 
@@ -815,7 +822,8 @@ class TestImageAjax(MAASServerTestCase):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name, architecture='%s/%s' % (arch, subarch))
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertFalse(json_resource['complete'])
 
@@ -834,7 +842,8 @@ class TestImageAjax(MAASServerTestCase):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual("Downloading  50%", json_resource['status'])
 
@@ -843,7 +852,8 @@ class TestImageAjax(MAASServerTestCase):
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
         subarches = [factory.make_name('subarch') for _ in range(3)]
-        largefile = factory.make_LargeFile(content="")
+        largefile = factory.make_LargeFile(
+            content="".encode(settings.DEFAULT_CHARSET))
         for subarch in subarches:
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -851,7 +861,8 @@ class TestImageAjax(MAASServerTestCase):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual("Queued for download", json_resource['status'])
 
@@ -870,7 +881,8 @@ class TestImageAjax(MAASServerTestCase):
             BootResource.objects,
             'get_resources_matching_boot_images').return_value = resources
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual("Complete", json_resource['status'])
 
@@ -887,7 +899,8 @@ class TestImageAjax(MAASServerTestCase):
             BootResource.objects,
             'get_resources_matching_boot_images').return_value = []
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
             "Waiting for clusters to sync", json_resource['status'])
@@ -907,7 +920,8 @@ class TestImageAjax(MAASServerTestCase):
         self.patch(
             images_view, 'is_import_boot_images_running').return_value = True
         response = self.get_images_ajax()
-        json_obj = json.loads(response.content)
+        json_obj = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
             "Syncing to clusters", json_resource['status'])
@@ -920,7 +934,7 @@ class TestImageDelete(MAASServerTestCase):
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.post(
             reverse('image-delete', args=[resource.id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertIsNotNone(reload_object(resource))
 
     def test_deletes_resource(self):
@@ -929,7 +943,7 @@ class TestImageDelete(MAASServerTestCase):
         response = self.client.post(
             reverse('image-delete', args=[resource.id]),
             {'post': 'yes'})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNone(reload_object(resource))
 
     def test_redirects_to_images(self):

@@ -1,15 +1,6 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'probe_virsh_and_enlist',
     ]
@@ -19,7 +10,7 @@ from tempfile import NamedTemporaryFile
 from lxml import etree
 import pexpect
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
@@ -240,7 +231,7 @@ class VirshSSH(pexpect.spawn):
         # Rewrite the XML in a temporary file to use with 'virsh define'.
         with NamedTemporaryFile() as f:
             f.write(etree.tostring(doc))
-            f.write('\n')
+            f.write(b'\n')
             f.flush()
             output = self.run(['define', f.name])
             if output.startswith('error:'):

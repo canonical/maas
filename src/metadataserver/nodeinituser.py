@@ -3,15 +3,6 @@
 
 """User management for nodes' access to the metadata service."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_node_init_user',
     'user_name',

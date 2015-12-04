@@ -3,15 +3,6 @@
 
 """Test maasserver components module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -34,7 +25,7 @@ from testtools import ExpectedException
 
 
 def get_random_component():
-    return random.choice(map_enum(COMPONENT).values())
+    return random.choice(list(map_enum(COMPONENT).values()))
 
 
 class PersistentErrorsUtilitiesTest(MAASServerTestCase):

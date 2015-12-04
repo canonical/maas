@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.config`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.config import RegionConfiguration
@@ -78,7 +69,7 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
 
     scenarios = tuple(
         (name, {"option": name, "default": default})
-        for name, default in options_and_defaults.viewitems()
+        for name, default in options_and_defaults.items()
     )
 
     def test__default(self):

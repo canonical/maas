@@ -12,15 +12,6 @@ but can also be converted to a colon-separated string format for easy
 transport between processes.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'convert_string_to_tuple',
     'convert_tuple_to_string',

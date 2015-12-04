@@ -5,15 +5,6 @@
 up MAAS' DNS configuration files with an existing DNS server.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Command',
     ]
@@ -57,7 +48,11 @@ class Command(BaseCommand):
         include_snippet = DNSConfig.get_include_snippet()
 
         if edit is True:
-            with open(config_path, "ab") as conf_file:
+            # XXX: GavinPanella: I've not been able to discover what character
+            # set BIND expects for its configuration, so I've gone with a safe
+            # choice of ASCII. If we find that this fails we can revisit this
+            # and experiment to discover a better choice.
+            with open(config_path, "a", encoding="ascii") as conf_file:
                 conf_file.write(include_snippet)
         else:
             return INCLUDE_SNIPPET_COMMENT + include_snippet

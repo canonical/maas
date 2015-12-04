@@ -3,15 +3,6 @@
 
 """Interface link form."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "InterfaceLinkForm",
 ]
@@ -272,7 +263,7 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
                 "This field is required; Interface has more than "
                 "one usable %s gateway%s." % (
                     ' and '.join(
-                        map(lambda version: "IPv%d" % version, too_many)),
+                        "IPv%d" % version for version in too_many),
                     "s" if len(too_many) > 1 else ""))
 
     def clean(self):

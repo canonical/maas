@@ -1,15 +1,6 @@
 # Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'AcquireNodeForm',
     ]
@@ -119,7 +110,7 @@ def interfaces_validator(constraint_map):
     # interfaces domain.
     for label in constraint_map:
         constraints = constraint_map[label]
-        for constraint_name in constraints.iterkeys():
+        for constraint_name in constraints:
             if constraint_name not in NETWORKING_CONSTRAINT_NAMES:
                 raise ValidationError(
                     "Unknown interfaces constraint: '%s" % constraint_name)
@@ -273,7 +264,11 @@ def get_storage_constraints_from_string(storage):
         )
         for (label, size, tags) in groups
         ]
-    count_tags = lambda (label, size, tags): 0 if tags is None else len(tags)
+
+    def count_tags(elem):
+        label, size, tags = elem
+        return 0 if tags is None else len(tags)
+
     head, tail = constraints[:1], constraints[1:]
     tail.sort(key=count_tags, reverse=True)
     return head + tail
@@ -643,7 +638,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         value = self.cleaned_data[field_name]
         if isinstance(self.fields[field_name], MultipleChoiceField):
             output = describe_multi_constraint_value(value)
-        elif field_name == 'arch' and not isinstance(value, (bytes, unicode)):
+        elif field_name == 'arch' and not isinstance(value, str):
             # The arch field is a special case.  It's defined as a string
             # field, but may become a list/tuple/... of strings in cleaning.
             output = describe_multi_constraint_value(value)
@@ -805,7 +800,7 @@ class AcquireNodeForm(RenamableFieldsForm):
             self.get_field_name('storage'))
         if storage:
             compatible_nodes = nodes_by_storage(storage)
-            node_ids = compatible_nodes.keys()
+            node_ids = list(compatible_nodes)
             if node_ids is not None:
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 

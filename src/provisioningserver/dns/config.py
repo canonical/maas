@@ -3,15 +3,6 @@
 
 """DNS configuration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DNSConfig',
     'MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME',
@@ -139,7 +130,8 @@ def generate_rndc(port=953, key_name='rndc-maas-key',
     # - Use urandom to avoid blocking on the random generator.
     rndc_content = call_and_check(
         ['rndc-confgen', '-b', '256', '-r', '/dev/urandom',
-         '-k', key_name, '-p', unicode(port).encode("ascii")])
+         '-k', key_name, '-p', str(port).encode("ascii")])
+    rndc_content = rndc_content.decode("ascii")
     named_comment = extract_suggested_named_conf(rndc_content)
     named_conf = uncomment_named_conf(named_comment)
 
@@ -170,11 +162,11 @@ def set_up_rndc():
         include_default_controls=get_dns_default_controls())
 
     target_file = get_rndc_conf_path()
-    with open(target_file, "wb") as f:
+    with open(target_file, "w", encoding="ascii") as f:
         f.write(rndc_content)
 
     target_file = get_named_rndc_conf_path()
-    with open(target_file, "wb") as f:
+    with open(target_file, "w", encoding="ascii") as f:
         f.write(named_content)
 
 
@@ -201,7 +193,8 @@ def set_up_options_conf(overwrite=True, **kwargs):
     template_path = os.path.join(
         locate_config(TEMPLATES_DIR),
         "named.conf.options.inside.maas.template")
-    template = tempita.Template.from_filename(template_path)
+    template = tempita.Template.from_filename(
+        template_path, encoding="UTF-8")
 
     # Make sure "upstream_dns" is set at least to None. It's a special piece
     # of config and we don't want to require that every call site has to
@@ -232,9 +225,14 @@ def set_up_options_conf(overwrite=True, **kwargs):
         rendered = template.substitute(kwargs)
     except NameError as error:
         raise DNSConfigFail(*error.args)
+    else:
+        # The rendered configuration is Unicode text but should contain only
+        # ASCII characters. Non-ASCII records should have been treated using
+        # the rules for IDNA (Internationalized Domain Names in Applications).
+        rendered = rendered.encode("ascii")
 
     target_path = compose_config_path(MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)
-    atomic_write(rendered, target_path, overwrite=overwrite, mode=0644)
+    atomic_write(rendered, target_path, overwrite=overwrite, mode=0o644)
 
 
 def compose_config_path(filename):
@@ -256,7 +254,7 @@ def render_dns_template(template_name, *parameters):
         template.  Each adds to (and may overwrite) the previous ones.
     """
     template_path = locate_config(TEMPLATES_DIR, template_name)
-    template = tempita.Template.from_filename(template_path)
+    template = tempita.Template.from_filename(template_path, encoding="UTF-8")
     combined_params = {}
     for params_dict in parameters:
         combined_params.update(params_dict)
@@ -312,12 +310,16 @@ class DNSConfig:
             'DNS_CONFIG_DIR': get_dns_config_dir(),
             'named_rndc_conf_path': get_named_rndc_conf_path(),
             'trusted_networks': trusted_networks,
-            'modified': unicode(datetime.today()),
+            'modified': str(datetime.today()),
         }
         content = render_dns_template(self.template_file_name, kwargs, context)
+        # The rendered configuration is Unicode text but should contain only
+        # ASCII characters. Non-ASCII records should have been treated using
+        # the rules for IDNA (Internationalized Domain Names in Applications).
+        content = content.encode("ascii")
         target_path = compose_config_path(self.target_file_name)
         with report_missing_config_dir():
-            atomic_write(content, target_path, overwrite=overwrite, mode=0644)
+            atomic_write(content, target_path, overwrite=overwrite, mode=0o644)
 
     @classmethod
     def get_include_snippet(cls):

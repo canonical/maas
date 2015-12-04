@@ -9,14 +9,6 @@ v3.7.3
 v3.7.4
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_apc',
     'power_state_apc',

@@ -3,15 +3,6 @@
 
 """Tests for the `maastesting` package."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from random import randint
@@ -40,11 +31,11 @@ class TestWarnings(MAASTestCase):
         )
 
     def test_pattern_matches_package(self):
-        self.assertRegexpMatches(
+        self.assertRegex(
             self.package_name, maastesting.packages_expr)
 
     def test_pattern_matches_subpackage(self):
-        self.assertRegexpMatches(
+        self.assertRegex(
             self.package_name + ".foo", maastesting.packages_expr)
 
     def warn(self, message, category):

@@ -3,15 +3,6 @@
 
 """Tests for `maastesting.httpd`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from contextlib import closing
@@ -23,11 +14,11 @@ from socket import (
     gethostname,
 )
 from unittest import skip
-from urllib2 import (
+from urllib.parse import urljoin
+from urllib.request import (
     Request,
     urlopen,
 )
-from urlparse import urljoin
 
 from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import (

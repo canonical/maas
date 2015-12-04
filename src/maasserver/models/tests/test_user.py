@@ -3,15 +3,6 @@
 
 """Tests for :class:`User`-related helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from apiclient.creds import (
@@ -35,13 +26,13 @@ class AuthTokensTest(MAASServerTestCase):
     """Test creation and retrieval of auth tokens."""
 
     def assertTokenValid(self, token):
-        self.assertIsInstance(token.key, unicode)
+        self.assertIsInstance(token.key, str)
         self.assertEqual(KEY_SIZE, len(token.key))
-        self.assertIsInstance(token.secret, unicode)
+        self.assertIsInstance(token.secret, str)
         self.assertEqual(SECRET_SIZE, len(token.secret))
 
     def assertConsumerValid(self, consumer):
-        self.assertIsInstance(consumer.key, unicode)
+        self.assertIsInstance(consumer.key, str)
         self.assertEqual(KEY_SIZE, len(consumer.key))
         self.assertEqual('', consumer.secret)
 

@@ -3,22 +3,14 @@
 
 """Tests for volume-group API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import random
 import uuid
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
@@ -82,14 +74,16 @@ class TestVolumeGroups(APITestCase):
         uri = get_volume_groups_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             vg.id
             for vg in volume_groups
             ]
         result_ids = [
             vg["id"]
-            for vg in json.loads(response.content)
+            for vg in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -102,7 +96,7 @@ class TestVolumeGroups(APITestCase):
             'block_devices': [block_device.id],
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_raises_409_if_not_ready(self):
         self.become_admin()
@@ -114,7 +108,7 @@ class TestVolumeGroups(APITestCase):
             'block_devices': [block_device.id],
         })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_create_raises_400_if_form_validation_fails(self):
         self.become_admin()
@@ -123,8 +117,10 @@ class TestVolumeGroups(APITestCase):
         response = self.client.post(uri, {})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertItemsEqual(['name'], json.loads(response.content).keys())
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertItemsEqual(
+            ['name'], json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_create_creates_with_block_devices_and_partitions(self):
         self.become_admin()
@@ -159,8 +155,10 @@ class TestVolumeGroups(APITestCase):
             'block_devices': block_device_ids,
             'partitions': partition_ids,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_volume_group = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_volume_group = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_device_ids = [
             device["id"]
             for device in parsed_volume_group["devices"]
@@ -225,8 +223,10 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_volume_group = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_volume_group = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_device_ids = [
             device["id"]
             for device in parsed_volume_group["devices"]
@@ -261,7 +261,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(not_volume_group)
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -269,7 +269,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.put(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update_409_when_not_ready(self):
         self.become_admin()
@@ -278,7 +278,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.put(uri)
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_update_404_when_not_volume_group(self):
         self.become_admin()
@@ -289,7 +289,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(not_volume_group)
         response = self.client.put(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update_updates_volume_group(self):
         self.become_admin()
@@ -323,14 +323,14 @@ class TestVolumeGroupAPI(APITestCase):
             "remove_partitions": [delete_partition.id],
             })
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         volume_group = reload_object(volume_group)
-        self.assertEquals(new_name, volume_group.name)
-        self.assertEquals(new_uuid, volume_group.uuid)
-        self.assertEquals(
+        self.assertEqual(new_name, volume_group.name)
+        self.assertEqual(new_uuid, volume_group.uuid)
+        self.assertEqual(
             volume_group.id,
             new_block_device.get_effective_filesystem().filesystem_group.id)
-        self.assertEquals(
+        self.assertEqual(
             volume_group.id,
             new_partition.get_effective_filesystem().filesystem_group.id)
         self.assertIsNone(delete_block_device.get_effective_filesystem())
@@ -343,7 +343,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(volume_group))
 
     def test_delete_403_when_not_admin(self):
@@ -352,7 +352,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_409_when_not_ready(self):
         self.become_admin()
@@ -361,7 +361,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_delete_404_when_not_volume_group(self):
         self.become_admin()
@@ -372,7 +372,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(not_volume_group)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_logical_volume_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -380,7 +380,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.post(uri, {"op": "create_logical_volume"})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_logical_volume_409_when_not_ready(self):
         self.become_admin()
@@ -389,7 +389,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(volume_group)
         response = self.client.post(uri, {"op": "create_logical_volume"})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_create_logical_volume_404_when_not_volume_group(self):
         self.become_admin()
@@ -400,7 +400,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(not_volume_group)
         response = self.client.post(uri, {"op": "create_logical_volume"})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_create_logical_volume_creates_logical_volume(self):
         self.become_admin()
@@ -416,8 +416,10 @@ class TestVolumeGroupAPI(APITestCase):
             "uuid": vguuid,
             "size": size,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        logical_volume = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        logical_volume = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         expected_size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False)
         self.assertThat(logical_volume, ContainsDict({
@@ -437,7 +439,7 @@ class TestVolumeGroupAPI(APITestCase):
             "id": volume_id,
             })
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
 
     def test_delete_logical_volume_400_when_missing_id(self):
         self.become_admin()
@@ -448,7 +450,7 @@ class TestVolumeGroupAPI(APITestCase):
             "op": "delete_logical_volume",
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_delete_logical_volume_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -461,7 +463,7 @@ class TestVolumeGroupAPI(APITestCase):
             "id": logical_volume.id,
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_logical_volume_409_when_not_ready(self):
         self.become_admin()
@@ -475,7 +477,7 @@ class TestVolumeGroupAPI(APITestCase):
             "id": logical_volume.id,
             })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_delete_logical_volume_404_when_not_volume_group(self):
         self.become_admin()
@@ -486,7 +488,7 @@ class TestVolumeGroupAPI(APITestCase):
         uri = get_volume_group_uri(not_volume_group)
         response = self.client.post(uri, {"op": "delete_logical_volume"})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_logical_volume_deletes_logical_volume(self):
         self.become_admin()
@@ -500,5 +502,5 @@ class TestVolumeGroupAPI(APITestCase):
             "id": logical_volume.id,
             })
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(logical_volume))

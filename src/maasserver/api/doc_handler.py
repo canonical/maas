@@ -46,15 +46,6 @@ you want to do.
 For example, to list all nodes, you might GET "/api/1.0/nodes/?op=list".
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'api_doc',
     'api_doc_title',
@@ -62,9 +53,9 @@ __all__ = [
     'render_api_docs',
     ]
 
-from cStringIO import StringIO
 from functools import partial
 from inspect import getdoc
+from io import StringIO
 import sys
 from textwrap import dedent
 
@@ -116,6 +107,18 @@ def render_api_docs():
     line('----------')
     line()
 
+    def export_key(export):
+        """Return a sortable key for an export.
+
+        `op` is often `None`, which cannot be compared to non-`None`
+        operations.
+        """
+        (http_method, op), function = export
+        if op is None:
+            return http_method, "", function
+        else:
+            return http_method, op, function
+
     resources = find_api_resources(urlconf)
     for doc in generate_api_docs(resources):
         uri_template = doc.resource_uri_template
@@ -127,7 +130,7 @@ def render_api_docs():
         line(doc.handler.__doc__.strip())
         line()
         line()
-        for (http_method, op), function in sorted(exports):
+        for (http_method, op), function in sorted(exports, key=export_key):
             line("``%s %s``" % (http_method, uri_template), end="")
             if op is not None:
                 line(" ``op=%s``" % op)

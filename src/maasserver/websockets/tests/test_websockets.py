@@ -28,6 +28,7 @@ from maasserver.websockets.websockets import (
     WebSocketsTransport,
 )
 from maastesting.testcase import MAASTestCase
+from testtools.matchers import StartsWith
 from twisted.internet.protocol import (
     Factory,
     Protocol,
@@ -64,56 +65,56 @@ class TestFrameHelpers(MAASTestCase):
         """
         L{_makeAccept} makes responses according to the RFC.
         """
-        key = "dGhlIHNhbXBsZSBub25jZQ=="
-        self.assertEqual(_makeAccept(key), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+        key = b"dGhlIHNhbXBsZSBub25jZQ=="
+        self.assertEqual(_makeAccept(key), b"s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
 
     def test_maskNoop(self):
         """
         Blank keys perform a no-op mask.
         """
-        key = "\x00\x00\x00\x00"
-        self.assertEqual(_mask("Test", key), "Test")
+        key = b"\x00\x00\x00\x00"
+        self.assertEqual(_mask(b"Test", key), b"Test")
 
     def test_maskNoopLong(self):
         """
         Blank keys perform a no-op mask regardless of the length of the input.
         """
-        key = "\x00\x00\x00\x00"
-        self.assertEqual(_mask("LongTest", key), "LongTest")
+        key = b"\x00\x00\x00\x00"
+        self.assertEqual(_mask(b"LongTest", key), b"LongTest")
 
     def test_maskNoopOdd(self):
         """
         Masking works even when the data to be masked isn't a multiple of four
         in length.
         """
-        key = "\x00\x00\x00\x00"
-        self.assertEqual(_mask("LongestTest", key), "LongestTest")
+        key = b"\x00\x00\x00\x00"
+        self.assertEqual(_mask(b"LongestTest", key), b"LongestTest")
 
     def test_maskHello(self):
         """
         A sample mask for "Hello" according to RFC 6455, 5.7.
         """
-        key = "\x37\xfa\x21\x3d"
-        self.assertEqual(_mask("Hello", key), "\x7f\x9f\x4d\x51\x58")
+        key = b"\x37\xfa\x21\x3d"
+        self.assertEqual(_mask(b"Hello", key), b"\x7f\x9f\x4d\x51\x58")
 
     def test_parseUnmaskedText(self):
         """
         A sample unmasked frame of "Hello" from HyBi-10, 4.7.
         """
-        frame = ["\x81\x05Hello"]
+        frame = [b"\x81\x05Hello"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.TEXT, "Hello", True))
+        self.assertEqual(frames[0], (CONTROLS.TEXT, b"Hello", True))
         self.assertEqual(frame, [])
 
     def test_parseUnmaskedLargeText(self):
         """
         L{_parseFrames} handles frame with text longer than 125 bytes.
         """
-        frame = ["\x81\x7e\x00\xc8", "x" * 200]
+        frame = [b"\x81\x7e\x00\xc8", b"x" * 200]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.TEXT, "x" * 200, True))
+        self.assertEqual(frames[0], (CONTROLS.TEXT, b"x" * 200, True))
         self.assertEqual(frame, [])
 
     def test_parseUnmaskedTextWithMaskNeeded(self):
@@ -121,7 +122,7 @@ class TestFrameHelpers(MAASTestCase):
         L{_parseFrames} raises L{_WSException} if the frame is not masked and
         C{needMask} is set to C{True}.
         """
-        frame = ["\x81\x05Hello"]
+        frame = [b"\x81\x05Hello"]
         error = self.assertRaises(
             _WSException, list, _parseFrames(frame, needMask=True))
         self.assertEqual("Received data not masked", str(error))
@@ -130,20 +131,20 @@ class TestFrameHelpers(MAASTestCase):
         """
         L{_parseFrames} handles frame with text longer than 64 kB.
         """
-        frame = ["\x81\x7f\x00\x00\x00\x00\x00\x01\x86\xa0", "x" * 100000]
+        frame = [b"\x81\x7f\x00\x00\x00\x00\x00\x01\x86\xa0", b"x" * 100000]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.TEXT, "x" * 100000, True))
+        self.assertEqual(frames[0], (CONTROLS.TEXT, b"x" * 100000, True))
         self.assertEqual(frame, [])
 
     def test_parseMaskedText(self):
         """
         A sample masked frame of "Hello" from HyBi-10, 4.7.
         """
-        frame = ["\x81\x857\xfa!=\x7f\x9fMQX"]
+        frame = [b"\x81\x857\xfa!=\x7f\x9fMQX"]
         frames = list(_parseFrames(frame))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.TEXT, "Hello", True))
+        self.assertEqual(frames[0], (CONTROLS.TEXT, b"Hello", True))
         self.assertEqual(frame, [])
 
     def test_parseMaskedPartialText(self):
@@ -151,10 +152,10 @@ class TestFrameHelpers(MAASTestCase):
         L{_parseFrames} stops parsing if a masked frame isn't long enough to
         contain the length of the text.
         """
-        frame = ["\x81\x827\xfa"]
+        frame = [b"\x81\x827\xfa"]
         frames = list(_parseFrames(frame))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81\x827\xfa"])
+        self.assertEqual(frame, [b"\x81\x827\xfa"])
 
     def test_parseUnmaskedTextFragments(self):
         """
@@ -162,11 +163,11 @@ class TestFrameHelpers(MAASTestCase):
 
         From HyBi-10, 4.7.
         """
-        frame = ["\x01\x03Hel\x80\x02lo"]
+        frame = [b"\x01\x03Hel\x80\x02lo"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 2)
-        self.assertEqual(frames[0], (CONTROLS.TEXT, "Hel", False))
-        self.assertEqual(frames[1], (CONTROLS.CONTINUE, "lo", True))
+        self.assertEqual(frames[0], (CONTROLS.TEXT, b"Hel", False))
+        self.assertEqual(frames[1], (CONTROLS.CONTINUE, b"lo", True))
         self.assertEqual(frame, [])
 
     def test_parsePing(self):
@@ -175,10 +176,10 @@ class TestFrameHelpers(MAASTestCase):
 
         From HyBi-10, 4.7.
         """
-        frame = ["\x89\x05Hello"]
+        frame = [b"\x89\x05Hello"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.PING, "Hello", True))
+        self.assertEqual(frames[0], (CONTROLS.PING, b"Hello", True))
         self.assertEqual(frame, [])
 
     def test_parsePong(self):
@@ -187,10 +188,10 @@ class TestFrameHelpers(MAASTestCase):
 
         From HyBi-10, 4.7.
         """
-        frame = ["\x8a\x05Hello"]
+        frame = [b"\x8a\x05Hello"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0], (CONTROLS.PONG, "Hello", True))
+        self.assertEqual(frames[0], (CONTROLS.PONG, b"Hello", True))
         self.assertEqual(frame, [])
 
     def test_parseCloseEmpty(self):
@@ -199,11 +200,11 @@ class TestFrameHelpers(MAASTestCase):
         the generic error code 1000, and has no particular justification or
         error message.
         """
-        frame = ["\x88\x00"]
+        frame = [b"\x88\x00"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
         self.assertEqual(
-            frames[0], (CONTROLS.CLOSE, (STATUSES.NONE, ""), True))
+            frames[0], (CONTROLS.CLOSE, (STATUSES.NONE, b""), True))
         self.assertEqual(frame, [])
 
     def test_parseCloseReason(self):
@@ -212,68 +213,68 @@ class TestFrameHelpers(MAASTestCase):
         error code, and may optionally include trailing text explaining why
         the connection was closed.
         """
-        frame = ["\x88\x0b\x03\xe8No reason"]
+        frame = [b"\x88\x0b\x03\xe8No reason"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 1)
         self.assertEqual(
-            frames[0], (CONTROLS.CLOSE, (STATUSES.NORMAL, "No reason"), True))
+            frames[0], (CONTROLS.CLOSE, (STATUSES.NORMAL, b"No reason"), True))
         self.assertEqual(frame, [])
 
     def test_parsePartialNoLength(self):
         """
         Partial frames are stored for later decoding.
         """
-        frame = ["\x81"]
+        frame = [b"\x81"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81"])
+        self.assertEqual(frame, [b"\x81"])
 
     def test_parsePartialTruncatedLengthInt(self):
         """
         Partial frames are stored for later decoding, even if they are cut on
         length boundaries.
         """
-        frame = ["\x81\xfe"]
+        frame = [b"\x81\xfe"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81\xfe"])
+        self.assertEqual(frame, [b"\x81\xfe"])
 
     def test_parsePartialTruncatedLengthDouble(self):
         """
         Partial frames are stored for later decoding, even if they are marked
         as being extra-long.
         """
-        frame = ["\x81\xff"]
+        frame = [b"\x81\xff"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81\xff"])
+        self.assertEqual(frame, [b"\x81\xff"])
 
     def test_parsePartialNoData(self):
         """
         Partial frames with full headers but no data are stored for later
         decoding.
         """
-        frame = ["\x81\x05"]
+        frame = [b"\x81\x05"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81\x05"])
+        self.assertEqual(frame, [b"\x81\x05"])
 
     def test_parsePartialTruncatedData(self):
         """
         Partial frames with full headers and partial data are stored for later
         decoding.
         """
-        frame = ["\x81\x05Hel"]
+        frame = [b"\x81\x05Hel"]
         frames = list(_parseFrames(frame, needMask=False))
         self.assertEqual(len(frames), 0)
-        self.assertEqual(frame, ["\x81\x05Hel"])
+        self.assertEqual(frame, [b"\x81\x05Hel"])
 
     def test_parseReservedFlag(self):
         """
         L{_parseFrames} raises a L{_WSException} error when the header uses a
         reserved flag.
         """
-        frame = ["\x72\x05"]
+        frame = [b"\x72\x05"]
         error = self.assertRaises(_WSException, list, _parseFrames(frame))
         self.assertEqual("Reserved flag in frame (114)", str(error))
 
@@ -282,7 +283,7 @@ class TestFrameHelpers(MAASTestCase):
         L{_parseFrames} raises a L{_WSException} error when the error uses an
         unknown opcode.
         """
-        frame = ["\x8f\x05"]
+        frame = [b"\x8f\x05"]
         error = self.assertRaises(_WSException, list, _parseFrames(frame))
         self.assertEqual("Unknown opcode 15 in frame", str(error))
 
@@ -290,8 +291,8 @@ class TestFrameHelpers(MAASTestCase):
         """
         L{_makeFrame} makes valid HyBi-07 packets.
         """
-        frame = "\x81\x05Hello"
-        buf = _makeFrame("Hello", CONTROLS.TEXT, True)
+        frame = b"\x81\x05Hello"
+        buf = _makeFrame(b"Hello", CONTROLS.TEXT, True)
         self.assertEqual(frame, buf)
 
     def test_makeLargeFrame(self):
@@ -299,8 +300,8 @@ class TestFrameHelpers(MAASTestCase):
         L{_makeFrame} prefixes the payload by the length on 2 bytes if the
         payload is more than 125 bytes.
         """
-        frame = "\x81\x7e\x00\xc8" + "x" * 200
-        buf = _makeFrame("x" * 200, CONTROLS.TEXT, True)
+        frame = b"\x81\x7e\x00\xc8" + b"x" * 200
+        buf = _makeFrame(b"x" * 200, CONTROLS.TEXT, True)
         self.assertEqual(frame, buf)
 
     def test_makeHugeFrame(self):
@@ -308,24 +309,24 @@ class TestFrameHelpers(MAASTestCase):
         L{_makeFrame} prefixes the payload by the length on 8 bytes if the
         payload is more than 64 kB.
         """
-        frame = "\x81\x7f\x00\x00\x00\x00\x00\x01\x86\xa0" + "x" * 100000
-        buf = _makeFrame("x" * 100000, CONTROLS.TEXT, True)
+        frame = b"\x81\x7f\x00\x00\x00\x00\x00\x01\x86\xa0" + b"x" * 100000
+        buf = _makeFrame(b"x" * 100000, CONTROLS.TEXT, True)
         self.assertEqual(frame, buf)
 
     def test_makeNonFinFrame(self):
         """
         L{_makeFrame} can build fragmented frames.
         """
-        frame = "\x01\x05Hello"
-        buf = _makeFrame("Hello", CONTROLS.TEXT, False)
+        frame = b"\x01\x05Hello"
+        buf = _makeFrame(b"Hello", CONTROLS.TEXT, False)
         self.assertEqual(frame, buf)
 
     def test_makeMaskedFrame(self):
         """
         L{_makeFrame} can build masked frames.
         """
-        frame = "\x81\x857\xfa!=\x7f\x9fMQX"
-        buf = _makeFrame("Hello", CONTROLS.TEXT, True, mask="7\xfa!=")
+        frame = b"\x81\x857\xfa!=\x7f\x9fMQX"
+        buf = _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"7\xfa!=")
         self.assertEqual(frame, buf)
 
 
@@ -365,9 +366,9 @@ class WebSocketsProtocolTest(MAASTestCase):
         then write it back encoded into frames.
         """
         self.protocol.dataReceived(
-            _makeFrame("Hello", CONTROLS.TEXT, True, mask="abcd"))
-        self.assertEqual("\x81\x05Hello", self.transport.value())
-        self.assertEqual([(CONTROLS.TEXT, "Hello", True)],
+            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd"))
+        self.assertEqual(b"\x81\x05Hello", self.transport.value())
+        self.assertEqual([(CONTROLS.TEXT, b"Hello", True)],
                          self.receiver.received)
 
     def test_ping(self):
@@ -376,9 +377,9 @@ class WebSocketsProtocolTest(MAASTestCase):
         and the application receiver is notified about it.
         """
         self.protocol.dataReceived(
-            _makeFrame("Hello", CONTROLS.PING, True, mask="abcd"))
-        self.assertEqual("\x8a\x05Hello", self.transport.value())
-        self.assertEqual([(CONTROLS.PING, "Hello", True)],
+            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd"))
+        self.assertEqual(b"\x8a\x05Hello", self.transport.value())
+        self.assertEqual([(CONTROLS.PING, b"Hello", True)],
                          self.receiver.received)
 
     def test_close(self):
@@ -394,7 +395,7 @@ class WebSocketsProtocolTest(MAASTestCase):
         log.addObserver(logConnectionLostMsg)
 
         self.protocol.dataReceived(
-            _makeFrame("", CONTROLS.CLOSE, True, mask="abcd"))
+            _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
         self.assertFalse(self.transport.connected)
         self.assertEqual(["Closing connection: <STATUSES=NONE>"],
                          loggedMessages)
@@ -404,7 +405,7 @@ class WebSocketsProtocolTest(MAASTestCase):
         If an invalid frame is received, L{WebSocketsProtocol} closes the
         connection.
         """
-        self.protocol.dataReceived("\x72\x05")
+        self.protocol.dataReceived(b"\x72\x05")
         self.assertFalse(self.transport.connected)
 
 
@@ -423,7 +424,7 @@ class WebSocketsTransportTest(MAASTestCase):
         webSocketsTranport = WebSocketsTransport(transport)
         webSocketsTranport.loseConnection()
         self.assertFalse(transport.connected)
-        self.assertEqual("\x88\x02\x03\xe8", transport.value())
+        self.assertEqual(b"\x88\x02\x03\xe8", transport.value())
         # We can call loseConnection again without side effects
         webSocketsTranport.loseConnection()
 
@@ -435,8 +436,8 @@ class WebSocketsTransportTest(MAASTestCase):
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         webSocketsTranport = WebSocketsTransport(transport)
-        webSocketsTranport.loseConnection(STATUSES.GOING_AWAY, "Going away")
-        self.assertEqual("\x88\x0c\x03\xe9Going away", transport.value())
+        webSocketsTranport.loseConnection(STATUSES.GOING_AWAY, b"Going away")
+        self.assertEqual(b"\x88\x0c\x03\xe9Going away", transport.value())
 
 
 class WebSocketsProtocolWrapperTest(MAASTestCase):
@@ -458,8 +459,8 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         underlying protocol.
         """
         self.protocol.dataReceived(
-            _makeFrame("Hello", CONTROLS.TEXT, True, mask="abcd"))
-        self.assertEqual("Hello", self.accumulatingProtocol.data)
+            _makeFrame(b"Hello", CONTROLS.TEXT, True, mask=b"abcd"))
+        self.assertEqual(b"Hello", self.accumulatingProtocol.data)
 
     def test_controlFrames(self):
         """
@@ -467,12 +468,12 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         to the underlying protocol.
         """
         self.protocol.dataReceived(
-            _makeFrame("Hello", CONTROLS.PING, True, mask="abcd"))
+            _makeFrame(b"Hello", CONTROLS.PING, True, mask=b"abcd"))
         self.protocol.dataReceived(
-            _makeFrame("Hello", CONTROLS.PONG, True, mask="abcd"))
+            _makeFrame(b"Hello", CONTROLS.PONG, True, mask=b"abcd"))
         self.protocol.dataReceived(
-            _makeFrame("", CONTROLS.CLOSE, True, mask="abcd"))
-        self.assertEqual("", self.accumulatingProtocol.data)
+            _makeFrame(b"", CONTROLS.CLOSE, True, mask=b"abcd"))
+        self.assertEqual(b"", self.accumulatingProtocol.data)
 
     def test_loseConnection(self):
         """
@@ -481,23 +482,23 @@ class WebSocketsProtocolWrapperTest(MAASTestCase):
         """
         self.protocol.loseConnection()
         self.assertFalse(self.transport.connected)
-        self.assertEqual("\x88\x02\x03\xe8", self.transport.value())
+        self.assertEqual(b"\x88\x02\x03\xe8", self.transport.value())
 
     def test_write(self):
         """
         L{WebSocketsProtocolWrapper.write} creates and writes a frame from the
         payload passed.
         """
-        self.accumulatingProtocol.transport.write("Hello")
-        self.assertEqual("\x81\x05Hello", self.transport.value())
+        self.accumulatingProtocol.transport.write(b"Hello")
+        self.assertEqual(b"\x81\x05Hello", self.transport.value())
 
     def test_writeSequence(self):
         """
         L{WebSocketsProtocolWrapper.writeSequence} writes a frame for every
         chunk passed.
         """
-        self.accumulatingProtocol.transport.writeSequence(["Hello", "World"])
-        self.assertEqual("\x81\x05Hello\x81\x05World", self.transport.value())
+        self.accumulatingProtocol.transport.writeSequence([b"Hello", b"World"])
+        self.assertEqual(b"\x81\x05Hello\x81\x05World", self.transport.value())
 
     def test_getHost(self):
         """
@@ -549,7 +550,7 @@ class WebSocketsResourceTest(MAASTestCase):
         @type request: L{DummyRequest}
         """
         result = self.resource.render(request)
-        self.assertEqual("", result)
+        self.assertEqual(b"", result)
         self.assertEqual({}, request.outgoingHeaders)
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
@@ -560,15 +561,15 @@ class WebSocketsResourceTest(MAASTestCase):
         called.
         """
         self.assertRaises(
-            RuntimeError, self.resource.getChildWithDefault, "foo",
-            DummyRequest("/"))
+            RuntimeError, self.resource.getChildWithDefault, b"foo",
+            DummyRequest(b"/"))
 
     def test_putChild(self):
         """
         L{WebSocketsResource.putChild} raises C{RuntimeError} when called.
         """
         self.assertRaises(
-            RuntimeError, self.resource.putChild, "foo", Resource())
+            RuntimeError, self.resource.putChild, b"foo", Resource())
 
     def test_IResource(self):
         """
@@ -583,29 +584,29 @@ class WebSocketsResourceTest(MAASTestCase):
         value. It creates a L{WebSocketsProtocol} instance connected to the
         protocol provided by the user factory.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.requestHeaders = Headers()
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            {"connection": "Upgrade",
-             "upgrade": "WebSocket",
-             "sec-websocket-accept": "oYBv54i42V5dw6KnZqOFroecUTc="},
+            {b"connection": b"Upgrade",
+             b"upgrade": b"WebSocket",
+             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
             request.outgoingHeaders)
-        self.assertEqual([""], request.written)
+        self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
         self.assertIsInstance(transport.protocol._receiver,
                               SavingEchoReceiver)
-        self.assertEqual(request.getHeader("cookie"), transport.cookies)
+        self.assertEqual(request.getHeader(b"cookie"), transport.cookies)
         self.assertEqual(request.uri, transport.uri)
 
     def test_renderProtocol(self):
@@ -616,32 +617,32 @@ class WebSocketsResourceTest(MAASTestCase):
         """
 
         def lookupProtocol(names, otherRequest):
-            self.assertEqual(["foo", "bar"], names)
+            self.assertEqual([b"foo", b"bar"], names)
             self.assertIdentical(request, otherRequest)
-            return self.echoProtocol, "bar"
+            return self.echoProtocol, b"bar"
 
         self.resource = WebSocketsResource(lookupProtocol)
 
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.requestHeaders = Headers(
-            {"sec-websocket-protocol": ["foo", "bar"]})
+            {b"sec-websocket-protocol": [b"foo", b"bar"]})
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            {"connection": "Upgrade",
-             "upgrade": "WebSocket",
-             "sec-websocket-protocol": "bar",
-             "sec-websocket-accept": "oYBv54i42V5dw6KnZqOFroecUTc="},
+            {b"connection": b"Upgrade",
+             b"upgrade": b"WebSocket",
+             b"sec-websocket-protocol": b"bar",
+             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
             request.outgoingHeaders)
-        self.assertEqual([""], request.written)
+        self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
 
     def test_renderWrongUpgrade(self):
@@ -649,12 +650,12 @@ class WebSocketsResourceTest(MAASTestCase):
         If the C{Upgrade} header contains an invalid value,
         L{WebSocketsResource} returns a failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "upgrade": "wrong",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"wrong",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderNoUpgrade(self):
@@ -662,11 +663,11 @@ class WebSocketsResourceTest(MAASTestCase):
         If the C{Upgrade} header is not set, L{WebSocketsResource} returns a
         failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderPOST(self):
@@ -674,13 +675,13 @@ class WebSocketsResourceTest(MAASTestCase):
         If the method is not C{GET}, L{WebSocketsResource} returns a failed
         request.
         """
-        request = DummyRequest("/")
-        request.method = "POST"
+        request = DummyRequest(b"/")
+        request.method = b"POST"
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderWrongConnection(self):
@@ -688,12 +689,12 @@ class WebSocketsResourceTest(MAASTestCase):
         If the C{Connection} header contains an invalid value,
         L{WebSocketsResource} returns a failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Wrong",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Wrong",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderNoConnection(self):
@@ -701,11 +702,11 @@ class WebSocketsResourceTest(MAASTestCase):
         If the C{Connection} header is not set, L{WebSocketsResource} returns a
         failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "upgrade": "Websocket",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderNoKey(self):
@@ -713,11 +714,11 @@ class WebSocketsResourceTest(MAASTestCase):
         If the C{Sec-WebSocket-Key} header is not set, L{WebSocketsResource}
         returns a failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-version": b"13"})
         self.assertRequestFail(request)
 
     def test_renderWrongVersion(self):
@@ -725,15 +726,15 @@ class WebSocketsResourceTest(MAASTestCase):
         If the value of the C{Sec-WebSocket-Version} is not 13,
         L{WebSocketsResource} returns a failed request.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "11"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"11"})
         result = self.resource.render(request)
-        self.assertEqual("", result)
-        self.assertEqual({"sec-websocket-version": "13"},
+        self.assertEqual(b"", result)
+        self.assertEqual({b"sec-websocket-version": b"13"},
                          request.outgoingHeaders)
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
@@ -743,17 +744,17 @@ class WebSocketsResourceTest(MAASTestCase):
         If the underlying factory doesn't return any protocol,
         L{WebSocketsResource} returns a failed request with a C{502} code.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.requestHeaders = Headers()
         request.transport = StringTransportWithDisconnection()
         self.echoProtocol = None
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
-        self.assertEqual("", result)
+        self.assertEqual(b"", result)
         self.assertEqual({}, request.outgoingHeaders)
         self.assertEqual([], request.written)
         self.assertEqual(502, request.responseCode)
@@ -763,25 +764,25 @@ class WebSocketsResourceTest(MAASTestCase):
         When the rendered request is over HTTPS, L{WebSocketsResource} wraps
         the protocol of the C{TLSMemoryBIOProtocol} instance.
         """
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.requestHeaders = Headers()
         transport = StringTransportWithDisconnection()
         secureProtocol = TLSMemoryBIOProtocol(Factory(), Protocol())
         transport.protocol = secureProtocol
         request.transport = transport
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            {"connection": "Upgrade",
-             "upgrade": "WebSocket",
-             "sec-websocket-accept": "oYBv54i42V5dw6KnZqOFroecUTc="},
+            {b"connection": b"Upgrade",
+             b"upgrade": b"WebSocket",
+             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
             request.outgoingHeaders)
-        self.assertEqual([""], request.written)
+        self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
         self.assertIsInstance(
@@ -800,28 +801,25 @@ class WebSocketsResourceTest(MAASTestCase):
         channel.transport.protocol = channel
         request = Request(channel, False)
         headers = {
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"}
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"}
         for key, value in headers.items():
             request.requestHeaders.setRawHeaders(key, [value])
-        request.method = "GET"
-        request.clientproto = "HTTP/1.1"
+        request.method = b"GET"
+        request.clientproto = b"HTTP/1.1"
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            [("Connection", ["Upgrade"]),
-             ("Upgrade", ["WebSocket"]),
-             ("Sec-Websocket-Accept", ["oYBv54i42V5dw6KnZqOFroecUTc="])],
-            list(request.responseHeaders.getAllRawHeaders()))
-        self.assertEqual(
-            "HTTP/1.1 101 Switching Protocols\r\n"
-            "Transfer-Encoding: chunked\r\n"
-            "Connection: Upgrade\r\n"
-            "Upgrade: WebSocket\r\n"
-            "Sec-Websocket-Accept: oYBv54i42V5dw6KnZqOFroecUTc=\r\n\r\n",
-            channel.transport.value())
+            [(b"Connection", [b"Upgrade"]),
+             (b"Sec-Websocket-Accept", [b"oYBv54i42V5dw6KnZqOFroecUTc="]),
+             (b"Upgrade", [b"WebSocket"])],
+            sorted(request.responseHeaders.getAllRawHeaders()))
+        self.assertThat(
+            channel.transport.value(), StartsWith(
+                b"HTTP/1.1 101 Switching Protocols\r\n"
+                b"Transfer-Encoding: chunked\r\n"))
         self.assertEqual(101, request.code)
         self.assertIdentical(None, request.transport)
 
@@ -837,16 +835,16 @@ class WebSocketsResourceTest(MAASTestCase):
 
         self.resource = WebSocketsResource(lookupProtocol)
 
-        request = DummyRequest("/")
+        request = DummyRequest(b"/")
         request.requestHeaders = Headers()
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
         request.headers.update({
-            "upgrade": "Websocket",
-            "connection": "Upgrade",
-            "sec-websocket-key": "secure",
-            "sec-websocket-version": "13"})
+            b"upgrade": b"Websocket",
+            b"connection": b"Upgrade",
+            b"sec-websocket-key": b"secure",
+            b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertIsInstance(transport.protocol, WebSocketsProtocolWrapper)

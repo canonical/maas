@@ -2,15 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for testing operating systems-related code."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'FakeOS',
     ]

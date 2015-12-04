@@ -3,15 +3,6 @@
 
 """Monitored service driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DHCPv4Server",
     "DHCPv6Server",
@@ -40,7 +31,7 @@ DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
 DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
 
 
-class DHCPServer:
+class DHCPServer(metaclass=ABCMeta):
     """Represents the settings for a DHCP server.
 
     :cvar descriptive_name: A name to use for this server in human-readable
@@ -53,8 +44,6 @@ class DHCPServer:
         configuration file.
     :ivar omapi_key: The OMAPI secret key for the server.
     """
-
-    __metaclass__ = ABCMeta
 
     descriptive_name = abstractproperty()
     template_basename = abstractproperty()

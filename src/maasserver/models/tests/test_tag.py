@@ -3,15 +3,6 @@
 
 """Test maasserver models."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
@@ -97,7 +88,7 @@ class TestTagPopulateNodes(MAASServerTestCase):
     def test__does_nothing_if_tag_is_not_defined(self):
         tag = factory.make_Tag(definition="")
         self.assertFalse(tag.is_defined)
-        nodes = [factory.make_Node() for _ in xrange(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
         tag.populate_nodes()
         # The set of related nodes is unchanged.
@@ -115,7 +106,7 @@ class TestTagPopulateNodes(MAASServerTestCase):
         # Define the tag now but don't save because .save() calls
         # populate_nodes(), but we want to do it explicitly here.
         tag.definition = "//foo"
-        nodes = [factory.make_Node() for _ in xrange(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
         tag.populate_nodes()
         self.assertItemsEqual([], tag.node_set.all())

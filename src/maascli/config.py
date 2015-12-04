@@ -3,15 +3,6 @@
 
 """Configuration abstractions for the MAAS CLI."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ProfileConfig",
     ]
@@ -81,7 +72,7 @@ class ProfileConfig:
         database on exit, saving if the exit is clean.
         """
         # Initialise filename with restrictive permissions...
-        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0600))
+        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0o600))
         # before opening it with sqlite.
         database = sqlite3.connect(dbpath)
         try:

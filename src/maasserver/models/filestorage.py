@@ -3,15 +3,6 @@
 
 """Storage for uploaded files."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'FileStorage',
     ]
@@ -98,7 +89,7 @@ class FileStorage(CleanSave, Model):
 
     objects = FileStorageManager()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.filename
 
     @property

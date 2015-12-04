@@ -3,15 +3,6 @@
 
 """Generate kernel command-line options for inclusion in PXE configs."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compose_kernel_command_line',
     'KernelParameters',
@@ -87,10 +78,9 @@ def get_last_directory(root):
     20120424, 20120301, etc. so fetching the last one (sorting by name)
     returns the most recent.
     """
-    dirs = [
-        os.path.join(root, directory) for directory in os.listdir(root)]
+    dirs = (os.path.join(root, directory) for directory in os.listdir(root))
     dirs = filter(os.path.isdir, dirs)
-    return sorted(dirs)[-1]
+    return max(dirs)
 
 
 ISCSI_TARGET_NAME_PREFIX = "iqn.2004-05.com.ubuntu:maas"

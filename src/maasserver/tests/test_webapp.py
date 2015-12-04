@@ -4,15 +4,6 @@
 # TODO: Description here.
 """..."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -127,7 +118,7 @@ class TestWebApplicationService(MAASTestCase):
 
     def test__default_site_renders_starting_page(self):
         service = self.make_webapp()
-        request = DummyRequest(b"any/where".split("/"))
+        request = DummyRequest("any/where".split("/"))
         resource = service.site.getResourceFor(request)
         content = resource.render(request)
         page = html.fromstring(content)
@@ -142,7 +133,7 @@ class TestWebApplicationService(MAASTestCase):
             Equals("Please try again in a few seconds."))
         self.expectThat(
             request.outgoingHeaders,
-            ContainsDict({"retry-after": Equals("5")}))
+            ContainsDict({b"retry-after": Equals(b"5")}))
 
     def test__startService_starts_websocket_and_application(self):
         service = self.make_webapp()
@@ -196,7 +187,7 @@ class TestWebApplicationService(MAASTestCase):
         service.startService()
 
         # The site's page (for any path) shows the error.
-        request = DummyRequest(b"any/where".split("/"))
+        request = DummyRequest("any/where".split("/"))
         resource = service.site.getResourceFor(request)
         content = resource.render(request)
         page = html.fromstring(content)

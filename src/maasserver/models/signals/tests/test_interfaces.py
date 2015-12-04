@@ -3,15 +3,6 @@
 
 """Test the behaviour of interface signals."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -76,7 +67,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         bond_interface.ensure_link_up()
         nic0.enabled = False
         nic0.save()
-        self.assertEquals(1, bond_interface.ip_addresses.count())
+        self.assertEqual(1, bond_interface.ip_addresses.count())
 
 
 class TestMTUParams(MAASServerTestCase):
@@ -93,10 +84,10 @@ class TestMTUParams(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, parents=[physical_interface])
         physical_interface.params = {'mtu': new_mtu}
         physical_interface.save()
-        self.assertEquals({
+        self.assertEqual({
             'mtu': new_mtu,
             }, reload_object(vlan1_interface).params)
-        self.assertEquals('', reload_object(vlan2_interface).params)
+        self.assertEqual('', reload_object(vlan2_interface).params)
 
     def test__updates_parents_mtu(self):
         node = factory.make_Node()
@@ -122,13 +113,13 @@ class TestMTUParams(MAASServerTestCase):
         bond_mtu = random.randint(2000, 3999)
         bond_interface.params = {'mtu': bond_mtu}
         bond_interface.save()
-        self.assertEquals({
+        self.assertEqual({
             'mtu': bond_mtu,
             }, reload_object(physical1_interface).params)
-        self.assertEquals({
+        self.assertEqual({
             'mtu': physical2_mtu,
             }, reload_object(physical2_interface).params)
         # Physical 3 should be set the the bond interface MTU.
-        self.assertEquals({
+        self.assertEqual({
             'mtu': bond_mtu,
             }, reload_object(physical3_interface).params)

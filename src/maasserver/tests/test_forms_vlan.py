@@ -3,15 +3,6 @@
 
 """Tests for VLAN forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -29,7 +20,7 @@ class TestVLANForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         form = VLANForm(fabric=fabric, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "vid": [
                 "This field is required.",
                 "Vid must be between 0 and 4095.",
@@ -48,10 +39,10 @@ class TestVLANForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         vlan = form.save()
-        self.assertEquals(vlan_name, vlan.name)
-        self.assertEquals(vid, vlan.vid)
-        self.assertEquals(fabric, vlan.fabric)
-        self.assertEquals(mtu, vlan.mtu)
+        self.assertEqual(vlan_name, vlan.name)
+        self.assertEqual(vid, vlan.vid)
+        self.assertEqual(fabric, vlan.fabric)
+        self.assertEqual(mtu, vlan.mtu)
 
     def test__creates_vlan_with_default_mtu(self):
         fabric = factory.make_Fabric()
@@ -63,10 +54,10 @@ class TestVLANForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         vlan = form.save()
-        self.assertEquals(vlan_name, vlan.name)
-        self.assertEquals(vid, vlan.vid)
-        self.assertEquals(fabric, vlan.fabric)
-        self.assertEquals(DEFAULT_MTU, vlan.mtu)
+        self.assertEqual(vlan_name, vlan.name)
+        self.assertEqual(vid, vlan.vid)
+        self.assertEqual(fabric, vlan.fabric)
+        self.assertEqual(DEFAULT_MTU, vlan.mtu)
 
     def test__doest_require_name_vid_or_mtu_on_update(self):
         vlan = factory.make_VLAN()
@@ -77,7 +68,7 @@ class TestVLANForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         form = VLANForm(instance=fabric.get_default_vlan(), data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "__all__": [
                 "Cannot modify the default VLAN for a fabric.",
                 ],
@@ -95,6 +86,6 @@ class TestVLANForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEquals(new_name, reload_object(vlan).name)
-        self.assertEquals(new_vid, reload_object(vlan).vid)
-        self.assertEquals(new_mtu, reload_object(vlan).mtu)
+        self.assertEqual(new_name, reload_object(vlan).name)
+        self.assertEqual(new_vid, reload_object(vlan).vid)
+        self.assertEqual(new_mtu, reload_object(vlan).mtu)

@@ -3,15 +3,6 @@
 
 """Tests for the `uec2roottar` script and its supporting module.."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -169,7 +160,7 @@ class TestExtractImageFromTarball(MAASTestCase):
             uec2roottar.extract_image_from_tarball, tarball, empty_dir)
         self.assertEqual(
             "Tarball %s does not contain any *.img." % tarball,
-            unicode(error))
+            str(error))
 
     def test__fails_if_multiple_images_found(self):
         tarball = make_tarball_name()
@@ -185,7 +176,7 @@ class TestExtractImageFromTarball(MAASTestCase):
         self.assertEqual(
             "Tarball %s contains multiple image files: %s."
             % (tarball, ', '.join(files)),
-            unicode(error))
+            str(error))
 
 
 class TestGetImageFile(MAASTestCase):
@@ -218,7 +209,7 @@ class TestGetImageFile(MAASTestCase):
         self.assertEqual(
             "Expected '%s' to be either a filesystem file, or a "
             "gzipped tarball containing one." % filename,
-            unicode(error))
+            str(error))
 
 
 class TestUnmount(MAASTestCase):
@@ -287,13 +278,13 @@ class TestTarSupportsXattrOpts(MAASTestCase):
 
     def test__returns_True_if_help_contains_ref_to_xattr(self):
         mock_check_call = self.patch(uec2roottar, 'check_output')
-        mock_check_call.return_value = 'xattr'
+        mock_check_call.return_value = b'xattr'
         self.assertTrue(uec2roottar.tar_supports_xattr_opts())
         self.assertThat(mock_check_call, MockCalledOnceWith(['tar', '--help']))
 
     def test__returns_False_if_help_doesnt_contain_ref_to_xattr(self):
         mock_check_call = self.patch(uec2roottar, 'check_output')
-        mock_check_call.return_value = 'nothing'
+        mock_check_call.return_value = b'nothing'
         self.assertFalse(uec2roottar.tar_supports_xattr_opts())
         self.assertThat(mock_check_call, MockCalledOnceWith(['tar', '--help']))
 

@@ -3,15 +3,6 @@
 
 """Enumerations meaningful to the maasserver application."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'CACHE_MODE_TYPE',
     'CACHE_MODE_TYPE_CHOICES',

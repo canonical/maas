@@ -3,21 +3,8 @@
 
 """Tests for :py:module:`~provisioningserver.power.query`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from itertools import (
-    imap,
-    izip,
-)
 import logging
 import random
 
@@ -169,11 +156,6 @@ class TestPowerQuery(MAASTestCase):
         }
         self.patch(power, 'is_driver_available').return_value = False
 
-        power_driver = power_drivers_by_name.get(power_type)
-        detect_packages = self.patch_autospec(
-            power_driver, "detect_missing_packages")
-        detect_packages.return_value = []
-
         # Patch the power action utility so that it says the node is
         # in on/off power state.
         power_action, execute = patch_PowerAction(
@@ -185,7 +167,9 @@ class TestPowerQuery(MAASTestCase):
         # This blocks until the deferred is complete.
         io.flush()
         self.assertEqual(power_state, extract_result(d))
-        self.assertThat(detect_packages, MockCalledOnceWith())
+        self.assertThat(
+            power_drivers_by_name.get(power_type).detect_missing_packages,
+            MockCalledOnceWith())
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -210,14 +194,13 @@ class TestPowerQuery(MAASTestCase):
         _, markNodeBroken, io = self.patch_rpc_methods()
 
         power_driver = power_drivers_by_name.get(power_type)
-        detect_packages = self.patch_autospec(
-            power_driver, "detect_missing_packages")
-        detect_packages.return_value = ['gone']
+        power_driver.detect_missing_packages.return_value = ['gone']
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
 
-        self.assertThat(detect_packages, MockCalledOnceWith())
+        self.assertThat(
+            power_driver.detect_missing_packages, MockCalledOnceWith())
         return assert_fails_with(d, poweraction.PowerActionFail)
 
     def test_get_power_state_returns_unknown_for_certain_power_types(self):
@@ -283,7 +266,7 @@ class TestPowerQuery(MAASTestCase):
 
         error = self.assertRaises(
             poweraction.PowerActionFail, extract_result, report)
-        self.assertEqual(err_msg, unicode(error))
+        self.assertEqual(err_msg, str(error))
         self.assertThat(
             power.power_state_update,
             MockCalledOnceWith(system_id, 'error'))
@@ -478,7 +461,7 @@ class TestPowerQueryAsync(MAASTestCase):
         }
 
     def make_nodes(self, count=3):
-        nodes = [self.make_node() for _ in xrange(count)]
+        nodes = [self.make_node() for _ in range(count)]
         # Sanity check that these nodes are something that can emerge
         # from a call to ListNodePowerParameters.
         region.ListNodePowerParameters.makeResponse({"nodes": nodes}, None)
@@ -495,7 +478,7 @@ class TestPowerQueryAsync(MAASTestCase):
 
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
-        queries = list(imap(succeed, power_states))
+        queries = list(map(succeed, power_states))
         get_power_state = self.patch(power.query, 'get_power_state')
         get_power_state.side_effect = queries
         report_power_state = self.patch(power.query, 'report_power_state')
@@ -511,7 +494,7 @@ class TestPowerQueryAsync(MAASTestCase):
         )))
         self.assertThat(report_power_state, MockCallsMatch(*(
             call(query, node['system_id'], node['hostname'])
-            for query, node in izip(queries, nodes)
+            for query, node in zip(queries, nodes)
         )))
 
     @inlineCallbacks
@@ -535,7 +518,7 @@ class TestPowerQueryAsync(MAASTestCase):
         # Report back power state of nodes' not in registry.
         power_states = [node['power_state'] for node in nodes[1:]]
         get_power_state = self.patch(power.query, 'get_power_state')
-        get_power_state.side_effect = imap(succeed, power_states)
+        get_power_state.side_effect = map(succeed, power_states)
         suppress_reporting(self)
 
         yield power.query.query_all_nodes(nodes)
@@ -561,7 +544,7 @@ class TestPowerQueryAsync(MAASTestCase):
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
         get_power_state = self.patch(power.query, 'get_power_state')
-        get_power_state.side_effect = imap(succeed, power_states)
+        get_power_state.side_effect = map(succeed, power_states)
         suppress_reporting(self)
 
         yield power.query.query_all_nodes(nodes)

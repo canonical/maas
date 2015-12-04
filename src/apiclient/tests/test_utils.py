@@ -3,24 +3,15 @@
 
 """Test general utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from urllib import unquote
+from urllib.parse import unquote
 
 from apiclient.utils import (
     ascii_url,
     urlencode,
 )
-from django.utils.encoding import smart_unicode
+from django.utils.encoding import smart_text
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
@@ -48,15 +39,15 @@ class TestHelpers(MAASTestCase):
         query = urlencode(data)
         self.assertThat(
             query, MatchesAll(
-                Equals(b"%3D%E1%88%B4=%26%E4%8C%A1"),
-                IsInstance(bytes)))
+                Equals("%3D%E1%88%B4=%26%E4%8C%A1"),
+                IsInstance(str)))
 
     def test_urlencode_roundtrip_through_django(self):
         # Check that urlencode's approach works with Django, as described on
         # https://docs.djangoproject.com/en/dev/ref/unicode/.
         data = [("=\u1234", "&\u4321")]
         query = urlencode(data)
-        name, value = query.split(b"=")
+        name, value = query.split("=")
         name, value = unquote(name), unquote(value)
-        name, value = smart_unicode(name), smart_unicode(value)
+        name, value = smart_text(name), smart_text(value)
         self.assertEqual(data, [(name, value)])

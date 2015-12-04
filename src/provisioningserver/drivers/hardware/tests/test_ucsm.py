@@ -3,21 +3,14 @@
 
 """Tests for ``provisioningserver.drivers.hardware.ucsm``."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+from io import StringIO
 from itertools import permutations
 import random
-from StringIO import StringIO
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from lxml.etree import (
     Element,
@@ -288,7 +281,7 @@ class TestSendRequest(MAASTestCase):
         api = make_api()
         self.patch(api, '_call')
         stream = StringIO('<hi/>')
-        mock = self.patch(urllib2, 'urlopen')
+        mock = self.patch(urllib.request, 'urlopen')
         mock.return_value = stream
         response = api._send_request(request_data)
         self.assertEqual('hi', response.tag)
@@ -681,7 +674,7 @@ def make_boot_order_scenarios(size):
     first.
     """
     minimum = random.randint(0, 500)
-    ordinals = xrange(minimum, minimum + size)
+    ordinals = range(minimum, minimum + size)
 
     elements = [
         Element('Entry%d' % i, {'order': '%d' % i})
@@ -717,7 +710,7 @@ class TestsForStripRoKeys(MAASTestCase):
 
         elements = [
             Element('Element%d' % i, attributes)
-            for i in xrange(random.randint(0, 10))
+            for i in range(random.randint(0, 10))
         ]
 
         strip_ro_keys(elements)

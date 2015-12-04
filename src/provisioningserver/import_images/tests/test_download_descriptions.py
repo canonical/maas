@@ -3,15 +3,6 @@
 
 """Tests for the `download_descriptions` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import logging
@@ -283,7 +274,7 @@ class TestRepoDumper(MAASTestCase):
                 label=item['label'])
             for subarch in subarches
         ]
-        self.assertItemsEqual(image_specs, boot_images_dict.mapping.keys())
+        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
 
     def test_insert_item_sets_compat_item_specific_to_subarch(self):
         boot_images_dict = BootImageMapping()

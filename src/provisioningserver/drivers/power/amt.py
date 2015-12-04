@@ -3,15 +3,6 @@
 
 """AMT Power Driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from itertools import chain
@@ -28,7 +19,6 @@ from time import sleep
 
 from lxml import etree
 from provisioningserver.drivers.power import (
-    get_c_environment,
     is_power_parameter_set,
     PowerActionError,
     PowerDriver,
@@ -100,7 +90,7 @@ class AMTPowerDriver(PowerDriver):
 
     def _get_amt_environment(self, power_pass):
         """Set and return environment for AMT."""
-        env = get_c_environment()
+        env = shell.select_c_utf8_locale()
         env['AMT_PASSWORD'] = power_pass
         return env
 
@@ -160,7 +150,7 @@ class AMTPowerDriver(PowerDriver):
         """Ask for node's power state: 'on' or 'off', via amttool."""
         # Retry the state if it fails because it often fails the first time
         output = None
-        for _ in xrange(10):
+        for _ in range(10):
             output = self._issue_amttool_command(
                 'info', ip_address, power_pass)
             if output is not None and output != '':
@@ -186,7 +176,7 @@ class AMTPowerDriver(PowerDriver):
         """Ask for node's power state: 'on' or 'off', via wsman."""
         # Retry the state if it fails because it often fails the first time.
         output = None
-        for _ in xrange(10):
+        for _ in range(10):
             output = self._issue_wsman_command('query', ip_address, power_pass)
             if output is not None and output != '':
                 break
@@ -235,7 +225,7 @@ class AMTPowerDriver(PowerDriver):
     def amttool_power_on(self, ip_address, power_pass, amttool_boot_mode):
         """Power on the node via amttool."""
         # Try several times.  Power commands often fail the first time.
-        for _ in xrange(10):
+        for _ in range(10):
             # Issue the AMT command; amttool will prompt for confirmation.
             self._issue_amttool_command(
                 'powerup', ip_address, power_pass,
@@ -251,7 +241,7 @@ class AMTPowerDriver(PowerDriver):
         self._issue_wsman_command('on', ip_address, power_pass)
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
-        for _ in xrange(10):
+        for _ in range(10):
             if self.wsman_query_state(ip_address, power_pass) == 'on':
                 return  # Success.  Machine is on.
             sleep(1)
@@ -260,7 +250,7 @@ class AMTPowerDriver(PowerDriver):
     def amttool_power_off(self, ip_address, power_pass):
         """Power off the node via amttool."""
         # Try several times.  Power commands often fail the first time.
-        for _ in xrange(10):
+        for _ in range(10):
             if self.amttool_query_state(ip_address, power_pass) == 'off':
                 # Success.  Machine is off.
                 return
@@ -276,7 +266,7 @@ class AMTPowerDriver(PowerDriver):
         self._issue_wsman_command('off', ip_address, power_pass)
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
-        for _ in xrange(10):
+        for _ in range(10):
             if self.wsman_query_state(ip_address, power_pass) == 'off':
                 return  # Success.  Machine is off.
             else:

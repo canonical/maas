@@ -3,21 +3,12 @@
 
 """API handler: `pxeconfig`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'pxeconfig',
     ]
 
 
-import httplib
+import http.client
 
 from crochet import TimeoutError
 from django.http import HttpResponse
@@ -245,7 +236,7 @@ def pxeconfig(request):
             if 'mac' in request.GET:
                 # Request was pxelinux.cfg/01-<mac>, so attempt fall back
                 # to pxelinux.cfg/default-<arch>-<subarch> for arch detection.
-                return HttpResponse(status=httplib.NO_CONTENT)
+                return HttpResponse(status=http.client.NO_CONTENT)
             else:
                 # Look in BootResource for an resource that actually exists for
                 # the current series. If nothing is found, fall back to i386

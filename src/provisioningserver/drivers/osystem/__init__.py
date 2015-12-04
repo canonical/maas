@@ -3,15 +3,6 @@
 
 """Osystem Drivers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Node",
     "OperatingSystem",
@@ -62,10 +53,8 @@ def list_boot_images_for(osystem):
         ]
 
 
-class OperatingSystem:
+class OperatingSystem(metaclass=ABCMeta):
     """Skeleton for an operating system."""
-
-    __metaclass__ = ABCMeta
 
     @abstractproperty
     def name(self):

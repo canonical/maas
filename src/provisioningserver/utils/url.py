@@ -3,25 +3,18 @@
 
 """Utilities for URL handling."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compose_URL',
     ]
 
 import re
-import urllib
-from urlparse import (
+import urllib.error
+import urllib.parse
+from urllib.parse import (
     urlparse,
     urlunparse,
 )
+import urllib.request
 
 
 def compose_URL(base_url, host):
@@ -39,7 +32,7 @@ def compose_URL(base_url, host):
     if re.match('[:.0-9a-fA-F]+(?:%.+)?$', host) and host.count(':') > 0:
         # IPv6 address, without the brackets.  Add square brackets.
         # In case there's a zone index (introduced by a % sign), escape it.
-        netloc_host = '[%s]' % urllib.quote(host, safe=':')
+        netloc_host = '[%s]' % urllib.parse.quote(host, safe=':')
     else:
         # IPv4 address, hostname, or IPv6 with brackets.  Keep as-is.
         netloc_host = host

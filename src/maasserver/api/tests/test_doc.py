@@ -3,19 +3,10 @@
 
 """Test maasserver API documentation functionality."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from inspect import getdoc
-import new
+import types
 
 from django.conf.urls import (
     include,
@@ -81,8 +72,8 @@ class TestFindingResources(MAASServerTestCase):
     @staticmethod
     def make_module():
         """Return a new module with a fabricated name."""
-        name = factory.make_name("module").encode("ascii")
-        return new.module(name)
+        name = factory.make_name("module")
+        return types.ModuleType(name)
 
     def test_urlpatterns_empty(self):
         # No resources are found in empty modules.
@@ -105,7 +96,7 @@ class TestFindingResources(MAASServerTestCase):
         # Resources for handlers with resource_uri attributes are discovered
         # in a urlconf module and returned. The type of resource_uri is not
         # checked; it must only be present and not None.
-        handler = type(b"\m/", (BaseHandler,), {"resource_uri": True})
+        handler = type("\m/", (BaseHandler,), {"resource_uri": True})
         resource = Resource(handler)
         module = self.make_module()
         module.urlpatterns = patterns("", url("^metal", resource))
@@ -114,7 +105,7 @@ class TestFindingResources(MAASServerTestCase):
     def test_urlpatterns_with_resource_hidden(self):
         # Resources for handlers with resource_uri attributes are discovered
         # in a urlconf module and returned, unless hidden = True.
-        handler = type(b"\m/", (BaseHandler,), {
+        handler = type("\m/", (BaseHandler,), {
             "resource_uri": True,
             "hidden": True,
             })
@@ -125,7 +116,7 @@ class TestFindingResources(MAASServerTestCase):
 
     def test_nested_urlpatterns_with_handler(self):
         # Resources are found in nested urlconfs.
-        handler = type(b"\m/", (BaseHandler,), {"resource_uri": True})
+        handler = type("\m/", (BaseHandler,), {"resource_uri": True})
         resource = Resource(handler)
         module = self.make_module()
         submodule = self.make_module()
@@ -148,7 +139,7 @@ class TestGeneratingDocs(MAASServerTestCase):
         Return a new `OperationsResource` with a `BaseHandler` subclass
         handler, with a fabricated name and a `resource_uri` class-method.
         """
-        name = factory.make_name("handler").encode("ascii")
+        name = factory.make_name("handler")
         resource_uri = lambda cls: factory.make_name("resource-uri")
         namespace = {"resource_uri": classmethod(resource_uri)}
         handler = type(name, (BaseHandler,), namespace)
@@ -184,7 +175,7 @@ class TestGeneratingDocs(MAASServerTestCase):
         error = self.assertRaises(AssertionError, list, docs)
         self.assertEqual(
             "Missing resource_uri in %s" % type(resource.handler).__name__,
-            unicode(error))
+            str(error))
 
 
 class TestHandlers(MAASServerTestCase):
@@ -378,7 +369,7 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_api_returns_description_document(self):
         is_list = IsInstance(list)
         is_tuple = IsInstance(tuple)
-        is_text = MatchesAll(IsInstance((unicode, bytes)), Not(HasLength(0)))
+        is_text = MatchesAll(IsInstance((str, bytes)), Not(HasLength(0)))
         is_bool = IsInstance(bool)
 
         is_operation = MatchesAny(Is(None), is_text)
@@ -459,22 +450,22 @@ class TestDescribeCanonical(MAASTestCase):
             describe_canonical(1), MatchesAll(
                 IsInstance(int), Equals(1)))
         self.expectThat(
-            describe_canonical(1L), MatchesAll(
-                IsInstance(long), Equals(1L)))
+            describe_canonical(1), MatchesAll(
+                IsInstance(int), Equals(1)))
         self.expectThat(
             describe_canonical(1.0), MatchesAll(
                 IsInstance(float), Equals(1.0)))
 
     def test__passes_unicode_strings_through(self):
         string = factory.make_string()
-        self.assertThat(string, IsInstance(unicode))
+        self.assertThat(string, IsInstance(str))
         self.expectThat(describe_canonical(string), Is(string))
 
     def test__decodes_byte_strings(self):
         string = factory.make_string().encode("utf-8")
         self.expectThat(
             describe_canonical(string), MatchesAll(
-                IsInstance(unicode), Not(Is(string)),
+                IsInstance(str), Not(Is(string)),
                 Equals(string.decode("utf-8"))))
 
     def test__returns_sequences_as_tuples(self):
@@ -546,7 +537,7 @@ class TestHashCanonical(MAASTestCase):
 
     def test__canonicalizes_argument(self):
         describe_canonical = self.patch(doc_module, "describe_canonical")
-        describe_canonical.return_value = b""
+        describe_canonical.return_value = ""
         hash_canonical(sentinel.desc)
         self.assertThat(describe_canonical, MockCalledOnceWith(sentinel.desc))
 
@@ -555,7 +546,7 @@ class TestHashCanonical(MAASTestCase):
         self.assertThat(hasher, MatchesStructure(
             block_size=Equals(64),
             digest=IsCallable(),
-            digestsize=Equals(20),
+            digest_size=Equals(20),
             hexdigest=IsCallable(),
             name=Equals("sha1"),
             update=IsCallable(),

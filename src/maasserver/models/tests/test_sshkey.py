@@ -3,22 +3,13 @@
 
 """Tests for the SSHKey model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.utils.safestring import SafeUnicode
+from django.utils.safestring import SafeString
 from maasserver.models import SSHKey
 from maasserver.models.sshkey import (
     get_html_display_for_key,
@@ -58,7 +49,7 @@ class SSHKeyValidatorTest(MAASServerTestCase):
             ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_non_ascii_key(self):
-        non_ascii_key = 'AAB3NzaC' + u'\u2502' + 'mN6Lo2I9w=='
+        non_ascii_key = 'AAB3NzaC' + '\u2502' + 'mN6Lo2I9w=='
         key_string = 'ssh-rsa %s %s@%s' % (
             non_ascii_key, factory.make_string(),
             factory.make_string())
@@ -252,7 +243,7 @@ class SSHKeyTest(MAASServerTestCase):
         user = factory.make_User()
         key = SSHKey(key=key_string, user=user)
         display = key.display_html()
-        self.assertIsInstance(display, SafeUnicode)
+        self.assertIsInstance(display, SafeString)
 
     def test_sshkey_user_and_key_unique_together(self):
         key_string = get_data('data/test_rsa0.pub')

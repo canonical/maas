@@ -3,15 +3,6 @@
 
 """Test forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -75,7 +66,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             data={'ip': factory.make_string()},
             instance=make_ngi_instance())
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {'ip': ['Enter a valid IPv4 or IPv6 address.']}, form._errors)
 
     def test__can_save_fields_being_None(self):
@@ -125,15 +116,15 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         network = factory._make_random_network()
         nodegroup = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(
-            nodegroup, network=network, ip=unicode(IPAddress(network.first)),
+            nodegroup, network=network, ip=str(IPAddress(network.first)),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         form = NodeGroupInterfaceForm(data={}, instance=ngi)
         self.assertEqual(
-            unicode(IPAddress(network.netmask)),
+            str(IPAddress(network.netmask)),
             form.initial.get('subnet_mask'))
         self.assertTrue(form.is_valid(), dict(form.errors))
         self.assertEqual(
-            unicode(IPAddress(network.netmask)),
+            str(IPAddress(network.netmask)),
             form.cleaned_data.get('subnet_mask'))
 
     def test__rejects_missing_subnet_mask_if_managed(self):
@@ -521,7 +512,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test_updates_subnet_cidr_and_name_if_subnet_mask_changed(self):
         network = factory._make_random_network(slash=24)
         nodegroup = factory.make_NodeGroup()
-        subnet = factory.make_Subnet(name=unicode(network.cidr), cidr=network)
+        subnet = factory.make_Subnet(name=str(network.cidr), cidr=network)
         ngi = factory.make_NodeGroupInterface(nodegroup, subnet=subnet)
         # Update the network from a /24 to a /16
         form = NodeGroupInterfaceForm(
@@ -529,9 +520,9 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # form.subnet_mask = '255.255.0.0'
         self.assertTrue(form.is_valid())
         ngi = form.save()
-        new_network = IPNetwork(unicode(network.ip) + "/16")
+        new_network = IPNetwork(str(network.ip) + "/16")
         self.assertThat(ngi.network, Equals(new_network.cidr))
-        self.assertThat(ngi.subnet.name, Equals(unicode(new_network.cidr)))
+        self.assertThat(ngi.subnet.name, Equals(str(new_network.cidr)))
 
     def test_updating_cidr_does_not_create_new_subnet(self):
         network = factory._make_random_network(slash=24)

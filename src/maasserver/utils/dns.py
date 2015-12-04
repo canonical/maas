@@ -3,11 +3,6 @@
 
 """DNS-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
 import re
 
 from django.core.exceptions import ValidationError
@@ -17,9 +12,6 @@ from netaddr import (
 )
 
 
-str = None
-
-__metaclass__ = type
 __all__ = [
     'validate_hostname',
     ]
@@ -93,7 +85,7 @@ def get_ip_based_hostname(ip):
     :param ip: The IPv4 or IPv6 address (can be an integer or string)
     """
     try:
-        hostname = unicode(IPAddress(ip).ipv4()).replace('.', '-')
+        hostname = str(IPAddress(ip).ipv4()).replace('.', '-')
     except AddrConversionError:
-        hostname = unicode(IPAddress(ip).ipv6()).replace(':', '-')
+        hostname = str(IPAddress(ip).ipv6()).replace(':', '-')
     return hostname

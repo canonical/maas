@@ -4,16 +4,6 @@
 
 """Command-line interface for MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from . import main
 
 

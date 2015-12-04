@@ -3,15 +3,6 @@
 
 """Encoding of MIME multipart data."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'encode_multipart_data',
     ]
@@ -24,8 +15,8 @@ from email.generator import Generator
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from io import (
-    BytesIO,
     IOBase,
+    StringIO,
 )
 from itertools import chain
 import mimetypes
@@ -87,9 +78,9 @@ def make_payloads(name, content):
     """
     if isinstance(content, bytes):
         yield make_bytes_payload(name, content)
-    elif isinstance(content, unicode):
+    elif isinstance(content, str):
         yield make_string_payload(name, content)
-    elif isinstance(content, (IOBase, file)):
+    elif isinstance(content, IOBase):
         yield make_file_payload(name, content)
     elif callable(content):
         with content() as content:
@@ -124,16 +115,16 @@ def encode_multipart_message(message):
         assert "Content-Length" not in part
         assert part["Content-Transfer-Encoding"] == "base64"
     # Flatten the message without headers.
-    buf = BytesIO()
+    buf = StringIO()
     generator = Generator(buf, False)  # Don't mangle "^From".
     generator._write_headers = lambda self: None  # Ignore.
     generator.flatten(message)
     # Ensure the body has CRLF-delimited lines. See
     # http://bugs.python.org/issue1349106.
-    body = b"\r\n".join(buf.getvalue().splitlines())
+    body = "\r\n".join(buf.getvalue().splitlines())
     # Only now is it safe to set the content length.
     message.add_header("Content-Length", "%d" % len(body))
-    return message.items(), body
+    return list(message.items()), body
 
 
 def encode_multipart_data(data=(), files=()):

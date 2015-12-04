@@ -2,39 +2,32 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Tests for the import_images keyring management functions."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    FileContains,
     MockCalledWith,
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver.import_images import keyrings
-from testtools.matchers import FileContains
 
 
 class TestWriteKeyring(MAASTestCase):
     """Tests for `write_keyring().`"""
 
     def test_writes_keyring_to_file(self):
-        keyring_data = b"A keyring! My kingdom for a keyring!"
+        keyring_data = "A keyring! My kingdom for a keyring!"
         keyring_path = os.path.join(self.make_dir(), "a-keyring-file")
-        keyrings.write_keyring(keyring_path, keyring_data)
+        keyrings.write_keyring(keyring_path, keyring_data.encode("utf-8"))
         self.assertTrue(os.path.exists(keyring_path))
-        self.assertThat(keyring_path, FileContains(keyring_data))
+        self.assertThat(
+            keyring_path, FileContains(
+                keyring_data, encoding="ascii"))
 
 
 class TestCalculateKeyringName(MAASTestCase):

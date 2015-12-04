@@ -3,21 +3,12 @@
 
 """Test maasserver API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-from itertools import izip
+import http.client
 import json
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api import nodes as nodes_module
 from maasserver.api.node_group_interfaces import (
@@ -44,6 +35,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from mock import Mock
@@ -67,8 +59,8 @@ class TestAuthentication(MAASServerTestCase):
         response = client.post(reverse('nodes_handler'), {'op': 'start'})
         observed = response.status_code, response.content
         expected = (
-            Equals(httplib.UNAUTHORIZED),
-            Contains("Invalid access token:"),
+            Equals(http.client.UNAUTHORIZED),
+            Contains(b"Invalid access token:"),
             )
         self.assertThat(observed, MatchesListwise(expected))
 
@@ -173,14 +165,14 @@ class AccountAPITest(APITestCase):
         # with the consumer_key, the token_key and the token_secret in it.
         response = self.client.post(
             reverse('account_handler'), {'op': 'create_authorisation_token'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(
             ['consumer_key', 'token_key', 'token_secret'],
             sorted(parsed_result))
-        self.assertIsInstance(parsed_result['consumer_key'], unicode)
-        self.assertIsInstance(parsed_result['token_key'], unicode)
-        self.assertIsInstance(parsed_result['token_secret'], unicode)
+        self.assertIsInstance(parsed_result['consumer_key'], str)
+        self.assertIsInstance(parsed_result['token_key'], str)
+        self.assertIsInstance(parsed_result['token_secret'], str)
 
     def test_delete_authorisation_token_not_found(self):
         # If the provided token_key does not exist (for the currently
@@ -189,7 +181,7 @@ class AccountAPITest(APITestCase):
             reverse('account_handler'),
             {'op': 'delete_authorisation_token', 'token_key': 'no-such-token'})
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_delete_authorisation_token_bad_request_no_token(self):
         # token_key is a mandatory parameter when calling
@@ -198,7 +190,7 @@ class AccountAPITest(APITestCase):
         response = self.client.post(
             reverse('account_handler'), {'op': 'delete_authorisation_token'})
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
 
 class TestSSHKeyHandlers(APITestCase):
@@ -217,8 +209,8 @@ class TestSSHKeyHandlers(APITestCase):
         params = dict(op="list")
         response = self.client.get(
             reverse('sshkeys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json_load_bytes(response.content)
         expected_result = [
             dict(
                 id=keys[0].id,
@@ -239,8 +231,8 @@ class TestSSHKeyHandlers(APITestCase):
         key = keys[0]
         response = self.client.get(
             reverse('sshkey_handler', args=[key.id]))
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json_load_bytes(response.content)
         expected = dict(
             id=key.id,
             key=key.key,
@@ -253,7 +245,8 @@ class TestSSHKeyHandlers(APITestCase):
             n_keys=2, user=self.logged_in_user)
         response = self.client.delete(
             reverse('sshkey_handler', args=[keys[0].id]))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code, response)
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response)
         keys_after = SSHKey.objects.filter(user=self.logged_in_user)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
@@ -262,7 +255,7 @@ class TestSSHKeyHandlers(APITestCase):
         user, keys = factory.make_user_with_keys(n_keys=1)
         response = self.client.delete(
             reverse('sshkey_handler', args=[keys[0].id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code, response)
         self.assertEqual(1, len(SSHKey.objects.filter(user=user)))
 
     def test_adding_works(self):
@@ -270,8 +263,8 @@ class TestSSHKeyHandlers(APITestCase):
         response = self.client.post(
             reverse('sshkeys_handler'),
             data=dict(op="new", key=key_string))
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_response = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_response = json_load_bytes(response.content)
         self.assertEqual(key_string, parsed_response["key"])
         added_key = get_one(SSHKey.objects.filter(user=self.logged_in_user))
         self.assertEqual(key_string, added_key.key)
@@ -281,17 +274,19 @@ class TestSSHKeyHandlers(APITestCase):
         response = self.client.post(
             reverse('sshkeys_handler'),
             data=dict(op='new', key=key_string))
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
-        self.assertIn("Invalid", response.content)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
+        self.assertIn(b"Invalid", response.content)
 
     def test_adding_returns_badrequest_when_key_not_in_form(self):
         response = self.client.post(
             reverse('sshkeys_handler'),
             data=dict(op='new'))
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
         self.assertEqual(
             dict(key=["This field is required."]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
 
 class MAASAPIAnonTest(MAASServerTestCase):
@@ -302,14 +297,14 @@ class MAASAPIAnonTest(MAASServerTestCase):
             reverse('maas_handler'),
             {'op': 'get_config'})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_anon_set_config_forbidden(self):
         response = self.client.post(
             reverse('maas_handler'),
             {'op': 'set_config'})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class MAASAPITest(APITestCase):
@@ -323,14 +318,14 @@ class MAASAPITest(APITestCase):
             reverse('maas_handler'),
             {'op': 'get_config'})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_simple_user_set_config_forbidden(self):
         response = self.client.post(
             reverse('maas_handler'),
             {'op': 'set_config'})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_get_config_requires_name_param(self):
         self.become_admin()
@@ -340,8 +335,8 @@ class MAASAPITest(APITestCase):
                 'op': 'get_config',
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual("No provided name!", response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(b"No provided name!", response.content)
 
     def test_get_config_returns_config(self):
         self.become_admin()
@@ -355,8 +350,8 @@ class MAASAPITest(APITestCase):
                 'name': name,
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(value, parsed_result)
 
@@ -374,10 +369,10 @@ class MAASAPITest(APITestCase):
 
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {name: [INVALID_SETTING_MSG_TEMPLATE % name]},
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_set_config_requires_name_param(self):
         self.become_admin()
@@ -388,8 +383,8 @@ class MAASAPITest(APITestCase):
                 'value': factory.make_string(),
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual("No provided name!", response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(b"No provided name!", response.content)
 
     def test_set_config_requires_string_name_param(self):
         self.become_admin()
@@ -402,9 +397,9 @@ class MAASAPITest(APITestCase):
                 'value': value,
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            "Invalid name: Please enter a value", response.content)
+            b"Invalid name: Please enter a value", response.content)
 
     def test_set_config_requires_value_param(self):
         self.become_admin()
@@ -415,8 +410,8 @@ class MAASAPITest(APITestCase):
                 'name': factory.make_string(),
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual("No provided value!", response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(b"No provided value!", response.content)
 
     def test_admin_set_config(self):
         self.become_admin()
@@ -431,7 +426,7 @@ class MAASAPITest(APITestCase):
             })
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         stored_value = Config.objects.get_config(name)
         self.assertEqual(stored_value, value)
 
@@ -449,10 +444,10 @@ class MAASAPITest(APITestCase):
 
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {name: [INVALID_SETTING_MSG_TEMPLATE % name]},
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
 
 class APIErrorsTest(DjangoTransactionTestCase):
@@ -467,7 +462,10 @@ class APIErrorsTest(DjangoTransactionTestCase):
         response = self.client.post(reverse('nodes_handler'), {'op': 'new'})
 
         self.assertEqual(
-            (httplib.INTERNAL_SERVER_ERROR, error_message),
+            (
+                http.client.INTERNAL_SERVER_ERROR,
+                error_message.encode(settings.DEFAULT_CHARSET),
+            ),
             (response.status_code, response.content))
 
 
@@ -476,7 +474,7 @@ def dict_subset(obj, fields):
     undefined = object()
     values = (getattr(obj, field, undefined) for field in fields)
     return {
-        field: value for field, value in izip(fields, values)
+        field: value for field, value in zip(fields, values)
         if value is not undefined
     }
 
@@ -489,13 +487,13 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         response = self.client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             [
                 dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS)
                 for interface in nodegroup.nodegroupinterface_set.all()
             ],
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_list_works_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -503,7 +501,8 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         response = self.client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
     def test_list_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -511,7 +510,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         response = client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_new_creates_interface(self):
         self.become_admin()
@@ -524,7 +523,8 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         response = self.client.post(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             query_data)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         # Replace empty strings with None as empty strings are converted into
         # None for fields with null=True.
         expected_result = {
@@ -545,10 +545,10 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             {'op': 'new', 'ip': 'invalid ip'})
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'ip': ["Enter a valid IPv4 or IPv6 address."]},
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_new_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -557,7 +557,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'new'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_new_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -569,10 +569,10 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         # data but it's not FORBIDDEN which means we passed the test.
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'ip': ["This field is required."]},
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
 
 class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
@@ -586,7 +586,8 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
     def test_read_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -597,7 +598,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_update_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -610,7 +611,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
                 args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': factory.make_ipv4_address()})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -623,7 +624,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': new_ip_range_high})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_delete_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -635,7 +636,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -646,7 +647,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
 
 
 class TestNodeGroupInterfaceAPI(APITestCase):
@@ -659,16 +660,16 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_update_interface(self):
         self.become_admin()
         nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(nodegroup)
-        new_ip_range_high = unicode(
+        new_ip_range_high = str(
             IPAddress(interface.ip_range_high) - 1)
         response = self.client.put(
             reverse(
@@ -676,7 +677,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
                 args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': new_ip_range_high})
         self.assertEqual(
-            (httplib.OK, new_ip_range_high),
+            (http.client.OK, new_ip_range_high),
             (response.status_code, reload_object(interface).ip_range_high))
 
     def test_delete_interface(self):
@@ -687,7 +688,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertFalse(
             NodeGroupInterface.objects.filter(
                 name=interface.name, nodegroup=nodegroup).exists())

@@ -4,15 +4,6 @@
 """Change cluster controller configuration settings.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'add_arguments',
     'run',
@@ -50,7 +41,7 @@ def update_maas_cluster_conf(
         if init:
             cur_uuid = config.cluster_uuid
             if cur_uuid == UUID_NOT_SET:
-                config.cluster_uuid = unicode(uuid4())
+                config.cluster_uuid = str(uuid4())
         if tftp_port is not None:
             config.tftp_port = tftp_port
         if tftp_root is not None:

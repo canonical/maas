@@ -16,31 +16,25 @@ The current implementation is limited in a number of ways:
   not for commissioning or fastpath installations.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_third_party_driver',
     ]
 
 from copy import deepcopy
 import fnmatch
+from typing import List
 
-from formencode import (
-    ForEach,
-    Schema,
-)
+from formencode import ForEach
 from formencode.validators import String
 from metadataserver.models import commissioningscript
 from provisioningserver.config import (
     ConfigBase,
     ConfigMeta,
+)
+from provisioningserver.utils import typed
+from provisioningserver.utils.config import (
+    ByteString,
+    Schema,
 )
 
 
@@ -101,26 +95,30 @@ class ConfigDriver(Schema):
 
     blacklist = String()
     comment = String()
-    key_binary = String()
+    key_binary = ByteString()
     modaliases = ForEach(String)
     module = String()
     package = String()
     repository = String()
 
 
-class DriversConfig(ConfigBase, Schema):
-    """Configuration for third party drivers."""
+class DriversConfigMeta(ConfigMeta):
+    """Meta-configuration for third party drivers."""
 
-    class __metaclass__(ConfigMeta):
-        envvar = "MAAS_THIRD_PARTY_DRIVER_SETTINGS"
-        default = "drivers.yaml"
+    envvar = "MAAS_THIRD_PARTY_DRIVER_SETTINGS"
+    default = "drivers.yaml"
+
+
+class DriversConfig(ConfigBase, Schema, metaclass=DriversConfigMeta):
+    """Configuration for third party drivers."""
 
     if_key_missing = None
 
     drivers = ForEach(ConfigDriver)
 
 
-def node_modaliases(node):
+@typed
+def node_modaliases(node) -> List[str]:
     """Return a list of modaliases from the node."""
     name = commissioningscript.LIST_MODALIASES_OUTPUT_NAME
     query = node.noderesult_set.filter(name__exact=name)
@@ -129,7 +127,7 @@ def node_modaliases(node):
         return []
 
     results = query.first().data
-    return results.splitlines()
+    return results.decode("utf-8").splitlines()
 
 
 def match_aliases_to_driver(detected_aliases, drivers):

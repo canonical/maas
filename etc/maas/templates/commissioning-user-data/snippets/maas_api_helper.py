@@ -1,17 +1,9 @@
-from __future__ import (
-    absolute_import,
-    print_function,
-    # unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from email.utils import parsedate
 import sys
 import time
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 
 import yaml
@@ -41,7 +33,7 @@ def read_config(url, creds):
     credentials.
     """
     if url.startswith("http://") or url.startswith("https://"):
-        cfg_str = urllib2.urlopen(urllib2.Request(url=url))
+        cfg_str = urllib.request.urlopen(urllib.request.Request(url=url))
     else:
         if url.startswith("file://"):
             url = url[7:]
@@ -120,9 +112,9 @@ def geturl(url, creds, headers=None, data=None):
     for naptime in (1, 1, 2, 4, 8, 16, 32):
         authenticate_headers(url, headers, creds, clockskew)
         try:
-            req = urllib2.Request(url=url, data=data, headers=headers)
-            return urllib2.urlopen(req).read()
-        except urllib2.HTTPError as exc:
+            req = urllib.request.Request(url=url, data=data, headers=headers)
+            return urllib.request.urlopen(req).read()
+        except urllib.error.HTTPError as exc:
             if 'date' not in exc.headers:
                 warn("date field not in %d headers" % exc.code)
                 pass

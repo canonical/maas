@@ -1,17 +1,8 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
 """Tests for `maasserver`."""
 
-str = None
-
-__metaclass__ = type
 __all__ = [
     "extract_redirect",
     "get_content_links",
@@ -22,10 +13,10 @@ __all__ = [
 
 import collections
 from contextlib import contextmanager
-import httplib
+import http.client
 from itertools import chain
 import os
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from lxml.html import fromstring
 
@@ -44,9 +35,9 @@ def extract_redirect(http_response):
     :return: The "path" part of the target that `http_response` redirects to.
     :raises: ValueError
     """
-    if http_response.status_code != httplib.FOUND:
+    if http_response.status_code != http.client.FOUND:
         raise ValueError(
-            "Not a redirect: http status %d.  Content: %s"
+            "Not a redirect: http status %d. Content: %s"
             % (http_response.status_code, http_response.content[:80]))
     target_url = http_response['Location']
     parsed_url = urlparse(target_url)
@@ -68,7 +59,8 @@ def get_data(filename):
     """
     path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), '..', 'tests', filename)
-    return file(path).read()
+    with open(path) as fd:
+        return fd.read()
 
 
 def get_prefixed_form_data(prefix, data):

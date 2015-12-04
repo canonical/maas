@@ -3,21 +3,13 @@
 
 """Tests for BIND zone config generation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import (
     Iterable,
     Sequence,
 )
+from itertools import chain
 import os.path
 import random
 
@@ -118,10 +110,10 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             factory.make_name('host'): factory.make_ipv6_address(),
         }
         combined_mapping = {
-            hostname: [ip]
-            for hostname, ip in (ipv4_mapping.items() + ipv6_mapping.items())
-            }
-        expected = [('%s.' % name, dns_ip)] + ipv4_mapping.items()
+            hostname: [ip] for hostname, ip in chain(
+                ipv4_mapping.items(), ipv6_mapping.items())
+        }
+        expected = [('%s.' % name, dns_ip)] + list(ipv4_mapping.items())
         self.assertItemsEqual(
             expected,
             DNSForwardZoneConfig.get_A_mapping(combined_mapping, name, dns_ip))
@@ -139,9 +131,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             factory.make_name('host'): factory.make_ipv6_address(),
         }
         combined_mapping = {
-            hostname: [ip]
-            for hostname, ip in (ipv4_mapping.items() + ipv6_mapping.items())
-            }
+            hostname: [ip] for hostname, ip in chain(
+                ipv4_mapping.items(), ipv6_mapping.items())
+        }
         self.assertItemsEqual(
             ipv6_mapping.items(),
             DNSForwardZoneConfig.get_AAAA_mapping(
@@ -591,7 +583,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
 
         second_octet_offset = int(first_address_parts[-2])
         expected_generate_directives = []
-        directives_needed = network.size / 256
+        directives_needed = network.size // 256
 
         if directives_needed == 0:
             directives_needed = 1
@@ -741,12 +733,12 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
 
         expected_iterator_values = "%s-%s" % (iterator_low, iterator_high)
 
-        directives_needed = network.size / 256
+        directives_needed = network.size // 256
         if directives_needed == 0:
             directives_needed = 1
         expected_directives = []
         for num in range(directives_needed):
-            ip_parts[-2] = unicode(num + int(ip_parts[-2]))
+            ip_parts[-2] = str(num + int(ip_parts[-2]))
             expected_address = ".".join(ip_parts)
             expected_hostname = "%s" % "-".join(ip_parts)
             expected_directives.append(

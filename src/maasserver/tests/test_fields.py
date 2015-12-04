@@ -3,15 +3,6 @@
 
 """Test custom model fields."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import json
@@ -59,6 +50,7 @@ from maasserver.tests.models import (
 from maastesting.matchers import MockCalledOnceWith
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
+from testtools import ExpectedException
 
 
 class TestNodeGroupFormField(MAASServerTestCase):
@@ -148,7 +140,7 @@ class TestMAC(MAASServerTestCase):
         self.assertIsNone(MAC(None))
 
     def test_new_MAC_with_empty_unicode_string_is_None(self):
-        self.assertIsNone(MAC(u""))
+        self.assertIsNone(MAC(""))
 
     def test_new_MAC_with_empty_byte_string_is_None(self):
         self.assertIsNone(MAC(b""))
@@ -166,7 +158,7 @@ class TestMAC(MAASServerTestCase):
     def test_as_unicode_string(self):
         addr = factory.make_mac_address()
         mac = MAC(addr)
-        self.assertEqual(addr, unicode(mac))
+        self.assertEqual(addr, str(mac))
 
     def test_as_byte_string(self):
         addr = factory.make_mac_address()
@@ -442,7 +434,7 @@ class TestLargeObjectField(MAASServerTestCase):
     apps = ['maasserver.tests']
 
     def test_stores_data(self):
-        data = factory.make_string()
+        data = factory.make_bytes()
         test_name = factory.make_name('name')
         test_instance = LargeObjectFieldModel(name=test_name)
         large_object = LargeObjectFile()
@@ -455,8 +447,14 @@ class TestLargeObjectField(MAASServerTestCase):
             saved_data = stream.read()
         self.assertEqual(data, saved_data)
 
+    def test_insists_on_binary_mode(self):
+        message = "Large objects must be opened in binary mode."
+        with ExpectedException(ValueError, message):
+            large_object = LargeObjectFile()
+            large_object.open('w')
+
     def test_with_exit_calls_close(self):
-        data = factory.make_string()
+        data = factory.make_bytes()
         large_object = LargeObjectFile()
         with large_object.open('wb') as stream:
             self.addCleanup(large_object.close)
@@ -465,7 +463,7 @@ class TestLargeObjectField(MAASServerTestCase):
         self.assertThat(mock_close, MockCalledOnceWith())
 
     def test_unlink(self):
-        data = factory.make_string()
+        data = factory.make_bytes()
         large_object = LargeObjectFile()
         with large_object.open('wb') as stream:
             stream.write(data)
@@ -478,7 +476,7 @@ class TestLargeObjectField(MAASServerTestCase):
 
     def test_interates_on_block_size(self):
         # String size is multiple of block_size in the testing model
-        data = factory.make_string(10 * 2)
+        data = factory.make_bytes(10 * 2)
         test_name = factory.make_name('name')
         test_instance = LargeObjectFieldModel(name=test_name)
         large_object = LargeObjectFile()
@@ -535,7 +533,7 @@ class TestLargeObjectField(MAASServerTestCase):
         self.assertEqual(oid, obj_file.oid)
 
     def test_to_python_returns_LargeObjectFile_when_value_long(self):
-        oid = long(randint(1, 100))
+        oid = int(randint(1, 100))
         field = LargeObjectField()
         # South normally substitutes a FakeModel here, but with a baseline
         # schema, we can skip the migration that creates LargeObjectField.
@@ -605,17 +603,17 @@ class IPListFormFieldTest(MAASServerTestCase):
 
     def test_accepts_single_ip(self):
         ip = factory.make_ip_address()
-        self.assertEquals(ip, IPListFormField().clean(ip))
+        self.assertEqual(ip, IPListFormField().clean(ip))
 
     def test_accepts_space_separated_ips(self):
         ips = [factory.make_ip_address() for _ in range(5)]
         input = ' '.join(ips)
-        self.assertEquals(input, IPListFormField().clean(input))
+        self.assertEqual(input, IPListFormField().clean(input))
 
     def test_accepts_comma_separated_ips(self):
         ips = [factory.make_ip_address() for _ in range(5)]
         input = ','.join(ips)
-        self.assertEquals(' '.join(ips), IPListFormField().clean(input))
+        self.assertEqual(' '.join(ips), IPListFormField().clean(input))
 
     def test_rejects_invalid_input(self):
         invalid = factory.make_name('invalid')

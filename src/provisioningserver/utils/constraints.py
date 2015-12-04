@@ -3,15 +3,6 @@
 
 """Generic helpers for working with constraint strings."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'parse_labeled_constraint_map',
     ]
@@ -36,7 +27,7 @@ class LabeledConstraintMap(object):
     def __repr__(self):
         return "%s(%s)" % (self.__class__.__name__, repr(self.value))
 
-    def __unicode__(self):
+    def __str__(self):
         return self.value
 
     def __iter__(self):
@@ -51,7 +42,7 @@ class LabeledConstraintMap(object):
         if self.error:
             # XXX mpontillo 2015-10-28 Need to re-raise this properly once we
             # get to Python 3.
-            raise exception_type(self.error.message)
+            raise exception_type(str(self.error))
 
 
 def parse_labeled_constraint_map(value, exception_type=ValueError):
@@ -83,7 +74,7 @@ def parse_labeled_constraint_map(value, exception_type=ValueError):
 
     :return:dict
     """
-    if value is None or not isinstance(value, (unicode, bytes)):
+    if value is None or not isinstance(value, (str, bytes)):
         return None
     if len(value) <= 1:
         return {}

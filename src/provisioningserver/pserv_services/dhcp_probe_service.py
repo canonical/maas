@@ -3,15 +3,6 @@
 
 """ DHCP probing service."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DHCPProbeService",
     ]
@@ -27,6 +18,7 @@ from provisioningserver.rpc.region import (
     GetClusterInterfaces,
     ReportForeignDHCPServer,
 )
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -37,7 +29,6 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.threads import deferToThread
-from twisted.protocols.amp import UnhandledCommand
 
 
 maaslog = get_maas_logger("dhcp.probe")
@@ -147,6 +138,6 @@ class DHCPProbeService(TimerService, object):
         except Exception as error:
             maaslog.error(
                 "Unable to probe for rogue DHCP servers: %s",
-                unicode(error))
+                str(error))
         else:
             maaslog.debug("Finished periodic DHCP probe.")

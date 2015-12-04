@@ -3,15 +3,6 @@
 
 """Tests for `BootResource`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import Iterable
@@ -229,7 +220,7 @@ class TestBootResourceManager(MAASServerTestCase):
             name=name, architecture='c/generic')
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
-        self.assertEquals(
+        self.assertEqual(
             [resource_a, resource_b, resource_c], list(commissionables))
 
     def test_get_default_commissioning_resource_returns_i386_first(self):

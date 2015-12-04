@@ -3,18 +3,8 @@
 
 """Tests for log.py"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from itertools import imap
 import logging
 import logging.handlers
 
@@ -79,7 +69,7 @@ class TestGetMAASLogger(PservTestCase):
 
         self.assertEqual(
             "maas.foo.bar: [INFO] Hello there %s!" % robot_name,
-            "\n---\n".join(imap(handler.format, log_records)))
+            "\n---\n".join(map(handler.format, log_records)))
 
     def test_sets_logger_name(self):
         self.patch(log, 'SysLogHandler')

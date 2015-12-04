@@ -3,17 +3,9 @@
 
 """testtools custom matchers"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DocTestMatches',
+    'FileContains',
     'GreaterThanOrEqual',
     'HasAttribute',
     'IsCallable',
@@ -21,6 +13,7 @@ __all__ = [
     'IsFiredDeferred',
     'IsUnfiredDeferred',
     'LessThanOrEqual',
+    'Matches',
     'MockAnyCall',
     'MockCalledOnce',
     'MockCalledOnceWith',
@@ -48,8 +41,53 @@ from testtools.matchers import (
     MatchesPredicate,
     MatchesStructure,
     Mismatch,
+    PathExists,
 )
 from twisted.internet import defer
+
+
+class Matches:
+    """Convert any matcher into an equality tester.
+
+    This is useful when testing mock assertions. For example::
+
+        process_batch = self.patch(a_module, "process_batch")
+        process_all_in_batches([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+        batch1 = [1, 3, 5, 7, 9]
+        batch2 = [2, 4, 6, 8]
+
+        batch1_in_any_order = AfterPreprocessing(sorted, Equals(batch1))
+        batch2_in_any_order = AfterPreprocessing(sorted, Equals(batch2))
+
+        self.assertThat(
+            process_batch, MockCallsMatch(
+                call(batch1_in_any_order),
+                call(batch2_in_any_order),
+            ))
+
+    It does this by implementing ``__eq__``, so can be useful in other
+    contexts::
+
+        >>> batch2 == batch2_in_any_order
+        True
+        >>> batch1 == batch2_in_any_order
+        False
+
+    """
+
+    def __init__(self, matcher):
+        super(Matches, self).__init__()
+        self.matcher = matcher
+
+    def __eq__(self, other):
+        return self.matcher.match(other) is None
+
+    def __str__(self):
+        return "Matches %s" % (self.matcher, )
+
+    def __repr__(self):
+        return "<Matches %s>" % (self.matcher, )
 
 
 class IsCallable(Matcher):
@@ -321,3 +359,68 @@ class DocTestMatches(matchers.DocTestMatches):
 
     def __init__(self, example, flags=DEFAULT_FLAGS):
         super(DocTestMatches, self).__init__(example, flags)
+
+
+class FileContains(Matcher):
+    """Matches if the given file has the specified contents.
+
+    This differs from testtools' matcher in that it is strict about binary and
+    text; a comparison of text must be done with an encoding.
+    """
+
+    def __init__(self, contents=None, matcher=None, encoding=None):
+        """Construct a ``FileContains`` matcher.
+
+        Can be used in a basic mode where the file contents are compared for
+        equality against the expected file contents (by passing ``contents``).
+        Can also be used in a more advanced way where the file contents are
+        matched against an arbitrary matcher (by passing ``matcher`` instead).
+
+        :param contents: If specified, match the contents of the file with
+            these contents.
+        :param matcher: If specified, match the contents of the file against
+            this matcher.
+        :param encoding: If specified, the file is read in text mode with the
+            given encoding; ``contents`` should be a Unicode string, or
+            ``matcher`` should expect to compare against one. If ``encoding``
+            is not specified or is ``None``, the comparison is done byte-wise;
+            ``contents`` should be a byte string, or ``matcher`` should expect
+            to compare against one.
+        """
+        if contents is None and matcher is None:
+            raise AssertionError(
+                "Must provide one of `contents` or `matcher`.")
+        if contents is not None and matcher is not None:
+            raise AssertionError(
+                "Must provide either `contents` or `matcher`, not both.")
+        if matcher is None:
+            self.matcher = Equals(contents)
+        else:
+            self.matcher = matcher
+        self.encoding = encoding
+
+    def match(self, path):
+        mismatch = PathExists().match(path)
+        if mismatch is not None:
+            return mismatch
+        if self.encoding is None:
+            # Binary match.
+            with open(path, "rb") as fd:
+                actual_contents = fd.read()
+        else:
+            # Text/Unicode match.
+            with open(path, "r", encoding=self.encoding) as fd:
+                actual_contents = fd.read()
+        return self.matcher.match(actual_contents)
+
+    def __str__(self):
+        if self.encoding is None:
+            return (
+                "File at path exists and its contents (unencoded; raw) "
+                "match %s" % (self.matcher, )
+            )
+        else:
+            return (
+                "File at path exists and its contents (encoded as %s) "
+                "match %s" % (self.encoding, self.matcher)
+            )

@@ -3,15 +3,6 @@
 
 """Tests for XPath utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import doctest
@@ -118,5 +109,5 @@ class TestTryMatchXPath(MAASTestCase):
         self.assertThat(
             callers_logger.warning,
             MockCalledOnceWith(
-                u"Invalid expression '%s': %s",
-                u'/foo:bar', u'Undefined namespace prefix'))
+                "Invalid expression '%s': %s",
+                '/foo:bar', 'Undefined namespace prefix'))

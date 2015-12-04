@@ -3,17 +3,10 @@
 
 """Tests for MAAS's cluster security module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+import binascii
+from binascii import b2a_hex
 from os import (
     chmod,
     stat,
@@ -76,7 +69,7 @@ class TestGetSharedSecretFromFilesystem(MAASTestCase):
         self.write_secret()
         write_text_file(security.get_shared_secret_filesystem_path(), "_")
         self.assertRaises(
-            TypeError, security.get_shared_secret_from_filesystem)
+            binascii.Error, security.get_shared_secret_from_filesystem)
 
     def test__deals_fine_with_whitespace_in_filesystem_value(self):
         secret = self.write_secret()
@@ -163,7 +156,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
-        stdin.readline.return_value = secret.encode("hex")
+        stdin.readline.return_value = b2a_hex(secret).decode("ascii")
         stdin.isatty.return_value = False
 
         self.installAndCheckExitCode(0)
@@ -174,7 +167,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
         secret = factory.make_bytes()
 
         stdin = self.patch_autospec(security, "stdin")
-        stdin.readline.return_value = " " + secret.encode("hex") + " \n"
+        stdin.readline.return_value = (
+            " " + b2a_hex(secret).decode("ascii") + " \n")
         stdin.isatty.return_value = False
 
         self.installAndCheckExitCode(0)
@@ -187,12 +181,12 @@ class TestInstallSharedSecretScript(MAASTestCase):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
-        raw_input = self.patch(security, "raw_input")
-        raw_input.return_value = secret.encode("hex")
+        input = self.patch(security, "input")
+        input.return_value = b2a_hex(secret).decode("ascii")
 
         self.installAndCheckExitCode(0)
         self.assertThat(
-            raw_input, MockCalledOnceWith("Secret (hex/base16 encoded): "))
+            input, MockCalledOnceWith("Secret (hex/base16 encoded): "))
         self.assertEqual(
             secret, security.get_shared_secret_from_filesystem())
 
@@ -202,8 +196,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
-        raw_input = self.patch(security, "raw_input")
-        raw_input.return_value = " " + secret.encode("hex") + " \n"
+        input = self.patch(security, "input")
+        input.return_value = " " + b2a_hex(secret).decode("ascii") + " \n"
 
         self.installAndCheckExitCode(0)
         self.assertEqual(
@@ -213,8 +207,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
-        raw_input = self.patch(security, "raw_input")
-        raw_input.side_effect = EOFError()
+        input = self.patch(security, "input")
+        input.side_effect = EOFError()
 
         self.installAndCheckExitCode(1)
         self.assertIsNone(
@@ -224,8 +218,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
         stdin = self.patch_autospec(security, "stdin")
         stdin.isatty.return_value = True
 
-        raw_input = self.patch(security, "raw_input")
-        raw_input.side_effect = KeyboardInterrupt()
+        input = self.patch(security, "input")
+        input.side_effect = KeyboardInterrupt()
 
         self.assertRaises(
             KeyboardInterrupt,
@@ -248,7 +242,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
 
     def test__prints_message_when_secret_is_installed(self):
         stdin = self.patch_autospec(security, "stdin")
-        stdin.readline.return_value = factory.make_bytes().encode("hex")
+        stdin.readline.return_value = (
+            b2a_hex(factory.make_bytes()).decode("ascii"))
         stdin.isatty.return_value = False
 
         print = self.patch(security, "print")

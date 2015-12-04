@@ -3,18 +3,9 @@
 
 """Tests for :py:module:`maasserver.utils.views`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import io
 import logging
 from random import (
@@ -58,6 +49,7 @@ from mock import (
 )
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
+from provisioningserver.twisted.web import wsgi
 from testtools.matchers import (
     Contains,
     Equals,
@@ -69,7 +61,6 @@ from testtools.matchers import (
 from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
 from twisted.python import log
-from twisted.web import wsgi
 
 
 def make_request(env=None, oauth_env=None, missing_oauth_param=None):
@@ -236,7 +227,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         # HTTP 500 is returned...
         self.expectThat(
             response.status_code,
-            Equals(httplib.INTERNAL_SERVER_ERROR))
+            Equals(http.client.INTERNAL_SERVER_ERROR))
         # ... but the response is recorded as needing a retry.
         self.expectThat(
             handler._WebApplicationHandler__retry,
@@ -253,7 +244,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         # HTTP 500 is returned...
         self.expectThat(
             response.status_code,
-            Equals(httplib.INTERNAL_SERVER_ERROR))
+            Equals(http.client.INTERNAL_SERVER_ERROR))
         # ... but the response is NOT recorded as needing a retry.
         self.expectThat(
             handler._WebApplicationHandler__retry,
@@ -350,10 +341,10 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             get_response, MockCallsMatch(
                 call(request), call(request), call(request)))
         self.assertThat(response, IsInstance(HttpResponseConflict))
-        self.expectThat(response.status_code, Equals(httplib.CONFLICT))
+        self.expectThat(response.status_code, Equals(http.client.CONFLICT))
         self.expectThat(
             response.reason_phrase,
-            Equals(REASON_PHRASES[httplib.CONFLICT]))
+            Equals(REASON_PHRASES[http.client.CONFLICT]))
 
     def test__get_response_logs_retry_and_resets_request(self):
         timeout = 1.0 + (random() * 99)
@@ -414,7 +405,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             recorder.append(content)
             response = HttpResponse(
                 content=content,
-                status=httplib.OK,
+                status=http.client.OK,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response
@@ -426,7 +417,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             [], [[file_name, io.BytesIO(file_content)]])
         env = {
             'REQUEST_METHOD': 'POST',
-            'wsgi.input': wsgi._InputStream(io.BytesIO(body)),
+            'wsgi.input': wsgi._InputStream(io.BytesIO(body.encode("utf-8"))),
             'CONTENT_TYPE': headers['Content-Type'],
             'CONTENT_LENGTH': headers['Content-Length'],
             'HTTP_MIME_VERSION': headers['MIME-Version'],
@@ -456,7 +447,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             recorder.append(created)
             response = HttpResponse(
                 content='',
-                status=httplib.OK,
+                status=http.client.OK,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response

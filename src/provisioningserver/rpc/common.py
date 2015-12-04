@@ -3,15 +3,6 @@
 
 """Common RPC classes and utilties."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Authenticate",
     "Client",
@@ -23,9 +14,9 @@ from os import getpid
 from socket import gethostname
 
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import Deferred
-from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
 
@@ -172,7 +163,8 @@ def make_command_ref(box):
     returns unambiguous references for command, answer, and errors boxes.
     """
     return "%s:pid=%d:cmd=%s:ask=%s" % (
-        gethostname(), getpid(), box[amp.COMMAND], box.get(amp.ASK, "none"))
+        gethostname(), getpid(), box[amp.COMMAND].decode("ascii"),
+        box.get(amp.ASK, b"none").decode("ascii"))
 
 
 class RPCProtocol(amp.AMP, object):

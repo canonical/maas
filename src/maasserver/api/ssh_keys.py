@@ -3,21 +3,12 @@
 
 """API handlers: `SSHKey`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'SSHKeyHandler',
     'SSHKeysHandler',
     ]
 
-import httplib
+import http.client
 
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -62,7 +53,7 @@ class SSHKeysHandler(OperationsHandler):
             stream = emitter.render(request)
             return HttpResponse(
                 stream, content_type='application/json; charset=utf-8',
-                status=httplib.CREATED)
+                status=http.client.CREATED)
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -100,7 +91,8 @@ class SSHKeyHandler(OperationsHandler):
         key = get_object_or_404(SSHKey, id=keyid)
         if key.user != request.user:
             return HttpResponse(
-                "Can't delete a key you don't own.", status=httplib.FORBIDDEN)
+                "Can't delete a key you don't own.",
+                status=http.client.FORBIDDEN)
         key.delete()
         return rc.DELETED
 

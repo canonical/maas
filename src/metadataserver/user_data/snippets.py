@@ -7,15 +7,6 @@ These are used by the user-data code, but also by `setup.py`.  That's why
 importing this must not pull in any unnecessary framework modules etc.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'list_snippets',
     'read_snippet',
@@ -60,18 +51,19 @@ def read_snippet(snippets_dir, name, encoding='utf-8'):
 
 def is_snippet(filename):
     """Does `filename` represent a valid snippet name?"""
-    return all([
-        not filename.startswith('.'),
-        filename != '__init__.py',
-        filename != 'tests',
-        not filename.endswith('.pyc'),
-        not filename.endswith('~'),
-        ])
+    return (
+        not filename.startswith('.') and
+        not filename.endswith('.pyc') and
+        not filename.endswith('~') and
+        filename != '__pycache__' and
+        filename != '__init__.py' and
+        filename != 'tests'
+    )
 
 
 def list_snippets(snippets_dir):
     """List names of available snippets."""
-    return filter(is_snippet, os.listdir(snippets_dir))
+    return list(filter(is_snippet, os.listdir(snippets_dir)))
 
 
 def strip_name(snippet_name):

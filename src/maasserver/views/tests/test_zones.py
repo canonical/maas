@@ -3,21 +3,17 @@
 
 """Test maasserver zones views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
-import httplib
-from urllib import urlencode
+import http.client
+from urllib.parse import (
+    parse_qs,
+    urlencode,
+    urlparse,
+)
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -59,9 +55,14 @@ class ZoneListingViewTest(MAASServerTestCase):
         [factory.make_Zone() for _ in range(3)]
         zones = Zone.objects.all()
         response = self.client.get(reverse('zone-list'))
-        zone_names = [zone.name for zone in zones]
+        zone_names = [
+            zone.name.encode(settings.DEFAULT_CHARSET)
+            for zone in zones
+        ]
         truncated_zone_descriptions = [
-            zone.description[:20] for zone in zones]
+            zone.description[:20].encode(settings.DEFAULT_CHARSET)
+            for zone in zones
+        ]
         self.assertThat(response.content, ContainsAll(zone_names))
         self.assertThat(
             response.content, ContainsAll(truncated_zone_descriptions))
@@ -89,19 +90,28 @@ class ZoneListingViewTest(MAASServerTestCase):
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
         zone_node_links = [
-            reverse('index') + "#/nodes" + "?" +
-            urlencode({'query': 'zone:(%s)' % zone.name})
-            for zone in sorted_zones]
-        zone_device_links = [reverse('index') + "#/nodes" + "?" +
-                             urlencode({'query': 'zone:(%s)' % zone.name,
-                                        'tab': 'devices'})
-                             for zone in sorted_zones]
-        node_links_on_page = [link for link in get_content_links(response)
-                              if link.startswith('/#/nodes') and
-                              '&tab=devices' not in link]
-        device_links_on_page = [link for link in get_content_links(response)
-                                if link.startswith('/#/nodes') and
-                                '&tab=devices' in link]
+            {
+                'query': ['zone:(%s)' % zone.name],
+            }
+            for zone in sorted_zones
+        ]
+        zone_device_links = [
+            {
+                'query': ['zone:(%s)' % zone.name],
+                'tab': ['devices']
+            }
+            for zone in sorted_zones
+        ]
+        node_links_on_page = [
+            parse_qs(urlparse('?' + link.split('?')[1]).query)
+            for link in get_content_links(response)
+            if link.startswith('/#/nodes') and '&tab=devices' not in link
+        ]
+        device_links_on_page = [
+            parse_qs(urlparse('?' + link.split('?')[1]).query)
+            for link in get_content_links(response)
+            if link.startswith('/#/nodes') and '&tab=devices' in link
+        ]
         self.assertEqual(zone_device_links, device_links_on_page)
         self.assertEqual(zone_node_links, node_links_on_page)
 
@@ -136,7 +146,7 @@ class ZoneListingViewTestNonAdmin(MAASServerTestCase):
         # Create 4 zones.
         [factory.make_Zone() for _ in range(4)]
         response = self.client.get(reverse('zone-list'))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         doc = fromstring(response.content)
         self.assertEqual(
             1, len(doc.cssselect('div.pagination')),
@@ -153,8 +163,8 @@ class ZoneListingViewTestAdmin(MAASServerTestCase):
             reverse('zone-edit', args=[zone.name]) for zone in zones]
         zone_delete_links = [
             reverse('zone-del', args=[zone.name]) for zone in zones]
-        zone_default_edit = reverse('zone-edit', args=[default_zone])
-        zone_default_delete = reverse('zone-del', args=[default_zone])
+        zone_default_edit = reverse('zone-edit', args=[default_zone.name])
+        zone_default_delete = reverse('zone-del', args=[default_zone.name])
 
         response = self.client.get(reverse('zone-list'))
         all_links = get_content_links(response)
@@ -193,7 +203,7 @@ class ZoneAddTestAdmin(MAASServerTestCase):
             'description': factory.make_string(),
         }
         response = self.client.post(reverse('zone-add'), definition)
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         zone = Zone.objects.get(name=definition['name'])
         self.assertEqual(definition['description'], zone.description)
         self.assertEqual(reverse('zone-list'), extract_redirect(response))
@@ -202,7 +212,7 @@ class ZoneAddTestAdmin(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         name = factory.make_name('zone')
         response = self.client.post(reverse('zone-add'), {'name': name})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         zone = Zone.objects.get(name=name)
         self.assertEqual('', zone.description)
 
@@ -220,9 +230,12 @@ class ZoneDetailViewTest(MAASServerTestCase):
         self.client_log_in()
         zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
-        self.assertThat(response.content, Contains(zone.name))
         self.assertThat(
-            response.content, Contains(zone.description))
+            response.content,
+            Contains(zone.name.encode(settings.DEFAULT_CHARSET)))
+        self.assertThat(
+            response.content,
+            Contains(zone.description.encode(settings.DEFAULT_CHARSET)))
 
     def test_zone_detail_displays_node_count(self):
         self.client_log_in()
@@ -233,7 +246,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
         document = fromstring(response.content)
         count_text = document.get_element_by_id("#nodecount").text_content()
         self.assertThat(
-            count_text, Contains(unicode(zone.node_set.count())))
+            count_text, Contains(str(zone.node_set.count())))
 
     def test_zone_detail_links_to_node_list(self):
         self.client_log_in()
@@ -339,7 +352,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),
             {'post': 'yes'})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNone(reload_object(zone))
 
     def test_rejects_deletion_of_default_zone(self):
@@ -376,7 +389,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),
             {'post': 'yes'})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertIsNone(reload_object(zone))
         node = reload_object(node)
         self.assertIsNotNone(node)

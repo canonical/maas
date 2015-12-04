@@ -3,21 +3,12 @@
 
 """Tests for `maasserver.utils.dbtasks`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
 import threading
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.dbtasks import (
     DatabaseTaskAlreadyRunning,
@@ -45,6 +36,9 @@ from twisted.internet.defer import (
     inlineCallbacks,
     QueueOverflow,
 )
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 noop = lambda: None
@@ -103,7 +97,7 @@ class TestDatabaseTaskService(MAASTestCase):
             service.addTask(event.wait)
             try:
                 self.assertRaises(
-                    QueueOverflow, lambda: service.deferTask(noop).wait())
+                    QueueOverflow, lambda: service.deferTask(noop).wait(30))
             finally:
                 event.set()
         finally:
@@ -117,7 +111,7 @@ class TestDatabaseTaskService(MAASTestCase):
             service.addTask(event.wait)
             try:
                 self.assertRaises(
-                    QueueOverflow, lambda: service.syncTask().wait())
+                    QueueOverflow, lambda: service.syncTask().wait(30))
             finally:
                 event.set()
         finally:
@@ -145,9 +139,9 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            ident_from_task = service.deferTask(get_thread_ident).wait()
+            ident_from_task = service.deferTask(get_thread_ident).wait(30)
             ident_from_here = get_thread_ident()
-            self.expectThat(ident_from_task, IsInstance(long, int))
+            self.expectThat(ident_from_task, IsInstance(int, int))
             self.expectThat(ident_from_task, Not(Equals(ident_from_here)))
         finally:
             service.stopService()
@@ -161,7 +155,7 @@ class TestDatabaseTaskService(MAASTestCase):
         service.startService()
         try:
             result = service.deferTask(
-                return_args, sentinel.arg, kw=sentinel.kw).wait()
+                return_args, sentinel.arg, kw=sentinel.kw).wait(30)
             self.assertThat(result, Equals(
                 (sentinel.here, (sentinel.arg,), {"kw": sentinel.kw})))
         finally:
@@ -174,7 +168,7 @@ class TestDatabaseTaskService(MAASTestCase):
             queue = service.queue
             event = threading.Event()
             count = random.randint(20, 40)
-            for _ in xrange(count):
+            for _ in range(count):
                 service.addTask(event.wait)
             # The queue has `count` tasks (or `count - 1` tasks; the first may
             # have already been pulled off the queue) still pending.
@@ -244,7 +238,7 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            self.assertThat(service.syncTask().wait(), Is(service))
+            self.assertThat(service.syncTask().wait(30), Is(service))
         finally:
             service.stopService()
 
@@ -258,9 +252,10 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            service.deferTask(things.append, 1).wait()
-            self.assertRaises(exception_type, service.deferTask(be_bad).wait)
-            service.deferTask(things.append, 2).wait()
+            service.deferTask(things.append, 1).wait(30)
+            self.assertRaises(
+                exception_type, service.deferTask(be_bad).wait, 30)
+            service.deferTask(things.append, 2).wait(30)
         finally:
             service.stopService()
 
@@ -299,7 +294,7 @@ class TestDatabaseTaskService(MAASTestCase):
             Unhandled failure in database task.
             Traceback (most recent call last):
             ...
-            exceptions.ZeroDivisionError: ...
+            builtins.ZeroDivisionError: ...
             """,
             logger.output)
 
@@ -317,7 +312,7 @@ class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            result = service.deferTask(database_task).wait()
+            result = service.deferTask(database_task).wait(30)
             self.assertThat(result, Is(sentinel.beenhere))
         finally:
             service.stopService()

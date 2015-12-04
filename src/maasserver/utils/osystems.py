@@ -2,15 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Utilities for working with operating systems."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_distro_series_initial',
     'get_release_requires_key',
@@ -78,7 +69,7 @@ def list_all_usable_releases(osystems):
 def list_all_usable_hwe_kernels(releases):
     """Return dictionary of usable `kernels` for each os/release."""
     kernels = {}
-    for osystem, osystems in releases.iteritems():
+    for osystem, osystems in releases.items():
         if osystem not in kernels:
             kernels[osystem] = {}
         for release in osystems:

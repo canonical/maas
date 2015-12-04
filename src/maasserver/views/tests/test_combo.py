@@ -3,21 +3,13 @@
 
 """Test combo view."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import Callable
-import httplib
+import http.client
 import os
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import config
@@ -83,7 +75,8 @@ class TestUtilities(MAASServerTestCase):
         expected_content = '/* %s */\n%s\n' % (
             test_file_name, test_file_contents)
         self.assertEqual(
-            (httplib.OK, expected_content),
+            (http.client.OK, expected_content.encode(
+                settings.DEFAULT_CHARSET)),
             (response.status_code, response.content))
 
     def test_get_combo_redirects_if_unknown_type(self):
@@ -105,7 +98,7 @@ class TestUtilities(MAASServerTestCase):
 
 
 # String used by convoy to replace missing files.
-CONVOY_MISSING_FILE = "/* [missing] */"
+CONVOY_MISSING_FILE = b"/* [missing] */"
 
 
 class TestComboLoaderView(MAASServerTestCase):
@@ -120,11 +113,13 @@ class TestComboLoaderView(MAASServerTestCase):
         response = self.client.get(url)
         self.assertIn('text/javascript', response['Content-Type'])
         for requested_file in requested_files:
-            self.assertIn(requested_file, response.content)
+            self.assertIn(
+                requested_file.encode(settings.DEFAULT_CHARSET),
+                response.content)
         # No sign of a missing js file.
         self.assertNotIn(CONVOY_MISSING_FILE, response.content)
         # The file contains a link to YUI's licence.
-        self.assertIn('http://yuilibrary.com/license/', response.content)
+        self.assertIn(b'http://yuilibrary.com/license/', response.content)
 
     def test_yui_load_css(self):
         requested_files = [
@@ -135,21 +130,23 @@ class TestComboLoaderView(MAASServerTestCase):
         response = self.client.get(url)
         self.assertIn('text/css', response['Content-Type'])
         for requested_file in requested_files:
-            self.assertIn(requested_file, response.content)
+            self.assertIn(
+                requested_file.encode(settings.DEFAULT_CHARSET),
+                response.content)
         # No sign of a missing css file.
         self.assertNotIn(CONVOY_MISSING_FILE, response.content)
         # The file contains a link to YUI's licence.
-        self.assertIn('http://yuilibrary.com/license/', response.content)
+        self.assertIn(b'http://yuilibrary.com/license/', response.content)
 
     def test_yui_combo_no_file_returns_not_found(self):
         response = self.client.get(reverse('combo-yui'))
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_yui_combo_other_file_extension_returns_bad_request(self):
         url = '%s?%s' % (reverse('combo-yui'), 'file.wrongextension')
         response = self.client.get(url)
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Invalid file type requested."),
+            (http.client.BAD_REQUEST, b"Invalid file type requested."),
             (response.status_code, response.content))
 
 
@@ -160,19 +157,21 @@ class TestMergeLoaderView(MAASServerTestCase):
         for filename, merge_info in MERGE_VIEWS.items():
             url = reverse('merge', args=[filename])
             response = self.client.get(url)
-            self.assertEquals(
+            self.assertEqual(
                 merge_info["content_type"], response['Content-Type'],
                 "Content-type for %s does not match." % filename)
 
             # Has all required files.
             for requested_file in merge_info["files"]:
                 self.assertIn(
-                    requested_file, response.content.decode("utf-8"))
+                    requested_file,
+                    response.content.decode(settings.DEFAULT_CHARSET))
 
             # No sign of a missing js file.
             self.assertNotIn(
-                CONVOY_MISSING_FILE, response.content.decode("utf-8"))
+                CONVOY_MISSING_FILE,
+                response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_load_unknown_returns_302_blocked_by_middleware(self):
         response = self.client.get(reverse('merge', args=["unknown.js"]))
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)

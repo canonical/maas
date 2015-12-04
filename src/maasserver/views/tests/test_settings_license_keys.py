@@ -3,19 +3,11 @@
 
 """Test maasserver license key settings views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver import forms
@@ -79,7 +71,8 @@ class LicenseKeyListingTest(MAASServerTestCase):
         os_titles = [key.osystem for key in keys]
         series_titles = [key.distro_series for key in keys]
         self.assertThat(
-            response.content, ContainsAll(os_titles + series_titles))
+            response.content.decode(settings.DEFAULT_CHARSET),
+            ContainsAll([title for title in os_titles + series_titles]))
 
     def test_settings_link_to_add_license_key(self):
         self.client_log_in(as_admin=True)
@@ -137,7 +130,7 @@ class LicenseKeyAddTest(MAASServerTestCase):
             }
         response = self.client.post(add_link, definition)
         self.assertEqual(
-            (httplib.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         new_license_key = LicenseKey.objects.get(
             osystem=osystem['name'], distro_series=series)
@@ -163,7 +156,7 @@ class LicenseKeyEditTest(MAASServerTestCase):
             }
         response = self.client.post(edit_link, definition)
         self.assertEqual(
-            (httplib.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         self.assertAttributes(reload_object(key), definition)
 
@@ -177,7 +170,7 @@ class LicenseKeyDeleteTest(MAASServerTestCase):
             'license-key-delete', args=[key.osystem, key.distro_series])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
-            (httplib.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             LicenseKey.objects.filter(

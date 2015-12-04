@@ -3,15 +3,6 @@
 
 """Test :class:`Sequence`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -72,7 +63,7 @@ class TestSequence(MAASServerTestCase):
         seq = Sequence(name)
         seq.create()
         seq.drop()
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             DatabaseError, "does not exist", self.query_seq,
             seq.name)
 
@@ -81,4 +72,4 @@ class TestSequence(MAASServerTestCase):
         seq = Sequence(name)
         seq.create()
         self.assertSequenceEqual(
-            range(1, 11), [seq.nextval() for _ in range(10)])
+            list(range(1, 11)), [seq.nextval() for _ in range(10)])

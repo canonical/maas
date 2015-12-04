@@ -3,15 +3,6 @@
 
 """User data generation for Commissioning."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from metadataserver.user_data.snippets import get_userdata_template_dir

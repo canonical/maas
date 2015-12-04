@@ -3,15 +3,6 @@
 
 """RPC helpers relating to DHCP."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "configure",
     "create_host_maps",
@@ -96,16 +87,16 @@ def configure(server, subnet_configs):
             sudo_write_file(server.config_filename, dhcpd_config)
             sudo_write_file(server.interfaces_filename, interfaces_config)
         except ExternalProcessError as e:
-            # ExternalProcessError.__unicode__ contains a generic failure
-            # message as well as the command and its error output. On the
-            # other hand, ExternalProcessError.output_as_unicode contains just
-            # the error output which is probably the best information on what
-            # went wrong. Log the full error information, but keep the
-            # exception message short and to the point.
+            # ExternalProcessError.__str__ contains a generic failure message
+            # as well as the command and its error output. On the other hand,
+            # ExternalProcessError.output_as_unicode contains just the error
+            # output which is probably the best information on what went
+            # wrong. Log the full error information, but keep the exception
+            # message short and to the point.
             maaslog.error(
                 "Could not rewrite %s server configuration (for network "
                 "interfaces %s): %s", server.descriptive_name,
-                interfaces_config, unicode(e))
+                interfaces_config, str(e))
             raise CannotConfigureDHCP(
                 "Could not rewrite %s server configuration: %s" % (
                     server.descriptive_name, e.output_as_unicode))
@@ -193,7 +184,7 @@ def create_host_maps(mappings, shared_key):
         except ExternalProcessError as e:
             maaslog.error(
                 "Could not create host map for %s with address %s: %s",
-                mac_address, ip_address, unicode(e))
+                mac_address, ip_address, str(e))
             if 'not connected.' in e.output_as_unicode:
                 raise CannotCreateHostMap(
                     "The DHCP server could not be reached.")
@@ -226,7 +217,7 @@ def remove_host_maps(mac_addresses, shared_key):
         except ExternalProcessError as e:
             maaslog.error(
                 "Could not remove host map for %s: %s.",
-                mac_address, unicode(e))
+                mac_address, str(e))
             if 'not connected.' in e.output_as_unicode:
                 raise CannotRemoveHostMap(
                     "The DHCP server could not be reached.")

@@ -4,15 +4,6 @@
 # TODO: Module docstring.
 """..."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     # TODO: Your class name here.
     'ModelClass',

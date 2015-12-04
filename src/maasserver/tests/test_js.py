@@ -3,15 +3,6 @@
 
 """Run YUI3 unit tests with Selenium."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from abc import (
@@ -58,7 +49,7 @@ def get_browser_names_from_env():
     return extract_word_list(names)
 
 
-class YUIUnitTestsBase:
+class YUIUnitTestsBase(metaclass=ABCMeta):
     """Base class for running YUI3 tests in a variety of browsers.
 
     Calls to instance of this class are intercepted. If the call is to a clone
@@ -72,8 +63,6 @@ class YUIUnitTestsBase:
     implementation this was a solution with the lowest friction (at least,
     lower than ripping nose out, or teaching it about test resources).
     """
-
-    __metaclass__ = ABCMeta
 
     test_paths = glob(join(root, "src/maasserver/static/js/tests/*.html"))
     assert test_paths != [], "No JavaScript unit test pages found."

@@ -3,23 +3,12 @@
 
 """MAAS Server application."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DefaultMeta',
     'logger',
     ]
 
 import logging
-import os
-import sys
 
 
 logger = logging.getLogger("maasserver")
@@ -36,22 +25,6 @@ class DefaultMeta:
 
 
 def execute_from_command_line():
-    # When the "dbupgrade --south" command is performed we need to inject
-    # django 1.6 to be used and south as an INSTALLED_APP before
-    # django is ever imported. The dbupgrade parent command will set
-    # 'DJANGO16_SOUTH_MODULES_PATH' in the environment.
-    if 'DJANGO16_SOUTH_MODULES_PATH' in os.environ:
-        # Inject django 1.6 and south path provided by the parent process.
-        sys.path.insert(0, os.environ['DJANGO16_SOUTH_MODULES_PATH'])
-        import django
-        assert django.get_version() == "1.6.6"
-
-        # Install south.
-        from django.conf import settings
-        settings.INSTALLED_APPS += (
-            'south',
-        )
-
     # Limit concurrency in all thread-pools to ONE.
     from maasserver.utils import threads
     threads.install_default_pool(maxthreads=1)

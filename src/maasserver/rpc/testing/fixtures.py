@@ -3,15 +3,6 @@
 
 """Test fixtures for the region's RPC implementation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ClusterRPCFixture",
     "RunningClusterRPCFixture",
@@ -225,7 +216,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
             commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
-        ident_response = {"ident": nodegroup.uuid.decode("ascii")}
+        ident_response = {"ident": nodegroup.uuid}
         protocol.Identify.side_effect = (
             lambda _: defer.succeed(ident_response.copy()))
         protocol.Authenticate.side_effect = (
@@ -344,7 +335,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
-        ident_response = {"ident": nodegroup.uuid.decode("ascii")}
+        ident_response = {"ident": nodegroup.uuid}
         protocol.Identify.side_effect = (
             lambda protocol: defer.succeed(ident_response.copy()))
         protocol.Authenticate.side_effect = (

@@ -3,15 +3,6 @@
 
 """Model export and helpers for maasserver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Bcache',
     'BlockDevice',
@@ -119,16 +110,7 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
-from maasserver.utils.django import has_builtin_migrations
-
-# To support upgrading from MAAS versions <2.0 the piston module was named
-# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
-# same the import names are important because it will break south migrations
-# unless piston is imported as 'piston'.
-if has_builtin_migrations():
-    from piston3.doc import HandlerDocumentation
-else:
-    from piston.doc import HandlerDocumentation
+from piston3.doc import HandlerDocumentation
 
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
@@ -190,7 +172,7 @@ def get_resource_uri_template(self):
     def _convert(template, params=[]):
         """URI template converter"""
         paths = template % dict([p, "{%s}" % p] for p in params)
-        return u'%s%s' % (get_script_prefix(), paths)
+        return '%s%s' % (get_script_prefix(), paths)
     try:
         resource_uri = self.handler.resource_uri()
         components = [None, [], {}]

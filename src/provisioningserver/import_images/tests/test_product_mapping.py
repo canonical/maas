@@ -3,15 +3,6 @@
 
 """Tests for the `ProductMapping` class."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
@@ -171,7 +162,7 @@ class TestMapProducts(MAASTestCase):
             resource['product_name'],
             resource['version_name'],
             )
-        self.assertEqual([key], products_mapping.mapping.keys())
+        self.assertEqual([key], list(products_mapping.mapping))
         self.assertItemsEqual(
             [image1.subarch, image2.subarch],
             products_mapping.get(resource))

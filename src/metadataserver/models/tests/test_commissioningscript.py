@@ -3,21 +3,15 @@
 
 """Test custom commissioning scripts."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import doctest
 from functools import partial
 from inspect import getsource
-from io import BytesIO
+from io import (
+    BytesIO,
+    StringIO,
+)
 import json
 from math import (
     ceil,
@@ -87,6 +81,7 @@ from mock import (
     sentinel,
 )
 from netaddr import IPNetwork
+from provisioningserver.utils import typed
 from testtools.content import text_content
 from testtools.matchers import (
     Contains,
@@ -152,7 +147,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
         for counter in range(3):
             factory.make_CommissioningScript()
         archive = open_tarfile(CommissioningScript.objects.get_archive())
-        self.assertEqual({0755}, {info.mode for info in archive.getmembers()})
+        self.assertEqual({0o755}, {info.mode for info in archive.getmembers()})
 
     def test_get_archive_initializes_file_timestamps(self):
         # The mtime on a file inside the tarball is reasonable.
@@ -182,7 +177,7 @@ class TestMakeFunctionCallScript(MAASServerTestCase):
 
     def run_script(self, script):
         script_filename = self.make_file("test.py", script)
-        os.chmod(script_filename, 0700)
+        os.chmod(script_filename, 0o700)
         try:
             return check_output((script_filename,), stderr=STDOUT)
         except CalledProcessError as error:
@@ -215,15 +210,17 @@ class TestMakeFunctionCallScript(MAASServerTestCase):
 
     def test_non_ascii_positional_args_are_passed_without_corruption(self):
         def example_function(text):
-            print(repr(text), end="")
+            from sys import stdout
+            stdout.buffer.write(text.encode("utf-8"))
         script = make_function_call_script(example_function, "abc\u1234")
-        self.assertEqual(b"u'abc\\u1234'", self.run_script(script))
+        self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
 
     def test_non_ascii_keyword_args_are_passed_without_corruption(self):
         def example_function(text):
-            print(repr(text), end="")
+            from sys import stdout
+            stdout.buffer.write(text.encode("utf-8"))
         script = make_function_call_script(example_function, text="abc\u1234")
-        self.assertEqual(b"u'abc\\u1234'", self.run_script(script))
+        self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
 
     def test_structured_arguments_are_passed_though_too(self):
         # Anything that can be JSON serialized can be passed.
@@ -601,7 +598,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         update_hardware_details(node, xmlbytes, 0)
         node = reload_object(node)
         mega = 2 ** 20
-        expected = (4294967296 + 3221225472 + 536879812) / mega
+        expected = (4294967296 + 3221225472 + 536879812) // mega
         self.assertEqual(expected, node.memory)
 
     def test_hardware_updates_ignores_empty_tags(self):
@@ -624,7 +621,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         Invalid lshw data.
         Traceback (most recent call last):
         ...
-        XMLSyntaxError: Start tag expected, '<' not found, line 1, column 1
+        lxml.etree.XMLSyntaxError: Start tag expected, ...
         """)
         self.assertThat(
             logger.output, DocTestMatches(
@@ -638,9 +635,10 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
 class TestGatherPhysicalBlockDevices(MAASServerTestCase):
 
+    @typed
     def make_lsblk_output(
             self, name=None, read_only=False, removable=False,
-            model=None, rotary=True):
+            model=None, rotary=True) -> bytes:
         if name is None:
             name = factory.make_name('name')
         if model is None:
@@ -648,11 +646,14 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         read_only = "1" if read_only else "0"
         removable = "1" if removable else "0"
         rotary = "1" if rotary else "0"
-        return 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
+        output = 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
             name, read_only, removable, model, rotary)
+        return output.encode("ascii")
 
+    @typed
     def make_udevadm_output(
-            self, name, serial=None, sata=True, cdrom=False, dev='/dev'):
+            self, name, serial=None, sata=True, cdrom=False,
+            dev='/dev') -> bytes:
         if serial is None:
             serial = factory.make_name('serial')
         sata = "1" if sata else "0"
@@ -669,11 +670,11 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             output += "E: ID_CDROM=1"
         else:
             output += "E: ID_ATA_ROTATION_RATE_RPM=5400"
-        return output
+        return output.encode("ascii")
 
     def call_gather_physical_block_devices(
             self, dev_disk_byid='/dev/disk/by-id/'):
-        output = BytesIO()
+        output = StringIO()
         namespace = {"print": partial(print, file=output)}
         gather_physical_block_devices = isolate_function(
             cs_module.gather_physical_block_devices, namespace)
@@ -682,15 +683,15 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
 
     def test__calls_lsblk(self):
         check_output = self.patch(subprocess, "check_output")
-        check_output.return_value = ""
+        check_output.return_value = b""
         self.call_gather_physical_block_devices()
         self.assertThat(check_output, MockCalledOnceWith(
             ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")))
 
     def test__returns_empty_list_when_no_disks(self):
         check_output = self.patch(subprocess, "check_output")
-        check_output.return_value = ""
-        self.assertEquals([], self.call_gather_physical_block_devices())
+        check_output.return_value = b""
+        self.assertEqual([], self.call_gather_physical_block_devices())
 
     def test__calls_lsblk_then_udevadm(self):
         name = factory.make_name('name')
@@ -715,7 +716,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             self.make_udevadm_output(
                 name, cdrom=True),
             ]
-        self.assertEquals([], self.call_gather_physical_block_devices())
+        self.assertEqual([], self.call_gather_physical_block_devices())
 
     def test__calls_lsblk_udevadm_then_blockdev(self):
         name = factory.make_name('name')
@@ -728,8 +729,8 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
             self.make_udevadm_output(name, serial=serial),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
         self.call_gather_physical_block_devices()
         self.assertThat(check_output, MockCallsMatch(
@@ -758,10 +759,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": os.path.join(devroot, name),
             "ID_PATH": os.path.join(byidroot, 'deviceid'),
@@ -795,10 +796,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
             self.make_udevadm_output(name, serial=serial, dev=devroot),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": os.path.join(devroot, name),
             "RO": "0",
@@ -822,10 +823,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model, read_only=True),
             self.make_udevadm_output(name, serial=serial),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": "/dev/%s" % name,
             "RO": "1",
@@ -849,10 +850,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model, rotary=False),
             self.make_udevadm_output(name, serial=serial),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": "/dev/%s" % name,
             "RO": "0",
@@ -876,10 +877,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
             self.make_udevadm_output(name, serial=serial, sata=False),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": "/dev/%s" % name,
             "RO": "0",
@@ -903,10 +904,10 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model, removable=True),
             self.make_udevadm_output(name, serial=serial),
-            '%s' % size,
-            '%s' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
             ]
-        self.assertEquals([{
+        self.assertEqual([{
             "NAME": name,
             "PATH": "/dev/%s" % name,
             "RO": "0",
@@ -927,21 +928,21 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             for name in names
             ]
         call_outputs = []
-        call_outputs.append("\n".join(lsblk))
+        call_outputs.append(b"\n".join(lsblk))
         for name in names:
             call_outputs.append(self.make_udevadm_output(name))
         for name in names:
             call_outputs.append(
-                "%s" % random.randint(1000 * 1000, 1000 * 1000 * 1000))
+                b"%d" % random.randint(1000 * 1000, 1000 * 1000 * 1000))
             call_outputs.append(
-                "%s" % random.choice([512, 1024, 4096]))
+                b"%d" % random.choice([512, 1024, 4096]))
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = call_outputs
         device_names = [
             block_info['NAME']
             for block_info in self.call_gather_physical_block_devices()
             ]
-        self.assertEquals(names, device_names)
+        self.assertEqual(names, device_names)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
@@ -958,7 +959,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             id_path = '/dev/disk/by-id/deviceid'
         if size is None:
             size = random.randint(
-                MIN_BLOCK_DEVICE_SIZE * 2, MIN_BLOCK_DEVICE_SIZE * 4)
+                MIN_BLOCK_DEVICE_SIZE * 10, MIN_BLOCK_DEVICE_SIZE * 100)
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if model is None:
@@ -1037,7 +1038,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         node.boot_disk = boot_disk
         node.save()
         update_node_physical_block_devices(node, json_output, 0)
-        self.assertEquals(boot_disk, reload_object(node).boot_disk)
+        self.assertEqual(boot_disk, reload_object(node).boot_disk)
 
     def test__clears_boot_disk(self):
         devices = [self.make_block_device() for _ in range(3)]
@@ -1059,7 +1060,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             for device in (
                 PhysicalBlockDevice.objects.filter(node=node).order_by('id'))
             ]
-        self.assertEquals(device_names, created_names)
+        self.assertEqual(device_names, created_names)
 
     def test__creates_physical_block_device(self):
         name = factory.make_name('name')
@@ -1104,7 +1105,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         other_node = factory.make_Node(with_boot_disk=False)
         json_output = json.dumps([device]).encode('utf-8')
         update_node_physical_block_devices(node, json_output, 0)
-        self.assertEquals(
+        self.assertEqual(
             0, PhysicalBlockDevice.objects.filter(node=other_node).count(),
             "Created physical block device for the incorrect node.")
 
@@ -1196,12 +1197,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         'eth2': MAC("00:00:00:00:00:03"),
     }
 
-    IP_ADDR_OUTPUT = None
-
-    def setUp(self):
-        self.IP_ADDR_OUTPUT = open(
-            os.path.dirname(__file__) + '/ip_addr_results.txt').read()
-        super(TestUpdateNodeNetworkInformation, self).setUp()
+    IP_ADDR_OUTPUT_FILE = os.path.join(
+        os.path.dirname(__file__), 'ip_addr_results.txt')
+    with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
+        IP_ADDR_OUTPUT = fd.read()
 
     def assert_expected_interfaces_and_macs_exist(
             self, node_interfaces, additional_interfaces={}):
@@ -1459,7 +1458,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         update_node_network_information(node, self.IP_ADDR_OUTPUT, 0)
         eth0 = Interface.objects.get(node=node, name='eth0')
-        address = unicode(IPNetwork(cidr).ip)
+        address = str(IPNetwork(cidr).ip)
         ipv4_ip = eth0.ip_addresses.get(ip=address)
         self.assertThat(
             ipv4_ip,

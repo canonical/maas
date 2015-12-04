@@ -3,20 +3,12 @@
 
 """Tests for the ssl key API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.models import SSLKey
 from maasserver.testing import get_data
@@ -42,8 +34,9 @@ class TestSSLKeyHandlers(APITestCase):
         params = dict(op="list")
         response = self.client.get(
             reverse('sslkeys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_result = [result['resource_uri'] for result in parsed_result]
         expected_result = [
             reverse('sslkey_handler', args=[keys[0].id]),
@@ -57,8 +50,9 @@ class TestSSLKeyHandlers(APITestCase):
         params = dict(op="list")
         response = self.client.get(
             reverse('sslkeys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_result = [result['resource_uri'] for result in parsed_result]
         expected_result = [
             reverse('sslkey_handler', args=[keys[0].id]),
@@ -74,8 +68,9 @@ class TestSSLKeyHandlers(APITestCase):
         params = dict(op="list")
         response = self.client.get(
             reverse('sslkeys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_result = [result['resource_uri'] for result in parsed_result]
         expected_result = [
             reverse('sslkey_handler', args=[keys[0].id]),
@@ -92,8 +87,9 @@ class TestSSLKeyHandlers(APITestCase):
         params = dict(op="list")
         response = self.client.get(
             reverse('sslkeys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_result = [result['resource_uri'] for result in parsed_result]
         expected_result = [
             reverse('sslkey_handler', args=[keys[0].id]),
@@ -107,8 +103,9 @@ class TestSSLKeyHandlers(APITestCase):
         key = keys[0]
         response = self.client.get(
             reverse('sslkey_handler', args=[key.id]))
-        self.assertEqual(httplib.OK, response.status_code, response)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code, response)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         expected = dict(
             id=key.id,
             key=key.key,
@@ -123,7 +120,7 @@ class TestSSLKeyHandlers(APITestCase):
         key = keys[0]
         response = self.client.get(
             reverse('sslkey_handler', args=[key.id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code, response)
 
     def test_get_by_id_fails_for_non_owner_as_admin(self):
         _, keys = factory.make_user_with_ssl_keys(n_keys=1)
@@ -133,14 +130,15 @@ class TestSSLKeyHandlers(APITestCase):
         key = keys[0]
         response = self.client.get(
             reverse('sslkey_handler', args=[key.id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code, response)
 
     def test_delete_by_id_works(self):
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.logged_in_user)
         response = self.client.delete(
             reverse('sslkey_handler', args=[keys[0].id]))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code, response)
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response)
         keys_after = SSLKey.objects.filter(user=self.logged_in_user)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
@@ -149,7 +147,7 @@ class TestSSLKeyHandlers(APITestCase):
         user, keys = factory.make_user_with_ssl_keys(n_keys=1)
         response = self.client.delete(
             reverse('sslkey_handler', args=[keys[0].id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code, response)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code, response)
         self.assertEqual(1, len(SSLKey.objects.filter(user=user)))
 
     def test_adding_works(self):
@@ -157,8 +155,9 @@ class TestSSLKeyHandlers(APITestCase):
         response = self.client.post(
             reverse('sslkeys_handler'),
             data=dict(op="new", key=key_string))
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_response = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_response = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(key_string, parsed_response["key"])
         added_key = get_one(SSLKey.objects.filter(user=self.logged_in_user))
         self.assertEqual(key_string, added_key.key)
@@ -168,14 +167,17 @@ class TestSSLKeyHandlers(APITestCase):
         response = self.client.post(
             reverse('sslkeys_handler'),
             data=dict(op='new', key=key_string))
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
-        self.assertIn("Invalid", response.content)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
+        self.assertIn(
+            "Invalid", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_adding_returns_badrequest_when_key_not_in_form(self):
         response = self.client.post(
             reverse('sslkeys_handler'),
             data=dict(op='new'))
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code, response)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response)
         self.assertEqual(
             dict(key=["This field is required."]),
-            json.loads(response.content))
+            json.loads(response.content.decode(settings.DEFAULT_CHARSET)))

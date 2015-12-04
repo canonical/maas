@@ -3,20 +3,11 @@
 
 """The MAAS Web Application."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "WebApplicationService",
 ]
 
-from httplib import SERVICE_UNAVAILABLE
+from http.client import SERVICE_UNAVAILABLE
 import re
 
 from lxml import html
@@ -28,6 +19,7 @@ from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
     WebSocketsResource,
 )
+from provisioningserver.twisted.web.wsgi import WSGIResource
 from provisioningserver.utils.twisted import (
     asynchronous,
     ThreadPoolLimiter,
@@ -45,13 +37,12 @@ from twisted.web.server import (
 )
 from twisted.web.static import File
 from twisted.web.util import Redirect
-from twisted.web.wsgi import WSGIResource
 
 
 class StartPage(ErrorPage, object):
     def __init__(self):
         super(StartPage, self).__init__(
-            status=SERVICE_UNAVAILABLE, brief="MAAS is starting",
+            status=int(SERVICE_UNAVAILABLE), brief="MAAS is starting",
             detail="Please try again in a few seconds.")
 
     def render(self, request):
@@ -65,8 +56,8 @@ class StartFailedPage(ErrorPage, object):
         traceback = html.Element("pre")
         traceback.text = failure.getTraceback()
         super(StartFailedPage, self).__init__(
-            status=SERVICE_UNAVAILABLE, brief="MAAS failed to start",
-            detail=html.tostring(traceback, encoding=unicode))
+            status=int(SERVICE_UNAVAILABLE), brief="MAAS failed to start",
+            detail=html.tostring(traceback, encoding=str))
 
 
 class CleanPathRequest(Request, object):
@@ -76,9 +67,9 @@ class CleanPathRequest(Request, object):
     """
 
     def requestReceived(self, command, path, version):
-        path, sep, args = path.partition(b"?")
-        path = re.sub(r'/+', b'/', path)
-        path = b"".join([path, sep, args])
+        path, sep, args = path.partition("?")
+        path = re.sub(r'/+', '/', path)
+        path = "".join([path, sep, args])
         return super(CleanPathRequest, self).requestReceived(
             command, path, version)
 

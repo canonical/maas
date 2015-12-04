@@ -28,17 +28,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
 from collections import OrderedDict
 
 
-str = None
-
-__metaclass__ = type
 __all__ = [
     'ISCParseException',
     'make_isc_string',
@@ -185,15 +177,15 @@ def _scrub_comments(isc_string):
                 striped_line = line.strip()
                 chars = enumerate(striped_line)
                 while True:
-                    i, c = chars.next()
+                    i, c = next(chars)
                     try:
                         if c == '/' and striped_line[i + 1] == '*':
                             expanded_comment = True
-                            chars.next()  # Skip '*'
+                            next(chars)  # Skip '*'
                             continue
                         elif c == '*' and striped_line[i + 1] == '/':
                             expanded_comment = False
-                            chars.next()  # Skip '/'
+                            next(chars)  # Skip '/'
                             continue
                     except IndexError:
                         continue  # We are at the end of the line
@@ -280,7 +272,7 @@ def make_isc_string(isc_dict, terminate=True):
         if type(isc_dict[option]) == bool:
             isc_list.append('%s%s' % (option, terminator))
         elif (type(isc_dict[option]) == str or
-              type(isc_dict[option]) == unicode):
+              type(isc_dict[option]) == str):
             isc_list.append('%s %s%s' % (option, isc_dict[option], terminator))
         elif type(isc_dict[option]) == list:
             new_list = []
@@ -302,5 +294,5 @@ def read_isc_file(isc_file):
     :param:isc_file: the filename to read
     :return:dict: dictionary of ISC file representation
     """
-    with open(isc_file, "r") as f:
+    with open(isc_file, "r", encoding="ascii") as f:
         return parse_isc_string(f.read())

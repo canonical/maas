@@ -3,15 +3,6 @@
 
 """Tests for the Event model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -51,7 +42,7 @@ class EventTypeTest(MAASServerTestCase):
             for level in LOGGING_LEVELS
         ]
 
-        self.assertEquals(
+        self.assertEqual(
             [event.type.level_str for level, event in events_and_levels],
             [LOGGING_LEVELS[level] for level, event in events_and_levels],
         )
@@ -116,7 +107,7 @@ class EventTypeConcurrencyTest(DjangoTransactionTestCase):
         # Create a number of threads to simulate a race.
         threads = [
             threading.Thread(target=make_event_type_in_thread)
-            for _ in xrange(5)
+            for _ in range(5)
         ]
 
         # Start all the threads at the same time.

@@ -1,15 +1,6 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DeviceHandler",
     "DevicesHandler",
@@ -252,7 +243,7 @@ class DeviceHandler(OperationsHandler):
 
         maaslog.info(
             "%s: Sticky IP address(es) deallocated: %s", device.hostname,
-            ', '.join(unicode(ip) for ip in deallocated_ips))
+            ', '.join(str(ip) for ip in deallocated_ips))
         return device
 
 

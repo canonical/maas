@@ -3,15 +3,6 @@
 
 """Model for a nodes block device."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BlockDevice',
     ]
@@ -109,7 +100,7 @@ class BlockDeviceManager(Manager):
 
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):
-            if isinstance(tags, unicode) or not isinstance(tags, Iterable):
+            if isinstance(tags, str) or not isinstance(tags, Iterable):
                 raise ValueError("Requires iterable object to filter.")
             tags = list(tags)
         tags_where, tags_params = psql_array(tags, sql_type="text")
@@ -244,7 +235,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Return what the block device is being used for."""
         return used_for(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return '{size} attached to {node}'.format(
             size=human_readable_bytes(self.size),
             node=self.node)

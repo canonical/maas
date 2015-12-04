@@ -3,27 +3,20 @@
 
 """Test MAAS HTTP API client."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import gzip
 from io import BytesIO
 import json
 from random import randint
-import urllib2
-from urlparse import (
+import urllib.error
+import urllib.parse
+from urllib.parse import (
     parse_qs,
     urljoin,
     urlparse,
 )
+import urllib.request
 
 from apiclient.maas_client import (
     MAASClient,
@@ -57,7 +50,7 @@ class TestMAASOAuth(MAASTestCase):
 class TestMAASDispatcher(MAASTestCase):
 
     def test_dispatch_query_makes_direct_call(self):
-        contents = factory.make_string()
+        contents = factory.make_string().encode("ascii")
         url = "file://%s" % self.make_file(contents=contents)
         self.assertEqual(
             contents, MAASDispatcher().dispatch_query(url, {}).read())
@@ -91,8 +84,8 @@ class TestMAASDispatcher(MAASTestCase):
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
             e = self.assertRaises(
-                urllib2.HTTPError, MAASDispatcher().dispatch_query, url, {},
-                method=method)
+                urllib.error.HTTPError, MAASDispatcher().dispatch_query,
+                url, {}, method=method)
             self.assertIn("Unsupported method ('PUT')", e.reason)
 
     def test_supports_content_encoding_gzip(self):
@@ -104,12 +97,12 @@ class TestMAASDispatcher(MAASTestCase):
         content = factory.make_string(300).encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
         called = []
-        orig_urllib = urllib2.urlopen
+        orig_urllib = urllib.request.urlopen
 
         def logging_urlopen(*args, **kwargs):
             called.append((args, kwargs))
             return orig_urllib(*args, **kwargs)
-        self.patch(urllib2, 'urlopen', logging_urlopen)
+        self.patch(urllib.request, 'urlopen', logging_urlopen)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
             res = MAASDispatcher().dispatch_query(url, {})
@@ -190,7 +183,7 @@ class TestMAASClient(MAASTestCase):
         number = randint(0, 100)
         client = make_client()
         self.assertEqual(
-            urljoin(client.url, unicode(number)), client._make_url([number]))
+            urljoin(client.url, str(number)), client._make_url([number]))
 
     def test_formulate_get_makes_url(self):
         path = make_path()
@@ -214,7 +207,7 @@ class TestMAASClient(MAASTestCase):
             factory.make_string(): [
                 factory.make_string() for _ in range(2)]
         }
-        k = params.keys()
+        k = list(params.keys())
         v = [value for values in params.values() for value in values]
         url, headers = make_client()._formulate_get(make_path(), params)
         url_args = url.split('?')[1]

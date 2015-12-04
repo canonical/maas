@@ -3,15 +3,6 @@
 
 """PowerNV Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'PowerNVBootMethod',
     ]
@@ -29,6 +20,7 @@ from provisioningserver.boot.pxe import (
     re_mac_address,
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
+from provisioningserver.utils import typed
 from tftp.backend import FilesystemReader
 
 # The pxelinux.cfg path is prefixed with the architecture for the
@@ -54,6 +46,7 @@ re_config_file = r'''
 
 re_config_file = re_config_file.format(
     htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
+re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
@@ -72,14 +65,14 @@ class PowerNVBootMethod(BootMethod):
     template_subdir = "pxe"
     bootloader_path = "pxelinux.0"
     arch_octet = "00:0E"
-    path_prefix = "ppc64el/"
+    path_prefix = b"ppc64el/"
 
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""
         match = re_config_file.match(path)
         if match is not None:
             return get_parameters(match)
-        if path.lstrip('/').startswith(self.path_prefix):
+        if path.lstrip(b'/').startswith(self.path_prefix):
             return {'path': path}
         return None
 
@@ -115,8 +108,9 @@ class PowerNVBootMethod(BootMethod):
         # the correct path in the tftp root.
         if 'path' in extra:
             path = extra['path']
-            path = path.replace(self.path_prefix, '', 1)
-            target_path = backend.base.descendant(path.split('/'))
+            if path.startswith(self.path_prefix):
+                path = path[len(self.path_prefix):]
+            target_path = backend.base.descendant(path.split(b'/'))
             return FilesystemReader(target_path)
 
         # Return empty config for PowerNV local. PowerNV fails to
@@ -143,6 +137,7 @@ class PowerNVBootMethod(BootMethod):
         namespace['kernel_command'] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Does nothing. No extra boot files are required. All of the boot
         files from PXEBootMethod will suffice."""

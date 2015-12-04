@@ -3,21 +3,13 @@
 
 """Tests for raid API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import uuid
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
@@ -107,14 +99,16 @@ class TestRaidsAPI(APITestCase):
         uri = get_raid_devices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             raid.id
             for raid in raids
             ]
         result_ids = [
             raid["id"]
-            for raid in json.loads(response.content)
+            for raid in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -136,7 +130,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
             for bd in bds[5:]
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -148,7 +142,7 @@ class TestRaidsAPI(APITestCase):
             'spare_partitions': [],
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_409_when_not_ready(self):
         self.become_admin()
@@ -169,7 +163,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
             for bd in bds[5:]
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -181,7 +175,7 @@ class TestRaidsAPI(APITestCase):
             'spare_partitions': [],
         })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_create_raid_0(self):
         """Checks it's possible to create a RAID 0 using with 5 raw devices, 5
@@ -204,7 +198,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
             for bd in bds[5:]
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -215,8 +209,10 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -262,7 +258,7 @@ class TestRaidsAPI(APITestCase):
             'spare_partitions': [],
         })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_create_raid_1(self):
         """Checks it's possible to create a RAID 1 using with 5 raw devices, 5
@@ -285,7 +281,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=MIN_PARTITION_SIZE).id
             for bd in bds[5:]
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -296,8 +292,10 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -335,7 +333,7 @@ class TestRaidsAPI(APITestCase):
         ]
         spare_devices = [bds[0].id]
         spare_partitions = [large_partitions[0].id]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -346,8 +344,10 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': spare_devices,
             'spare_partitions': spare_partitions,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -387,7 +387,7 @@ class TestRaidsAPI(APITestCase):
         ]
         spare_devices = [bds[0].id]
         spare_partitions = [large_partitions[0].id]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -398,8 +398,10 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': spare_devices,
             'spare_partitions': spare_partitions,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -426,7 +428,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=1000 ** 4)
         large_partitions = [bd.get_partitiontable().add_partition()
                             for bd in bds[5:]]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         block_devices = [bd.id for bd in bds[1:]
                          if bd.get_partitiontable() is None]
@@ -442,9 +444,11 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': spare_devices,
             'spare_partitions': spare_partitions,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        parsed_device = json.loads(response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
          parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -471,7 +475,7 @@ class TestRaidsAPI(APITestCase):
             bd.get_partitiontable().add_partition(size=1000 ** 4)
         large_partitions = [bd.get_partitiontable().add_partition()
                             for bd in bds[5:]]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         block_devices = [bd.id for bd in bds[1:]
                          if bd.get_partitiontable() is None]
@@ -487,9 +491,11 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': spare_devices,
             'spare_partitions': spare_partitions,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        parsed_device = json.loads(response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         (parsed_block_devices, parsed_partitions,
             parsed_block_device_spares, parsed_partition_spares) = (
             get_devices_from_raid(parsed_device))
@@ -508,7 +514,7 @@ class TestRaidsAPI(APITestCase):
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(2)
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -519,7 +525,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_6_with_3_elements_fails(self):
@@ -530,7 +536,7 @@ class TestRaidsAPI(APITestCase):
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(3)
             ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -541,7 +547,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_10_with_2_elements_fails(self):
@@ -552,7 +558,7 @@ class TestRaidsAPI(APITestCase):
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(2)
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -563,7 +569,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_0_with_one_element_fails(self):
@@ -571,7 +577,7 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add one 10TB physical block devices to the node.
         bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -582,7 +588,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_1_with_one_element_fails_without_side_effects(self):
@@ -590,7 +596,7 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add one 10TB physical block devices to the node.
         bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -601,7 +607,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
         self.assertIsNone(bd.get_effective_filesystem())
 
@@ -610,8 +616,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add no block devices to the node and, instead, invent a couple
         # non-existing block devices.
-        ids = range(1000, 1010)
-        uuid4 = unicode(uuid.uuid4())
+        ids = list(range(1000, 1010))
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -622,7 +628,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_with_invalid_partition_fails(self):
@@ -630,8 +636,8 @@ class TestRaidsAPI(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add no partitions to the node and, instead, invent a couple
         # non-existing partitions.
-        ids = range(1000, 1010)
-        uuid4 = unicode(uuid.uuid4())
+        ids = list(range(1000, 1010))
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -642,7 +648,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
     def test_create_raid_with_invalid_spare_fails(self):
@@ -653,7 +659,7 @@ class TestRaidsAPI(APITestCase):
             factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
             for i in range(10)
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -661,10 +667,10 @@ class TestRaidsAPI(APITestCase):
             'level': FILESYSTEM_GROUP_TYPE.RAID_6,
             'block_devices': [bd.id for bd in bds],
             'partitions': [],
-            'spare_devices': range(1000, 1002),  # Two non-existing spares.
+            'spare_devices': [1000, 1001],  # Two non-existing spares.
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
         for bd in bds:
             self.assertIsNone(bd.get_effective_filesystem())
@@ -679,7 +685,7 @@ class TestRaidsAPI(APITestCase):
             factory.make_PhysicalBlockDevice(node=node2, size=10 * 1000 ** 4)
             for i in range(10)
         ]
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node1)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -690,7 +696,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
         for bd in bds:
             self.assertIsNone(bd.get_effective_filesystem())
@@ -699,7 +705,7 @@ class TestRaidsAPI(APITestCase):
             self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'md0',
@@ -710,7 +716,7 @@ class TestRaidsAPI(APITestCase):
             'spare_devices': [],
             'spare_partitions': [],
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
 
@@ -791,8 +797,10 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_raid = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_raid = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         parsed_device_ids = [
             device["id"]
             for device in parsed_raid["devices"]
@@ -816,7 +824,7 @@ class TestRaidAPI(APITestCase):
         self.assertItemsEqual(
             spare_block_device_ids + spare_partitions_ids,
             parsed_spare_device_ids)
-        self.assertEquals(
+        self.assertEqual(
             raid.virtual_device.id, parsed_raid["virtual_device"]["id"])
 
     def test_read_404_when_not_raid(self):
@@ -825,7 +833,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(not_raid)
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_rename_raid(self):
         self.become_admin()
@@ -834,8 +842,10 @@ class TestRaidAPI(APITestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_5)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'name': 'raid0'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual('raid0', parsed_device['name'])
 
     def test_change_raid_uuid(self):
@@ -843,11 +853,13 @@ class TestRaidAPI(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         raid = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_6)
-        uuid4 = unicode(uuid.uuid4())
+        uuid4 = str(uuid.uuid4())
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'uuid': uuid4})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(uuid4, parsed_device['uuid'])
 
     def test_add_valid_blockdevice(self):
@@ -858,8 +870,10 @@ class TestRaidAPI(APITestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'add_block_devices': [device.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is now part of the array.
         self.assertIn(
             device.id,
@@ -882,8 +896,10 @@ class TestRaidAPI(APITestCase):
             fstype=FILESYSTEM_TYPE.RAID)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'remove_block_devices': [device.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is not part of the array.
         self.assertNotIn(
             device.id,
@@ -904,8 +920,10 @@ class TestRaidAPI(APITestCase):
                 node=node)).add_partition()
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'add_partitions': [partition.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new partition is now part of the array.
         self.assertIn(
             partition.id,
@@ -928,8 +946,10 @@ class TestRaidAPI(APITestCase):
             fstype=FILESYSTEM_TYPE.RAID)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'remove_partitions': [partition.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is not part of the array.
         self.assertNotIn(
             partition.id,
@@ -948,8 +968,10 @@ class TestRaidAPI(APITestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'add_spare_devices': [device.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is now part of the array.
         self.assertIn(
             device.id,
@@ -969,8 +991,10 @@ class TestRaidAPI(APITestCase):
             fstype=FILESYSTEM_TYPE.RAID_SPARE)
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'remove_spare_devices': [device.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is not part of the array.
         self.assertNotIn(
             device.id,
@@ -991,8 +1015,10 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(
             uri, {'add_spare_partitions': [partition.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new partition is now part of the array.
         self.assertIn(
             partition.id,
@@ -1015,8 +1041,10 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(
             uri, {'remove_spare_partitions': [partition.id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Makes sure our new device is not part of the array.
         self.assertNotIn(
             partition.id,
@@ -1035,7 +1063,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'add_block_devices': [device.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertIsNone(device.get_effective_filesystem())
 
     def test_remove_invalid_blockdevice_fails(self):
@@ -1047,7 +1075,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'remove_block_devices': [device.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_add_invalid_partition_fails(self):
         self.become_admin()
@@ -1060,7 +1088,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(
             uri, {'add_partitions': [partition.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_remove_invalid_partition_fails(self):
         self.become_admin()
@@ -1073,7 +1101,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(
             uri, {'remove_partitions': [partition.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_add_invalid_spare_device_fails(self):
         self.become_admin()
@@ -1084,7 +1112,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'add_spare_devices': [device.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertIsNone(device.get_effective_filesystem())
 
     def test_remove_invalid_spare_device_fails(self):
@@ -1096,7 +1124,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid, node)
         response = self.client.put(uri, {'remove_spare_devices': [device.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_add_invalid_spare_partition_fails(self):
         self.become_admin()
@@ -1110,7 +1138,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(
             uri, {'add_spare_partitions': [partition.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertIsNone(partition.get_effective_filesystem())
 
     def test_remove_invalid_spare_partition_fails(self):
@@ -1125,7 +1153,7 @@ class TestRaidAPI(APITestCase):
         response = self.client.put(
             uri, {'remove_spare_partitions': [partition.id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_delete_deletes_raid(self):
         self.become_admin()
@@ -1135,7 +1163,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(raid))
 
     def test_delete_403_when_not_admin(self):
@@ -1145,7 +1173,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(raid)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_404_when_not_raid(self):
         self.become_admin()
@@ -1155,7 +1183,7 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(not_raid)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_409_when_not_ready(self):
         self.become_admin()
@@ -1165,4 +1193,4 @@ class TestRaidAPI(APITestCase):
         uri = get_raid_device_uri(not_raid)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)

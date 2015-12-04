@@ -3,15 +3,6 @@
 
 """Test config forms utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django import forms
@@ -190,7 +181,7 @@ class TestUtilities(MAASServerTestCase):
             ]
         self.assertEqual(
             expected,
-            map(lambda data: get_all_prefixed_values(data, prefix), inputs))
+            [get_all_prefixed_values(data, prefix) for data in inputs])
 
 
 class TestDictCharWidget(MAASServerTestCase):

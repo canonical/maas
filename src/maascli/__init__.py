@@ -3,35 +3,18 @@
 
 """The MAAS command-line interface."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "main",
     ]
 
-import locale
 import sys
 
 from maascli.parser import prepare_parser
-from maascli.utils import get_unicode_argv
 
 
-def main(argv=None):
-    # Set up the process's locale; this helps bzrlib decode command-line
-    # arguments in the next step.
-    locale.setlocale(locale.LC_ALL, "")
-    if argv is None:
-        argv = sys.argv[:1] + get_unicode_argv()
-
+def main(argv=sys.argv):
+    # If no arguments have been passed be helpful and point out --help.
     if len(argv) == 1:
-        # No arguments passed.  Be helpful and point out the --help option.
         sys.stderr.write(
             "Error: no arguments given.\n"
             "Run %s --help for usage details.\n"
@@ -46,7 +29,7 @@ def main(argv=None):
         options.execute(options)
     except KeyboardInterrupt:
         raise SystemExit(1)
-    except StandardError as error:
+    except Exception as error:
         parser.error("%s" % error)
 
 

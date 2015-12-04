@@ -3,15 +3,6 @@
 
 """:class:`SSHKey` and friends."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'SSHKey',
     ]
@@ -34,7 +25,7 @@ from maasserver import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from twisted.conch.ssh.keys import Key
+from provisioningserver.twisted.conch.ssh.keys import Key
 
 
 class SSHKeyManager(Manager):
@@ -48,7 +39,7 @@ class SSHKeyManager(Manager):
 def validate_ssh_public_key(value):
     """Validate that the given value contains a valid SSH public key."""
     try:
-        key = Key.fromString(value)
+        key = Key.fromString(value.encode("utf-8"))
     except Exception:
         # twisted.conch.ssh.keys.Key.fromString raises all sorts of exceptions.
         # Here, we catch them all and return a ValidationError since this
@@ -140,7 +131,7 @@ class SSHKey(CleanSave, TimestampedModel):
         return super(
             SSHKey, self).unique_error_message(model_class, unique_check)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.key
 
     def display_html(self):

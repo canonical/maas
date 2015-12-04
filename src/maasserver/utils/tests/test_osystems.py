@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.utils.osystems`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from operator import itemgetter
@@ -305,7 +296,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
             factory.make_name("os"), factory.make_name("release"))
         error = self.assertRaises(
             ValidationError, validate_osystem_and_distro_series, os, release)
-        self.assertEquals(
+        self.assertEqual(
             "%s in distro_series does not match with "
             "operating system %s." % (release, os), error.message)
 
@@ -314,7 +305,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
         release = factory.make_name("release")
         error = self.assertRaises(
             ValidationError, validate_osystem_and_distro_series, os, release)
-        self.assertEquals(
+        self.assertEqual(
             "%s is not a support operating system." % os,
             error.message)
 
@@ -324,7 +315,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, validate_osystem_and_distro_series,
             osystem['name'], release)
-        self.assertEquals(
+        self.assertEqual(
             "%s/%s is not a support operating system and release "
             "combination." % (osystem['name'], release),
             error.message)
@@ -332,7 +323,7 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
     def test__returns_osystem_and_release_with_license_key_stripped(self):
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
-        self.assertEquals(
+        self.assertEqual(
             (osystem['name'], release),
             validate_osystem_and_distro_series(osystem['name'], release + '*'))
 
@@ -341,8 +332,8 @@ class TestReleaseANewerThanB(MAASServerTestCase):
 
     def test_release_a_newer_than_b(self):
         # Since we wrap around 'p' we want to use 'p' as our starting point
-        alphabet = ([chr(i) for i in xrange(ord('p'), ord('z') + 1)] +
-                    [chr(i) for i in xrange(ord('a'), ord('p'))])
+        alphabet = ([chr(i) for i in range(ord('p'), ord('z') + 1)] +
+                    [chr(i) for i in range(ord('a'), ord('p'))])
         previous_true = 0
         for i in alphabet:
             true_count = 0
@@ -471,4 +462,4 @@ class TestValidateHweKernel(MAASServerTestCase):
             mock_get_config, MockAnyCall('commissioning_osystem'))
         self.assertThat(
             mock_get_config, MockAnyCall('commissioning_distro_series'))
-        self.assertEquals('hwe-v', kernel)
+        self.assertEqual('hwe-v', kernel)

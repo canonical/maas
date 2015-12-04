@@ -3,21 +3,17 @@
 
 """Test maasserver API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 from random import randint
-from xmlrpclib import Fault
+from urllib.parse import (
+    parse_qs,
+    urlparse,
+)
+from xmlrpc.client import Fault
 
+from django.conf import settings
 from django.conf.urls import patterns
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -135,7 +131,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
         # HttpResponseRedirect does not allow next_url to be None.
         view = FakeDeleteView(next_url=factory.make_string())
         response = view.delete()
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
 
     def test_delete_is_not_gentle_with_permission_violations(self):
@@ -149,7 +145,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
         request = RequestFactory().get('/foo')
         view = FakeDeleteView(obj, request=request, next_url=next_url)
         response = view.get(request)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertNotIn(next_url, response.get('Location', ''))
         self.assertFalse(obj.deleted)
         self.assertEqual([], view.notices)
@@ -270,8 +266,18 @@ class PaginatedListViewTests(MAASServerTestCase):
         self.assertEqual("", context["first_page_link"])
         self.assertEqual("", context["previous_page_link"])
         # Does this depend on dict hash values for order or does django sort?
-        self.assertEqual("?lookup=value&page=2", context["next_page_link"])
-        self.assertEqual("?lookup=value&page=3", context["last_page_link"])
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+                "page": ["2"],
+            },
+            parse_qs(urlparse(context["next_page_link"]).query))
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+                "page": ["3"],
+            },
+            parse_qs(urlparse(context["last_page_link"]).query))
 
     def test_preserves_query_string_with_page(self):
         view = SimpleListView.as_view(
@@ -279,11 +285,30 @@ class PaginatedListViewTests(MAASServerTestCase):
         request = RequestFactory().get('/index?page=3&lookup=value')
         response = view(request)
         context = response.context_data
-        self.assertEqual("?lookup=value", context["first_page_link"])
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+            },
+            parse_qs(urlparse(context["first_page_link"]).query))
         # Does this depend on dict hash values for order or does django sort?
-        self.assertEqual("?lookup=value&page=2", context["previous_page_link"])
-        self.assertEqual("?lookup=value&page=4", context["next_page_link"])
-        self.assertEqual("?lookup=value&page=4", context["last_page_link"])
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+                "page": ["2"],
+            },
+            parse_qs(urlparse(context["previous_page_link"]).query))
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+                "page": ["4"],
+            },
+            parse_qs(urlparse(context["next_page_link"]).query))
+        self.assertEqual(
+            {
+                "lookup": ["value"],
+                "page": ["4"],
+            },
+            parse_qs(urlparse(context["last_page_link"]).query))
 
 
 class PermanentErrorDisplayTest(MAASServerTestCase):
@@ -310,5 +335,7 @@ class PermanentErrorDisplayTest(MAASServerTestCase):
             response = self.client.get(link)
             self.assertThat(
                 response.content,
-                ContainsAll(
-                    [escape(error.faultString) for error in errors]))
+                ContainsAll([
+                    escape(error.faultString).encode(settings.DEFAULT_CHARSET)
+                    for error in errors
+                ]))

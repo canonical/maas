@@ -3,15 +3,6 @@
 
 """Views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "AccountsEdit",
     "AccountsView",
@@ -49,7 +40,7 @@ class TextTemplateView(TemplateView):
             TemplateView, self).render_to_response(context, **response_kwargs)
 
 
-class HelpfulDeleteView(DeleteView):
+class HelpfulDeleteView(DeleteView, metaclass=ABCMeta):
     """Extension to Django's :class:`django.views.generic.DeleteView`.
 
     This modifies `DeleteView` in a few ways:
@@ -61,8 +52,6 @@ class HelpfulDeleteView(DeleteView):
 
     :ivar model: The model class this view is meant to delete.
     """
-
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def get_object(self):
@@ -154,7 +143,7 @@ class PaginatedListView(ListView):
             if "page" in new_query:
                 del new_query["page"]
         else:
-            new_query["page"] = unicode(page_number)
+            new_query["page"] = str(page_number)
         if not new_query:
             return self.request.path.rsplit("/", 1)[-1] or "."
         return "?" + new_query.urlencode()

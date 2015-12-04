@@ -3,16 +3,6 @@
 
 """Enum-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'map_enum',
     'map_enum_reverse',
@@ -59,6 +49,6 @@ def map_enum_reverse(enum_class, ignore=None):
         ignore = []
     return {
         value: key
-        for key, value in map_enum(enum_class).viewitems()
+        for key, value in map_enum(enum_class).items()
         if key not in ignore
         }

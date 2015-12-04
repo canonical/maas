@@ -18,15 +18,6 @@ https://docs.python.org/2.7/reference/simple_stmts.html#the-import-statement
 for more information on how this module is able to work.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 

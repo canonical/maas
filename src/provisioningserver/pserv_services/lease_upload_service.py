@@ -3,15 +3,6 @@
 
 """Twisted service that periodically uploads DHCP leases to the region."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "convert_leases_to_mappings",
     "convert_mappings_to_leases",

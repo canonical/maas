@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -405,7 +396,7 @@ class TestPowerDriverQuery(MAASTestCase):
 
     @inlineCallbacks
     def test_raises_last_exception_after_all_retries_fail(self):
-        wait_time = [random.randrange(1, 10) for _ in xrange(3)]
+        wait_time = [random.randrange(1, 10) for _ in range(3)]
         driver = make_power_driver(wait_time=wait_time)
         exception_types = list(
             factory.make_exception_type((PowerError,))
@@ -416,7 +407,7 @@ class TestPowerDriverQuery(MAASTestCase):
 
     @inlineCallbacks
     def test_pauses_between_retries(self):
-        wait_time = [random.randrange(1, 10) for _ in xrange(3)]
+        wait_time = [random.randrange(1, 10) for _ in range(3)]
         driver = make_power_driver(wait_time=wait_time)
         self.patch(driver, 'power_query').side_effect = PowerError
         with ExpectedException(PowerError):

@@ -3,22 +3,13 @@
 
 """API handlers: `File`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'FileHandler',
     'FilesHandler',
     ]
 
 from base64 import b64encode
-import httplib
+import http.client
 
 from django.core.urlresolvers import reverse
 from django.http import (
@@ -54,7 +45,7 @@ def get_file_by_name(handler, request):
         db_file = FileStorage.objects.filter(filename=filename).latest('id')
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
-    return HttpResponse(db_file.content, status=httplib.OK)
+    return HttpResponse(db_file.content, status=http.client.OK)
 
 
 def get_file_by_key(handler, request):
@@ -66,7 +57,7 @@ def get_file_by_key(handler, request):
     """
     key = get_mandatory_param(request.GET, 'key')
     db_file = get_object_or_404(FileStorage, key=key)
-    return HttpResponse(db_file.content, status=httplib.OK)
+    return HttpResponse(db_file.content, status=http.client.OK)
 
 
 class AnonFilesHandler(AnonymousOperationsHandler):
@@ -147,7 +138,7 @@ class FileHandler(OperationsHandler):
         stream = json_file_storage(stored_file, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=httplib.OK)
+            status=http.client.OK)
 
     @operation(idempotent=False)
     def delete(self, request, filename):
@@ -204,7 +195,7 @@ class FilesHandler(OperationsHandler):
         # chunks instead of reading the file into memory, but large
         # files are not expected.
         FileStorage.objects.save_file(filename, uploaded_file, request.user)
-        return HttpResponse('', status=httplib.CREATED)
+        return HttpResponse('', status=http.client.CREATED)
 
     @operation(idempotent=True)
     def list(self, request):

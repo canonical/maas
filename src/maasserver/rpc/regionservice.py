@@ -3,15 +3,6 @@
 
 """RPC implementation for regions."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "RegionService",
     "RegionAdvertisingService",
@@ -72,6 +63,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
@@ -98,7 +90,6 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
-from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
 
@@ -117,7 +108,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.Identify`.
         """
-        return {b"ident": eventloop.loop.name}
+        return {"ident": eventloop.loop.name}
 
     @region.Authenticate.responder
     def authenticate(self, message):
@@ -168,7 +159,8 @@ class Region(RPCProtocol):
     def get_tls_parameters(self):
         """get_tls_parameters()
 
-        Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
+        Implementation of
+        :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
         """
         try:
             from provisioningserver.rpc.testing import tls
@@ -188,7 +180,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        return {b"sources": [get_simplestream_endpoint()]}
+        return {"sources": [get_simplestream_endpoint()]}
 
     @region.GetBootSourcesV2.responder
     def get_boot_sources_v2(self, uuid):
@@ -197,7 +189,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        return {b"sources": [get_simplestream_endpoint()]}
+        return {"sources": [get_simplestream_endpoint()]}
 
     @region.GetArchiveMirrors.responder
     def get_archive_mirrors(self):
@@ -240,7 +232,7 @@ class Region(RPCProtocol):
         """
         d = deferToDatabase(
             nodes.list_cluster_nodes_power_parameters, uuid)
-        d.addCallback(lambda nodes: {b"nodes": nodes})
+        d.addCallback(lambda nodes: {"nodes": nodes})
         return d
 
     @region.UpdateNodePowerState.responder
@@ -320,7 +312,7 @@ class Region(RPCProtocol):
         """
         d = deferToDatabase(
             get_cluster_interfaces_as_dicts, cluster_uuid)
-        d.addCallback(lambda interfaces: {b'interfaces': interfaces})
+        d.addCallback(lambda interfaces: {'interfaces': interfaces})
         return d
 
     @region.MonitorExpired.responder
@@ -526,7 +518,7 @@ class RegionService(service.Service, object):
         super(RegionService, self).__init__()
         self.endpoints = [
             [TCP4ServerEndpoint(reactor, port)
-             for port in xrange(5250, 5260)],
+             for port in range(5250, 5260)],
         ]
         self.connections = defaultdict(set)
         self.waiters = defaultdict(set)
@@ -637,10 +629,10 @@ class RegionService(service.Service, object):
         for port in list(self.ports):
             self.ports.remove(port)
             yield port.stopListening()
-        for waiters in list(self.waiters.viewvalues()):
+        for waiters in list(self.waiters.values()):
             for waiter in waiters.copy():
                 waiter.cancel()
-        for conns in list(self.connections.viewvalues()):
+        for conns in list(self.connections.values()):
             for conn in conns.copy():
                 try:
                     yield conn.transport.loseConnection()
@@ -707,7 +699,7 @@ class RegionService(service.Service, object):
         """Return a list of all connected :class:`common.Client`s."""
         return [
             common.Client(conn)
-            for conns in self.connections.itervalues()
+            for conns in self.connections.values()
             for conn in conns
         ]
 

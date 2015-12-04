@@ -3,15 +3,6 @@
 
 """Tests for `maascli.config`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import contextlib
@@ -82,7 +73,7 @@ class TestProfileConfig(MAASTestCase):
         # database on exit.
         config_file = os.path.join(self.make_dir(), "config")
         config = api.ProfileConfig.open(config_file)
-        self.assertIsInstance(config, contextlib.GeneratorContextManager)
+        self.assertIsInstance(config, contextlib._GeneratorContextManager)
         with config as config:
             self.assertIsInstance(config, api.ProfileConfig)
             with config.cursor() as cursor:
@@ -103,7 +94,7 @@ class TestProfileConfig(MAASTestCase):
         # configuration databases.
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
-        os.chmod(config_file, 0644)  # u=rw,go=r
+        os.chmod(config_file, 0o644)  # u=rw,go=r
         with api.ProfileConfig.open(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())

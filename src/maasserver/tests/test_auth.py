@@ -1,21 +1,12 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
 """Test permissions."""
 
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from functools import partial
-import httplib
+import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
@@ -45,7 +36,7 @@ class LoginLogoutTest(MAASServerTestCase):
         response = self.client.post(
             reverse('login'), {'username': name, 'password': password})
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual(user.id, int(self.client.session['_auth_user_id']))
 
     def test_login_failed(self):
@@ -55,7 +46,7 @@ class LoginLogoutTest(MAASServerTestCase):
                 'password': factory.make_string(),
                 })
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_logout(self):

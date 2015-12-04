@@ -3,16 +3,6 @@
 
 """API handlers: `Interface`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from django.forms.utils import ErrorList
 from maasserver.api.support import (
     operation,

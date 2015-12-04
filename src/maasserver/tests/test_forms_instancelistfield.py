@@ -3,15 +3,6 @@
 
 """Tests for `InstanceListField`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
@@ -50,4 +41,4 @@ class TestInstanceListField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError,
             field.clean, [node.system_id for node in nodes] + ['unknown'])
-        self.assertEquals(['Unknown node(s): unknown.'], error.messages)
+        self.assertEqual(['Unknown node(s): unknown.'], error.messages)

@@ -3,15 +3,6 @@
 
 """Model for interfaces."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BondInterface',
     'build_vlan_interface_name',
@@ -178,8 +169,8 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             except (AddrFormatError, ValueError):
                 pass
             else:
-                cidr = unicode(ip_cidr.cidr)
-                ip = unicode(ip_cidr.ip)
+                cidr = str(ip_cidr.cidr)
+                ip = str(ip_cidr.ip)
                 return op(current_q, Q(
                     ip_addresses__ip=ip, ip_addresses__subnet__cidr=cidr))
         else:
@@ -189,7 +180,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             except (AddrFormatError, ValueError):
                 pass
             else:
-                return op(current_q, Q(ip_addresses__ip=unicode(ip)))
+                return op(current_q, Q(ip_addresses__ip=str(ip)))
 
         # If all else fails, try the interface name.
         return op(current_q, Q(name=item))
@@ -343,7 +334,7 @@ class Interface(CleanSave, TimestampedModel):
         """
         return None
 
-    def __unicode__(self):
+    def __str__(self):
         return "name=%s, type=%s, mac=%s" % (
             self.name, self.type, self.mac_address)
 
@@ -449,8 +440,8 @@ class Interface(CleanSave, TimestampedModel):
 
         for ip in cidr_list:
             network = IPNetwork(ip)
-            cidr = unicode(network.cidr)
-            address = unicode(network.ip)
+            cidr = str(network.cidr)
+            address = str(network.ip)
 
             # Find the Subnet for each IP address seen (will be used later
             # to create or update the Subnet)
@@ -486,7 +477,7 @@ class Interface(CleanSave, TimestampedModel):
                         # managed dynamic range.
                         alloc_name = prev_address.get_log_name_for_alloc_type()
                         node = prev_address.get_node()
-                        maaslog.warn(
+                        maaslog.warning(
                             "%s IP address (%s)%s was deleted because "
                             "it was handed out by the MAAS DHCP server "
                             "from the dynamic range.",
@@ -501,7 +492,7 @@ class Interface(CleanSave, TimestampedModel):
                         # that the DHCP server provides.
                         alloc_name = prev_address.get_log_name_for_alloc_type()
                         node = prev_address.get_node()
-                        maaslog.warn(
+                        maaslog.warning(
                             "%s IP address (%s)%s was deleted because "
                             "it was handed out by an external DHCP "
                             "server.",
@@ -1110,7 +1101,7 @@ class Interface(CleanSave, TimestampedModel):
                 if ngi is not None:
                     affected_nodegroups.add(ngi.nodegroup)
                 assigned_addresses.append(assigned_ip)
-                exclude_addresses.add(unicode(assigned_ip.ip))
+                exclude_addresses.add(str(assigned_ip.ip))
         self._update_dns_zones(affected_nodegroups)
         return assigned_addresses
 
@@ -1272,7 +1263,7 @@ class Interface(CleanSave, TimestampedModel):
             if not any(static_ips):
                 maaslog.error(
                     "Tried to allocate an IP to interface <%s>, but its "
-                    "cluster interface is not known.", unicode(self))
+                    "cluster interface is not known.", str(self))
                 return []
             else:
                 return static_ips

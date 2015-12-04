@@ -3,15 +3,6 @@
 
 """Test event catalog."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 
@@ -115,7 +106,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByID(event_name, system_id, description)
 
@@ -132,7 +123,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_detail = EVENT_DETAILS[event_name]
         event_hub = NodeEventHub()
 
@@ -163,7 +154,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
 
         system_id = factory.make_name('system_id')
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_hub = NodeEventHub()
 
         # Fine the first time.
@@ -196,7 +187,7 @@ class TestSendEventMACAddress(MAASTestCase):
 
         mac_address = factory.make_mac_address()
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
@@ -213,7 +204,7 @@ class TestSendEventMACAddress(MAASTestCase):
 
         mac_address = factory.make_mac_address()
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
@@ -229,7 +220,7 @@ class TestSendEventMACAddress(MAASTestCase):
 
         mac_address = factory.make_mac_address()
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_detail = EVENT_DETAILS[event_name]
         event_hub = NodeEventHub()
 
@@ -260,7 +251,7 @@ class TestSendEventMACAddress(MAASTestCase):
 
         mac_address = factory.make_mac_address()
         description = factory.make_name('description')
-        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+        event_name = random.choice(list(map_enum(EVENT_TYPES)))
         event_hub = NodeEventHub()
 
         # Fine the first time.

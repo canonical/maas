@@ -3,19 +3,10 @@
 
 """Test the maas package."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import new
 import os
+import types
 
 from django.conf import settings
 from django.db import connections
@@ -44,7 +35,7 @@ class TestSettingsHelpers(DjangoTestCase):
     def test_find_settings(self):
         # find_settings() returns a dict of settings from a Django-like
         # settings file. It excludes settings beginning with underscores.
-        module = new.module(b"example")
+        module = types.ModuleType("example")
         module.SETTING = factory.make_string()
         module._NOT_A_SETTING = factory.make_string()
         expected = {"SETTING": module.SETTING}
@@ -54,9 +45,9 @@ class TestSettingsHelpers(DjangoTestCase):
     def test_import_settings(self):
         # import_settings() copies settings from another module into the
         # caller's global scope.
-        source = new.module(b"source")
+        source = types.ModuleType("source")
         source.SETTING = factory.make_string()
-        target = new.module(b"target")
+        target = types.ModuleType("target")
         target._source = source
         target._import_settings = import_settings
         eval("_import_settings(_source)", vars(target))

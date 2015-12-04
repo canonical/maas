@@ -16,15 +16,6 @@ trigger "node_create" followed by "notify".
 E.g. "maasserver_node_node_create_notify".
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "register_all_triggers"
     ]

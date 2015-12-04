@@ -3,15 +3,6 @@
 
 """Test maasserver models."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -119,6 +110,7 @@ from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,
@@ -137,7 +129,6 @@ from twisted.internet import (
     defer,
     reactor,
 )
-from twisted.protocols import amp
 
 
 class TestNode(MAASServerTestCase):
@@ -220,7 +211,7 @@ class TestNode(MAASServerTestCase):
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         node.boot_disk = boot_disk
         node.save()
-        self.assertEquals(boot_disk, node.get_boot_disk())
+        self.assertEqual(boot_disk, node.get_boot_disk())
 
     def test_get_boot_disk_returns_first(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -228,7 +219,7 @@ class TestNode(MAASServerTestCase):
         # Second disk.
         factory.make_PhysicalBlockDevice(node=node)
         factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(boot_disk, node.get_boot_disk())
+        self.assertEqual(boot_disk, node.get_boot_disk())
 
     def test_get_boot_disk_returns_None(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -236,15 +227,15 @@ class TestNode(MAASServerTestCase):
 
     def test_get_bios_boot_method_returns_pxe(self):
         node = factory.make_Node(bios_boot_method="pxe")
-        self.assertEquals("pxe", node.get_bios_boot_method())
+        self.assertEqual("pxe", node.get_bios_boot_method())
 
     def test_get_bios_boot_method_returns_uefi(self):
         node = factory.make_Node(bios_boot_method="uefi")
-        self.assertEquals("uefi", node.get_bios_boot_method())
+        self.assertEqual("uefi", node.get_bios_boot_method())
 
     def test_get_bios_boot_method_fallback_to_pxe(self):
         node = factory.make_Node(bios_boot_method=factory.make_name("boot"))
-        self.assertEquals("pxe", node.get_bios_boot_method())
+        self.assertEqual("pxe", node.get_bios_boot_method())
 
     def test_add_node_with_token(self):
         user = factory.make_User()
@@ -264,7 +255,7 @@ class TestNode(MAASServerTestCase):
         """Re-adding a MAC address should not fail"""
         node = factory.make_Node()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        mac = unicode(interface.mac_address)
+        mac = str(interface.mac_address)
         added_interface = node.add_physical_interface(mac)
         self.assertEqual(added_interface, interface)
 
@@ -274,7 +265,7 @@ class TestNode(MAASServerTestCase):
         node1 = factory.make_Node()
         node2 = factory.make_Node()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node2)
-        mac = unicode(interface.mac_address)
+        mac = str(interface.mac_address)
         self.assertRaises(
             ValidationError, node1.add_physical_interface, mac)
 
@@ -861,7 +852,7 @@ class TestNode(MAASServerTestCase):
 
         # The status is set to be reverted to its initial status.
         self.assertThat(node._set_status, MockCalledOnceWith(
-            node, node.system_id, status=NODE_STATUS.FAILED_DISK_ERASING))
+            node.system_id, status=NODE_STATUS.FAILED_DISK_ERASING))
         # It's logged too.
         self.assertThat(logger.output, Contains(
             "%s: Could not start node for disk erasure: %s\n"
@@ -1079,12 +1070,12 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         self.patch(node, 'start_transition_monitor')
         node_result = factory.make_NodeResult_for_installation(node=node)
-        self.assertEquals(
+        self.assertEqual(
             [node_result], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
         with post_commit_hooks:
             node.release()
-        self.assertEquals(
+        self.assertEqual(
             [], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
 
@@ -1217,30 +1208,30 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
-        self.assertEquals(['eth0'], node.get_interface_names())
+        self.assertEqual(['eth0'], node.get_interface_names())
 
     def test_get_next_ifname_names_returns_sane_default(self):
         node = factory.make_Node()
-        self.assertEquals('eth0', node.get_next_ifname(ifnames=[]))
+        self.assertEqual('eth0', node.get_next_ifname(ifnames=[]))
 
     def test_get_next_ifname_names_returns_next_available(self):
         node = factory.make_Node()
-        self.assertEquals('eth2', node.get_next_ifname(
+        self.assertEqual('eth2', node.get_next_ifname(
             ifnames=['eth0', 'eth1']))
 
     def test_get_next_ifname_names_returns_next_in_sequence(self):
         node = factory.make_Node()
-        self.assertEquals('eth12', node.get_next_ifname(
+        self.assertEqual('eth12', node.get_next_ifname(
             ifnames=['eth10', 'eth11']))
 
     def test_get_next_ifname_ignores_vlans_in_names(self):
         node = factory.make_Node()
-        self.assertEquals('eth12', node.get_next_ifname(
+        self.assertEqual('eth12', node.get_next_ifname(
             ifnames=['eth10.1', 'eth11.2']))
 
     def test_get_next_ifname_ignores_aliases_in_names(self):
         node = factory.make_Node()
-        self.assertEquals('eth12', node.get_next_ifname(
+        self.assertEqual('eth12', node.get_next_ifname(
             ifnames=['eth10:5', 'eth11:bob']))
 
     def test_release_turns_on_netboot(self):
@@ -1344,7 +1335,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
                 "%s: Unable to shut node down: %s",
-                node.hostname, unicode(exception)))
+                node.hostname, str(exception)))
 
     def test_release_reverts_to_sane_state_on_error(self):
         # If release() encounters an error when stopping the node, it
@@ -1621,7 +1612,7 @@ class TestNode(MAASServerTestCase):
 
         # The status is set to be reverted to its initial status.
         self.assertThat(node._set_status, MockCalledOnceWith(
-            node, node.system_id, status=status))
+            node.system_id, status=status))
         # It's logged too.
         self.assertThat(logger.output, Contains(
             "%s: Could not start node for commissioning: %s\n"
@@ -1823,7 +1814,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=factory.make_User())
         node.status = NODE_STATUS.ALLOCATED
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
             node.full_clean)
@@ -1851,7 +1842,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=factory.make_User())
         node.status = NODE_STATUS.ALLOCATED
-        self.assertRaisesRegexp(
+        self.assertRaisesRegex(
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
             node.save)
@@ -1951,8 +1942,8 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(description, reload_object(node).error_description)
 
     def test_mark_failed_raises_for_unauthorized_node_status(self):
-        but_not = NODE_FAILURE_STATUS_TRANSITIONS.keys()
-        but_not.extend(NODE_FAILURE_STATUS_TRANSITIONS.viewvalues())
+        but_not = list(NODE_FAILURE_STATUS_TRANSITIONS.keys())
+        but_not.extend(NODE_FAILURE_STATUS_TRANSITIONS.values())
         but_not.append(NODE_STATUS.NEW)
         status = factory.pick_choice(NODE_STATUS_CHOICES, but_not=but_not)
         node = factory.make_Node(status=status)
@@ -2039,11 +2030,11 @@ class TestNode(MAASServerTestCase):
     def test_mark_fixed_clears_installation_results(self):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
         node_result = factory.make_NodeResult_for_installation(node=node)
-        self.assertEquals(
+        self.assertEqual(
             [node_result], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
         node.mark_fixed(factory.make_User())
-        self.assertEquals(
+        self.assertEqual(
             [], list(NodeResult.objects.filter(
                 node=node, result_type=RESULT_TYPE.INSTALLATION)))
 
@@ -2243,7 +2234,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         interfaces = [
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-            for _ in xrange(3)
+            for _ in range(3)
         ]
         # Do not set the boot interface to the first interface to make sure the
         # boot interface (and not the first created) is excluded from the list
@@ -2261,7 +2252,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         interfaces = [
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-            for _ in xrange(3)
+            for _ in range(3)
         ]
         self.assertItemsEqual([
             interface.mac_address
@@ -2525,7 +2516,7 @@ class NodeTransitionsTests(MAASServerTestCase):
     """Test the structure of NODE_TRANSITIONS."""
 
     def test_NODE_TRANSITIONS_initial_states(self):
-        allowed_states = set(NODE_STATUS_CHOICES_DICT.keys() + [None])
+        allowed_states = set(list(NODE_STATUS_CHOICES_DICT.keys()) + [None])
 
         self.assertTrue(set(NODE_TRANSITIONS.keys()) <= allowed_states)
 
@@ -3021,8 +3012,8 @@ class TestNodeNetworking(MAASServerTestCase):
         for interface in interfaces:
             for auto_ip in interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.AUTO):
-                assigned_ips.add(unicode(auto_ip.ip))
-        self.assertEquals(6, len(assigned_ips))
+                assigned_ips.add(str(auto_ip.ip))
+        self.assertEqual(6, len(assigned_ips))
 
     def test_claim_auto_ips_calls_claim_auto_ips_on_all_interfaces(self):
         node = factory.make_Node()
@@ -3090,7 +3081,7 @@ class TestNodeNetworking(MAASServerTestCase):
         self.assertItemsEqual([nic0, nic1], observed_interfaces)
         self.assertItemsEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address)
-        self.assertEquals(set([True]), clearing_config)
+        self.assertEqual(set([True]), clearing_config)
 
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
@@ -3112,7 +3103,7 @@ class TestNodeNetworking(MAASServerTestCase):
         auto_ip = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first()
         self.assertIsNotNone(auto_ip)
-        self.assertEquals(subnet, auto_ip.subnet)
+        self.assertEqual(subnet, auto_ip.subnet)
 
     def test_set_initial_networking_configuration_auto_on_managed_subnet(self):
         node = factory.make_Node()
@@ -3128,7 +3119,7 @@ class TestNodeNetworking(MAASServerTestCase):
         auto_ip = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first()
         self.assertIsNotNone(auto_ip)
-        self.assertEquals(subnet, auto_ip.subnet)
+        self.assertEqual(subnet, auto_ip.subnet)
 
     def test_set_initial_networking_configuration_link_up_on_enabled(self):
         node = factory.make_Node()
@@ -3162,7 +3153,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
         managed_subnet = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first().subnet
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3172,12 +3163,12 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v4)
         network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v6)
@@ -3206,7 +3197,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(managed_subnet.get_ipnetwork()),
             subnet=managed_subnet, interface=boot_interface)
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(boot_interface.id, managed_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3217,14 +3208,14 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         unmanaged_network = factory.make_ipv4_network()
         unmanaged_subnet = factory.make_Subnet(
-            cidr=unicode(unmanaged_network.cidr))
+            cidr=str(unmanaged_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(unmanaged_network),
             subnet=unmanaged_subnet, interface=interface)
         managed_network = factory.make_ipv4_network()
         managed_subnet = factory.make_Subnet(
-            cidr=unicode(managed_network.cidr))
+            cidr=str(managed_network.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=managed_subnet)
@@ -3233,7 +3224,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(managed_network),
             subnet=managed_subnet, interface=interface)
         gateway_ip = managed_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(interface.id, managed_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3245,7 +3236,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
         physical_subnet = factory.make_Subnet(
-            cidr=unicode(physical_network.cidr))
+            cidr=str(physical_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(physical_network),
@@ -3258,13 +3249,13 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.BOND, node=node, parents=parent_interfaces)
         bond_network = factory.make_ipv4_network()
         bond_subnet = factory.make_Subnet(
-            cidr=unicode(bond_network.cidr))
+            cidr=str(bond_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(bond_network),
             subnet=bond_subnet, interface=bond_interface)
         gateway_ip = bond_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(bond_interface.id, bond_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3276,7 +3267,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
         physical_subnet = factory.make_Subnet(
-            cidr=unicode(physical_network.cidr))
+            cidr=str(physical_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(physical_network),
@@ -3285,13 +3276,13 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, node=node, parents=[physical_interface])
         vlan_network = factory.make_ipv4_network()
         vlan_subnet = factory.make_Subnet(
-            cidr=unicode(vlan_network.cidr))
+            cidr=str(vlan_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(vlan_network),
             subnet=vlan_subnet, interface=vlan_interface)
         gateway_ip = physical_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(physical_interface.id, physical_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3303,7 +3294,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
         physical_subnet = factory.make_Subnet(
-            cidr=unicode(physical_network.cidr))
+            cidr=str(physical_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(physical_network),
@@ -3312,7 +3303,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         boot_network = factory.make_ipv4_network()
         boot_subnet = factory.make_Subnet(
-            cidr=unicode(boot_network.cidr))
+            cidr=str(boot_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(boot_network),
@@ -3320,7 +3311,7 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
         node.boot_interface = boot_interface
         node.save()
         gateway_ip = boot_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(boot_interface.id, boot_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3332,20 +3323,20 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         sticky_network = factory.make_ipv4_network()
         sticky_subnet = factory.make_Subnet(
-            cidr=unicode(sticky_network.cidr))
+            cidr=str(sticky_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(sticky_network),
             subnet=sticky_subnet, interface=interface)
         user_reserved_network = factory.make_ipv4_network()
         user_reserved_subnet = factory.make_Subnet(
-            cidr=unicode(user_reserved_network.cidr))
+            cidr=str(user_reserved_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=factory.make_User(),
             ip=factory.pick_ip_in_network(user_reserved_network),
             subnet=user_reserved_subnet, interface=interface)
         gateway_ip = sticky_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(interface.id, sticky_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3357,20 +3348,20 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node)
         user_reserved_network = factory.make_ipv4_network()
         user_reserved_subnet = factory.make_Subnet(
-            cidr=unicode(user_reserved_network.cidr))
+            cidr=str(user_reserved_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=factory.make_User(),
             ip=factory.pick_ip_in_network(user_reserved_network),
             subnet=user_reserved_subnet, interface=interface)
         auto_network = factory.make_ipv4_network()
         auto_subnet = factory.make_Subnet(
-            cidr=unicode(auto_network.cidr))
+            cidr=str(auto_network.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
             ip=factory.pick_ip_in_network(auto_network),
             subnet=auto_subnet, interface=interface)
         gateway_ip = user_reserved_subnet.gateway_ip
-        self.assertEquals(
+        self.assertEqual(
             [(interface.id, user_reserved_subnet.id, gateway_ip)],
             node.get_best_guess_for_default_gateways())
 
@@ -3384,16 +3375,16 @@ class TestGetDefaultGateways(MAASServerTestCase):
             status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v4_2 = factory.make_ipv4_network()
-        subnet_v4_2 = factory.make_Subnet(cidr=unicode(network_v4_2.cidr))
+        subnet_v4_2 = factory.make_Subnet(cidr=str(network_v4_2.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v4_2)
         network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         network_v6_2 = factory.make_ipv6_network()
-        subnet_v6_2 = factory.make_Subnet(cidr=unicode(network_v6_2.cidr))
+        subnet_v6_2 = factory.make_Subnet(cidr=str(network_v6_2.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v6_2)
@@ -3416,7 +3407,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
         node.gateway_link_ipv4 = link_v4
         node.gateway_link_ipv6 = link_v6
         node.save()
-        self.assertEquals((
+        self.assertEqual((
             (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
             (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
             ), node.get_default_gateways())
@@ -3427,14 +3418,14 @@ class TestGetDefaultGateways(MAASServerTestCase):
             status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v4_2 = factory.make_ipv4_network()
-        subnet_v4_2 = factory.make_Subnet(cidr=unicode(network_v4_2.cidr))
+        subnet_v4_2 = factory.make_Subnet(cidr=str(network_v4_2.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v4_2)
         network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v4),
@@ -3449,7 +3440,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             subnet=subnet_v6, interface=interface)
         node.gateway_link_ipv4 = link_v4
         node.save()
-        self.assertEquals((
+        self.assertEqual((
             (interface.id, subnet_v4_2.id, subnet_v4_2.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
             ), node.get_default_gateways())
@@ -3460,11 +3451,11 @@ class TestGetDefaultGateways(MAASServerTestCase):
             status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         network_v6_2 = factory.make_ipv6_network()
-        subnet_v6_2 = factory.make_Subnet(cidr=unicode(network_v6_2.cidr))
+        subnet_v6_2 = factory.make_Subnet(cidr=str(network_v6_2.cidr))
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet_v6_2)
@@ -3482,7 +3473,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             subnet=subnet_v6_2, interface=interface)
         node.gateway_link_ipv6 = link_v6
         node.save()
-        self.assertEquals((
+        self.assertEqual((
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6_2.id, subnet_v6_2.gateway_ip),
             ), node.get_default_gateways())
@@ -3493,9 +3484,9 @@ class TestGetDefaultGateways(MAASServerTestCase):
             status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v4),
@@ -3504,7 +3495,7 @@ class TestGetDefaultGateways(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v6),
             subnet=subnet_v6, interface=interface)
-        self.assertEquals((
+        self.assertEqual((
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
             ), node.get_default_gateways())
@@ -3659,7 +3650,7 @@ class TestNode_Start(MAASServerTestCase):
         self.patch_autospec(node_module, "power_on_node")
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
-        driver_check = self.patch_autospec(node_module, "power_driver_check")
+        driver_check = self.patch(node_module, "power_driver_check")
         with post_commit_hooks:
             node.start(user)
         self.expectThat(driver_check, MockCalledOnceWith(
@@ -3784,7 +3775,7 @@ class TestNode_Start(MAASServerTestCase):
 
     def test_storage_layout_issues_is_valid_when_flat(self):
         node = factory.make_Node()
-        self.assertEquals([], node.storage_layout_issues())
+        self.assertEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -3794,11 +3785,11 @@ class TestNode_Start(MAASServerTestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         bcache = fs_group.virtual_device
         factory.make_Filesystem(block_device=bcache, mount_point="/")
-        self.assertEquals([], node.storage_layout_issues())
+        self.assertEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_returns_invalid_when_no_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        self.assertEquals(
+        self.assertEqual(
             ["Specify a storage device to be able to deploy this node.",
              "Mount the root '/' filesystem to be able to deploy this node."],
             node.storage_layout_issues())
@@ -3810,7 +3801,7 @@ class TestNode_Start(MAASServerTestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
         bcache = fs_group.virtual_device
         factory.make_Filesystem(block_device=bcache, mount_point="/")
-        self.assertEquals(
+        self.assertEqual(
             ["This node cannot be deployed because it cannot boot from a "
              "bcache volume. Mount /boot on a non-bcache device to be able to "
              "deploy this node."], node.storage_layout_issues())
@@ -3855,7 +3846,7 @@ class TestNode_Stop(MAASServerTestCase):
         self.patch_autospec(node_module, "power_off_node")
         user = factory.make_User()
         node = self.make_node_with_interface(user)
-        driver_check = self.patch_autospec(node_module, "power_driver_check")
+        driver_check = self.patch(node_module, "power_driver_check")
         with post_commit_hooks:
             node.stop(user, factory.make_name('stop-mode'))
         self.expectThat(driver_check, MockCalledOnceWith(

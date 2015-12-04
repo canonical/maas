@@ -3,15 +3,6 @@
 
 """Security-related code, primarily relating to TLS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_region_certificate",
     "get_shared_secret",
@@ -44,7 +35,7 @@ from twisted.internet import ssl
 
 
 def get_serial():
-    ref = datetime(2012, 01, 16, tzinfo=UTC)
+    ref = datetime(2012, 1, 16, tzinfo=UTC)
     now = datetime.now(tz=UTC)
     serial = (now - ref).total_seconds()
     return int(serial)
@@ -58,7 +49,7 @@ def load_region_certificate():
         # The certificate will be returned as a unicode string. However,
         # it's in PEM form, a base-64 encoded certificate and key, so we
         # need to get back to bytes, then parse it.
-        pem = upem.decode("ascii")
+        pem = upem.encode("ascii")
         return ssl.PrivateCertificate.loadPEM(pem)
 
 
@@ -72,7 +63,7 @@ def save_region_certificate(cert):
 
 def generate_region_certificate():
     key = ssl.KeyPair.generate(size=2048)
-    return key.selfSignedCert(serialNumber=get_serial(), CN="MAAS Region")
+    return key.selfSignedCert(serialNumber=get_serial(), CN=b"MAAS Region")
 
 
 @synchronous

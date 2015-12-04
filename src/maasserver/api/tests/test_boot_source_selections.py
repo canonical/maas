@@ -3,19 +3,9 @@
 
 """Tests for the `Boot Source Selections` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver.api.boot_source_selections import (
@@ -26,6 +16,7 @@ from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import MatchesStructure
 
 
@@ -75,8 +66,8 @@ class TestBootSourceSelectionAPI(APITestCase):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.get(
             get_boot_source_selection_uri(boot_source_selection))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_boot_source_selection = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_boot_source_selection = json_load_bytes(response.content)
         boot_source = boot_source_selection.boot_source
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
@@ -92,7 +83,7 @@ class TestBootSourceSelectionAPI(APITestCase):
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCESELECTION_FIELDS,
-            returned_boot_source_selection.keys())
+            returned_boot_source_selection)
         self.assertThat(
             boot_source_selection,
             MatchesStructure.byEquality(**returned_boot_source_selection))
@@ -101,21 +92,21 @@ class TestBootSourceSelectionAPI(APITestCase):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.get(
             get_boot_source_selection_uri(boot_source_selection))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
             get_boot_source_selection_uri(boot_source_selection))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source_selection))
 
     def test_DELETE_requires_admin(self):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
             get_boot_source_selection_uri(boot_source_selection))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
@@ -135,7 +126,8 @@ class TestBootSourceSelectionAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_selection_uri(boot_source_selection), new_values)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         boot_source_selection = reload_object(boot_source_selection)
         self.assertAttributes(boot_source_selection, new_values)
 
@@ -146,7 +138,7 @@ class TestBootSourceSelectionAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_selection_uri(boot_source_selection), new_values)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourceSelectionBackwardAPI(APITestCase):
@@ -167,8 +159,8 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.get(
             get_boot_source_selection_backward_uri(boot_source_selection))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_boot_source_selection = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_boot_source_selection = json_load_bytes(response.content)
         boot_source = boot_source_selection.boot_source
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
@@ -184,7 +176,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCESELECTION_FIELDS,
-            returned_boot_source_selection.keys())
+            list(returned_boot_source_selection.keys()))
         self.assertThat(
             boot_source_selection,
             MatchesStructure.byEquality(**returned_boot_source_selection))
@@ -197,8 +189,8 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
             response = self.client.get(
                 get_boot_source_selection_backward_uri(
                     boot_source_selection, nodegroup))
-            self.assertEqual(httplib.OK, response.status_code)
-            returned_boot_source_selection = json.loads(response.content)
+            self.assertEqual(http.client.OK, response.status_code)
+            returned_boot_source_selection = json_load_bytes(response.content)
             del returned_boot_source_selection['resource_uri']
             self.assertThat(
                 boot_source_selection,
@@ -208,21 +200,21 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.get(
             get_boot_source_selection_backward_uri(boot_source_selection))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
             get_boot_source_selection_backward_uri(boot_source_selection))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source_selection))
 
     def test_DELETE_requires_admin(self):
         boot_source_selection = factory.make_BootSourceSelection()
         response = self.client.delete(
             get_boot_source_selection_backward_uri(boot_source_selection))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
@@ -241,7 +233,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         response = self.client.put(
             get_boot_source_selection_backward_uri(
                 boot_source_selection), new_values)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         boot_source_selection = reload_object(boot_source_selection)
         self.assertAttributes(boot_source_selection, new_values)
 
@@ -253,7 +245,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         response = self.client.put(
             get_boot_source_selection_backward_uri(
                 boot_source_selection), new_values)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourceSelectionsAPI(APITestCase):
@@ -280,8 +272,9 @@ class TestBootSourceSelectionsAPI(APITestCase):
             reverse(
                 'boot_source_selections_handler',
                 args=[boot_source.id]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [selection.id for selection in selections],
             [selection.get('id') for selection in parsed_result])
@@ -292,7 +285,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
             reverse(
                 'boot_source_selections_handler',
                 args=[boot_source.id]))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
@@ -312,8 +305,8 @@ class TestBootSourceSelectionsAPI(APITestCase):
             reverse(
                 'boot_source_selections_handler',
                 args=[boot_source.id]), params)
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source_selection = BootSourceSelection.objects.get(
             id=parsed_result['id'])
@@ -333,7 +326,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
             reverse(
                 'boot_source_selections_handler',
                 args=[boot_source.id]), params)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourceSelectionsBackwardAPI(APITestCase):
@@ -366,8 +359,9 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
         # Create boot source selections in another boot source.
         [factory.make_BootSourceSelection() for _ in range(3)]
         response = self.client.get(self.get_uri(boot_source))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [selection.id for selection in selections],
             [selection.get('id') for selection in parsed_result])
@@ -384,8 +378,8 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
             nodegroup = factory.make_NodeGroup()
             response = self.client.get(self.get_uri(boot_source, nodegroup))
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_result = json.loads(response.content)
+                http.client.OK, response.status_code, response.content)
+            parsed_result = json_load_bytes(response.content)
             self.assertItemsEqual(
                 [selection.id for selection in selections],
                 [selection.get('id') for selection in parsed_result])
@@ -393,7 +387,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()
         response = self.client.get(self.get_uri(boot_source))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
@@ -409,8 +403,8 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
             'labels': [boot_source_caches[0].label],
         }
         response = self.client.post(self.get_uri(boot_source), params)
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source_selection = BootSourceSelection.objects.get(
             id=parsed_result['id'])
@@ -427,4 +421,4 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
             'labels': [factory.make_name('label')],
         }
         response = self.client.post(self.get_uri(boot_source), params)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)

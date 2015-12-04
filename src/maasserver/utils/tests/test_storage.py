@@ -3,15 +3,6 @@
 
 """Tests for storage utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.enum import (
@@ -51,7 +42,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
         filesystem = factory.make_Filesystem(**{
             self.filesystem_property: model,
             })
-        self.assertEquals(filesystem, get_effective_filesystem(model))
+        self.assertEqual(filesystem, get_effective_filesystem(model))
 
     def test__returns_acquired_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -63,7 +54,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
             self.filesystem_property: model,
             "acquired": True,
             })
-        self.assertEquals(filesystem, get_effective_filesystem(model))
+        self.assertEqual(filesystem, get_effective_filesystem(model))
 
     def test__returns_non_mountable_filesystem(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -72,7 +63,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
             self.filesystem_property: model,
             "fstype": FILESYSTEM_TYPE.BCACHE_BACKING,
             })
-        self.assertEquals(filesystem, get_effective_filesystem(model))
+        self.assertEqual(filesystem, get_effective_filesystem(model))
 
     def test__returns_none_when_allocated_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -87,7 +78,7 @@ class TestGetEffectiveFilesystem(MAASServerTestCase):
 class TestUsedFor(MAASServerTestCase):
     def test__unused(self):
         block_device = factory.make_BlockDevice()
-        self.assertEquals(used_for(block_device), "Unused")
+        self.assertEqual(used_for(block_device), "Unused")
 
     def test__fs_formatted(self):
         block_device = factory.make_BlockDevice()

@@ -3,19 +3,9 @@
 
 """Tests for bcache API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 from uuid import uuid4
 
 from django.core.urlresolvers import reverse
@@ -28,7 +18,10 @@ from maasserver.enum import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.converters import (
+    human_readable_bytes,
+    json_load_bytes,
+)
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -73,14 +66,15 @@ class TestBcacheDevicesAPI(APITestCase):
         uri = get_bcache_devices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             bcache.id
             for bcache in bcaches
             ]
         result_ids = [
             bcache["id"]
-            for bcache in json.loads(response.content)
+            for bcache in json_load_bytes(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -90,7 +84,7 @@ class TestBcacheDevicesAPI(APITestCase):
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
@@ -100,7 +94,7 @@ class TestBcacheDevicesAPI(APITestCase):
             'backing_device': backing_device.id,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_409_if_not_ready(self):
         self.become_admin()
@@ -109,7 +103,7 @@ class TestBcacheDevicesAPI(APITestCase):
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
@@ -119,7 +113,7 @@ class TestBcacheDevicesAPI(APITestCase):
             'backing_device': backing_device.id,
         })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_create(self):
         """Tests Bcache device creation."""
@@ -129,7 +123,7 @@ class TestBcacheDevicesAPI(APITestCase):
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
@@ -138,8 +132,9 @@ class TestBcacheDevicesAPI(APITestCase):
             'cache_set': cache_set.id,
             'backing_device': backing_device.id,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(backing_size, parsed_device['virtual_device']['size'])
         self.assertItemsEqual('bcache0', parsed_device['name'])
         self.assertItemsEqual(uuid, parsed_device['uuid'])
@@ -151,7 +146,7 @@ class TestBcacheDevicesAPI(APITestCase):
         backing_size = 10 * 1000 ** 4
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
@@ -160,8 +155,8 @@ class TestBcacheDevicesAPI(APITestCase):
             'backing_device': backing_device.id,
         })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        parsed_content = json.loads(response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json_load_bytes(response.content)
         self.assertIn(
             'Bcache requires a cache_set.',
             parsed_content['__all__'])
@@ -172,7 +167,7 @@ class TestBcacheDevicesAPI(APITestCase):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         uri = get_bcache_devices_uri(node)
         response = self.client.post(uri, {
             'name': 'bcache0',
@@ -181,8 +176,8 @@ class TestBcacheDevicesAPI(APITestCase):
             'cache_set': cache_set.id,
         })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        parsed_content = json.loads(response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json_load_bytes(response.content)
         self.assertIn(
             'Either backing_device or backing_partition must be specified.',
             parsed_content['__all__'])
@@ -212,8 +207,9 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(bcache)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_bcache = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_bcache = json_load_bytes(response.content)
         self.assertThat(parsed_bcache, ContainsDict({
             "id": Equals(bcache.id),
             "uuid": Equals(bcache.uuid),
@@ -241,7 +237,7 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(not_bcache)
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_deletes_bcache(self):
         self.become_admin()
@@ -251,7 +247,7 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(bcache)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(bcache))
 
     def test_delete_403_when_not_admin(self):
@@ -261,7 +257,7 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(bcache)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_404_when_not_bcache(self):
         self.become_admin()
@@ -272,7 +268,7 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(not_bcache)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_409_when_not_ready(self):
         self.become_admin()
@@ -282,7 +278,7 @@ class TestBcacheDeviceAPI(APITestCase):
         uri = get_bcache_device_uri(bcache)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_update_bcache(self):
         """Tests update bcache method by changing the name, UUID and cache
@@ -293,15 +289,16 @@ class TestBcacheDeviceAPI(APITestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         filesystem_ids = [fs.id for fs in bcache.filesystems.all()]
         response = self.client.put(uri, {
             'name': 'new_name',
             'uuid': uuid,
             'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual('new_name', parsed_device['name'])
         self.assertEqual(uuid, parsed_device['uuid'])
         self.assertEqual(
@@ -323,8 +320,9 @@ class TestBcacheDeviceAPI(APITestCase):
         response = self.client.put(uri, {
             'backing_device': new_backing.id
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
         self.assertEqual('physical', parsed_device['backing_device']['type'])
 
@@ -343,8 +341,9 @@ class TestBcacheDeviceAPI(APITestCase):
         response = self.client.put(uri, {
             'backing_partition': new_backing.id
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device['backing_device']['id'])
         self.assertEqual('partition', parsed_device['backing_device']['type'])
 
@@ -361,8 +360,8 @@ class TestBcacheDeviceAPI(APITestCase):
             'backing_device': new_backing.id,
         })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        parsed_content = json.loads(response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        parsed_content = json_load_bytes(response.content)
         self.assertIn(
             'Select a valid choice.',
             parsed_content['backing_device'][0])
@@ -373,14 +372,14 @@ class TestBcacheDeviceAPI(APITestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         response = self.client.put(uri, {
             'name': 'new_name',
             'uuid': uuid,
             'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update_409_if_not_ready(self):
         self.become_admin()
@@ -389,11 +388,11 @@ class TestBcacheDeviceAPI(APITestCase):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
             cache_mode=CACHE_MODE_TYPE.WRITEBACK)
         uri = get_bcache_device_uri(bcache)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         response = self.client.put(uri, {
             'name': 'new_name',
             'uuid': uuid,
             'cache_mode': CACHE_MODE_TYPE.WRITEAROUND,
         })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)

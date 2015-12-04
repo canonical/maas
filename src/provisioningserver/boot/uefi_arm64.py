@@ -3,15 +3,6 @@
 
 """UEFI ARM64 Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'UEFIARM64BootMethod',
     ]
@@ -20,7 +11,7 @@ __all__ = [
 import glob
 import os.path
 from textwrap import dedent
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from provisioningserver.boot import (
     BootMethodInstallError,
@@ -29,6 +20,7 @@ from provisioningserver.boot import (
 )
 from provisioningserver.boot.install_bootloader import install_bootloader
 from provisioningserver.boot.uefi import UEFIBootMethod
+from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
 
@@ -66,7 +58,8 @@ class UEFIARM64BootMethod(UEFIBootMethod):
         """
         return None
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Installs the required files for UEFI ARM64 booting into the
         tftproot.
         """

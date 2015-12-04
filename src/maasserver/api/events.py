@@ -1,21 +1,14 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "EventsHandler",
 ]
 
 import logging
-import urllib
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from django.core.urlresolvers import reverse
 from formencode.validators import Int
@@ -148,7 +141,7 @@ class EventsHandler(OperationsHandler):
             request.GET,
             {'after': max(0, start_event_id - limit)}, self.all_params)
         prev_uri = '%s?%s' % (base_path,
-                              urllib.urlencode(
+                              urllib.parse.urlencode(
                                   prev_uri_params,
                                   doseq=True))
 
@@ -156,7 +149,7 @@ class EventsHandler(OperationsHandler):
             request.GET,
             {'after': start_event_id + limit}, self.all_params)
         next_uri = '%s?%s' % (base_path,
-                              urllib.urlencode(
+                              urllib.parse.urlencode(
                                   next_uri_params,
                                   doseq=True))
 

@@ -3,19 +3,10 @@
 
 """Tests for `provisioningserver.dhcp.writer`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
-from io import BytesIO
+import io
 import os
 from subprocess import (
     PIPE,
@@ -30,6 +21,7 @@ from mock import Mock
 from provisioningserver.dhcp import writer
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.utils.fs import read_text_file
+from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.matchers import (
     ContainsAll,
     MatchesStructure,
@@ -75,13 +67,12 @@ class TestScript(MAASTestCase):
             '--omapi-key', args.omapi_key,
             ]
 
-        cmd = Popen(
-            script, stdout=PIPE, env=dict(PYTHONPATH=":".join(sys.path)))
+        cmd = Popen(script, stdout=PIPE, env=select_c_utf8_locale())
         output, err = cmd.communicate()
 
         self.assertEqual(0, cmd.returncode, err)
 
-        self.assertThat(output, ContainsAll([
+        self.assertThat(output.decode("ascii"), ContainsAll([
             args.subnet,
             args.subnet_mask,
             args.broadcast_ip,
@@ -126,12 +117,13 @@ class TestScript(MAASTestCase):
                 ip_range_high='ip-range-high'))
 
     def test_run(self):
-        self.patch(sys, "stdout", BytesIO())
+        stdout = io.BytesIO()
+        self.patch(sys, "stdout", io.TextIOWrapper(stdout, "utf-8"))
         args = self.make_args(factory.make_ipv4_network())
 
         writer.run(args)
 
-        output = sys.stdout.getvalue()
+        output = stdout.getvalue()
         contains_all_params = ContainsAll([
             args.subnet,
             args.interface,
@@ -145,7 +137,7 @@ class TestScript(MAASTestCase):
             args.ip_range_low,
             args.ip_range_high,
             ])
-        self.assertThat(output, contains_all_params)
+        self.assertThat(output.decode("ascii"), contains_all_params)
 
     def test_run_save_to_file(self):
         args = self.make_args()

@@ -3,15 +3,6 @@
 
 """Tests for all forms that are used with `Partition`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import uuid
@@ -51,7 +42,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because size below zero.")
-        self.assertEquals({
+        self.assertEqual({
             'size': [
                 "Ensure this value is greater than or equal to %s." % (
                     MIN_BLOCK_DEVICE_SIZE),
@@ -67,7 +58,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because size is to large.")
-        self.assertEquals({
+        self.assertEqual({
             'size': [
                 "Ensure this value is less than or equal to %s." % (
                     block_device.size),
@@ -76,7 +67,7 @@ class TestAddPartitionForm(MAASServerTestCase):
 
     def test_is_valid_if_size_a_string(self):
         block_device = factory.make_PhysicalBlockDevice()
-        k_size = (MIN_BLOCK_DEVICE_SIZE / 1000) + 1
+        k_size = (MIN_BLOCK_DEVICE_SIZE // 1000) + 1
         size = "%sk" % k_size
         data = {
             'size': size,
@@ -89,7 +80,7 @@ class TestAddPartitionForm(MAASServerTestCase):
     def test_size_rounded_down_and_placed_on_alignment_boundry(self):
         block_size = 4096
         block_device = factory.make_PhysicalBlockDevice(block_size=block_size)
-        k_size = (MIN_BLOCK_DEVICE_SIZE / 1000) + 1
+        k_size = (MIN_BLOCK_DEVICE_SIZE // 1000) + 1
         size = "%sk" % k_size
         rounded_size = round_size_to_nearest_block(
             k_size * 1000, PARTITION_ALIGNMENT_SIZE, False)
@@ -99,7 +90,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         form = AddPartitionForm(block_device, data=data)
         self.assertTrue(form.is_valid())
         partition = form.save()
-        self.assertEquals(rounded_size, partition.size)
+        self.assertEqual(rounded_size, partition.size)
 
     def test_uuid_is_set_on_partition(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -111,7 +102,7 @@ class TestAddPartitionForm(MAASServerTestCase):
         form = AddPartitionForm(block_device, data=data)
         self.assertTrue(form.is_valid())
         partition = form.save()
-        self.assertEquals(part_uuid, partition.uuid)
+        self.assertEqual(part_uuid, partition.uuid)
 
     def test_bootable_is_set_on_partition(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -144,7 +135,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid uuid.")
-        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+        self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_format_fstype(self):
         partition = factory.make_Partition()
@@ -155,7 +146,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid fstype.")
-        self.assertEquals({
+        self.assertEqual({
             'fstype': [
                 "Select a valid choice. lvm-pv is not one of the "
                 "available choices."
@@ -176,8 +167,8 @@ class TestFormatPartitionForm(MAASServerTestCase):
         filesystem = get_one(
             Filesystem.objects.filter(partition=partition))
         self.assertIsNotNone(filesystem)
-        self.assertEquals(fstype, filesystem.fstype)
-        self.assertEquals(fsuuid, filesystem.uuid)
+        self.assertEqual(fstype, filesystem.fstype)
+        self.assertEqual(fsuuid, filesystem.uuid)
 
     def test_deletes_old_filesystem_and_creates_new_one(self):
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
@@ -189,7 +180,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         form = FormatPartitionForm(partition, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
-        self.assertEquals(
+        self.assertEqual(
             1,
             Filesystem.objects.filter(partition=partition).count(),
             "Should only be one filesystem that exists for partition.")
@@ -197,4 +188,4 @@ class TestFormatPartitionForm(MAASServerTestCase):
         filesystem = get_one(
             Filesystem.objects.filter(partition=partition))
         self.assertIsNotNone(filesystem)
-        self.assertEquals(fstype, filesystem.fstype)
+        self.assertEqual(fstype, filesystem.fstype)

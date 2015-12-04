@@ -3,19 +3,9 @@
 
 """Tests for the get_named_conf command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from codecs import getwriter
-from io import BytesIO
+from io import StringIO
 
 from django.core.management import call_command
 from maasserver.testing.testcase import MAASServerTestCase
@@ -28,8 +18,7 @@ from testtools.matchers import (
 class TestGetNamedConfCommand(MAASServerTestCase):
 
     def test_get_named_conf_returns_snippet(self):
-        out = BytesIO()
-        stdout = getwriter("UTF-8")(out)
+        stdout = StringIO()
         call_command('get_named_conf', stdout=stdout)
         result = stdout.getvalue()
         # Just check that the returned snippet looks all right.

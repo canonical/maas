@@ -3,23 +3,15 @@
 
 """Test maasserver middleware classes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import logging
 import random
 
 from crochet import TimeoutError
+from django.conf import settings
 from django.contrib.messages import constants
 from django.core.exceptions import (
     PermissionDenied,
@@ -117,51 +109,62 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         # exception message.
         error_message = factory.make_string()
         response = self.process_exception(RuntimeError(error_message))
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.INTERNAL_SERVER_ERROR, error_message),
-            (response.status_code, response.content))
+            (http.client.INTERNAL_SERVER_ERROR, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_reports_MAASAPIException_with_appropriate_api_error(self):
         class MyException(MAASAPIException):
-            api_error = httplib.UNAUTHORIZED
+            api_error = http.client.UNAUTHORIZED
 
         error_message = factory.make_string()
         exception = MyException(error_message)
         response = self.process_exception(exception)
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.UNAUTHORIZED, error_message),
-            (response.status_code, response.content))
+            (http.client.UNAUTHORIZED, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_renders_MAASAPIException_as_unicode(self):
         class MyException(MAASAPIException):
-            api_error = httplib.UNAUTHORIZED
+            api_error = http.client.UNAUTHORIZED
 
-        error_message = "Error %s" % unichr(233)
+        error_message = "Error %s" % chr(233)
         response = self.process_exception(MyException(error_message))
         self.assertEqual(
-            (httplib.UNAUTHORIZED, error_message),
-            (response.status_code, response.content.decode('utf-8')))
+            (http.client.UNAUTHORIZED, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_reports_ValidationError_as_Bad_Request(self):
         error_message = factory.make_string()
         response = self.process_exception(ValidationError(error_message))
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.BAD_REQUEST, error_message),
-            (response.status_code, response.content))
+            (http.client.BAD_REQUEST, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_returns_ValidationError_message_dict_as_json(self):
         exception_dict = {'hostname': ['invalid']}
         exception = ValidationError(exception_dict)
         response = self.process_exception(exception)
-        self.assertEqual(exception_dict, json.loads(response.content))
+        self.assertIsInstance(response.content, bytes)
+        self.assertEqual(exception_dict, json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)))
         self.assertIn('application/json', response['Content-Type'])
 
     def test_reports_PermissionDenied_as_Forbidden(self):
         error_message = factory.make_string()
         response = self.process_exception(PermissionDenied(error_message))
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.FORBIDDEN, error_message),
-            (response.status_code, response.content))
+            (http.client.FORBIDDEN, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_api_500_error_is_logged(self):
         logger = self.useFixture(FakeLogger('maasserver'))
@@ -183,8 +186,10 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             middleware_module, 'RETRY_AFTER_SERVICE_UNAVAILABLE', retry_after)
         response = self.process_exception(exception)
         self.expectThat(
-            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
-        self.expectThat(response.content, Equals(unicode(exception)))
+            response.status_code, Equals(http.client.SERVICE_UNAVAILABLE))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals(str(exception)))
         self.expectThat(response['Retry-After'], Equals("%s" % retry_after))
 
 
@@ -196,9 +201,11 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
         error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
         response = middleware.process_exception(api_request, exception)
+        self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.NOT_FOUND, error_message),
-            (response.status_code, response.content))
+            (http.client.NOT_FOUND, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_error_outside_API(self):
         middleware = APIErrorsMiddleware()
@@ -216,7 +223,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
 
         self.assertEqual(
             (
-                httplib.SERVICE_UNAVAILABLE,
+                http.client.SERVICE_UNAVAILABLE,
                 '%s' % middleware_module.RETRY_AFTER_SERVICE_UNAVAILABLE,
             ),
             (response.status_code, response['Retry-after']))
@@ -237,7 +244,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request("/api/1.0/nodes/")
         response = HttpResponse(
             content="test content",
-            status=httplib.OK,
+            status=http.client.OK,
             content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
@@ -255,18 +262,19 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content="test content",
-            status=httplib.OK,
+            status=http.client.OK,
             content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
-            logger.output, Contains(response.content))
+            logger.output,
+            Contains(response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_debugging_logger_logs_binary_response(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content=sample_binary_data,
-            status=httplib.OK,
+            status=http.client.OK,
             content_type=b"application/octet-stream")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
@@ -372,7 +380,8 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         response = middleware.process_exception(api_request, exception)
         self.assertEqual(
             (middleware.handled_exceptions[exception_class], error_message),
-            (response.status_code, response.content))
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_error_outside_API(self):
         middleware = APIRPCErrorsMiddleware()
@@ -394,8 +403,9 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         response = middleware.process_exception(request, error)
 
         self.assertEqual(
-            (httplib.SERVICE_UNAVAILABLE, error_message),
-            (response.status_code, response.content))
+            (http.client.SERVICE_UNAVAILABLE, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_503_response_includes_retry_after_header_by_default(self):
         middleware = APIRPCErrorsMiddleware()
@@ -406,7 +416,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
         self.assertEqual(
             (
-                httplib.SERVICE_UNAVAILABLE,
+                http.client.SERVICE_UNAVAILABLE,
                 '%s' % middleware_module.RETRY_AFTER_SERVICE_UNAVAILABLE,
             ),
             (response.status_code, response['Retry-after']))
@@ -422,8 +432,9 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         response = middleware.process_exception(request, error)
 
         self.assertEqual(
-            (httplib.SERVICE_UNAVAILABLE, error_message),
-            (response.status_code, response.content))
+            (http.client.SERVICE_UNAVAILABLE, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_handles_TimeoutError(self):
         middleware = APIRPCErrorsMiddleware()
@@ -434,8 +445,9 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         response = middleware.process_exception(request, error)
 
         self.assertEqual(
-            (httplib.GATEWAY_TIMEOUT, error_message),
-            (response.status_code, response.content))
+            (http.client.GATEWAY_TIMEOUT, error_message),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_ignores_non_rpc_errors(self):
         middleware = APIRPCErrorsMiddleware()

@@ -3,15 +3,6 @@
 
 """Test for RPC utility functions for timers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -49,6 +40,7 @@ from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
 )
+from provisioningserver.twisted.protocols import amp
 from testtools.matchers import (
     Equals,
     Is,
@@ -56,7 +48,6 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import succeed
-from twisted.protocols import amp
 
 
 class TestHandleMonitorExpired(MAASServerTestCase):
@@ -73,7 +64,7 @@ class TestHandleMonitorExpired(MAASServerTestCase):
         self.addCleanup(node_query.enable)
         node_query.disable()
 
-        status = random.choice(NODE_FAILURE_STATUS_TRANSITIONS.keys())
+        status = random.choice(list(NODE_FAILURE_STATUS_TRANSITIONS.keys()))
         node = factory.make_Node(status=status)
         monitor_timeout = random.randint(1, 100)
         context = {

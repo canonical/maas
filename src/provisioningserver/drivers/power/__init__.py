@@ -3,17 +3,7 @@
 
 """Base power driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
-    "get_c_environment",
     "is_power_parameter_set",
     "POWER_QUERY_TIMEOUT",
     "PowerActionError",
@@ -33,7 +23,6 @@ from abc import (
     abstractproperty,
 )
 from datetime import timedelta
-import os
 import sys
 
 from jsonschema import validate
@@ -41,8 +30,8 @@ from provisioningserver.drivers import (
     JSON_SETTING_SCHEMA,
     validate_settings,
 )
-from provisioningserver.utils import pause
 from provisioningserver.utils.registry import Registry
+from provisioningserver.utils.twisted import pause
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -66,11 +55,6 @@ JSON_POWER_DRIVERS_SCHEMA = {
 # a power query request.
 # This should be configurable per-BMC.
 POWER_QUERY_TIMEOUT = timedelta(seconds=45).total_seconds()
-
-
-def get_c_environment():
-    """Copy the environment, setting LC_ALL to C."""
-    return dict(os.environ, LC_ALL="C")
 
 
 def is_power_parameter_set(param):
@@ -121,10 +105,8 @@ class PowerActionError(PowerError):
     or `off`."""
 
 
-class PowerDriverBase:
+class PowerDriverBase(metaclass=ABCMeta):
     """Base driver for a power driver."""
-
-    __metaclass__ = ABCMeta
 
     def __init__(self):
         super(PowerDriverBase, self).__init__()
@@ -265,7 +247,7 @@ class PowerDriver(PowerDriverBase):
             else:
                 returnValue(state)
         else:
-            raise exc_info[0], exc_info[1], exc_info[2]
+            raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
     @inlineCallbacks
     def perform_power(self, power_func, state_desired, system_id, context):
@@ -317,7 +299,7 @@ class PowerDriver(PowerDriverBase):
                 % (system_id, state, state_desired))
         else:
             # Report the last error.
-            raise exc_info[0], exc_info[1], exc_info[2]
+            raise exc_info[0](exc_info[1]).with_traceback(exc_info[2])
 
 
 class PowerDriverRegistry(Registry):

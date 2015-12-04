@@ -3,15 +3,6 @@
 
 """Testing infrastructure for MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "bindir",
     "root",
@@ -26,7 +17,6 @@ from os.path import (
     realpath,
 )
 import re
-from sys import executable
 from warnings import filterwarnings
 
 import mock
@@ -34,8 +24,8 @@ import mock
 # The root of the source tree.
 root = abspath(join(dirname(realpath(__file__)), pardir, pardir))
 
-# The directory containing the current interpreter.
-bindir = abspath(dirname(executable))
+# The bin/ directory in the source tree.
+bindir = join(root, "bin")
 
 # Construct a regular expression that matches all of MAAS's core
 # packages, and their subpackages.

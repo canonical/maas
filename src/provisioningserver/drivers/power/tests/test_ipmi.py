@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.drivers.power.ipmi`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -28,7 +19,6 @@ from mock import (
     sentinel,
 )
 from provisioningserver.drivers.power import (
-    get_c_environment,
     ipmi as ipmi_module,
     PowerAuthError,
     PowerFatalError,
@@ -40,6 +30,7 @@ from provisioningserver.drivers.power.ipmi import (
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     has_command_available,
+    select_c_utf8_locale,
 )
 from testtools.matchers import (
     Contains,
@@ -115,7 +106,6 @@ class TestIPMIPowerDriver(MAASTestCase):
         find_ip_via_arp = self.patch(ipmi_module, 'find_ip_via_arp')
         find_ip_via_arp.return_value = ip_address
         power_change = random.choice(("on", "off"))
-        env = get_c_environment()
 
         context['mac_address'] = factory.make_mac_address()
         context['power_address'] = random.choice((None, "", "   "))
@@ -127,7 +117,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         # The IP address is passed to _issue_ipmi_chassis_config_command.
         self.assertThat(
             driver._issue_ipmi_chassis_config_command,
-            MockCalledOnceWith(ANY, power_change, ip_address, env))
+            MockCalledOnceWith(ANY, power_change, ip_address))
         # The IP address is also within the command passed to
         # _issue_ipmi_chassis_config_command.
         self.assertThat(
@@ -136,7 +126,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         # The IP address is passed to _issue_ipmi_power_command.
         self.assertThat(
             driver._issue_ipmi_power_command,
-            MockCalledOnceWith(ANY, power_change, ip_address, env))
+            MockCalledOnceWith(ANY, power_change, ip_address))
         # The IP address is also within the command passed to
         # _issue_ipmi_power_command.
         self.assertThat(
@@ -150,9 +140,10 @@ class TestIPMIPowerDriver(MAASTestCase):
         tmpfile.name = factory.make_name("filename")
 
         IPMIPowerDriver._issue_ipmi_chassis_config_command(
-            ["true"], sentinel.change, sentinel.addr, None)
+            ["true"], sentinel.change, sentinel.addr)
 
-        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(
+            NamedTemporaryFile, MockCalledOnceWith("w+", encoding="utf-8"))
         self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
         self.assertThat(tmpfile.write, MockCalledOnceWith(IPMI_CONFIG))
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
@@ -168,10 +159,10 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--cycle', '--on-if-off')
         ipmi_power_driver = IPMIPowerDriver()
-        env = get_c_environment()
+        env = select_c_utf8_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.return_value = 'on'
@@ -197,10 +188,10 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--off', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = get_c_environment()
+        env = select_c_utf8_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.return_value = 'off'
@@ -227,10 +218,10 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--soft', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = get_c_environment()
+        env = select_c_utf8_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.return_value = 'off'
@@ -253,10 +244,10 @@ class TestIPMIPowerDriver(MAASTestCase):
             ipmipower, power_address, power_pass, power_driver, power_user)
         ipmipower_command += ('--stat', )
         ipmi_power_driver = IPMIPowerDriver()
-        env = get_c_environment()
+        env = select_c_utf8_locale()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.return_value = 'other'
@@ -274,7 +265,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, 'password invalid')
+        process.communicate.return_value = (b'', b'password invalid')
         process.returncode = 0
 
         self.assertRaises(
@@ -286,7 +277,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, 'maaslog error')
+        process.communicate.return_value = (b'', b'maaslog error')
         process.returncode = -1
         maaslog = self.patch(ipmi_module, 'maaslog')
         self.patch(ipmi_power_driver, '_issue_ipmi_power_command')
@@ -303,7 +294,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
-        process.communicate.return_value = (None, '')
+        process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.side_effect = (

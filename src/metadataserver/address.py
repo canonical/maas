@@ -3,26 +3,17 @@
 
 """Figure out server address for the maas_url setting."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'guess_server_host',
     ]
 
-from os import environ
 import re
 import socket
 from subprocess import check_output
 
 from metadataserver import logger
 from provisioningserver.utils.network import get_all_addresses_for_interface
+from provisioningserver.utils.shell import select_c_utf8_locale
 
 # fcntl operation as defined in <ioctls.h>.  This is GNU/Linux-specific!
 SIOCGIFADDR = 0x8915
@@ -39,16 +30,9 @@ def get_command_output(*command_line):
     :return: Output from the command.
     :rtype: List of unicode, one per line.
     """
-    env = {
-        variable: value
-        for variable, value in environ.items()
-        if not variable.startswith('LC_')
-    }
-    env.update({
-        'LC_ALL': 'C',
-        'LANG': 'en_US.UTF-8',
-    })
-    return check_output(command_line, env=env).splitlines()
+    env = select_c_utf8_locale()
+    output = check_output(command_line, env=env)
+    return output.decode("utf-8").splitlines()
 
 
 def find_default_interface(ip_route_output):
@@ -77,11 +61,10 @@ def find_default_interface(ip_route_output):
 def get_ip_address(interface):
     """Get the first IP address for a given network interface.
 
-    :return: An `IPAddress` instance for the first IP address on the
-        interface. If the interface has both IPv4 and IPv6 addresses,
-        the v4 address will be preferred. Otherwise the returned address
-        will be the first result of a sort on the set of addresses on
-        the interface.
+    :return: The IP address, as a string, for the first address on the
+        interface. If the interface has both IPv4 and IPv6 addresses, the IPv4
+        address will be preferred. Otherwise the returned address will be the
+        first result of a sort on the set of addresses on the interface.
     """
     try:
         # get_all_addresses_for_interface yields IPAddress instances.

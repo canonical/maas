@@ -3,15 +3,6 @@
 
 """RPC methods for NodeGroupInterface"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "update_foreign_dhcp_ip",
     "get_cluster_interfaces_as_dicts",
@@ -60,8 +51,8 @@ def get_cluster_interfaces_as_dicts(cluster_uuid):
         nodegroup__uuid=cluster_uuid)
     return [
         {
-            b'name': interface.name,
-            b'interface': interface.interface,
-            b'ip': interface.ip,
+            'name': interface.name,
+            'interface': interface.interface,
+            'ip': interface.ip,
         }
         for interface in cluster_interfaces]

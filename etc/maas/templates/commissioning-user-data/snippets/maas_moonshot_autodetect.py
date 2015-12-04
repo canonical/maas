@@ -1,19 +1,9 @@
 #!/usr/bin/python
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    # unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import argparse
-import commands
 import json
 import re
+import subprocess
 
 
 IPMI_MAAS_USER = 'Administrator'
@@ -21,13 +11,13 @@ IPMI_MAAS_PASSWORD = 'password'
 
 
 def get_local_address():
-    output = commands.getoutput('ipmitool raw 0x2c 1 0')
+    output = subprocess.getoutput('ipmitool raw 0x2c 1 0')
     return "0x%s" % output.split()[2]
 
 
 def get_cartridge_address(local_address):
     # obtain address of Cartridge Controller (parent of the system node):
-    output = commands.getoutput(
+    output = subprocess.getoutput(
         'ipmitool -t 0x20 -b 0 -m %s raw 0x2c 1 0' % local_address)
     return "0x%s" % output.split()[2]
 
@@ -43,7 +33,7 @@ def get_channel_number(address, output):
 
 
 def get_ipmi_ip_address(local_address):
-    output = commands.getoutput(
+    output = subprocess.getoutput(
         'ipmitool -B 0 -T 0x20 -b 0 -t 0x20 -m %s lan print 2' % local_address)
     show_re = re.compile('IP Address\s+:\s+([0-9]{1,3}[.]?){4}')
     res = show_re.search(output)
@@ -77,7 +67,7 @@ def main():
     node_address = get_cartridge_address(local_address)
 
     # Obtaining channel numbers:
-    output = commands.getoutput(
+    output = subprocess.getoutput(
         'ipmitool -b 0 -t 0x20 -m %s sdr list mcloc -v' % local_address)
 
     local_chan = get_channel_number(local_address, output)

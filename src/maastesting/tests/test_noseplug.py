@@ -3,15 +3,6 @@
 
 """Tests for `maastesting.noseplug`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from optparse import OptionParser
@@ -70,6 +61,7 @@ class TestCrochet(MAASTestCase):
 
     def test__configure_sets_up_crochet_if_enabled(self):
         self.patch_autospec(crochet_module, "setup")
+        self.patch_autospec(crochet_module, "no_setup")
 
         crochet = Crochet()
         parser = OptionParser()
@@ -78,9 +70,25 @@ class TestCrochet(MAASTestCase):
         crochet.configure(options, sentinel.conf)
 
         self.assertThat(crochet_module.setup, MockCalledOnceWith())
+        self.assertThat(crochet_module.no_setup, MockNotCalled())
+
+    def test__configure_sets_up_crochet_with_no_setup_if_enabled(self):
+        self.patch_autospec(crochet_module, "setup")
+        self.patch_autospec(crochet_module, "no_setup")
+
+        crochet = Crochet()
+        parser = OptionParser()
+        crochet.add_options(parser=parser, env={})
+        options, rest = parser.parse_args(
+            ["--with-crochet", "--crochet-no-setup"])
+        crochet.configure(options, sentinel.conf)
+
+        self.assertThat(crochet_module.setup, MockNotCalled())
+        self.assertThat(crochet_module.no_setup, MockCalledOnceWith())
 
     def test__configure_does_not_set_up_crochet_if_not_enabled(self):
         self.patch_autospec(crochet_module, "setup")
+        self.patch_autospec(crochet_module, "no_setup")
 
         crochet = Crochet()
         parser = OptionParser()
@@ -89,6 +97,7 @@ class TestCrochet(MAASTestCase):
         crochet.configure(options, sentinel.conf)
 
         self.assertThat(crochet_module.setup, MockNotCalled())
+        self.assertThat(crochet_module.no_setup, MockNotCalled())
 
 
 class TestSelect(MAASTestCase):
@@ -154,7 +163,7 @@ class TestSelect(MAASTestCase):
 class TestMain(MAASTestCase):
 
     def test__sets_addplugins(self):
-        self.patch_autospec(noseplug, "TestProgram")
+        self.patch(noseplug, "TestProgram")
         noseplug.main()
         self.assertThat(
             noseplug.TestProgram,

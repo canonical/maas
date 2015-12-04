@@ -3,15 +3,6 @@
 
 """Utilities related to network and cluster interfaces."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_name_and_vlan_from_cluster_interface',
     'make_name_from_interface',
@@ -32,11 +23,11 @@ def make_name_from_interface(interface, alias=None):
     """
     if alias:
         interface = "%s:%s" % (interface, alias)
-    if interface is None or interface == u'':
-        base_name = u'unnamed-%d' % randint(1000000, 9999999)
+    if interface is None or interface == '':
+        base_name = 'unnamed-%d' % randint(1000000, 9999999)
     else:
         base_name = interface
-    return re.sub(u'[^\w:.-]', '--', base_name)
+    return re.sub('[^\w:.-]', '--', base_name)
 
 
 def get_name_and_vlan_from_cluster_interface(cluster_name, interface):

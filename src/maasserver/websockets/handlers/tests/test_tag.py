@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.tag`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.models.tag import Tag
@@ -39,7 +30,7 @@ class TestTagHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = TagHandler(user, {})
         tag = factory.make_Tag()
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_tag(tag),
             handler.get({"id": tag.id}))
 

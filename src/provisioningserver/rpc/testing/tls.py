@@ -3,15 +3,6 @@
 
 """Test helpers for TLS negotiation with AMP."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_tls_parameters_for_cluster",
     "get_tls_parameters_for_region",
@@ -26,7 +17,8 @@ from twisted.python import filepath
 def get_tls_parameters(private_cert_name, trust_cert_name):
     """get_tls_parameters()
 
-    Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
+    Implementation of
+    :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
     """
     testing = filepath.FilePath(__file__).parent()
     with testing.child(private_cert_name).open() as fin:

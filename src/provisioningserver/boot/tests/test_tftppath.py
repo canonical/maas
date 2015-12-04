@@ -3,15 +3,6 @@
 
 """Tests for the tftppath module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import errno
@@ -85,7 +76,8 @@ class TestTFTPPath(MAASTestCase):
         mapping = BootImageMapping()
         mapping.setdefault(image, image_resource)
         maas_meta = mapping.dump_json()
-        with open(os.path.join(tftproot, "maas.meta"), "wb") as f:
+        filepath = os.path.join(tftproot, "maas.meta")
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(maas_meta)
 
     def test_maas_meta_last_modified_returns_modification_time(self):
@@ -140,9 +132,11 @@ class TestTFTPPath(MAASTestCase):
         self.assertEqual([], list_boot_images(factory.make_string()))
 
     def test_list_boot_images_passes_on_other_exceptions(self):
+        # OSError(EACCESS) is transmogrified, by Python itself, into
+        # PermissionError. It's a subclass of OSError.
         error = OSError(errno.EACCES, "Deliberate error for testing.")
         self.patch(tftppath, 'list_subdirs', Mock(side_effect=error))
-        with ExpectedException(OSError):
+        with ExpectedException(PermissionError):
             list_boot_images(factory.make_string())
 
     def test_list_boot_images_copes_with_empty_directory(self):

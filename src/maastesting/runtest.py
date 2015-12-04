@@ -3,15 +3,6 @@
 
 """Test executors for MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'MAASRunTest',
     'MAASTwistedRunTest',
@@ -48,9 +39,9 @@ class MAASRunTest(runtest.RunTest):
 
     Tests in `maas`, `maasserver`, and `metadataserver` run with a Twisted
     reactor managed by `crochet`. It can be easy to decorate a test that
-    contains a ``yield`` with ``@wait_for_reactor`` or ``@asynchronous``,
-    forget the crucial ``@inlineCallbacks``, but see that it passes... because
-    it's not actually running.
+    contains a ``yield`` with ``@wait_for`` or ``@asynchronous``, forget the
+    crucial ``@inlineCallbacks``, but see that it passes... because it's not
+    actually running.
 
     This is another reason why you should see your test fail before you make
     it pass, but why not have the computer check too?
@@ -67,19 +58,8 @@ class MAASRunTest(runtest.RunTest):
         try:
             result = function(*args, **kwargs)
             return check_for_generator(result)
-        except KeyboardInterrupt:
-            raise
         except:
-            # TODO blake_r: Remove once we are using python3. This is needed
-            # because Django sets __cause__ manually on the exception and it
-            # does not set __traceback__. Since the traceback2 module is being
-            # used this causes an issue. Once python3 is used it handles the
-            # __traceback__ on __cause__ automatically.
-            # See: https://github.com/testing-cabal/testtools/issues/162
-            sysinfo = sys.exc_info()
-            if hasattr(sysinfo[1], '__cause__'):
-                sysinfo[1].__cause__.__traceback__ = None
-            return self._got_user_exception(sysinfo)
+            return self._got_user_exception(sys.exc_info())
 
 
 class MAASTwistedRunTest(deferredruntest.AsynchronousDeferredRunTest):

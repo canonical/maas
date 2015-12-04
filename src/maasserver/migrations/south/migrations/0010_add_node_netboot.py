@@ -16,7 +16,7 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         
         # Adding field 'Node.netboot'
-        db.add_column(u'maasserver_node', 'netboot', self.gf('django.db.models.fields.BooleanField')(default=True), keep_default=False)
+        db.add_column('maasserver_node', 'netboot', self.gf('django.db.models.fields.BooleanField')(default=True), keep_default=False)
 
         # Find all the allocated nodes with netboot=True.
         allocated_nodes = orm['maasserver.node'].objects.filter(
@@ -27,7 +27,7 @@ class Migration(SchemaMigration):
     def backwards(self, orm):
         
         # Deleting field 'Node.netboot'
-        db.delete_column(u'maasserver_node', 'netboot')
+        db.delete_column('maasserver_node', 'netboot')
 
 
     models = {
@@ -67,27 +67,27 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        u'maasserver.config': {
+        'maasserver.config': {
             'Meta': {'object_name': 'Config'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'value': ('maasserver.fields.JSONObjectField', [], {'null': 'True'})
         },
-        u'maasserver.filestorage': {
+        'maasserver.filestorage': {
             'Meta': {'object_name': 'FileStorage'},
             'data': ('django.db.models.fields.files.FileField', [], {'max_length': '255'}),
             'filename': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '200'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        u'maasserver.macaddress': {
+        'maasserver.macaddress': {
             'Meta': {'object_name': 'MACAddress'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'mac_address': ('maasserver.fields.MACAddressField', [], {'unique': 'True'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']"}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.node': {
+        'maasserver.node': {
             'Meta': {'object_name': 'Node'},
             'after_commissioning_action': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'architecture': ('django.db.models.fields.CharField', [], {'default': "u'i386'", 'max_length': '10'}),
@@ -104,7 +104,7 @@ class Migration(SchemaMigration):
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.nodegroup': {
+        'maasserver.nodegroup': {
             'Meta': {'object_name': 'NodeGroup'},
             'api_key': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '18'}),
             'api_token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'unique': 'True'}),
@@ -119,7 +119,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'worker_ip': ('django.db.models.fields.IPAddressField', [], {'unique': 'True', 'max_length': '15'})
         },
-        u'maasserver.sshkey': {
+        'maasserver.sshkey': {
             'Meta': {'unique_together': "((u'user', u'key'),)", 'object_name': 'SSHKey'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -127,7 +127,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"})
         },
-        u'maasserver.userprofile': {
+        'maasserver.userprofile': {
             'Meta': {'object_name': 'UserProfile'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'user': ('django.db.models.fields.related.OneToOneField', [], {'to': "orm['auth.User']", 'unique': 'True'})

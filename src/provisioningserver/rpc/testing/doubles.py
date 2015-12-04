@@ -3,15 +3,6 @@
 
 """Test doubles for the region's RPC implementation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DummyConnection",
     "StubOS",

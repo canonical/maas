@@ -3,15 +3,6 @@
 
 """Miscellaneous small definitions in support of boot-resource import."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_os_from_product',
     'get_signing_policy',
@@ -26,7 +17,7 @@ from provisioningserver.logger import get_maas_logger
 from simplestreams.util import policy_read_signed
 
 # A tuple of the items that together select a boot image.
-ImageSpec = namedtuple(b'ImageSpec', [
+ImageSpec = namedtuple('ImageSpec', [
     'os',
     'arch',
     'subarch',

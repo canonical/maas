@@ -3,15 +3,6 @@
 
 """Tests for asynchronous utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from functools import partial
@@ -19,7 +10,7 @@ from textwrap import dedent
 import threading
 from time import time
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from maasserver.exceptions import IteratorReusedError
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.utils import async
@@ -123,14 +114,14 @@ class TestUseOnceIterator(MAASTestCase):
 
     def test_raises_stop_iteration(self):
         iterator = async.UseOnceIterator([])
-        self.assertRaises(StopIteration, iterator.next)
+        self.assertRaises(StopIteration, iterator.__next__)
 
     def test_raises_iterator_reused(self):
         iterator = async.UseOnceIterator([])
         # Loop over the iterator to get to the point where we might try
         # and reuse it.
         list(iterator)
-        self.assertRaises(IteratorReusedError, iterator.next)
+        self.assertRaises(IteratorReusedError, iterator.__next__)
 
 
 class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
@@ -138,7 +129,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
     def test__is_thread_local(self):
         dhooks = DeferredHooks()
         queues = []
-        for _ in xrange(3):
+        for _ in range(3):
             thread = threading.Thread(
                 target=lambda: queues.append(dhooks.hooks))
             thread.start()
@@ -155,7 +146,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
 
     def test__add_cannot_be_called_in_the_reactor(self):
         dhooks = DeferredHooks()
-        add_in_reactor = wait_for_reactor(dhooks.add)
+        add_in_reactor = wait_for(30)(dhooks.add)  # Wait 30 seconds.
         self.assertRaises(AssertionError, add_in_reactor, Deferred())
 
     def test__fire_calls_hooks(self):

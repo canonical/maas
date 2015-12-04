@@ -3,23 +3,12 @@
 
 """Classes for generating BIND zone config files."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DNSForwardZoneConfig',
     'DNSReverseZoneConfig',
     'DNSZoneInfo',
     ]
 
-
-from abc import ABCMeta
 from datetime import datetime
 from itertools import chain
 
@@ -55,7 +44,7 @@ def enumerate_mapping(mapping):
 
     :param mapping: A dict mapping host names to lists of IP addresses.
     """
-    for hostname, ips in mapping.viewitems():
+    for hostname, ips in mapping.items():
         for ip in ips:
             yield hostname, ip
 
@@ -127,8 +116,6 @@ class DNSZoneInfo:
 class DNSZoneConfigBase:
     """Base class for zone writers."""
 
-    __metaclass__ = ABCMeta
-
     template_file_name = 'zone.template'
 
     def __init__(self, domain, zone_info, serial=None):
@@ -148,7 +135,7 @@ class DNSZoneConfigBase:
         return {
             'domain': self.domain,
             'serial': self.serial,
-            'modified': unicode(datetime.today()),
+            'modified': str(datetime.today()),
         }
 
     @classmethod
@@ -165,7 +152,7 @@ class DNSZoneConfigBase:
         for outfile in output_file:
             content = render_dns_template(cls.template_file_name, *parameters)
             with report_missing_config_dir():
-                incremental_write(content, outfile, mode=0644)
+                incremental_write(content.encode("utf-8"), outfile, mode=0o644)
 
 
 class DNSForwardZoneConfig(DNSZoneConfigBase):
@@ -372,17 +359,17 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
             # Prefixlen of 0-3 gives us 1, 4-7 gives us 2, etc.
             # While this seems wrong, we always _add_ a base label back in,
             # so it's correct.
-            rest_limit = (132 - network.prefixlen) / 4
+            rest_limit = (132 - network.prefixlen) // 4
             # What is the prefix for each inner subnet (It will be the next
             # smaller multiple of 4.)  If it's the smallest one, then RFC2317
             # tells us that we're adding an extra blob to the front of the
             # reverse zone name, and we want the entire prefixlen.
-            subnet_prefix = (network.prefixlen + 3) / 4 * 4
+            subnet_prefix = (network.prefixlen + 3) // 4 * 4
             if subnet_prefix == 128:
                 subnet_prefix = network.prefixlen
             # How big is the step between subnets?  Again, special case for
             # extra small subnets.
-            step = 1 << ((128 - network.prefixlen) / 4 * 4)
+            step = 1 << ((128 - network.prefixlen) // 4 * 4)
             if step < 16:
                 step = 16
             # Grab the base (hex) and trailing labels for our reverse zone.
@@ -392,11 +379,11 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         else:
             # IPv4.
             # The logic here is the same as for IPv6, but with 8 instead of 4.
-            rest_limit = (40 - network.prefixlen) / 8
-            subnet_prefix = (network.prefixlen + 7) / 8 * 8
+            rest_limit = (40 - network.prefixlen) // 8
+            subnet_prefix = (network.prefixlen + 7) // 8 * 8
             if subnet_prefix == 32:
                 subnet_prefix = network.prefixlen
-            step = 1 << ((32 - network.prefixlen) / 8 * 8)
+            step = 1 << ((32 - network.prefixlen) // 8 * 8)
             if step < 256:
                 step = 256
             # Grab the base (decimal) and trailing labels for our reverse

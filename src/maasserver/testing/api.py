@@ -3,15 +3,6 @@
 
 """Helpers for API testing."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'APITestCase',
     'APITransactionTestCase',
@@ -37,7 +28,7 @@ from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase
 
 
-class MultipleUsersScenarios:
+class MultipleUsersScenarios(metaclass=ABCMeta):
     """A mixin that uses testscenarios to repeat a testcase as different
     users.
 
@@ -58,8 +49,6 @@ class MultipleUsersScenarios:
     logged in, once with a simple (non-admin) user logged in and once with
     an admin user logged in.
     """
-
-    __metaclass__ = ABCMeta
 
     scenarios = abstractproperty(
         "The scenarios as defined by testscenarios.")

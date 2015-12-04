@@ -3,15 +3,6 @@
 
 """Fixtures for working with local configuration in the region."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'RegionConfigurationFixture',
     ]

@@ -3,18 +3,9 @@
 
 """Test maasserver settings views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -106,7 +97,8 @@ class SettingsTest(MAASServerTestCase):
                     'maas_name': new_name,
                     'http_proxy': new_proxy,
                 }))
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
         self.assertEqual(
             (new_name,
              new_proxy),
@@ -129,7 +121,7 @@ class SettingsTest(MAASServerTestCase):
                         new_commissioning),
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual(
             (
                 new_commissioning,
@@ -171,7 +163,7 @@ class SettingsTest(MAASServerTestCase):
                         new_enable_third_party_drivers),
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual(
             (
                 new_enable_third_party_drivers,
@@ -194,7 +186,7 @@ class SettingsTest(MAASServerTestCase):
                         new_enable_disk_erasing_on_release),
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual(
             (
                 new_storage_layout,
@@ -222,7 +214,8 @@ class SettingsTest(MAASServerTestCase):
                         ),
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
         self.assertEqual(
             (
                 osystem_name,
@@ -246,7 +239,8 @@ class SettingsTest(MAASServerTestCase):
                     'ports_archive': new_ports_archive,
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
         self.assertEqual(
             (
                 new_main_archive,
@@ -268,7 +262,7 @@ class SettingsTest(MAASServerTestCase):
                     'kernel_opts': new_kernel_opts,
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertEqual(
             new_kernel_opts,
             Config.objects.get_config('kernel_opts'))
@@ -306,7 +300,8 @@ class SettingsTest(MAASServerTestCase):
                     'boot_source_keyring': keyring,
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
 
         boot_source = BootSource.objects.first()
         self.assertIsNotNone(boot_source)
@@ -329,7 +324,8 @@ class SettingsTest(MAASServerTestCase):
                     'boot_source_keyring': keyring,
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
         boot_source = reload_object(boot_source)
         self.assertEqual(
             (url, keyring),
@@ -396,7 +392,7 @@ class UserManagementTest(MAASServerTestCase):
         params.update(make_password_params(password))
 
         response = self.client.post(reverse('accounts-add'), params)
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         user = User.objects.get(username=params['username'])
         self.assertAttributes(user, subset_dict(params, user_attributes))
         self.assertTrue(user.check_password(password))
@@ -416,7 +412,7 @@ class UserManagementTest(MAASServerTestCase):
             reverse('accounts-edit', args=[user.username]),
             get_prefixed_form_data('profile', params))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertAttributes(
             reload_object(user), subset_dict(params, user_attributes))
 
@@ -428,7 +424,7 @@ class UserManagementTest(MAASServerTestCase):
         response = self.client.post(
             reverse('accounts-edit', args=[user.username]),
             get_prefixed_form_data('password', params))
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertTrue(reload_object(user).check_password(new_password))
 
     def test_delete_user_GET(self):
@@ -457,7 +453,7 @@ class UserManagementTest(MAASServerTestCase):
         user_id = user.id
         del_link = reverse('accounts-del', args=[user.username])
         response = self.client.post(del_link, {'post': 'yes'})
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertItemsEqual([], User.objects.filter(id=user_id))
 
     def test_view_user(self):
@@ -477,4 +473,4 @@ class UserManagementTest(MAASServerTestCase):
         user = factory.make_User(username="abc-123@example.com")
         for view in "edit", "view", "del":
             path = reverse("accounts-%s" % view, args=[user.username])
-            self.assertIsInstance(path, (bytes, unicode))
+            self.assertIsInstance(path, (bytes, str))

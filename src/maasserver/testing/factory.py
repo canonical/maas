@@ -3,17 +3,6 @@
 
 """Test object factories."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-from maasserver.models.subnet import create_cidr
-
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "factory",
     "Messages",
@@ -27,6 +16,7 @@ import random
 import time
 
 from distro_info import UbuntuDistroInfo
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test.client import RequestFactory
 from django.utils import timezone
@@ -100,12 +90,14 @@ from maasserver.models.interface import (
     InterfaceRelationship,
 )
 from maasserver.models.partition import MIN_PARTITION_SIZE
+from maasserver.models.subnet import create_cidr
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import round_size_to_nearest_block
 import maastesting.factory
 from maastesting.factory import NO_VALUE
+from maastesting.typecheck import typed
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -124,7 +116,7 @@ from provisioningserver.utils.enum import map_enum
 MAX_PUBLIC_KEYS = 5
 
 
-ALL_NODE_STATES = map_enum(NODE_STATUS).values()
+ALL_NODE_STATES = list(map_enum(NODE_STATUS).values())
 
 
 # Use `undefined` instead of `None` for default factory arguments when `None`
@@ -179,7 +171,7 @@ class Factory(maastesting.factory.Factory):
         :return: A file-like object, with the requested `content` and `name`.
         """
         if content is None:
-            content = self.make_string().encode('ascii')
+            content = self.make_string().encode(settings.DEFAULT_CHARSET)
         if name is None:
             name = self.make_name('file')
         assert isinstance(content, bytes)
@@ -251,7 +243,7 @@ class Factory(maastesting.factory.Factory):
             but_not = []
         return random.choice(
             [choice for choice in supported_releases if choice not in but_not],
-            ).decode("utf-8")
+        )
 
     def _save_node_unchecked(self, node):
         """Save a :class:`Node`, but circumvent status transition checks."""
@@ -377,7 +369,7 @@ class Factory(maastesting.factory.Factory):
             static_range = None
         if subnet is None and subnet_mask is None:
             assert type(network) == IPNetwork
-            subnet_mask = unicode(network.netmask)
+            subnet_mask = str(network.netmask)
         if static_ip_range_low is None or static_ip_range_high is None:
             if static_range is None:
                 static_ip_range_low = None
@@ -386,13 +378,13 @@ class Factory(maastesting.factory.Factory):
                 static_low = static_range.first
                 static_high = static_range.last
                 if static_ip_range_low is None:
-                    static_ip_range_low = unicode(IPAddress(static_low))
+                    static_ip_range_low = str(IPAddress(static_low))
                 if static_ip_range_high is None:
-                    static_ip_range_high = unicode(IPAddress(static_high))
+                    static_ip_range_high = str(IPAddress(static_high))
         if ip_range_low is None:
-            ip_range_low = unicode(IPAddress(dynamic_range.first))
+            ip_range_low = str(IPAddress(dynamic_range.first))
         if ip_range_high is None:
-            ip_range_high = unicode(IPAddress(dynamic_range.last))
+            ip_range_high = str(IPAddress(dynamic_range.last))
         if router_ip is None:
             router_ip = factory.pick_ip_in_network(network)
         if ip is None:
@@ -708,7 +700,7 @@ class Factory(maastesting.factory.Factory):
             space = factory.make_Space()
         if cidr is None:
             network = factory.make_ip4_or_6_network(host_bits=host_bits)
-            cidr = unicode(network.cidr)
+            cidr = str(network.cidr)
         if gateway_ip is None:
             gateway_ip = factory.pick_ip_in_network(IPNetwork(cidr))
         if dns_servers is None:
@@ -899,7 +891,8 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = self.make_name('script')
         if content is None:
-            content = b'content:' + self.make_string().encode('ascii')
+            content = b'content:' + self.make_string().encode(
+                settings.DEFAULT_CHARSET)
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
 
@@ -1118,7 +1111,8 @@ class Factory(maastesting.factory.Factory):
         return Event.objects.create(
             node=node, type=type, action=action, description=description)
 
-    def make_LargeFile(self, content=None, size=512):
+    @typed
+    def make_LargeFile(self, content: bytes=None, size=512):
         """Create `LargeFile`.
 
         :param content: Data to store in large file object.
@@ -1128,7 +1122,7 @@ class Factory(maastesting.factory.Factory):
             be an inprogress file.
         """
         if content is None:
-            content = factory.make_string(size=size)
+            content = factory.make_bytes(size=size)
         sha256 = hashlib.sha256()
         sha256.update(content)
         sha256 = sha256.hexdigest()
@@ -1286,7 +1280,7 @@ class Factory(maastesting.factory.Factory):
             partition_table = self.make_PartitionTable(
                 node=node, block_device_size=block_device_size)
         if size is None:
-            available_size = partition_table.get_available_size() / 2
+            available_size = partition_table.get_available_size() // 2
             if available_size < MIN_PARTITION_SIZE:
                 raise ValueError(
                     "Cannot make another partition on partition_table not "

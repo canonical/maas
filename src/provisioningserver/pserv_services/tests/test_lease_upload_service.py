@@ -3,15 +3,6 @@
 
 """Tests for src/provisioningserver/pserv_services/lease_upload_service.py"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import datetime
@@ -65,7 +56,7 @@ class TestHelperFunctions(PservTestCase):
 
     def test_convert_leases_to_mappings_maps_correctly(self):
         mappings = list()
-        for _ in xrange(3):
+        for _ in range(3):
             mappings.append(make_random_mapping())
 
         # Convert to leases.
@@ -76,7 +67,7 @@ class TestHelperFunctions(PservTestCase):
 
     def test_convert_leases_to_mappings_converts_correctly(self):
         leases = list()
-        for _ in xrange(3):
+        for _ in range(3):
             leases.append(make_random_lease())
 
         # Convert to mappings.

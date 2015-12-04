@@ -3,15 +3,6 @@
 
 """Registry base class for registry singletons."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Registry",
 ]
@@ -32,7 +23,7 @@ class RegistryType(type):
         return name in _registry[cls]
 
     def __iter__(cls):
-        return _registry[cls].iteritems()
+        return iter(_registry[cls].items())
 
     def get_item(cls, name, default=None):
         return _registry[cls].get(name, default)
@@ -44,7 +35,5 @@ class RegistryType(type):
         _registry[cls].pop(name, None)
 
 
-class Registry:
+class Registry(metaclass=RegistryType):
     """Base class for singleton registries."""
-
-    __metaclass__ = RegistryType

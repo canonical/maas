@@ -3,15 +3,6 @@
 
 """Django-enabled test cases."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'count_queries',
     'DjangoTestCase',
@@ -19,7 +10,6 @@ __all__ = [
     ]
 
 from contextlib import closing
-from itertools import izip
 from time import (
     sleep,
     time,
@@ -97,7 +87,7 @@ def get_rogue_database_activity():
            AND query NOT LIKE 'autovacuum:%'
         """)
         names = tuple(column.name for column in cursor.description)
-        return [dict(izip(names, row)) for row in cursor]
+        return [dict(zip(names, row)) for row in cursor]
 
 
 def terminate_rogue_database_activity():
@@ -146,7 +136,7 @@ def check_for_rogue_database_activity(test):
         else:
             not_terminated_message = (
                 "Rogue activity NOT all terminated (pids: %s)." % " ".join(
-                    unicode(pid) for pid in sorted(not_terminated)))
+                    str(pid) for pid in sorted(not_terminated)))
         test.fail(
             "Rogue database activity:\n--\n" + "\n--\n".join(
                 "\n".join(

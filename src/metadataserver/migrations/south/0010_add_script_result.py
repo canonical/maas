@@ -10,14 +10,14 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
         # Adding field 'NodeCommissionResult.script_result'
-        db.add_column(u'metadataserver_nodecommissionresult', 'script_result',
+        db.add_column('metadataserver_nodecommissionresult', 'script_result',
                       self.gf('django.db.models.fields.IntegerField')(default=0),
                       keep_default=False)
 
 
     def backwards(self, orm):
         # Deleting field 'NodeCommissionResult.script_result'
-        db.delete_column(u'metadataserver_nodecommissionresult', 'script_result')
+        db.delete_column('metadataserver_nodecommissionresult', 'script_result')
 
 
     models = {
@@ -57,7 +57,7 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        u'maasserver.node': {
+        'maasserver.node': {
             'Meta': {'object_name': 'Node'},
             'after_commissioning_action': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'architecture': ('django.db.models.fields.CharField', [], {'default': "u'i386/generic'", 'max_length': '31'}),
@@ -70,17 +70,17 @@ class Migration(SchemaMigration):
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'memory': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'netboot': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
-            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.NodeGroup']", 'null': 'True'}),
+            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.NodeGroup']", 'null': 'True'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['auth.User']", 'null': 'True', 'blank': 'True'}),
             'power_parameters': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
             'power_type': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '10', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-5065b92a-49d4-11e2-8786-3c970e0e56dc'", 'unique': 'True', 'max_length': '41'}),
-            'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
+            'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': "orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.nodegroup': {
+        'maasserver.nodegroup': {
             'Meta': {'object_name': 'NodeGroup'},
             'api_key': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '18'}),
             'api_token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'unique': 'True'}),
@@ -94,7 +94,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
         },
-        u'maasserver.tag': {
+        'maasserver.tag': {
             'Meta': {'object_name': 'Tag'},
             'comment': ('django.db.models.fields.TextField', [], {'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
@@ -104,34 +104,34 @@ class Migration(SchemaMigration):
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '256'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'metadataserver.commissioningscript': {
+        'metadataserver.commissioningscript': {
             'Meta': {'object_name': 'CommissioningScript'},
             'content': ('metadataserver.fields.BinaryField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'})
         },
-        u'metadataserver.nodecommissionresult': {
+        'metadataserver.nodecommissionresult': {
             'Meta': {'unique_together': "((u'node', u'name'),)", 'object_name': 'NodeCommissionResult'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'data': ('django.db.models.fields.CharField', [], {'max_length': '1048576'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']"}),
             'script_result': ('django.db.models.fields.IntegerField', [], {}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'metadataserver.nodekey': {
+        'metadataserver.nodekey': {
             'Meta': {'object_name': 'NodeKey'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'key': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '18'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']", 'unique': 'True'}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']", 'unique': 'True'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'unique': 'True'})
         },
-        u'metadataserver.nodeuserdata': {
+        'metadataserver.nodeuserdata': {
             'Meta': {'object_name': 'NodeUserData'},
             'data': ('metadataserver.fields.BinaryField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']", 'unique': 'True'})
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']", 'unique': 'True'})
         },
         'piston.consumer': {
             'Meta': {'object_name': 'Consumer'},

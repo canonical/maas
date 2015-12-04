@@ -3,15 +3,6 @@
 
 """Node status utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_failed_status",
     "is_failed_status",
@@ -173,14 +164,14 @@ NODE_FAILURE_STATUS_TRANSITIONS = {
 
 # Statuses that correspond to managed steps for which MAAS actively
 # monitors that the status changes after a fixed period of time.
-MONITORED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.keys()
+MONITORED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.keys())
 
 # Non-active statuses.
 NON_MONITORED_STATUSES = set(
     map_enum(NODE_STATUS).values()).difference(set(MONITORED_STATUSES))
 
 
-FAILED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.values()
+FAILED_STATUSES = list(NODE_FAILURE_STATUS_TRANSITIONS.values())
 
 # Statuses that are like commissioning, in that we boot an
 # an ephemeral environment of the latest LTS, run some scripts

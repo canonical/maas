@@ -1,26 +1,18 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_msftocs',
     'power_state_msftocs',
     'probe_and_enlist_msftocs',
     ]
 
-import urllib2
-import urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from lxml.etree import fromstring
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
@@ -61,8 +53,8 @@ class MicrosoftOCSAPI(object):
 
     def build_url(self, command, params=[]):
         url = 'http://%s:%d/' % (self.ip, self.port)
-        params = filter(None, params)
-        return urlparse.urljoin(url, command) + '?' + '&'.join(params)
+        params = [param for param in params if bool(param)]
+        return urllib.parse.urljoin(url, command) + '?' + '&'.join(params)
 
     def extract_from_response(self, response, element_tag):
         """Extract text from first element with element_tag in response."""
@@ -74,13 +66,13 @@ class MicrosoftOCSAPI(object):
     def get(self, command, params=None):
         """Dispatch a GET request to a Microsoft OCS chassis."""
         url = self.build_url(command, params)
-        authinfo = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(None, url, self.username, self.password)
-        proxy_handler = urllib2.ProxyHandler({})
-        auth_handler = urllib2.HTTPBasicAuthHandler(authinfo)
-        opener = urllib2.build_opener(proxy_handler, auth_handler)
-        urllib2.install_opener(opener)
-        response = urllib2.urlopen(url)
+        proxy_handler = urllib.request.ProxyHandler({})
+        auth_handler = urllib.request.HTTPBasicAuthHandler(authinfo)
+        opener = urllib.request.build_opener(proxy_handler, auth_handler)
+        urllib.request.install_opener(opener)
+        response = urllib.request.urlopen(url)
         return response.read()
 
     def get_blade_power_state(self, bladeid):
@@ -137,7 +129,7 @@ class MicrosoftOCSAPI(object):
                 macs.append(
                     nic_info.findtext(
                         './/ns:macAddress', namespaces=namespace))
-            macs = filter(None, macs)
+            macs = [mac for mac in macs if bool(mac)]
             if macs:
                 # Retrive Blade id number
                 bladeid = blade_info.findtext(
@@ -156,10 +148,10 @@ def power_state_msftocs(ip, port, username, password, blade_id):
 
     try:
         power_state = api.get_blade_power_state(blade_id)
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
         raise MicrosoftOCSError(
             "Failed to retrieve power state. HTTP error code: %s" % e.code)
-    except urllib2.URLError as e:
+    except urllib.error.URLError as e:
         raise MicrosoftOCSError(
             "Failed to retrieve power state. Server could not be reached: %s"
             % e.reason)
@@ -207,19 +199,19 @@ def probe_and_enlist_msftocs(
     try:
         # if get_blades works, we have access to the system
         blades = api.get_blades()
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
         raise MicrosoftOCSError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%d, username=%s, password=%s. HTTP error code: %s"
             % (ip, port, username, password, e.code))
-    except urllib2.URLError as e:
+    except urllib.error.URLError as e:
         raise MicrosoftOCSError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
             "port=%d, username=%s, password=%s. "
             "Server could not be reached: %s"
             % (ip, port, username, password, e.reason))
 
-    for blade_id, macs in blades.iteritems():
+    for blade_id, macs in blades.items():
         # Set default (persistent) boot to HDD
         api.set_next_boot_device(blade_id, persistent=True)
         # Set next boot to PXE

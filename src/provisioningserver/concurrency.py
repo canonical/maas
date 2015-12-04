@@ -9,15 +9,6 @@ Twisted concurrency primative, like `DeferredLock` or `DeferredSemaphore`.
 
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "boot_images",
     "dhcp",

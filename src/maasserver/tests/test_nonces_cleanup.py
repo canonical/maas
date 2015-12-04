@@ -3,15 +3,6 @@
 
 """Tests for the nonces cleanup module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -48,7 +39,7 @@ from twisted.internet.task import Clock
 class TestCleanupOldNonces(MAASServerTestCase):
 
     def test_cleanup_old_nonces_returns_0_if_no_checkpoint(self):
-        self.assertEquals(0, cleanup_old_nonces())
+        self.assertEqual(0, cleanup_old_nonces())
 
     def test_cleanup_old_nonces_cleans_up_old_nonces(self):
         now = time.time()
@@ -57,7 +48,7 @@ class TestCleanupOldNonces(MAASServerTestCase):
         timemod = self.patch(module_time, "time")
         timemod.return_value = now - timestamp_threshold
         old_nonces = [Nonce.objects.create() for _ in range(3)]
-        self.assertEquals(0, cleanup_old_nonces())
+        self.assertEqual(0, cleanup_old_nonces())
         # Patch the module's time module back.
         timemod.return_value = now
         new_nonces = [Nonce.objects.create() for _ in range(3)]
@@ -65,7 +56,7 @@ class TestCleanupOldNonces(MAASServerTestCase):
         cleanup_count = cleanup_old_nonces()
 
         # The old nonces plus the checkpoint nonce are deleted.
-        self.assertEquals(len(old_nonces) + 1, cleanup_count)
+        self.assertEqual(len(old_nonces) + 1, cleanup_count)
         self.assertThat(Nonce.objects.all(), ContainsAll(new_nonces))
         self.assertEqual(len(new_nonces) + 1, Nonce.objects.all().count())
 

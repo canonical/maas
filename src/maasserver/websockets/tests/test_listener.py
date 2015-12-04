@@ -3,22 +3,13 @@
 
 """Tests for `maasserver.websockets.listner`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
 import errno
 import random
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.contrib.auth.models import User
 from django.db import connection
 from maasserver.enum import (
@@ -87,6 +78,9 @@ from twisted.internet.defer import (
     inlineCallbacks,
 )
 from twisted.python.failure import Failure
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])

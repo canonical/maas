@@ -3,15 +3,6 @@
 
 """Tests for Fabric forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.forms_fabric import FabricForm
@@ -31,8 +22,8 @@ class TestFabricForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         fabric = form.save()
-        self.assertEquals(fabric_name, fabric.name)
-        self.assertEquals(fabric_class_type, fabric.class_type)
+        self.assertEqual(fabric_name, fabric.name)
+        self.assertEqual(fabric_class_type, fabric.class_type)
 
     def test__doest_require_name_on_update(self):
         fabric = factory.make_Fabric()
@@ -49,5 +40,5 @@ class TestFabricForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEquals(new_name, reload_object(fabric).name)
-        self.assertEquals(new_class_type, reload_object(fabric).class_type)
+        self.assertEqual(new_name, reload_object(fabric).name)
+        self.assertEqual(new_class_type, reload_object(fabric).class_type)

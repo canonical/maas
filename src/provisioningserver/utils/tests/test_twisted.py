@@ -3,15 +3,6 @@
 
 """Tests for Twisted/Crochet-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from itertools import cycle
@@ -54,6 +45,7 @@ from provisioningserver.utils.twisted import (
     FOREVER,
     IAsynchronous,
     ISynchronous,
+    LONGTIME,
     PageFetcher,
     pause,
     reactor_sync,
@@ -127,7 +119,7 @@ class TestAsynchronousDecorator(MAASTestCase):
         def do_stuff_in_thread():
             result = asynchronous(return_args)(3, 4, five=5)
             self.assertThat(result, IsInstance(EventualResult))
-            return result.wait()
+            return result.wait(30)
         # Call do_stuff_in_thread() from another thread.
         result = yield deferToThread(do_stuff_in_thread)
         # do_stuff_in_thread() waited for the result of return_args().
@@ -157,7 +149,7 @@ class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
         self.assertThat(asynchronous(noop, timeout=1), IsCallable())
 
     def test_timeout_can_be_long(self):
-        self.assertThat(asynchronous(noop, timeout=1L), IsCallable())
+        self.assertThat(asynchronous(noop, timeout=1), IsCallable())
 
     def test_timeout_can_be_float(self):
         self.assertThat(asynchronous(noop, timeout=1.0), IsCallable())
@@ -176,13 +168,13 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
     )
 
     def test_in_reactor_thread(self):
-        return_args_async = asynchronous(return_args, self.timeout)
+        return_args_async = asynchronous(return_args, timeout=self.timeout)
         result = return_args_async(1, 2, three=3)
         self.assertEqual(((1, 2), {"three": 3}), result)
 
     @inlineCallbacks
     def test_in_other_thread(self):
-        return_args_async = asynchronous(return_args, self.timeout)
+        return_args_async = asynchronous(return_args, timeout=self.timeout)
         # Call self.return_args from another thread.
         result = yield deferToThread(return_args_async, 3, 4, five=5)
         # The arguments passed back match those passed in.
@@ -216,7 +208,7 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
         # 3. eventual_result.wait was called...
         if self.timeout is FOREVER:
             # ...without arguments.
-            self.assertThat(wait, MockCalledOnceWith())
+            self.assertThat(wait, MockCalledOnceWith(LONGTIME))
         else:
             # ...with the timeout we passed when we wrapped do_nothing.
             self.assertThat(wait, MockCalledOnceWith(self.timeout))
@@ -271,14 +263,14 @@ class TestReactorSync(MAASTestCase):
             # The hope is, naturally, that nothing breaks. It also means we
             # can see the reactor spinning in between; see the callLater() to
             # see how we measure this.
-            for _ in xrange(3):
+            for _ in range(3):
                 with reactor_sync():
                     # Schedule a call that the reactor will make when we
                     # release sync with it.
                     reactor.callLater(0, whence.append, "reactor")
                     # Spin a bit to demonstrate that the reactor doesn't run
                     # while we're in the reactor_sync context.
-                    for _ in xrange(10):
+                    for _ in range(10):
                         whence.append("thread")
                         # Sleep for a moment to allow other threads - like the
                         # reactor's thread - a chance to run. Our bet is that
@@ -697,7 +689,7 @@ class TestCallOut(MAASTestCase):
             sentinel.a, sentinel.b, c=sentinel.c))
 
     def test__does_not_suppress_errors(self):
-        d = callOut(sentinel.result, operator.div, 0, 0)
+        d = callOut(sentinel.result, operator.truediv, 0, 0)
         self.assertRaises(ZeroDivisionError, extract_result, d)
 
 
@@ -727,7 +719,7 @@ class TestCallOutToThread(MAASTestCase):
     @inlineCallbacks
     def test__does_not_suppress_errors(self):
         with ExpectedException(ZeroDivisionError):
-            yield callOutToThread(sentinel.result, operator.div, 0, 0)
+            yield callOutToThread(sentinel.result, operator.truediv, 0, 0)
 
     @inlineCallbacks
     def test__defers_to_thread(self):

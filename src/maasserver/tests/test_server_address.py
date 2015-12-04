@@ -3,15 +3,6 @@
 
 """Tests for the server_address module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import defaultdict
@@ -65,7 +56,7 @@ class TestGetMAASFacingServerHost(MAASServerTestCase):
         ip = factory.make_ipv6_address()
         self.set_maas_url('[%s]' % ip)
         self.assertEqual(
-            unicode(ip), server_address.get_maas_facing_server_host())
+            str(ip), server_address.get_maas_facing_server_host())
 
 
 class FakeResolveHostname:
@@ -107,7 +98,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         if host is None:
             host = make_hostname()
         patch = self.patch(server_address, 'get_maas_facing_server_host')
-        patch.return_value = unicode(host)
+        patch.return_value = str(host)
         return patch
 
     def patch_resolve_hostname(self, addresses=None):
@@ -121,7 +112,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         maas_url = 'http://%s' % ip
         nodegroup = factory.make_NodeGroup(maas_url=maas_url)
         self.assertEqual(
-            unicode(ip),
+            str(ip),
             server_address.get_maas_facing_server_host(nodegroup))
 
     def test__uses_IPv4_hostname_directly_if_ipv4_set(self):
@@ -162,7 +153,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         ip = factory.make_ipv4_address()
         fake_resolve = self.patch_resolve_hostname([ip])
         result = get_maas_facing_server_address()
-        self.assertEqual(unicode(ip), result)
+        self.assertEqual(str(ip), result)
         self.assertEqual(hostname, fake_resolve.hostname)
 
     def test__prefers_IPv4_if_ipv4_set(self):
@@ -174,7 +165,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         self.patch_resolve_hostname([v4_ip, v6_ip])
         self.patch_get_maas_facing_server_host()
         self.assertEqual(
-            unicode(v4_ip),
+            str(v4_ip),
             get_maas_facing_server_address(ipv4=True, ipv6=True))
 
     def test__ignores_IPv4_if_ipv4_not_set(self):
@@ -183,7 +174,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         self.patch_resolve_hostname([v4_ip, v6_ip])
         self.patch_get_maas_facing_server_host()
         self.assertEqual(
-            unicode(v6_ip),
+            str(v6_ip),
             get_maas_facing_server_address(ipv4=False, ipv6=True))
 
     def test__falls_back_on_IPv6_if_ipv4_set_but_no_IPv4_address_found(self):
@@ -191,7 +182,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         self.patch_resolve_hostname([v6_ip])
         self.patch_get_maas_facing_server_host()
         self.assertEqual(
-            unicode(v6_ip),
+            str(v6_ip),
             get_maas_facing_server_address(ipv4=True, ipv6=True))
 
     def test__prefers_global_IPv6_over_link_local_IPv6(self):
@@ -203,7 +194,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
         self.patch_resolve_hostname([global_ipv6] + local_ipv6)
         self.patch_get_maas_facing_server_host()
         self.assertEqual(
-            unicode(global_ipv6),
+            str(global_ipv6),
             get_maas_facing_server_address())
 
     def test__fails_if_neither_ipv4_nor_ipv6_set(self):

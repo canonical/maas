@@ -3,15 +3,6 @@
 
 """Interface Forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "BondInterfaceForm",
     "InterfaceForm",
@@ -308,7 +299,7 @@ class BondInterfaceForm(InterfaceForm):
                 if self.instance.id is None and 'mac_address' not in self.data:
                     # New bond without mac_address set, set it to the first
                     # parent mac_address.
-                    self.cleaned_data['mac_address'] = unicode(
+                    self.cleaned_data['mac_address'] = str(
                         parents[0].mac_address)
                 elif (mac_not_changed and
                         self.instance.mac_address in parent_macs and
@@ -317,7 +308,7 @@ class BondInterfaceForm(InterfaceForm):
                     # and that parent is no longer part of this bond. Update
                     # the mac_address to be one of the new parent MAC
                     # addresses.
-                    self.cleaned_data['mac_address'] = unicode(
+                    self.cleaned_data['mac_address'] = str(
                         parents[0].mac_address)
 
                 # Check that all of the parents are not already in use.
@@ -340,17 +331,17 @@ class BondInterfaceForm(InterfaceForm):
         # Set all the bond_* parameters.
         bond_fields = [
             field_name
-            for field_name in self.fields.keys()
+            for field_name in self.fields
             if field_name.startswith("bond_")
         ]
         for bond_field in bond_fields:
             value = self.cleaned_data.get(bond_field)
             if (value is not None and
-                    isinstance(value, (bytes, unicode)) and
+                    isinstance(value, str) and
                     len(value) > 0 and not value.isspace()):
                 interface.params[bond_field] = value
             elif (value is not None and
-                    not isinstance(value, (bytes, unicode))):
+                    not isinstance(value, str)):
                 interface.params[bond_field] = value
             elif created:
                 interface.params[bond_field] = self.fields[bond_field].initial

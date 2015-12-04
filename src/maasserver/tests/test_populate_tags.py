@@ -3,18 +3,7 @@
 
 """Tests for `maasserver.populate_tags`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
-
-from itertools import izip
 
 from fixtures import FakeLogger
 from maasserver import populate_tags as populate_tags_module
@@ -33,7 +22,10 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
@@ -41,6 +33,7 @@ from maastesting.twisted import (
 from metadataserver.models import commissioningscript
 from mock import (
     ANY,
+    call,
     create_autospec,
     sentinel,
 )
@@ -123,7 +116,7 @@ class TestGetClientsForPopulatingTags(MAASServerTestCase):
         # Return a 2-tuple as a stand-in for a real client.
         getClientFor.side_effect = lambda uuid, timeout: (
             defer.succeed((sentinel.client, uuid)))
-        nodegroups = [make_accepted_NodeGroup() for _ in xrange(3)]
+        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
         tag_name = factory.make_name("tag")
         clusters = [(ng.uuid, ng.cluster_name) for ng in nodegroups]
         clients = _get_clients_for_populating_tags(clusters, tag_name)
@@ -136,7 +129,7 @@ class TestDoPopulateTags(MAASServerTestCase):
 
     def patch_clients(self, nodegroups):
         clients = [create_autospec(Client, instance=True) for _ in nodegroups]
-        for nodegroup, client in izip(nodegroups, clients):
+        for nodegroup, client in zip(nodegroups, clients):
             client.side_effect = always_succeed_with(None)
             client.ident = nodegroup.uuid
 
@@ -147,7 +140,7 @@ class TestDoPopulateTags(MAASServerTestCase):
         return clients
 
     def test__makes_calls_to_each_client_given(self):
-        nodegroups = [make_accepted_NodeGroup() for _ in xrange(3)]
+        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
         clients = self.patch_clients(nodegroups)
 
         tag_name = factory.make_name("tag")
@@ -165,11 +158,11 @@ class TestDoPopulateTags(MAASServerTestCase):
 
         self.assertIsNone(extract_result(d))
 
-        for nodegroup, client in izip(nodegroups, clients):
-            self.expectThat(client, MockCalledOnceWith(
+        for nodegroup, client in zip(nodegroups, clients):
+            self.expectThat(client, MockCallsMatch(call(
                 EvaluateTag, tag_name=tag_name, tag_definition=tag_definition,
                 tag_nsmap=[{"prefix": tag_nsmap_prefix, "uri": tag_nsmap_uri}],
-                credentials=nodegroup.api_credentials))
+                credentials=nodegroup.api_credentials)))
 
     def test__logs_successes(self):
         nodegroups = [make_accepted_NodeGroup()]
@@ -233,7 +226,7 @@ class TestPopulateTags(MAASServerTestCase):
 
     def test__calls_do_populate_tags_with_clusters(self):
         do_populate_tags = self.patch_do_populate_tags()
-        nodegroups = [make_accepted_NodeGroup() for _ in xrange(3)]
+        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
         tag = make_Tag_without_populating()
         populate_tags(tag)
         clusters_expected = tuple(
@@ -253,7 +246,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
 
     def test__calls_are_made_to_all_clusters(self):
         rpc_fixture = self.prepare_live_rpc()
-        nodegroups = [make_accepted_NodeGroup() for _ in xrange(3)]
+        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
         protocols = []
         for nodegroup in nodegroups:
             protocol = rpc_fixture.makeCluster(nodegroup, EvaluateTag)
@@ -268,7 +261,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
         wait_for_populate = asynchronous(lambda: d)
         wait_for_populate().wait(10)
 
-        for nodegroup, protocol in izip(nodegroups, protocols):
+        for nodegroup, protocol in zip(nodegroups, protocols):
             self.expectThat(protocol.EvaluateTag, MockCalledOnceWith(
                 protocol, tag_name=tag.name, tag_definition=tag.definition,
                 tag_nsmap=ANY, credentials=nodegroup.api_credentials))

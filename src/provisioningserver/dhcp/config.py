@@ -3,15 +3,6 @@
 
 """Write config output for ISC DHCPD."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DHCPConfigError",
     "get_config",
@@ -100,4 +91,5 @@ def get_config(template_name, **params):
             template_file, encoding="UTF-8")
         return template.substitute(**params)
     except (KeyError, NameError) as error:
-        raise DHCPConfigError(*error.args)
+        raise DHCPConfigError(
+            "Failed to render DHCP configuration.") from error

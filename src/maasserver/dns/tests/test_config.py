@@ -3,20 +3,11 @@
 
 """Test DNS module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
-
 
 from itertools import islice
 import random
+import time
 
 from django.conf import settings
 from django.core.management import call_command
@@ -393,7 +384,7 @@ class TestDNSServer(MAASServerTestCase):
         nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
-        static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
+        static_ip = str(next(islice(ips, lease_number, lease_number + 1)))
         staticaddress = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=static_ip,
             subnet=interface.subnet, interface=nic)
@@ -407,15 +398,17 @@ class TestDNSServer(MAASServerTestCase):
         # - it forces dig to only use IPv6 query transport.
         record_type = 'AAAA' if version == 6 else 'A'
         commands = [fqdn, '+short', '-%i' % version, record_type]
-        return dig_call(
+        output = dig_call(
             port=self.bind.config.port,
-            commands=commands).split('\n')
+            commands=commands)
+        return output.split('\n')
 
     def dig_reverse_resolve(self, ip, version=4):
         """Reverse resolve `ip` using dig.  Returns a list of results."""
-        return dig_call(
+        output = dig_call(
             port=self.bind.config.port,
-            commands=['-x', ip, '+short', '-%i' % version]).split('\n')
+            commands=['-x', ip, '+short', '-%i' % version])
+        return output.split('\n')
 
     def assertDNSMatches(self, hostname, domain, ip, version=4):
         # A forward lookup on the hostname returns the IP address.
@@ -532,10 +525,15 @@ class TestDNSConfigModifications(TestDNSServer):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
+        # Sleep half a second to make sure bind is fully-ready. This is not the
+        # best, but it does prevent this tests from failing randomly.
+        time.sleep(0.5)
         # Get the NS record for the zone 'nodegroup.name'.
         ns_record = dig_call(
             port=self.bind.config.port,
             commands=[nodegroup.name, 'NS', '+short'])
+        self.assertGreater(
+            len(ns_record), 0, "No NS record for nodegroup.name.")
         # Resolve that hostname.
         ip_of_ns_record = dig_call(
             port=self.bind.config.port, commands=[ns_record, '+short'])
@@ -691,12 +689,12 @@ class TestGetTrustedNetworks(MAASServerTestCase):
 
     def test__returns_single_network(self):
         subnet = factory.make_Subnet()
-        expected = [unicode(subnet.cidr)]
+        expected = [str(subnet.cidr)]
         self.assertEqual(expected, get_trusted_networks())
 
     def test__returns_many_networks(self):
-        subnets = [factory.make_Subnet() for _ in xrange(random.randint(1, 5))]
-        expected = [unicode(subnet.cidr) for subnet in subnets]
+        subnets = [factory.make_Subnet() for _ in range(random.randint(1, 5))]
+        expected = [str(subnet.cidr) for subnet in subnets]
         # Note: This test was seen randomly failing because the networks were
         # in an unexpected order...
         self.assertItemsEqual(expected, get_trusted_networks())

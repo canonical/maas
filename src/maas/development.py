@@ -3,16 +3,6 @@
 
 """Django DEVELOPMENT settings for maas project."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import os
 from os.path import abspath
 
@@ -103,13 +93,13 @@ prevent_migrations = StringBool().to_python(
     os.environ.get("MAAS_PREVENT_MIGRATIONS", 0))
 if prevent_migrations:
     MIGRATION_MODULES = {
-        'auth': 'maasserver.test.migrations.auth',
-        'contenttypes': 'maasserver.test.migrations.contenttypes',
-        'sessions': 'maasserver.test.migrations.sessions',
-        'sites': 'maasserver.test.migrations.sites',
-        'piston3': 'maasserver.test.migrations.piston3',
-        'maasserver': 'maasserver.test.migrations.maasserver',
-        'metadataserver': 'metadataserver.test.migrations',
+        'auth': 'maastesting.empty',
+        'contenttypes': 'maastesting.empty',
+        'sessions': 'maastesting.empty',
+        'sites': 'maastesting.empty',
+        'piston3': 'maastesting.empty',
+        'maasserver': 'maastesting.empty',
+        'metadataserver': 'maastesting.empty',
     }
 
 PASSWORD_HASHERS = (

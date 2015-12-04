@@ -3,15 +3,6 @@
 
 """Text-processing utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'make_bullet_list',
     'normalise_whitespace',

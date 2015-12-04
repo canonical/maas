@@ -3,15 +3,6 @@
 
 """Install a GRUB2 pre-boot loader config for TFTP download."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "add_arguments",
     "run",

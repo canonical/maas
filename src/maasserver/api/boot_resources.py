@@ -3,22 +3,13 @@
 
 """API handlers: `BootResouce`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootResourceHandler',
     'BootResourcesHandler',
     'BootResourceFileUploadHandler',
     ]
 
-import httplib
+import http.client
 import os
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -173,7 +164,7 @@ class BootResourcesHandler(OperationsHandler):
         stream = json_object(resource_list, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=httplib.OK)
+            status=http.client.OK)
 
     @admin_method
     def create(self, request):
@@ -219,7 +210,7 @@ class BootResourcesHandler(OperationsHandler):
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=httplib.CREATED)
+            status=http.client.CREATED)
 
     @admin_method
     @operation(idempotent=False, exported_as='import')
@@ -228,7 +219,7 @@ class BootResourcesHandler(OperationsHandler):
         import_resources()
         return HttpResponse(
             "Import of boot resources started",
-            status=httplib.OK)
+            status=http.client.OK)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -249,7 +240,7 @@ class BootResourceHandler(OperationsHandler):
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=httplib.OK)
+            status=http.client.OK)
 
     @admin_method
     def delete(self, request, id):

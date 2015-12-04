@@ -3,15 +3,6 @@
 
 """XPath-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'try_match_xpath',
     ]
@@ -72,5 +63,5 @@ def try_match_xpath(xpath, doc, logger=logging):
     except etree.XPathEvalError as error:
         # Get a plaintext version of `xpath`.
         expr = xpath.path if is_compiled_xpath(xpath) else xpath
-        logger.warning("Invalid expression '%s': %s", expr, unicode(error))
+        logger.warning("Invalid expression '%s': %s", expr, str(error))
         return False

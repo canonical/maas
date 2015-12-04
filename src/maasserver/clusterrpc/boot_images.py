@@ -3,15 +3,6 @@
 
 """Obtain list of boot images from cluster."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ClustersImporter",
     "get_all_available_boot_images",
@@ -24,11 +15,7 @@ __all__ = [
 
 from collections import Sequence
 from functools import partial
-from itertools import (
-    imap,
-    izip,
-)
-from urlparse import (
+from urllib.parse import (
     ParseResult,
     urlparse,
 )
@@ -47,6 +34,7 @@ from provisioningserver.rpc.cluster import (
     ListBootImagesV2,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils import flatten
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -57,7 +45,6 @@ from twisted.internet.defer import (
     DeferredList,
     DeferredSemaphore,
 )
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 from twisted.python.failure import Failure
 
@@ -130,7 +117,7 @@ def _get_available_boot_images():
     listimages_v1 = lambda client: partial(client, ListBootImages)
     listimages_v2 = lambda client: partial(client, ListBootImagesV2)
     clients_v2 = getAllClients()
-    responses_v2 = async.gather(imap(listimages_v2, clients_v2))
+    responses_v2 = async.gather(map(listimages_v2, clients_v2))
     clients_v1 = []
     for i, response in enumerate(responses_v2):
         if (isinstance(response, Failure) and
@@ -139,14 +126,14 @@ def _get_available_boot_images():
         elif not isinstance(response, Failure):
             # Convert each image to a frozenset of its items.
             yield frozenset(
-                frozenset(image.viewitems())
+                frozenset(image.items())
                 for image in response["images"]
             )
-    responses_v1 = async.gather(imap(listimages_v1, clients_v1))
+    responses_v1 = async.gather(map(listimages_v1, clients_v1))
     for response in suppress_failures(responses_v1):
         # Convert each image to a frozenset of its items.
         yield frozenset(
-            frozenset(image.viewitems())
+            frozenset(image.items())
             for image in response["images"]
         )
 
@@ -338,7 +325,7 @@ class ClustersImporter:
                 "Cluster (%s) did not import boot resources; it is not "
                 "connected to the region at this time."
             )
-            for uuid, (success, result) in izip(self.uuids, results):
+            for uuid, (success, result) in zip(self.uuids, results):
                 if success:
                     log.msg(message_success % uuid)
                 elif result.check(NoConnectionsAvailable):

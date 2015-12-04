@@ -3,15 +3,6 @@
 
 """Tests for converters utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from textwrap import dedent
@@ -117,7 +108,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
     def test__round_up_adds_extra_block(self):
         block_size = 4096
         size = block_size + 1
-        self.assertEquals(
+        self.assertEqual(
             2 * block_size,
             round_size_to_nearest_block(size, block_size, True),
             "Should add an extra block to the size.")
@@ -125,7 +116,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
     def test__round_up_doesnt_add_extra_block(self):
         block_size = 4096
         size = block_size
-        self.assertEquals(
+        self.assertEqual(
             size,
             round_size_to_nearest_block(size, block_size, True),
             "Shouldn't add an extra block to the size.")
@@ -133,7 +124,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
     def test__round_down_removes_block(self):
         block_size = 4096
         size = block_size + 1
-        self.assertEquals(
+        self.assertEqual(
             1 * block_size,
             round_size_to_nearest_block(size, block_size, False),
             "Should remove block from the size.")
@@ -141,7 +132,7 @@ class TestRoundSizeToNearestBlock(MAASTestCase):
     def test__round_down_doesnt_remove_block(self):
         block_size = 4096
         size = block_size * 2
-        self.assertEquals(
+        self.assertEqual(
             size,
             round_size_to_nearest_block(size, block_size, False),
             "Shouldn't remove a block from the size.")

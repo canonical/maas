@@ -3,15 +3,6 @@
 
 """Factory helpers for the `import_images` package."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'make_boot_resource',
     'make_image_spec',

@@ -3,15 +3,6 @@
 
 """Construct TFTP paths for boot files."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compose_image_path',
     'list_boot_images',
@@ -249,7 +240,7 @@ def list_boot_images(tftproot):
     # Get hold of image meta-data stored in the maas.meta file.
     meta_file_path = maas_meta_file_path(tftproot)
     try:
-        with open(meta_file_path, "rb") as f:
+        with open(meta_file_path, "r", encoding="utf-8") as f:
             metadata = f.read()
     except IOError as e:
         if e.errno != errno.ENOENT:

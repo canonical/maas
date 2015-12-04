@@ -3,22 +3,13 @@
 
 """RPC relating to boot images."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "import_boot_images",
     "list_boot_images",
     "is_import_boot_images_running",
     ]
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome

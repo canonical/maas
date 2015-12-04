@@ -3,27 +3,19 @@
 
 """Test maasserver.bootresources."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
+from io import BytesIO
 import json
 import logging
 import os
 from os import environ
 from random import randint
-from StringIO import StringIO
 from subprocess import CalledProcessError
 from unittest import skip
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import (
     connections,
@@ -96,6 +88,7 @@ from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
 )
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
@@ -110,7 +103,6 @@ from twisted.internet.defer import (
     fail,
     succeed,
 )
-from twisted.protocols.amp import UnhandledCommand
 
 
 def make_boot_resource_file_with_stream():
@@ -121,7 +113,7 @@ def make_boot_resource_file_with_stream():
         content = stream.read()
     with rfile.largefile.content.open('wb') as stream:
         stream.truncate()
-    return rfile, StringIO(content), content
+    return rfile, BytesIO(content), content
 
 
 class TestHelpers(MAASServerTestCase):
@@ -200,29 +192,29 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             ]
         for path in allowed_paths:
             response = self.get_stream_client(path)
-            self.assertEqual(httplib.OK, response.status_code)
+            self.assertEqual(http.client.OK, response.status_code)
         for path in invalid_paths:
             response = self.get_stream_client(path)
-            self.assertEqual(httplib.NOT_FOUND, response.status_code)
+            self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_streams_product_index_contains_keys(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(output, ContainsAll(['index', 'updated', 'format']))
 
     def test_streams_product_index_format_is_index_1(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual('index:1.0', output['format'])
 
     def test_streams_product_index_index_has_maas_v2_download(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(output['index'], ContainsAll(['maas:v2:download']))
 
     def test_streams_product_index_maas_v2_download_contains_keys(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             output['index']['maas:v2:download'],
             ContainsAll([
@@ -230,7 +222,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def test_streams_product_index_maas_v2_download_has_valid_values(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             'image-downloads',
             output['index']['maas:v2:download']['datatype'])
@@ -243,7 +235,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def test_streams_product_index_empty_products(self):
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             [],
             output['index']['maas:v2:download']['products'])
@@ -252,7 +244,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         resource = factory.make_BootResource()
         factory.make_BootResourceSet(resource)
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             [],
             output['index']['maas:v2:download']['products'])
@@ -263,7 +255,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             product, _ = self.make_usable_product_boot_resource()
             products.append(product)
         response = self.get_stream_client('index.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Product listing should be the same as all of the completed
         # boot resources in the database.
         self.assertItemsEqual(
@@ -272,20 +264,20 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def test_streams_product_download_contains_keys(self):
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(output, ContainsAll([
             'datatype', 'updated', 'content_id', 'products', 'format']))
 
     def test_streams_product_download_has_valid_values(self):
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual('image-downloads', output['datatype'])
         self.assertEqual('maas:v2:download', output['content_id'])
         self.assertEqual('products:1.0', output['format'])
 
     def test_streams_product_download_empty_products(self):
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             {},
             output['products'])
@@ -294,7 +286,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         resource = factory.make_BootResource()
         factory.make_BootResourceSet(resource)
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             {},
             output['products'])
@@ -305,7 +297,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             product, _ = self.make_usable_product_boot_resource()
             products.append(product)
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Product listing should be the same as all of the completed
         # boot resources in the database.
         self.assertThat(
@@ -315,7 +307,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
     def test_streams_product_download_product_contains_keys(self):
         product, _ = self.make_usable_product_boot_resource()
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             output['products'][product],
             ContainsAll([
@@ -327,7 +319,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         _, _, os, arch, subarch, series = product.split(':')
         label = resource.get_latest_complete_set().label
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         output_product = output['products'][product]
         self.assertEqual(subarch, output_product['subarch'])
         self.assertEqual(label, output_product['label'])
@@ -346,7 +338,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         newest_set = factory.make_BootResourceSet(resource)
         factory.make_boot_resource_file_with_content(newest_set)
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         output_product = output['products'][product]
         self.assertEqual(newest_set.label, output_product['label'])
 
@@ -362,7 +354,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             versions.append(resource_set.version)
         product = self.get_product_name_for_resource(resource)
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             output['products'][product]['versions'],
             ContainsAll(versions))
@@ -375,7 +367,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             for rfile in resource_set.files.all()
             ]
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         version = output['products'][product]['versions'][resource_set.version]
         self.assertThat(
             version['items'],
@@ -386,7 +378,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         resource_set = resource.get_latest_complete_set()
         resource_file = resource_set.files.order_by('?')[0]
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         version = output['products'][product]['versions'][resource_set.version]
         self.assertThat(
             version['items'][resource_file.filename],
@@ -401,7 +393,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             os, arch, subarch, series, resource_set.version,
             resource_file.filename)
         response = self.get_stream_client('maas:v2:download.json')
-        output = json.loads(response.content)
+        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         version = output['products'][product]['versions'][resource_set.version]
         item = version['items'][resource_file.filename]
         self.assertEqual(path, item['path'])
@@ -420,7 +412,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         filename = factory.make_name('filename')
         response = self.get_file_client(
             os, arch, subarch, series, version, filename)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_download_invalid_version_returns_404(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -429,7 +421,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         filename = factory.make_name('filename')
         response = self.get_file_client(
             os, arch, subarch, series, version, filename)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_download_invalid_filename_returns_404(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -439,7 +431,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         filename = factory.make_name('filename')
         response = self.get_file_client(
             os, arch, subarch, series, version, filename)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_download_valid_path_returns_200(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -450,7 +442,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         filename = resource_file.filename
         response = self.get_file_client(
             os, arch, subarch, series, version, filename)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_download_returns_streaming_response(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -490,7 +482,7 @@ class TestConnectionWrapper(DjangoTransactionTestCase):
             # maas.ubuntu.com, is formatted this way.
             filename = filetype
             size = randint(1024, 2048)
-            content = factory.make_string(size=size)
+            content = factory.make_bytes(size=size)
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
@@ -813,7 +805,7 @@ class TestBootResourceStore(MAASServerTestCase):
         "reactor.")
     def test_write_content_deletes_file_on_bad_checksum(self):
         rfile, _, _ = make_boot_resource_file_with_stream()
-        reader = StringIO(factory.make_string())
+        reader = BytesIO(factory.make_bytes())
         store = BootResourceStore()
         with post_commit_hooks:
             store.write_content(rfile, reader)
@@ -990,8 +982,10 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
             # The resource has a complete set.
             self.assertIsNotNone(resource.get_latest_complete_set())
             # The resource is references in the simplestreams endpoint.
+            simplestreams_response = SimpleStreamsHandler().get_product_index()
             simplestreams_content = (
-                SimpleStreamsHandler().get_product_index().content)
+                simplestreams_response.content.decode(
+                    settings.DEFAULT_CHARSET))
             self.assertThat(simplestreams_content, Contains(release_name))
         product['sha256'] = factory.make_string(size=64)
         product['size'] = randint(1024, 2048)
@@ -1017,7 +1011,7 @@ class TestBootResourceTransactional(DjangoTransactionTestCase):
         with FakeLogger("maas", logging.ERROR) as logger:
             store.insert(product, sentinel.reader)
 
-        self.assertEquals('', logger.output)
+        self.assertEqual('', logger.output)
 
     def test_resource_cleaner_removes_old_boot_resources(self):
         with transaction.atomic():
@@ -1471,7 +1465,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         check_boot_images = self.patch_autospec(service, "check_boot_images")
         check_boot_images.return_value = fail(exception)
         try_check_boot_images = asynchronous(service.try_check_boot_images)
-        try_check_boot_images().wait()
+        try_check_boot_images().wait(5)
 
         self.assertDocTestMatches(
             """\

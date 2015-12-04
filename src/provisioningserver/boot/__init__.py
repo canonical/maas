@@ -3,15 +3,6 @@
 
 """Boot Methods."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "BootMethod",
     "BootMethodRegistry",
@@ -25,6 +16,11 @@ from abc import (
 from errno import ENOENT
 from io import BytesIO
 from os import path
+from typing import (
+    Dict,
+    List,
+    Optional,
+)
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
@@ -33,6 +29,7 @@ from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import (
     locate_config,
     tftp,
+    typed,
 )
 from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
@@ -93,12 +90,11 @@ class BootMethodInstallError(BootMethodError):
     """
 
 
-def get_parameters(match):
-    """Helper that gets the matched parameters from the
-    regex match.
-    """
+@typed
+def get_parameters(match) -> Dict[str, str]:
+    """Helper that gets the matched parameters from the regex match."""
     return {
-        key: value
+        key: value.decode("ascii")
         for key, value in match.groupdict().items()
         if value is not None
         }
@@ -137,10 +133,8 @@ def get_remote_mac():
     return find_mac_via_arp(remote_host)
 
 
-class BootMethod:
+class BootMethod(metaclass=ABCMeta):
     """Skeleton for a boot method."""
-
-    __metaclass__ = ABCMeta
 
     # Path prefix that is used for the pxelinux.cfg. Used for
     # the dhcpd.conf that is generated.
@@ -193,12 +187,23 @@ class BootMethod:
         """
 
     @abstractmethod
-    def install_bootloader(self, destination):
+    def install_bootloader(self, destination: str):
         """Installs the required files for this boot method into the
         destination.
 
         :param destination: path to install bootloader
         """
+
+    def __init__(self):
+        super(BootMethod, self).__init__()
+        # Check the types of subclasses' properties.
+        assert isinstance(self.name, str)
+        assert isinstance(self.bios_boot_method, str)
+        assert isinstance(self.bootloader_path, str)
+        # Union types must be checked with issubclass().
+        assert issubclass(type(self.template_subdir), Optional[str])
+        assert issubclass(type(self.bootloader_arches), List[str])
+        assert issubclass(type(self.arch_octet), Optional[str])
 
     def get_template_dir(self):
         """Gets the template directory for the boot method."""

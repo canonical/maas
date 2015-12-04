@@ -3,15 +3,6 @@
 
 """Nose plugins for MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Crochet",
     "main",
@@ -54,6 +45,26 @@ class Crochet(Plugin):
         super(Crochet, self).configure(options, conf)
         if self.enabled:
             import crochet
+
+            # Remove deprecated crochet APIs.
+            if hasattr(crochet, "wait_for_reactor"):
+                del crochet.wait_for_reactor
+            if hasattr(crochet.EventLoop, "wait_for_reactor"):
+                del crochet.EventLoop.wait_for_reactor
+            if hasattr(crochet, "DeferredResult"):
+                del crochet.DeferredResult
+
+            # Make a default timeout forbidden.
+            class EventualResult(crochet.EventualResult):
+                def _result(self, timeout=None):
+                    if timeout is None:
+                        raise AssertionError("A time-out must be specified.")
+                    else:
+                        return super(EventualResult, self)._result(timeout)
+
+            # Patch it back into crochet.
+            crochet._eventloop.EventualResult = EventualResult
+            crochet.EventualResult = EventualResult
 
             if getattr(options, self.option_no_setup):
                 crochet.no_setup()

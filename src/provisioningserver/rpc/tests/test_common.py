@@ -3,15 +3,6 @@
 
 """Tests for common RPC code."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -33,7 +24,9 @@ from mock import (
     sentinel,
 )
 from provisioningserver.rpc import common
+from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.twisted.protocols import amp
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -44,8 +37,8 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
-from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransport
+from zope.interface import alsoProvides
 
 
 class TestClient(MAASTestCase):
@@ -57,6 +50,9 @@ class TestClient(MAASTestCase):
 
     def make_connection_and_client(self):
         conn = create_autospec(common.RPCProtocol())
+        # Stop the mock from returning more mocks, so alsoProvides() can work.
+        conn.__provides__ = conn.__providedBy__ = None
+        alsoProvides(conn, IConnection)
         client = common.Client(conn)
         return conn, client
 
@@ -190,7 +186,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
         dispatchCommand.side_effect = always_fail_with(ZeroDivisionError())
         # Push a command box into the protocol.
         seq = b"%d" % random.randrange(0, 2 ** 32)
-        cmd = factory.make_string()
+        cmd = factory.make_string().encode("ascii")
         box = amp.AmpBox(_ask=seq, _command=cmd)
         with TwistedLoggerFixture() as logger:
             protocol.ampBoxReceived(box)
@@ -217,7 +213,8 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
         expected_boxes_sent = [
             amp.AmpBox(
                 _error=seq, _error_code=amp.UNHANDLED_ERROR_CODE,
-                _error_description="Unknown Error [%s]" % cmd_ref),
+                _error_description=(
+                    b"Unknown Error [%s]" % cmd_ref.encode("ascii"))),
         ]
         self.assertThat(observed_boxes_sent, Equals(expected_boxes_sent))
 
@@ -228,18 +225,19 @@ class TestMakeCommandRef(MAASTestCase):
     def test__command_ref_includes_host_pid_command_and_ask_sequence(self):
         host = factory.make_name("hostname")
         pid = random.randint(99, 9999999)
-        cmd = factory.make_name("command")
-        ask = random.randint(99, 9999999)
+        cmd = factory.make_name("command").encode("ascii")
+        ask = str(random.randint(99, 9999999)).encode("ascii")
         box = amp.AmpBox(_command=cmd, _ask=ask)
 
         self.patch(common, "gethostname").return_value = host
         self.patch(common, "getpid").return_value = pid
 
-        self.assertThat(common.make_command_ref(box), Equals(
-            "%s:pid=%s:cmd=%s:ask=%s" % (host, pid, cmd, ask)))
+        self.assertThat(
+            common.make_command_ref(box), Equals("%s:pid=%s:cmd=%s:ask=%s" % (
+                host, pid, cmd.decode("ascii"), ask.decode("ascii"))))
 
     def test__replaces_missing_ask_with_none(self):
-        box = amp.AmpBox(_command="command")
+        box = amp.AmpBox(_command=b"command")
 
         self.patch(common, "gethostname").return_value = "host"
         self.patch(common, "getpid").return_value = 1234

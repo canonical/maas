@@ -3,21 +3,10 @@
 
 """Utilities for the command-line interface."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "dump_response_summary",
     "ensure_trailing_slash",
     "get_response_content_type",
-    "get_unicode_argv",
-    "get_user_encoding",
     "handler_command_name",
     "is_response_textual",
     "parse_docstring",
@@ -26,18 +15,15 @@ __all__ = [
     "safe_name",
 ]
 
-import codecs
 from email.message import Message
 from functools import partial
 from inspect import (
     cleandoc,
     getdoc,
 )
-import locale
-import os
 import re
 import sys
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 re_paragraph_splitter = re.compile(
@@ -59,7 +45,7 @@ def parse_docstring(thing):
     the docstring's first paragraph and body is the rest.
     """
     assert not isinstance(thing, bytes)
-    is_string = isinstance(thing, unicode)
+    is_string = isinstance(thing, str)
     doc = cleandoc(thing) if is_string else getdoc(thing)
     doc = empty if doc is None else doc
     assert not isinstance(doc, bytes)
@@ -82,8 +68,7 @@ re_camelcase = re.compile(
 
 def safe_name(string):
     """Return a munged version of string, suitable as an ASCII filename."""
-    hyphen = "-" if isinstance(string, unicode) else b"-"
-    return hyphen.join(re_camelcase.findall(string))
+    return "-".join(re_camelcase.findall(string))
 
 
 def handler_command_name(string):
@@ -94,14 +79,14 @@ def handler_command_name(string):
     be removed if discovered amongst the aforementioned parts.
     """
     parts = re_camelcase.findall(string)
-    parts = (part.lower().encode("ascii") for part in parts)
-    parts = (part for part in parts if part != b"handler")
-    return b"-".join(parts)
+    parts = (part.lower() for part in parts)
+    parts = (part for part in parts if part != "handler")
+    return "-".join(parts)
 
 
 def ensure_trailing_slash(string):
     """Ensure that `string` has a trailing forward-slash."""
-    slash = b"/" if isinstance(string, bytes) else u"/"
+    slash = b"/" if isinstance(string, bytes) else "/"
     return (string + slash) if not string.endswith(slash) else string
 
 
@@ -210,77 +195,3 @@ def dump_response_summary(response, file=None):
     print(file=file)
     print_response_headers(response, file=file)
     print(file=file)
-
-
-def get_user_encoding():
-    """Find out what the preferred user encoding is.
-
-    This is generally the encoding that is used for command line parameters
-    and file contents. This may be different from the terminal encoding
-    or the filesystem encoding.
-
-    This has been lifted from `bzrlib.osutils`, with some minor alterations.
-    The comments from GZ in the implementation are comments made in the
-    original.
-
-    This appears to only return something useful AFTER the locale has been set
-    by, for example::
-
-      locale.setlocale(locale.LC_ALL, "")
-
-    :return: A string defining the preferred user encoding
-    """
-    if os.name == 'posix' and getattr(locale, 'CODESET', None) is not None:
-        # Use the existing locale settings and call nl_langinfo directly
-        # rather than going through getpreferredencoding. This avoids
-        # <http://bugs.python.org/issue6202> on OSX Python 2.6 and the
-        # possibility of the setlocale call throwing an error.
-        user_encoding = locale.nl_langinfo(locale.CODESET)
-    else:
-        # GZ 2011-12-19: On windows could call GetACP directly instead.
-        user_encoding = locale.getpreferredencoding(False)
-
-    try:
-        user_encoding = codecs.lookup(user_encoding).name
-    except LookupError:
-        if user_encoding not in ("", "cp0"):
-            sys.stderr.write(
-                'Warning: unknown encoding %s. Continuing with ASCII '
-                'encoding.\n' % user_encoding)
-        user_encoding = 'ascii'
-    else:
-        # Get 'ascii' when setlocale has not been called or LANG=C or unset.
-        if user_encoding == 'ascii':
-            if sys.platform == 'darwin':
-                # OSX is special-cased in Python to have a UTF-8 filesystem
-                # encoding and previously had LANG set here if not present.
-                user_encoding = 'utf-8'
-            # GZ 2011-12-19: Maybe UTF-8 should be the default in this case
-            # for some other posix platforms as well.
-
-    return user_encoding
-
-
-def get_unicode_argv():
-    """Return the arguments given to this program as Unicode strings.
-
-    This attempts to decode arguments according to the user's preferred
-    encoding. This code has been lifted from `bzrlib.osutils`, with some minor
-    alterations, and so has been battle tested!
-
-    This appears to only return something useful AFTER the locale has been set
-    by, for example::
-
-      locale.setlocale(locale.LC_ALL, "")
-
-    :raise SystemExit: If any argument cannot be decoded.
-    :return: A list of command-line arguments from ``sys.argv[1]`` onwards
-        (i.e. the program name is NOT included).
-    """
-    try:
-        user_encoding = get_user_encoding()
-        return [a.decode(user_encoding) for a in sys.argv[1:]]
-    except UnicodeDecodeError:
-        raise SystemExit(
-            ("Command-line argument {0!r} cannot be decoded using the "
-             "{1} application locale.").format(a, user_encoding))

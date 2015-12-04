@@ -1,3 +1,2 @@
-virtualenv
 pxelinux
-python-petname
+python3-petname

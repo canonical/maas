@@ -82,7 +82,7 @@ An example::
 
       images_dir = ConfigurationOption(
           "images_dir", "The directory in which to store images.",
-          Directory(if_missing="/var/lib/myapp/images"))
+          DirectoryString(if_missing="/var/lib/myapp/images"))
 
       @property
       def png_dir(self):
@@ -102,15 +102,6 @@ It can be used like so::
 
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "BootSources",
     "ClusterConfiguration",
@@ -131,13 +122,11 @@ import logging
 import os
 from os import environ
 import os.path
-import re
 from shutil import copyfile
 import sqlite3
 from threading import RLock
 from time import time
 import traceback
-import uuid
 
 from formencode import (
     ForEach,
@@ -149,14 +138,16 @@ from formencode.api import (
 )
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
-    Invalid,
     Number,
     Set,
-    String,
-    UnicodeString,
-    URL,
 )
 from provisioningserver.path import get_tentative_path
+from provisioningserver.utils.config import (
+    DirectoryString,
+    ExtendedURL,
+    UnicodeString,
+    UUIDString,
+)
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
@@ -171,74 +162,13 @@ logger = logging.getLogger(__name__)
 UUID_NOT_SET = '** UUID NOT SET **'
 
 
-class UUID(UnicodeString):
-    """A validator for UUIDs
-
-    The string must be a valid UUID.
-    """
-
-    messages = dict(notUUID="%(value)r Failed to parse UUID")
-
-    def validate_python(self, value, state=None):
-        try:
-            return uuid.UUID(unicode(value))
-        except:
-            raise Invalid(
-                self.message("notUUID", state, value=value),
-                value, state)
-
-
-class Directory(UnicodeString):
-    """A validator for a directory on the local filesystem.
-
-    The directory must exist.
-    """
-
-    messages = dict(notDir="%(value)r does not exist or is not a directory")
-
-    def validate_python(self, value, state=None):
-        if os.path.isdir(value):
-            return value
-        else:
-            raise Invalid(
-                self.message("notDir", state, value=value),
-                value, state)
-
-
-class ExtendedURL(URL):
-    """A validator URLs.
-
-    This validator extends formencode.validators.URL by adding support
-    for the general case of hostnames (i.e. hostnames containing numeric
-    digits, hyphens, and hostnames of length 1), and ipv6 addresses with
-    or without brackets.
-    """
-
-    url_re = re.compile(r'''
-        ^(http|https)://
-        (?:[%:\w]*@)?                              # authenticator
-        (?:                                        # ip or domain
-        (?P<ip>(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}
-            (?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|
-        (?P<ipv6>\[?(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}\]?)|
-        (?P<domain>[a-z0-9][a-z0-9\-]{,62}\.)*     # subdomain
-        (?P<tld>[a-zA-Z0-9]{1,63}|
-            [a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])  # tld or hostname
-        )
-        (?::[0-9]{1,5})?                           # port
-        # files/delims/etc
-        (?P<path>/[a-z0-9\-\._~:/\?#\[\]@!%\$&\'\(\)\*\+,;=]*)?
-        $
-    ''', re.I | re.VERBOSE)
-
-
 class BootSourceSelection(Schema):
     """Configuration validator for boot source selection configuration."""
 
     if_key_missing = None
 
-    os = String(if_missing="*")
-    release = String(if_missing="*")
+    os = UnicodeString(if_missing="*")
+    release = UnicodeString(if_missing="*")
     arches = Set(if_missing=["*"])
     subarches = Set(if_missing=['*'])
     labels = Set(if_missing=['*'])
@@ -249,11 +179,11 @@ class BootSource(Schema):
 
     if_key_missing = None
 
-    url = String(
+    url = UnicodeString(
         if_missing="http://maas.ubuntu.com/images/ephemeral-v2/releases/")
-    keyring = String(
+    keyring = UnicodeString(
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
-    keyring_data = String(if_missing=None)
+    keyring_data = UnicodeString(if_missing="")
     selections = ForEach(
         BootSourceSelection,
         if_missing=[BootSourceSelection.to_python({})])
@@ -297,7 +227,7 @@ class ConfigBase:
         """Save a YAML configuration to `filename`, or to the default file."""
         if filename is None:
             filename = cls.DEFAULT_FILENAME
-        dump = yaml.safe_dump(config)
+        dump = yaml.safe_dump(config, encoding="utf-8")
         atomic_write(dump, filename)
 
     _cache = {}
@@ -378,12 +308,15 @@ class ConfigMeta(DeclarativeMeta):
             "`cls.envvar` in the environment."))
 
 
-class BootSources(ConfigBase, ForEach):
-    """Configuration for boot sources."""
+class BootSourcesMeta(ConfigMeta):
+    """Meta-configuration for boot sources."""
 
-    class __metaclass__(ConfigMeta):
-        envvar = "MAAS_BOOT_SOURCES_SETTINGS"
-        default = "sources.yaml"
+    envvar = "MAAS_BOOT_SOURCES_SETTINGS"
+    default = "sources.yaml"
+
+
+class BootSources(ConfigBase, ForEach, metaclass=BootSourcesMeta):
+    """Configuration for boot sources."""
 
     validators = [BootSource]
 
@@ -528,7 +461,9 @@ class ConfigurationFile:
             mode = stat.st_mode
         # Write, retaining the file's mode.
         atomic_write(
-            yaml.safe_dump(self.config, default_flow_style=False),
+            yaml.safe_dump(
+                self.config, default_flow_style=False,
+                encoding="utf-8"),
             self.path, mode=mode)
         self.dirty = False
 
@@ -693,8 +628,8 @@ class ConfigurationOption:
         """
         super(ConfigurationOption, self).__init__()
 
-        assert isinstance(name, unicode)
-        assert isinstance(doc, unicode)
+        assert isinstance(name, str)
+        assert isinstance(doc, str)
         assert is_validator(validator)
         assert validator.if_missing is not NoDefault
 
@@ -720,13 +655,16 @@ class ConfigurationOption:
         del obj.store[self.name]
 
 
-class ClusterConfiguration(Configuration):
-    """Local configuration for the MAAS cluster."""
+class ClusterConfigurationMeta(ConfigurationMeta):
+    """Local meta-configuration for the MAAS cluster."""
 
-    class __metaclass__(ConfigurationMeta):
-        envvar = "MAAS_CLUSTER_CONFIG"
-        default = "/etc/maas/clusterd.conf"
-        backend = ConfigurationFile
+    envvar = "MAAS_CLUSTER_CONFIG"
+    default = "/etc/maas/clusterd.conf"
+    backend = ConfigurationFile
+
+
+class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
+    """Local configuration for the MAAS cluster."""
 
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.", ExtendedURL(
@@ -738,8 +676,10 @@ class ClusterConfiguration(Configuration):
         Number(min=0, max=(2 ** 16) - 1, if_missing=69))
     tftp_root = ConfigurationOption(
         "tftp_root", "The root directory for TFTP resources.",
-        Directory(if_missing=get_tentative_path(
-            "/var/lib/maas/boot-resources/current")))
+        DirectoryString(
+            # Don't validate values that are already stored.
+            accept_python=True, if_missing=get_tentative_path(
+                "/var/lib/maas/boot-resources/current")))
 
     @property
     def tftp_generator_url(self):
@@ -756,7 +696,7 @@ class ClusterConfiguration(Configuration):
     # Cluster UUID Option
     cluster_uuid = ConfigurationOption(
         "cluster_uuid", "The UUID for this cluster controller",
-        UUID(if_missing=UUID_NOT_SET))
+        UUIDString(if_missing=UUID_NOT_SET))
 
 
 def is_dev_environment():

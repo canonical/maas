@@ -3,15 +3,6 @@
 
 """RPC helpers relating to nodes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "power_off_node",
     "power_on_node",
@@ -27,8 +18,8 @@ from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
 )
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import asynchronous
-from twisted.protocols.amp import UnhandledCommand
 
 
 logger = logging.getLogger(__name__)

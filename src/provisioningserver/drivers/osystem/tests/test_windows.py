@@ -3,15 +3,6 @@
 
 """Tests for the WindowsOS module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -87,7 +78,7 @@ class TestWindowsOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = WindowsOS()
-        release = random.choice(WINDOWS_CHOICES.keys())
+        release = random.choice(list(WINDOWS_CHOICES))
         self.assertEqual(
             WINDOWS_CHOICES[release],
             osystem.get_release_title(release))
@@ -164,7 +155,7 @@ class TestWindowsOS(MAASTestCase):
             'hostname',
             ]
         preseed = osystem.compose_preseed('default', node, token, url)
-        self.assertItemsEqual(required_keys, preseed.keys())
+        self.assertItemsEqual(required_keys, preseed)
 
     def test_compose_preseed_uses_only_hostname(self):
         osystem = WindowsOS()

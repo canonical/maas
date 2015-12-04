@@ -1,53 +1,83 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""A list of top-level standard python library names.
+"""A list of top-level standard Python library names.
 
-This list is used by format-imports to determine if a module is in this group
-or not.
+This list is used by ``format-imports`` to determine if a module is in this
+group or not.
 
-The list is taken from http://docs.python.org/release/2.5.4/lib/modindex.html
-but modules specific to other OSs have been taken out. It may need to be
-updated from time to time.
+The list is extracted from Python's online documentation, with modules
+specific to other OSes taken out. It may need to be updated from time to time.
+By default it combines the module lists for Python 2.7 and Python 3.5 so that
+reformatting most modern Python source files should DTRT.
 """
 
 
 # Run this to generate a new module list.
 if __name__ == '__main__':
-    from lxml import html
+    from distutils.version import StrictVersion
     from operator import methodcaller
-    from sys import version_info, stdout
-    modindex_url = (
-        "http://docs.python.org/release/"
-        "{0}.{1}/modindex.html").format(*version_info)
-    root = html.parse(modindex_url).getroot()
-    modules = set(
-        node.text.split(".", 1)[0]  # The "base" module name.
-        for node in root.cssselect("table tt"))
+    from sys import argv, stdout
+    from six.moves.urllib.request import urlopen
+    from lxml import html
+
+    versions = argv[1:]
+    if len(versions) == 0:
+        versions = ["3.5", "2.7"]
+
+    modules = set()
+
+    for version in versions:
+        version = StrictVersion(version).version
+        modindex_urls = [
+            ("http://docs.python.org/release/"
+             "{0}.{1}/modindex.html").format(*version),
+            ("https://docs.python.org/{0}/"
+             "py-modindex.html").format(*version),
+        ]
+        for modindex_url in modindex_urls:
+            try:
+                content = urlopen(modindex_url).read()
+            except OSError:
+                pass
+            else:
+                root = html.fromstring(content)
+                modules.update(
+                    node.text.split(".", 1)[0]  # The "base" module name.
+                    for node in root.cssselect("table tt"))
+                break
+        else:
+            raise SystemExit(
+                "Could not obtain module list from any of the "
+                "following URLs: " + " ".join(modindex_urls))
+
     stdout.write("python_standard_libs = [\n")
     for module in sorted(modules, key=methodcaller("lower")):
         stdout.write("    %r,\n" % module)
-    stdout.write("    ]\n")
+    stdout.write("]\n")
 
 
 python_standard_libs = [
     '__builtin__',
     '__future__',
     '__main__',
+    '_dummy_thread',
+    '_thread',
     '_winreg',
     'abc',
     'aepack',
     'aetools',
     'aetypes',
     'aifc',
-    'al',
     'AL',
+    'al',
     'anydbm',
     'applesingle',
     'argparse',
     'array',
     'ast',
     'asynchat',
+    'asyncio',
     'asyncore',
     'atexit',
     'audioop',
@@ -61,6 +91,7 @@ python_standard_libs = [
     'bisect',
     'bsddb',
     'buildtools',
+    'builtins',
     'bz2',
     'calendar',
     'Carbon',
@@ -81,12 +112,15 @@ python_standard_libs = [
     'commands',
     'compileall',
     'compiler',
+    'concurrent',
     'ConfigParser',
+    'configparser',
     'contextlib',
     'Cookie',
     'cookielib',
     'copy',
     'copy_reg',
+    'copyreg',
     'cPickle',
     'cProfile',
     'crypt',
@@ -112,14 +146,17 @@ python_standard_libs = [
     'EasyDialogs',
     'email',
     'encodings',
+    'ensurepip',
+    'enum',
     'errno',
     'exceptions',
+    'faulthandler',
     'fcntl',
     'filecmp',
     'fileinput',
     'findertools',
-    'FL',
     'fl',
+    'FL',
     'flp',
     'fm',
     'fnmatch',
@@ -137,8 +174,8 @@ python_standard_libs = [
     'getopt',
     'getpass',
     'gettext',
-    'gl',
     'GL',
+    'gl',
     'glob',
     'grp',
     'gzip',
@@ -146,9 +183,11 @@ python_standard_libs = [
     'heapq',
     'hmac',
     'hotshot',
+    'html',
     'htmlentitydefs',
     'htmllib',
     'HTMLParser',
+    'http',
     'httplib',
     'ic',
     'icopen',
@@ -161,6 +200,7 @@ python_standard_libs = [
     'imputil',
     'inspect',
     'io',
+    'ipaddress',
     'itertools',
     'jpeg',
     'json',
@@ -169,6 +209,7 @@ python_standard_libs = [
     'linecache',
     'locale',
     'logging',
+    'lzma',
     'macerrors',
     'MacOS',
     'macostools',
@@ -203,6 +244,7 @@ python_standard_libs = [
     'os',
     'ossaudiodev',
     'parser',
+    'pathlib',
     'pdb',
     'pickle',
     'pickletools',
@@ -223,12 +265,14 @@ python_standard_libs = [
     'py_compile',
     'pyclbr',
     'pydoc',
+    'queue',
     'Queue',
     'quopri',
     'random',
     're',
     'readline',
     'repr',
+    'reprlib',
     'resource',
     'rexec',
     'rfc822',
@@ -238,6 +282,7 @@ python_standard_libs = [
     'sched',
     'ScrolledText',
     'select',
+    'selectors',
     'sets',
     'sgmllib',
     'sha',
@@ -252,11 +297,13 @@ python_standard_libs = [
     'smtplib',
     'sndhdr',
     'socket',
+    'socketserver',
     'SocketServer',
     'spwd',
     'sqlite3',
     'ssl',
     'stat',
+    'statistics',
     'statvfs',
     'string',
     'StringIO',
@@ -284,14 +331,18 @@ python_standard_libs = [
     'timeit',
     'Tix',
     'Tkinter',
+    'tkinter',
     'token',
     'tokenize',
     'trace',
     'traceback',
+    'tracemalloc',
     'ttk',
     'tty',
     'turtle',
+    'turtledemo',
     'types',
+    'typing',
     'unicodedata',
     'unittest',
     'urllib',
@@ -303,6 +354,7 @@ python_standard_libs = [
     'UserString',
     'uu',
     'uuid',
+    'venv',
     'videoreader',
     'W',
     'warnings',
@@ -310,12 +362,15 @@ python_standard_libs = [
     'weakref',
     'webbrowser',
     'whichdb',
+    'winreg',
     'winsound',
     'wsgiref',
     'xdrlib',
     'xml',
+    'xmlrpc',
     'xmlrpclib',
+    'zipapp',
     'zipfile',
     'zipimport',
     'zlib',
-    ]
+]

@@ -3,15 +3,6 @@
 
 """Tests for `LicenseKeyForm`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from operator import itemgetter
@@ -167,7 +158,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
             for osystem in sorted(osystems, key=itemgetter('title'))
             ]
         form = LicenseKeyForm()
-        self.assertEquals(choices, form.fields['osystem'].choices)
+        self.assertEqual(choices, form.fields['osystem'].choices)
 
     def test_doesnt_include_default_distro_series(self):
         form = LicenseKeyForm()

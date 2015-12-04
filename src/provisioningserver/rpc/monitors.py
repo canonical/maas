@@ -3,15 +3,6 @@
 
 """RPC helpers for monitors."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "cancel_monitor",
     "start_monitors",
@@ -23,8 +14,8 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import MonitorExpired
+from provisioningserver.twisted.protocols import amp
 from twisted.internet import reactor
-from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("monitors")

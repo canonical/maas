@@ -3,15 +3,6 @@
 
 """Server fixture for BIND."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BINDServer',
     ]
@@ -178,11 +169,13 @@ class BINDServerResources(fixtures.Fixture):
                     include_in_options=self.include_in_options,
                     extra=namedrndcconf))
             atomic_write(
-                GENERATED_HEADER + named_conf, self.conf_file)
+                (GENERATED_HEADER + named_conf).encode("ascii"),
+                self.conf_file)
         # Write rndc config file.
         if should_write(self.rndcconf_file, overwrite_config):
             atomic_write(
-                GENERATED_HEADER + rndcconf, self.rndcconf_file)
+                (GENERATED_HEADER + rndcconf).encode("ascii"),
+                self.rndcconf_file)
 
         # Copy named executable to home dir.  This is done to avoid
         # the limitations imposed by apparmor if the executable
@@ -264,7 +257,7 @@ class BINDServerRunner(fixtures.Fixture):
 
     def rndc(self, command):
         """Executes a ``rndc`` command and returns status."""
-        if isinstance(command, unicode):
+        if isinstance(command, str):
             command = (command,)
         ctl = subprocess.Popen(
             (self.RNDC_PATH, "-c", self.config.rndcconf_file) + command,
@@ -276,7 +269,7 @@ class BINDServerRunner(fixtures.Fixture):
     def is_server_running(self):
         """Checks that the BIND server is up and running."""
         outdata, errdata = self.rndc("status")
-        return "server is up and running" in outdata
+        return b"server is up and running" in outdata
 
     def _start(self):
         """Start the BIND server."""

@@ -3,15 +3,6 @@
 
 """Additional AMP argument classes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Bytes",
     "Choice",
@@ -21,11 +12,11 @@ __all__ = [
 
 import collections
 import json
-import urlparse
+import urllib.parse
 import zlib
 
 from apiclient.utils import ascii_url
-from twisted.protocols import amp
+from provisioningserver.twisted.protocols import amp
 
 
 class Bytes(amp.Argument):
@@ -60,14 +51,17 @@ class Choice(amp.Argument):
         super(Choice, self).__init__(optional=optional)
         if not isinstance(choices, collections.Mapping):
             raise TypeError("Not a mapping: %r" % (choices,))
-        not_byte_strings = sorted(
-            value for value in choices.itervalues()
-            if not isinstance(value, bytes))
+        not_byte_strings = [
+            value for value in choices.values()
+            if not isinstance(value, bytes)
+        ]
         if len(not_byte_strings) != 0:
+            # For the error message, sort the representations because mixed
+            # types are not guaranteed to be comparable in Python 3.
             raise TypeError("Not byte strings: %s" % ", ".join(
-                repr(value) for value in not_byte_strings))
-        self._encode = {name: value for name, value in choices.iteritems()}
-        self._decode = {value: name for name, value in choices.iteritems()}
+                sorted(repr(value) for value in not_byte_strings)))
+        self._encode = {name: value for name, value in choices.items()}
+        self._decode = {value: name for name, value in choices.items()}
 
     def toString(self, inObject):
         return self._encode[inObject]
@@ -102,26 +96,58 @@ class ParsedURL(amp.Argument):
 
         :return: :py:class:`~urlparse.ParseResult`
         """
-        return urlparse.urlparse(inString)
+        return urllib.parse.urlparse(inString.decode("ascii"))
 
 
 class StructureAsJSON(amp.Argument):
     """Encode a structure on the wire as JSON, compressed with zlib.
 
     The compressed size of the structure should not exceed
-    :py:data:`~twisted.protocols.amp.MAX_VALUE_LENGTH`, or ``0xffff``
-    bytes. This is pretty hard to be sure of ahead of time, so only use
-    this for small structures that won't go near the limit.
+    :py:data:`~provisioningserver.twisted.protocols.amp.MAX_VALUE_LENGTH`, or
+    ``0xffff`` bytes. This is pretty hard to be sure of ahead of time, so only
+    use this for small structures that won't go near the limit.
     """
 
     def toString(self, inObject):
-        return zlib.compress(json.dumps(inObject))
+        return zlib.compress(json.dumps(inObject).encode("ascii"))
 
     def fromString(self, inString):
-        return json.loads(zlib.decompress(inString))
+        return json.loads(zlib.decompress(inString).decode("ascii"))
 
 
-class CompressedAmpList(amp.AmpList):
+def _toByteString(string):
+    """Encode `string` as (ASCII) bytes if it's a Unicode string.
+
+    Otherwise return `string` unaltered.
+    """
+    if isinstance(string, str):
+        return string.encode("ascii")
+    else:
+        return string
+
+
+class AmpList(amp.AmpList):
+    """An :py:class:`amp.AmpList` that works with native string arguments.
+
+    Argument names are serialised transparently to ASCII byte strings and back
+    again. This means that arguments can only contain ASCII characters.
+    Twisted's ``AmpList`` deals only with byte string argument names.
+    """
+
+    def __init__(self, subargs, optional=False):
+        """Create an AmpList.
+
+        :param subargs: a sequence of 2-tuples of ('name', argument)
+            describing the schema. The names can be byte strings, or Unicode
+            strings containing only ASCII characters.
+        :param optional: Whether this argument can be omitted in the protocol.
+        :type optional: bool
+        """
+        subargs = tuple((_toByteString(name), arg) for name, arg in subargs)
+        super(AmpList, self).__init__(subargs, optional)
+
+
+class CompressedAmpList(AmpList):
     """An :py:class:`amp.AmpList` that's compressed on the wire.
 
     The serialised form is transparently compressed and decompressed with

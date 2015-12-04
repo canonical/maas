@@ -3,15 +3,6 @@
 
 """The nodes handler for the WebSocket connection."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "dehydrate_datetime",
     "TimestampedModelHandler",
@@ -34,7 +25,7 @@ class TimestampedModelHandler(Handler):
         abstract = True
 
     def __new__(cls, *args, **kwargs):
-        cls = super(TimestampedModelHandler, cls).__new__(cls, *args, **kwargs)
+        cls = super(TimestampedModelHandler, cls).__new__(cls)
         if cls._meta.non_changeable is None:
             cls._meta.non_changeable = []
         for field in ["created", "updated"]:

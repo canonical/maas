@@ -3,15 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.power.change`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -608,13 +599,11 @@ class TestMaybeChangePowerState(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         power_driver = power_drivers_by_name.get(power_type)
-        detect_packages = self.patch_autospec(
-            power_driver, "detect_missing_packages")
-        detect_packages.return_value = []
         yield power.change.maybe_change_power_state(
             system_id, hostname, power_type, power_change, context)
         reactor.runUntilCurrent()  # Run all delayed calls.
-        self.assertThat(detect_packages, MockCalledOnceWith())
+        self.assertThat(
+            power_driver.detect_missing_packages, MockCalledOnceWith())
 
     @inlineCallbacks
     def test_errors_when_missing_packages(self):
@@ -628,13 +617,12 @@ class TestMaybeChangePowerState(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         power_driver = power_drivers_by_name.get(power_type)
-        detect_packages = self.patch_autospec(
-            power_driver, "detect_missing_packages")
-        detect_packages.return_value = ['gone']
+        power_driver.detect_missing_packages.return_value = ['gone']
         with ExpectedException(poweraction.PowerActionFail):
             yield power.change.maybe_change_power_state(
                 system_id, hostname, power_type, power_change, context)
-        self.assertThat(detect_packages, MockCalledOnceWith())
+        self.assertThat(
+            power_driver.detect_missing_packages, MockCalledOnceWith())
 
     @inlineCallbacks
     def test_errors_when_change_conflicts_with_in_progress_change(self):

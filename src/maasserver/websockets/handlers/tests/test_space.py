@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.space`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.models.space import Space
@@ -52,7 +43,7 @@ class TestSpaceHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             subnet = factory.make_Subnet(space=space, vlan=interface.vlan)
             factory.make_StaticIPAddress(subnet=subnet, interface=interface)
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_space(space),
             handler.get({"id": space.id}))
 

@@ -3,15 +3,6 @@
 
 """Large file storage."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'LargeFile',
 ]
@@ -116,7 +107,7 @@ class LargeFile(CleanSave, TimestampedModel):
     # Max file storage size is 4TB.
     content = LargeObjectField()
 
-    def __unicode__(self):
+    def __str__(self):
         return "<LargeFile size=%d sha256=%s>" % (self.total_size, self.sha256)
 
     @property

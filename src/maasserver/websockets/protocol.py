@@ -3,23 +3,15 @@
 
 """The MAAS WebSockets protocol."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 
 from collections import deque
-from Cookie import SimpleCookie
 from functools import partial
+from http.cookies import SimpleCookie
 import json
-from urlparse import (
+from typing import Optional
+from urllib.parse import (
     parse_qs,
     urlparse,
 )
@@ -40,6 +32,7 @@ from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
 from maasserver.websockets.listener import PostgresListener
 from maasserver.websockets.websockets import STATUSES
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import (
     deferred,
     synchronous,
@@ -72,11 +65,12 @@ class RESPONSE_TYPE:
     ERROR = 1
 
 
-def get_cookie(cookies, cookie_name):
+@typed
+def get_cookie(cookies: Optional[str], cookie_name: str) -> Optional[str]:
     """Return the sessionid value from `cookies`."""
     if cookies is None:
         return None
-    cookies = SimpleCookie(cookies.encode('utf-8'))
+    cookies = SimpleCookie(cookies)
     if cookie_name in cookies:
         return cookies[cookie_name].value
     else:

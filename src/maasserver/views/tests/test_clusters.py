@@ -3,18 +3,9 @@
 
 """Test maasserver clusters views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -61,7 +52,7 @@ class ClusterListingTest(MAASServerTestCase):
         for _ in range(3):
             factory.make_NodeGroup()
         response = self.client.get(self.get_url())
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         doc = fromstring(response.content)
         self.assertThat(
             doc.cssselect('div.pagination'),
@@ -162,7 +153,7 @@ class ClusterDeleteTest(MAASServerTestCase):
         delete_link = reverse('cluster-delete', args=[nodegroup.uuid])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
-            (httplib.FOUND, reverse('cluster-list')),
+            (http.client.FOUND, reverse('cluster-list')),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             NodeGroup.objects.filter(uuid=nodegroup.uuid).exists())
@@ -205,7 +196,8 @@ class ClusterEditTest(MAASServerTestCase):
             'status': factory.pick_enum(NODEGROUP_STATUS),
             }
         response = self.client.post(edit_link, data)
-        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FOUND, response.status_code, response.content)
         self.assertThat(
             reload_object(nodegroup),
             MatchesStructure.byEquality(**data))
@@ -227,7 +219,7 @@ class ClusterEditTest(MAASServerTestCase):
             'ui_submission': True,
             }
         response = self.client.post(edit_link, data)
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertFalse(reload_object(nodegroup).default_disable_ipv4)
 
 
@@ -244,7 +236,8 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
             args=[nodegroup.uuid, interface.name])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
-            (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
+            (http.client.FOUND, reverse(
+                'cluster-edit', args=[nodegroup.uuid])),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             NodeGroupInterface.objects.filter(id=interface.id).exists())
@@ -260,7 +253,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
             args=[nodegroup.uuid, interface.name])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
-        self.assertIsInstance(delete_link, (bytes, unicode))
+        self.assertIsInstance(delete_link, (bytes, str))
 
 
 class ClusterInterfaceEditTest(MAASServerTestCase):
@@ -278,13 +271,14 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
         del data['subnet']
         response = self.client.post(edit_link, data)
         self.assertEqual(
-            (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
+            (http.client.FOUND, reverse(
+                'cluster-edit', args=[nodegroup.uuid])),
             (response.status_code, extract_redirect(response)))
         interface = reload_object(interface)
         self.assertThat(
             interface,
             MatchesStructure.byEquality(**data))
-        cidr = unicode(
+        cidr = str(
             IPNetwork("%s/%s" % (data['ip'], data['subnet_mask'])).cidr)
         self.assertThat(
             interface.subnet,
@@ -301,7 +295,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
             args=[nodegroup.uuid, interface.name])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
-        self.assertIsInstance(edit_link, (bytes, unicode))
+        self.assertIsInstance(edit_link, (bytes, str))
 
 
 class ClusterInterfaceCreateTest(MAASServerTestCase):
@@ -316,7 +310,8 @@ class ClusterInterfaceCreateTest(MAASServerTestCase):
         del data['subnet']
         response = self.client.post(create_link, data)
         self.assertEqual(
-            (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
+            (http.client.FOUND, reverse(
+                'cluster-edit', args=[nodegroup.uuid])),
             (response.status_code, extract_redirect(response)))
         interface = NodeGroupInterface.objects.get(
             nodegroup__uuid=nodegroup.uuid, name=data['name'])

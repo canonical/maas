@@ -3,15 +3,6 @@
 
 """Test the `local_config_{get,reset,set}` management commands."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from functools import partial
@@ -137,8 +128,8 @@ class TestConfigurationSet(MAASTestCase):
 
 class TestConfigurationCommon(MAASTestCase):
 
-    is_string = IsInstance(unicode)
-    is_single_line = AfterPreprocessing(unicode.splitlines, HasLength(1))
+    is_string = IsInstance(str)
+    is_single_line = AfterPreprocessing(str.splitlines, HasLength(1))
     is_help_string = MatchesAll(is_string, is_single_line, first_only=True)
 
     def test_gen_configuration_options(self):
@@ -146,7 +137,7 @@ class TestConfigurationCommon(MAASTestCase):
             config.gen_configuration_options(),
             AllMatch(
                 MatchesListwise([
-                    IsInstance(unicode, bytes),
+                    IsInstance(str, bytes),
                     IsInstance(ConfigurationOption, property),
                 ]),
             ))
@@ -156,7 +147,7 @@ class TestConfigurationCommon(MAASTestCase):
             config.gen_mutable_configuration_options(),
             AllMatch(
                 MatchesListwise([
-                    IsInstance(unicode, bytes),
+                    IsInstance(str, bytes),
                     IsInstance(ConfigurationOption),
                 ]),
             ))
@@ -170,7 +161,7 @@ class TestConfigurationCommon(MAASTestCase):
                     _short_opts=MatchesListwise([]),
                     action=Equals("store_true"),
                     default=Is(False),
-                    dest=IsInstance(unicode, bytes),
+                    dest=IsInstance(str, bytes),
                     help=self.is_help_string,
                 ),
             ))
@@ -184,7 +175,7 @@ class TestConfigurationCommon(MAASTestCase):
                     _short_opts=MatchesListwise([]),
                     action=Equals("store_true"),
                     default=Is(False),
-                    dest=IsInstance(unicode, bytes),
+                    dest=IsInstance(str, bytes),
                     help=self.is_help_string,
                 ),
             ))
@@ -198,7 +189,7 @@ class TestConfigurationCommon(MAASTestCase):
                     _short_opts=MatchesListwise([]),
                     action=Equals("store"),
                     default=Is(None),
-                    dest=IsInstance(unicode, bytes),
+                    dest=IsInstance(str, bytes),
                     help=self.is_help_string,
                 ),
             ))

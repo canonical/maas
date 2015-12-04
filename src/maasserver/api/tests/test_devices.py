@@ -3,19 +3,9 @@
 
 """Tests for devices API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import random
 
 from django.core.urlresolvers import reverse
@@ -37,6 +27,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import (
     HasLength,
     Not,
@@ -62,15 +53,16 @@ class TestDevicesAPI(APITestCase):
                 'hostname': hostname,
                 'mac_addresses': macs,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        system_id = json_load_bytes(response.content)['system_id']
         device = Node.devices.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
+        self.assertEqual(hostname, device.hostname)
         self.assertIsNone(device.parent)
         self.assertFalse(device.installable)
-        self.assertEquals(NodeGroup.objects.ensure_master(), device.nodegroup)
-        self.assertEquals(self.logged_in_user, device.owner)
-        self.assertEquals(
+        self.assertEqual(NodeGroup.objects.ensure_master(), device.nodegroup)
+        self.assertEqual(self.logged_in_user, device.owner)
+        self.assertEqual(
             macs,
             {nic.mac_address for nic in device.interface_set.all()})
 
@@ -89,11 +81,12 @@ class TestDevicesAPI(APITestCase):
                 'mac_addresses': macs,
                 'parent': parent.system_id,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        system_id = json_load_bytes(response.content)['system_id']
         device = Node.devices.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
-        self.assertEquals(parent, device.parent)
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(parent, device.parent)
         self.assertFalse(device.installable)
 
     def test_POST_returns_limited_fields(self):
@@ -104,7 +97,7 @@ class TestDevicesAPI(APITestCase):
                 'hostname': factory.make_string(),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 'hostname',
@@ -133,9 +126,9 @@ class TestDevicesAPI(APITestCase):
         factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         response = self.client.get(reverse('devices_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(
             [device.system_id for device in devices],
             [device.get('system_id') for device in parsed_result])
@@ -144,10 +137,10 @@ class TestDevicesAPI(APITestCase):
         factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         response = self.client.get(reverse('devices_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEquals(
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
             [],
             [device.get('system_id') for device in parsed_result])
 
@@ -161,7 +154,7 @@ class TestDevicesAPI(APITestCase):
             'op': 'list',
             'id': [matching_id],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [matching_id],
             [device.get('system_id') for device in parsed_result])
@@ -176,7 +169,7 @@ class TestDevicesAPI(APITestCase):
             'op': 'list',
             'mac_address': [matching_mac],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [matching_device.system_id],
             [device.get('system_id') for device in parsed_result])
@@ -184,7 +177,7 @@ class TestDevicesAPI(APITestCase):
     def test_list_returns_limited_fields(self):
         self.create_devices(owner=self.logged_in_user)
         response = self.client.get(reverse('devices_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 'hostname',
@@ -219,15 +212,16 @@ class TestDeviceAPI(APITestCase):
 
         response = self.client.post(get_device_uri(device))
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_GET_reads_device(self):
         device = factory.make_Node(
             installable=False, owner=self.logged_in_user)
 
         response = self.client.get(get_device_uri(device))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(device.system_id, parsed_device["system_id"])
 
     def test_PUT_updates_device_hostname(self):
@@ -237,7 +231,8 @@ class TestDeviceAPI(APITestCase):
 
         response = self.client.put(
             get_device_uri(device), {'hostname': new_hostname})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
         device = reload_object(device)
         self.assertEqual(new_hostname, device.hostname)
@@ -250,7 +245,8 @@ class TestDeviceAPI(APITestCase):
 
         response = self.client.put(
             get_device_uri(device), {'parent': new_parent.system_id})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
         device = reload_object(device)
         self.assertEqual(new_parent, device.parent)
@@ -263,23 +259,23 @@ class TestDeviceAPI(APITestCase):
         response = self.client.put(
             get_device_uri(device),
             {'hostname': factory.make_name('hostname')})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertEquals(old_hostname, reload_object(device).hostname)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(old_hostname, reload_object(device).hostname)
 
     def test_DELETE_removes_device(self):
         device = factory.make_Node(
             installable=False, owner=self.logged_in_user)
         response = self.client.delete(get_device_uri(device))
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(device))
 
     def test_DELETE_rejects_deletion_if_not_permitted(self):
         device = factory.make_Node(
             installable=False, owner=factory.make_User())
         response = self.client.delete(get_device_uri(device))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertEquals(device, reload_object(device))
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertEqual(device, reload_object(device))
 
 
 class TestClaimStickyIpAddressAPI(APITestCase):
@@ -294,12 +290,13 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         [returned_ip] = parsed_device["ip_addresses"]
         static_ip = StaticIPAddress.objects.filter(ip=returned_ip).first()
         self.assertIsNotNone(static_ip)
-        self.assertEquals(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
+        self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
 
     def test__rejected_if_not_permitted(self):
         parent = factory.make_Node_with_Interface_on_Subnet()
@@ -309,7 +306,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_creates_ip_with_random_ip(self):
         requested_address = factory.make_ip_address()
@@ -324,8 +321,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         [returned_ip] = parsed_device["ip_addresses"]
         [given_ip] = StaticIPAddress.objects.all()
         self.assertEqual(
@@ -347,10 +345,11 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             {
                 'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
-                'mac_address': unicode(second_nic.mac_address),
+                'mac_address': str(second_nic.mac_address),
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         [returned_ip] = parsed_device["ip_addresses"]
         [given_ip] = StaticIPAddress.objects.all()
         self.assertEqual(
@@ -371,10 +370,10 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'requested_address': requested_address,
                 'mac_address': interface.mac_address
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
             dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_rejects_invalid_mac(self):
         mac_address = factory.make_name('bogus')
@@ -389,12 +388,12 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'requested_address': requested_address,
                 'mac_address': mac_address
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
             dict(
                 mac_address=[
                     "'%s' is not a valid MAC address." % mac_address]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_rejects_unrelated_mac(self):
         # Create an other device.
@@ -416,7 +415,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'requested_address': requested_address,
                 'mac_address': other_nic.mac_address
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
 
@@ -433,14 +432,16 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
         self.patch_autospec(interface_module, "remove_host_maps")
         response = self.client.post(
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.expectThat(parsed_device["ip_addresses"], Not(HasLength(0)))
 
         response = self.client.post(
             get_device_uri(device), {'op': 'release_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.expectThat(parsed_device["ip_addresses"], HasLength(0))
 
     def test__rejects_invalid_ip(self):
@@ -454,10 +455,10 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
                 'address': factory.make_name('bogus'),
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
             dict(address=["Enter a valid IPv4 or IPv6 address."]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test__rejects_empty_ip(self):
         device = factory.make_Node(
@@ -470,7 +471,7 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
                 'address': '',
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
 
 class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
@@ -480,7 +481,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
     '''
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
         device = factory.make_Node_with_Interface_on_Subnet(
             installable=False, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
@@ -500,13 +501,14 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             self.expectThat(allocated, HasLength(1))
         response = self.client.post(
             get_device_uri(device), {'op': 'release_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.expectThat(parsed_device["ip_addresses"], HasLength(0))
 
     def test__releases_specific_address(self):
         network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
         device = factory.make_Node_with_Interface_on_Subnet(
             installable=False, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
@@ -530,10 +532,11 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             get_device_uri(device),
             {
                 'op': 'release_sticky_ip_address',
-                'address': unicode(ips[0].ip)
+                'address': str(ips[0].ip)
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.expectThat(parsed_device["ip_addresses"], HasLength(1))
 
     def test__rejected_if_not_permitted(self):
@@ -552,7 +555,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         response = self.client.post(
             get_device_uri(device), {'op': 'release_sticky_ip_address'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
         self.assertThat(
             StaticIPAddress.objects.filter(alloc_type=IPADDRESS_TYPE.STICKY),
             HasLength(1))

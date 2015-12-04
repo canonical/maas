@@ -3,25 +3,16 @@
 
 """Tests for the subcommand utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import (
     ArgumentParser,
     Namespace,
 )
+import io
 import os
 from random import randint
 import stat
-import StringIO
 from subprocess import (
     CalledProcessError,
     PIPE,
@@ -32,7 +23,11 @@ import types
 
 from maastesting import bindir
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.fixtures import CaptureStandardIO
+from maastesting.matchers import (
+    FileContains,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 import provisioningserver.utils
 from provisioningserver.utils.script import (
@@ -40,10 +35,8 @@ from provisioningserver.utils.script import (
     AtomicDeleteScript,
     AtomicWriteScript,
 )
-from testtools.matchers import (
-    FileContains,
-    MatchesStructure,
-)
+from provisioningserver.utils.shell import select_c_utf8_locale
+from testtools.matchers import MatchesStructure
 
 
 class TestActionScript(MAASTestCase):
@@ -55,11 +48,8 @@ class TestActionScript(MAASTestCase):
         super(TestActionScript, self).setUp()
         # ActionScript.setup() is not safe to run in the test suite.
         self.patch(ActionScript, "setup", lambda self: None)
-        # ArgumentParser sometimes likes to print to stdout/err. Use
-        # StringIO.StringIO to be relaxed about bytes/unicode (argparse uses
-        # bytes). When moving to Python 3 this will need to be tightened up.
-        self.patch(sys, "stdout", StringIO.StringIO())
-        self.patch(sys, "stderr", StringIO.StringIO())
+        # ArgumentParser sometimes likes to print to stdout/err.
+        self.stdio = self.useFixture(CaptureStandardIO())
 
     def test_init(self):
         description = factory.make_string()
@@ -68,7 +58,7 @@ class TestActionScript(MAASTestCase):
         self.assertEqual(description, script.parser.description)
 
     def test_register(self):
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: (
             self.assertIsInstance(parser, ArgumentParser))
         handler.run = lambda args: (
@@ -82,7 +72,7 @@ class TestActionScript(MAASTestCase):
     def test_register_without_add_arguments(self):
         # ActionScript.register will crash if the handler has no
         # add_arguments() callable.
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.run = lambda args: None
         script = self.factory("Description")
         error = self.assertRaises(
@@ -92,7 +82,7 @@ class TestActionScript(MAASTestCase):
     def test_register_without_run(self):
         # ActionScript.register will crash if the handler has no run()
         # callable.
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: None
         script = self.factory("Description")
         error = self.assertRaises(
@@ -101,7 +91,7 @@ class TestActionScript(MAASTestCase):
 
     def test_call(self):
         handler_calls = []
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: None
         handler.run = handler_calls.append
         script = self.factory("Description")
@@ -114,11 +104,11 @@ class TestActionScript(MAASTestCase):
     def test_call_invalid_choice(self):
         script = self.factory("Description")
         self.assertRaises(SystemExit, script, ["disembowel"])
-        self.assertIn(b"invalid choice", sys.stderr.getvalue())
+        self.assertIn("invalid choice", self.stdio.getError())
 
     def test_call_with_exception(self):
         # Most exceptions from run() are propagated.
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: 0 / 0
         script = self.factory("Description")
@@ -134,7 +124,7 @@ class TestActionScript(MAASTestCase):
         def raise_exception():
             raise exception
 
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: raise_exception()
         script = self.factory("Description")
@@ -149,7 +139,7 @@ class TestActionScript(MAASTestCase):
         def raise_exception():
             raise KeyboardInterrupt()
 
-        handler = types.ModuleType(b"handler")
+        handler = types.ModuleType("handler")
         handler.add_arguments = lambda parser: None
         handler.run = lambda args: raise_exception()
         script = self.factory("Description")
@@ -162,9 +152,8 @@ class TestAtomicWriteScript(MAASTestCase):
 
     def setUp(self):
         super(TestAtomicWriteScript, self).setUp()
-        # Silence ArgumentParser.
-        self.patch(sys, "stdout", StringIO.StringIO())
-        self.patch(sys, "stderr", StringIO.StringIO())
+        # ArgumentParser sometimes likes to print to stdout/err.
+        self.stdio = self.useFixture(CaptureStandardIO())
 
     def get_parser(self):
         parser = ArgumentParser()
@@ -172,7 +161,7 @@ class TestAtomicWriteScript(MAASTestCase):
         return parser
 
     def get_and_run_mocked_script(self, content, filename, *args):
-        self.patch(sys, "stdin", StringIO.StringIO(content))
+        self.stdio.addInput(content)
         parser = self.get_parser()
         parsed_args = parser.parse_args(*args)
         mocked_atomic_write = self.patch(
@@ -208,12 +197,10 @@ class TestAtomicWriteScript(MAASTestCase):
         script = [os.path.join(bindir, "maas-provision"), 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file, '--mode', '615'))
-        cmd = Popen(
-            script, stdin=PIPE,
-            env=dict(PYTHONPATH=":".join(sys.path)))
-        cmd.communicate(content)
-        self.assertThat(target_file, FileContains(content))
-        self.assertEqual(0615, stat.S_IMODE(os.stat(target_file).st_mode))
+        cmd = Popen(script, stdin=PIPE, env=select_c_utf8_locale())
+        cmd.communicate(content.encode("ascii"))
+        self.assertThat(target_file, FileContains(content, encoding="ascii"))
+        self.assertEqual(0o615, stat.S_IMODE(os.stat(target_file).st_mode))
 
     def test_passes_overwrite_flag(self):
         content = factory.make_string()
@@ -224,20 +211,23 @@ class TestAtomicWriteScript(MAASTestCase):
 
         self.assertThat(
             mocked_atomic_write,
-            MockCalledOnceWith(content, filename, mode=0600, overwrite=False))
+            MockCalledOnceWith(
+                content.encode("ascii"), filename,
+                mode=0o600, overwrite=False))
 
     def test_passes_mode_flag(self):
         content = factory.make_string()
         filename = factory.make_string()
         # Mode that's unlikely to occur in the wild.
-        mode = 0377
+        mode = 0o377
         mocked_atomic_write = self.get_and_run_mocked_script(
             content, filename,
             ('--filename', filename, '--mode', oct(mode)))
 
         self.assertThat(
             mocked_atomic_write,
-            MockCalledOnceWith(content, filename, mode=mode, overwrite=True))
+            MockCalledOnceWith(
+                content.encode("ascii"), filename, mode=mode, overwrite=True))
 
     def test_default_mode(self):
         content = factory.make_string()
@@ -248,7 +238,8 @@ class TestAtomicWriteScript(MAASTestCase):
 
         self.assertThat(
             mocked_atomic_write,
-            MockCalledOnceWith(content, filename, mode=0600, overwrite=True))
+            MockCalledOnceWith(
+                content.encode("ascii"), filename, mode=0o600, overwrite=True))
 
 
 class TestAtomicDeleteScript(MAASTestCase):
@@ -256,8 +247,8 @@ class TestAtomicDeleteScript(MAASTestCase):
     def setUp(self):
         super(TestAtomicDeleteScript, self).setUp()
         # Silence ArgumentParser.
-        self.patch(sys, "stdout", StringIO.StringIO())
-        self.patch(sys, "stderr", StringIO.StringIO())
+        self.patch(sys, "stdout", io.StringIO())
+        self.patch(sys, "stderr", io.StringIO())
 
     def get_parser(self):
         parser = ArgumentParser()

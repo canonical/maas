@@ -3,16 +3,6 @@
 
 """API handlers: `Fan Network`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from maasserver.api.support import (
     admin_method,
     OperationsHandler,

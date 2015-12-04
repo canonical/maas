@@ -19,15 +19,6 @@ parameters requires changes to hardware drivers that run in the cluster
 controllers.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_all_power_types_from_clusters',
     'get_power_type_choices',

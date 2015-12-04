@@ -10,15 +10,6 @@ the next release cycle (through MAAS 1.9) in case any bugs with this migration
 occur.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import datetime
@@ -189,9 +180,9 @@ class TestPopulateSubnetsMigration(MAASServerTestCase):
         self.migrate_networks_forward()
         subnet = Subnet.objects.first()
         self.assertThat(network.ip, Equals(
-            unicode(IPNetwork(subnet.cidr).network)))
+            str(IPNetwork(subnet.cidr).network)))
         self.assertThat(network.netmask, Equals(
-            unicode(IPNetwork(subnet.cidr).netmask)))
+            str(IPNetwork(subnet.cidr).netmask)))
         if network.dns_servers is not None and network.dns_servers != '':
             self.assertThat(network.dns_servers, Equals(
                 ' '.join(subnet.dns_servers)))

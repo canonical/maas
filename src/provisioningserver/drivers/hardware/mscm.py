@@ -8,14 +8,6 @@ Management (MSCM) CLI via SSH, and for using that support to allow MAAS to
 manage systems via iLO.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_mscm',
     'power_state_mscm',
@@ -29,7 +21,7 @@ from paramiko import (
     SSHClient,
     SSHException,
 )
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )

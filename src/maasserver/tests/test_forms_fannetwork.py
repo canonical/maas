@@ -3,15 +3,6 @@
 
 """Tests for FanNetwork forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -29,11 +20,11 @@ class TestFanNetworkForm(MAASServerTestCase):
         underlay = factory.make_ipv4_network(slash=slash)
         overlay = factory.make_ipv4_network(slash=slash - 4)
         form = FanNetworkForm({
-            "overlay": unicode(overlay),
-            "underlay": unicode(underlay),
+            "overlay": str(overlay),
+            "underlay": str(underlay),
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "name": ["This field is required."],
         }, form.errors)
 
@@ -42,10 +33,10 @@ class TestFanNetworkForm(MAASServerTestCase):
         underlay = factory.make_ipv4_network(slash=slash)
         form = FanNetworkForm({
             "name": factory.make_name("fannetwork"),
-            "underlay": unicode(underlay),
+            "underlay": str(underlay),
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "overlay": ["This field is required."],
         }, form.errors)
 
@@ -54,10 +45,10 @@ class TestFanNetworkForm(MAASServerTestCase):
         overlay = factory.make_ipv4_network(slash=slash - 4)
         form = FanNetworkForm({
             "name": factory.make_name("fannetwork"),
-            "overlay": unicode(overlay),
+            "overlay": str(overlay),
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "underlay": ["This field is required."],
             }, form.errors)
 
@@ -68,12 +59,12 @@ class TestFanNetworkForm(MAASServerTestCase):
         overlay = factory.make_ipv4_network(slash=slash - 4)
         form = FanNetworkForm({
             "name": fannetwork_name,
-            "overlay": unicode(overlay),
-            "underlay": unicode(underlay),
+            "overlay": str(overlay),
+            "underlay": str(underlay),
         })
         self.assertTrue(form.is_valid(), form.errors)
         fannetwork = form.save()
-        self.assertEquals(fannetwork_name, fannetwork.name)
+        self.assertEqual(fannetwork_name, fannetwork.name)
 
     def test__doest_require_name_on_update(self):
         fannetwork = factory.make_FanNetwork()
@@ -88,4 +79,4 @@ class TestFanNetworkForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEquals(new_name, reload_object(fannetwork).name)
+        self.assertEqual(new_name, reload_object(fannetwork).name)

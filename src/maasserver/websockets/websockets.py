@@ -15,12 +15,19 @@ __all__ = ["WebSocketsResource", "IWebSocketsFrameReceiver",
            "WebSocketsProtocolWrapper", "CONTROLS", "STATUSES"]
 
 
+import base64
 from hashlib import sha1
+from itertools import cycle
 from struct import (
     pack,
     unpack,
 )
+from typing import (
+    List,
+    Sequence,
+)
 
+from provisioningserver.utils import typed
 from twisted.internet.protocol import Protocol
 from twisted.protocols.tls import TLSMemoryBIOProtocol
 from twisted.python import log
@@ -81,50 +88,50 @@ class STATUSES(Values):
 
 
 # The GUID for WebSockets, from RFC 6455.
-_WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+_WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
-def _makeAccept(key):
+@typed
+def _makeAccept(key: bytes) -> bytes:
     """
     Create an B{accept} response for a given key.
 
-    @type key: C{str}
+    @type key: C{bytes}
     @param key: The key to respond to.
 
-    @rtype: C{str}
+    @rtype: C{bytes}
     @return: An encoded response.
     """
-    return sha1("%s%s" % (key, _WS_GUID)).digest().encode("base64").strip()
+    digest = sha1(b"%s%s" % (key, _WS_GUID)).digest()
+    return base64.encodebytes(digest).strip()
 
 
-def _mask(buf, key):
+@typed
+def _mask(buf: bytes, key: bytes) -> bytes:
     """
     Mask or unmask a buffer of bytes with a masking key.
 
-    @type buf: C{str}
+    @type buf: C{bytes}
     @param buf: A buffer of bytes.
 
-    @type key: C{str}
+    @type key: C{bytes}
     @param key: The masking key. Must be exactly four bytes.
 
     @rtype: C{str}
     @return: A masked buffer of bytes.
     """
-    key = [ord(i) for i in key]
-    buf = list(buf)
-    for i, char in enumerate(buf):
-        buf[i] = chr(ord(char) ^ key[i % 4])
-    return "".join(buf)
+    return bytes((b ^ k) for b, k in zip(buf, cycle(key)))
 
 
-def _makeFrame(buf, opcode, fin, mask=None):
+@typed
+def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes=None) -> bytes:
     """
     Make a frame.
 
     This function always creates unmasked frames, and attempts to use the
     smallest possible lengths.
 
-    @type buf: C{str}
+    @type buf: C{bytes}
     @param buf: A buffer of bytes.
 
     @type opcode: C{CONTROLS}
@@ -133,10 +140,10 @@ def _makeFrame(buf, opcode, fin, mask=None):
     @type fin: C{bool}
     @param fin: Whether or not we're creating a final frame.
 
-    @type mask: C{int} or C{NoneType}
+    @type mask: C{bytes} or C{NoneType}
     @param mask: If specified, the masking key to apply on the created frame.
 
-    @rtype: C{str}
+    @rtype: C{bytes}
     @return: A packed frame.
     """
     bufferLength = len(buf)
@@ -146,25 +153,28 @@ def _makeFrame(buf, opcode, fin, mask=None):
         lengthMask = 0
 
     if bufferLength > 0xffff:
-        length = "%s%s" % (chr(lengthMask | 0x7f), pack(">Q", bufferLength))
+        length = b"%s%s" % (
+            bytes([lengthMask | 0x7f]), pack(">Q", bufferLength))
     elif bufferLength > 0x7d:
-        length = "%s%s" % (chr(lengthMask | 0x7e), pack(">H", bufferLength))
+        length = b"%s%s" % (
+            bytes([lengthMask | 0x7e]), pack(">H", bufferLength))
     else:
-        length = chr(lengthMask | bufferLength)
+        length = bytes([lengthMask | bufferLength])
 
     if fin:
         header = 0x80
     else:
         header = 0x01
 
-    header = chr(header | opcode.value)
+    header = bytes([header | opcode.value])
     if mask is not None:
-        buf = "%s%s" % (mask, _mask(buf, mask))
-    frame = "%s%s%s" % (header, length, buf)
+        buf = b"%s%s" % (mask, _mask(buf, mask))
+    frame = b"%s%s%s" % (header, length, buf)
     return frame
 
 
-def _parseFrames(frameBuffer, needMask=True):
+@typed
+def _parseFrames(frameBuffer: List[bytes], needMask: bool=True):
     """
     Parse frames in a highly compliant manner. It modifies C{frameBuffer}
     removing the parsed content from it.
@@ -176,7 +186,7 @@ def _parseFrames(frameBuffer, needMask=True):
     @type needMask: C{bool}
     """
     start = 0
-    payload = "".join(frameBuffer)
+    payload = b"".join(frameBuffer)
 
     while True:
         # If there's not at least two bytes in the buffer, bail.
@@ -184,7 +194,7 @@ def _parseFrames(frameBuffer, needMask=True):
             break
 
         # Grab the header. This single byte holds some flags and an opcode
-        header = ord(payload[start])
+        header = payload[start]
         if header & 0x70:
             # At least one of the reserved flags is set. Pork chop sandwiches!
             raise _WSException("Reserved flag in frame (%d)" % (header,))
@@ -201,7 +211,7 @@ def _parseFrames(frameBuffer, needMask=True):
 
         # Get the payload length and determine whether we need to look for an
         # extra length.
-        length = ord(payload[start + 1])
+        length = payload[start + 1]
         masked = length & 0x80
 
         if not masked and needMask:
@@ -256,7 +266,7 @@ def _parseFrames(frameBuffer, needMask=True):
                 data = code, data[2:]
             else:
                 # No reason given; use generic data.
-                data = STATUSES.NONE, ""
+                data = STATUSES.NONE, b""
 
         yield opcode, data, bool(fin)
         start += offset + length
@@ -312,7 +322,8 @@ class WebSocketsTransport(object):
     def __init__(self, transport):
         self._transport = transport
 
-    def sendFrame(self, opcode, data, fin):
+    @typed
+    def sendFrame(self, opcode, data: bytes, fin: bool):
         """
         Build a frame packet and send it over the wire.
 
@@ -328,7 +339,8 @@ class WebSocketsTransport(object):
         packet = _makeFrame(data, opcode, fin)
         self._transport.write(packet)
 
-    def loseConnection(self, code=STATUSES.NORMAL, reason=""):
+    @typed
+    def loseConnection(self, code=STATUSES.NORMAL, reason: bytes=b""):
         """
         Close the connection.
 
@@ -349,7 +361,7 @@ class WebSocketsTransport(object):
         # Send a closing frame. It's only polite. (And might keep the browser
         # from hanging.)
         if not self._disconnecting:
-            data = "%s%s" % (pack(">H", code.value), reason)
+            data = b"%s%s" % (pack(">H", code.value), reason)
             frame = _makeFrame(data, CONTROLS.CLOSE, True)
             self._transport.write(frame)
             self._disconnecting = True
@@ -407,7 +419,8 @@ class WebSocketsProtocol(Protocol):
                 # provoking PING.
                 self.transport.write(_makeFrame(data, CONTROLS.PONG, True))
 
-    def dataReceived(self, data):
+    @typed
+    def dataReceived(self, data: bytes):
         """
         Append the data to the buffer list and parse the whole.
 
@@ -450,7 +463,8 @@ class _WebSocketsProtocolWrapperReceiver():
         self._transport = transport
         self._messages = []
 
-    def frameReceived(self, opcode, data, fin):
+    @typed
+    def frameReceived(self, opcode, data, fin: bool):
         """
         For each frame received, accumulate the data (ignoring the opcode), and
         forwarding the messages if C{fin} is set.
@@ -468,7 +482,7 @@ class _WebSocketsProtocolWrapperReceiver():
             return
         self._messages.append(data)
         if fin:
-            content = "".join(self._messages)
+            content = b"".join(self._messages)
             self._messages[:] = []
             self._wrappedProtocol.dataReceived(content)
 
@@ -506,7 +520,8 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         WebSocketsProtocol.makeConnection(self, transport)
         self.wrappedProtocol.makeConnection(self)
 
-    def write(self, data):
+    @typed
+    def write(self, data: bytes):
         """
         Write to the websocket protocol, transforming C{data} in a frame.
 
@@ -515,7 +530,8 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         """
         self._receiver._transport.sendFrame(self.defaultOpcode, data, True)
 
-    def writeSequence(self, data):
+    @typed
+    def writeSequence(self, data: Sequence):
         """
         Send all chunks from C{data} using C{write}.
 
@@ -624,61 +640,61 @@ class WebSocketsResource(object):
         # If we fail at all, we'll fail with 400 and no response.
         failed = False
 
-        if request.method != "GET":
+        if request.method != b"GET":
             # 4.2.1.1 GET is required.
             failed = True
 
-        upgrade = request.getHeader("Upgrade")
-        if upgrade is None or "websocket" not in upgrade.lower():
+        upgrade = request.getHeader(b"Upgrade")
+        if upgrade is None or b"websocket" not in upgrade.lower():
             # 4.2.1.3 Upgrade: WebSocket is required.
             failed = True
 
-        connection = request.getHeader("Connection")
-        if connection is None or "upgrade" not in connection.lower():
+        connection = request.getHeader(b"Connection")
+        if connection is None or b"upgrade" not in connection.lower():
             # 4.2.1.4 Connection: Upgrade is required.
             failed = True
 
-        key = request.getHeader("Sec-WebSocket-Key")
+        key = request.getHeader(b"Sec-WebSocket-Key")
         if key is None:
             # 4.2.1.5 The challenge key is required.
             failed = True
 
-        version = request.getHeader("Sec-WebSocket-Version")
-        if version != "13":
+        version = request.getHeader(b"Sec-WebSocket-Version")
+        if version != b"13":
             # 4.2.1.6 Only version 13 works.
             failed = True
             # 4.4 Forward-compatible version checking.
-            request.setHeader("Sec-WebSocket-Version", "13")
+            request.setHeader(b"Sec-WebSocket-Version", b"13")
 
         if failed:
             request.setResponseCode(400)
-            return ""
+            return b""
 
         askedProtocols = request.requestHeaders.getRawHeaders(
-            "Sec-WebSocket-Protocol")
+            b"Sec-WebSocket-Protocol")
         protocol, protocolName = self._lookupProtocol(askedProtocols, request)
 
         # If a protocol is not created, we deliver an error status.
         if not protocol:
             request.setResponseCode(502)
-            return ""
+            return b""
 
         # We are going to finish this handshake. We will return a valid status
         # code.
         # 4.2.2.5.1 101 Switching Protocols
         request.setResponseCode(101)
         # 4.2.2.5.2 Upgrade: websocket
-        request.setHeader("Upgrade", "WebSocket")
+        request.setHeader(b"Upgrade", b"WebSocket")
         # 4.2.2.5.3 Connection: Upgrade
-        request.setHeader("Connection", "Upgrade")
+        request.setHeader(b"Connection", b"Upgrade")
         # 4.2.2.5.4 Response to the key challenge
-        request.setHeader("Sec-WebSocket-Accept", _makeAccept(key))
+        request.setHeader(b"Sec-WebSocket-Accept", _makeAccept(key))
         # 4.2.2.5.5 Optional codec declaration
         if protocolName:
-            request.setHeader("Sec-WebSocket-Protocol", protocolName)
+            request.setHeader(b"Sec-WebSocket-Protocol", protocolName)
 
         # Provoke request into flushing headers and finishing the handshake.
-        request.write("")
+        request.write(b"")
 
         # And now take matters into our own hands. We shall manage the
         # transport's lifecycle.
@@ -686,7 +702,7 @@ class WebSocketsResource(object):
 
         # Set the cookies on the transport. So the protocol can view the
         # cookies.
-        transport.cookies = request.getHeader("cookie")
+        transport.cookies = request.getHeader(b"cookie")
 
         # Set the uri on the transport. This allows the protocol to view the
         # uri.

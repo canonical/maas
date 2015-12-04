@@ -3,18 +3,9 @@
 
 """Tests for `BootSourceForm`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from cStringIO import StringIO
+from io import BytesIO
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from maasserver.forms import BootSourceForm
@@ -56,7 +47,7 @@ class TestBootSourceForm(MAASServerTestCase):
 
     def test_creates_boot_source_object_with_keyring_data(self):
         in_mem_file = InMemoryUploadedFile(
-            StringIO(sample_binary_data), name=factory.make_name('name'),
+            BytesIO(sample_binary_data), name=factory.make_name('name'),
             field_name=factory.make_name('field-name'),
             content_type='application/octet-stream',
             size=len(sample_binary_data),

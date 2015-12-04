@@ -3,15 +3,6 @@
 
 """Tests for `maascli.profile`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maascli.profile import (
@@ -52,7 +43,7 @@ class TestProfile(MAASTestCase):
 
     def test_select_profile_returns_named_profile(self):
         profiles = make_configs(3)
-        profile_name = profiles.keys()[1]
+        [profile_name, _, _] = profiles
         self.assertEqual(profile_name, select_profile(profiles, profile_name))
 
     def test_select_profile_selects_default_if_no_profile_named(self):

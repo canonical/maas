@@ -3,19 +3,9 @@
 
 """Tests for the `Boot Resources` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import random
 
 from django.core.urlresolvers import reverse
@@ -39,6 +29,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
@@ -57,7 +48,7 @@ class TestHelpers(MAASServerTestCase):
     def test_boot_resource_file_to_dict(self):
         size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_string(size)
+        content = factory.make_bytes(size)
         largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED)
@@ -81,7 +72,7 @@ class TestHelpers(MAASServerTestCase):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         total_size = random.randint(1024, 2048)
-        content = factory.make_string(random.randint(512, 1023))
+        content = factory.make_bytes(random.randint(512, 1023))
         largefile = factory.make_LargeFile(content=content, size=total_size)
         rfile = factory.make_BootResourceFile(resource_set, largefile)
         dict_representation = boot_resource_set_to_dict(resource_set)
@@ -133,8 +124,9 @@ class TestBootResourcesAPI(APITestCase):
             factory.make_BootResource() for _ in range(3)]
         response = self.client.get(
             reverse('boot_resources_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [resource.id for resource in resources],
             [resource.get('id') for resource in parsed_result])
@@ -148,8 +140,9 @@ class TestBootResourcesAPI(APITestCase):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'synced'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [resource.id for resource in resources],
             [resource.get('id') for resource in parsed_result])
@@ -163,8 +156,9 @@ class TestBootResourcesAPI(APITestCase):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'generated'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [resource.id for resource in resources],
             [resource.get('id') for resource in parsed_result])
@@ -178,8 +172,9 @@ class TestBootResourcesAPI(APITestCase):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'uploaded'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [resource.id for resource in resources],
             [resource.get('id') for resource in parsed_result])
@@ -188,8 +183,9 @@ class TestBootResourcesAPI(APITestCase):
         factory.make_BootResource()
         response = self.client.get(
             reverse('boot_resources_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertFalse('sets' in parsed_result[0])
 
     def test_POST_requires_admin(self):
@@ -201,7 +197,7 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def pick_filetype(self):
         upload_type = random.choice([
@@ -227,8 +223,8 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         resource = BootResource.objects.get(id=parsed_result['id'])
         resource_set = resource.sets.first()
@@ -255,8 +251,8 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         resource = BootResource.objects.get(id=parsed_result['id'])
         resource_set = resource.sets.first()
@@ -277,8 +273,8 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         resource = BootResource.objects.get(id=parsed_result['id'])
         resource_set = resource.sets.first()
@@ -304,8 +300,8 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         resource = BootResource.objects.get(id=parsed_result['id'])
         resource_set = resource.sets.first()
@@ -329,7 +325,7 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_returns_full_definition_of_boot_resource(self):
         self.become_admin()
@@ -344,8 +340,8 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertTrue('sets' in parsed_result)
 
     def test_POST_validates_boot_resource(self):
@@ -356,7 +352,7 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_calls_import_boot_images_on_all_clusters(self):
         self.become_admin()
@@ -374,7 +370,7 @@ class TestBootResourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_resources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
+        self.assertEqual(http.client.CREATED, response.status_code)
         self.assertThat(
             boot_images.ClustersImporter.schedule,
             MockCalledOnceWith())
@@ -382,7 +378,7 @@ class TestBootResourcesAPI(APITestCase):
     def test_import_requires_admin(self):
         response = self.client.post(
             reverse('boot_resources_handler'), {'op': 'import'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootResourceAPI(APITestCase):
@@ -395,8 +391,8 @@ class TestBootResourceAPI(APITestCase):
     def test_GET_returns_boot_resource(self):
         resource = factory.make_usable_boot_resource()
         response = self.client.get(get_boot_resource_uri(resource))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_resource = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_resource = json_load_bytes(response.content)
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
             reverse(
@@ -412,13 +408,13 @@ class TestBootResourceAPI(APITestCase):
         self.become_admin()
         resource = factory.make_BootResource()
         response = self.client.delete(get_boot_resource_uri(resource))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(resource))
 
     def test_DELETE_requires_admin(self):
         resource = factory.make_BootResource()
         response = self.client.delete(get_boot_resource_uri(resource))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootResourceFileUploadAPI(APITestCase):
@@ -470,7 +466,8 @@ class TestBootResourceFileUploadAPI(APITestCase):
         rfile, content = self.make_empty_resource_file()
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(content, self.read_content(rfile))
 
     def test_PUT_requires_admin(self):
@@ -478,7 +475,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_PUT_returns_bad_request_when_no_content(self):
         self.become_admin()
@@ -486,7 +483,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile))
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_PUT_returns_forbidden_when_resource_is_synced(self):
         self.become_admin()
@@ -495,7 +492,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_PUT_returns_bad_request_when_resource_file_is_complete(self):
         self.become_admin()
@@ -506,7 +503,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_PUT_returns_bad_request_when_content_is_too_large(self):
         self.become_admin()
@@ -515,7 +512,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_PUT_returns_bad_request_when_content_doesnt_match_sha256(self):
         self.become_admin()
@@ -524,7 +521,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_PUT_on_complete_calls_clusters_to_import_boot_images(self):
         self.become_admin()
@@ -536,7 +533,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content)
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         self.assertThat(
             boot_images.ClustersImporter.schedule,
             MockCalledOnceWith())
@@ -557,5 +554,5 @@ class TestBootResourceFileUploadAPI(APITestCase):
                 self.get_boot_resource_file_upload_uri(rfile),
                 data=send_content)
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
+                http.client.OK, response.status_code, response.content)
         self.assertEqual(content, self.read_content(rfile))

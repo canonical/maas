@@ -3,15 +3,6 @@
 
 """Service class for the monitored dhcp services."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DHCPv4Service",
     "DHCPv6Service",

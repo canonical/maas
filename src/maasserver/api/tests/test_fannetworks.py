@@ -3,19 +3,9 @@
 
 """Tests for FanNetwork API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import random
 
 from django.core.urlresolvers import reverse
@@ -23,6 +13,7 @@ from maasserver.models.fannetwork import FanNetwork
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -55,14 +46,15 @@ class TestFanNetworksAPI(APITestCase):
         uri = get_fannetworks_uri()
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             fannetwork.id
             for fannetwork in FanNetwork.objects.all()
             ]
         result_ids = [
             fannetwork["id"]
-            for fannetwork in json.loads(response.content)
+            for fannetwork in json_load_bytes(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -75,15 +67,17 @@ class TestFanNetworksAPI(APITestCase):
         overlay = factory.make_ipv4_network(slash=slash - 4)
         response = self.client.post(uri, {
             "name": fannetwork_name,
-            "underlay": unicode(underlay),
-            "overlay": unicode(overlay),
+            "underlay": str(underlay),
+            "overlay": str(overlay),
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(fannetwork_name, json.loads(response.content)['name'])
         self.assertEqual(
-            unicode(underlay), json.loads(response.content)['underlay'])
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(
-            unicode(overlay), json.loads(response.content)['overlay'])
+            fannetwork_name, json_load_bytes(response.content)['name'])
+        self.assertEqual(
+            str(underlay), json_load_bytes(response.content)['underlay'])
+        self.assertEqual(
+            str(overlay), json_load_bytes(response.content)['overlay'])
 
     def test_create_admin_only(self):
         fannetwork_name = factory.make_name("fannetwork")
@@ -93,23 +87,23 @@ class TestFanNetworksAPI(APITestCase):
         overlay = factory.make_ipv4_network(slash=slash - 4)
         response = self.client.post(uri, {
             "name": fannetwork_name,
-            "underlay": unicode(underlay),
-            "overlay": unicode(overlay),
+            "underlay": str(underlay),
+            "overlay": str(overlay),
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_requires_fields(self):
         self.become_admin()
         uri = get_fannetworks_uri()
         response = self.client.post(uri, {})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual({
             "name": ["This field is required."],
             "overlay": ["This field is required."],
             "underlay": ["This field is required."],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
 
 class TestFanNetworkAPI(APITestCase):
@@ -125,8 +119,9 @@ class TestFanNetworkAPI(APITestCase):
         uri = get_fannetwork_uri(fannetwork)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_fannetwork = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_fannetwork = json_load_bytes(response.content)
         self.assertThat(parsed_fannetwork, ContainsDict({
             "id": Equals(fannetwork.id),
             "name": Equals(fannetwork.name),
@@ -137,7 +132,7 @@ class TestFanNetworkAPI(APITestCase):
             'fannetwork_handler', args=[random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update(self):
         self.become_admin()
@@ -147,8 +142,9 @@ class TestFanNetworkAPI(APITestCase):
         response = self.client.put(uri, {
             "name": new_name,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(new_name, json.loads(response.content)['name'])
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(new_name, json_load_bytes(response.content)['name'])
         self.assertEqual(new_name, reload_object(fannetwork).name)
 
     def test_update_admin_only(self):
@@ -159,7 +155,7 @@ class TestFanNetworkAPI(APITestCase):
             "name": new_name,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_fannetwork(self):
         self.become_admin()
@@ -167,7 +163,7 @@ class TestFanNetworkAPI(APITestCase):
         uri = get_fannetwork_uri(fannetwork)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(fannetwork))
 
     def test_delete_403_when_not_admin(self):
@@ -175,7 +171,7 @@ class TestFanNetworkAPI(APITestCase):
         uri = get_fannetwork_uri(fannetwork)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
         self.assertIsNotNone(reload_object(fannetwork))
 
     def test_delete_404_when_invalid_id(self):
@@ -184,4 +180,4 @@ class TestFanNetworkAPI(APITestCase):
             'fannetwork_handler', args=[random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)

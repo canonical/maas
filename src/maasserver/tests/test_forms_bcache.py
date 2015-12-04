@@ -3,15 +3,6 @@
 
 """Tests for all forms that are used with `Bcache`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from uuid import uuid4
@@ -37,7 +28,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
         self.assertFalse(form.is_valid(), form.errors)
         self.assertDictContainsSubset(
-            {'cache_mode': [u'This field is required.']}, form.errors)
+            {'cache_mode': ['This field is required.']}, form.errors)
 
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -97,7 +88,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size)
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         form = CreateBcacheForm(node=node, data={
             'name': 'bcache0',
             'uuid': uuid,
@@ -126,7 +117,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         backing_partition_table = factory.make_PartitionTable(
             block_device=backing_device)
         backing_partition = backing_partition_table.add_partition()
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         form = CreateBcacheForm(node=node, data={
             'name': 'bcache0',
             'uuid': uuid,
@@ -169,7 +160,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
     def test_bcache_creation_with_invalid_names_fails(self):
         node = factory.make_Node()
-        uuid = unicode(uuid4())
+        uuid = str(uuid4())
         form = CreateBcacheForm(node=node, data={
             'name': 'bcache0',
             'uuid': uuid,
@@ -179,7 +170,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         })
 
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "cache_set": [
                 "Select a valid choice. sdapart1 is not one of the "
                 "available choices."],

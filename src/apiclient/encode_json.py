@@ -3,15 +3,6 @@
 
 """Encoding requests as JSON data."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'encode_json_data',
     ]
@@ -28,7 +19,7 @@ def encode_json_data(params):
     """
     body = json.dumps(params)
     headers = {
-        'Content-Length': unicode(len(body)),
+        'Content-Length': str(len(body)),
         'Content-Type': 'application/json',
         }
     return body, headers

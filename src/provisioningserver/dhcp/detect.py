@@ -3,29 +3,19 @@
 
 """Utilities and helpers to help discover DHCP servers on your network."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'probe_dhcp',
     ]
 
-
 from contextlib import contextmanager
 import errno
 import fcntl
-import httplib
+import http.client
 import json
 from random import randint
 import socket
 import struct
-from urllib2 import (
+from urllib.error import (
     HTTPError,
     URLError,
 )
@@ -134,7 +124,7 @@ def get_interface_MAC(sock, interface):
     """Obtain a network interface's MAC address, as a string."""
     ifreq = struct.pack(b'256s', interface.encode('ascii')[:15])
     info = fcntl.ioctl(sock.fileno(), SIOCGIFHWADDR, ifreq)
-    mac = ''.join(['%02x:' % ord(char) for char in info[18:24]])[:-1]
+    mac = ''.join('%02x:' % char for char in info[18:24])[:-1]
     return mac
 
 
@@ -156,8 +146,10 @@ def udp_socket():
     # also be listening, even if it's operating on a different interface!
     # The SO_REUSEADDR option makes this possible.
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    yield sock
-    sock.close()
+    try:
+        yield sock
+    finally:
+        sock.close()
 
 
 def request_dhcp(interface):
@@ -223,7 +215,7 @@ def process_request(client_func, *args, **kwargs):
         maaslog.warning("Failed to contact region controller:\n%s", e)
         return None
     code = response.getcode()
-    if code != httplib.OK:
+    if code != http.client.OK:
         maaslog.error(
             "Failed talking to region controller, it returned:\n%s\n%s",
             code, response.read())

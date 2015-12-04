@@ -3,20 +3,11 @@
 
 """Test maasserver RPC views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import json
 
-from crochet import run_in_reactor
+from crochet import wait_for
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -51,13 +42,13 @@ class RPCViewTest(DjangoTransactionTestCase):
 
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
-        info = json.loads(response.content)
+        info = json.loads(response.content.decode("unicode_escape"))
         self.assertEqual({"eventloops": None}, info)
 
     def test_rpc_info_when_rpc_advertise_not_running(self):
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
-        info = json.loads(response.content)
+        info = json.loads(response.content.decode("unicode_escape"))
         self.assertEqual({"eventloops": None}, info)
 
     def test_rpc_info_when_rpc_advertise_running(self):
@@ -68,7 +59,7 @@ class RPCViewTest(DjangoTransactionTestCase):
 
         getServiceNamed = eventloop.services.getServiceNamed
 
-        @run_in_reactor
+        @wait_for(5)
         @inlineCallbacks
         def wait_for_startup():
             # Wait for the rpc and the rpc-advertise services to start.
@@ -77,12 +68,12 @@ class RPCViewTest(DjangoTransactionTestCase):
             # Force an update, because it's very hard to track when the
             # first iteration of the rpc-advertise service has completed.
             yield deferToDatabase(getServiceNamed("rpc-advertise").update)
-        wait_for_startup().wait(5)
+        wait_for_startup()
 
         response = self.client.get(reverse('rpc-info'))
 
         self.assertEqual("application/json", response["Content-Type"])
-        info = json.loads(response.content)
+        info = json.loads(response.content.decode("unicode_escape"))
         self.assertThat(info, KeysEqual("eventloops"))
         self.assertThat(info["eventloops"], MatchesDict({
             # Each entry in the endpoints dict is a mapping from an

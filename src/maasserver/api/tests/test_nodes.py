@@ -3,22 +3,14 @@
 
 """Tests for the nodes API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import random
 
 import crochet
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test import RequestFactory
@@ -79,7 +71,6 @@ from testtools.matchers import (
     Contains,
     Equals,
     HasLength,
-    MatchesListwise,
     Not,
 )
 
@@ -121,8 +112,10 @@ class NodeHostnameTest(MultipleUsersScenarios,
             hostname=hostname_with_domain, nodegroup=nodegroup)
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK.value, response.status_code, response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [expected_hostname],
             [node.get('hostname') for node in parsed_result])
@@ -138,8 +131,9 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
         self.assertEqual(
-            (httplib.OK, "true"),
-            (response.status_code, response.content))
+            (http.client.OK.value, "true"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_is_registered_normalizes_mac_address(self):
         # These two non-normalized MAC addresses are the same.
@@ -154,8 +148,9 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
                 'mac_address': non_normalized_mac_address2
             })
         self.assertEqual(
-            (httplib.OK, "true"),
-            (response.status_code, response.content))
+            (http.client.OK.value, "true"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_is_registered_returns_False_if_node_not_registered(self):
         mac_address = factory.make_mac_address()
@@ -163,8 +158,9 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
         self.assertEqual(
-            (httplib.OK, "false"),
-            (response.status_code, response.content))
+            (http.client.OK.value, "false"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
 
 def extract_system_ids(parsed_result):
@@ -260,7 +256,7 @@ class TestFilteredNodesListFromRequest(APITestCase):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
             for _ in range(3)
         ]
-        matching_mac = unicode(interfaces[0].mac_address)
+        matching_mac = str(interfaces[0].mac_address)
         matching_system_id = interfaces[0].node.system_id
 
         query = RequestFixture({'mac_address': [matching_mac]}, 'mac_address')
@@ -276,7 +272,7 @@ class TestFilteredNodesListFromRequest(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = unicode(
+        ok_mac = str(
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL).mac_address)
         mac_list = [bad_mac1, bad_mac2, ok_mac]
 
@@ -394,8 +390,9 @@ class TestNodesAPI(APITestCase):
                 'architecture': architecture,
                 'mac_addresses': macs,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         node = Node.objects.get(system_id=system_id)
         self.expectThat(node.hostname, Equals(hostname))
         self.expectThat(node.architecture, Equals(architecture))
@@ -415,8 +412,9 @@ class TestNodesAPI(APITestCase):
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         self.assertEqual(
             NODE_STATUS.NEW,
             Node.objects.get(system_id=system_id).status)
@@ -433,8 +431,9 @@ class TestNodesAPI(APITestCase):
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         node = Node.objects.get(system_id=system_id)
         self.assertEqual(default_disable_ipv4, node.disable_ipv4)
 
@@ -451,8 +450,9 @@ class TestNodesAPI(APITestCase):
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         node = Node.objects.get(system_id=system_id)
         self.assertEqual(default_disable_ipv4, node.disable_ipv4)
 
@@ -478,8 +478,9 @@ class TestNodesAPI(APITestCase):
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
                 'power_type': power_type,
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        validation_errors = json.loads(response.content)['power_type']
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        validation_errors = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['power_type']
         self.assertIn(cluster_error, validation_errors[1])
 
     def test_GET_list_lists_nodes(self):
@@ -488,9 +489,10 @@ class TestNodesAPI(APITestCase):
         node2 = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertItemsEqual(
             [node1.system_id, node2.system_id],
             extract_system_ids(parsed_result))
@@ -513,7 +515,7 @@ class TestNodesAPI(APITestCase):
         # Make sure the responses are ok as it's not useful to compare the
         # number of queries if they are not.
         self.assertEqual(
-            [httplib.OK, httplib.OK, 10, 20],
+            [http.client.OK, http.client.OK, 10, 20],
             [
                 response1.status_code,
                 response2.status_code,
@@ -526,13 +528,15 @@ class TestNodesAPI(APITestCase):
         # If there are no nodes to list, the "list" op still works but
         # returns an empty list.
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertItemsEqual([], json.loads(response.content))
+        self.assertItemsEqual(
+            [], json.loads(response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_GET_list_orders_by_id(self):
         # Nodes are returned in id order.
         nodes = [factory.make_Node() for counter in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
@@ -546,7 +550,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'id': [matching_id],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [matching_id], extract_system_ids(parsed_result))
 
@@ -559,7 +564,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'id': [nonexistent_id],
         })
-        self.assertItemsEqual([], json.loads(response.content))
+        self.assertItemsEqual([], json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_GET_list_with_ids_orders_by_id(self):
         # Even when ids are passed to "list," nodes are returned in id
@@ -569,7 +575,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'id': list(reversed(ids)),
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(ids, extract_system_ids(parsed_result))
 
     def test_GET_list_with_some_matching_ids_returns_matching_nodes(self):
@@ -581,7 +588,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'id': [existing_id, nonexistent_id],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [existing_id], extract_system_ids(parsed_result))
 
@@ -595,7 +603,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'hostname': [matching_hostname],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [matching_system_id], extract_system_ids(parsed_result))
 
@@ -612,7 +621,8 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'mac_address': [matching_mac],
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [matching_system_id], extract_system_ids(parsed_result))
 
@@ -622,20 +632,16 @@ class TestNodesAPI(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = unicode(
+        ok_mac = str(
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL).mac_address)
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
         })
-        observed = response.status_code, response.content
-        expected = (
-            Equals(httplib.BAD_REQUEST),
-            Contains(
-                "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, "
-                "00:E0:81:DD:D1:XX"),
-        )
-        self.assertThat(observed, MatchesListwise(expected))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX",
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_GET_list_with_agent_name_filters_by_agent_name(self):
         non_listed_node = factory.make_Node(
@@ -647,8 +653,9 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'agent_name': agent_name,
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id], extract_system_ids(parsed_result))
 
@@ -659,8 +666,9 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'agent_name': '',
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id], extract_system_ids(parsed_result))
 
@@ -669,8 +677,9 @@ class TestNodesAPI(APITestCase):
             factory.make_Node(agent_name=factory.make_name('agent-name'))
             for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
@@ -684,8 +693,9 @@ class TestNodesAPI(APITestCase):
             factory.make_Node(installable=False)
             for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         system_ids = extract_system_ids(parsed_result)
         self.assertEqual(
             [],
@@ -702,8 +712,9 @@ class TestNodesAPI(APITestCase):
             'op': 'list',
             'zone': zone.name,
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id], extract_system_ids(parsed_result))
 
@@ -712,8 +723,9 @@ class TestNodesAPI(APITestCase):
             factory.make_Node(zone=factory.make_Zone())
             for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertSequenceEqual(
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
@@ -744,8 +756,9 @@ class TestNodesAPI(APITestCase):
 
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list_allocated'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [node_1.system_id], extract_system_ids(parsed_result))
 
@@ -764,8 +777,9 @@ class TestNodesAPI(APITestCase):
             'op': 'list_allocated',
             'id': required_node_ids,
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             required_node_ids, extract_system_ids(parsed_result))
 
@@ -776,8 +790,9 @@ class TestNodesAPI(APITestCase):
             status=available_status, owner=None, with_boot_disk=True)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
     def test_POST_acquire_allocates_node(self):
@@ -828,13 +843,15 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         # Fails with Conflict error: resource can't satisfy request.
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_POST_acquire_failure_shows_no_constraints_if_none_given(self):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
-        self.assertEqual(httplib.CONFLICT, response.status_code)
-        self.assertEqual("No node available.", response.content)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertEqual(
+            "No node available.",
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_POST_acquire_failure_shows_constraints_if_given(self):
         hostname = factory.make_name('host')
@@ -843,10 +860,11 @@ class TestNodesAPI(APITestCase):
                 'op': 'acquire',
                 'name': hostname,
             })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
-        self.assertEqual(
-            "No available node matches constraints: name=%s" % hostname,
-            response.content)
+        expected_response = (
+            "No available node matches constraints: name=%s" % hostname
+        ).encode(settings.DEFAULT_CHARSET)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertEqual(expected_response, response.content)
 
     def test_POST_acquire_ignores_already_allocated_node(self):
         factory.make_Node(
@@ -854,7 +872,7 @@ class TestNodesAPI(APITestCase):
             with_boot_disk=True)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_POST_acquire_chooses_candidate_matching_constraint(self):
         # If "acquire" is passed a constraint, it will go for a node
@@ -871,8 +889,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'name': desired_node.hostname,
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         domain_name = desired_node.nodegroup.name
         self.assertEqual(
             "%s.%s" % (desired_node.hostname, domain_name),
@@ -890,7 +909,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'name': desired_node.system_id,
         })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_POST_acquire_ignores_unknown_constraint(self):
         node = factory.make_Node(
@@ -899,8 +918,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             factory.make_string(): factory.make_string(),
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
     def test_POST_acquire_allocates_node_by_name(self):
@@ -913,12 +933,13 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'name': node.hostname,
         })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
         self.assertEqual(
             "%s.%s" % (node.hostname, domain_name),
-            json.loads(response.content)['hostname'])
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['hostname'])
 
     def test_POST_acquire_treats_unknown_name_as_resource_conflict(self):
         # A name constraint naming an unknown node produces a resource
@@ -932,7 +953,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'name': factory.make_string(),
         })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_POST_acquire_allocates_node_by_arch(self):
         # Asking for a particular arch acquires a node with that arch.
@@ -943,8 +964,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'arch': arch,
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        response_json = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.architecture, response_json['architecture'])
 
     def test_POST_acquire_treats_unknown_arch_as_bad_request(self):
@@ -955,7 +977,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'arch': 'sparc',
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_acquire_allocates_node_by_cpu(self):
         # Asking for enough cpu acquires a node with at least that.
@@ -965,8 +987,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'cpu_count': 2,
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_float_cpu(self):
@@ -977,8 +1000,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'cpu_count': '1.0',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_fails_with_invalid_cpu(self):
@@ -989,7 +1013,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'cpu_count': 'plenty',
         })
-        self.assertResponseCode(httplib.BAD_REQUEST, response)
+        self.assertResponseCode(http.client.BAD_REQUEST, response)
 
     def test_POST_acquire_allocates_node_by_mem(self):
         # Asking for enough memory acquires a node with at least that.
@@ -999,8 +1023,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'mem': 1024,
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_fails_with_invalid_mem(self):
@@ -1011,7 +1036,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'mem': 'bags',
         })
-        self.assertResponseCode(httplib.BAD_REQUEST, response)
+        self.assertResponseCode(http.client.BAD_REQUEST, response)
 
     def test_POST_acquire_allocates_node_by_tags(self):
         node = factory.make_Node(
@@ -1023,8 +1048,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': ['fast', 'stable'],
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_negated_tags(self):
@@ -1041,8 +1067,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'not_tags': ['cute']
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             partially_tagged_node.system_id,
             response_json['system_id'])
@@ -1059,8 +1086,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'zone': zone.name,
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_zone_fails_if_no_node(self):
@@ -1071,14 +1099,14 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'zone': zone.name,
         })
-        self.assertResponseCode(httplib.CONFLICT, response)
+        self.assertResponseCode(http.client.CONFLICT, response)
 
     def test_POST_acquire_rejects_unknown_zone(self):
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'zone': factory.make_name('zone'),
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
         node = factory.make_Node(
@@ -1090,8 +1118,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': 'fast, stable',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_space_separated(self):
@@ -1104,8 +1133,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': 'fast stable',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_comma_space_separated(self):
@@ -1118,8 +1148,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': 'fast, stable cute',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_tags_mixed_input(self):
@@ -1132,8 +1163,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': ['fast, stable', 'cute'],
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
     def test_POST_acquire_allocates_node_by_storage(self):
@@ -1149,11 +1181,12 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'storage': 'needed:10(ssd)',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
         constraint_map = response_json.get('constraint_map')
-        constraint_name = constraint_map[unicode(device_id)]
+        constraint_name = constraint_map[str(device_id)]
         self.assertItemsEqual(constraint_name, 'needed')
         constraints = response_json['constraints_by_type']
         self.expectThat(constraints, Contains('storage'))
@@ -1175,20 +1208,21 @@ class TestNodesAPI(APITestCase):
             'storage': 'needed:10(ssd)',
             'verbose': 'true',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
         constraint_map = response_json.get('constraint_map')
-        constraint_name = constraint_map[unicode(device_id)]
+        constraint_name = constraint_map[str(device_id)]
         self.assertItemsEqual(constraint_name, 'needed')
         constraints = response_json['constraints_by_type']
         self.expectThat(constraints, Contains('storage'))
         self.expectThat(constraints['storage'], Contains('needed'))
         self.expectThat(constraints['storage']['needed'], Contains(device_id))
         verbose_storage = constraints.get('verbose_storage')
-        self.expectThat(verbose_storage, Contains(unicode(node.id)))
+        self.expectThat(verbose_storage, Contains(str(node.id)))
         self.expectThat(
-            verbose_storage[unicode(node.id)], Equals(constraint_map))
+            verbose_storage[str(node.id)], Equals(constraint_map))
 
     def test_POST_acquire_allocates_node_by_interfaces(self):
         """Interface label is returned alongside node data"""
@@ -1203,8 +1237,9 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'interfaces': 'needed:fabric=ubuntu',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.expectThat(
             response_json['substatus'], Equals(NODE_STATUS.ALLOCATED))
         constraints = response_json['constraints_by_type']
@@ -1230,8 +1265,9 @@ class TestNodesAPI(APITestCase):
             'verbose': 'true',
             'dry_run': 'true',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.expectThat(
             response_json['substatus'], Equals(NODE_STATUS.READY))
         # Check that we still got the verbose constraints output even if
@@ -1243,9 +1279,9 @@ class TestNodesAPI(APITestCase):
         self.expectThat(interfaces['needed'], Contains(iface.id))
         verbose_interfaces = constraints.get('verbose_interfaces')
         self.expectThat(
-            verbose_interfaces['needed'], Contains(unicode(node.id)))
+            verbose_interfaces['needed'], Contains(str(node.id)))
         self.expectThat(
-            verbose_interfaces['needed'][unicode(node.id)],
+            verbose_interfaces['needed'][str(node.id)],
             Contains(iface.id))
 
     def test_POST_acquire_allocates_node_by_interfaces_with_verbose(self):
@@ -1263,8 +1299,9 @@ class TestNodesAPI(APITestCase):
             'interfaces': 'needed:fabric=ubuntu',
             'verbose': 'true',
         })
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         constraints = response_json['constraints_by_type']
         self.expectThat(constraints, Contains('interfaces'))
         interfaces = constraints.get('interfaces')
@@ -1272,9 +1309,9 @@ class TestNodesAPI(APITestCase):
         self.expectThat(interfaces['needed'], Equals([iface.id]))
         verbose_interfaces = constraints.get('verbose_interfaces')
         self.expectThat(
-            verbose_interfaces['needed'], Contains(unicode(node.id)))
+            verbose_interfaces['needed'], Contains(str(node.id)))
         self.expectThat(
-            verbose_interfaces['needed'][unicode(node.id)],
+            verbose_interfaces['needed'][str(node.id)],
             Contains(iface.id))
 
     def test_POST_acquire_fails_without_all_tags(self):
@@ -1289,7 +1326,7 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': 'fast, cheap',
         })
-        self.assertResponseCode(httplib.CONFLICT, response)
+        self.assertResponseCode(http.client.CONFLICT, response)
 
     def test_POST_acquire_fails_with_unknown_tags(self):
         # Asking for a tag that does not exist gives a specific error.
@@ -1300,10 +1337,13 @@ class TestNodesAPI(APITestCase):
             'op': 'acquire',
             'tags': 'fast, hairy, boo',
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            dict(tags=["No such tag(s): 'hairy', 'boo'."]),
-            json.loads(response.content))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        response_dict = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        # The order in which "foo" and "bar" appear is not guaranteed.
+        self.assertIn("No such tag(s):", response_dict['tags'][0])
+        self.assertIn("'hairy'", response_dict['tags'][0])
+        self.assertIn("'boo'", response_dict['tags'][0])
 
     def test_POST_acquire_allocates_node_connected_to_routers(self):
         macs = [factory.make_MAC() for counter in range(3)]
@@ -1316,8 +1356,9 @@ class TestNodesAPI(APITestCase):
             'connected_to': [macs[2].get_raw(), macs[0].get_raw()],
         })
 
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_not_connected_to_routers(self):
@@ -1335,8 +1376,9 @@ class TestNodesAPI(APITestCase):
             'not_connected_to': ['aa:bb:cc:dd:ee:ff', '11:11:11:11:11:11'],
         })
 
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_network(self):
@@ -1358,8 +1400,9 @@ class TestNodesAPI(APITestCase):
             'networks': [subnets[pick].name],
         })
 
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             nodes[pick].system_id, response_json['system_id'])
 
@@ -1379,8 +1422,9 @@ class TestNodesAPI(APITestCase):
             'not_networks': [subnet.name for subnet in subnets],
         })
 
-        self.assertResponseCode(httplib.OK, response)
-        response_json = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response_json = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(right_node.system_id, response_json['system_id'])
 
     def test_POST_acquire_obeys_not_in_zone(self):
@@ -1404,9 +1448,9 @@ class TestNodesAPI(APITestCase):
                 'op': 'acquire',
                 'not_in_zone': [not_in_zone.name],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         self.assertEqual(eligible_node.system_id, system_id)
 
     def test_POST_acquire_sets_a_token(self):
@@ -1433,16 +1477,19 @@ class TestNodesAPI(APITestCase):
             {'op': 'accept', 'nodes': [node.system_id]})
         accepted_ids = [
             accepted_node['system_id']
-            for accepted_node in json.loads(response.content)]
+            for accepted_node in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))]
         self.assertEqual(
-            (httplib.OK, [node.system_id]),
+            (http.client.OK, [node.system_id]),
             (response.status_code, accepted_ids))
         self.assertEqual(target_state, reload_object(node).status)
 
     def test_POST_quietly_accepts_empty_set(self):
         response = self.client.post(reverse('nodes_handler'), {'op': 'accept'})
         self.assertEqual(
-            (httplib.OK, "[]"), (response.status_code, response.content))
+            (http.client.OK.value, "[]"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_POST_accept_rejects_impossible_state_changes(self):
         self.become_admin()
@@ -1465,19 +1512,26 @@ class TestNodesAPI(APITestCase):
             for status, node in nodes.items()}
         # All of these attempts are rejected with Conflict errors.
         self.assertEqual(
-            {status: httplib.CONFLICT for status in unacceptable_states},
+            {status: http.client.CONFLICT for status in unacceptable_states},
             {
                 status: responses[status].status_code
                 for status in unacceptable_states})
 
         for status, response in responses.items():
             # Each error describes the problem.
-            self.assertIn("Cannot accept node enlistment", response.content)
+            self.assertIn(
+                "Cannot accept node enlistment",
+                response.content.decode(settings.DEFAULT_CHARSET))
             # Each error names the node it encountered a problem with.
-            self.assertIn(nodes[status].system_id, response.content)
+            self.assertIn(
+                nodes[status].system_id.encode(
+                    settings.DEFAULT_CHARSET), response.content)
             # Each error names the node state that the request conflicted
             # with.
-            self.assertIn(NODE_STATUS_CHOICES_DICT[status], response.content)
+            self.assertIn(
+                NODE_STATUS_CHOICES_DICT[status].encode(
+                    settings.DEFAULT_CHARSET),
+                response.content)
 
     def test_POST_accept_fails_if_node_does_not_exist(self):
         self.become_admin()
@@ -1487,7 +1541,9 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
+            (http.client.BAD_REQUEST,
+             ("Unknown node(s): %s." % node_id).encode(
+                 settings.DEFAULT_CHARSET)),
             (response.status_code, response.content))
 
     def test_POST_accept_fails_for_device(self):
@@ -1497,7 +1553,9 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
-            (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
+            (http.client.BAD_REQUEST,
+             ("Unknown node(s): %s." % node_id).encode(
+                 settings.DEFAULT_CHARSET)),
             (response.status_code, response.content))
 
     def test_POST_accept_accepts_multiple_nodes(self):
@@ -1515,7 +1573,7 @@ class TestNodesAPI(APITestCase):
             'op': 'accept',
             'nodes': node_ids,
         })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             [target_state] * len(nodes),
             [reload_object(node).status for node in nodes])
@@ -1533,9 +1591,11 @@ class TestNodesAPI(APITestCase):
             'op': 'accept',
             'nodes': [node.system_id for node in nodes],
         })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         accepted_ids = [
-            node['system_id'] for node in json.loads(response.content)]
+            node['system_id']
+            for node in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))]
         self.assertItemsEqual(
             [node.system_id for node in acceptable_nodes], accepted_ids)
         self.assertNotIn(accepted_node.system_id, accepted_ids)
@@ -1544,19 +1604,21 @@ class TestNodesAPI(APITestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'release'})
         self.assertEqual(
-            (httplib.OK, "[]"), (response.status_code, response.content))
+            (http.client.OK.value, "[]"),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_POST_release_ignores_devices(self):
         node_ids = {
             factory.make_Node(installable=False).system_id
-            for _ in xrange(3)
+            for _ in range(3)
         }
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': node_ids
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
         node = factory.make_Node(
@@ -1566,23 +1628,25 @@ class TestNodesAPI(APITestCase):
                 'op': 'release',
                 'nodes': [node.system_id],
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_fails_if_nodes_do_not_exist(self):
         # Make sure there is a node, it just isn't among the ones to release
         factory.make_Node()
-        node_ids = {factory.make_string() for _ in xrange(5)}
+        node_ids = {factory.make_string() for _ in range(5)}
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'release',
                 'nodes': node_ids
             })
         # Awkward parsing, but the order may vary and it's not JSON
-        s = response.content
+        s = response.content.decode(settings.DEFAULT_CHARSET)
         returned_ids = s[s.find(':') + 2:s.rfind('.')].split(', ')
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn("Unknown node(s): ", response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            "Unknown node(s): ",
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(node_ids, returned_ids)
 
     def test_POST_release_forbidden_if_user_cannot_edit_node(self):
@@ -1591,7 +1655,7 @@ class TestNodesAPI(APITestCase):
             factory.make_Node(
                 status=NODE_STATUS.ALLOCATED,
                 owner=self.logged_in_user).system_id
-            for _ in xrange(3)
+            for _ in range(3)
         }
         # And one with no owner
         another_node = factory.make_Node(status=NODE_STATUS.RESERVED)
@@ -1601,10 +1665,12 @@ class TestNodesAPI(APITestCase):
                 'op': 'release',
                 'nodes': node_ids
             })
+        expected_response = (
+            "You don't have the required permission to release the following "
+            "node(s): %s." % another_node.system_id).encode(
+            settings.DEFAULT_CHARSET)
         self.assertEqual(
-            (httplib.FORBIDDEN,
-                "You don't have the required permission to release the "
-                "following node(s): %s." % another_node.system_id),
+            (http.client.FORBIDDEN.value, expected_response),
             (response.status_code, response.content))
 
     def test_POST_release_rejects_impossible_state_changes(self):
@@ -1626,12 +1692,12 @@ class TestNodesAPI(APITestCase):
             "%s ('%s')" % (node.system_id, node.display_status())
             for node in nodes
             if node.status not in acceptable_states]
-        s = response.content
+        s = response.content.decode(settings.DEFAULT_CHARSET)
         returned = s[s.rfind(':') + 2:s.rfind('.')].split(', ')
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
         self.assertIn(
             "Node(s) cannot be released in their current state:",
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(expected, returned)
 
     def test_POST_release_returns_modified_nodes(self):
@@ -1646,8 +1712,9 @@ class TestNodesAPI(APITestCase):
                 'op': 'release',
                 'nodes': [node.system_id for node in nodes],
             })
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertEqual(http.client.OK, response.status_code)
         # The first node is READY, so shouldn't be touched.
         self.assertItemsEqual(
             [node.system_id for node in nodes[1:]],
@@ -1663,7 +1730,7 @@ class TestNodesAPI(APITestCase):
                 'op': 'release',
                 'nodes': [node.system_id],
             })
-        self.assertEqual(httplib.OK, response.status_code, response)
+        self.assertEqual(http.client.OK.value, response.status_code, response)
         node = reload_object(node)
         self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
 
@@ -1686,8 +1753,9 @@ class TestNodesAPI(APITestCase):
                 'architecture': architecture,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK.value, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))['system_id']
         nodes = Node.objects.filter(system_id=system_id)
         self.assertIsNotNone(get_one(nodes))
 
@@ -1702,7 +1770,7 @@ class TestNodesAPI(APITestCase):
                 'nodes': [node.system_id],
                 'zone': zone.name
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(zone, node.zone)
 
@@ -1717,7 +1785,7 @@ class TestNodesAPI(APITestCase):
                 'nodes': [factory.make_Node().system_id],
                 'zone': factory.make_Zone().name
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(original_zone, node.zone)
 
@@ -1731,7 +1799,7 @@ class TestNodesAPI(APITestCase):
                 'nodes': [node.system_id],
                 'zone': factory.make_Zone().name
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         node = reload_object(node)
         self.assertEqual(original_zone, node.zone)
 
@@ -1742,7 +1810,7 @@ class TestNodesAPI(APITestCase):
                 'op': 'power_parameters',
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_GET_power_parameters_without_ids_does_not_filter(self):
         self.become_admin()
@@ -1756,8 +1824,9 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'power_parameters',
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected = {
             node.system_id: node.power_parameters
             for node in nodes
@@ -1778,8 +1847,9 @@ class TestNodesAPI(APITestCase):
                 'op': 'power_parameters',
                 'id': [node.system_id for node in expected_nodes],
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected = {
             node.system_id: node.power_parameters
             for node in expected_nodes
@@ -1798,9 +1868,12 @@ class TestDeploymentStatus(APITestCase):
         response = self.client.get(
             self.endpoint,
             {'op': 'deployment_status', 'nodes': [owned_node.system_id]})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected = {owned_node.system_id: "Deployed"}
-        self.assertEqual(expected, json.loads(response.content))
+        self.assertEqual(
+            expected, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_GET_returns_multiple_matching_nodes(self):
         nodes = []
@@ -1813,8 +1886,11 @@ class TestDeploymentStatus(APITestCase):
         ids = [n.system_id for n in nodes]
         response = self.client.get(
             self.endpoint, {'op': 'deployment_status', 'nodes': ids})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertItemsEqual(expected, json.loads(response.content))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertItemsEqual(
+            expected, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_GET_rejects_unviewable_nodes(self):
         owned_node = factory.make_Node(owner=self.logged_in_user)
@@ -1824,18 +1900,25 @@ class TestDeploymentStatus(APITestCase):
             self.endpoint,
             {'op': 'deployment_status', 'nodes': node_ids})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+        expected_response = (
             "You don't have the required permission to view the following "
-            "node(s): %s." % unowned_node.system_id, response.content)
+            "node(s): %s." % unowned_node.system_id).encode(
+            settings.DEFAULT_CHARSET)
+        self.assertEqual(expected_response, response.content)
 
     def test_GET_rejects_invalid_node_ids(self):
         response = self.client.get(
             self.endpoint,
             {'op': 'deployment_status', 'nodes': ['foo', 'bar']})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual("Unknown node(s): foo, bar.", response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        response_string = response.content.decode(settings.DEFAULT_CHARSET)
+        # The order in which "foo" and "bar" appear is not guaranteed, but they
+        # should be in the string, as well as the error message.
+        self.assertIn("Unknown node(s):", response_string)
+        self.assertIn("foo", response_string)
+        self.assertIn("bar", response_string)
 
     def test_GET_rejects_devices(self):
         owned_node = factory.make_Node(
@@ -1844,9 +1927,10 @@ class TestDeploymentStatus(APITestCase):
             self.endpoint,
             {'op': 'deployment_status', 'nodes': [owned_node.system_id]})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertThat(
-            response.content, Contains("Unknown node(s)"))
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertIn(
+            "Unknown node(s)",
+            response.content.decode(settings.DEFAULT_CHARSET))
 
 
 class TestBackwardCompatiblityFixNodesAPI(APITestCase):
@@ -1891,8 +1975,9 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         response = self.client.get(self.get_nodes_uri(), {
             'op': 'list_allocated'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(parsed_result, HasLength(1))
         result_node = parsed_result[0]
         self.assertEqual(node.system_id, result_node.get('system_id'))
@@ -1902,8 +1987,9 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         node = factory.make_Node(status=self.status)
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, parsed_result['system_id'])
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
@@ -1914,9 +2000,10 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
     def test_PUT_update_forbidden_if_not_admin(self):
@@ -1927,14 +2014,15 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         # should get FORBIDDEN because user isn't admin
         response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
         # confirm operation succeeds as admin
         self.become_admin()
         response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
     def test_GET_list_allocated_exposes_substatus(self):
@@ -1945,8 +2033,9 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         response = self.client.get(self.get_nodes_uri(), {
             'op': 'list_allocated'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(parsed_result, HasLength(1))
         result_node = parsed_result[0]
         self.assertEqual(node.system_id, result_node.get('system_id'))
@@ -1956,8 +2045,9 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         node = factory.make_Node(status=self.status)
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(node.system_id, parsed_result['system_id'])
         self.assertEqual(self.status, parsed_result['substatus'])
 
@@ -1968,9 +2058,10 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(node.status, parsed_result['substatus'])
 
 
@@ -1996,7 +2087,8 @@ class TestPowerState(APITransactionTestCase):
 
     def assertPowerState(self, node, state):
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
-        dbtasks.syncTask().wait()  # Wait for all pending tasks to run.
+        dbtasks.syncTask().wait(
+            timeout=5)  # Wait for all pending tasks to run.
         self.assertThat(reload_object(node).power_state, Equals(state))
 
     def test__catches_no_connection_error(self):
@@ -2007,9 +2099,10 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
         self.assertIn(
-            "Unable to connect to cluster controller", response.content)
+            "Unable to connect to cluster controller",
+            response.content.decode(settings.DEFAULT_CHARSET))
         # The node's power state is unchanged.
         self.assertPowerState(node, POWER_STATE.ON)
 
@@ -2023,8 +2116,10 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
-        self.assertIn("Timed out waiting for power response", response.content)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            "Timed out waiting for power response",
+            response.content.decode(settings.DEFAULT_CHARSET))
         # The node's power state is unchanged.
         self.assertPowerState(node, POWER_STATE.ON)
 
@@ -2035,8 +2130,10 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
-        self.assertIn("Power state is not queryable", response.content)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            "Power state is not queryable",
+            response.content.decode(settings.DEFAULT_CHARSET))
         # The node's power state is now "unknown".
         self.assertPowerState(node, POWER_STATE.UNKNOWN)
 
@@ -2049,8 +2146,9 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
-        self.assertIn(error_message, response.content)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            error_message.encode(settings.DEFAULT_CHARSET), response.content)
         # The node's power state is now "error".
         self.assertPowerState(node, POWER_STATE.ERROR)
 
@@ -2063,8 +2161,9 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
-        self.assertIn(error_message, response.content)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(error_message.encode(
+            settings.DEFAULT_CHARSET), response.content)
         # The node's power state is now "unknown".
         self.assertPowerState(node, POWER_STATE.UNKNOWN)
 
@@ -2072,7 +2171,7 @@ class TestPowerState(APITransactionTestCase):
         device = factory.make_Device()
         response = self.client.get(
             self.get_node_uri(device), {"op": "query_power_state"})
-        self.assertResponseCode(httplib.BAD_REQUEST, response)
+        self.assertResponseCode(http.client.BAD_REQUEST, response)
 
     def test__returns_actual_state(self):
         node = factory.make_Node(power_type="ipmi")
@@ -2084,8 +2183,9 @@ class TestPowerState(APITransactionTestCase):
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
 
-        self.assertResponseCode(httplib.OK, response)
-        response = json.loads(response.content)
+        self.assertResponseCode(http.client.OK, response)
+        response = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({"state": random_state}, response)
         # The node's power state is now `random_state`.
         self.assertPowerState(node, random_state)

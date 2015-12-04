@@ -3,15 +3,6 @@
 
 """Test for boot-resources create action."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from functools import partial
@@ -53,14 +44,13 @@ class TestBootResourcesCreateAction(MAASTestCase):
 
     def make_boot_resources_create_action(self):
         self.stdio = self.useFixture(CaptureStandardIO())
-        action_name = "create".encode("ascii")
         action_bases = (BootResourcesCreateAction,)
         action_ns = {
             "action": {'method': 'POST'},
             "handler": {'uri': '/api/1.0/boot-resources/', 'params': []},
             "profile": {'credentials': make_api_credentials()}
             }
-        action_class = type(action_name, action_bases, action_ns)
+        action_class = type("create", action_bases, action_ns)
         action = action_class(Mock())
         return action
 
@@ -175,7 +165,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action = self.make_boot_resources_create_action()
         self.assertRaises(
             CommandError,
-            action.put_upload, sentinel.upload_uri, '')
+            action.put_upload, sentinel.upload_uri, b'')
 
     def test_put_upload_sends_content_type_and_length_headers(self):
         response = httplib2.Response({'status': 200})

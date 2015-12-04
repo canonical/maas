@@ -3,21 +3,13 @@
 
 """Test maasserver API version."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
 from maasserver.testing.testcase import MAASServerTestCase
@@ -37,9 +29,10 @@ class TestFindingResources(MAASServerTestCase):
         self.patch(version_module, "_cache", {})
 
         response = self.client.get(reverse('version_handler'))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
             {
                 'capabilities': API_CAPABILITIES_LIST,

@@ -3,24 +3,20 @@
 
 """Check the current generated css matches generated css."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
+from os.path import (
+    exists,
+    join,
+)
 from pipes import quote
 from subprocess import (
     PIPE,
     Popen,
     STDOUT,
 )
+from unittest import skipUnless
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase
@@ -44,6 +40,9 @@ class TestCompiledSCSS(MAASTestCase):
         with open(filename, "rb") as stream:
             return stream.read()
 
+    @skipUnless(
+        exists(join(root, "bin", "sass")),
+        "bin/sass is not available.")
     def test_css_up_to_date(self):
         """
         In-tree compiled CSS must match SCSS compilation.

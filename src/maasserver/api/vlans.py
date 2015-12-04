@@ -3,16 +3,6 @@
 
 """API handlers: `VLAN`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from maasserver.api.support import OperationsHandler

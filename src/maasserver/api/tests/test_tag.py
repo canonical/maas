@@ -3,20 +3,12 @@
 
 """Tests for the Tags API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
@@ -60,21 +52,21 @@ class TestTagAPI(APITestCase):
     def test_DELETE_requires_admin(self):
         tag = factory.make_Tag()
         response = self.client.delete(self.get_tag_uri(tag))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([tag], Tag.objects.filter(id=tag.id))
 
     def test_DELETE_removes_tag(self):
         self.become_admin()
         tag = factory.make_Tag()
         response = self.client.delete(self.get_tag_uri(tag))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertFalse(Tag.objects.filter(id=tag.id).exists())
 
     def test_DELETE_404(self):
         self.become_admin()
         url = reverse('tag_handler', args=['no-tag'])
         response = self.client.delete(url)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_GET_returns_tag(self):
         # The api allows for fetching a single Node (using system_id).
@@ -82,8 +74,8 @@ class TestTagAPI(APITestCase):
         url = reverse('tag_handler', args=['tag-name'])
         response = self.client.get(url)
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(response.content.decode('ascii'))
         self.assertEqual(tag.name, parsed_result['name'])
         self.assertEqual(tag.definition, parsed_result['definition'])
         self.assertEqual(tag.comment, parsed_result['comment'])
@@ -93,13 +85,13 @@ class TestTagAPI(APITestCase):
         # if no tag is found.
         url = reverse('tag_handler', args=['no-such-tag'])
         response = self.client.get(url)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_PUT_refuses_non_superuser(self):
         tag = factory.make_Tag()
         response = self.client.put(
             self.get_tag_uri(tag), {'comment': 'A special comment'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_tag(self):
         self.become_admin()
@@ -109,8 +101,8 @@ class TestTagAPI(APITestCase):
             self.get_tag_uri(tag),
             {'name': 'new-tag-name', 'comment': 'A random comment'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(response.content.decode('ascii'))
         self.assertEqual('new-tag-name', parsed_result['name'])
         self.assertEqual('A random comment', parsed_result['comment'])
         self.assertEqual(tag.definition, parsed_result['definition'])
@@ -125,15 +117,15 @@ class TestTagAPI(APITestCase):
         response = self.client.put(
             self.get_tag_uri(tag),
             {'definition': '//node/bar'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.expectThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
 
     def test_GET_nodes_with_no_nodes(self):
         tag = factory.make_Tag()
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(response.content.decode('ascii'))
         self.assertEqual([], parsed_result)
 
     def test_GET_nodes_returns_nodes(self):
@@ -144,8 +136,9 @@ class TestTagAPI(APITestCase):
         node1.tags.add(tag)
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
 
@@ -159,15 +152,17 @@ class TestTagAPI(APITestCase):
 
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
         # However, for the other user, they should see the result
         client2 = OAuthAuthenticatedClient(user2)
         response = client2.get(self.get_tag_uri(tag), {'op': 'nodes'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual([node1.system_id, node2.system_id],
                               [r['system_id'] for r in parsed_result])
 
@@ -181,7 +176,7 @@ class TestTagAPI(APITestCase):
         response = self.client.put(
             self.get_tag_uri(tag), {'definition': 'invalid::tag'})
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         # The tag should not be modified
         tag = reload_object(tag)
         self.assertItemsEqual([tag.name], node.tag_names())
@@ -193,7 +188,7 @@ class TestTagAPI(APITestCase):
         response = self.client.post(
             reverse('tag_handler', args=[name]),
             {'op': 'update_nodes'})
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_POST_update_nodes_changes_associations(self):
         tag = factory.make_Tag()
@@ -208,8 +203,9 @@ class TestTagAPI(APITestCase):
                 'add': [node_second.system_id],
                 'remove': [node_first.system_id],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual([node_second], tag.node_set.all())
         self.assertEqual({'added': 1, 'removed': 1}, parsed_result)
 
@@ -225,8 +221,9 @@ class TestTagAPI(APITestCase):
                 'add': [unknown_add_system_id],
                 'remove': [unknown_remove_system_id],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual([], tag.node_set.all())
         self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
 
@@ -240,16 +237,18 @@ class TestTagAPI(APITestCase):
                 'op': 'update_nodes',
                 'add': [node.system_id],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
         response = self.client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'remove': [node.system_id],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'added': 0, 'removed': 1}, parsed_result)
 
     def test_POST_update_nodes_rejects_normal_user(self):
@@ -260,7 +259,7 @@ class TestTagAPI(APITestCase):
                 'op': 'update_nodes',
                 'add': [node.system_id],
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_allows_nodegroup_worker(self):
@@ -274,8 +273,9 @@ class TestTagAPI(APITestCase):
                 'add': [node.system_id],
                 'nodegroup': nodegroup.uuid,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
         self.assertItemsEqual([node], tag.node_set.all())
 
@@ -290,7 +290,7 @@ class TestTagAPI(APITestCase):
                 'op': 'update_nodes',
                 'add': [node.system_id],
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_refuses_non_nodegroup_worker(self):
@@ -303,7 +303,7 @@ class TestTagAPI(APITestCase):
                 'add': [node.system_id],
                 'nodegroup': nodegroup.uuid,
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_doesnt_modify_other_nodegroup_nodes(self):
@@ -318,8 +318,9 @@ class TestTagAPI(APITestCase):
                 'add': [node_theirs.system_id],
                 'nodegroup': nodegroup_mine.uuid,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
         self.assertItemsEqual([], tag.node_set.all())
 
@@ -338,7 +339,7 @@ class TestTagAPI(APITestCase):
                 'nodegroup': nodegroup.uuid,
                 'definition': orig_def,
             })
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
         self.assertItemsEqual([], node.tags.all())
 
@@ -348,8 +349,9 @@ class TestTagAPI(APITestCase):
         self.become_admin()
         self.assertThat(populate_tags, MockCalledOnceWith(tag))
         response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'rebuilding': tag.name}, parsed_result)
         self.assertThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
 
@@ -360,8 +362,9 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual([node], tag.node_set.all())
         self.become_admin()
         response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'rebuilding': tag.name}, parsed_result)
         self.assertItemsEqual([node], tag.node_set.all())
 
@@ -370,13 +373,13 @@ class TestTagAPI(APITestCase):
         response = self.client.post(
             reverse('tag_handler', args=['unknown-tag']),
             {'op': 'rebuild'})
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_POST_rebuild_requires_admin(self):
         tag = factory.make_Tag(definition='/foo/bar')
         response = self.client.post(
             self.get_tag_uri(tag), {'op': 'rebuild'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestTagsAPI(APITestCase):
@@ -387,7 +390,8 @@ class TestTagsAPI(APITestCase):
 
     def test_GET_list_without_tags_returns_empty_list(self):
         response = self.client.get(reverse('tags_handler'), {'op': 'list'})
-        self.assertItemsEqual([], json.loads(response.content))
+        self.assertItemsEqual([], json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_POST_new_refuses_non_admin(self):
         name = factory.make_string()
@@ -399,7 +403,7 @@ class TestTagsAPI(APITestCase):
                 'comment': factory.make_string(),
                 'definition': factory.make_string(),
             })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertFalse(Tag.objects.filter(name=name).exists())
 
     def test_POST_new_creates_tag(self):
@@ -415,8 +419,9 @@ class TestTagsAPI(APITestCase):
                 'comment': comment,
                 'definition': definition,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(name, parsed_result['name'])
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual(definition, parsed_result['definition'])
@@ -433,8 +438,9 @@ class TestTagsAPI(APITestCase):
                 'name': name,
                 'comment': comment,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(name, parsed_result['name'])
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual("", parsed_result['definition'])
@@ -457,7 +463,7 @@ class TestTagsAPI(APITestCase):
                 'definition': definition,
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code,
+            http.client.BAD_REQUEST, response.status_code,
             'We did not get BAD_REQUEST for an invalid tag name: %r'
             % (invalid,))
         self.assertFalse(Tag.objects.filter(name=invalid).exists())
@@ -477,8 +483,9 @@ class TestTagsAPI(APITestCase):
                 'definition': definition,
                 'kernel_opts': extra_kernel_opts,
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(name, parsed_result['name'])
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual(definition, parsed_result['definition'])
@@ -500,7 +507,7 @@ class TestTagsAPI(APITestCase):
                 'comment': comment,
                 'definition': definition,
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(populate_tags, MockCalledOnceWith(ANY))
         # The tag passed to populate_tags() is the one created above.
         [tag], _ = populate_tags.call_args

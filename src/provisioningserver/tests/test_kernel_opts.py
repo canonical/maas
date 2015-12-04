@@ -3,15 +3,6 @@
 
 """Test composition of kernel command lines."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "make_kernel_parameters",
     ]
@@ -89,7 +80,7 @@ class TestUtilitiesKernelOpts(MAASTestCase):
         # KernelParameters instances are callable; an alias for _replace().
         params = make_kernel_parameters()
         self.assertTrue(callable(params))
-        self.assertIs(params._replace.im_func, params.__call__.im_func)
+        self.assertIs(params._replace.__func__, params.__call__.__func__)
 
     def test_prefix_target_name_adds_prefix(self):
         prefix = factory.make_name('prefix')
@@ -323,4 +314,4 @@ class TestKernelOpts(MAASTestCase):
             testcase=None,
             arch=factory.make_name("arch"),
             subarch=factory.make_name("subarch"))
-        self.assertEquals([], compose_arch_opts(params))
+        self.assertEqual([], compose_arch_opts(params))

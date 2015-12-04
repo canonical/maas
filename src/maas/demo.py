@@ -3,16 +3,6 @@
 
 """Django DEMO settings for maas project."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from os.path import abspath
 
 from maas import (

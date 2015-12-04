@@ -3,15 +3,6 @@
 
 """Tests for Subnet forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -30,7 +21,7 @@ class TestSubnetForm(MAASServerTestCase):
     def test__requires_cidr(self):
         form = SubnetForm({})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "cidr": ["This field is required."],
             }, form.errors)
 
@@ -39,7 +30,7 @@ class TestSubnetForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
         dns_servers = []
         for _ in range(2):
@@ -65,7 +56,7 @@ class TestSubnetForm(MAASServerTestCase):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "vlan": vlan.id,
             "space": space.id,
@@ -80,7 +71,7 @@ class TestSubnetForm(MAASServerTestCase):
     def test__creates_subnet_in_default_space(self):
         vlan = factory.make_VLAN()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "vlan": vlan.id,
             "cidr": cidr,
@@ -94,7 +85,7 @@ class TestSubnetForm(MAASServerTestCase):
 
     def test__creates_subnet_in_default_fabric_and_vlan(self):
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
         })
@@ -109,7 +100,7 @@ class TestSubnetForm(MAASServerTestCase):
     def test__creates_subnet_in_default_vlan_in_fabric(self):
         fabric = factory.make_Fabric()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "fabric": fabric.id,
@@ -125,7 +116,7 @@ class TestSubnetForm(MAASServerTestCase):
     def test__creates_subnet_in_default_fabric_with_vid(self):
         vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "vid": vlan.vid,
@@ -142,7 +133,7 @@ class TestSubnetForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric)
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "fabric": fabric.id,
@@ -160,13 +151,13 @@ class TestSubnetForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric)
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "vid": vlan.vid,
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "vid": ["No VLAN with vid %s in default fabric." % vlan.vid]
             }, form.errors)
 
@@ -174,14 +165,14 @@ class TestSubnetForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "fabric": fabric.id,
             "vid": vlan.vid,
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "vid": ["No VLAN with vid %s in fabric %s." % (vlan.vid, fabric)]
             }, form.errors)
 
@@ -189,14 +180,14 @@ class TestSubnetForm(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         form = SubnetForm({
             "cidr": cidr,
             "fabric": fabric.id,
             "vlan": vlan.id,
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "vlan": ["VLAN %s is not in fabric %s." % (vlan, fabric)]
             }, form.errors)
 
@@ -211,7 +202,7 @@ class TestSubnetForm(MAASServerTestCase):
         new_vlan = factory.make_VLAN()
         new_space = factory.make_Space()
         new_network = factory.make_ip4_or_6_network()
-        new_cidr = unicode(new_network.cidr)
+        new_cidr = str(new_network.cidr)
         new_gateway_ip = factory.pick_ip_in_network(new_network)
         new_dns_servers = []
         for _ in range(2):
@@ -239,7 +230,7 @@ class TestSubnetForm(MAASServerTestCase):
         subnet.name = subnet.cidr
         subnet.save()
         new_network = factory.make_ip4_or_6_network()
-        new_cidr = unicode(new_network.cidr)
+        new_cidr = str(new_network.cidr)
         new_gateway_ip = factory.pick_ip_in_network(new_network)
         form = SubnetForm(instance=subnet, data={
             "cidr": new_cidr,

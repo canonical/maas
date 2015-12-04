@@ -3,15 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.monitors`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -36,6 +27,7 @@ from provisioningserver.rpc.monitors import (
 )
 from provisioningserver.rpc.region import MonitorExpired
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.twisted.protocols import amp
 from testtools.matchers import (
     Contains,
     Equals,
@@ -45,7 +37,6 @@ from testtools.matchers import (
 )
 from twisted.internet.base import DelayedCall
 from twisted.internet.task import Clock
-from twisted.protocols import amp
 
 
 def make_monitors(time_now=None):
@@ -54,7 +45,7 @@ def make_monitors(time_now=None):
     if time_now is None:
         time_now = datetime.now(amp.utc)
     monitors = []
-    for i in xrange(2):
+    for i in range(2):
         monitors.append({
             "deadline": time_now + timedelta(seconds=i + 1),
             "context": factory.make_name("context"),
@@ -68,7 +59,7 @@ class TestStartMonitors(PservTestCase):
 
     def tearDown(self):
         super(TestStartMonitors, self).tearDown()
-        for dc, _ in running_monitors.viewvalues():
+        for dc, _ in running_monitors.values():
             if dc.active():
                 dc.cancel()
         running_monitors.clear()

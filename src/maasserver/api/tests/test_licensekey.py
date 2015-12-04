@@ -3,19 +3,9 @@
 
 """Tests for the `LicenseKey` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver import forms
@@ -28,6 +18,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import patch_usable_osystems
+from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 
 
@@ -60,7 +51,7 @@ class TestLicenseKey(APITestCase):
         response = self.client.post(
             self.get_url(license_key.osystem, license_key.distro_series),
             {'osystem': "New osystem"})
-        self.assertEqual(httplib.METHOD_NOT_ALLOWED, response.status_code)
+        self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
 
     def test_GET_returns_license_key(self):
         self.become_admin()
@@ -68,9 +59,9 @@ class TestLicenseKey(APITestCase):
 
         response = self.client.get(
             self.get_url(license_key.osystem, license_key.distro_series))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(
             (
                 license_key.osystem,
@@ -86,14 +77,14 @@ class TestLicenseKey(APITestCase):
     def test_GET_returns_404_for_unknown_os_and_series(self):
         self.become_admin()
         self.assertEqual(
-            httplib.NOT_FOUND,
+            http.client.NOT_FOUND,
             self.client.get(self.get_url('noneos', 'noneseries')).status_code)
 
     def test_GET_requires_admin(self):
         license_key = factory.make_LicenseKey()
         response = self.client.get(
             self.get_url(license_key.osystem, license_key.distro_series))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_license_key(self):
         self.become_admin()
@@ -108,7 +99,7 @@ class TestLicenseKey(APITestCase):
             self.get_url(
                 license_key.osystem, license_key.distro_series),
             new_values)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         license_key = reload_object(license_key)
         self.assertEqual(new_key, license_key.license_key)
 
@@ -118,13 +109,13 @@ class TestLicenseKey(APITestCase):
         response = self.client.put(
             self.get_url(license_key.osystem, license_key.distro_series),
             {'license_key': factory.make_name('key')})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(key, reload_object(license_key).license_key)
 
     def test_PUT_returns_404_for_unknown_os_and_series(self):
         self.become_admin()
         self.assertEqual(
-            httplib.NOT_FOUND,
+            http.client.NOT_FOUND,
             self.client.put(
                 self.get_url(
                     'noneos', 'noneseries')).status_code)
@@ -134,14 +125,14 @@ class TestLicenseKey(APITestCase):
         license_key = factory.make_LicenseKey()
         response = self.client.delete(
             self.get_url(license_key.osystem, license_key.distro_series))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(license_key))
 
     def test_DELETE_requires_admin(self):
         license_key = factory.make_LicenseKey()
         response = self.client.delete(
             self.get_url(license_key.osystem, license_key.distro_series))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertIsNotNone(reload_object(license_key))
 
     def test_DELETE_is_idempotent(self):
@@ -164,9 +155,10 @@ class TestLicenseKeysAPI(APITestCase):
         orig_license_key = factory.make_LicenseKey()
 
         response = self.client.get(reverse('license_keys_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(1, len(parsed_result))
         [returned_network] = parsed_result
         fields = {'osystem', 'distro_series', 'license_key'}
@@ -186,13 +178,14 @@ class TestLicenseKeysAPI(APITestCase):
     def test_GET_requires_admin(self):
         factory.make_LicenseKey()
         response = self.client.get(reverse('license_keys_handler'))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_GET_returns_empty_if_no_networks(self):
         self.become_admin()
         response = self.client.get(reverse('license_keys_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual([], json.loads(response.content))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual([], json_load_bytes(response.content))
 
     def test_POST_creates_license_key(self):
         self.become_admin()
@@ -206,7 +199,7 @@ class TestLicenseKeysAPI(APITestCase):
             'license_key': factory.make_name('key'),
         }
         response = self.client.post(reverse('license_keys_handler'), params)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         license_key = LicenseKey.objects.get(
             osystem=params['osystem'], distro_series=params['distro_series'])
         self.assertAttributes(license_key, params)
@@ -217,7 +210,7 @@ class TestLicenseKeysAPI(APITestCase):
         response = self.client.post(
             reverse('license_keys_handler'),
             {'osystem': osystem, 'distro_series': series})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertIsNone(
             get_one(LicenseKey.objects.filter(
                 osystem=osystem, distro_series=series)))

@@ -3,15 +3,6 @@
 
 """RPC helpers relating to operating systems."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "gen_operating_systems",
     "validate_license_key",

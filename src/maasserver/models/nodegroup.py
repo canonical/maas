@@ -3,15 +3,6 @@
 
 """Model definition for NodeGroup which models a collection of Nodes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'NodeGroup',
     'NODEGROUP_CLUSTER_NAME_TEMPLATE',
@@ -42,7 +33,10 @@ from maasserver.models.bootresource import BootResource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
 from maasserver.rpc import getClientFor
-from maasserver.utils.django import has_builtin_migrations
+from piston3.models import (
+    KEY_SIZE,
+    Token,
+)
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
@@ -53,21 +47,6 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromUCSM,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-
-# To support upgrading from MAAS versions <2.0 the piston module was named
-# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
-# same the import names are important because it will break south migrations
-# unless piston is imported as 'piston'.
-if has_builtin_migrations():
-    from piston3.models import (
-        KEY_SIZE,
-        Token,
-    )
-else:
-    from piston.models import (
-        KEY_SIZE,
-        Token,
-    )
 
 
 class NodeGroupManager(Manager):

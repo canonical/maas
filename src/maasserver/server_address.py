@@ -3,22 +3,13 @@
 
 """Helper to obtain the MAAS server's address."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_maas_facing_server_address',
     'get_maas_facing_server_host',
     ]
 
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from maasserver.config import RegionConfiguration
 from maasserver.exceptions import UnresolvableHost
@@ -84,4 +75,4 @@ def get_maas_facing_server_address(nodegroup=None, ipv4=True, ipv6=True):
             addresses = addresses.union(resolve_hostname(hostname, 6))
     if len(addresses) == 0:
         raise UnresolvableHost("No address found for host %s." % hostname)
-    return min(addresses).format().decode("ascii")
+    return min(addresses).format()

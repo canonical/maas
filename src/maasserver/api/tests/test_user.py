@@ -3,20 +3,12 @@
 
 """Tests for the user accounts API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
@@ -52,9 +44,12 @@ class TestUsers(APITestCase):
                 'password': password,
                 'is_superuser': '0',
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        self.assertEqual(username, json.loads(response.content)['username'])
+        self.assertEqual(
+            username, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['username'])
         created_user = User.objects.get(username=username)
         self.assertEqual(
             (email, False),
@@ -74,9 +69,12 @@ class TestUsers(APITestCase):
                 'password': password,
                 'is_superuser': '1',
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        self.assertEqual(username, json.loads(response.content)['username'])
+        self.assertEqual(
+            username, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['username'])
         created_user = User.objects.get(username=username)
         self.assertEqual(
             (email, True),
@@ -92,15 +90,16 @@ class TestUsers(APITestCase):
                 'is_superuser': '1' if factory.pick_bool() else '0',
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_GET_lists_users(self):
         users = [factory.make_User() for counter in range(2)]
 
         response = self.client.get(reverse('users_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        listing = json.loads(response.content)
+        listing = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             [user['username'] for user in listing],
             ContainsAll([user.username for user in users]))
@@ -115,9 +114,10 @@ class TestUsers(APITestCase):
             factory.make_User(username=user)
 
         response = self.client.get(reverse('users_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        listing = json.loads(response.content)
+        listing = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # The listing may also contain built-in users and/or a test user.
         # Restrict it to the users we created ourselves.
         users_as_returned = [
@@ -138,9 +138,11 @@ class TestUser(APITestCase):
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        returned_user = json.loads(response.content)
+        returned_user = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(user.username, returned_user['username'])
         self.assertEqual(user.email, returned_user['email'])
         self.assertFalse(returned_user['is_superuser'])
@@ -150,9 +152,11 @@ class TestUser(APITestCase):
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        returned_user = json.loads(response.content)
+        returned_user = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             ['username', 'email', 'is_superuser'],
             returned_user.keys())
@@ -162,15 +166,19 @@ class TestUser(APITestCase):
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        self.assertTrue(json.loads(response.content)['is_superuser'])
+        self.assertTrue(
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['is_superuser'])
 
     def test_GET_returns_404_if_user_not_found(self):
         nonuser = factory.make_name('nonuser')
         response = self.client.get(reverse('user_handler', args=[nonuser]))
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.status_code)
+            http.client.NOT_FOUND, response.status_code, response.status_code)
         self.assertItemsEqual([], User.objects.filter(username=nonuser))
 
     def test_DELETE_requires_admin_privileges(self):
@@ -178,7 +186,7 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.status_code)
+            http.client.FORBIDDEN, response.status_code, response.status_code)
         self.assertTrue(User.objects.filter(username=user.username).exists())
 
     def test_DELETE_requires_admin_privileges_with_invalid_user(self):
@@ -187,14 +195,14 @@ class TestUser(APITestCase):
         nonuser = factory.make_name('nonuser')
         response = self.client.delete(reverse('user_handler', args=[nonuser]))
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.status_code)
+            http.client.FORBIDDEN, response.status_code, response.status_code)
 
     def test_DELETE_keeps_quiet_if_user_not_found(self):
         self.become_admin()
         nonuser = factory.make_name('nonuser')
         response = self.client.delete(reverse('user_handler', args=[nonuser]))
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.status_code)
+            http.client.NO_CONTENT, response.status_code, response.status_code)
 
     def test_DELETE_admin_cannot_delete_self(self):
         self.become_admin()
@@ -202,9 +210,10 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.status_code)
+            http.client.BAD_REQUEST, response.status_code,
+            response.status_code)
         self.assertTrue(User.objects.filter(username=user.username).exists())
-        self.assertIn('cannot self-delete', response.content)
+        self.assertIn(b'cannot self-delete', response.content)
 
     def test_DELETE_deletes_user(self):
         self.become_admin()
@@ -212,7 +221,7 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.status_code)
+            http.client.NO_CONTENT, response.status_code, response.status_code)
         self.assertItemsEqual([], User.objects.filter(username=user.username))
 
     def test_DELETE_user_with_node_fails(self):
@@ -222,8 +231,9 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.status_code)
-        self.assertIn('assigned nodes cannot be deleted', response.content)
+            http.client.BAD_REQUEST, response.status_code,
+            response.status_code)
+        self.assertIn(b'assigned nodes cannot be deleted', response.content)
 
     def test_DELETE_user_with_staticaddress_fails(self):
         self.become_admin()
@@ -233,9 +243,11 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.status_code)
+            http.client.BAD_REQUEST, response.status_code,
+            response.status_code)
         self.assertIn(
-            'with reserved IP addresses cannot be deleted', response.content)
+            b'with reserved IP addresses cannot be deleted',
+            response.content)
 
     def test_DELETE_user_with_sslkey_deletes_key(self):
         self.become_admin()
@@ -244,7 +256,7 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.status_code)
+            http.client.NO_CONTENT, response.status_code, response.status_code)
         self.assertFalse(SSLKey.objects.filter(id=key_id).exists())
 
     def test_DELETE_user_with_sshkey_deletes_key(self):
@@ -254,5 +266,5 @@ class TestUser(APITestCase):
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.status_code)
+            http.client.NO_CONTENT, response.status_code, response.status_code)
         self.assertFalse(SSHKey.objects.filter(id=key_id).exists())

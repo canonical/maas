@@ -3,15 +3,6 @@
 
 """Model definition for NodeGroupInterface."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'NodeGroupInterface',
     ]
@@ -293,7 +284,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         """
         if self.subnet is None:
             return ''
-        return unicode(IPNetwork(self.subnet.cidr).broadcast)
+        return str(IPNetwork(self.subnet.cidr).broadcast)
 
     @broadcast_ip.setter
     def broadcast_ip(self, value):
@@ -310,7 +301,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         """
         if self.subnet is None:
             return ''
-        return unicode(IPNetwork(self.subnet.cidr).netmask)
+        return str(IPNetwork(self.subnet.cidr).netmask)
 
     @property
     def router_ip(self):
@@ -322,7 +313,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         """
         if self.subnet is None or not self.subnet.gateway_ip:
             return ''
-        return unicode(self.subnet.gateway_ip)
+        return str(self.subnet.gateway_ip)
 
     @subnet_mask.setter
     def subnet_mask(self, value):
@@ -339,7 +330,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             self.subnet = None
             return
 
-        cidr = unicode(make_network(self.ip, value).cidr)
+        cidr = str(make_network(self.ip, value).cidr)
         if self.subnet:
             self.subnet.update_cidr(cidr)
         else:

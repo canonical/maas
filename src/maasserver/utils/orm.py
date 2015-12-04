@@ -3,15 +3,6 @@
 
 """ORM-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'disable_all_database_connections',
     'enable_all_database_connections',
@@ -196,12 +187,12 @@ def get_psycopg2_exception(exception):
 
     :return: The underlying `psycopg2.Error`, or `None` if there isn't one.
     """
-    try:
-        exception = exception.__cause__
-    except AttributeError:
-        return exception if isinstance(exception, psycopg2.Error) else None
+    if exception is None:
+        return None
+    elif isinstance(exception, psycopg2.Error):
+        return exception
     else:
-        return get_psycopg2_exception(exception)
+        return get_psycopg2_exception(exception.__cause__)
 
 
 def get_psycopg2_serialization_exception(exception):
@@ -323,7 +314,7 @@ def retry_on_serialization_failure(func, reset=noop):
     @wraps(func)
     def retrier(*args, **kwargs):
         intervals = gen_retry_intervals()
-        for _ in xrange(9):
+        for _ in range(9):
             try:
                 return func(*args, **kwargs)
             except OperationalError as error:
@@ -802,9 +793,9 @@ class MAASQueriesMixin(object):
         For example, 'name:eth0,hostname:tasty-buscuits' might match interface
         eth0 on node 'tasty-biscuits'; that is, both constraints are required.
         """
-        if isinstance(specifiers, types.IntType):
-            return [unicode(specifiers)]
-        elif isinstance(specifiers, unicode):
+        if isinstance(specifiers, int):
+            return [str(specifiers)]
+        elif isinstance(specifiers, str):
             return [
                 '&' + specifier.strip() for specifier in specifiers.split(',')
             ]
@@ -838,7 +829,7 @@ class MAASQueriesMixin(object):
                 # the operation_function must be a function that takes action
                 # on the current_Q() to append a new query object (Q()).
                 return query
-            elif isinstance(query, types.TupleType):
+            elif isinstance(query, tuple):
                 # Specifies a query to a subordinate specifier function.
                 # This will be a tuple in the format:
                 # (manager_object, filter_from_object)
@@ -853,7 +844,7 @@ class MAASQueriesMixin(object):
                 # object).
                 kwargs = {"id__in": sub_ids}
                 return lambda cq, op, i: op(cq, Q(**kwargs))
-            elif isinstance(query, unicode):
+            elif isinstance(query, str):
                 if separator in query:
                     # We got a string like "subnet:space". This means we want
                     # to actually use the query specifier at the 'subnet' key,
@@ -898,7 +889,7 @@ class MAASQueriesMixin(object):
             # If we got a dictionary, treat it as one of the entries in a
             # LabeledConstraintMap. That is, each key is a specifier, and
             # each value is a list of values (which must be OR'd together).
-            for key in specifiers.iterkeys():
+            for key in specifiers.keys():
                 assert isinstance(specifiers[key], list)
                 constraints = [
                     key + separator + value
@@ -1018,7 +1009,7 @@ class MAASQueriesMixin(object):
         :param:specifiers: unicode
         """
         object_name = get_model_object_name(self)
-        if isinstance(specifiers, unicode):
+        if isinstance(specifiers, str):
             specifiers = specifiers.strip()
         if specifiers is None or specifiers == "":
             raise MAASAPIBadRequest(
@@ -1053,7 +1044,7 @@ class MAASQueriesMixin(object):
         """
         if name is None:
             return None
-        if isinstance(name, types.IntType):
+        if isinstance(name, int):
             return name
         try:
             object_id = parse_integer(name)

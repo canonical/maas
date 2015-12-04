@@ -3,24 +3,15 @@
 
 """Tests for the Node API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
-from cStringIO import StringIO
-import httplib
-import json
+import http.client
+from io import StringIO
 import sys
 
 import bson
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from maasserver import forms
@@ -64,6 +55,7 @@ from maasserver.testing.orm import (
 )
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit
 from maastesting.matchers import (
     Equals,
@@ -100,13 +92,13 @@ class NodeAnonAPITest(MAASServerTestCase):
         # get a "Bad Request" response.
         response = self.client.get(reverse('nodes_handler'))
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_anon_api_doc(self):
         # The documentation is accessible to anon users.
         self.patch(sys, "stderr", StringIO())
         response = self.client.get(reverse('api-doc'))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         # No error or warning are emitted by docutils.
         self.assertEqual("", sys.stderr.getvalue())
 
@@ -114,7 +106,7 @@ class NodeAnonAPITest(MAASServerTestCase):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
         response = client.get(reverse('nodes_handler'), {'op': 'list'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class NodesAPILoggedInTest(MAASServerTestCase):
@@ -128,9 +120,9 @@ class NodesAPILoggedInTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node()
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             [node.system_id],
             [parsed_node.get('system_id') for parsed_node in parsed_result])
@@ -160,8 +152,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
         self.assertEqual(
@@ -175,8 +167,8 @@ class TestNodeAPI(APITestCase):
         node.tags.add(tag)
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual([tag.name], parsed_result['tag_names'])
 
     def test_GET_returns_associated_ip_addresses(self):
@@ -190,8 +182,8 @@ class TestNodeAPI(APITestCase):
         response = self.client.get(self.get_node_uri(node))
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual([lease.ip], parsed_result['ip_addresses'])
 
     def test_GET_returns_associated_routers(self):
@@ -200,23 +192,23 @@ class TestNodeAPI(APITestCase):
         response = self.client.get(self.get_node_uri(node))
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [mac.get_raw() for mac in macs], parsed_result['routers'])
 
     def test_GET_returns_interface_set(self):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertIn('interface_set', parsed_result)
 
     def test_GET_returns_zone(self):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(
             [node.zone.name, node.zone.description],
             [
@@ -226,8 +218,8 @@ class TestNodeAPI(APITestCase):
     def test_GET_returns_boot_type(self):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(
             node.boot_type, parsed_result['boot_type'])
 
@@ -236,8 +228,8 @@ class TestNodeAPI(APITestCase):
         node.boot_interface = node.interface_set.first()
         node.save()
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         expected_result = {
             'mac_address': node.boot_interface.mac_address.get_raw(),
         }
@@ -251,8 +243,9 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.get(url)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
-        self.assertEqual("Not Found", response.content)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        self.assertEqual(
+            "Not Found", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_GET_returns_404_if_node_name_contains_invalid_characters(self):
         # When the requested name contains characters that are invalid for
@@ -261,30 +254,31 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.get(url)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
-        self.assertEqual("Not Found", response.content)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        self.assertEqual(
+            "Not Found", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_GET_returns_owner_name_when_allocated_to_self(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(node.owner.username, parsed_result["owner"])
 
     def test_GET_returns_owner_name_when_allocated_to_other_user(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(node.owner.username, parsed_result["owner"])
 
     def test_GET_returns_empty_owner_when_not_allocated(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(None, parsed_result["owner"])
 
     def test_GET_returns_physical_block_devices(self):
@@ -294,8 +288,8 @@ class TestNodeAPI(APITestCase):
             for _ in range(3)
         ]
         response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         parsed_devices = [
             device['name']
             for device in parsed_result['physicalblockdevice_set']
@@ -308,14 +302,14 @@ class TestNodeAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_GET_returns_min_hwe_kernel_and_hwe_kernel(self):
         node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(None, parsed_result['min_hwe_kernel'])
         self.assertEqual(None, parsed_result['hwe_kernel'])
 
@@ -323,8 +317,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(min_hwe_kernel="hwe-v")
         response = self.client.get(self.get_node_uri(node))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
 
     def test_GET_returns_substatus_message_with_most_recent_event(self):
@@ -337,7 +331,7 @@ class TestNodeAPI(APITestCase):
         message = "Interesting event"
         factory.make_Event(description=message, node=node)
         response = self.client.get(self.get_node_uri(node))
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertEqual(message, parsed_result['substatus_message'])
 
     def test_GET_returns_substatus_name(self):
@@ -345,7 +339,7 @@ class TestNodeAPI(APITestCase):
         for status in NODE_STATUS_CHOICES_DICT:
             node = factory.make_Node(status=status)
             response = self.client.get(self.get_node_uri(node))
-            parsed_result = json.loads(response.content)
+            parsed_result = json_load_bytes(response.content)
             self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
                              parsed_result['substatus_name'])
 
@@ -353,7 +347,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node()
         node_stop = self.patch(node, 'stop')
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertThat(node_stop, MockNotCalled())
 
     def test_POST_stop_rejects_device(self):
@@ -361,7 +355,7 @@ class TestNodeAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
         # The node may not be stopped because, for example, its power type
@@ -371,8 +365,8 @@ class TestNodeAPI(APITestCase):
         node_stop = self.patch(node_module.Node, 'stop')
         node_stop.return_value = False
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertIsNone(json.loads(response.content))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertIsNone(json_load_bytes(response.content))
         self.assertThat(node_stop, MockCalledOnceWith(
             ANY, stop_mode=ANY, comment=None))
 
@@ -380,9 +374,9 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         self.patch(node_module.Node, 'stop').return_value = True
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            node.system_id, json.loads(response.content)['system_id'])
+            node.system_id, json_load_bytes(response.content)['system_id'])
 
     def test_POST_stop_may_be_repeated(self):
         node = factory.make_Node(
@@ -391,7 +385,7 @@ class TestNodeAPI(APITestCase):
         self.patch(node, 'stop')
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_POST_stop_stops_nodes(self):
         node = factory.make_Node(owner=self.logged_in_user)
@@ -424,21 +418,23 @@ class TestNodeAPI(APITestCase):
             node_module.Node,
             'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
-        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
-        self.assertIn(exc_text, response.content)
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            exc_text, response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_POST_start_checks_permission(self):
         node = factory.make_Node(owner=factory.make_User())
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_start_checks_ownership(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
-        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(http.client.CONFLICT, response.status_code)
         self.assertEqual(
-            "Can't start node: it hasn't been allocated.", response.content)
+            "Can't start node: it hasn't been allocated.",
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_POST_start_returns_node(self):
         node = factory.make_Node(
@@ -453,16 +449,16 @@ class TestNodeAPI(APITestCase):
                 'op': 'start',
                 'distro_series': distro_series,
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            node.system_id, json.loads(response.content)['system_id'])
+            node.system_id, json_load_bytes(response.content)['system_id'])
 
     def test_POST_start_rejects_device(self):
         node = factory.make_Node(
             installable=False, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_start_sets_osystem_and_distro_series(self):
         node = factory.make_Node(
@@ -477,8 +473,9 @@ class TestNodeAPI(APITestCase):
                 'distro_series': distro_series
             })
         self.assertEqual(
-            (httplib.OK, node.system_id),
-            (response.status_code, json.loads(response.content)['system_id']))
+            (http.client.OK, node.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
         self.assertEqual(
             osystem['name'], reload_object(node).osystem)
         self.assertEqual(
@@ -495,13 +492,13 @@ class TestNodeAPI(APITestCase):
             {'op': 'start', 'distro_series': invalid_distro_series})
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'distro_series': [
                     "'%s' is not a valid distro_series.  "
                     "It should be one of: ''." %
                     invalid_distro_series]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_start_sets_license_key(self):
         node = factory.make_Node(
@@ -520,8 +517,9 @@ class TestNodeAPI(APITestCase):
                 'license_key': license_key,
             })
         self.assertEqual(
-            (httplib.OK, node.system_id),
-            (response.status_code, json.loads(response.content)['system_id']))
+            (http.client.OK, node.system_id),
+            (response.status_code,
+             json_load_bytes(response.content)['system_id']))
         self.assertEqual(
             license_key, reload_object(node).license_key)
 
@@ -543,11 +541,11 @@ class TestNodeAPI(APITestCase):
             })
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'license_key': [
                     "Invalid license key."]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_start_sets_default_distro_series(self):
         node = factory.make_Node(
@@ -559,8 +557,8 @@ class TestNodeAPI(APITestCase):
         make_usable_osystem(
             self, osystem_name=osystem, releases=[distro_series])
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
-        response_info = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
 
@@ -572,13 +570,13 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'distro_series': [
                     "'%s' is not a valid distro_series.  "
                     "It should be one of: ''." %
                     Config.objects.get_config('default_distro_series')]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_start_validates_hwe_kernel_with_default_distro_series(self):
         architecture = make_usable_architecture(self, subarch_name="generic")
@@ -599,12 +597,12 @@ class TestNodeAPI(APITestCase):
             })
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'hwe_kernel': [
                     "%s is not available for %s/%s on %s."
                     % (bad_hwe_kernel, osystem, distro_series, architecture)]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_start_may_be_repeated(self):
         node = factory.make_Node(
@@ -619,7 +617,7 @@ class TestNodeAPI(APITestCase):
             }
         self.client.post(self.get_node_uri(node), request)
         response = self.client.post(self.get_node_uri(node), request)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_POST_start_stores_user_data(self):
         node = factory.make_Node(
@@ -631,13 +629,14 @@ class TestNodeAPI(APITestCase):
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
             factory.make_string().encode('ascii'))
+        # import ipdb; ipdb.set_trace()
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
-                'user_data': b64encode(user_data),
+                'user_data': b64encode(user_data).decode('ascii'),
                 'distro_series': distro_series,
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
     def test_POST_start_passes_comment(self):
@@ -694,7 +693,7 @@ class TestNodeAPI(APITestCase):
             self.client.post(self.get_node_uri(node), {'op': 'release'})
             for node in owned_nodes]
         self.assertEqual(
-            [httplib.OK] * len(owned_nodes),
+            [http.client.OK] * len(owned_nodes),
             [response.status_code for response in responses])
         self.assertItemsEqual(
             [NODE_STATUS.RELEASING] * len(owned_nodes),
@@ -710,7 +709,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(
             self.get_node_uri(owned_node), {'op': 'release'})
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         owned_node = Node.objects.get(id=owned_node.id)
         self.expectThat(owned_node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(owned_node.owner, Equals(self.logged_in_user))
@@ -720,7 +719,7 @@ class TestNodeAPI(APITestCase):
             status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_POST_release_rejects_device(self):
@@ -728,13 +727,13 @@ class TestNodeAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_release_forbidden_if_user_cannot_edit_node(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_release_fails_for_other_node_states(self):
         releasable_statuses = (
@@ -754,7 +753,7 @@ class TestNodeAPI(APITestCase):
             self.client.post(self.get_node_uri(node), {'op': 'release'})
             for node in nodes]
         self.assertEqual(
-            [httplib.CONFLICT] * len(unreleasable_statuses),
+            [http.client.CONFLICT] * len(unreleasable_statuses),
             [response.status_code for response in responses])
         self.assertItemsEqual(
             unreleasable_statuses,
@@ -767,17 +766,18 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(
             (
-                httplib.CONFLICT,
+                http.client.CONFLICT,
                 "Node cannot be released in its current state ('Retired').",
             ),
-            (response.status_code, response.content))
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
@@ -789,7 +789,8 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
@@ -801,9 +802,10 @@ class TestNodeAPI(APITestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
-        node_uri = json.loads(response.content)['resource_uri']
+        node_uri = json_load_bytes(response.content)['resource_uri']
         response = self.client.post(node_uri, {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_acquire_passes_comment(self):
@@ -839,7 +841,8 @@ class TestNodeAPI(APITestCase):
             hwe_kernel='hwe-v')
         self.assertEqual('hwe-v', reload_object(node).hwe_kernel)
         response = self.client.post(self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
         self.assertEqual(None, reload_object(node).hwe_kernel)
 
@@ -876,7 +879,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'commission'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_POST_commission_commissions_node_with_options(self):
@@ -889,7 +892,7 @@ class TestNodeAPI(APITestCase):
             'enable_ssh': "true",
             'skip_networking': 1,
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertTrue(node.enable_ssh)
         self.assertTrue(node.skip_networking)
@@ -902,9 +905,9 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
         self.assertEqual(
@@ -921,7 +924,8 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node),
             {'architecture': arch})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
 
     def test_PUT_rejects_device(self):
@@ -930,7 +934,7 @@ class TestNodeAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         response = self.client.put(self.get_node_uri(node))
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_PUT_ignores_unknown_fields(self):
         self.become_admin()
@@ -943,7 +947,7 @@ class TestNodeAPI(APITestCase):
             {field: factory.make_string()}
         )
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_PUT_admin_can_change_power_type(self):
         self.become_admin()
@@ -956,7 +960,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node), {'power_type': new_power_type})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             new_power_type, reload_object(node).power_type)
 
@@ -968,7 +972,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node), {'power_type': new_power_type})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(
             original_power_type, reload_object(node).power_type)
 
@@ -981,9 +985,9 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             reverse('node_handler', args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
@@ -997,9 +1001,9 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(node), {'hostname': '.'})
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
             {'hostname': ["DNS name contains an empty label."]},
             parsed_result)
@@ -1011,7 +1015,7 @@ class TestNodeAPI(APITestCase):
         url = reverse('node_handler', args=['invalid-uuid'])
         response = self.client.put(url)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_PUT_updates_power_parameters_field(self):
         # The api allows the updating of a Node's power_parameters field.
@@ -1026,7 +1030,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             {'mac_address': new_power_address},
             reload_object(node).power_parameters)
@@ -1040,7 +1044,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node),
             {'cpu_count': 1, 'memory': 1024})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(1, node.cpu_count)
         self.assertEqual(1024, node.memory)
@@ -1060,10 +1064,10 @@ class TestNodeAPI(APITestCase):
         error_msg = MAC_ERROR_MSG % {'value': new_power_address}
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'power_parameters': ["MAC Address: %s" % error_msg]},
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
@@ -1079,10 +1083,10 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'power_parameters': ["Unknown parameter(s): unknown_param."]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
         self.assertEqual(
             power_parameters, reload_object(node).power_parameters)
 
@@ -1102,7 +1106,7 @@ class TestNodeAPI(APITestCase):
 
         node = reload_object(node)
         self.assertEqual(
-            (httplib.OK, node.power_type, node.power_parameters),
+            (http.client.OK, node.power_type, node.power_parameters),
             (response.status_code, '', ''))
 
     def test_PUT_updates_power_type_empty_rejects_params(self):
@@ -1125,10 +1129,10 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'power_parameters': ["Unknown parameter(s): address."]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
         self.assertEqual(
             power_parameters, reload_object(node).power_parameters)
 
@@ -1154,7 +1158,7 @@ class TestNodeAPI(APITestCase):
 
         node = reload_object(node)
         self.assertEqual(
-            (httplib.OK, node.power_type, node.power_parameters),
+            (http.client.OK, node.power_type, node.power_parameters),
             (response.status_code, '', {'param': new_param}))
 
     def test_PUT_updates_power_parameters_skip_ckeck(self):
@@ -1173,7 +1177,7 @@ class TestNodeAPI(APITestCase):
                 'power_parameters_skip_check': 'true',
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             {new_param: new_value}, reload_object(node).power_parameters)
 
@@ -1188,7 +1192,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node),
             {'power_parameters_mac_address': ''})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             {'mac_address': ''},
             reload_object(node).power_parameters)
@@ -1201,7 +1205,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node), {'zone': new_zone.name})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(new_zone, node.zone)
 
@@ -1214,7 +1218,7 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             self.get_node_uri(node), {'hostname': new_name})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual((old_zone, new_name), (node.zone, node.hostname))
 
@@ -1228,7 +1232,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.put(self.get_node_uri(node), {'zone': ''})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(None, node.zone)
 
@@ -1240,7 +1244,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.put(self.get_node_uri(node), {})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(zone, node.zone)
 
@@ -1250,7 +1254,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         # PUT the node with no arguments - should get FORBIDDEN
         response = self.client.put(self.get_node_uri(node), {})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_zone_change_requires_admin(self):
         new_zone = factory.make_Zone()
@@ -1263,7 +1267,7 @@ class TestNodeAPI(APITestCase):
             self.get_node_uri(node),
             {'zone': new_zone.name})
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         # Confirm the node's physical zone has not been updated.
         node = reload_object(node)
         self.assertEqual(old_zone, node.zone)
@@ -1279,7 +1283,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.put(
             self.get_node_uri(node), {'disable_ipv4': new_setting})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
         node = reload_object(node)
         self.assertEqual(new_setting, node.disable_ipv4)
@@ -1295,7 +1299,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.put(
             self.get_node_uri(node), {'zone': factory.make_Zone()})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
         node = reload_object(node)
         self.assertEqual(original_setting, node.disable_ipv4)
@@ -1310,8 +1314,8 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'boot_type': NODE_BOOT.DEBIAN})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(node.boot_type, parsed_result['boot_type'])
         self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
@@ -1323,9 +1327,9 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': 5 * 1000 ** 3})  # Making sure we overflow 32 bits
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         node = reload_object(node)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(node.swap_size, parsed_result['swap_size'])
 
     def test_PUT_updates_swap_size_suffixes(self):
@@ -1336,29 +1340,29 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': '5K'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(5000, parsed_result['swap_size'])
 
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': '5M'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(5000000, parsed_result['swap_size'])
 
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': '5G'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(5000000000, parsed_result['swap_size'])
 
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': '5T'})
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(5000000000000, parsed_result['swap_size'])
 
     def test_PUT_updates_swap_size_invalid_suffix(self):
@@ -1368,8 +1372,8 @@ class TestNodeAPI(APITestCase):
         response = self.client.put(
             reverse('node_handler', args=[node.system_id]),
             {'swap_size': '5E'})  # We won't support exabytes yet
-        parsed_result = json.loads(response.content)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual('Invalid size for swap: 5E',
                          parsed_result['swap_size'][0])
 
@@ -1388,21 +1392,21 @@ class TestNodeAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         response = self.client.delete(self.get_node_uri(node))
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
         node = factory.make_Node(owner=self.logged_in_user)
         response = self.client.delete(self.get_node_uri(node))
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_forbidden_without_edit_permission(self):
         # A user without the edit permission cannot delete a Node.
         node = factory.make_Node()
         response = self.client.delete(self.get_node_uri(node))
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_refuses_to_delete_invisible_node(self):
         # The request to delete a single node is denied if the node isn't
@@ -1412,7 +1416,7 @@ class TestNodeAPI(APITestCase):
 
         response = self.client.delete(self.get_node_uri(other_node))
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_refuses_to_delete_nonexistent_node(self):
         # When deleting a Node, the api returns a 'Not Found' (404) error
@@ -1420,7 +1424,7 @@ class TestNodeAPI(APITestCase):
         url = reverse('node_handler', args=['invalid-uuid'])
         response = self.client.delete(url)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
 
 class TestClaimStickyIpAddressAPI(APITestCase):
@@ -1436,10 +1440,10 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
         self.assertEqual(
             "Sticky IP cannot be assigned to a node that is allocated",
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_claim_sticky_ip_address_validates_ip_address(self):
         self.become_admin()
@@ -1447,10 +1451,10 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address',
                                       'requested_address': '192.168.1000.1'})
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
             dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
         self.become_admin()
@@ -1460,8 +1464,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         [existing_ip] = node.get_boot_interface().claim_static_ips()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         [returned_ip] = parsed_node["ip_addresses"]
         self.assertEqual(
             (existing_ip.ip, IPADDRESS_TYPE.STICKY),
@@ -1475,8 +1480,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.patch(interface_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         [returned_ip] = parsed_node["ip_addresses"]
         [given_ip] = StaticIPAddress.objects.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False)
@@ -1492,7 +1498,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
         self.become_admin()
@@ -1501,8 +1507,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         self.patch(interface_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         [returned_ip] = parsed_node["ip_addresses"]
         [given_ip] = StaticIPAddress.objects.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False)
@@ -1528,7 +1535,8 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'op': 'claim_sticky_ip_address',
                 'mac_address': second_nic.mac_address.get_raw(),
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         [observed_static_ip] = second_nic.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertEqual(IPADDRESS_TYPE.STICKY, observed_static_ip.alloc_type)
@@ -1545,10 +1553,10 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'mac_address': random_mac,
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
             "mac_address %s not found on the node" % random_mac,
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_claim_sticky_ip_allows_requested_ip(self):
         self.become_admin()
@@ -1566,7 +1574,8 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'op': 'claim_sticky_ip_address',
                 'requested_address': requested_address,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertIsNotNone(
             StaticIPAddress.objects.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=requested_address,
@@ -1588,7 +1597,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'requested_address': requested_address.format(),
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_claim_sticky_ip_address_detects_unavailable_requested_ip(self):
         self.become_admin()
@@ -1619,7 +1628,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
                 'requested_address': requested_address,
             })
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
 
 class TestNodeAPITransactional(APITransactionTestCase):
@@ -1652,7 +1661,7 @@ class TestNodeAPITransactional(APITransactionTestCase):
                 'op': 'start',
                 'distro_series': distro_series,
             })
-        self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
+        self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
 
 
 class TestNodeReleaseStickyIpAddressAPI(APITestCase):
@@ -1672,14 +1681,16 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         self.patch(interface_module, "remove_host_maps")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         self.expectThat(parsed_node["ip_addresses"], Not(HasLength(0)))
 
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
 
     def test__validates_ip_address(self):
@@ -1690,10 +1701,10 @@ class TestNodeReleaseStickyIpAddressAPI(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release_sticky_ip_address',
                                       'address': '192.168.1000.1'})
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
             dict(address=["Enter a valid IPv4 or IPv6 address."]),
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
 
 class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
@@ -1704,7 +1715,7 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
 
     def test__releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, installable=True, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
@@ -1719,13 +1730,14 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         response = self.client.post(
             TestNodeReleaseStickyIpAddressAPI.get_node_uri(node),
             {'op': 'release_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
 
     def test__releases_specific_address(self):
         network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, installable=True, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
@@ -1746,8 +1758,9 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
                 'op': 'release_sticky_ip_address',
                 'address': ips[0].ip
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_node = json_load_bytes(response.content)
         self.expectThat(parsed_node["ip_addresses"], HasLength(0))
 
     def test__rejected_if_not_permitted(self):
@@ -1764,7 +1777,7 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
             TestNodeReleaseStickyIpAddressAPI.get_node_uri(node),
             {'op': 'release_sticky_ip_address'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
 
 class TestGetDetails(APITestCase):
@@ -1783,7 +1796,7 @@ class TestGetDetails(APITestCase):
     def get_details(self, node):
         url = reverse('node_handler', args=[node.system_id])
         response = self.client.get(url, {'op': 'details'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual('application/bson', response['content-type'])
         return bson.BSON(response.content).decode()
 
@@ -1798,22 +1811,22 @@ class TestGetDetails(APITestCase):
         lshw_result = self.make_lshw_result(node)
         lldp_result = self.make_lldp_result(node)
         self.assertDictEqual(
-            {"lshw": bson.Binary(lshw_result.data),
-             "lldp": bson.Binary(lldp_result.data)},
+            {"lshw": lshw_result.data,
+             "lldp": lldp_result.data},
             self.get_details(node))
 
     def test_GET_returns_only_those_details_that_exist(self):
         node = factory.make_Node()
         lshw_result = self.make_lshw_result(node)
         self.assertDictEqual(
-            {"lshw": bson.Binary(lshw_result.data),
+            {"lshw": lshw_result.data,
              "lldp": None},
             self.get_details(node))
 
     def test_GET_returns_not_found_when_node_does_not_exist(self):
         url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
 
 class TestMarkBroken(APITestCase):
@@ -1828,7 +1841,7 @@ class TestMarkBroken(APITestCase):
             status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_broken'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_mark_broken_updates_error_description(self):
@@ -1840,7 +1853,7 @@ class TestMarkBroken(APITestCase):
         response = self.client.post(
             self.get_node_uri(node),
             {'op': 'mark_broken', 'comment': comment})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             (NODE_STATUS.BROKEN, comment),
@@ -1855,7 +1868,7 @@ class TestMarkBroken(APITestCase):
         response = self.client.post(
             self.get_node_uri(node),
             {'op': 'mark_broken', 'error_description': error_description})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             (NODE_STATUS.BROKEN, error_description),
@@ -1888,7 +1901,7 @@ class TestMarkBroken(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_broken'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_mark_broken_allowed_from_any_other_state(self):
         for status, _ in NODE_STATUS_CHOICES:
@@ -1898,7 +1911,8 @@ class TestMarkBroken(APITestCase):
             node = factory.make_Node(status=status, owner=self.logged_in_user)
             response = self.client.post(
                 self.get_node_uri(node), {'op': 'mark_broken'})
-            self.expectThat(response.status_code, Equals(httplib.OK), response)
+            self.expectThat(
+                response.status_code, Equals(http.client.OK), response)
             node = reload_object(node)
             self.expectThat(node.status, Equals(NODE_STATUS.BROKEN))
 
@@ -1915,14 +1929,14 @@ class TestMarkFixed(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_mark_fixed_requires_admin(self):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_mark_fixed_passes_comment(self):
         self.become_admin()
@@ -1958,8 +1972,9 @@ class TestPowerParameters(APITestCase):
             power_parameters=factory.make_name("power_parameters"))
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_params = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
         self.assertEqual(node.power_parameters, parsed_params)
 
     def test_get_power_parameters_empty(self):
@@ -1967,8 +1982,9 @@ class TestPowerParameters(APITestCase):
         node = factory.make_Node()
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_params = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
         self.assertEqual("", parsed_params)
 
     def test_power_parameters_requires_admin(self):
@@ -1976,7 +1992,7 @@ class TestPowerParameters(APITestCase):
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
 
 class TestAbortOperation(APITransactionTestCase):
@@ -1995,7 +2011,7 @@ class TestAbortOperation(APITransactionTestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
 
@@ -2003,7 +2019,7 @@ class TestAbortOperation(APITransactionTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_abort_operation_passes_comment(self):
         self.become_admin()
@@ -2040,28 +2056,28 @@ class TestSetStorageLayout(APITestCase):
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'set_storage_layout'})
-        self.assertEquals(
-            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test__409_when_node_not_ready(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'set_storage_layout'})
-        self.assertEquals(
-            httplib.CONFLICT, response.status_code, response.content)
+        self.assertEqual(
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test__400_when_storage_layout_missing(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'set_storage_layout'})
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "storage_layout": [
                 "This field is required."],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
     def test__400_when_invalid_optional_param(self):
         self.become_admin()
@@ -2073,13 +2089,13 @@ class TestSetStorageLayout(APITestCase):
                 'storage_layout': 'flat',
                 'boot_size': MIN_BOOT_PARTITION_SIZE - 1,
                 })
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "boot_size": [
                 "Size is too small. Minimum size is %s." % (
                     MIN_BOOT_PARTITION_SIZE)],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
     def test__400_when_no_boot_disk(self):
         self.become_admin()
@@ -2090,11 +2106,11 @@ class TestSetStorageLayout(APITestCase):
                 'op': 'set_storage_layout',
                 'storage_layout': 'flat',
                 })
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
             "Node is missing a boot disk; no storage layout can be applied.",
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test__400_when_layout_error(self):
         self.become_admin()
@@ -2102,16 +2118,17 @@ class TestSetStorageLayout(APITestCase):
         mock_set_storage_layout = self.patch(Node, "set_storage_layout")
         error_msg = factory.make_name("error")
         mock_set_storage_layout.side_effect = StorageLayoutError(error_msg)
+
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'set_storage_layout',
                 'storage_layout': 'flat',
                 })
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
             "Failed to configure storage layout 'flat': %s" % error_msg,
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test__400_when_layout_not_supported(self):
         self.become_admin()
@@ -2122,12 +2139,12 @@ class TestSetStorageLayout(APITestCase):
                 'op': 'set_storage_layout',
                 'storage_layout': 'bcache',
                 })
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
             "Failed to configure storage layout 'bcache': Node doesn't "
             "have an available cache device to setup bcache.",
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test__calls_set_storage_layout_on_node(self):
         self.become_admin()
@@ -2138,8 +2155,8 @@ class TestSetStorageLayout(APITestCase):
                 'op': 'set_storage_layout',
                 'storage_layout': 'flat',
                 })
-        self.assertEquals(
-            httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(
             mock_set_storage_layout,
             MockCalledOnceWith('flat', params=ANY, allow_fallback=False))
@@ -2156,8 +2173,8 @@ class TestClearDefaultGateways(APITestCase):
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'clear_default_gateways'})
-        self.assertEquals(
-            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test__clears_default_gateways(self):
         self.become_admin()
@@ -2166,14 +2183,14 @@ class TestClearDefaultGateways(APITestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(
-            cidr=unicode(network_v4.cidr), vlan=interface.vlan)
+            cidr=str(network_v4.cidr), vlan=interface.vlan)
         link_v4 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet_v4, interface=interface)
         node.gateway_link_ipv4 = link_v4
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(
-            cidr=unicode(network_v6.cidr), vlan=interface.vlan)
+            cidr=str(network_v6.cidr), vlan=interface.vlan)
         link_v6 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet_v6, interface=interface)
@@ -2181,8 +2198,8 @@ class TestClearDefaultGateways(APITestCase):
         node.save()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'clear_default_gateways'})
-        self.assertEquals(
-            httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertIsNone(node.gateway_link_ipv4)
         self.assertIsNone(node.gateway_link_ipv6)
@@ -2205,8 +2222,8 @@ class TestGetCurtinConfig(APITestCase):
                 ]))
         response = self.client.get(
             self.get_node_uri(node), {'op': 'get_curtin_config'})
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test__returns_curtin_config_in_yaml(self):
         node = factory.make_Node(
@@ -2219,10 +2236,10 @@ class TestGetCurtinConfig(APITestCase):
         mock_get_curtin_merged_config.return_value = fake_config
         response = self.client.get(
             self.get_node_uri(node), {'op': 'get_curtin_config'})
-        self.assertEquals(
-            httplib.OK, response.status_code, response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
             yaml.safe_dump(fake_config, default_flow_style=False),
-            response.content)
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
             mock_get_curtin_merged_config, MockCalledOnceWith(node))

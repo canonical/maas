@@ -3,15 +3,6 @@
 
 """Model for a nodes physical block device."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'PhysicalBlockDevice',
     ]
@@ -61,7 +52,7 @@ class PhysicalBlockDevice(BlockDevice):
                 "serial/model are required if id_path is not provided.")
         super(PhysicalBlockDevice, self).clean()
 
-    def __unicode__(self):
+    def __str__(self):
         return '{model} S/N {serial} {size} attached to {node}'.format(
             model=self.model, serial=self.serial,
             size=human_readable_bytes(self.size), node=self.node)

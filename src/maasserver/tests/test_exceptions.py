@@ -3,19 +3,11 @@
 
 """Tests for the exceptions module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
+from django.conf import settings
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
@@ -35,8 +27,9 @@ class TestExceptions(MAASTestCase):
         exception = MAASAPIBadRequest(error)
         response = exception.make_http_response()
         self.assertEqual(
-            (httplib.BAD_REQUEST, error),
-            (response.status_code, response.content))
+            (http.client.BAD_REQUEST, error),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_Redirect_produces_redirect_to_given_URL(self):
         target = factory.make_string()
@@ -53,15 +46,17 @@ class TestMAASAPIValidationError(MAASTestCase):
         exception = MAASAPIValidationError(error)
         response = exception.make_http_response()
         self.assertEqual(
-            (httplib.BAD_REQUEST, error),
-            (response.status_code, response.content))
+            (http.client.BAD_REQUEST, error),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_returns_textual_response_if_message_is_a_string(self):
         error = factory.make_string()
         exception = MAASAPIValidationError(error)
         response = exception.make_http_response()
         self.assertEqual(
-            "text/plain; charset=utf-8", response.get("Content-Type"))
+            "text/plain; charset=%s" % settings.DEFAULT_CHARSET,
+            response.get("Content-Type"))
 
     def test_returns_json_response_if_message_is_a_list(self):
         errors = [
@@ -72,19 +67,21 @@ class TestMAASAPIValidationError(MAASTestCase):
         response = exception.make_http_response()
         self.expectThat(
             response.get("Content-Type"),
-            Equals("application/json; charset=utf-8"))
-        self.expectThat(response.content, Equals(json.dumps(errors)))
+            Equals("application/json; charset=%s" % settings.DEFAULT_CHARSET))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals(json.dumps(errors)))
 
     def test_if_message_is_single_item_list_returns_only_first_message(self):
-        errors = [
-            factory.make_string(),
-            ]
+        errors = [factory.make_string()]
         exception = MAASAPIValidationError(errors)
         response = exception.make_http_response()
         self.expectThat(
             response.get("Content-Type"),
-            Equals("text/plain; charset=utf-8"))
-        self.expectThat(response.content, Equals(errors[0]))
+            Equals("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals(errors[0]))
 
     def test_returns_json_response_if_message_is_a_dict(self):
         errors = {
@@ -95,5 +92,7 @@ class TestMAASAPIValidationError(MAASTestCase):
         response = exception.make_http_response()
         self.expectThat(
             response.get("Content-Type"),
-            Equals("application/json; charset=utf-8"))
-        self.expectThat(response.content, Equals(json.dumps(errors)))
+            Equals("application/json; charset=%s" % settings.DEFAULT_CHARSET))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals(json.dumps(errors)))

@@ -1,15 +1,6 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "AnonNodesHandler",
     "NodeHandler",
@@ -246,7 +237,7 @@ def get_storage_layout_params(request, required=False, extract_params=False):
             if key.startswith("storage_layout_"):
                 params[key.replace("storage_layout_", "")] = value
         # Remove the storage_layout_ parameters from the request.
-        for key in params.keys():
+        for key in params:
             request.data.pop("storage_layout_%s" % key)
     return storage_layout, params
 
@@ -694,7 +685,7 @@ class NodeHandler(OperationsHandler):
 
         maaslog.info(
             "%s: Sticky IP address(es) deallocated: %s", node.hostname,
-            ', '.join(unicode(ip) for ip in deallocated_ips))
+            ', '.join(str(ip) for ip in deallocated_ips))
         return node
 
     @operation(idempotent=False)
@@ -909,7 +900,7 @@ class NodeHandler(OperationsHandler):
         except StorageLayoutError as e:
             raise MAASAPIBadRequest(
                 "Failed to configure storage layout '%s': %s" % (
-                    storage_layout, e.message))
+                    storage_layout, str(e)))
         return node
 
     @operation(idempotent=False)
@@ -1229,8 +1220,8 @@ class NodesHandler(OperationsHandler):
                 "You don't have the required permission to accept the "
                 "following node(s): %s." % (
                     ', '.join(system_ids - permitted_ids)))
-        return filter(
-            None, [node.accept_enlistment(request.user) for node in nodes])
+        nodes = (node.accept_enlistment(request.user) for node in nodes)
+        return [node for node in nodes if node is not None]
 
     @operation(idempotent=False)
     def accept_all(self, request):
@@ -1248,8 +1239,8 @@ class NodesHandler(OperationsHandler):
         nodes = Node.nodes.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN)
         nodes = nodes.filter(status=NODE_STATUS.NEW)
-        nodes = [node.accept_enlistment(request.user) for node in nodes]
-        return filter(None, nodes)
+        nodes = (node.accept_enlistment(request.user) for node in nodes)
+        return [node for node in nodes if node is not None]
 
     @operation(idempotent=False)
     def check_commissioning(self, request):
@@ -1485,7 +1476,7 @@ class NodesHandler(OperationsHandler):
                 node.constraints_by_type['storage'] = {}
                 new_storage = node.constraints_by_type['storage']
                 # Convert this to the "new style" constraints map format.
-                for storage_key in node.constraint_map.iterkeys():
+                for storage_key in node.constraint_map:
                     # Each key in the storage map is actually a value which
                     # contains the ID of the matching storage device.
                     # Convert this to a label: list-of-matches format, to

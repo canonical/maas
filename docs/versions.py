@@ -7,18 +7,9 @@ available versions of the MAAS documentation.
 """
 
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
+import json
+import os
 
-str = None
-
-__metaclass__ = type
-
-
-import os, json
 import sphinx
 
 # The name of the version JSON file being written by this extension.

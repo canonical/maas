@@ -3,28 +3,19 @@
 
 """Tests for the events API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 from itertools import combinations
-import json
 import logging
 import random
 from random import randint
-from urlparse import (
+from urllib.parse import (
     parse_qsl,
     urlparse,
 )
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api import events as events_module
 from maasserver.api.tests.test_nodes import RequestFixture
@@ -33,6 +24,7 @@ from maasserver.models.eventtype import LOGGING_LEVELS
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils import ignore_unused
+from maasserver.utils.converters import json_load_bytes
 from maastesting.djangotestcase import count_queries
 from testtools.matchers import (
     Contains,
@@ -92,7 +84,7 @@ class TestEventsAPI(APITestCase):
              'events': [],
              'prev_uri': '',
              'next_uri': ''},
-            json.loads(response.content))
+            json_load_bytes(response.content))
 
     def test_GET_query_orders_by_reverse_id(self):
         # Events are returned in reverse id order (newest first).
@@ -102,7 +94,7 @@ class TestEventsAPI(APITestCase):
             'op': 'query',
             'level': 'DEBUG'}
         )
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertSequenceEqual(
             list(reversed(event_ids)), extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len(event_ids))
@@ -120,7 +112,7 @@ class TestEventsAPI(APITestCase):
             'id': [matching_id],
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [matching_events], extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len([matching_events]))
@@ -140,7 +132,7 @@ class TestEventsAPI(APITestCase):
                                'events': [],
                                'prev_uri': '',
                                'next_uri': ''},
-                              json.loads(response.content))
+                              json_load_bytes(response.content))
 
     def test_GET_query_with_ids_orders_by_id_reverse(self):
         # Even when node ids are passed to "list," events for nodes are
@@ -155,7 +147,7 @@ class TestEventsAPI(APITestCase):
             'id': list(reversed(ids)),
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertSequenceEqual(
             event_ids, extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len(event_ids))
@@ -177,7 +169,7 @@ class TestEventsAPI(APITestCase):
             'id': [existing_id, nonexistent_id],
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             reversed(existing_event_ids), extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len(existing_event_ids))
@@ -195,7 +187,7 @@ class TestEventsAPI(APITestCase):
             'hostname': [matching_hostname],
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [matching_event_id], extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len([matching_event_id]))
@@ -215,7 +207,7 @@ class TestEventsAPI(APITestCase):
             'mac_address': [matching_mac],
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [matching_event_id], extract_event_ids(parsed_result))
         self.assertEqual(parsed_result['count'], len([matching_event_id]))
@@ -236,10 +228,10 @@ class TestEventsAPI(APITestCase):
         })
         observed = response.status_code, response.content
         expected = (
-            Equals(httplib.BAD_REQUEST),
+            Equals(http.client.BAD_REQUEST),
             Contains(
-                "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, "
-                "00:E0:81:DD:D1:XX"),
+                b"Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, "
+                b"00:E0:81:DD:D1:XX"),
         )
         self.assertThat(observed, MatchesListwise(expected))
 
@@ -261,8 +253,8 @@ class TestEventsAPI(APITestCase):
             'level': 'DEBUG',
         })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         matching_event_ids = list(reversed(matching_event_ids))
         self.assertSequenceEqual(
@@ -284,8 +276,8 @@ class TestEventsAPI(APITestCase):
             'agent_name': '',
             'level': 'DEBUG'
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         matching_event_ids = list(reversed(matching_event_ids))
         self.assertSequenceEqual(
             matching_event_ids, extract_event_ids(parsed_result))
@@ -303,8 +295,8 @@ class TestEventsAPI(APITestCase):
             'level': 'DEBUG'
         }
         )
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         matching_event_ids = list(reversed(matching_event_ids))
         self.assertSequenceEqual(
             matching_event_ids,
@@ -328,8 +320,8 @@ class TestEventsAPI(APITestCase):
             'level': 'DEBUG',
         }
         )
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         system_ids = extract_event_ids(parsed_result)
         self.assertEqual(
             [],
@@ -352,8 +344,8 @@ class TestEventsAPI(APITestCase):
             'zone': zone.name,
             'level': 'DEBUG'
         })
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         matching_event_ids = list(reversed(matching_event_ids))
         self.assertSequenceEqual(
             matching_event_ids, extract_event_ids(parsed_result))
@@ -366,11 +358,11 @@ class TestEventsAPI(APITestCase):
                      in range(test_limit + 1)]
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
-            'limit': unicode(test_limit),
+            'limit': str(test_limit),
             'level': 'DEBUG'
         })
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
         self.assertSequenceEqual(
             list(reversed(event_ids))[:test_limit],
@@ -385,7 +377,7 @@ class TestEventsAPI(APITestCase):
         [factory.make_Event().id for _ in range(test_limit)]
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
-            'limit': unicode(test_limit),
+            'limit': str(test_limit),
         })
 
         expected_msg = ("Requested number of events %d is greater than"
@@ -394,8 +386,8 @@ class TestEventsAPI(APITestCase):
 
         observed = response.status_code, response.content
         expected = (
-            Equals(httplib.BAD_REQUEST),
-            Contains(expected_msg),
+            Equals(http.client.BAD_REQUEST),
+            Contains(expected_msg.encode(settings.DEFAULT_CHARSET)),
         )
         self.assertThat(observed, MatchesListwise(expected))
 
@@ -414,7 +406,7 @@ class TestEventsAPI(APITestCase):
             'level': 'DEBUG'
         })
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
         self.assertSequenceEqual(
             list(reversed(event_ids))[:artificial_limit],
@@ -431,11 +423,11 @@ class TestEventsAPI(APITestCase):
 
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
-            'after': unicode(test_event_3.id),
-            'limit': unicode(test_limit),
+            'after': str(test_event_3.id),
+            'limit': str(test_limit),
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         expected_result = list(
             [test_event_5.id, test_event_4.id, test_event_3.id])
         observed_result = extract_event_ids(parsed_result)
@@ -453,10 +445,10 @@ class TestEventsAPI(APITestCase):
 
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
-            'after': unicode(test_event_3.id),
+            'after': str(test_event_3.id),
             'level': 'DEBUG'
         })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         expected_result = list(
             [test_event_5.id, test_event_4.id, test_event_3.id])
         observed_result = extract_event_ids(parsed_result)
@@ -477,8 +469,8 @@ class TestEventsAPI(APITestCase):
 
         observed = response.status_code, response.content
         expected = (
-            Equals(httplib.BAD_REQUEST),
-            Contains(expected_msg),
+            Equals(http.client.BAD_REQUEST),
+            Contains(expected_msg.encode(settings.DEFAULT_CHARSET)),
         )
         self.assertThat(observed, MatchesListwise(expected))
 
@@ -494,7 +486,7 @@ class TestEventsAPI(APITestCase):
                 'level': level[0],
             })
 
-            parsed_result = json.loads(response.content)
+            parsed_result = json_load_bytes(response.content)
 
             expected_result = list(
                 reversed(event_ids[:(idx + 1) * events_per_level]))
@@ -516,8 +508,8 @@ class TestEventsAPI(APITestCase):
             'op': 'query',
         })
 
-        expected_result = json.loads(info_response.content)
-        observed_result = json.loads(default_response.content)
+        expected_result = json_load_bytes(info_response.content)
+        observed_result = json_load_bytes(default_response.content)
         expected_result_ids = extract_event_ids(expected_result)
 
         self.assertSequenceEqual(
@@ -538,12 +530,12 @@ class TestEventsAPI(APITestCase):
             for params in combinations(test_params, r):
                 # Generate test values for all params
                 test_values = {
-                    'after': unicode(randint(1, test_events)),
+                    'after': str(randint(1, test_events)),
                     'agent_name': factory.make_string(),
                     'id': factory.make_string(),
-                    'level': random.choice(LOGGING_LEVELS.values()),
-                    'limit': unicode(randint(1, test_events)),
-                    'mac_address': unicode(
+                    'level': random.choice(list(LOGGING_LEVELS.values())),
+                    'limit': str(randint(1, test_events)),
+                    'mac_address': str(
                         factory.make_Interface(
                             INTERFACE_TYPE.PHYSICAL).mac_address),
                     'zone': factory.make_string(),
@@ -560,10 +552,10 @@ class TestEventsAPI(APITestCase):
                 response = self.client.get(
                     reverse('events_handler'), expected_params)
 
-                self.assertEqual(httplib.OK, response.status_code)
+                self.assertEqual(http.client.OK, response.status_code)
 
                 # Parse the returned JSON and check URI path
-                parsed_result = json.loads(response.content)
+                parsed_result = json_load_bytes(response.content)
 
                 next_uri = urlparse(parsed_result['next_uri'])
                 prev_uri = urlparse(parsed_result['prev_uri'])
@@ -603,11 +595,11 @@ class TestEventsAPI(APITestCase):
                 start_id = 0 if 'after' not in expected_params \
                     else int(expected_params['after'])
 
-                expected_params['after'] = unicode(start_id + limit)
+                expected_params['after'] = str(start_id + limit)
                 self.assertDictEqual(expected_params, next_uri_params)
 
                 expected_params['after'] = \
-                    unicode(max(start_id - limit, 0))
+                    str(max(start_id - limit, 0))
                 self.assertDictEqual(expected_params, prev_uri_params)
 
     def test_query_num_queries_is_independent_of_num_nodes_and_events(self):
@@ -649,12 +641,12 @@ class TestEventsAPI(APITestCase):
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing an event listing.
         # If this happens, consider your prefetching and adjust accordingly.
-        self.assertEquals(events_per_group, int(query_1_result['count']))
-        self.assertEquals(
+        self.assertEqual(events_per_group, int(query_1_result['count']))
+        self.assertEqual(
             expected_queries, query_1_count,
             "Number of queries has changed; make sure this is expected.")
 
-        self.assertEquals(events_per_group * 2, int(query_2_result['count']))
-        self.assertEquals(
+        self.assertEqual(events_per_group * 2, int(query_2_result['count']))
+        self.assertEqual(
             expected_queries, query_2_count,
             "Number of queries is not independent to the number of nodes.")

@@ -3,15 +3,6 @@
 
 """Preseed generation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compose_enlistment_preseed_url',
     'compose_preseed_url',
@@ -26,8 +17,10 @@ __all__ = [
 from collections import namedtuple
 import os.path
 from pipes import quote
-from urllib import urlencode
-from urlparse import urlparse
+from urllib.parse import (
+    urlencode,
+    urlparse,
+)
 
 from crochet import TimeoutError
 from curtin.commands import block_meta
@@ -66,6 +59,7 @@ from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.utils import typed
 from provisioningserver.utils.url import compose_URL
 import tempita
 import yaml
@@ -327,7 +321,7 @@ def get_curtin_installer_url(node):
         image['xinstall_path'],
         ])
     url = compose_URL(
-        'http://:5248/images/%s' % dyn_uri, unicode(node.boot_cluster_ip))
+        'http://:5248/images/%s' % dyn_uri, str(node.boot_cluster_ip))
     return url_prepend + url
 
 
@@ -432,7 +426,8 @@ def get_deploying_preseed_type_for(node):
         "Unknown purpose '%s' for node: '%s'", purpose, node.fqdn)
 
 
-def get_preseed(node):
+@typed
+def get_preseed(node) -> bytes:
     """Return the preseed for a given node. Depending on the node's
     status this will be a commissioning preseed (if the node is
     commissioning or disk erasing) or an install preseed (normal
@@ -550,17 +545,18 @@ def get_preseed_template(filenames):
 
     :param filenames: An iterable of relative filenames.
     """
-    assert not isinstance(filenames, (bytes, unicode))
-    assert all(isinstance(filename, unicode) for filename in filenames)
+    assert not isinstance(filenames, (bytes, str))
+    assert all(isinstance(filename, str) for filename in filenames)
     for location in settings.PRESEED_TEMPLATE_LOCATIONS:
         for filename in filenames:
             filepath = os.path.join(location, filename)
             try:
-                with open(filepath, "rb") as stream:
+                with open(filepath, "r", encoding="utf-8") as stream:
                     content = stream.read()
-                    return filepath, content
             except IOError:
                 pass  # Ignore.
+            else:
+                return filepath, content
     else:
         return None, None
 
@@ -709,7 +705,7 @@ def render_enlistment_preseed(prefix, osystem='', release='', nodegroup=None):
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
-    return template.substitute(**snippets)
+    return template.substitute(**snippets).encode("utf-8")
 
 
 def render_preseed(node, prefix, osystem='', release=''):
@@ -726,7 +722,7 @@ def render_preseed(node, prefix, osystem='', release=''):
     nodegroup = node.nodegroup
     context = get_preseed_context(osystem, release, nodegroup=nodegroup)
     context.update(get_node_preseed_context(node, osystem, release))
-    return template.substitute(**context)
+    return template.substitute(**context).encode("utf-8")
 
 
 def compose_enlistment_preseed_url(nodegroup=None):

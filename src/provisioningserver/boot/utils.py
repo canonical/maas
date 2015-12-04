@@ -1,17 +1,12 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Utilities that BootMethod's can use."""
+"""Utilities that BootMethod's can use.
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
+XXX: This needs a LOT more documentation.
 
-str = None
+"""
 
-__metaclass__ = type
 __all__ = [
     'get_distro_release',
     'get_package',
@@ -20,11 +15,13 @@ __all__ = [
 
 import gzip
 import hashlib
+import io
 import os
 from platform import linux_distribution
 import re
-import StringIO
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
@@ -49,7 +46,7 @@ def get_file(url):
     # Build a new opener so that the environment is checked for proxy
     # URLs. Using urllib2.urlopen() means that we'd only be using the
     # proxies as defined when urlopen() was called the first time.
-    response = urllib2.build_opener().open(url)
+    response = urllib.request.build_opener().open(url)
     return response.read()
 
 
@@ -81,9 +78,9 @@ def gpg_verify_data(signature, data_file):
 
 
 def decompress_packages(packages):
-    compressed = StringIO.StringIO(packages)
+    compressed = io.StringIO(packages)
     decompressed = gzip.GzipFile(fileobj=compressed)
-    return unicode(decompressed.read(), errors='ignore')
+    return str(decompressed.read(), errors='ignore')
 
 
 def get_packages(archive, component, architecture, release=None):
@@ -115,7 +112,7 @@ def get_package_info(package, archive, component, architecture, release=None):
     packages = get_packages(archive, component, architecture, release=release)
 
     info = re.search(
-        r"^(Package: %s.*?)\n\n" % package,
+        r"^(Package: %s.*?)\n\n" % package,  # XXX: Escape `package`?
         packages,
         re.MULTILINE | re.DOTALL)
     if info is None:
@@ -130,7 +127,11 @@ def get_package_info(package, archive, component, architecture, release=None):
 
 
 def get_package(package, archive, component, architecture, release=None):
-    """Downloads the package from the archive."""
+    """Downloads the package from the archive.
+
+    :return: A ``(bytes, str)`` tuple where ``bytes`` is the raw Debian
+        package data, and ``str`` is the package file name.
+    """
     release = get_distro_release() if release is None else release
     package = get_package_info(
         package, archive, component, architecture, release=release)
@@ -148,10 +149,13 @@ def get_package(package, archive, component, architecture, release=None):
     return deb, filename
 
 
-def get_updates_package(package, archive, component, architecture,
-                        release=None):
+def get_updates_package(
+        package, archive, component, architecture, release=None):
     """Downloads the package from the {release}-updates if it exists, if not
     fails back to {release} archive.
+
+    :return: A ``(bytes, str)`` tuple where ``bytes`` is the raw Debian
+        package data, and ``str`` is the package file name.
     """
     release = get_distro_release() if release is None else release
     releases = ['%s-updates' % release, release]

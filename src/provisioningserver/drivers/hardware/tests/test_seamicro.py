@@ -4,19 +4,10 @@
 """Tests for `provisioningserver.drivers.hardware.seamicro`.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import json
-import urlparse
+import urllib.parse
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -106,7 +97,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
         location = factory.make_string()
         params = [factory.make_string() for _ in range(3)]
         output = api.build_url(location, params)
-        parsed = urlparse.urlparse(output)
+        parsed = urllib.parse.urlparse(output)
         self.assertEqual(url, parsed.netloc)
         self.assertEqual(location, parsed.path.split('/')[1])
         self.assertEqual(params, parsed.query.split('&'))

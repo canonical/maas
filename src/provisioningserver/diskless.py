@@ -3,15 +3,6 @@
 
 """Generate diskless image for system to boot."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'create_diskless_disk',
     'delete_diskless_disk',
@@ -223,7 +214,7 @@ def delete_diskless_disk(driver, driver_options, system_id):
     """Deletes the disk that was used by the node for diskless booting."""
     link_path = compose_diskless_link_path(system_id)
     if not os.path.lexists(link_path):
-        maaslog.warn("Disk already deleted for node: %s", system_id)
+        maaslog.warning("Disk already deleted for node: %s", system_id)
         return
 
     maaslog.info(
@@ -236,7 +227,7 @@ def delete_diskless_disk(driver, driver_options, system_id):
         driver_obj = get_diskless_driver(driver)
         driver_obj.delete_disk(system_id, disk_path, **driver_options)
     else:
-        maaslog.warn((
+        maaslog.warning((
             "Assuming disk has already been removed "
             "for node %s by the driver: %s"), system_id, driver)
     delete_diskless_link(system_id)

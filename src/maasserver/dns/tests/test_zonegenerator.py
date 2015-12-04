@@ -3,19 +3,10 @@
 
 """Tests for `ZoneGenerator` and supporting cast."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import socket
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from maasserver import server_address
 from maasserver.dns import zonegenerator
@@ -119,7 +110,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         get_dns_server_address()
         self.assertEqual(
             call(WARNING_MESSAGE % '127.0.0.1'),
-            logger.warn.call_args)
+            logger.warning.call_args)
 
     def test_get_dns_server_address_uses_nodegroup_maas_url(self):
         ip = factory.make_ipv4_address()
@@ -160,29 +151,29 @@ class TestWarnLoopback(MAASServerTestCase):
         loopback = '127.0.0.1'
         warn_loopback(loopback)
         self.assertThat(
-            logger.warn, MockCalledOnceWith(WARNING_MESSAGE % loopback))
+            logger.warning, MockCalledOnceWith(WARNING_MESSAGE % loopback))
 
     def test_warn_loopback_warns_about_any_IPv4_loopback(self):
         logger = self.patch(zonegenerator, 'logger')
         loopback = '127.254.100.99'
         warn_loopback(loopback)
-        self.assertThat(logger.warn, MockCalledOnceWith(ANY))
+        self.assertThat(logger.warning, MockCalledOnceWith(ANY))
 
     def test_warn_loopback_warns_about_IPv6_loopback(self):
         logger = self.patch(zonegenerator, 'logger')
         loopback = '::1'
         warn_loopback(loopback)
-        self.assertThat(logger.warn, MockCalledOnceWith(ANY))
+        self.assertThat(logger.warning, MockCalledOnceWith(ANY))
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv4(self):
         logger = self.patch(zonegenerator, 'logger')
         warn_loopback('10.1.2.3')
-        self.assertThat(logger.warn, MockNotCalled())
+        self.assertThat(logger.warning, MockNotCalled())
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv6(self):
         logger = self.patch(zonegenerator, 'logger')
         warn_loopback('1::9')
-        self.assertThat(logger.warn, MockNotCalled())
+        self.assertThat(logger.warning, MockNotCalled())
 
 
 class TestLazyDict(TestCase):
@@ -230,7 +221,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node2)
         dynamic_ips = IPRange(ngi.ip_range_low, ngi.ip_range_high)
         dynamic_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=unicode(dynamic_ips[0]),
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=str(dynamic_ips[0]),
             subnet=static_ip.subnet, interface=node2_nic)
 
         expected_mapping = {
@@ -458,10 +449,9 @@ class TestZoneGenerator(MAASServerTestCase):
             self.make_node_group(name="two", network=IPNetwork("20/29")),
             self.make_node_group(name="two", network=IPNetwork("21/29")),
             ]
-        [  # Other nodegroups.
-            self.make_node_group(name="one", network=IPNetwork("12/29")),
-            self.make_node_group(name="two", network=IPNetwork("22/29")),
-            ]
+        # Other nodegroups.
+        self.make_node_group(name="one", network=IPNetwork("12/29")),
+        self.make_node_group(name="two", network=IPNetwork("22/29")),
         expected_zones = (
             # For the forward zones, all nodegroups sharing a domain name,
             # even those not passed into ZoneGenerator, are consolidated into

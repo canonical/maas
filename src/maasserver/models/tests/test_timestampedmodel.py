@@ -3,15 +3,6 @@
 
 """:class:`TimestampedModel` tests."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -65,7 +56,7 @@ class TimestampedModelTest(MAASTransactionServerTestCase):
         created = make_time_in_the_recent_past()
         obj = TimestampedModelTestModel(created=created)
         obj.save()
-        self.assertEquals(created, obj.created)
+        self.assertEqual(created, obj.created)
 
     def test_on_first_save_created_and_updated_same_if_created_set(self):
         created = make_time_in_the_recent_past()
@@ -79,8 +70,8 @@ class TimestampedModelTest(MAASTransactionServerTestCase):
         updated = make_time_in_the_recent_past()
         obj = TimestampedModelTestModel(created=created, updated=updated)
         obj.save()
-        self.assertEquals(created, obj.created)
-        self.assertEquals(created, obj.updated)
+        self.assertEqual(created, obj.created)
+        self.assertEqual(created, obj.updated)
 
     def test_created_bracketed_by_before_and_after_time(self):
         before = now()

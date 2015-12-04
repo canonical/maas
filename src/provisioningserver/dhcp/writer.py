@@ -3,15 +3,6 @@
 
 """Generate a DHCP server configuration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "add_arguments",
     "run",
@@ -84,7 +75,7 @@ def run(args):
     template = 'dhcpd.conf.template'
     output = config.get_config(template, **kwargs).encode("ascii")
     if outfile is None:
-        sys.stdout.write(output)
+        sys.stdout.buffer.write(output)
     else:
         with open(outfile, "wb") as out:
             out.write(output)

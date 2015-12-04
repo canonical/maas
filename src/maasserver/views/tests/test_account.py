@@ -3,15 +3,6 @@
 
 """Test maasserver account views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.conf import settings
@@ -59,7 +50,7 @@ class TestLogin(MAASServerTestCase):
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]
-        self.assertIn('autocomplete="off"', tostring(form))
+        self.assertIn(b'autocomplete="off"', tostring(form))
 
     def test_login_sets_autocomplete_on_in_debug_mode(self):
         self.patch(settings, 'DEBUG', True)
@@ -67,7 +58,7 @@ class TestLogin(MAASServerTestCase):
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]
-        self.assertNotIn('autocomplete="off"', tostring(form))
+        self.assertNotIn(b'autocomplete="off"', tostring(form))
 
 
 class TestLogout(MAASServerTestCase):
@@ -86,4 +77,4 @@ class TestLogout(MAASServerTestCase):
         # the loggout page.
         self.client_log_in()
         self.client.post(reverse('logout'))
-        self.assertNotIn(SESSION_KEY, self.client.session.keys())
+        self.assertNotIn(SESSION_KEY, self.client.session)

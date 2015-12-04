@@ -3,15 +3,6 @@
 
 """DHCP management module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'configure_dhcp',
     'configure_dhcp_now',
@@ -56,8 +47,8 @@ def split_ipv4_ipv6_interfaces(interfaces):
     split = defaultdict(list)
     for interface in interfaces:
         split[interface.subnet.get_ipnetwork().version].append(interface)
-    assert len(split.keys()) <= 2, (
-        "Unexpected IP version(s): %s" % ', '.join(split.keys()))
+    assert len(split) <= 2, (
+        "Unexpected IP version(s): %s" % ', '.join(list(split.keys())))
     return split[4], split[6]
 
 
@@ -65,17 +56,17 @@ def make_subnet_config(interface, dns_servers, ntp_server):
     """Return DHCP subnet configuration dict for a cluster interface."""
     ip_network = interface.subnet.get_ipnetwork()
     return {
-        'subnet': unicode(
+        'subnet': str(
             IPAddress(interface.ip_range_low) &
             IPAddress(ip_network.netmask)),
-        'subnet_mask': unicode(ip_network.netmask),
-        'subnet_cidr': unicode(interface.subnet.cidr),
+        'subnet_mask': str(ip_network.netmask),
+        'subnet_cidr': str(interface.subnet.cidr),
         'broadcast_ip': interface.broadcast_ip,
         'interface': interface.interface,
         'router_ip': (
             '' if not interface.subnet else
             '' if not interface.subnet.gateway_ip
-            else unicode(interface.subnet.gateway_ip)),
+            else str(interface.subnet.gateway_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,
         'domain_name': interface.nodegroup.name,
@@ -218,7 +209,7 @@ class Changes:
     def apply(self):
         """Apply all requested changes."""
         clusters = {cluster.id: cluster for cluster in self.clusters}
-        for cluster in clusters.viewvalues():
+        for cluster in clusters.values():
             try:
                 configure_dhcp_now(cluster)
             except NoConnectionsAvailable:

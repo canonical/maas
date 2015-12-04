@@ -3,15 +3,6 @@
 
 """The `BootImageMapping` class."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootImageMapping',
     ]
@@ -71,6 +62,9 @@ class BootImageMapping:
 
         Tries to keep the output deterministic, so that identical data is
         likely to produce identical JSON.
+
+        :return: A Unicode string (`str`) containing JSON using only ASCII
+            characters.
         """
         # The meta files represent the mapping as a nested hierarchy of dicts.
         # Keep that format.

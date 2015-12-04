@@ -3,15 +3,6 @@
 
 """Test cases for dhcp.config"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from os import (
@@ -19,6 +10,7 @@ from os import (
     path,
 )
 from textwrap import dedent
+import traceback
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
@@ -27,10 +19,7 @@ from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
-from testtools.matchers import (
-    Contains,
-    MatchesRegex,
-)
+from testtools.matchers import Contains
 
 # Simple test version of the DHCP template.  Contains parameter
 # substitutions, but none that aren't also in the real template.
@@ -117,10 +106,25 @@ class TestGetConfig(PservTestCase):
             config.DHCPConfigError,
             config.get_config, 'dhcpd.conf.template', **params)
 
-        self.assertThat(
-            unicode(e), MatchesRegex(
-                "subnet at line \d+ column \d+ "
-                "in file %s" % template.name))
+        tbe = traceback.TracebackException.from_exception(e)
+        self.assertDocTestMatches(
+            dedent("""\
+            Traceback (most recent call last):
+            ...
+            KeyError: 'subnet at line ... column ... in file %s'
+            <BLANKLINE>
+            ...
+            <BLANKLINE>
+            The above exception was the direct cause of the following
+            exception:
+            <BLANKLINE>
+            Traceback (most recent call last):
+            ...
+            provisioningserver.dhcp.config.DHCPConfigError: Failed to render
+            DHCP configuration.
+            """ % template.name),
+            "".join(tbe.format()),
+        )
 
     def test__includes_compose_conditional_bootloader(self):
         params = make_sample_params()
@@ -170,3 +174,7 @@ class TestComposeConditionalBootloader(PservTestCase):
             elif method.arch_octet is not None:
                 self.assertThat(output, Contains(method.arch_octet))
                 self.assertThat(output, Contains(method.bootloader_path))
+            else:
+                # No DHCP configuration is rendered for boot methods that have
+                # no `arch_octet`, with the solitary exception of PXE.
+                pass

@@ -3,22 +3,12 @@
 
 """Tests for ``provisioningserver.drivers.hardware.msftocs``."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+from io import StringIO
 from random import randint
-from StringIO import StringIO
 from textwrap import dedent
-import urllib2 as urllib2
-import urlparse
+import urllib.parse
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -77,7 +67,7 @@ class Test_MicrosoftOCSAPI(MAASTestCase):
         params = [factory.make_string() for _ in range(3)]
         command = factory.make_string()
         output = api.build_url(command, params)
-        parsed = urlparse.urlparse(output)
+        parsed = urllib.parse.urlparse(output)
         url = '%s:%d' % (api.ip, api.port)
 
         self.expectThat(url, Equals(parsed.netloc))
@@ -113,7 +103,7 @@ class Test_MicrosoftOCSAPI(MAASTestCase):
         """ % (XMLNS, XMLNS_I))
         response = StringIO(expected)
         mock_urlopen = self.patch(
-            urllib2, 'urlopen', Mock(return_value=response))
+            urllib.request, 'urlopen', Mock(return_value=response))
         url = api.build_url(command, params)
         output = api.get(command, params)
 
@@ -248,7 +238,7 @@ class Test_MicrosoftOCSAPI(MAASTestCase):
         """ % (XMLNS, XMLNS_I))
         mock_response = self.patch(
             MicrosoftOCSAPI, 'get', Mock(return_value=response))
-        expected = {'11': [u'F4:52:14:D6:70:98']}
+        expected = {'11': ['F4:52:14:D6:70:98']}
         output = api.get_blades()
 
         self.expectThat(output, Equals(expected))
@@ -262,7 +252,7 @@ class Test_MicrosoftOCSPowerState(MAASTestCase):
     def test_power_state_msftocs_failed_to_get_state_server_error(self):
         ip, port, username, password, bladeid = make_msftocs_params()
         power_state_mock = self.patch(MicrosoftOCSAPI, 'get_blade_power_state')
-        power_state_mock.side_effect = urllib2.URLError('error')
+        power_state_mock.side_effect = urllib.error.URLError('error')
 
         self.assertRaises(
             MicrosoftOCSError, power_state_msftocs, ip, port,
@@ -272,7 +262,7 @@ class Test_MicrosoftOCSPowerState(MAASTestCase):
     def test_power_state_msftocs_failed_to_get_state_http_error(self):
         ip, port, username, password, bladeid = make_msftocs_params()
         power_state_mock = self.patch(MicrosoftOCSAPI, 'get_blade_power_state')
-        power_state_mock.side_effect = urllib2.HTTPError(
+        power_state_mock.side_effect = urllib.error.HTTPError(
             None, None, None, None, None)
 
         self.assertRaises(
@@ -378,7 +368,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         password = factory.make_name('password')
         system_id = factory.make_name('system_id')
         blade_id = randint(1, 24)
-        macs = [u'F4:52:14:D6:70:98', u'F4:52:14:D6:70:99']
+        macs = ['F4:52:14:D6:70:98', 'F4:52:14:D6:70:99']
         blades_mock = self.patch(MicrosoftOCSAPI, 'get_blades')
         blades_mock.return_value = {'%s' % blade_id: macs}
         next_boot_device_mock = self.patch(
@@ -414,7 +404,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         blades_mock = self.patch(MicrosoftOCSAPI, 'get_blades')
-        blades_mock.side_effect = urllib2.URLError('error')
+        blades_mock.side_effect = urllib.error.URLError('error')
 
         with ExpectedException(MicrosoftOCSError):
             yield deferToThread(
@@ -429,7 +419,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         blades_mock = self.patch(MicrosoftOCSAPI, 'get_blades')
-        blades_mock.side_effect = urllib2.HTTPError(
+        blades_mock.side_effect = urllib.error.HTTPError(
             None, None, None, None, None)
 
         with ExpectedException(MicrosoftOCSError):

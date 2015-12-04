@@ -3,15 +3,6 @@
 
 """Django command: Manage a user's API keys."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -64,7 +55,7 @@ class Command(BaseCommand):
         # Extract the token key from the api key string.
         try:
             creds_tuple = convert_string_to_tuple(key_to_delete)
-        except ValueError, e:
+        except ValueError as e:
             raise CommandError(e)
         _, token_key, _ = creds_tuple
         try:

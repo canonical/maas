@@ -3,15 +3,6 @@
 
 """RPC helpers relating to power control."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_power_state",
     "query_all_nodes",
@@ -152,7 +143,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     # Reaching here means that things have gone wrong.
     assert exc_info != (None, None, None)
     exc_type, exc_value, exc_trace = exc_info
-    raise exc_type, exc_value, exc_trace
+    raise exc_type(exc_value).with_traceback(exc_trace)
 
 
 @inlineCallbacks

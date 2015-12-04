@@ -3,15 +3,6 @@
 
 """Testing utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "age_file",
     "content_from_file",
@@ -81,6 +72,17 @@ def preexec_fn():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
+class BytesToStdout:
+    """File-like object to forward bytes to a text-mode `stdout`.
+
+    Bytes are decoded as ASCII and unrecognised characters are replaced.
+    """
+
+    def write(self, data):
+        string = data.decode("ascii", "replace")
+        stdout.write(string)
+
+
 def run_isolated(cls, self, result):
     """Run a test suite or case in a subprocess.
 
@@ -112,10 +114,23 @@ def run_isolated(cls, self, result):
             # Exit hard.
             os._exit(0)
     else:
+        # TestProtocolServer, by default, will write non-subunit content to
+        # stdout as *bytes*. In Python 3 it assumes that stdout has a `buffer`
+        # attribute which can accept bytes. However, nose buffers test output,
+        # and replaces sys.stdout with only a StringIO instance.
+        try:
+            stdout.write(b"")
+        except TypeError:
+            try:
+                output = stdout.buffer
+            except AttributeError:
+                output = BytesToStdout()
+        else:
+            output = stdout
         # Parent: receives subunit from c2pread.
         os.close(c2pwrite)
         stream = os.fdopen(c2pread, 'rb')
-        receiver = subunit.TestProtocolServer(result)
+        receiver = subunit.TestProtocolServer(result, output)
         receiver.readFrom(stream)
         os.waitpid(pid, 0)
 

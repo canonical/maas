@@ -3,16 +3,6 @@
 
 """API handlers: `Subnet`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from formencode.validators import StringBool
 from maasserver.api.support import (
     admin_method,

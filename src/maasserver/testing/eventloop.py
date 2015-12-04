@@ -3,25 +3,19 @@
 
 """Testing utilities for the region event-loop."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "RegionEventLoopFixture",
     "RunningEventLoopFixture",
 ]
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from fixtures import Fixture
 from maasserver import eventloop
 from maasserver.eventloop import loop
 from twisted.application.service import Service
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class RegionEventLoopFixture(Fixture):

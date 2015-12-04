@@ -3,15 +3,6 @@
 
 """Support for testing with `crochet`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "EventualResultCatchingMixin",
     ]
@@ -34,22 +25,34 @@ class EventualResultCatchingMixin:
 
     def setUp(self):
         super(EventualResultCatchingMixin, self).setUp()
-        # Every EventualResult that crochet creates is registered into this
-        # registry. We'll check it after the test has finished, and only if
-        # crochet has been started.
-        if hasattr(crochet._main, "_registry"):
+        try:
+            # Every EventualResult that crochet creates is registered into
+            # this registry. We'll check it after the test has finished.
             registry = crochet._main._registry
+        except AttributeError:
+            # Crochet has not started, so we have nothing to check right now.
+            pass
+        else:
             # The registry stores EventualResults in a WeakSet, which means
             # that unfired and unhandled results can be garbage collected
             # before we get to see them. Here we patch in a regular set so
             # that nothing gets garbage collected until we've been able to
             # check the results.
-            self.addCleanup(setattr, registry, "_results", registry._results)
-            registry._results = set()
+            results = set()
+            self.addCleanup(
+                self.__patchResults, registry,
+                self.__patchResults(registry, results))
             # While unravelling clean-ups is a good time to check the results.
             # Any meaningful work represented by an EventualResult should have
             # done should been done by now.
-            self.addCleanup(self.__checkResults, registry._results)
+            self.addCleanup(
+                self.__checkResults, results)
+
+    def __patchResults(self, registry, results):
+        with registry._lock:
+            originals = registry._results
+            registry._results = set()
+            return originals
 
     def __checkResults(self, eventual_results):
         fail_count = 0

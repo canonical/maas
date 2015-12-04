@@ -3,15 +3,6 @@
 
 """Tests for the pxe boot method."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import OrderedDict
@@ -33,9 +24,14 @@ from provisioningserver.boot.pxe import (
     PXEBootMethod,
     re_config_file,
 )
+from provisioningserver.boot.testing import (
+    TFTPPath,
+    TFTPPathAndComponents,
+)
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from provisioningserver.utils import typed
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -46,9 +42,11 @@ from testtools.matchers import (
     SamePath,
     StartsWith,
 )
+from twisted.python.filepath import FilePath
 
 
-def compose_config_path(mac):
+@typed
+def compose_config_path(mac: str) -> TFTPPath:
     """Compose the TFTP path for a PXE configuration file.
 
     The path returned is relative to the TFTP root, as it would be
@@ -58,13 +56,13 @@ def compose_config_path(mac):
         corresponding to the machine for which this configuration is
         relevant. This relates to PXELINUX's lookup protocol.
     :return: Path for the corresponding PXE config file as exposed over
-        TFTP.
+        TFTP, as a byte string.
     """
     # Not using os.path.join: this is a TFTP path, not a native path. Yes, in
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
     return "pxelinux.cfg/{htype:02x}-{mac}".format(
-        htype=ARP_HTYPE.ETHERNET, mac=mac)
+        htype=ARP_HTYPE.ETHERNET, mac=mac).encode("ascii")
 
 
 class TestPXEBootMethod(MAASTestCase):
@@ -73,7 +71,7 @@ class TestPXEBootMethod(MAASTestCase):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
         self.useFixture(ClusterConfigurationFixture(tftp_root=tftproot))
-        return tftproot
+        return FilePath(tftproot)
 
     def make_dummy_bootloader_sources(self, destination, loader_names):
         """install_bootloader requires real files to exist, this method
@@ -88,17 +86,17 @@ class TestPXEBootMethod(MAASTestCase):
         return created
 
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
-        name = factory.make_name('config')
+        mac = factory.make_mac_address("-")
         self.assertEqual(
-            'pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, name),
-            compose_config_path(name))
+            'pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, mac),
+            compose_config_path(mac).decode("ascii"))
 
     def test_compose_config_path_does_not_include_tftp_root(self):
-        tftproot = self.make_tftp_root()
-        name = factory.make_name('config')
+        tftproot = self.make_tftp_root().asBytesMode()
+        mac = factory.make_mac_address("-")
         self.assertThat(
-            compose_config_path(name),
-            Not(StartsWith(tftproot)))
+            compose_config_path(mac),
+            Not(StartsWith(tftproot.path)))
 
     def test_bootloader_path(self):
         method = PXEBootMethod()
@@ -109,7 +107,7 @@ class TestPXEBootMethod(MAASTestCase):
         method = PXEBootMethod()
         self.assertThat(
             method.bootloader_path,
-            Not(StartsWith(tftproot)))
+            Not(StartsWith(tftproot.path)))
 
     def test_name(self):
         method = PXEBootMethod()
@@ -151,12 +149,12 @@ class TestPXEBootMethod(MAASTestCase):
         self.make_dummy_bootloader_sources(source_dir, BOOTLOADERS)
         install_bootloader_call = self.patch(pxe_module, "install_bootloader")
         method = PXEBootMethod()
-        method.install_bootloader(tftproot)
+        method.install_bootloader(tftproot.path)
 
         expected = [
             mock.call(
                 os.path.join(source_dir, bootloader),
-                os.path.join(tftproot, bootloader)
+                os.path.join(tftproot.path, bootloader)
             )
             for bootloader in BOOTLOADERS]
         self.assertThat(
@@ -179,9 +177,9 @@ class TestPXEBootMethod(MAASTestCase):
         self.patch(pxe_module, "SYSLINUX_DIRS", [target_dir])
         tftproot = self.make_tftp_root()
         method = PXEBootMethod()
-        method.install_bootloader(tftproot)
-        syslinux_dir = os.path.join(tftproot, 'syslinux')
-        self.assertThat(syslinux_dir, SamePath(target_dir))
+        method.install_bootloader(tftproot.path)
+        syslinux_dir = tftproot.child('syslinux')
+        self.assertThat(syslinux_dir.path, SamePath(target_dir))
 
 
 def parse_pxe_config(text):
@@ -239,7 +237,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("DEFAULT "))
@@ -270,7 +268,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("DEFAULT "))
@@ -304,7 +302,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("DEFAULT "))
@@ -354,7 +352,7 @@ class TestPXEBootMethodRender(MAASTestCase):
             "kernel_params": make_kernel_parameters(purpose="local"),
             }
         output = method.get_reader(**options).read(10000)
-        self.assertIn("LOCALBOOT 0", output)
+        self.assertIn(b"LOCALBOOT 0", output)
 
     def test_get_reader_with_local_purpose_i386_arch(self):
         # Intel i386 is a special case and needs to use the chain.c32
@@ -366,8 +364,8 @@ class TestPXEBootMethodRender(MAASTestCase):
                 arch="i386", purpose="local"),
         }
         output = method.get_reader(**options).read(10000)
-        self.assertIn("chain.c32", output)
-        self.assertNotIn("LOCALBOOT", output)
+        self.assertIn(b"chain.c32", output)
+        self.assertNotIn(b"LOCALBOOT", output)
 
     def test_get_reader_with_local_purpose_amd64_arch(self):
         # Intel amd64 is a special case and needs to use the chain.c32
@@ -379,8 +377,8 @@ class TestPXEBootMethodRender(MAASTestCase):
                 arch="amd64", purpose="local"),
         }
         output = method.get_reader(**options).read(10000)
-        self.assertIn("chain.c32", output)
-        self.assertNotIn("LOCALBOOT", output)
+        self.assertIn(b"chain.c32", output)
+        self.assertNotIn(b"LOCALBOOT", output)
 
 
 class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
@@ -404,7 +402,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
                 testcase=self, osystem=osystem, subarch=subarch,
                 arch=arch, purpose=self.purpose),
         }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
         default_section_label = config.header["DEFAULT"]
@@ -414,7 +412,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         contains_arch_path = StartsWith("%s/%s/%s" % (osystem, arch, subarch))
         self.assertThat(default_section["KERNEL"], contains_arch_path)
         self.assertThat(default_section["INITRD"], contains_arch_path)
-        self.assertEquals("2", default_section["IPAPPEND"])
+        self.assertEqual("2", default_section["IPAPPEND"])
 
 
 class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
@@ -432,7 +430,7 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
                 testcase=self, osystem=osystem, subarch="generic",
                 purpose='enlist'),
         }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
         default_section_label = config.header["DEFAULT"]
@@ -464,16 +462,20 @@ class TestPXEBootMethodRegex(MAASTestCase):
     """Tests for `provisioningserver.boot.pxe.PXEBootMethod.re_config_file`."""
 
     @staticmethod
-    def get_example_path_and_components():
+    @typed
+    def get_example_path_and_components() -> TFTPPathAndComponents:
         """Return a plausible path and its components.
 
         The path is intended to match `re_config_file`, and the components are
         the expected groups from a match.
         """
-        components = {"mac": factory.make_mac_address("-"),
-                      "arch": None,
-                      "subarch": None}
-        config_path = compose_config_path(components["mac"])
+        mac = factory.make_mac_address("-")
+        components = {
+            "mac": mac.encode("ascii"),
+            "arch": None,
+            "subarch": None,
+        }
+        config_path = compose_config_path(mac)
         return config_path, components
 
     def test_re_config_file_is_compatible_with_config_path_generator(self):
@@ -491,7 +493,7 @@ class TestPXEBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = self.get_example_path_and_components()
         # Ensure there's a leading slash.
-        config_path = "/" + config_path.lstrip("/")
+        config_path = b"/" + config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -502,7 +504,7 @@ class TestPXEBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = self.get_example_path_and_components()
         # Ensure there's no leading slash.
-        config_path = config_path.lstrip("/")
+        config_path = config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -510,48 +512,48 @@ class TestPXEBootMethodRegex(MAASTestCase):
     def test_re_config_file_matches_classic_pxelinux_cfg(self):
         # The default config path is simply "pxelinux.cfg" (without
         # leading slash).  The regex matches this.
-        mac = 'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match('pxelinux.cfg/01-%s' % mac)
+        mac = b'aa-bb-cc-dd-ee-ff'
+        match = re_config_file.match(b'pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
                          match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
-        mac = 'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match('/pxelinux.cfg/01-%s' % mac)
+        mac = b'aa-bb-cc-dd-ee-ff'
+        match = re_config_file.match(b'/pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
                          match.groupdict())
 
     def test_re_config_file_does_not_match_non_config_file(self):
-        self.assertIsNone(re_config_file.match('pxelinux.cfg/kernel'))
+        self.assertIsNone(re_config_file.match(b'pxelinux.cfg/kernel'))
 
     def test_re_config_file_does_not_match_file_in_root(self):
-        self.assertIsNone(re_config_file.match('01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b'01-aa-bb-cc-dd-ee-ff'))
 
     def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
-        self.assertIsNone(re_config_file.match('foo/01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b'foo/01-aa-bb-cc-dd-ee-ff'))
 
     def test_re_config_file_with_default(self):
-        match = re_config_file.match('pxelinux.cfg/default')
+        match = re_config_file.match(b'pxelinux.cfg/default')
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': None, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch(self):
-        arch = factory.make_name('arch', sep='')
-        match = re_config_file.match('pxelinux.cfg/default.%s' % arch)
+        arch = factory.make_name('arch', sep='').encode("ascii")
+        match = re_config_file.match(b'pxelinux.cfg/default.%s' % arch)
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch_and_subarch(self):
-        arch = factory.make_name('arch', sep='')
-        subarch = factory.make_name('subarch', sep='')
+        arch = factory.make_name('arch', sep='').encode("ascii")
+        subarch = factory.make_name('subarch', sep='').encode("ascii")
         match = re_config_file.match(
-            'pxelinux.cfg/default.%s-%s' % (arch, subarch))
+            b'pxelinux.cfg/default.%s-%s' % (arch, subarch))
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': subarch},

@@ -3,15 +3,6 @@
 
 """PXE Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'PXEBootMethod',
     ]
@@ -26,6 +17,7 @@ from provisioningserver.boot import (
     get_parameters,
 )
 from provisioningserver.boot.install_bootloader import install_bootloader
+from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
 
 # Bootloader file names to install.
@@ -87,6 +79,7 @@ re_config_file = r'''
 
 re_config_file = re_config_file.format(
     htype=ARP_HTYPE.ETHERNET, re_mac_address=re_mac_address)
+re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
@@ -145,7 +138,8 @@ class PXEBootMethod(BootMethod):
                 return bootloader_dir
         return None
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Installs the required files and symlinks into the tftproot."""
         for bootloader in BOOTLOADERS:
             # locate_bootloader might return None but happy to let that

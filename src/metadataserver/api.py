@@ -3,15 +3,6 @@
 
 """Metadata API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'AnonMetaDataHandler',
     'CommissioningScriptsHandler',
@@ -24,7 +15,7 @@ __all__ = [
 
 import base64
 import bz2
-import httplib
+import http.client
 import json
 
 from django.conf import settings
@@ -149,6 +140,10 @@ def get_queried_node(request, for_mac=None):
 
 def make_text_response(contents):
     """Create a response containing `contents` as plain text."""
+    # XXX: Set a charset for text/plain. Django automatically encodes
+    # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default) but
+    # only sets the charset parameter in the content-type header when a
+    # content-type is NOT provided.
     return HttpResponse(contents, content_type='text/plain')
 
 
@@ -269,12 +264,13 @@ class StatusHandler(MetadataViewHandler):
 
             # Select the appropriate decoder.
             if encoding == 'base64':
-                decode = base64.decodestring
+                decode = base64.decodebytes
             else:
                 raise MAASAPIBadRequest(
                     'Invalid encoding: %s' % sent_file['encoding'])
 
-            return decompress(decode(sent_file['content']))
+            content = sent_file['content'].encode("ascii")
+            return decompress(decode(content))
 
         def _save_commissioning_result(node, path, exit_status, content):
             # Depending on the name of the file received, we need to invoke a
@@ -298,6 +294,14 @@ class StatusHandler(MetadataViewHandler):
 
         node = get_queried_node(request)
         payload = request.read()
+
+        try:
+            payload = payload.decode("ascii")
+        except UnicodeDecodeError as error:
+            message = "Status payload must be ASCII-only: %s" % error
+            logger.error(message)
+            raise MAASAPIBadRequest(message)
+
         try:
             message = json.loads(payload)
         except ValueError:
@@ -665,7 +669,7 @@ class UserDataHandler(MetadataViewHandler):
         except NodeUserData.DoesNotExist:
             logger.info(
                 "No user data registered for node named %s" % node.hostname)
-            return HttpResponse(status=httplib.NOT_FOUND)
+            return HttpResponse(status=http.client.NOT_FOUND)
 
 
 class CurtinUserDataHandler(MetadataViewHandler):
@@ -727,6 +731,10 @@ class EnlistUserDataHandler(OperationsHandler):
     def read(self, request, version):
         check_version(version)
         nodegroup = find_nodegroup(request)
+        # XXX: Set a charset for text/plain. Django automatically encodes
+        # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
+        # but only sets the charset parameter in the content-type header when
+        # a content-type is NOT provided.
         return HttpResponse(
             get_enlist_userdata(nodegroup=nodegroup),
             content_type="text/plain")
@@ -747,6 +755,10 @@ class AnonMetaDataHandler(VersionIndexHandler):
     def get_enlist_preseed(self, request, version=None):
         """Render and return a preseed script for enlistment."""
         nodegroup = find_nodegroup(request)
+        # XXX: Set a charset for text/plain. Django automatically encodes
+        # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
+        # but only sets the charset parameter in the content-type header when
+        # a content-type is NOT provided.
         return HttpResponse(
             get_enlist_preseed(nodegroup=nodegroup), content_type="text/plain")
 
@@ -754,6 +766,10 @@ class AnonMetaDataHandler(VersionIndexHandler):
     def get_preseed(self, request, version=None, system_id=None):
         """Render and return a preseed script for the given node."""
         node = get_object_or_404(Node, system_id=system_id)
+        # XXX: Set a charset for text/plain. Django automatically encodes
+        # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
+        # but only sets the charset parameter in the content-type header when
+        # a content-type is NOT provided.
         return HttpResponse(get_preseed(node), content_type="text/plain")
 
     @operation(idempotent=False)

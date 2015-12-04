@@ -3,15 +3,6 @@
 
 """Django command: change region controller configuration settings."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "GetCommand",
     "ResetCommand",
@@ -108,7 +99,7 @@ def dump_plain(output):
 
     :type output: dict
     """
-    for value in output.viewvalues():
+    for value in output.values():
         print(value)
 
 

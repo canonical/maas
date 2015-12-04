@@ -3,25 +3,13 @@
 
 """DNS management module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'dns_add_zones',
     'dns_update_all_zones',
     'dns_update_zones',
     ]
 
-from itertools import (
-    chain,
-    imap,
-)
+from itertools import chain
 import threading
 
 from django.conf import settings
@@ -228,7 +216,7 @@ def dns_update_all_zones(reload_retry=False, force=False):
 
 
 def flatten(things):
-    return chain.from_iterable(imap(sequence, things))
+    return chain.from_iterable(map(sequence, things))
 
 
 class Changes:
@@ -293,7 +281,7 @@ class Changes:
                 for cluster in flatten(self.zones_to_add)
             }
             if len(self.zones_to_add) != 0:
-                dns_add_zones_now(zones_to_add.values())
+                dns_add_zones_now(list(zones_to_add.values()))
 
             # Call `dns_update_zones_now` for each zone to update, *excluding*
             # those we've only just added; there's no point doing them again.
@@ -304,7 +292,7 @@ class Changes:
                 if cluster.id not in zones_to_add
             }
             if len(zones_to_update) != 0:
-                dns_update_zones_now(zones_to_update.values())
+                dns_update_zones_now(list(zones_to_update.values()))
 
 
 class ChangeConsolidator(threading.local):
@@ -368,6 +356,6 @@ def get_trusted_networks():
     :return: A list of CIDR-format subnet specifications.
     """
     return [
-        unicode(subnet.cidr)
+        str(subnet.cidr)
         for subnet in Subnet.objects.all()
     ]

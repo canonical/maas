@@ -3,15 +3,6 @@
 
 """MAAS web."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "fix_up_databases",
     "import_settings",
@@ -52,7 +43,7 @@ def fix_up_databases(databases):
     Does not modify connections to non-PostgreSQL databases.
     """
     from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
-    for _, database in databases.viewitems():
+    for _, database in databases.items():
         engine = database.get("ENGINE")
         if engine == 'django.db.backends.postgresql_psycopg2':
             options = database.setdefault("OPTIONS", {})

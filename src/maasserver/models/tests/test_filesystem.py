@@ -3,15 +3,6 @@
 
 """Tests for `Filesystem`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import re
@@ -50,13 +41,13 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_node_returns_partition_node(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEquals(
+        self.assertEqual(
             fs.partition.get_node(), fs.get_node())
 
     def test_get_node_returns_block_device_node(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEquals(
+        self.assertEqual(
             fs.block_device.node, fs.get_node())
 
     def test_get_node_returns_None_when_partition_and_block_device_None(self):
@@ -66,41 +57,41 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_size_returns_partition_size(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEquals(
+        self.assertEqual(
             fs.partition.size, fs.get_size())
 
     def test_get_size_returns_block_device_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEquals(
+        self.assertEqual(
             fs.block_device.size, fs.get_size())
 
     def test_get_size_returns_0_when_partition_and_block_device_None(self):
         fs = Filesystem()
-        self.assertEquals(0, fs.get_size())
+        self.assertEqual(0, fs.get_size())
 
     def test_get_block_size_returns_partition_block_size(self):
         partition = factory.make_Partition()
         fs = factory.make_Filesystem(partition=partition)
-        self.assertEquals(
+        self.assertEqual(
             fs.partition.get_block_size(), fs.get_block_size())
 
     def test_get_block_size_returns_block_device_block_size(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEquals(
+        self.assertEqual(
             fs.block_device.block_size, fs.get_block_size())
 
     def test_get_block_size_returns_0_when_partition_and_device_None(self):
         fs = Filesystem()
-        self.assertEquals(0, fs.get_block_size())
+        self.assertEqual(0, fs.get_block_size())
 
     def test_cannot_save_if_boot_partition_and_block_device_missing(self):
         fs = Filesystem()
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'One of partition or block_device "
+                    "{'__all__': ['One of partition or block_device "
                     "must be specified.']}")):
             fs.save()
 
@@ -111,24 +102,24 @@ class TestFilesystem(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'Only one of partition or block_device "
+                    "{'__all__': ['Only one of partition or block_device "
                     "can be specified.']}")):
             fs.save()
 
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
         fs = factory.make_Filesystem(uuid=uuid)
-        self.assertEquals('%s' % uuid, fs.uuid)
+        self.assertEqual('%s' % uuid, fs.uuid)
 
     def test_get_parent_returns_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         filesystem = factory.make_Filesystem(block_device=block_device)
-        self.assertEquals(block_device, filesystem.get_parent())
+        self.assertEqual(block_device, filesystem.get_parent())
 
     def test_get_parent_returns_partition(self):
         partition = factory.make_Partition()
         filesystem = factory.make_Filesystem(partition=partition)
-        self.assertEquals(partition, filesystem.get_parent())
+        self.assertEqual(partition, filesystem.get_parent())
 
     def test_cannot_create_filesystem_directly_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -136,7 +127,7 @@ class TestFilesystem(MAASServerTestCase):
         with ExpectedException(
                 ValidationError,
                 re.escape(
-                    "{'__all__': [u'Cannot place filesystem directly on the "
+                    "{'__all__': ['Cannot place filesystem directly on the "
                     "boot disk. Create a partition on the boot disk first "
                     "and then format the partition.']}")):
             factory.make_Filesystem(block_device=boot_disk)

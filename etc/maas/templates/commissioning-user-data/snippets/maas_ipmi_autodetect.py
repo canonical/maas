@@ -19,16 +19,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    # unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from collections import OrderedDict
 import json
 import os
@@ -163,7 +153,7 @@ def verify_ipmi_user_settings(user_number, user_settings):
 
     bad_values = {}
 
-    for key, expected_value in user_settings.iteritems():
+    for key, expected_value in user_settings.items():
         # Password isn't included in checkout. Plus,
         # some older BMCs may not support Enable_User.
         if key not in ['Enable_User', 'Password']:
@@ -177,7 +167,7 @@ def verify_ipmi_user_settings(user_number, user_settings):
     errors_string = ' '.join([
         "for '%s', expected '%s', actual '%s';" % (
             key, user_settings[key], actual_value)
-        for key, actual_value in bad_values.iteritems()
+        for key, actual_value in bad_values.items()
         ]).rstrip(';')
     message = "IPMI user setting verification failures: %s." % (errors_string)
     raise IPMIError(message)
@@ -188,7 +178,7 @@ def apply_ipmi_user_settings(user_settings):
     username = user_settings['Username']
     ipmi_user_number = pick_user_number(username)
 
-    for key, value in user_settings.iteritems():
+    for key, value in user_settings.items():
         bmc_user_set(ipmi_user_number, key, value)
 
     verify_ipmi_user_settings(ipmi_user_number, user_settings)

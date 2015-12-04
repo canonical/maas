@@ -3,15 +3,6 @@
 
 """Cluster-side evaluation of tags."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'merge_details',
     'merge_details_cleanly',
@@ -21,8 +12,10 @@ __all__ = [
 
 from collections import OrderedDict
 from functools import partial
-import httplib
-import urllib2
+import http.client
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import bson
 from lxml import etree
@@ -57,17 +50,17 @@ def process_response(response):
     the content. If it can't be decoded it will be returned as bytes.
 
     :param response: The result of MAASClient.get/post/etc.
-    :type response: urllib2.addinfourl (a file-like object that has a .code
-        attribute.)
+    :type response: urllib.request.addinfourl (a file-like object that has a
+        .code attribute.)
     """
-    if response.code != httplib.OK:
-        text_status = httplib.responses.get(response.code, '<unknown>')
+    if response.code != http.client.OK:
+        text_status = http.client.responses.get(response.code, '<unknown>')
         message = '%s, expected 200 OK' % text_status
-        raise urllib2.HTTPError(
+        raise urllib.error.HTTPError(
             response.url, response.code, message,
             response.headers, response.fp)
     content = response.read()
-    content_type = response.headers.gettype()
+    content_type = response.headers.get_content_type()
     if content_type in decoders:
         decode = decoders[content_type]
         return decode(content)
@@ -119,8 +112,8 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
         return process_response(client.post(
             path, op='update_nodes', as_json=True, nodegroup=uuid,
             definition=tag_definition, add=added, remove=removed))
-    except urllib2.HTTPError as e:
-        if e.code == httplib.CONFLICT:
+    except urllib.error.HTTPError as e:
+        if e.code == http.client.CONFLICT:
             if e.fp is not None:
                 msg = e.fp.read()
             else:
@@ -160,7 +153,7 @@ def _details_make_backwards_compatible(details, root):
         try:
             lshw = etree.fromstring(xmldata)
         except etree.XMLSyntaxError as e:
-            maaslog.warn("Invalid lshw details: %s", e)
+            maaslog.warning("Invalid lshw details: %s", e)
             del details["lshw"]  # Don't process again later.
         else:
             # We're throwing away the existing root, but we can adopt
@@ -180,7 +173,7 @@ def _details_do_merge(details, root):
             try:
                 detail = etree.fromstring(xmldata)
             except etree.XMLSyntaxError as e:
-                maaslog.warn("Invalid %s details: %s", namespace, e)
+                maaslog.warning("Invalid %s details: %s", namespace, e)
             else:
                 # Add the namespace to all unqualified elements.
                 for elem in detail.iter("{}*"):
@@ -255,7 +248,7 @@ def gen_batch_slices(count, size):
     """
     batch_count, remaining = divmod(count, size)
     batch_count += 1 if remaining > 0 else 0
-    for batch in xrange(batch_count):
+    for batch in range(batch_count):
         yield slice(batch, None, batch_count)
 
 
@@ -283,7 +276,7 @@ def gen_node_details(client, nodegroup_uuid, batches):
     """
     get_details = partial(get_details_for_nodes, client, nodegroup_uuid)
     for batch in batches:
-        for system_id, details in get_details(batch).iteritems():
+        for system_id, details in get_details(batch).items():
             yield system_id, merge_details(details)
 
 

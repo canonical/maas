@@ -6,16 +6,6 @@
 
 """Generates a x509 certificate used for WinRM service on Windows nodes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from maasserver.x509 import WinRMX509
 import argparse
 

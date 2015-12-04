@@ -3,15 +3,6 @@
 
 """Tests for `NodeGroupInterface` part of region service."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.rpc.nodegroupinterface import get_cluster_interfaces_as_dicts
@@ -26,9 +17,9 @@ class TestGetClusterInterfacesAsDicts(MAASServerTestCase):
         self.assertEqual(
             [
                 {
-                    b'name': interface.name,
-                    b'interface': interface.interface,
-                    b'ip': interface.ip,
+                    'name': interface.name,
+                    'interface': interface.interface,
+                    'ip': interface.ip,
                 },
             ],
             get_cluster_interfaces_as_dicts(interface.nodegroup.uuid))

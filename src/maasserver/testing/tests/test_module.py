@@ -3,18 +3,9 @@
 
 """Tests for `maasserver.testing`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
 from django.db.models.signals import (
     post_save,
@@ -35,6 +26,7 @@ from maasserver.testing.orm import (
     reload_objects,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.matchers import Equals
 
 
 class TestHelpers(MAASServerTestCase):
@@ -53,15 +45,14 @@ class TestHelpers(MAASServerTestCase):
                 HttpResponseRedirect("http://example.com/%s" % url_path)))
 
     def test_extract_redirect_errors_out_helpfully_if_not_a_redirect(self):
-        content = factory.make_string(10)
-        other_response = HttpResponse(status=httplib.OK, content=content)
+        content = factory.make_string(10).encode("ascii")
+        other_response = HttpResponse(status=http.client.OK, content=content)
         try:
             extract_redirect(other_response)
         except ValueError as e:
-            pass
-
-        self.assertIn(unicode(httplib.OK), unicode(e))
-        self.assertIn(content, unicode(e))
+            self.assertThat(str(e), Equals(
+                "Not a redirect: http status %d. Content: %s"
+                % (http.client.OK.value, content)))
 
     def test_reload_object_reloads_object(self):
         test_obj = factory.make_Node()

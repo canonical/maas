@@ -3,15 +3,6 @@
 
 """VLAN objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DEFAULT_VID",
     "DEFAULT_VLAN_NAME",
@@ -170,11 +161,11 @@ class VLAN(CleanSave, TimestampedModel):
 
     mtu = IntegerField(default=DEFAULT_MTU)
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())
 
     def clean_vid(self):
-        if self.vid < 0 or self.vid > 4095:
+        if self.vid is None or self.vid < 0 or self.vid > 4095:
             raise ValidationError(
                 {'vid':
                     ["Vid must be between 0 and 4095."]})

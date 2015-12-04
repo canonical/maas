@@ -3,15 +3,6 @@
 
 """Base diskless driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DisklessDriver",
     "DisklessDriverError",
@@ -43,10 +34,8 @@ class DisklessDriverError:
     """Error when driver fails to complete the needed task."""
 
 
-class DisklessDriver:
+class DisklessDriver(metaclass=ABCMeta):
     """Skeleton for a diskless driver."""
-
-    __metaclass__ = ABCMeta
 
     def __init__(self):
         super(DisklessDriver, self).__init__()

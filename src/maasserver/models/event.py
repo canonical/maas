@@ -3,15 +3,6 @@
 
 """:class:`Event` and friends."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Event',
     ]
@@ -90,6 +81,6 @@ class Event(CleanSave, TimestampedModel):
             ("node", "id"),
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s (node=%s, type=%s, created=%s)" % (
             self.id, self.node, self.type.name, self.created)

@@ -3,15 +3,6 @@
 
 """Custom model and form fields."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "CIDRField",
     "EditableBinaryField",
@@ -32,7 +23,6 @@ from json import (
 )
 import re
 
-import django
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -47,7 +37,6 @@ from django.db.models import (
 )
 from django.db.models.fields.subclassing import Creator
 from django.utils.encoding import force_text
-from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import (
     get_one,
@@ -57,6 +46,7 @@ from netaddr import (
     AddrFormatError,
     IPNetwork,
 )
+from provisioningserver.utils import typed
 import psycopg2.extensions
 
 
@@ -91,27 +81,6 @@ def validate_mac(value):
     if isinstance(value, MAC):
         value = value.get_raw()
     mac_validator(value)
-
-
-# The MACAddressField, JSONObjectField and XMLField don't introduce any new
-# parameters compared to their parent's constructors so South will handle
-# them just fine.
-# See http://south.aeracode.org/docs/customfields.html#extending-introspection
-# for details.
-if not has_builtin_migrations():
-    from south.modelsinspector import add_introspection_rules
-    add_introspection_rules(
-        [], [
-            "^maasserver\.fields\.MACAddressField",
-            "^maasserver\.fields\.JSONObjectField",
-            "^maasserver\.fields\.XMLField",
-            "^maasserver\.fields\.EditableBinaryField",
-            "^maasserver\.fields\.MAASIPAddressField",
-            "^maasserver\.fields\.LargeObjectField",
-            "^maasserver\.fields\.CIDRField",
-            "^maasserver\.fields\.IPv4CIDRField",
-            "^maasserver\.fields\.DomainNameField",
-        ])
 
 
 class NodeGroupFormField(forms.ModelChoiceField):
@@ -189,7 +158,7 @@ class NodeGroupFormField(forms.ModelChoiceField):
         if isinstance(value, bytes):
             value = value.decode('utf-8')
 
-        if value is None or isinstance(value, unicode):
+        if value is None or isinstance(value, str):
             nodegroup = self._get_nodegroup_from_string(value)
         elif isinstance(value, NodeGroup):
             nodegroup = value
@@ -231,10 +200,8 @@ class MACAddressFormField(VerboseRegexField):
             regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs)
 
 
-class MACAddressField(Field):
+class MACAddressField(Field, metaclass=SubfieldBase):
     """Model field type: MAC address."""
-
-    __metaclass__ = SubfieldBase
 
     description = "MAC address"
 
@@ -260,7 +227,7 @@ class MAC:
         """Return `None` if `value` is `None` or the empty string."""
         if value is None:
             return None
-        elif isinstance(value, (bytes, unicode)):
+        elif isinstance(value, (bytes, str)):
             return None if len(value) == 0 else super(MAC, cls).__new__(cls)
         else:
             return super(MAC, cls).__new__(cls)
@@ -277,7 +244,7 @@ class MAC:
             self._wrapped = value._wrapped
         elif isinstance(value, bytes):
             self._wrapped = value.decode("ascii")
-        elif isinstance(value, unicode):
+        elif isinstance(value, str):
             self._wrapped = value
         else:
             raise TypeError("expected MAC or string, got: %r" % (value,))
@@ -315,12 +282,11 @@ class MAC:
         """Represent the MAC as a string."""
         return "<MAC %s>" % self._wrapped
 
-    def __unicode__(self):
+    def __str__(self):
         """Represent the MAC as a Unicode string."""
         return self._wrapped
 
-    def __str__(self):
-        """Represent the MAC as a byte string."""
+    def __bytes__(self):
         return self._wrapped.encode("ascii")
 
     def __eq__(self, other):
@@ -352,7 +318,7 @@ def register_mac_type(cursor):
     # register that type in psycopg.
     cursor.execute("SELECT NULL::macaddr")
     oid = cursor.description[0][1]
-    mac_caster = psycopg2.extensions.new_type((oid, ), b"macaddr", MAC.parse)
+    mac_caster = psycopg2.extensions.new_type((oid, ), "macaddr", MAC.parse)
     psycopg2.extensions.register_type(mac_caster)
 
     # Now do the same for the type array-of-MACs.  The "typecaster" created
@@ -361,19 +327,17 @@ def register_mac_type(cursor):
     cursor.execute("SELECT '{}'::macaddr[]")
     oid = cursor.description[0][1]
     psycopg2.extensions.register_type(psycopg2.extensions.new_array_type(
-        (oid, ), b"macaddr", mac_caster))
+        (oid, ), "macaddr", mac_caster))
 
 
-class JSONObjectField(Field):
+class JSONObjectField(Field, metaclass=SubfieldBase):
     """A field that will store any jsonizable python object."""
-
-    __metaclass__ = SubfieldBase
 
     def to_python(self, value):
         """db -> python: json load."""
         assert not isinstance(value, bytes)
         if value is not None:
-            if isinstance(value, unicode):
+            if isinstance(value, str):
                 try:
                     return loads(value)
                 except ValueError:
@@ -493,9 +457,19 @@ class LargeObjectFile:
     def __iter__(self):
         return self
 
+    @typed
+    def write(self, data: bytes):
+        """Write `data` to the underlying large object.
+
+        This exists so that type annotations can be enforced.
+        """
+        self._lobject.write(data)
+
     def open(self, mode="rwb", new_file=None, using="default",
              connection=None):
         """Opens the internal large object instance."""
+        if "b" not in mode:
+            raise ValueError("Large objects must be opened in binary mode.")
         if connection is None:
             connection = connections[using]
         validate_in_transaction(connection)
@@ -515,7 +489,7 @@ class LargeObjectFile:
         self._lobject = None
         self.oid = 0
 
-    def next(self):
+    def __next__(self):
         r = self.read(self.block_size)
         if len(r) == 0:
             raise StopIteration
@@ -545,14 +519,11 @@ class LargeObjectField(IntegerField):
         self.block_size = kwargs.pop('block_size', 1 << 16)
         super(LargeObjectField, self).__init__(*args, **kwargs)
 
-    # In django 1.8 this is a property and is needed. To support upgrades
-    # from MAAS <2.0 we need to support running under django 1.6.
-    if django.VERSION >= (1, 7):
-        @property
-        def validators(self):
-            # No validation. IntegerField will add incorrect validation. This
-            # removes that validation.
-            return []
+    @property
+    def validators(self):
+        # No validation. IntegerField will add incorrect validation. This
+        # removes that validation.
+        return []
 
     def db_type(self, connection):
         """Returns the database column data type for LargeObjectField."""
@@ -583,7 +554,7 @@ class LargeObjectField(IntegerField):
             return None
         elif isinstance(value, LargeObjectFile):
             return value
-        elif isinstance(value, (int, long)):
+        elif isinstance(value, int):
             return LargeObjectFile(value, self, self.model, self.block_size)
         raise AssertionError(
             "Invalid LargeObjectField value (expected integer): '%s'"
@@ -592,15 +563,13 @@ class LargeObjectField(IntegerField):
 
 def parse_cidr(value):
     try:
-        return unicode(IPNetwork(value).cidr)
+        return str(IPNetwork(value).cidr)
     except AddrFormatError as e:
-        raise ValidationError(e.message)
+        raise ValidationError(str(e)) from e
 
 
-class CIDRField(Field):
+class CIDRField(Field, metaclass=SubfieldBase):
     description = "PostgreSQL CIDR field"
-
-    __metaclass__ = SubfieldBase
 
     def db_type(self, connection):
         return 'cidr'
@@ -619,7 +588,7 @@ class CIDRField(Field):
         if value is None or value == '':
             return None
         if isinstance(value, IPNetwork):
-            return unicode(value)
+            return str(value)
         if not value:
             return value
         return parse_cidr(value)
@@ -646,7 +615,7 @@ class IPv4CIDRField(CIDRField):
             if cidr.cidr.version != 4:
                 raise ValidationError(
                     "%s: Only IPv4 networks supported." % value)
-        return unicode(cidr.cidr)
+        return str(cidr.cidr)
 
 
 class IPListFormField(forms.CharField):
@@ -690,7 +659,7 @@ class SpecifierOrModelChoiceField(forms.ModelChoiceField):
         try:
             return super(SpecifierOrModelChoiceField, self).to_python(value)
         except ValidationError as e:
-            if isinstance(value, unicode):
+            if isinstance(value, str):
                 object_id = self.queryset.get_object_id(value)
                 if object_id is None:
                     obj = get_one(self.queryset.filter_by_specifiers(

@@ -3,15 +3,6 @@
 
 """Helpers for Piston-based MAAS APIs."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'extract_bool',
     'extract_oauth_key',
@@ -45,7 +36,7 @@ def extract_bool(value):
     :rtype bool:
     :raise ValueError: If `value` is not an accepted encoding of a boolean.
     """
-    assert isinstance(value, unicode)
+    assert isinstance(value, str)
     if value == '0':
         return False
     elif value == '1':

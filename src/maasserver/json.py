@@ -7,15 +7,6 @@ We register this as a replacement for Django's own JSON serialization by
 setting it in the SERIALIZATION_MODULES setting.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Deserializer',
     'MAASJSONEncoder',

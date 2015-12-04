@@ -3,15 +3,6 @@
 
 """Monkey patch for the MAAS provisioning server"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "add_term_error_code_to_tftp",
     "force_simplestreams_to_use_urllib2",

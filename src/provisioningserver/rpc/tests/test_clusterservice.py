@@ -3,15 +3,6 @@
 
 """Tests for the cluster's RPC implementation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -25,7 +16,7 @@ import json
 import os.path
 import random
 from random import randint
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
 from maastesting.factory import factory
@@ -109,6 +100,7 @@ from provisioningserver.rpc.testing.doubles import (
 )
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.twisted.protocols import amp
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -137,7 +129,6 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
-from twisted.protocols import amp
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection
@@ -177,7 +168,7 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
         secret = factory.make_bytes()
         set_shared_secret_on_filesystem(secret)
 
-        args = {b"message": message}
+        args = {"message": message}
         d = call_responder(Cluster(), cluster.Authenticate, args)
         response = extract_result(d)
         digest = response["digest"]
@@ -419,7 +410,7 @@ class TestPatchedURI(MAASTestCase):
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://%s/%s' % (hostname, path))
         self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(80))
 
     def test__parses_URL_with_hostname_and_port(self):
@@ -428,15 +419,15 @@ class TestPatchedURI(MAASTestCase):
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (hostname, port, path))
         self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(port))
 
     def test__parses_URL_with_IPv4_address(self):
         ip = factory.make_ipv4_address().encode('ascii')
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://%s/%s' % (ip, path))
-        self.expectThat(uri.host, Equals(ip.encode('ascii')))
-        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.host, Equals(ip))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(80))
 
     def test__parses_URL_with_IPv4_address_and_port(self):
@@ -445,7 +436,7 @@ class TestPatchedURI(MAASTestCase):
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (ip, port, path))
         self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(port))
 
     def test__parses_URL_with_IPv6_address(self):
@@ -479,7 +470,7 @@ class TestClusterClientService(MAASTestCase):
         maas_url = "http://%s/%s/" % (
             factory.make_hostname(), factory.make_name("path"))
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
-        expected_rpc_info_url = maas_url + "rpc/"
+        expected_rpc_info_url = (maas_url + "rpc/").encode("ascii")
         observed_rpc_info_url = ClusterClientService._get_rpc_info_url()
         self.assertThat(observed_rpc_info_url, Equals(expected_rpc_info_url))
 
@@ -637,7 +628,7 @@ class TestClusterClientService(MAASTestCase):
             Unhandled Error
             Traceback (most recent call last):
             ...
-            exceptions.RuntimeError: Something went wrong.
+            builtins.RuntimeError: Something went wrong.
             """,
             logger.dump())
 
@@ -690,7 +681,7 @@ class TestClusterClientService(MAASTestCase):
         # not running.
         service._fetch_rpc_info.return_value = {"eventloops": None}
         # Set the step to a bogus value so we can see it change.
-        service.step = sentinel.unset
+        service.step = 999
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -749,7 +740,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertIn(
             service.getClient(), {
                 common.Client(conn)
-                for conn in service.connections.viewvalues()
+                for conn in service.connections.values()
             })
 
     def test_getClient_when_there_are_no_connections(self):

@@ -3,15 +3,6 @@
 
 """Compute paths relative to root."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_path',
     'get_tentative_path',

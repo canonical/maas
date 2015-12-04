@@ -3,15 +3,6 @@
 
 """RPC helpers relating to monitors."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "handle_monitor_expired",
     "TransitionMonitor",
@@ -30,11 +21,11 @@ from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
 )
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
 )
-from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("timers")
@@ -84,7 +75,7 @@ class TransitionMonitor:
         self.timeout = None
 
     def within(self, seconds):
-        assert isinstance(seconds, (int, long, float)), (
+        assert isinstance(seconds, (int, float)), (
             "Expected a number, got: %r" % (seconds,))
         assert 0 <= seconds
         monitor = copy(self)

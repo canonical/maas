@@ -3,15 +3,6 @@
 
 """Tests for all forms that are used with `BlockDevice`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -59,7 +50,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because block device has a partition table.")
-        self.assertEquals({
+        self.assertEqual({
             '__all__': [
                 "Cannot format block device with a partition table.",
             ]},
@@ -74,7 +65,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid fstype.")
-        self.assertEquals({
+        self.assertEqual({
             'fstype': [
                 "Select a valid choice. lvm-pv is not one of the "
                 "available choices."
@@ -92,7 +83,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid uuid.")
-        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+        self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_uuid_append_XYZ(self):
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
@@ -105,7 +96,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid uuid.")
-        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+        self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_uuid_prepend_XYZ(self):
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
@@ -118,7 +109,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because of an invalid uuid.")
-        self.assertEquals({'uuid': ["Enter a valid value."]}, form._errors)
+        self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()
@@ -134,8 +125,8 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         filesystem = get_one(
             Filesystem.objects.filter(block_device=block_device))
         self.assertIsNotNone(filesystem)
-        self.assertEquals(fstype, filesystem.fstype)
-        self.assertEquals(fsuuid, filesystem.uuid)
+        self.assertEqual(fstype, filesystem.fstype)
+        self.assertEqual(fsuuid, filesystem.uuid)
 
     def test_deletes_old_filesystem_and_creates_new_one(self):
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
@@ -147,7 +138,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         form = FormatBlockDeviceForm(block_device, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
-        self.assertEquals(
+        self.assertEqual(
             1,
             Filesystem.objects.filter(block_device=block_device).count(),
             "Should only be one filesystem that exists for block device.")
@@ -155,7 +146,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         filesystem = get_one(
             Filesystem.objects.filter(block_device=block_device))
         self.assertIsNotNone(filesystem)
-        self.assertEquals(fstype, filesystem.fstype)
+        self.assertEqual(fstype, filesystem.fstype)
 
 
 class TestMountBlockDeviceForm(MAASServerTestCase):
@@ -176,7 +167,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
             form.is_valid(),
             "Should be invalid because block device does "
             "not have a filesystem.")
-        self.assertEquals({
+        self.assertEqual({
             '__all__': [
                 "Cannot mount an unformatted block device.",
             ]},
@@ -196,7 +187,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because block device is in a filesystem group.")
-        self.assertEquals({
+        self.assertEqual({
             '__all__': [
                 "Filesystem is part of a filesystem group, and cannot be "
                 "mounted.",
@@ -213,7 +204,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because its not an absolute path.")
-        self.assertEquals(
+        self.assertEqual(
             {'mount_point': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_absolute_path_empty(self):
@@ -226,7 +217,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because its not an absolute path.")
-        self.assertEquals(
+        self.assertEqual(
             {'mount_point': ["This field is required."]}, form._errors)
 
     def test_is_not_valid_if_invalid_absolute_path_to_long(self):
@@ -240,7 +231,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         self.assertFalse(
             form.is_valid(),
             "Should be invalid because its not an absolute path.")
-        self.assertEquals({
+        self.assertEqual({
             'mount_point': [
                 "Ensure this value has at most 4095 characters "
                 "(it has %s)." % len(mount_point)
@@ -258,7 +249,7 @@ class TestMountBlockDeviceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         filesystem = reload_object(filesystem)
-        self.assertEquals(mount_point, filesystem.mount_point)
+        self.assertEqual(mount_point, filesystem.mount_point)
 
 
 class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
@@ -267,7 +258,7 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
         node = factory.make_Node()
         form = CreatePhysicalBlockDeviceForm(node, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             'name': ['This field is required.'],
             'size': ['This field is required.'],
             'block_size': ['This field is required.'],

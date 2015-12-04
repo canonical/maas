@@ -11,7 +11,7 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         
         # Adding field 'Node.error'
-        db.add_column('maasserver_node', 'error', self.gf('django.db.models.fields.CharField')(default=u'', max_length=255, blank=True), keep_default=False)
+        db.add_column('maasserver_node', 'error', self.gf('django.db.models.fields.CharField')(default='', max_length=255, blank=True), keep_default=False)
 
 
     def backwards(self, orm):

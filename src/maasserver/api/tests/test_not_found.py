@@ -3,19 +3,11 @@
 
 """Tests for the not found handler."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -38,8 +30,9 @@ class NotFoundHandlerTest(MAASServerTestCase):
 
         response = getattr(self.client, self.method)(handler_url)
 
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
             'text/plain; charset=utf-8', response['content-type'])
         self.assertEqual(
-            "Unknown API endpoint: %s." % handler_url, response.content)
+            "Unknown API endpoint: %s." % handler_url,
+            response.content.decode(settings.DEFAULT_CHARSET))

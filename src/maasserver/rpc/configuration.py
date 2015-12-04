@@ -3,21 +3,12 @@
 
 """RPC helpers relating to configuration settings."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_archive_mirrors",
     "get_proxies",
 ]
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional

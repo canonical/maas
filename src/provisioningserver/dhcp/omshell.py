@@ -5,15 +5,6 @@
 inside the DHCP server.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "generate_omapi_key",
     "Omshell",
@@ -66,7 +57,7 @@ def run_repeated_keygen(tmpdir):
         # it.
         if not key_id:
             raise AssertionError("dnssec-keygen didn't generate anything")
-        key_id = key_id.strip()  # Remove trailing newline.
+        key_id = key_id.decode("ascii").strip()  # Remove trailing newline.
         key_file_name = os.path.join(tmpdir, key_id + '.private')
         parsing_error = False
         try:

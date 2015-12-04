@@ -3,15 +3,6 @@
 
 """Tests for filesystem-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from base64 import urlsafe_b64encode
@@ -25,7 +16,6 @@ from subprocess import (
     CalledProcessError,
     PIPE,
 )
-import sys
 import tempfile
 import time
 
@@ -33,6 +23,7 @@ from maastesting import root
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
+    FileContains,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -69,10 +60,8 @@ from testtools.matchers import (
     DirExists,
     EndsWith,
     Equals,
-    FileContains,
     FileExists,
     IsInstance,
-    MatchesAll,
     Not,
     SamePath,
     StartsWith,
@@ -86,21 +75,21 @@ class TestAtomicWrite(MAASTestCase):
     """Test `atomic_write`."""
 
     def test_atomic_write_overwrites_dest_file(self):
-        content = factory.make_string()
+        content = factory.make_bytes()
         filename = self.make_file(contents=factory.make_string())
         atomic_write(content, filename)
         self.assertThat(filename, FileContains(content))
 
     def test_atomic_write_does_not_overwrite_file_if_overwrite_false(self):
-        content = factory.make_string()
-        random_content = factory.make_string()
+        content = factory.make_bytes()
+        random_content = factory.make_bytes()
         filename = self.make_file(contents=random_content)
         atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(random_content))
 
     def test_atomic_write_writes_file_if_no_file_present(self):
         filename = os.path.join(self.make_dir(), factory.make_string())
-        content = factory.make_string()
+        content = factory.make_bytes()
         atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(content))
 
@@ -109,7 +98,7 @@ class TestAtomicWrite(MAASTestCase):
         # overwriting was disabled, atomic_write does not leak its
         # temporary file.
         filename = self.make_file()
-        atomic_write(factory.make_string(), filename, overwrite=False)
+        atomic_write(factory.make_bytes(), filename, overwrite=False)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
@@ -120,7 +109,7 @@ class TestAtomicWrite(MAASTestCase):
         self.patch(fs_module, 'rename', Mock(side_effect=OSError()))
         filename = self.make_file()
         with ExpectedException(OSError):
-            atomic_write(factory.make_string(), filename)
+            atomic_write(factory.make_bytes(), filename)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
@@ -131,7 +120,7 @@ class TestAtomicWrite(MAASTestCase):
         # umask.  We want this mode set, not treated as advice that may
         # be tightened up by umask later.
         mode = 0o323
-        atomic_write(factory.make_string(), atomic_file, mode=mode)
+        atomic_write(factory.make_bytes(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
     def test_atomic_write_sets_permissions_before_moving_into_place(self):
@@ -146,7 +135,7 @@ class TestAtomicWrite(MAASTestCase):
         playground = self.make_dir()
         atomic_file = os.path.join(playground, factory.make_name('atomic'))
         mode = 0o323
-        atomic_write(factory.make_string(), atomic_file, mode=mode)
+        atomic_write(factory.make_bytes(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
 
@@ -163,7 +152,7 @@ class TestAtomicWrite(MAASTestCase):
         ret_stat.st_gid = sentinel.gid
         ret_stat.st_mode = stat.S_IFREG
 
-        atomic_write(factory.make_string(), atomic_file)
+        atomic_write(factory.make_bytes(), atomic_file)
 
         self.assertThat(fs_module.stat, MockCalledOnceWith(atomic_file))
         self.assertThat(fs_module.chown, MockCalledOnceWith(
@@ -177,7 +166,7 @@ class TestAtomicWrite(MAASTestCase):
         mock_mkstemp = self.patch(tempfile, "mkstemp")
         mock_mkstemp.side_effect = OSError()
         filename = os.path.join("directory", "basename")
-        error = self.assertRaises(OSError, atomic_write, "content", filename)
+        error = self.assertRaises(OSError, atomic_write, b"content", filename)
         self.assertEqual(
             os.path.join("directory", ".basename.XXXXXX.tmp"),
             error.filename)
@@ -189,10 +178,15 @@ class TestAtomicWrite(MAASTestCase):
         mock_mkstemp.side_effect = OSError()
         mock_mkstemp.side_effect.filename = factory.make_name("filename")
         filename = os.path.join("directory", "basename")
-        error = self.assertRaises(OSError, atomic_write, "content", filename)
+        error = self.assertRaises(OSError, atomic_write, b"content", filename)
         self.assertEqual(
             mock_mkstemp.side_effect.filename,
             error.filename)
+
+    def test_atomic_write_rejects_non_bytes_contents(self):
+        self.assertRaises(
+            TypeError, atomic_write, factory.make_string(),
+            factory.make_string())
 
 
 class TestAtomicDelete(MAASTestCase):
@@ -257,7 +251,7 @@ class TestIncrementalWrite(MAASTestCase):
     """Test `incremental_write`."""
 
     def test_incremental_write_increments_modification_time(self):
-        content = factory.make_string()
+        content = factory.make_bytes()
         filename = self.make_file(contents=factory.make_string())
         # Pretend that this file is older than it is.  So that
         # incrementing its mtime won't put it in the future.
@@ -270,7 +264,7 @@ class TestIncrementalWrite(MAASTestCase):
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
         mode = 0o323
-        incremental_write(factory.make_string(), atomic_file, mode=mode)
+        incremental_write(factory.make_bytes(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
 
@@ -343,14 +337,14 @@ class TestSudoWriteFile(MAASTestCase):
     def patch_popen(self, return_value=0):
         process = Mock()
         process.returncode = return_value
-        process.communicate = Mock(return_value=('output', 'error output'))
+        process.communicate = Mock(return_value=(b'output', b'error output'))
         self.patch(fs_module, 'Popen', Mock(return_value=process))
         return process
 
     def test_calls_atomic_write(self):
         self.patch_popen()
         path = os.path.join(self.make_dir(), factory.make_name('file'))
-        contents = factory.make_string()
+        contents = factory.make_bytes()
 
         sudo_write_file(path, contents)
 
@@ -358,20 +352,16 @@ class TestSudoWriteFile(MAASTestCase):
             ['sudo', '-n', get_maas_provision_command(), 'atomic-write',
              '--filename', path, '--mode', '0644'], stdin=PIPE))
 
-    def test_encodes_contents(self):
-        process = self.patch_popen()
-        contents = factory.make_string()
-        encoding = 'utf-16'
-        sudo_write_file(self.make_file(), contents, encoding=encoding)
-        self.assertThat(
-            process.communicate,
-            MockCalledOnceWith(contents.encode(encoding)))
+    def test_rejects_non_bytes_contents(self):
+        self.assertRaises(
+            TypeError, sudo_write_file, self.make_file(),
+            factory.make_string())
 
     def test_catches_failures(self):
         self.patch_popen(1)
         self.assertRaises(
             CalledProcessError,
-            sudo_write_file, self.make_file(), factory.make_string())
+            sudo_write_file, self.make_file(), factory.make_bytes())
 
 
 class TestSudoDeleteFile(MAASTestCase):
@@ -491,32 +481,18 @@ class TestTempDir(MAASTestCase):
         with tempdir() as directory:
             pass
 
-        self.assertIsInstance(directory, unicode)
+        self.assertIsInstance(directory, str)
 
     def test_accepts_unicode_from_mkdtemp(self):
         fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
-        self.assertIsInstance(fake_dir, unicode)
+        self.assertIsInstance(fake_dir, str)
         self.patch(tempfile, 'mkdtemp').return_value = fake_dir
 
         with tempdir() as directory:
             pass
 
         self.assertEqual(fake_dir, directory)
-        self.assertIsInstance(directory, unicode)
-
-    def test_decodes_bytes_from_mkdtemp(self):
-        encoding = 'utf-16'
-        self.patch(sys, 'getfilesystemencoding').return_value = encoding
-        fake_dir = os.path.join(self.make_dir(), factory.make_name('tempdir'))
-        self.patch(tempfile, 'mkdtemp').return_value = fake_dir.encode(
-            encoding)
-        self.patch(fs_module, 'rmtree')
-
-        with tempdir() as directory:
-            pass
-
-        self.assertEqual(fake_dir, directory)
-        self.assertIsInstance(directory, unicode)
+        self.assertIsInstance(directory, str)
 
     def test_uses_prefix(self):
         prefix = factory.make_string(3)
@@ -563,31 +539,34 @@ class TestReadTextFile(MAASTestCase):
 
 
 class TestWriteTextFile(MAASTestCase):
+
     def test_creates_file(self):
         path = os.path.join(self.make_dir(), factory.make_name('text'))
         text = factory.make_string()
         write_text_file(path, text)
-        self.assertThat(path, FileContains(text))
+        self.assertThat(path, FileContains(text, encoding="ascii"))
 
     def test_overwrites_file(self):
         path = self.make_file(contents="original text")
         text = factory.make_string()
         write_text_file(path, text)
-        self.assertThat(path, FileContains(text))
+        self.assertThat(path, FileContains(text, encoding="ascii"))
 
     def test_defaults_to_utf8(self):
         path = self.make_file()
         # Test input: "registered trademark" (ringed R) symbol.
         text = '\xae'
         write_text_file(path, text)
-        self.assertThat(path, FileContains(text.encode('utf-8')))
+        with open(path, "r", encoding="utf-8") as fd:
+            self.assertThat(fd.read(), Equals(text))
 
     def test_uses_given_encoding(self):
         path = self.make_file()
         # Test input: "registered trademark" (ringed R) symbol.
         text = '\xae'
         write_text_file(path, text, encoding='utf-16')
-        self.assertThat(path, FileContains(text.encode('utf-16')))
+        with open(path, "r", encoding="utf-16") as fd:
+            self.assertThat(fd.read(), Equals(text))
 
 
 class TestSystemLocks(MAASTestCase):
@@ -755,20 +734,20 @@ class TestRunLock(MAASTestCase):
 
     def test__path(self):
         filename = self.make_file()
-        expected = '/run/lock/maas.' + urlsafe_b64encode(filename) + '.lock'
+        expected = '/run/lock/maas.%s.lock' % (
+            urlsafe_b64encode(filename.encode("utf-8")).decode("ascii"))
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
     def test__uses_utf8_for_unicode_to_byte_conversions(self):
-        filename = os.path.abspath(u'\u304b\u3057\u3044')
+        filename = os.path.abspath('\u304b\u3057\u3044')
         path = RunLock(filename).path
-        self.addDetail("path", text_content(path))
-        self.assertThat(path, IsInstance(bytes))
-        path_from_lock = re.search(b'maas[.](.+)[.]lock', path).group(1)
+        self.addDetail("path", text_content(repr(path)))
+        self.assertThat(path, IsInstance(str))
+        path_from_lock = re.search('maas[.](.+)[.]lock', path).group(1)
         self.assertThat(
-            path_from_lock, MatchesAll(
-                Equals(urlsafe_b64encode(filename.encode("utf-8"))),
-                IsInstance(bytes)))
+            path_from_lock, Equals(urlsafe_b64encode(
+                filename.encode("utf-8")).decode("ascii")))
 
     def test__rejects_non_unicode_or_byte_string_in_path(self):
         self.assertRaises(TypeError, RunLock, object())

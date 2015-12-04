@@ -3,29 +3,21 @@
 
 """Tests for the BIND fixture."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
 import os
 from subprocess import check_output
 
+from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.bindfixture import (
     BINDServer,
     BINDServerResources,
 )
+from provisioningserver.utils.shell import select_c_utf8_locale
 from testtools.matchers import (
     Contains,
-    FileContains,
     FileExists,
     Not,
 )
@@ -45,7 +37,7 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
     :param commands: List of dig commands to run (defaults to None
         which will perform an NS query for "." (the root)).
     :return: The output as a string.
-    :rtype: unicode
+    :rtype: str
     """
     # The time and tries below are high so that tests pass in environments
     # that are much slower than the average developer's machine, so beware
@@ -57,7 +49,8 @@ def dig_call(port=53, server='127.0.0.1', commands=None):
         if not isinstance(commands, list):
             commands = (commands, )
         cmd.extend(commands)
-    return check_output(cmd).strip()
+    output = check_output(cmd, env=select_c_utf8_locale())
+    return output.decode("utf-8").strip()
 
 
 class TestBINDFixture(MAASTestCase):
@@ -89,13 +82,13 @@ class TestBINDServerResources(MAASTestCase):
         with BINDServerResources() as resources:
             self.assertIsInstance(resources.port, int)
             self.assertIsInstance(resources.rndc_port, int)
-            self.assertIsInstance(resources.homedir, unicode)
-            self.assertIsInstance(resources.log_file, unicode)
+            self.assertIsInstance(resources.homedir, str)
+            self.assertIsInstance(resources.log_file, str)
             self.assertIs(resources.include_in_options, None)
-            self.assertIsInstance(resources.named_file, unicode)
-            self.assertIsInstance(resources.conf_file, unicode)
+            self.assertIsInstance(resources.named_file, str)
+            self.assertIsInstance(resources.conf_file, str)
             self.assertIsInstance(
-                resources.rndcconf_file, unicode)
+                resources.rndcconf_file, str)
 
     def test_setUp_copies_executable(self):
         with BINDServerResources() as resources:
@@ -106,11 +99,11 @@ class TestBINDServerResources(MAASTestCase):
             self.assertThat(
                 resources.conf_file,
                 FileContains(matcher=Contains(
-                    b'listen-on port %s' % resources.port)))
+                    b'listen-on port %d' % resources.port)))
             self.assertThat(
                 resources.rndcconf_file,
                 FileContains(matcher=Contains(
-                    b'default-port %s' % (
+                    b'default-port %d' % (
                         resources.rndc_port))))
             # This should ideally be in its own test but it's here to cut
             # test run time. See test_setUp_honours_include_in_options()

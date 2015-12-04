@@ -6,15 +6,6 @@
 These are commands that a cluster controller ought to respond to.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Authenticate",
     "ConfigureDHCPv4",
@@ -39,6 +30,7 @@ from provisioningserver.power.poweraction import (
 )
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
+    AmpList,
     Bytes,
     CompressedAmpList,
     ParsedURL,
@@ -48,7 +40,7 @@ from provisioningserver.rpc.common import (
     Authenticate,
     Identify,
 )
-from twisted.protocols import amp
+from provisioningserver.twisted.protocols import amp
 
 
 class ListBootImages(amp.Command):
@@ -59,7 +51,7 @@ class ListBootImages(amp.Command):
 
     arguments = []
     response = [
-        (b"images", amp.AmpList(
+        (b"images", AmpList(
             [(b"osystem", amp.Unicode()),
              (b"architecture", amp.Unicode()),
              (b"subarchitecture", amp.Unicode()),
@@ -117,7 +109,7 @@ class ListSupportedArchitectures(amp.Command):
 
     arguments = []
     response = [
-        (b"architectures", amp.AmpList([
+        (b"architectures", AmpList([
             (b"name", amp.Unicode()),
             (b"description", amp.Unicode()),
             ])),
@@ -133,10 +125,10 @@ class ListOperatingSystems(amp.Command):
 
     arguments = []
     response = [
-        (b"osystems", amp.AmpList([
+        (b"osystems", AmpList([
             (b"name", amp.Unicode()),
             (b"title", amp.Unicode()),
-            (b"releases", amp.AmpList([
+            (b"releases", AmpList([
                 (b"name", amp.Unicode()),
                 (b"title", amp.Unicode()),
                 (b"requires_license_key", amp.Boolean()),
@@ -293,7 +285,7 @@ class _ConfigureDHCP(amp.Command):
     """
     arguments = [
         (b"omapi_key", amp.Unicode()),
-        (b"subnet_configs", amp.AmpList([
+        (b"subnet_configs", AmpList([
             (b"subnet", amp.Unicode()),
             (b"subnet_mask", amp.Unicode()),
             (b"subnet_cidr", amp.Unicode()),
@@ -332,7 +324,7 @@ class CreateHostMaps(amp.Command):
     """
 
     arguments = [
-        (b"mappings", amp.AmpList([
+        (b"mappings", AmpList([
             (b"ip_address", amp.Unicode()),
             (b"mac_address", amp.Unicode()),
         ])),
@@ -370,10 +362,10 @@ class ImportBootImages(amp.Command):
     """
 
     arguments = [
-        (b"sources", amp.AmpList(
+        (b"sources", AmpList(
             [(b"url", amp.Unicode()),
              (b"keyring_data", Bytes()),
-             (b"selections", amp.AmpList(
+             (b"selections", AmpList(
                  [(b"os", amp.Unicode()),
                   (b"release", amp.Unicode()),
                   (b"arches", amp.ListOf(amp.Unicode())),
@@ -393,7 +385,7 @@ class StartMonitors(amp.Command):
     """
 
     arguments = [
-        (b"monitors", amp.AmpList(
+        (b"monitors", AmpList(
             [(b"deadline", amp.DateTime()),
              (b"context", StructureAsJSON()),
              (b"id", amp.Unicode()),
@@ -425,7 +417,7 @@ class EvaluateTag(amp.Command):
     arguments = [
         (b"tag_name", amp.Unicode()),
         (b"tag_definition", amp.Unicode()),
-        (b"tag_nsmap", amp.AmpList([
+        (b"tag_nsmap", AmpList([
             (b"prefix", amp.Unicode()),
             (b"uri", amp.Unicode()),
         ])),

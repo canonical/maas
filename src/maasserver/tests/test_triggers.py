@@ -1,17 +1,8 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
 """Tests for `maasserver.triggers`."""
 
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from contextlib import closing
@@ -56,7 +47,7 @@ class TestTriggers(MAASServerTestCase):
                 "tgname = 'maasserver_node_node_create_notify'")
             triggers = cursor.fetchall()
 
-        self.assertEquals(1, len(triggers), "Trigger was not created.")
+        self.assertEqual(1, len(triggers), "Trigger was not created.")
 
     def test_register_all_triggers(self):
         register_all_triggers()
@@ -135,7 +126,7 @@ class TestTriggers(MAASServerTestCase):
         # Note: if this test fails, a trigger may have been added, but not
         # added to the list of expected triggers.
         triggers_found = [trigger[0] for trigger in db_triggers]
-        self.assertEquals(
+        self.assertEqual(
             len(triggers), len(db_triggers),
             "Missing %s triggers in the database. Triggers found: %s" % (
                 len(triggers) - len(db_triggers), triggers_found))

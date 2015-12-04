@@ -3,19 +3,9 @@
 
 """Tests for the `Network` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver.api.networks import convert_to_network_name
@@ -26,6 +16,7 @@ from maasserver.enum import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.converters import json_load_bytes
 
 
 class TestNetwork(APITestCase):
@@ -45,21 +36,21 @@ class TestNetwork(APITestCase):
         response = self.client.post(
             self.get_url(subnet),
             {'description': "New description"})
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_GET_returns_network(self):
         subnet = factory.make_Subnet()
 
         response = self.client.get(self.get_url(subnet))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         cidr = subnet.get_ipnetwork()
         self.assertEqual(
             (
                 "subnet-%d" % subnet.id,
-                unicode(cidr.ip),
-                unicode(cidr.netmask),
+                str(cidr.ip),
+                str(cidr.netmask),
                 subnet.vlan.vid,
                 subnet.name,
                 subnet.gateway_ip,
@@ -79,7 +70,7 @@ class TestNetwork(APITestCase):
 
     def test_GET_returns_404_for_unknown_network(self):
         self.assertEqual(
-            httplib.NOT_FOUND,
+            http.client.NOT_FOUND,
             self.client.get(
                 reverse(
                     'network_handler', args=["subnet-unknown"])).status_code)
@@ -88,13 +79,13 @@ class TestNetwork(APITestCase):
         self.become_admin()
         subnet = factory.make_Subnet()
         response = self.client.put(self.get_url(subnet))
-        self.assertEqual(httplib.GONE, response.status_code)
+        self.assertEqual(http.client.GONE, response.status_code)
 
     def test_DELETE_returns_410(self):
         self.become_admin()
         subnet = factory.make_Subnet()
         response = self.client.delete(self.get_url(subnet))
-        self.assertEqual(httplib.GONE, response.status_code)
+        self.assertEqual(http.client.GONE, response.status_code)
 
     def test_POST_connect_macs_returns_410(self):
         self.become_admin()
@@ -104,7 +95,7 @@ class TestNetwork(APITestCase):
             {
                 'op': 'connect_macs',
             })
-        self.assertEqual(httplib.GONE, response.status_code)
+        self.assertEqual(http.client.GONE, response.status_code)
 
     def test_POST_disconnect_macs_returns_410(self):
         self.become_admin()
@@ -114,7 +105,7 @@ class TestNetwork(APITestCase):
             {
                 'op': 'disconnect_macs',
             })
-        self.assertEqual(httplib.GONE, response.status_code)
+        self.assertEqual(http.client.GONE, response.status_code)
 
 
 class TestListConnectedMACs(APITestCase):
@@ -151,8 +142,8 @@ class TestListConnectedMACs(APITestCase):
         url = reverse(
             'network_handler', args=[convert_to_network_name(subnet)])
         response = self.client.get(url, {'op': 'list_connected_macs'})
-        self.assertEqual(httplib.OK, response.status_code)
-        return json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        return json_load_bytes(response.content)
 
     def extract_macs(self, returned_macs):
         """Extract the textual MAC addresses from an API response."""

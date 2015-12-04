@@ -19,7 +19,7 @@ class Migration(SchemaMigration):
         db.alter_column('maasserver_macaddress', 'created', self.gf('django.db.models.fields.DateTimeField')())
 
         # Changing field 'Node.created'
-        db.alter_column(u'maasserver_node', 'created', self.gf('django.db.models.fields.DateTimeField')())
+        db.alter_column('maasserver_node', 'created', self.gf('django.db.models.fields.DateTimeField')())
 
         # Changing field 'SSHKey.created'
         db.alter_column('maasserver_sshkey', 'created', self.gf('django.db.models.fields.DateTimeField')())
@@ -31,7 +31,7 @@ class Migration(SchemaMigration):
         db.alter_column('maasserver_macaddress', 'created', self.gf('django.db.models.fields.DateField')())
 
         # Changing field 'Node.created'
-        db.alter_column(u'maasserver_node', 'created', self.gf('django.db.models.fields.DateField')())
+        db.alter_column('maasserver_node', 'created', self.gf('django.db.models.fields.DateField')())
 
         # Changing field 'SSHKey.created'
         db.alter_column('maasserver_sshkey', 'created', self.gf('django.db.models.fields.DateField')())
@@ -91,10 +91,10 @@ class Migration(SchemaMigration):
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'mac_address': ('maasserver.fields.MACAddressField', [], {'unique': 'True'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']"}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.node': {
+        'maasserver.node': {
             'Meta': {'object_name': 'Node'},
             'after_commissioning_action': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'architecture': ('django.db.models.fields.CharField', [], {'default': "u'i386'", 'max_length': '10'}),

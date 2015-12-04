@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.boot.uefi`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from contextlib import contextmanager
@@ -28,12 +19,17 @@ from provisioningserver.boot import (
     uefi as uefi_module,
     utils,
 )
+from provisioningserver.boot.testing import (
+    TFTPPath,
+    TFTPPathAndComponents,
+)
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.boot.uefi import (
     re_config_file,
     UEFIBootMethod,
 )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from provisioningserver.utils import typed
 from testtools.matchers import (
     ContainsAll,
     IsInstance,
@@ -43,7 +39,9 @@ from testtools.matchers import (
 )
 
 
-def compose_config_path(mac=None, arch=None, subarch=None):
+@typed
+def compose_config_path(
+        mac: str=None, arch: str=None, subarch: str=None) -> TFTPPath:
     """Compose the TFTP path for a UEFI configuration file.
 
     The path returned is relative to the TFTP root, as it would be
@@ -56,16 +54,16 @@ def compose_config_path(mac=None, arch=None, subarch=None):
         always amd64.
     :param subarch: Sub-architecture type, this is normally always generic.
     :return: Path for the corresponding PXE config file as exposed over
-        TFTP.
+        TFTP, as a byte string.
     """
     if mac is not None:
-        return "grub/grub.cfg-{mac}".format(mac=mac)
+        return "grub/grub.cfg-{mac}".format(mac=mac).encode("ascii")
     if arch is not None:
         if subarch is None:
             subarch = "generic"
         return "grub/grub.cfg-{arch}-{subarch}".format(
-            arch=arch, subarch=subarch)
-    return "grub/grub.cfg"
+            arch=arch, subarch=subarch).encode("ascii")
+    return "grub/grub.cfg".encode("ascii")
 
 
 class TestUEFIBootMethodRender(MAASTestCase):
@@ -79,7 +77,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("set default=\"0\""))
@@ -124,7 +122,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
             "kernel_params": make_kernel_parameters(
                 purpose="local", arch="amd64"),
             }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("chainloader /efi/ubuntu/shimx64.efi", output)
 
     def test_get_reader_with_enlist_purpose(self):
@@ -137,7 +135,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
             "backend": None,
             "kernel_params": params,
             }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertThat(output, ContainsAll(
             [
                 "menuentry 'Enlist'",
@@ -155,7 +153,7 @@ class TestUEFIBootMethodRender(MAASTestCase):
             "backend": None,
             "kernel_params": params,
             }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertThat(output, ContainsAll(
             [
                 "menuentry 'Commission'",
@@ -168,17 +166,16 @@ class TestUEFIBootMethodRegex(MAASTestCase):
     """Tests `provisioningserver.boot.uefi.UEFIBootMethod.re_config_file`."""
 
     @staticmethod
-    def get_example_path_and_components():
+    @typed
+    def get_example_path_and_components() -> TFTPPathAndComponents:
         """Return a plausible UEFI path and its components.
 
         The path is intended to match `re_config_file`, and
         the components are the expected groups from a match.
         """
-        components = {"mac": factory.make_mac_address(":"),
-                      "arch": None,
-                      "subarch": None}
-        config_path = compose_config_path(components["mac"])
-        return config_path, components
+        mac = factory.make_mac_address(":")
+        return compose_config_path(mac), {
+            "mac": mac.encode("ascii"), "arch": None, "subarch": None}
 
     def test_re_config_file_is_compatible_with_cfg_path_generator(self):
         # The regular expression for extracting components of the file path is
@@ -195,7 +192,7 @@ class TestUEFIBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = self.get_example_path_and_components()
         # Ensure there's a leading slash.
-        config_path = "/" + config_path.lstrip("/")
+        config_path = b"/" + config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -206,7 +203,7 @@ class TestUEFIBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = self.get_example_path_and_components()
         # Ensure there's no leading slash.
-        config_path = config_path.lstrip("/")
+        config_path = config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -214,43 +211,44 @@ class TestUEFIBootMethodRegex(MAASTestCase):
     def test_re_config_file_matches_classic_grub_cfg(self):
         # The default config path is simply "grub.cfg-{mac}" (without
         # leading slash).  The regex matches this.
-        mac = 'aa:bb:cc:dd:ee:ff'
-        match = re_config_file.match('grub/grub.cfg-%s' % mac)
+        mac = b'aa:bb:cc:dd:ee:ff'
+        match = re_config_file.match(b'grub/grub.cfg-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
-                         match.groupdict())
+        self.assertEqual(
+            {'mac': mac, 'arch': None, 'subarch': None},
+            match.groupdict())
 
     def test_re_config_file_matches_grub_cfg_with_leading_slash(self):
-        mac = 'aa:bb:cc:dd:ee:ff'
-        match = re_config_file.match(
-            '/grub/grub.cfg-%s' % mac)
+        mac = b'aa:bb:cc:dd:ee:ff'
+        match = re_config_file.match(b'/grub/grub.cfg-%s' % mac)
         self.assertIsNotNone(match)
-        self.assertEqual({'mac': mac, 'arch': None, 'subarch': None},
-                         match.groupdict())
+        self.assertEqual(
+            {'mac': mac, 'arch': None, 'subarch': None},
+            match.groupdict())
 
     def test_re_config_file_does_not_match_default_grub_config_file(self):
-        self.assertIsNone(re_config_file.match('grub/grub.cfg'))
+        self.assertIsNone(re_config_file.match(b'grub/grub.cfg'))
 
     def test_re_config_file_with_default(self):
-        match = re_config_file.match('grub/grub.cfg-default')
+        match = re_config_file.match(b'grub/grub.cfg-default')
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': None, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch(self):
-        arch = factory.make_name('arch', sep='')
-        match = re_config_file.match('grub/grub.cfg-default-%s' % arch)
+        arch = factory.make_name('arch', sep='').encode("ascii")
+        match = re_config_file.match(b'grub/grub.cfg-default-%s' % arch)
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': None},
             match.groupdict())
 
     def test_re_config_file_with_default_arch_and_subarch(self):
-        arch = factory.make_name('arch', sep='')
-        subarch = factory.make_name('subarch', sep='')
+        arch = factory.make_name('arch', sep='').encode("ascii")
+        subarch = factory.make_name('subarch', sep='').encode("ascii")
         match = re_config_file.match(
-            'grub/grub.cfg-default-%s-%s' % (arch, subarch))
+            b'grub/grub.cfg-default-%s-%s' % (arch, subarch))
         self.assertIsNotNone(match)
         self.assertEqual(
             {'mac': None, 'arch': arch, 'subarch': subarch},
@@ -265,14 +263,14 @@ class TestUEFIBootMethod(MAASTestCase):
         self.patch(uefi_module, 'get_main_archive_url')
         self.patch(utils, 'get_updates_package').return_value = (None, None)
         self.assertRaises(
-            BootMethodInstallError, method.install_bootloader, None)
+            BootMethodInstallError, method.install_bootloader, "bogus")
 
     def test_install_bootloader(self):
         method = UEFIBootMethod()
         shim_filename = factory.make_name('shim-signed')
-        shim_data = factory.make_string()
+        shim_data = factory.make_bytes()
         grub_filename = factory.make_name('grub-efi-amd64-signed')
-        grub_data = factory.make_string()
+        grub_data = factory.make_bytes()
         tmp = self.make_dir()
         dest = self.make_dir()
 

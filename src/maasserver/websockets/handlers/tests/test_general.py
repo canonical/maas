@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.general`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from distro_info import UbuntuDistroInfo
@@ -55,7 +46,7 @@ class TestGeneralHandler(MAASServerTestCase):
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertEquals(sorted(arches), handler.architectures({}))
+        self.assertEqual(sorted(arches), handler.architectures({}))
 
     def test_hwe_kernels(self):
         ubuntu_releases = UbuntuDistroInfo()
@@ -74,7 +65,6 @@ class TestGeneralHandler(MAASServerTestCase):
         # releases.
         for release in ubuntu_releases.all[
                 ubuntu_releases.all.index('precise'):]:
-            release = release.decode("utf-8")
             kernel = 'hwe-' + release[0]
             arch = factory.make_name('arch')
             architecture = "%s/%s" % (arch, kernel)
@@ -151,7 +141,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_bond_options(self):
         handler = GeneralHandler(factory.make_User(), {})
-        self.assertEquals({
+        self.assertEqual({
             "modes": BOND_MODE_CHOICES,
             "lacp_rates": BOND_LACP_RATE_CHOICES,
             "xmit_hash_policies": BOND_XMIT_HASH_POLICY_CHOICES,
@@ -161,4 +151,4 @@ class TestGeneralHandler(MAASServerTestCase):
         handler = GeneralHandler(factory.make_User(), {})
         self.patch_autospec(
             general, "get_maas_version_ui").return_value = sentinel.version
-        self.assertEquals(sentinel.version, handler.version({}))
+        self.assertEqual(sentinel.version, handler.version({}))

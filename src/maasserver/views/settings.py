@@ -3,15 +3,6 @@
 
 """Settings views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "AccountsAdd",
     "AccountsDelete",
@@ -116,7 +107,7 @@ class AccountsDelete(DeleteView):
             profile.delete()
             messages.info(request, "User %s deleted." % username)
         except CannotDeleteUserException as e:
-            messages.info(request, unicode(e))
+            messages.info(request, str(e))
         return HttpResponseRedirect(self.get_next_url())
 
 

@@ -3,15 +3,6 @@
 
 """Listens for NOTIFY events from the postgres database."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 
@@ -42,7 +33,7 @@ from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python import log
 from twisted.python.failure import Failure
-from zope.interface import implements
+from zope.interface import implementer
 
 
 class ACTIONS:
@@ -58,6 +49,7 @@ class PostgresListenerNotifyError(Exception):
     decoded or is not being handled."""
 
 
+@implementer(interfaces.IReadDescriptor)
 class PostgresListener:
     """Listens for NOTIFY messages from postgres.
 
@@ -75,8 +67,6 @@ class PostgresListener:
     :ivar disconnecting: a :class:`Deferred` while disconnecting, `None`
         at all other times.
     """
-
-    implements(interfaces.IReadDescriptor)
 
     # Seconds to wait to handle new notifications. When the notifications set
     # is empty it will wait this amount of time to check again for new

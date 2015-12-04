@@ -3,20 +3,10 @@
 
 """Tests for the commissioning-related portions of the MAAS API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
-import httplib
-import json
+import http.client
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -26,6 +16,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import json_load_bytes
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 
@@ -54,7 +45,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
         # Anything that's not commissioning should be ignored.
         node = reload_object(node)
         self.assertEqual(
-            (httplib.OK, NODE_STATUS.READY),
+            (http.client.OK, NODE_STATUS.READY),
             (response.status_code, node.status))
 
     def test_check_with_commissioning_but_not_expired_node(self):
@@ -65,7 +56,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
             reverse('nodes_handler'), {'op': 'check_commissioning'})
         node = reload_object(node)
         self.assertEqual(
-            (httplib.OK, NODE_STATUS.COMMISSIONING),
+            (http.client.OK, NODE_STATUS.COMMISSIONING),
             (response.status_code, node.status))
 
     def test_check_with_commissioning_and_expired_node(self):
@@ -77,7 +68,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
             reverse('nodes_handler'), {'op': 'check_commissioning'})
         self.assertEqual(
             (
-                httplib.OK,
+                http.client.OK,
                 NODE_STATUS.FAILED_COMMISSIONING,
                 [node.system_id]
             ),
@@ -85,7 +76,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
                 response.status_code,
                 reload_object(node).status,
                 [response_node['system_id']
-                 for response_node in json.loads(response.content)],
+                 for response_node in json_load_bytes(response.content)],
             ))
 
     def test_check_ignores_timezone_skew_between_python_and_database(self):
@@ -103,12 +94,12 @@ class TestCommissioningTimeout(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
         self.assertEqual(
-            (httplib.OK, [late_node.system_id]),
+            (http.client.OK, [late_node.system_id]),
             (
                 response.status_code,
                 [
                     response_node['system_id']
-                    for response_node in json.loads(response.content)
+                    for response_node in json_load_bytes(response.content)
                 ],
             ))
         self.assertEqual(
@@ -137,8 +128,8 @@ class AdminCommissioningScriptsAPITest(MAASServerTestCase):
         response = self.client.get(self.get_url())
 
         self.assertEqual(
-            (httplib.OK, sorted(names)),
-            (response.status_code, json.loads(response.content)))
+            (http.client.OK, sorted(names)),
+            (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_creates_commissioning_script(self):
         self.client_log_in(as_admin=True)
@@ -155,9 +146,9 @@ class AdminCommissioningScriptsAPITest(MAASServerTestCase):
                 'name': name,
                 'content': factory.make_file_upload(content=content),
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
-        returned_script = json.loads(response.content)
+        returned_script = json_load_bytes(response.content)
         self.assertEqual(
             (name, b64encode(content).decode("ascii")),
             (returned_script['name'], returned_script['content']))
@@ -173,13 +164,13 @@ class CommissioningScriptsAPITest(APITestCase):
 
     def test_GET_is_forbidden(self):
         response = self.client.get(self.get_url())
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_is_forbidden(self):
         response = self.client.post(
             self.get_url(),
             {'name': factory.make_name('script')})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class AdminCommissioningScriptAPITest(MAASServerTestCase):
@@ -192,14 +183,14 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(script.content, response.content)
 
     def test_GET_preserves_binary_data(self):
         self.client_log_in(as_admin=True)
         script = factory.make_CommissioningScript(content=sample_binary_data)
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(sample_binary_data, response.content)
 
     def test_PUT_updates_contents(self):
@@ -211,7 +202,7 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
         response = self.client.put(
             self.get_url(script.name),
             {'content': factory.make_file_upload(content=new_content)})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
         self.assertEqual(new_content, reload_object(script).content)
 
@@ -235,18 +226,18 @@ class CommissioningScriptAPITest(APITestCase):
         # (consumers of the MAAS) to see these.
         script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_is_forbidden(self):
         script = factory.make_CommissioningScript()
         response = self.client.put(
             self.get_url(script.name), {'content': factory.make_string()})
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_is_forbidden(self):
         script = factory.make_CommissioningScript()
         response = self.client.put(self.get_url(script.name))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class NodeCommissionResultHandlerAPITest(APITestCase):
@@ -257,14 +248,15 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             for counter in range(3)]
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 (
                     commissioning_result.name,
                     commissioning_result.script_result,
-                    b64encode(commissioning_result.data),
+                    b64encode(commissioning_result.data).decode("utf-8"),
                     commissioning_result.node.system_id,
                 )
                 for commissioning_result in commissioning_results
@@ -295,11 +287,12 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
                 ],
             }
         )
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
-            [b64encode(commissioning_results[0].data),
-             b64encode(commissioning_results[1].data)],
+            [b64encode(commissioning_results[0].data).decode("utf-8"),
+             b64encode(commissioning_results[1].data).decode("utf-8")],
             [result.get('data') for result in parsed_results])
 
     def test_list_can_be_filtered_by_name(self):
@@ -314,10 +307,11 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
                 'name': commissioning_results[0].name
             }
         )
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_results = json_load_bytes(response.content)
         self.assertItemsEqual(
-            [b64encode(commissioning_results[0].data)],
+            [b64encode(commissioning_results[0].data).decode("utf-8")],
             [result.get('data') for result in parsed_results])
 
     def test_list_displays_only_visible_nodes(self):
@@ -325,6 +319,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         factory.make_NodeResult_for_commissioning(node)
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_results = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_results = json_load_bytes(response.content)
         self.assertEqual([], parsed_results)

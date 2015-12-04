@@ -3,15 +3,6 @@
 
 """Tests for enum-related utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maastesting.testcase import MAASTestCase
@@ -29,7 +20,7 @@ class TestEnum(MAASTestCase):
             ONE = 1
             TWO = 2
 
-        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum).keys())
+        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum))
 
     def test_map_enum_omits_private_or_special_methods(self):
 
@@ -45,7 +36,7 @@ class TestEnum(MAASTestCase):
 
             VALUE = 9
 
-        self.assertItemsEqual(['VALUE'], map_enum(Enum).keys())
+        self.assertItemsEqual(['VALUE'], map_enum(Enum))
 
     def test_map_enum_maps_values(self):
 

@@ -3,19 +3,10 @@
 
 """Tests for provisioningserver.pserv_services.image_download_service"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import timedelta
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -44,11 +35,11 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
 )
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
-from twisted.spread.pb import NoSuchMethod
 
 
 class TestPeriodicImageDownloadService(PservTestCase):
@@ -199,7 +190,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
             """\
             Downloading images failed.
             Traceback (most recent call last):
-            Failure: exceptions.ZeroDivisionError: Such a shame ...
+            Failure: builtins.ZeroDivisionError: Such a shame ...
             """,
             logger.output)
 
@@ -229,7 +220,7 @@ class TestGetBootSources(PservTestCase):
         clock = Clock()
         client_call = Mock()
         client_call.side_effect = [
-            defer.fail(NoSuchMethod()),
+            defer.fail(UnhandledCommand()),
             defer.succeed(dict(sources=[])),
             ]
 
@@ -267,7 +258,7 @@ class TestGetBootSources(PservTestCase):
         clock = Clock()
         client_call = Mock()
         client_call.side_effect = [
-            defer.fail(NoSuchMethod()),
+            defer.fail(UnhandledCommand()),
             defer.succeed(dict(sources=sources)),
             ]
 

@@ -3,16 +3,6 @@
 
 """API handlers: `BlockDevice`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from django.core.exceptions import PermissionDenied
 from maasserver.api.support import (
     admin_method,

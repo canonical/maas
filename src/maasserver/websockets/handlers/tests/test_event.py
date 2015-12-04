@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.event`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import datetime
@@ -85,7 +76,7 @@ class TestEventHandler(MAASServerTestCase):
         handler = EventHandler(user, cache)
         node = factory.make_Node()
         handler.list({"node_id": node.id})
-        self.assertEquals([node.id], cache["node_ids"])
+        self.assertEqual([node.id], cache["node_ids"])
 
     def test_list_only_returns_events_for_node(self):
         user = factory.make_User()
@@ -113,7 +104,7 @@ class TestEventHandler(MAASServerTestCase):
         # Other events.
         for _ in range(3):
             factory.make_Event()
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_events(reversed(events)),
             handler.list({"node_id": node.id}))
 
@@ -232,7 +223,7 @@ class TestEventHandler(MAASServerTestCase):
         user = factory.make_User()
         pk = random.randint(1, 1000)
         handler = EventHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             (handler._meta.handler_name, "delete", pk),
             handler.on_listen(
                 sentinel.channel, "delete", pk))
@@ -252,7 +243,7 @@ class TestEventHandler(MAASServerTestCase):
         node = factory.make_Node()
         event = factory.make_Event(node=node)
         handler.cache["node_ids"].append(node.id)
-        self.assertEquals(
+        self.assertEqual(
             (
                 handler._meta.handler_name,
                 "create",

@@ -3,19 +3,11 @@
 
 """Tests for maas endpoint in the API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.models.config import Config
 from maasserver.testing.api import APITestCase
@@ -39,8 +31,11 @@ class MAASHandlerAPITest(APITestCase):
                 "op": "get_config",
                 "name": "default_distro_series",
             })
-        self.assertEquals(httplib.OK, response.status_code, response.content)
-        self.assertEquals('"%s"' % default_distro_series, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected = '"%s"' % default_distro_series
+        self.assertEqual(
+            expected.encode(settings.DEFAULT_CHARSET), response.content)
 
     def test_set_config_default_distro_series(self):
         self.become_admin()
@@ -53,8 +48,9 @@ class MAASHandlerAPITest(APITestCase):
                 "name": "default_distro_series",
                 "value": selected_release,
             })
-        self.assertEquals(httplib.OK, response.status_code, response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
             selected_release,
             Config.objects.get_config("default_distro_series"))
 
@@ -71,5 +67,5 @@ class MAASHandlerAPITest(APITestCase):
                 "name": "default_distro_series",
                 "value": invalid_release,
             })
-        self.assertEquals(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)

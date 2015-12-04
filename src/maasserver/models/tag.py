@@ -3,15 +3,6 @@
 
 """Node objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Tag",
     ]
@@ -72,7 +63,7 @@ class Tag(CleanSave, TimestampedModel):
     :ivar objects: The :class:`TagManager`.
     """
 
-    _tag_name_regex = '^[\w-]+$'
+    _tag_name_regex = '^[a-zA-Z0-9_-]+$'
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
@@ -96,7 +87,7 @@ class Tag(CleanSave, TimestampedModel):
         else:
             self._original_definition = self.definition
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def populate_nodes(self):

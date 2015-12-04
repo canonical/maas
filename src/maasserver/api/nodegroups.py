@@ -3,22 +3,13 @@
 
 """API handlers: `NodeGroup`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'check_nodegroup_access',
     'NodeGroupHandler',
     'NodeGroupsHandler',
     ]
 
-import httplib
+import http.client
 
 import bson
 from django.core.exceptions import PermissionDenied
@@ -102,7 +93,7 @@ class NodeGroupsHandler(OperationsHandler):
         for uuid in uuids:
             nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
             nodegroup.accept()
-        return HttpResponse("Nodegroup(s) accepted.", status=httplib.OK)
+        return HttpResponse("Nodegroup(s) accepted.", status=http.client.OK)
 
     @admin_method
     @operation(idempotent=False)
@@ -114,7 +105,7 @@ class NodeGroupsHandler(OperationsHandler):
         post_commit_do(ClustersImporter.schedule)
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
-            status=httplib.OK)
+            status=http.client.OK)
 
     @operation(idempotent=True)
     def describe_power_types(self, request):
@@ -141,7 +132,7 @@ class NodeGroupsHandler(OperationsHandler):
         for uuid in uuids:
             nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
             nodegroup.reject()
-        return HttpResponse("Nodegroup(s) rejected.", status=httplib.OK)
+        return HttpResponse("Nodegroup(s) rejected.", status=http.client.OK)
 
     @classmethod
     def resource_uri(cls):
@@ -158,7 +149,7 @@ def check_nodegroup_access(request, nodegroup):
     try:
         key = extract_oauth_key(request)
     except Unauthorized as e:
-        raise PermissionDenied(unicode(e))
+        raise PermissionDenied(str(e))
 
     if key != nodegroup.api_key:
         raise PermissionDenied(
@@ -191,7 +182,7 @@ class NodeGroupHandler(OperationsHandler):
 
     def accept_all_nodes(self, accept_all):
         """Check for accepting enlisted nodes."""
-        if isinstance(accept_all, basestring):
+        if isinstance(accept_all, str):
             return accept_all.lower() == 'true'
 
     @classmethod
@@ -237,7 +228,7 @@ class NodeGroupHandler(OperationsHandler):
         post_commit_do(ClustersImporter.schedule, nodegroup.uuid)
         return HttpResponse(
             "Import of boot images started on cluster %r" % nodegroup.uuid,
-            status=httplib.OK)
+            status=http.client.OK)
 
     @operation(idempotent=True)
     def list_nodes(self, request, uuid):
@@ -297,8 +288,8 @@ class NodeGroupHandler(OperationsHandler):
         }
         # Obtain details and prepare for BSON encoding.
         details = get_probed_details(system_ids)
-        for detail in details.itervalues():
-            for name, value in detail.iteritems():
+        for detail in details.values():
+            for name, value in detail.items():
                 if value is not None:
                     detail[name] = bson.Binary(value)
         return HttpResponse(
@@ -371,7 +362,7 @@ class NodeGroupHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         form.save()
 
-        return HttpResponse(status=httplib.OK)
+        return HttpResponse(status=http.client.OK)
 
     @admin_method
     @operation(idempotent=False)
@@ -526,9 +517,9 @@ class NodeGroupHandler(OperationsHandler):
                 protocol=protocol, prefix_filter=prefix_filter,
                 accept_all=accept_all)
         else:
-            return HttpResponse(status=httplib.BAD_REQUEST)
+            return HttpResponse(status=http.client.BAD_REQUEST)
 
-        return HttpResponse(status=httplib.OK)
+        return HttpResponse(status=http.client.OK)
 
     def do_probe_and_enlist_ucsm(self, nodegroup, request, user):
         """Probe and enlist UCSM"""
@@ -567,7 +558,7 @@ class NodeGroupHandler(OperationsHandler):
 
         self.do_probe_and_enlist_ucsm(nodegroup, request, user)
 
-        return HttpResponse(status=httplib.OK)
+        return HttpResponse(status=http.client.OK)
 
     def do_probe_and_enlist_mscm(self, nodegroup, request, user):
         """Probe and enlist MSCM"""
@@ -606,7 +597,7 @@ class NodeGroupHandler(OperationsHandler):
         user = request.user.username
         self.do_probe_and_enlist_mscm(nodegroup, request, user)
 
-        return HttpResponse(status=httplib.OK)
+        return HttpResponse(status=http.client.OK)
 
     def do_probe_and_enlist_msftocs(self, nodegroup, request, user):
         """Probe and enlist Microsoft OCS."""

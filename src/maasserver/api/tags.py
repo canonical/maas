@@ -3,22 +3,13 @@
 
 """API handlers: `Tag`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'TagHandler',
     'TagsHandler',
     ]
 
 
-import httplib
+import http.client
 
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
@@ -178,7 +169,7 @@ class TagHandler(OperationsHandler):
                 "Definition supplied '%s' "
                 "doesn't match current definition '%s'"
                 % (definition, tag.definition),
-                status=httplib.CONFLICT)
+                status=http.client.CONFLICT)
         nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)
         tag.node_set.add(*nodes_to_add)
         nodes_to_remove = self._get_nodes_for(request, 'remove', nodegroup)

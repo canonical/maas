@@ -3,15 +3,6 @@
 
 """Utilities for adding sub-commands to the MAAS management commands."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'ActionScript',
     'AtomicWriteScript',
@@ -19,7 +10,7 @@ __all__ = [
     ]
 
 from argparse import ArgumentParser
-from os import fdopen
+import io
 import signal
 from subprocess import CalledProcessError
 import sys
@@ -41,11 +32,19 @@ class ActionScript:
 
     @staticmethod
     def setup():
-        # Ensure stdout and stderr are line-bufferred.
-        sys.stdout = fdopen(sys.stdout.fileno(), "ab", 1)
-        sys.stderr = fdopen(sys.stderr.fileno(), "ab", 1)
         # Run the SIGINT handler on SIGTERM; `svc -d` sends SIGTERM.
         signal.signal(signal.SIGTERM, signal.default_int_handler)
+        # Ensure stdout and stderr are line-bufferred.
+        if not sys.stdout.line_buffering:
+            sys.stdout.flush()
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.buffer, sys.stdout.encoding,
+                line_buffering=True)
+        if not sys.stderr.line_buffering:
+            sys.stderr.flush()
+            sys.stderr = io.TextIOWrapper(
+                sys.stderr.buffer, sys.stderr.encoding,
+                line_buffering=True)
 
     def register(self, name, handler, *args, **kwargs):
         """Register an action for the given name.
@@ -75,7 +74,10 @@ class ActionScript:
         this object is executed as a script proper.
         """
         args = self.parser.parse_args(argv)
-        args.handler.run(args)
+        if getattr(args, "handler", None) is None:
+            self.parser.error("Choose a sub-command.")
+        else:
+            args.handler.run(args)
 
     def __call__(self, argv=None):
         try:
@@ -116,21 +118,16 @@ class AtomicWriteScript:
             "--filename", action="store", required=True, help=(
                 "The name of the file in which to store contents of stdin"))
         parser.add_argument(
-            "--mode", action="store", required=False, default=None, help=(
+            "--mode", action="store", required=False, default="0600", help=(
                 "They permissions to set on the file. If not set "
                 "will be r/w only to owner"))
 
     @staticmethod
     def run(args):
         """Take content from stdin and write it atomically to a file."""
-        content = sys.stdin.read()
-        if args.mode is not None:
-            mode = int(args.mode, 8)
-        else:
-            mode = 0o600
         atomic_write(
-            content, args.filename, overwrite=not args.no_overwrite,
-            mode=mode)
+            sys.stdin.buffer.read(), args.filename, mode=int(args.mode, 8),
+            overwrite=(not args.no_overwrite))
 
 
 class AtomicDeleteScript:
@@ -150,7 +147,7 @@ class AtomicDeleteScript:
         """
         parser.add_argument(
             "--filename", action="store", required=True, help=(
-                "The name of the file in which to delete."))
+                "The name of the file to delete."))
 
     @staticmethod
     def run(args):

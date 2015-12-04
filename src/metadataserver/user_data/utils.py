@@ -10,15 +10,6 @@ Its contents are not customizable.  To inject custom code, use the
 :class:`CommissioningScript` model.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'generate_user_data',
     ]
@@ -84,4 +75,4 @@ def generate_user_data(node, userdata_dir,
     combined = MIMEMultipart()
     combined.attach(config_part)
     combined.attach(data_part)
-    return combined.as_string()
+    return combined.as_bytes()

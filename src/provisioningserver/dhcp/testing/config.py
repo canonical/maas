@@ -3,15 +3,6 @@
 
 """Test helpers related to DHCP configuration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'make_subnet_config',
     ]
@@ -27,14 +18,14 @@ def make_subnet_config(network=None):
     ip_low, ip_high = factory.make_ip_range(network)
     return {
         'interface': factory.make_name('eth', sep=''),
-        'subnet': unicode(IPAddress(network.first)),
-        'subnet_mask': unicode(network.netmask),
-        'subnet_cidr': unicode(network.cidr),
-        'broadcast_ip': unicode(network.broadcast),
-        'dns_servers': unicode(factory.pick_ip_in_network(network)),
-        'ntp_server': unicode(factory.pick_ip_in_network(network)),
+        'subnet': str(IPAddress(network.first)),
+        'subnet_mask': str(network.netmask),
+        'subnet_cidr': str(network.cidr),
+        'broadcast_ip': str(network.broadcast),
+        'dns_servers': str(factory.pick_ip_in_network(network)),
+        'ntp_server': str(factory.pick_ip_in_network(network)),
         'domain_name': '%s.example.com' % factory.make_name('domain'),
-        'router_ip': unicode(factory.pick_ip_in_network(network)),
-        'ip_range_low': unicode(ip_low),
-        'ip_range_high': unicode(ip_high),
+        'router_ip': str(factory.pick_ip_in_network(network)),
+        'ip_range_low': str(ip_low),
+        'ip_range_high': str(ip_high),
         }

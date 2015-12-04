@@ -3,15 +3,6 @@
 
 """Fabric objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DEFAULT_FABRIC_NAME",
     "Fabric",
@@ -169,7 +160,7 @@ class Fabric(CleanSave, TimestampedModel):
         max_length=256, editable=True, null=True, blank=True,
         validators=[NAME_VALIDATOR])
 
-    def __unicode__(self):
+    def __str__(self):
         return "name=%s" % self.get_name()
 
     def is_default(self):

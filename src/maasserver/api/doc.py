@@ -3,15 +3,6 @@
 
 """Utilities to help document/describe the public facing API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "describe_api",
     "describe_handler",
@@ -25,11 +16,11 @@ from collections import (
     Mapping,
     Sequence,
 )
-from cStringIO import StringIO
 from functools import partial
 import hashlib
 from inspect import getdoc
-from itertools import izip_longest
+from io import StringIO
+from itertools import zip_longest
 import json
 from threading import RLock
 
@@ -161,7 +152,7 @@ def merge(*iterables):
 
     """
     undefined = object()
-    for values in izip_longest(*iterables, fillvalue=undefined):
+    for values in zip_longest(*iterables, fillvalue=undefined):
         yield next(value for value in values if value is not undefined)
 
 
@@ -270,6 +261,114 @@ def describe_api():
     return description
 
 
+class KeyCanonicalNone:
+    """See `key_canonical`."""
+
+    def __lt__(self, other):
+        if isinstance(other, KeyCanonicalNone):
+            return False
+        else:
+            return True
+
+    def __eq__(self, other):
+        if isinstance(other, KeyCanonicalNone):
+            return True
+        else:
+            return False
+
+
+class KeyCanonicalNumeric:
+    """See `key_canonical`."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __lt__(self, other):
+        if isinstance(other, KeyCanonicalNone):
+            return False
+        elif isinstance(other, KeyCanonicalNumeric):
+            return self.value < other.value
+        else:
+            return True
+
+    def __eq__(self, other):
+        if isinstance(other, KeyCanonicalNumeric):
+            return self.value == other.value
+        else:
+            return False
+
+
+class KeyCanonicalString:
+    """See `key_canonical`."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __lt__(self, other):
+        if isinstance(other, KeyCanonicalString):
+            return self.value < other.value
+        elif isinstance(other, KeyCanonicalTuple):
+            return True
+        else:
+            return False
+
+    def __eq__(self, other):
+        if isinstance(other, KeyCanonicalString):
+            return self.value == other.value
+        else:
+            return False
+
+
+class KeyCanonicalTuple:
+    """See `key_canonical`."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __lt__(self, other):
+        if isinstance(other, KeyCanonicalTuple):
+            return self.value < other.value
+        else:
+            return False
+
+    def __eq__(self, other):
+        if isinstance(other, KeyCanonicalTuple):
+            return self.value == other.value
+        else:
+            return False
+
+
+def key_canonical(value):
+    """Create a sort key for the canonical API description.
+
+    For a limited set of types, this provides Python 2-like sorting. For
+    example, it is possible to compare ``None`` with a string. Types compare
+    like so:
+
+      None < Numeric/Boolean < String < Tuple
+
+    Within each type, comparisons happen as normal. Use with ``sort`` or
+    ``sorted``::
+
+      sorted(things, key=key_canonical)
+
+    :raise TypeError: For types that cannot be compared.
+    """
+    if value is None:
+        return KeyCanonicalNone()
+    elif isinstance(value, (bool, int, float)):
+        return KeyCanonicalNumeric(value)
+    elif isinstance(value, str):
+        return KeyCanonicalString(value)
+    elif isinstance(value, tuple):
+        return KeyCanonicalTuple(
+            tuple(key_canonical(v) for v in value))
+    else:
+        raise TypeError(
+            "Cannot compare %r (%s)" % (
+                value, type(value).__qualname__))
+
+
 def describe_canonical(description):
     """Returns an ordered data structure composed from limited types.
 
@@ -292,20 +391,22 @@ def describe_canonical(description):
     """
     if description in (True, False, None):
         return description
-    if isinstance(description, (int, long, float)):
+    if isinstance(description, (int, float)):
         return description
     elif isinstance(description, bytes):
         return description.decode("utf-8")
-    elif isinstance(description, unicode):
+    elif isinstance(description, str):
         return description
     elif isinstance(description, Sequence):
         return tuple(sorted(
-            describe_canonical(element)
-            for element in description))
+            (describe_canonical(element)
+             for element in description),
+            key=key_canonical))
     elif isinstance(description, Mapping):
         return tuple(sorted(
-            (describe_canonical(key), describe_canonical(value))
-            for (key, value) in description.viewitems()))
+            ((describe_canonical(key), describe_canonical(value))
+             for (key, value) in description.items()),
+            key=key_canonical))
     else:
         raise TypeError(
             "Cannot produce canonical representation for %r."

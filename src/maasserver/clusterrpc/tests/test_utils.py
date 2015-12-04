@@ -3,15 +3,6 @@
 
 """Tests for :py:mod:`maasserver.clusterrpc.utils`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -35,7 +26,7 @@ class TestCallClusters(MAASServerTestCase):
         nodegroups = [
             factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.DISABLED)
-            for _ in xrange(5)
+            for _ in range(5)
         ]
 
         # Accept one of them at random.

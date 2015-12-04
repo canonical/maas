@@ -3,20 +3,15 @@
 
 """Conversion utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'XMLToYAML',
     ]
 
+import json
+
+from django.conf import settings
 from lxml import etree
+from provisioningserver.utils import typed
 
 
 class XMLToYAML:
@@ -107,7 +102,21 @@ def round_size_to_nearest_block(size, block_size, round_up=True):
     :param block_size: The block size to round to.
     :param round_up: If True, will round up to fill current block, else down.
     """
-    number_of_blocks = size / block_size
+    number_of_blocks = size // block_size
     if round_up and size % block_size > 0:
         number_of_blocks += 1
     return block_size * number_of_blocks
+
+
+@typed
+def json_load_bytes(input: bytes, encoding=None):
+    """Load JSON from `input`.
+
+    :param input: Input data to convert from JSON.
+    :type input: bytes
+    :param encoding: Encoding to use to decode input. Defaults to Django's
+        ``DEFAULT_CHARSET``.
+    :type encoding: str
+    """
+    return json.loads(input.decode(
+        settings.DEFAULT_CHARSET if encoding is None else encoding))

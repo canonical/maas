@@ -3,21 +3,16 @@
 
 """Utilities for working with TFTP and ``python-tx-tftp``."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_local_address",
     "get_remote_address",
+    "TFTPPath",
 ]
 
 from twisted.python.context import get
+
+# Paths in TFTP are always byte strings.
+TFTPPath = bytes
 
 
 def get_local_address():

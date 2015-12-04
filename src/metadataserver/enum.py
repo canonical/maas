@@ -3,15 +3,6 @@
 
 """Enumerations meaningful to the metadataserver application."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'SIGNAL_STATUS',
     'SIGNAL_STATUS_CHOICES',

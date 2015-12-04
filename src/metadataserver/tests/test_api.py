@@ -3,19 +3,10 @@
 
 """Tests for the metadata API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
-import httplib
+import http.client
 from io import BytesIO
 import json
 import os.path
@@ -86,6 +77,7 @@ from provisioningserver.events import (
 from testtools.matchers import (
     Contains,
     ContainsAll,
+    Equals,
     MatchesAll,
     Not,
 )
@@ -105,12 +97,14 @@ class TestHelpers(DjangoTestCase):
         input_text = "Hello."
         response = make_text_response(input_text)
         self.assertEqual('text/plain', response['Content-Type'])
-        self.assertEqual(input_text, response.content)
+        self.assertEqual(
+            input_text, response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_make_list_response_presents_list_as_newline_separated_text(self):
         response = make_list_response(['aaa', 'bbb'])
         self.assertEqual('text/plain', response['Content-Type'])
-        self.assertEqual("aaa\nbbb", response.content)
+        self.assertEqual(
+            "aaa\nbbb", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_check_version_accepts_latest(self):
         check_version('latest')
@@ -261,17 +255,19 @@ class TestMetadataCommon(DjangoTestCase):
     def test_no_anonymous_access(self):
         url = reverse(self.get_metadata_name())
         self.assertEqual(
-            httplib.UNAUTHORIZED, self.client.get(url).status_code)
+            http.client.UNAUTHORIZED, self.client.get(url).status_code)
 
     def test_metadata_index_shows_latest(self):
         client = make_node_client()
         url = reverse(self.get_metadata_name())
-        self.assertIn('latest', client.get(url).content)
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        self.assertIn('latest', content)
 
     def test_metadata_index_shows_only_known_versions(self):
         client = make_node_client()
         url = reverse(self.get_metadata_name())
-        for item in client.get(url).content.splitlines():
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        for item in content.splitlines():
             check_version(item)
         # The test is that we get here without exception.
         pass
@@ -280,8 +276,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client()
         view_name = self.get_metadata_name('-version')
         url = reverse(view_name, args=['latest'])
-        items = client.get(url).content.splitlines()
-        self.assertThat(items, ContainsAll([
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        self.assertThat(content.splitlines(), ContainsAll([
             'meta-data',
             'maas-commissioning-scripts',
             ]))
@@ -290,8 +286,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client()
         view_name = self.get_metadata_name('-version')
         url = reverse(view_name, args=['latest'])
-        items = client.get(url).content.splitlines()
-        self.assertNotIn('user-data', items)
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        self.assertNotIn('user-data', content.splitlines())
 
     def test_version_index_shows_user_data_if_available(self):
         node = factory.make_Node()
@@ -299,8 +295,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client(node)
         view_name = self.get_metadata_name('-version')
         url = reverse(view_name, args=['latest'])
-        items = client.get(url).content.splitlines()
-        self.assertIn('user-data', items)
+        content = client.get(url).content.decode(settings.DEFAULT_CHARSET)
+        self.assertIn('user-data', content.splitlines())
 
     def test_meta_data_view_lists_fields(self):
         # Some fields only are returned if there is data related to them.
@@ -312,7 +308,10 @@ class TestMetadataCommon(DjangoTestCase):
         response = client.get(url)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertItemsEqual(
-            MetaDataHandler.fields, response.content.split())
+            MetaDataHandler.fields, [
+                field.decode(settings.DEFAULT_CHARSET)
+                for field in response.content.split()
+            ])
 
     def test_meta_data_view_is_sorted(self):
         client = make_node_client()
@@ -327,11 +326,11 @@ class TestMetadataCommon(DjangoTestCase):
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'UNKNOWN-ITEM'])
         response = client.get(url)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_get_attribute_producer_supports_all_fields(self):
         handler = MetaDataHandler()
-        producers = map(handler.get_attribute_producer, handler.fields)
+        producers = list(map(handler.get_attribute_producer, handler.fields))
         self.assertNotIn(None, producers)
 
     def test_meta_data_local_hostname_returns_fqdn(self):
@@ -347,8 +346,9 @@ class TestMetadataCommon(DjangoTestCase):
         url = reverse(view_name, args=['latest', 'local-hostname'])
         response = client.get(url)
         self.assertEqual(
-            (httplib.OK, node.fqdn),
-            (response.status_code, response.content.decode('ascii')))
+            (http.client.OK, node.fqdn),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
         self.assertIn('text/plain', response['Content-Type'])
 
     def test_meta_data_instance_id_returns_system_id(self):
@@ -358,8 +358,9 @@ class TestMetadataCommon(DjangoTestCase):
         url = reverse(view_name, args=['latest', 'instance-id'])
         response = client.get(url)
         self.assertEqual(
-            (httplib.OK, node.system_id),
-            (response.status_code, response.content.decode('ascii')))
+            (http.client.OK, node.system_id),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
         self.assertIn('text/plain', response['Content-Type'])
 
     def test_public_keys_not_listed_for_node_without_public_keys(self):
@@ -368,7 +369,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client()
         response = client.get(url)
         self.assertNotIn(
-            'public-keys', response.content.decode('ascii').split('\n'))
+            'public-keys', response.content.decode(
+                settings.DEFAULT_CHARSET).split('\n'))
 
     def test_public_keys_not_listed_for_comm_node_with_ssh_disabled(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
@@ -379,7 +381,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client(node=node)
         response = client.get(url)
         self.assertNotIn(
-            'public-keys', response.content.decode('ascii').split('\n'))
+            'public-keys', response.content.decode(
+                settings.DEFAULT_CHARSET).split('\n'))
 
     def test_public_keys_listed_for_comm_node_with_ssh_enabled(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
@@ -390,7 +393,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client(node=node)
         response = client.get(url)
         self.assertIn(
-            'public-keys', response.content.decode('ascii').split('\n'))
+            'public-keys', response.content.decode(
+                settings.DEFAULT_CHARSET).split('\n'))
 
     def test_public_keys_listed_for_node_with_public_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
@@ -400,7 +404,8 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client(node=node)
         response = client.get(url)
         self.assertIn(
-            'public-keys', response.content.decode('ascii').split('\n'))
+            'public-keys', response.content.decode(
+                settings.DEFAULT_CHARSET).split('\n'))
 
     def test_public_keys_for_node_without_public_keys_returns_empty(self):
         view_name = self.get_metadata_name('-meta-data')
@@ -408,7 +413,7 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client()
         response = client.get(url)
         self.assertEqual(
-            (httplib.OK, ''),
+            (http.client.OK, b''),
             (response.status_code, response.content))
 
     def test_public_keys_for_node_returns_list_of_keys(self):
@@ -418,12 +423,12 @@ class TestMetadataCommon(DjangoTestCase):
         url = reverse(view_name, args=['latest', 'public-keys'])
         client = make_node_client(node=node)
         response = client.get(url)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
         expected_response = '\n'.join(keys)
-        self.assertItemsEqual(
-            expected_response,
-            response.content.decode('ascii'))
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals(expected_response))
         self.assertIn('text/plain', response['Content-Type'])
 
     def test_public_keys_url_with_additional_slashes(self):
@@ -438,9 +443,9 @@ class TestMetadataCommon(DjangoTestCase):
         client = make_node_client(node=node)
         response = client.get(url)
         keys = SSHKey.objects.filter(user=user).values_list('key', flat=True)
-        self.assertItemsEqual(
-            '\n'.join(keys),
-            response.content.decode('ascii'))
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals('\n'.join(keys)))
 
 
 class TestMetadataUserData(DjangoTestCase):
@@ -454,7 +459,7 @@ class TestMetadataUserData(DjangoTestCase):
         self.assertEqual('application/octet-stream', response['Content-Type'])
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.OK, sample_binary_data),
+            (http.client.OK, sample_binary_data),
             (response.status_code, response.content))
 
     def test_poweroff_user_data_returned_if_unexpected_status(self):
@@ -467,14 +472,14 @@ class TestMetadataUserData(DjangoTestCase):
         self.assertEqual('application/octet-stream', response['Content-Type'])
         self.assertIsInstance(response.content, bytes)
         self.assertEqual(
-            (httplib.OK, user_data),
+            (http.client.OK, user_data),
             (response.status_code, response.content))
 
     def test_user_data_for_node_without_user_data_returns_not_found(self):
         client = make_node_client(
             factory.make_Node(status=NODE_STATUS.COMMISSIONING))
         response = client.get(reverse('metadata-user-data', args=['latest']))
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
 
 class TestMetadataUserDataStateChanges(MAASServerTestCase):
@@ -487,7 +492,7 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(status, reload_object(node).status)
 
     def test_request_causes_status_change_if_deploying(self):
@@ -495,7 +500,7 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
 
@@ -515,8 +520,10 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
         response = client.get(
             reverse('curtin-metadata-user-data', args=['latest']))
 
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertIn("PREFIX='curtin'", response.content)
+        self.assertEqual(http.client.OK.value, response.status_code)
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Contains("PREFIX='curtin'"))
 
 
 class TestInstallingAPI(MAASServerTestCase):
@@ -525,7 +532,7 @@ class TestInstallingAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = OAuthAuthenticatedClient(factory.make_User())
         response = call_signal(client)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -534,7 +541,7 @@ class TestInstallingAPI(MAASServerTestCase):
         client = make_node_client(
             node=factory.make_Node(status=NODE_STATUS.DEPLOYING))
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -542,7 +549,7 @@ class TestInstallingAPI(MAASServerTestCase):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installation_success_does_not_populate_tags(self):
@@ -551,7 +558,7 @@ class TestInstallingAPI(MAASServerTestCase):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
@@ -560,7 +567,7 @@ class TestInstallingAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installation_success_does_not_clear_owner(self):
@@ -568,7 +575,7 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(node.owner, reload_object(node).owner)
 
     def test_signaling_installation_failure_makes_node_failed(self):
@@ -576,7 +583,7 @@ class TestInstallingAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
 
@@ -586,7 +593,7 @@ class TestInstallingAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
 
@@ -603,7 +610,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = make_node_client().get(
             reverse('commissioning-scripts', args=['latest']))
         self.assertEqual(
-            httplib.OK, response.status_code,
+            http.client.OK, response.status_code,
             "Unexpected response %d: %s"
             % (response.status_code, response.content))
         self.assertIn(
@@ -623,7 +630,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = OAuthAuthenticatedClient(factory.make_User())
         response = call_signal(client)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
@@ -632,7 +639,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(
             node=factory.make_Node(status=NODE_STATUS.COMMISSIONING))
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
@@ -642,7 +649,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
             populate_tags_for_single_node,
@@ -653,28 +660,28 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'signal'})
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_signaling_rejects_unknown_status_code(self):
         response = call_signal(status=factory.make_string())
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         client = make_node_client(node=node)
         response = call_signal(client)
-        self.assertEqual(
-            (
-                httplib.CONFLICT,
-                "Node wasn't commissioning/installing (status is New)",
-            ),
-            (response.status_code, response.content))
+        self.expectThat(
+            response.status_code,
+            Equals(http.client.CONFLICT))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals("Node wasn't commissioning/installing (status is New)"))
 
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
@@ -686,7 +693,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=script_result,
             files={filename: factory.make_string().encode('ascii')})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         result = NodeResult.objects.get(node=node)
         self.assertEqual(script_result, result.script_result)
 
@@ -696,9 +704,10 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=random.randint(0, 10),
             files={factory.make_string(): ''.encode('ascii')})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         result = NodeResult.objects.get(node=node)
-        self.assertEqual('', result.data)
+        self.assertEqual(b'', result.data)
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_User()
@@ -707,21 +716,22 @@ class TestCommissioningAPI(MAASServerTestCase):
         node.save()
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(user, reload_object(node).owner)
 
     def test_signaling_commissioning_success_makes_node_Ready(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signalling_commissioning_success_cancels_monitor(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
 
     def test_signaling_commissioning_success_is_idempotent(self):
@@ -729,7 +739,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_success_clears_owner(self):
@@ -738,14 +748,14 @@ class TestCommissioningAPI(MAASServerTestCase):
         node.save()
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNone(reload_object(node).owner)
 
     def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
@@ -755,14 +765,15 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
     def test_signalling_commissioning_failure_cancels_monitor(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
 
     def test_signaling_commissioning_failure_is_idempotent(self):
@@ -770,7 +781,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
@@ -779,7 +790,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         error_text = factory.make_string()
         response = call_signal(client, status='FAILED', error=error_text)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
 
     def test_signaling_commissioning_failure_clears_owner(self):
@@ -788,7 +799,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node.save()
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNone(reload_object(node).owner)
 
     def test_signaling_no_error_clears_existing_error(self):
@@ -796,7 +807,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, error=factory.make_string())
         client = make_node_client(node=node)
         response = call_signal(client)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual('', reload_object(node).error)
 
     def test_signalling_stores_files_for_any_status(self):
@@ -825,7 +836,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result = random.randint(0, 10)
         response = call_signal(
             client, script_result=script_result, files={'file.txt': text})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             text, NodeResult.objects.get_data(node, 'file.txt'))
 
@@ -837,7 +848,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=script_result,
             files={'file.txt': unicode_text.encode('utf-8')})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             unicode_text.encode("utf-8"),
             NodeResult.objects.get_data(node, 'file.txt'))
@@ -851,7 +862,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         script_result = random.randint(0, 10)
         response = call_signal(
             client, script_result=script_result, files=contents)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             contents,
             {
@@ -871,7 +882,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=script_result,
             files={'output.txt': contents.encode('utf-8')})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         stored_data = NodeResult.objects.get_data(
             node, 'output.txt')
         self.assertEqual(size_limit, len(stored_data))
@@ -883,7 +894,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             ["virtual"], [each_tag.name for each_tag in node.tags.all()])
@@ -897,7 +908,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             [], [each_tag.name for each_tag in node.tags.all()])
@@ -909,7 +920,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client, script_result=0,
             files={'00-maas-02-virtuality.out': content})
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(0, len(node.tags.all()))
 
@@ -923,7 +934,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             power_pass=factory.make_string())
         response = call_signal(
             client, power_type="moonshot", power_parameters=json.dumps(params))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertEqual("mscm", node.power_type)
         self.assertNotEqual(params, node.power_parameters)
@@ -932,9 +944,12 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, power_type="foo")
-        self.assertEqual(
-            (httplib.BAD_REQUEST, "Bad power_type 'foo'"),
-            (response.status_code, response.content))
+        self.expectThat(
+            response.status_code,
+            Equals(http.client.BAD_REQUEST))
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals("Bad power_type 'foo'"))
 
     def test_signal_power_type_stores_params(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -945,7 +960,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             power_pass=factory.make_string())
         response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertEqual("ipmi", node.power_type)
         self.assertEqual(params, node.power_parameters)
@@ -959,7 +975,8 @@ class TestCommissioningAPI(MAASServerTestCase):
             power_pass=factory.make_string())
         response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = reload_object(node)
         self.assertEqual(
             params, node.power_parameters)
@@ -969,29 +986,35 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(
             client, power_type="ipmi", power_parameters="badjson")
-        self.assertEqual(
-            (httplib.BAD_REQUEST, "Failed to parse JSON power_parameters"),
-            (response.status_code, response.content))
+        self.expectThat(
+            response.status_code,
+            Equals(http.client.BAD_REQUEST))
+        self.expectThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Equals("Failed to parse JSON power_parameters"))
 
     def test_signal_calls_release_leases_if_not_WORKING(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(node.release_leases, MockCalledOnceWith())
 
     def test_signal_does_not_call_release_leases_if_WORKING(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(node.release_leases, MockNotCalled())
 
     def test_signal_doesnt_call_release_leases_if_not_commissioning(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         self.assertThat(node.release_leases, MockNotCalled())
 
     def test_signal_sets_default_storage_layout_if_OK(self):
@@ -999,7 +1022,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
             Node.set_default_storage_layout,
@@ -1010,7 +1033,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='WORKING', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
             MockNotCalled())
@@ -1020,7 +1043,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='FAILED', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
             MockNotCalled())
@@ -1031,7 +1054,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
             mock_set_initial_networking_configuration,
@@ -1043,7 +1066,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='WORKING', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockNotCalled())
@@ -1054,7 +1077,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='FAILED', script_result='0')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockNotCalled())
@@ -1067,7 +1090,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
 
@@ -1076,7 +1099,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.RELEASING, reload_object(node).status)
 
@@ -1091,8 +1114,10 @@ class TestByMACMetadataAPI(DjangoTestCase):
             args=['latest', iface.mac_address, 'instance-id'])
         response = self.client.get(url)
         self.assertEqual(
-            (httplib.OK, iface.node.system_id),
-            (response.status_code, response.content))
+            (http.client.OK.value,
+             iface.node.system_id),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_api_retrieves_node_userdata_by_mac(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1104,7 +1129,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
             'metadata-user-data-by-mac', args=['latest', iface.mac_address])
         response = self.client.get(url)
         self.assertEqual(
-            (httplib.OK, user_data),
+            (http.client.OK, user_data),
             (response.status_code, response.content))
 
     def test_api_normally_disallows_anonymous_node_metadata_access(self):
@@ -1115,7 +1140,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
             'metadata-meta-data-by-mac',
             args=['latest', iface.mac_address, 'instance-id'])
         response = self.client.get(url)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestNetbootOperationAPI(DjangoTestCase):
@@ -1147,7 +1172,7 @@ class TestAnonymousAPI(DjangoTestCase):
             anon_netboot_off_url, {'op': 'netboot_off'})
         node = reload_object(node)
         self.assertEqual(
-            (httplib.OK, False),
+            (http.client.OK, False),
             (response.status_code, node.netboot),
             response)
 
@@ -1161,12 +1186,12 @@ class TestAnonymousAPI(DjangoTestCase):
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'})
         self.assertEqual(
-            (httplib.OK,
+            (http.client.OK.value,
              "text/plain",
              fake_preseed),
             (response.status_code,
              response["Content-Type"],
-             response.content),
+             response.content.decode(settings.DEFAULT_CHARSET)),
             response)
 
     def test_anonymous_get_enlist_preseed_detects_request_origin(self):
@@ -1181,7 +1206,9 @@ class TestAnonymousAPI(DjangoTestCase):
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'},
             REMOTE_ADDR=ip)
-        self.assertThat(response.content, Contains(ng_url))
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET),
+            Contains(ng_url))
 
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.
@@ -1195,12 +1222,12 @@ class TestAnonymousAPI(DjangoTestCase):
         response = self.client.get(
             anon_node_url, {'op': 'get_preseed'})
         self.assertEqual(
-            (httplib.OK,
+            (http.client.OK.value,
              "text/plain",
              fake_preseed),
             (response.status_code,
              response["Content-Type"],
-             response.content),
+             response.content.decode(settings.DEFAULT_CHARSET)),
             response)
 
     def test_anoymous_netboot_off_adds_installation_finished_event(self):
@@ -1234,7 +1261,7 @@ class TestEnlistViews(DjangoTestCase):
             args=['latest', 'instance-id'])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.OK, "text/plain"),
+            (http.client.OK.value, "text/plain"),
             (response.status_code, response["Content-Type"]))
         # just insist content is non-empty. It doesn't matter what it is.
         self.assertTrue(response.content)
@@ -1245,7 +1272,7 @@ class TestEnlistViews(DjangoTestCase):
             'enlist-metadata-meta-data', args=['latest', 'local-hostname'])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.OK, "text/plain"),
+            (http.client.OK, "text/plain"),
             (response.status_code, response["Content-Type"]))
         # just insist content is non-empty. It doesn't matter what it is.
         self.assertTrue(response.content)
@@ -1257,15 +1284,16 @@ class TestEnlistViews(DjangoTestCase):
             'enlist-metadata-meta-data', args=['latest', 'public-keys'])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.OK, ""),
-            (response.status_code, response.content))
+            (http.client.OK, ""),
+            (response.status_code,
+             response.content.decode(settings.DEFAULT_CHARSET)))
 
     def test_metadata_bogus_is_404(self):
         md_url = reverse(
             'enlist-metadata-meta-data',
             args=['latest', 'BOGUS'])
         response = self.client.get(md_url)
-        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
     def test_get_userdata(self):
         # instance-id must be available
@@ -1275,8 +1303,9 @@ class TestEnlistViews(DjangoTestCase):
             api, "get_enlist_userdata", Mock(return_value=fake_preseed))
         response = self.client.get(ud_url)
         self.assertEqual(
-            (httplib.OK, "text/plain", fake_preseed),
-            (response.status_code, response["Content-Type"], response.content),
+            (http.client.OK, "text/plain", fake_preseed),
+            (response.status_code, response["Content-Type"],
+             response.content.decode(settings.DEFAULT_CHARSET)),
             response)
 
     def test_get_userdata_detects_request_origin(self):
@@ -1291,7 +1320,7 @@ class TestEnlistViews(DjangoTestCase):
         url = reverse('enlist-metadata-user-data', args=['latest'])
         response = self.client.get(url, REMOTE_ADDR=ip)
         self.assertThat(
-            response.content,
+            response.content.decode(settings.DEFAULT_CHARSET),
             MatchesAll(Contains(nodegroup_url), Not(Contains(maas_url))))
 
     def test_metadata_list(self):
@@ -1299,17 +1328,19 @@ class TestEnlistViews(DjangoTestCase):
         md_url = reverse('enlist-metadata-meta-data', args=['latest', ""])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.OK, "text/plain"),
+            (http.client.OK, "text/plain"),
             (response.status_code, response["Content-Type"]))
-        self.assertTrue('instance-id' in response.content.splitlines())
-        self.assertTrue('local-hostname' in response.content.splitlines())
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET).splitlines(),
+            ContainsAll(('instance-id', 'local-hostname')))
 
     def test_api_version_contents_list(self):
         # top level api (/enlist/latest/) must list 'metadata' and 'userdata'
         md_url = reverse('enlist-version', args=['latest'])
         response = self.client.get(md_url)
         self.assertEqual(
-            (httplib.OK, "text/plain"),
+            (http.client.OK, "text/plain"),
             (response.status_code, response["Content-Type"]))
-        self.assertTrue('user-data' in response.content.splitlines())
-        self.assertTrue('meta-data' in response.content.splitlines())
+        self.assertThat(
+            response.content.decode(settings.DEFAULT_CHARSET).splitlines(),
+            ContainsAll(('user-data', 'meta-data')))

@@ -3,15 +3,6 @@
 
 """Tests for the region's RPC implementation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import defaultdict
@@ -28,9 +19,9 @@ import os.path
 import random
 from random import randint
 import threading
-from urlparse import urlparse
+from urllib.parse import urlparse
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.db import connection
 from django.db.utils import ProgrammingError
 from maasserver import (
@@ -144,6 +135,7 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import events
 from simplejson import dumps
 from testtools.deferredruntest import (
@@ -179,11 +171,14 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
-from twisted.protocols import amp
+from twisted.logger import globalLogPublisher
 from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName
 from zope.interface.verify import verifyObject
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 @transactional
@@ -221,7 +216,7 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         message = factory.make_bytes()
         secret = yield get_shared_secret()
 
-        args = {b"message": message}
+        args = {"message": message}
         response = yield call_responder(Region(), Authenticate, args)
         digest = response["digest"]
         salt = response["salt"]
@@ -256,7 +251,7 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
     def get_cluster_networks(self, cluster):
         return [
             {"interface": ngi.interface, "ip": ngi.ip,
-             "subnet_mask": unicode(IPNetwork(ngi.subnet.cidr).cidr.netmask)}
+             "subnet_mask": str(IPNetwork(ngi.subnet.cidr).cidr.netmask)}
             for ngi in cluster.nodegroupinterface_set.all()
         ]
 
@@ -300,7 +295,7 @@ class TestRegionProtocol_Register(DjangoTransactionTestCase):
             The cluster ... could not be registered:
             * interfaces: ...
             """,
-            unicode(error))
+            str(error))
 
 
 class TestRegionProtocol_StartTLS(MAASTestCase):
@@ -352,7 +347,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         ]
 
         d = call_responder(Region(), ReportBootImages, {
-            b"uuid": uuid, b"images": images,
+            "uuid": uuid, "images": images,
         })
 
         def check(response):
@@ -388,7 +383,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         ]
 
         d = call_responder(Region(), ReportBootImages, {
-            b"uuid": factory.make_name("uuid"), b"images": images,
+            "uuid": factory.make_name("uuid"), "images": images,
         })
 
         def check(response):
@@ -433,7 +428,7 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
         }
 
         response = yield call_responder(Region(), UpdateLeases, {
-            b"uuid": nodegroup.uuid, b"mappings": [mapping]})
+            "uuid": nodegroup.uuid, "mappings": [mapping]})
 
         self.assertThat(response, Equals({}))
 
@@ -446,7 +441,7 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
     def test__raises_NoSuchCluster_if_cluster_not_found(self):
         uuid = factory.make_name("uuid")
         d = call_responder(
-            Region(), UpdateLeases, {b"uuid": uuid, b"mappings": []})
+            Region(), UpdateLeases, {"uuid": uuid, "mappings": []})
         return assert_fails_with(d, NoSuchCluster)
 
 
@@ -461,11 +456,11 @@ class TestRegionProtocol_GetBootSources(DjangoTransactionTestCase):
     def test_get_boot_sources_returns_simplestreams_endpoint(self):
         uuid = factory.make_name("uuid")
 
-        d = call_responder(Region(), GetBootSources, {b"uuid": uuid})
+        d = call_responder(Region(), GetBootSources, {"uuid": uuid})
 
         def check(response):
             self.assertEqual(
-                {b"sources": [get_simplestream_endpoint()]},
+                {"sources": [get_simplestream_endpoint()]},
                 response)
 
         return d.addCallback(check)
@@ -482,11 +477,11 @@ class TestRegionProtocol_GetBootSourcesV2(DjangoTransactionTestCase):
     def test_get_boot_sources_v2_returns_simplestreams_endpoint(self):
         uuid = factory.make_name("uuid")
 
-        d = call_responder(Region(), GetBootSourcesV2, {b"uuid": uuid})
+        d = call_responder(Region(), GetBootSourcesV2, {"uuid": uuid})
 
         def check(response):
             self.assertEqual(
-                {b"sources": [get_simplestream_endpoint()]},
+                {"sources": [get_simplestream_endpoint()]},
                 response)
 
         return d.addCallback(check)
@@ -518,8 +513,8 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
         self.assertEqual(
-            {b"main": urlparse("http://archive.ubuntu.com/ubuntu"),
-             b"ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
+            {"main": urlparse("http://archive.ubuntu.com/ubuntu"),
+             "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
             response)
 
     @wait_for_reactor
@@ -531,8 +526,8 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
         self.assertEqual(
-            {b"main": url,
-             b"ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
+            {"main": url,
+             "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
             response)
 
     @inlineCallbacks
@@ -543,8 +538,8 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
         self.assertEqual(
-            {b"main": urlparse("http://arhive.ubuntu.com/ubuntu"),
-             b"ports": url},
+            {"main": urlparse("http://arhive.ubuntu.com/ubuntu"),
+             "ports": url},
             response)
 
 
@@ -567,7 +562,7 @@ class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
         response = yield call_responder(Region(), GetProxies, {})
 
         self.assertEqual(
-            {b"http": None, "https": None},
+            {"http": None, "https": None},
             response)
 
     @wait_for_reactor
@@ -579,7 +574,7 @@ class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
         response = yield call_responder(Region(), GetProxies, {})
 
         self.assertEqual(
-            {b"http": url, b"https": url},
+            {"http": url, "https": url},
             response)
 
 
@@ -615,7 +610,7 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
         error_description = factory.make_name('error-description')
         response = yield call_responder(
             Region(), MarkNodeFailed,
-            {b'system_id': system_id, b'error_description': error_description})
+            {'system_id': system_id, 'error_description': error_description})
 
         self.assertEqual({}, response)
         new_status = yield deferToDatabase(self.get_node_status, system_id)
@@ -632,13 +627,13 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
 
         d = call_responder(
             Region(), MarkNodeFailed,
-            {b'system_id': system_id, b'error_description': error_description})
+            {'system_id': system_id, 'error_description': error_description})
 
         def check(error):
             self.assertIsInstance(error, Failure)
             self.assertIsInstance(error.value, NoSuchNode)
             # The error message contains a reference to system_id.
-            self.assertIn(system_id, error.value.message)
+            self.assertIn(system_id, str(error.value))
 
         return d.addErrback(check)
 
@@ -693,7 +688,7 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
         response = yield call_responder(
             Region(), ListNodePowerParameters,
-            {b'uuid': nodegroup.uuid})
+            {'uuid': nodegroup.uuid})
 
         self.maxDiff = None
         self.assertItemsEqual(nodes, response['nodes'])
@@ -704,7 +699,7 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
         d = call_responder(
             Region(), ListNodePowerParameters,
-            {b'uuid': uuid})
+            {'uuid': uuid})
 
         return assert_fails_with(d, NoSuchCluster)
 
@@ -735,7 +730,7 @@ class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
         new_state = factory.pick_enum(POWER_STATE, but_not=power_state)
         yield call_responder(
             Region(), UpdateNodePowerState,
-            {b'system_id': node.system_id, b'power_state': new_state})
+            {'system_id': node.system_id, 'power_state': new_state})
 
         db_state = yield deferToDatabase(
             self.get_node_power_state, node.system_id)
@@ -748,13 +743,13 @@ class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
 
         d = call_responder(
             Region(), UpdateNodePowerState,
-            {b'system_id': system_id, b'power_state': power_state})
+            {'system_id': system_id, 'power_state': power_state})
 
         def check(error):
             self.assertIsInstance(error, Failure)
             self.assertIsInstance(error.value, NoSuchNode)
             # The error message contains a reference to system_id.
-            self.assertIn(system_id, error.value.message)
+            self.assertIn(system_id, str(error.value))
 
         return d.addErrback(check)
 
@@ -778,7 +773,7 @@ class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
         level = random.randint(0, 100)
         response = yield call_responder(
             Region(), RegisterEventType,
-            {b'name': name, b'description': description, b'level': level})
+            {'name': name, 'description': description, 'level': level})
 
         self.assertEqual({}, response)
         event_type = yield deferToDatabase(self.get_event_type, name)
@@ -797,13 +792,13 @@ class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
         level = random.randint(0, 100)
         response = yield call_responder(
             Region(), RegisterEventType,
-            {b'name': name, b'description': old_description, b'level': level})
+            {'name': name, 'description': old_description, 'level': level})
         self.assertEqual({}, response)
 
         new_description = factory.make_name('new-description')
         response = yield call_responder(
             Region(), RegisterEventType,
-            {b'name': name, b'description': new_description, b'level': level})
+            {'name': name, 'description': new_description, 'level': level})
         # If we get this far, no error has been raised, even though we
         # sent a duplicate request for registration.
         self.assertEqual({}, response)
@@ -855,9 +850,9 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         try:
             response = yield call_responder(
                 Region(), SendEvent, {
-                    b'system_id': system_id,
-                    b'type_name': name,
-                    b'description': event_description,
+                    'system_id': system_id,
+                    'type_name': name,
+                    'description': event_description,
                 })
         finally:
             yield eventloop.reset()
@@ -884,8 +879,8 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEvent, {
-                    b'system_id': system_id, b'type_name': event_type,
-                    b'description': factory.make_name('description'),
+                    'system_id': system_id, 'type_name': event_type,
+                    'description': factory.make_name('description'),
                 })
         finally:
             yield eventloop.reset()
@@ -906,9 +901,9 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEvent, {
-                    b'system_id': system_id,
-                    b'type_name': name,
-                    b'description': description,
+                    'system_id': system_id,
+                    'type_name': name,
+                    'description': description,
                 })
         finally:
             yield eventloop.reset()
@@ -941,9 +936,9 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEvent, {
-                    b'system_id': system_id,
-                    b'type_name': name,
-                    b'description': event_description,
+                    'system_id': system_id,
+                    'type_name': name,
+                    'description': event_description,
                 })
         finally:
             yield eventloop.reset()
@@ -1005,9 +1000,9 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         try:
             response = yield call_responder(
                 Region(), SendEventMACAddress, {
-                    b'mac_address': mac_address.get_raw(),
-                    b'type_name': name,
-                    b'description': event_description,
+                    'mac_address': mac_address.get_raw(),
+                    'type_name': name,
+                    'description': event_description,
                 })
         finally:
             yield eventloop.reset()
@@ -1035,8 +1030,8 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEventMACAddress, {
-                    b'mac_address': mac_address, b'type_name': event_type,
-                    b'description': factory.make_name('description'),
+                    'mac_address': mac_address, 'type_name': event_type,
+                    'description': factory.make_name('description'),
                 })
         finally:
             yield eventloop.reset()
@@ -1057,9 +1052,9 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEventMACAddress, {
-                    b'mac_address': mac_address,
-                    b'type_name': name,
-                    b'description': description,
+                    'mac_address': mac_address,
+                    'type_name': name,
+                    'description': description,
                 })
         finally:
             yield eventloop.reset()
@@ -1091,9 +1086,9 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
         try:
             yield call_responder(
                 Region(), SendEventMACAddress, {
-                    b'mac_address': mac_address,
-                    b'type_name': name,
-                    b'description': event_description,
+                    'mac_address': mac_address,
+                    'type_name': name,
+                    'description': event_description,
                 })
         finally:
             yield eventloop.reset()
@@ -1149,7 +1144,7 @@ class TestRegionServer(MAASServerTestCase):
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         example_uuid = factory.make_UUID()
         callRemote = self.patch(protocol, "callRemote")
-        callRemote.return_value = succeed({b"ident": example_uuid})
+        callRemote.return_value = succeed({"ident": example_uuid})
         protocol.connectionMade()
         # The Identify command was called on the cluster. Authenticate too,
         # but we're not looking at that right now.
@@ -1165,7 +1160,7 @@ class TestRegionServer(MAASServerTestCase):
         service.running = True  # Pretend it's running.
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         callRemote = self.patch(protocol, "callRemote")
-        callRemote.return_value = fail(IOError("no paddle"))
+        callRemote.return_value = fail(OSError("no paddle"))
         transport = self.patch(protocol, "transport")
         logger = self.useFixture(TwistedLoggerFixture())
         protocol.connectionMade()
@@ -1178,7 +1173,8 @@ class TestRegionServer(MAASServerTestCase):
             """\
             Cluster could not be identified; dropping connection.
             Traceback (most recent call last):
-            Failure: exceptions.IOError: no paddle
+            ...
+            builtins.OSError: no paddle
             """,
             logger.dump())
 
@@ -1557,7 +1553,8 @@ class TestRegionService(MAASTestCase):
             """\
             RegionServer endpoint failed to listen.
             Traceback (most recent call last):
-            Failure: %s:
+            ...
+            %s:
             """ % fullyQualifiedName(error_2),
             logger.output)
 
@@ -1614,7 +1611,7 @@ class TestRegionService(MAASTestCase):
         }
         for conn in connections:
             transport = self.patch(conn, "transport")
-            transport.loseConnection.side_effect = IOError("broken")
+            transport.loseConnection.side_effect = OSError("broken")
             # Pretend it's already connected.
             service.connections[conn.ident].add(conn)
         logger = self.useFixture(TwistedLoggerFixture())
@@ -1626,12 +1623,12 @@ class TestRegionService(MAASTestCase):
             Unhandled Error
             Traceback (most recent call last):
             ...
-            exceptions.IOError: broken
+            builtins.OSError: broken
             ---
             Unhandled Error
             Traceback (most recent call last):
             ...
-            exceptions.IOError: broken
+            builtins.OSError: broken
             """,
             logger.dump())
 
@@ -1644,7 +1641,7 @@ class TestRegionService(MAASTestCase):
         endpoints = self.patch(service, "endpoints", [[Mock()]])
         endpoints[0][0].listen.return_value = fail(exception)
         # Suppress logged messages.
-        self.patch(log.theLogPublisher, "observers", [])
+        self.patch(globalLogPublisher, "_observers", [])
 
         service.startService()
         # The test is that stopService() succeeds.
@@ -1956,7 +1953,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
                 """\
                 Preparation of ... failed; will try again in 5 seconds.
                 Traceback (most recent call last):...
-                Failure: exceptions.ValueError: You don't vote for kings!
+                builtins.ValueError: You don't vote for kings!
                 """,
                 logger.dump())
 
@@ -1992,7 +1989,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         exception = ValueError("First, shalt thou take out the holy pin.")
         self.patch(service, "prepare").side_effect = exception
         # Suppress logged messages.
-        self.patch(log.theLogPublisher, "observers", [])
+        self.patch(globalLogPublisher, "_observers", [])
 
         service.startService()
         # The test is that stopService() succeeds.
@@ -2285,9 +2282,9 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
         response = yield call_responder(
             Region(), ReportForeignDHCPServer,
             {
-                b'cluster_uuid': cluster.uuid,
-                b'interface_name': cluster_interface.name,
-                b'foreign_dhcp_ip': foreign_dhcp_ip,
+                'cluster_uuid': cluster.uuid,
+                'interface_name': cluster_interface.name,
+                'foreign_dhcp_ip': foreign_dhcp_ip,
             })
 
         self.assertEqual({}, response)
@@ -2310,9 +2307,9 @@ class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
         response = yield call_responder(
             Region(), ReportForeignDHCPServer,
             {
-                b'cluster_uuid': cluster.uuid,
-                b'interface_name': cluster_interface.name,
-                b'foreign_dhcp_ip': foreign_dhcp_ip,
+                'cluster_uuid': cluster.uuid,
+                'interface_name': cluster_interface.name,
+                'foreign_dhcp_ip': foreign_dhcp_ip,
             })
 
         self.assertEqual({}, response)
@@ -2349,7 +2346,7 @@ class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
 
         response = yield call_responder(
             Region(), GetClusterInterfaces,
-            {b'cluster_uuid': cluster.uuid})
+            {'cluster_uuid': cluster.uuid})
 
         self.assertIsNot(None, response)
         self.assertItemsEqual(

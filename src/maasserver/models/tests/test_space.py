@@ -4,15 +4,6 @@
 
 """Tests for the Space model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -37,7 +28,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
     def test__user_view_returns_space(self):
         user = factory.make_User()
         space = factory.make_Space()
-        self.assertEquals(
+        self.assertEqual(
             space,
             Space.objects.get_space_or_404(
                 space.id, user, NODE_PERMISSION.VIEW))
@@ -61,7 +52,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
     def test__admin_view_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
-        self.assertEquals(
+        self.assertEqual(
             space,
             Space.objects.get_space_or_404(
                 space.id, admin, NODE_PERMISSION.VIEW))
@@ -69,7 +60,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
     def test__admin_edit_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
-        self.assertEquals(
+        self.assertEqual(
             space,
             Space.objects.get_space_or_404(
                 space.id, admin, NODE_PERMISSION.EDIT))
@@ -77,7 +68,7 @@ class TestSpaceManagerGetSpaceOr404(MAASServerTestCase):
     def test__admin_admin_returns_space(self):
         admin = factory.make_admin()
         space = factory.make_Space()
-        self.assertEquals(
+        self.assertEqual(
             space,
             Space.objects.get_space_or_404(
                 space.id, admin, NODE_PERMISSION.ADMIN))

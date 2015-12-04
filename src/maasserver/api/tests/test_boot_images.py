@@ -3,19 +3,9 @@
 
 """Tests for the `Boot Images` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 
 from crochet import TimeoutError
 from django.core.urlresolvers import reverse
@@ -23,6 +13,7 @@ from maasserver.api import boot_images as boot_images_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.utils.converters import json_load_bytes
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
@@ -54,8 +45,9 @@ class TestBootImagesAPI(APITestCase):
 
         response = self.client.get(
             reverse('boot_images_handler', args=[nodegroup.uuid]))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(api_images, parsed_result)
 
     def test_GET_returns_404_when_invalid_nodegroup(self):
@@ -63,7 +55,7 @@ class TestBootImagesAPI(APITestCase):
         response = self.client.get(
             reverse('boot_images_handler', args=[uuid]))
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_GET_returns_503_when_no_connection_avaliable(self):
         nodegroup = factory.make_NodeGroup()
@@ -74,7 +66,7 @@ class TestBootImagesAPI(APITestCase):
         response = self.client.get(
             reverse('boot_images_handler', args=[nodegroup.uuid]))
         self.assertEqual(
-            httplib.SERVICE_UNAVAILABLE,
+            http.client.SERVICE_UNAVAILABLE,
             response.status_code, response.content)
 
     def test_GET_returns_503_when_timeout_error(self):
@@ -86,5 +78,5 @@ class TestBootImagesAPI(APITestCase):
         response = self.client.get(
             reverse('boot_images_handler', args=[nodegroup.uuid]))
         self.assertEqual(
-            httplib.SERVICE_UNAVAILABLE,
+            http.client.SERVICE_UNAVAILABLE,
             response.status_code, response.content)

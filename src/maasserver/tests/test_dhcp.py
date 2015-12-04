@@ -3,15 +3,6 @@
 
 """Tests for DHCP management."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -83,13 +74,13 @@ class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
 
     def make_ipv4_interface(self, nodegroup):
         subnet = factory.make_Subnet(
-            cidr=unicode(factory.make_ipv4_network().cidr))
+            cidr=str(factory.make_ipv4_network().cidr))
         return factory.make_NodeGroupInterface(
             nodegroup, subnet=subnet)
 
     def make_ipv6_interface(self, nodegroup):
         subnet = factory.make_Subnet(
-            cidr=unicode(factory.make_ipv6_network().cidr))
+            cidr=str(factory.make_ipv6_network().cidr))
         return factory.make_NodeGroupInterface(
             nodegroup, subnet=subnet)
 
@@ -172,13 +163,13 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             factory.make_NodeGroup())
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
-        self.expectThat(config['subnet'], IsInstance(unicode))
-        self.expectThat(config['subnet_mask'], IsInstance(unicode))
-        self.expectThat(config['subnet_cidr'], IsInstance(unicode))
-        self.expectThat(config['broadcast_ip'], IsInstance(unicode))
-        self.expectThat(config['router_ip'], IsInstance(unicode))
-        self.expectThat(config['ip_range_low'], IsInstance(unicode))
-        self.expectThat(config['ip_range_high'], IsInstance(unicode))
+        self.expectThat(config['subnet'], IsInstance(str))
+        self.expectThat(config['subnet_mask'], IsInstance(str))
+        self.expectThat(config['subnet_cidr'], IsInstance(str))
+        self.expectThat(config['broadcast_ip'], IsInstance(str))
+        self.expectThat(config['router_ip'], IsInstance(str))
+        self.expectThat(config['ip_range_low'], IsInstance(str))
+        self.expectThat(config['ip_range_high'], IsInstance(str))
 
     def test__defines_IPv4_subnet(self):
         interface = factory.make_NodeGroupInterface(
@@ -254,7 +245,8 @@ class TestDoConfigureDHCP(MAASServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         cluster = fixture.makeCluster(nodegroup, self.command)
-        return cluster, getattr(cluster, self.command.commandName)
+        return cluster, getattr(
+            cluster, self.command.commandName.decode("ascii"))
 
     def test__configures_dhcp(self):
         dns_server = self.make_address()
@@ -599,7 +591,7 @@ class TestDHCPConnect(MAASServerTestCase):
 
     def test_dhcp_config_gets_written_when_netmask_changes(self):
         network = factory.make_ipv4_network(slash='255.255.255.0')
-        subnet = factory.make_Subnet(cidr=unicode(network.cidr))
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED, subnet=subnet,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -631,9 +623,9 @@ class TestDHCPConnect(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.ip_range_low = unicode(
+        interface.ip_range_low = str(
             IPAddress(interface.ip_range_low) + 1)
-        interface.ip_range_high = unicode(
+        interface.ip_range_high = str(
             IPAddress(interface.ip_range_high) - 1)
         interface.save()
 

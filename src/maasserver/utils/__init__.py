@@ -3,15 +3,6 @@
 
 """Utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'absolute_reverse',
     'absolute_reverse_url',
@@ -25,8 +16,8 @@ __all__ = [
     ]
 
 from functools import wraps
-from urllib import urlencode
-from urlparse import (
+from urllib.parse import (
+    urlencode,
     urljoin,
     urlparse,
 )

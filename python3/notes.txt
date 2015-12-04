@@ -1,0 +1,198 @@
+Porting MAAS to Python 3
+------------------------
+
+
+Process
+=======
+
+1. Reformat __future__ imports because of a bug in 2to3 using:
+
+     bzr ls --kind=file --recursive --versioned --null | \
+       xargs -r0 python python3/reformat-future-imports-on-single-line.py
+
+2. Remove `str = None` lines using:
+
+     bzr ls --kind=file --recursive --versioned --null | \
+       xargs -r0 python python3/remove-str-equals-none-shim.py
+
+3. Capture conversion diff using:
+
+     2to3 --nofix=callable src/${subcomponent} > \
+       python3/fix-${subcomponent}.diff
+
+4. Review diff to sanity check and to:
+
+   * Remove list(dict.keys()) and/or list(dict.items()) conversions
+     where they're not necessary (which is most places).
+
+4b. `bzr add python3/fix-${subcomponent}.diff` and commit.
+
+5. Apply diff:
+
+     patch -p0 < python3/fix-${subcomponent}.diff
+
+6. Remove `__metaclass__ = type` lines and all remaining shims using:
+
+     bzr ls --kind=file --recursive --versioned --null | \
+       xargs -r0 python python3/remove-all-shims.py
+
+7. Get tests passing, committing as you go.
+
+   * Skip tests that need to be disable during the porting process like
+     so:
+
+       @skip("PYTHON3-TEMPORARY-DURING-PORT")
+
+
+Observations
+============
+
+* In many places, dict.keys() and dict.values() had been used instead of
+  dict.viewkeys() (or iterating the dict itself) and dict.viewvalues().
+
+* Crochet does not create _registry attribute (on crochet._main) until
+  it is started, so EventualResultCatchingMixin.setUp() had to be
+  adjusted.
+
+* open(...) in Factory.make_file() missed out the 'b' flag.
+
+* string.letters is not automatically changed to string.ascii_letters.
+
+* factory.make_file() expects byte contents, but testtools' FileContains
+  always uses text mode. I hate implicit encodings, but it may keep us
+  sane to assume text mode in make_file() too.
+
+* 2to3 changes imports of ``__builtin__`` to ``builtins``, but
+  *references* to ``__builtin__`` are **not** updated.
+
+* 2to3 changes imports of ``urllib2`` to ``urllib.*``, but seems to miss
+  *some references* to it.
+
+* twisted.protocols.amp has NOT been ported. Porting myself.
+
+* twisted.conch has NOT been ported. Two parts of MAAS use it:
+
+  - maasserver.models.sshkey uses t.c.ssh.keys.Key to validate
+    user-supplied keys.
+
+    This is essential, but we can do without it temporarily. There has
+    been recent activity on https://twistedmatrix.com/trac/ticket/7998
+    to port t.conch.ssh.keys so this problem will hopefully go away
+    before the next release.
+
+  - provisioningserver.utils.introspect provides a "manhole" service for
+    the region and cluster daemons.
+
+    This is not essential, so I'm going to drop it.
+
+* Need to revisit places that do things like:
+
+    isinstance(thing, (bytes, unicode))
+
+  because 2to3 converts them to:
+
+    isinstance(thing, (bytes, str))
+
+  but we may want to reject ``things`` that are ``bytes`` in Python 3.
+
+* ``dict.iteritems()`` gets converted to ``iter(dict.items())``. This is
+  unnecessary in most places.
+
+* TestParseISCString.test_parses_simple_bind_options() initialised an
+  OrderedDict with an unordered dict. OrderedDict should probably
+  disallow this.
+
+* RPC helpers create_node() and commission_node() were in p.utils. These
+  pulled in a LOT of other modules which hampered the porting effort
+  until I moved them out to p.rpc.utils.
+
+* YAML, http://pyyaml.org/wiki/PyYAMLDocumentation#Python3support
+
+  * Dump YAML as UTF-8 with:
+
+      with open(filename, "wb") as fd:
+          yaml.safe_dump(thing, fd, encoding="utf-8")
+
+    or:
+
+      with open(filename, "w", encoding="utf-8") as fd:
+          yaml.safe_dump(thing, fd)
+
+  * Load YAML with:
+
+      with open(filename, "rb") as fd:
+          thing = yaml.safe_load(fd)
+
+    There's no need to specify the encoding; it will be discovered.
+
+* What documentation ``provisioningserver.boot.utils`` has is
+  insufficient. It deals with externally obtained data, e.g. package
+  lists, so it's not possible to read the code and fully understand
+  what's going on. Knowing what has to be a byte string and what has to
+  be a Unicode string is therefore hard and I may have made incorrect
+  assumptions.
+
+* ``sudo_write_file`` conflated its core mission with encoding the file
+  content. It will now raise ``TypeError`` if the content is not a byte
+  string. Encoding must be done prior to calling ``sudo_write_file``.
+
+* ``atomic_write`` also conflated its mission with encoding: it EXPECTED
+  text content and silently encoded it as UTF-8. It will now raise
+  ``TypeError`` if the content is not a byte string.
+
+* TFTP paths are BYTE strings. Other paths tend to be UNICODE strings.
+  Much hilarity.
+
+* ``functools.wraps()`` sets a ```__wrapped__`` property on the object
+  it returns. No need for MAAS's code to set ``func`` and suchlike.
+
+* There are many calls like `isinstance(thing, (bytes, unicode))` which
+  will get ported by 2to3 into `isinstance(thing, (bytes, str))`. We
+  need to revisit these tests. In many cases we will want to remove
+  `bytes` from the tuple of types.
+
+* In the etc/maas/templates/.../snippets/*.py, ``unicode_literals`` had
+  been commented out of the ``__future__`` imports. This may make
+  porting harder, because these snippets seem to have some issues with
+  Unicode text.
+
+* Why is buildout downloading psycopg2 and Django instead of finding
+  them locally? It appears that if a buildout-installed egg depends on
+  something then buildout MUST satisfy that dependency by installing an
+  egg rather than using a pre-installed package. By removing a
+  dependency on django-nose I was able to get buildout to just ignore
+  Django... and so MAAS uses the package installed by Ubuntu. However,
+  postgresfixture has a dependency on psycopg2, so that still gets
+  downloaded and built. Sigh.
+
+* Integer division: I've often had to change `a / b` into `a // b` so
+  that the result is integer.
+
+* Sorting disparate types. Python 3 doesn't allow sorting of different
+  types unless they explicitly support it. ``key_canonical`` in
+  ``maasserver.api.doc`` shows one mechanism to resurrect sorting
+  similar to Python 2's for a limited set of types. However when
+  reaching for a tool like this, we should first consider if we're doing
+  the right thing.
+
+* When testing using content that has come from Django or is going out
+  via Django use ``django.conf.settings.DEFAULT_CHARSET`` for encoding
+  and decoding. The encoding has to be determined in other circumstances
+  according to consumers of the data; it's seldom going to be right to
+  use ``DEFAULT_CHARSET`` outside of a Django request/response context.
+
+* When forking commands (explicitly or via ``subprocess`` or another
+  mechanism) consider using the new ``select_c_utf_locale()`` helper to
+  ensure that the C.UTF locale is selected. This should mean that it's
+  appropriate to encode input and decode output as UTF-8.
+
+* Command-line arguments given to ``subprocess``'s functions should be
+  strings. It will encode them as appropriate (which is done in C, but
+  it basically very similar to ``os.fsencode()``).
+
+* ``django.core.management.call_command`` accepts ``stdout`` and
+  ``stderr`` arguments. However, these must be in TEXT mode and NOT
+  BINARY mode.
+
+* No one seems to have paid any attention to the years of deprecation
+  warnings about ``Exception.message``.

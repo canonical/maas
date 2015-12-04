@@ -3,15 +3,6 @@
 
 """Tests for the `dbshell` management command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import subprocess
@@ -87,4 +78,4 @@ class TestDBShell(MAASServerTestCase):
                 99, ['command', 'line'])))
         error = self.assertRaises(
             CommandError, call_command, 'dbshell', installed=True)
-        self.assertEquals("psql failed.", unicode(error))
+        self.assertEqual("psql failed.", str(error))

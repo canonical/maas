@@ -3,16 +3,6 @@
 
 """Initial maasserver migration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    # This breaks South.
-    #unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 # flake8: noqa

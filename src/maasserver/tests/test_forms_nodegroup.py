@@ -3,15 +3,6 @@
 
 """Tests for nodegroup forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import json
@@ -81,7 +72,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         form = NodeGroupDefineForm(
             data={'name': name, 'uuid': too_long_uuid})
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {'uuid':
                 ['Ensure this value has at most 36 characters (it has 120).']},
             form._errors)
@@ -94,7 +85,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             data={
                 'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {'interfaces': ['Invalid json value.']},
             form._errors)
 
@@ -106,7 +97,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             data={
                 'name': name, 'uuid': uuid, 'interfaces': invalid_interfaces})
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {'interfaces': [INTERFACES_VALIDATION_ERROR_MESSAGE]},
             form._errors)
 
@@ -229,12 +220,12 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.make_UUID()
         interfaces = [
-            {u'interface': 'pci0',
-             u'ip': u'92.140.219.3',
-             u'subnet_mask': u'255.255.255.255'},
-            {u'interface': u'eth0',
-             u'ip': u'78.146.80.12',
-             u'subnet_mask': u'255.255.255.255'}
+            {'interface': 'pci0',
+             'ip': '92.140.219.3',
+             'subnet_mask': '255.255.255.255'},
+            {'interface': 'eth0',
+             'ip': '78.146.80.12',
+             'subnet_mask': '255.255.255.255'}
         ]
         input_json = {
             "pci0": {"type": "ethernet.physical"},
@@ -258,12 +249,12 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.make_UUID()
         interfaces = [
-            {u'interface': 'pci0',
-             u'ip': u'92.140.219.3',
-             u'subnet_mask': u'255.255.255.255'},
-            {u'interface': u'eth0',
-             u'ip': u'78.146.80.12',
-             u'subnet_mask': u'255.255.255.255'}
+            {'interface': 'pci0',
+             'ip': '92.140.219.3',
+             'subnet_mask': '255.255.255.255'},
+            {'interface': 'eth0',
+             'ip': '78.146.80.12',
+             'subnet_mask': '255.255.255.255'}
         ]
         form = NodeGroupDefineForm(
             data={
@@ -332,7 +323,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 factory.get_interface_fields(
                     network=ipv4_network, interface=network_interface),
             ],
-            cmp=lambda left, right: randint(-1, 1))
+            key=lambda _: randint(-1, 1))
         # We're not going to pass names for these cluster interfaces, so the
         # form will have to make some up based on the network interface name.
         for definition in interfaces:

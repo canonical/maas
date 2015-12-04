@@ -11,15 +11,6 @@ Django automatically discovers the `admin` module and ensures that models are
 only registered once.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 

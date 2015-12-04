@@ -3,15 +3,6 @@
 
 """MAAS-specific helpers for :class:`User`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'create_auth_token',
     'create_user',
@@ -21,23 +12,11 @@ __all__ = [
     ]
 
 from maasserver import worker_user
-from maasserver.utils.django import has_builtin_migrations
 from metadataserver import nodeinituser
-
-# To support upgrading from MAAS versions <2.0 the piston module was named
-# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
-# same the import names are important because it will break south migrations
-# unless piston is imported as 'piston'.
-if has_builtin_migrations():
-    from piston3.models import (
-        Consumer,
-        Token,
-    )
-else:
-    from piston.models import (
-        Consumer,
-        Token,
-    )
+from piston3.models import (
+    Consumer,
+    Token,
+)
 
 # Special users internal to MAAS.
 SYSTEM_USERS = [

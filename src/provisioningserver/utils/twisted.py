@@ -3,15 +3,6 @@
 
 """Utilities related to the Twisted/Crochet execution environment."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'asynchronous',
     'callOut',
@@ -22,6 +13,7 @@ __all__ = [
     'FOREVER',
     'IAsynchronous',
     'ISynchronous',
+    'LONGTIME',
     'PageFetcher',
     'pause',
     'reactor_sync',
@@ -40,7 +32,6 @@ from functools import (
 )
 from itertools import repeat
 from operator import attrgetter
-import sys
 import threading
 
 from crochet import run_in_reactor
@@ -68,6 +59,7 @@ from zope import interface
 
 undefined = object()
 FOREVER = object()
+LONGTIME = 60 * 60 * 24 * 7 * 4  # 4 weeks.
 
 
 def deferred(func):
@@ -91,7 +83,7 @@ class IAsynchronous(interface.Interface):
     """
 
 
-def asynchronous(func=undefined, timeout=undefined):
+def asynchronous(func=undefined, *, timeout=undefined):
     """Decorates a function to ensure that it always runs in the reactor.
 
     If the wrapper is called from the reactor thread, it will call straight
@@ -122,7 +114,7 @@ def asynchronous(func=undefined, timeout=undefined):
         return partial(asynchronous, timeout=timeout)
 
     if timeout is not undefined:
-        if isinstance(timeout, (int, long, float)):
+        if isinstance(timeout, (int, float)):
             if timeout < 0:
                 raise ValueError(
                     "timeout must be >= 0, not %d"
@@ -141,7 +133,12 @@ def asynchronous(func=undefined, timeout=undefined):
         elif timeout is undefined:
             return func_in_reactor(*args, **kwargs)
         elif timeout is FOREVER:
-            return func_in_reactor(*args, **kwargs).wait()
+            # There's a bug in crochet where waiting for an undefined amount
+            # of time -- i.e. by calling .wait() or .wait(None) -- waits for
+            # an invalidly long time (2^31 seconds) which causes NO wait; i.e.
+            # TimeoutError is raised immediately. Instead we wait 4 weeks,
+            # which seems long enough, even for MAAS.
+            return func_in_reactor(*args, **kwargs).wait(LONGTIME)
         else:
             return func_in_reactor(*args, **kwargs).wait(timeout)
 
@@ -240,7 +237,7 @@ def reactor_sync():
             sync.notify()
             # This then waits to be notified back. During this time the
             # reactor cannot run.
-            sync.wait(sys.maxint)
+            sync.wait()
 
     # Grab a lock on the `sync` condition.
     with sync:
@@ -251,7 +248,7 @@ def reactor_sync():
         # awaken me via `notify()`. When `wait()` returns we once again have a
         # lock on `sync`. We're able to get this lock because `sync_io` goes
         # into `sync.wait()`, thus releasing its lock on it.
-        sync.wait(sys.maxint)
+        sync.wait()
         # Record the reactor's thread. This is safe to do now that we're
         # synchronised with the reactor.
         reactorThread = threadable.ioThread
@@ -610,7 +607,7 @@ class PageFetcher:
         self.pending = {}
         if agent is None:
             self.agent = fullyQualifiedName(self.__class__)
-        elif isinstance(agent, (bytes, unicode)):
+        elif isinstance(agent, (bytes, str)):
             self.agent = agent  # This is fine.
         else:
             self.agent = fullyQualifiedName(agent)

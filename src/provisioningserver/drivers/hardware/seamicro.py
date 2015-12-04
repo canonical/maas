@@ -1,29 +1,21 @@
 # Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_seamicro15k_v09',
     'power_control_seamicro15k_v2',
     'probe_seamicro15k_and_enlist',
     ]
 
-import httplib
+import http.client
 import json
 import time
-import urllib2
-import urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
@@ -56,7 +48,12 @@ class SeaMicroAPIV09Error(SeaMicroError):
 
 
 class SeaMicroAPIV09:
-    allowed_codes = [httplib.OK, httplib.ACCEPTED, httplib.NOT_MODIFIED]
+
+    allowed_codes = [
+        http.client.OK,
+        http.client.ACCEPTED,
+        http.client.NOT_MODIFIED,
+    ]
 
     def __init__(self, url):
         """
@@ -72,8 +69,11 @@ class SeaMicroAPIV09:
         """
         if params is None:
             params = []
-        params = filter(None, params)
-        return urlparse.urljoin(self.url, location) + '?' + '&'.join(params)
+        params = [param for param in params if bool(param)]
+        return (
+            urllib.parse.urljoin(self.url, location) +
+            '?' + '&'.join(params)
+        )
 
     def parse_response(self, url, response):
         """Parses the HTTP response, checking for errors
@@ -101,7 +101,7 @@ class SeaMicroAPIV09:
             raise SeaMicroAPIV09Error(
                 'Got JSON RPC error code %d: %s for %s' % (
                     json_rpc_code,
-                    httplib.responses.get(json_rpc_code, 'Unknown!'),
+                    http.client.responses.get(json_rpc_code, 'Unknown!'),
                     url),
                 response_code=json_rpc_code)
         return json_data
@@ -114,7 +114,7 @@ class SeaMicroAPIV09:
         implicit.
         """
         url = self.build_url(location, params)
-        response = urllib2.urlopen(url)
+        response = urllib.request.urlopen(url)
         json_data = self.parse_response(url, response)
 
         return json_data['result']
@@ -126,9 +126,9 @@ class SeaMicroAPIV09:
         our own get URL, and use a list vs. a dict for data, as the order is
         implicit.
         """
-        opener = urllib2.build_opener(urllib2.HTTPHandler)
+        opener = urllib.request.build_opener(urllib.request.HTTPHandler)
         url = self.build_url(location, params)
-        request = urllib2.Request(url)
+        request = urllib.request.Request(url)
         request.get_method = lambda: 'PUT'
         request.add_header('content-type', 'text/json')
         response = opener.open(request)
@@ -210,7 +210,7 @@ def get_seamicro15k_api(version, ip, username, password):
         api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
         try:
             api.login(username, password)
-        except urllib2.URLError:
+        except urllib.error.URLError:
             # Cannot reach using v0.9, might not be supported
             return None
         return api

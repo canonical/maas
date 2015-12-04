@@ -3,15 +3,6 @@
 
 """Tests for DHCP signals."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -135,9 +126,9 @@ class TestDHCPSignals(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.ip_range_low = unicode(
+        interface.ip_range_low = str(
             IPAddress(interface.ip_range_low) + 1)
-        interface.ip_range_high = unicode(
+        interface.ip_range_high = str(
             IPAddress(interface.ip_range_high) - 1)
         interface.save()
 

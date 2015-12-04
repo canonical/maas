@@ -3,15 +3,6 @@
 
 """Tests for interface link form."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -42,7 +33,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = InterfaceLinkForm(instance=interface, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "mode": ["This field is required."],
             }, form.errors)
 
@@ -68,7 +59,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "mode": INTERFACE_LINK_TYPE.AUTO,
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "subnet": ["This field is required."],
             }, form.errors)
 
@@ -82,13 +73,13 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
-        self.assertEquals(auto_subnet, auto_ip.subnet)
+        self.assertEqual(auto_subnet, auto_ip.subnet)
 
     def test__AUTO_sets_node_gateway_link_v4(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         auto_subnet = factory.make_Subnet(
-            cidr=unicode(network.cidr), vlan=interface.vlan)
+            cidr=str(network.cidr), vlan=interface.vlan)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.AUTO,
             "subnet": auto_subnet.id,
@@ -98,13 +89,13 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = form.save()
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
         node = interface.get_node()
-        self.assertEquals(auto_ip, node.gateway_link_ipv4)
+        self.assertEqual(auto_ip, node.gateway_link_ipv4)
 
     def test__AUTO_sets_node_gateway_link_v6(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         auto_subnet = factory.make_Subnet(
-            cidr=unicode(network.cidr), vlan=interface.vlan)
+            cidr=str(network.cidr), vlan=interface.vlan)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.AUTO,
             "subnet": auto_subnet.id,
@@ -114,7 +105,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = form.save()
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
         node = interface.get_node()
-        self.assertEquals(auto_ip, node.gateway_link_ipv6)
+        self.assertEqual(auto_ip, node.gateway_link_ipv6)
 
     def test__AUTO_default_gateway_requires_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -123,7 +114,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "default_gateway": True,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "default_gateway": [
                 "Subnet is required when default_gateway is True."],
             "subnet": ["This field is required."],
@@ -140,7 +131,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "default_gateway": True,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "default_gateway": [
                 "Cannot set as default gateway because subnet "
                 "%s doesn't provide a gateway IP address." % auto_subnet],
@@ -156,7 +147,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "mode": INTERFACE_LINK_TYPE.DHCP,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "mode": [
                 "Interface is already set to DHCP from '%s'." % (
                     dhcp_subnet)]
@@ -172,7 +163,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "mode": INTERFACE_LINK_TYPE.DHCP,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "mode": [
                 "Interface is already set to DHCP."]
             }, form.errors)
@@ -184,7 +175,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "default_gateway": True,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "default_gateway": [
                 "Cannot use in mode '%s'." % (INTERFACE_LINK_TYPE.DHCP)]
             }, form.errors)
@@ -199,7 +190,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         dhcp_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.DHCP)
-        self.assertEquals(dhcp_subnet, dhcp_ip.subnet)
+        self.assertEqual(dhcp_subnet, dhcp_ip.subnet)
 
     def test__DHCP_creates_link_to_DHCP_without_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -218,7 +209,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "mode": INTERFACE_LINK_TYPE.STATIC,
         })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "subnet": ["This field is required."],
             }, form.errors)
 
@@ -226,7 +217,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
-            vlan=interface.vlan, cidr=unicode(network.cidr))
+            vlan=interface.vlan, cidr=str(network.cidr))
         ip_not_in_subnet = factory.make_ipv6_address()
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
@@ -234,7 +225,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "ip_address": ip_not_in_subnet,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "ip_address": [
                 "IP address is not in the given subnet '%s'." % subnet]
             }, form.errors)
@@ -253,7 +244,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "ip_address": "%s" % ip_in_dynamic,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "ip_address": [
                 "IP address is inside a managed dynamic range %s to %s." % (
                     ngi.ip_range_low, ngi.ip_range_high)]
@@ -372,7 +363,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
-            cidr=unicode(network.cidr), vlan=interface.vlan)
+            cidr=str(network.cidr), vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
@@ -388,7 +379,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
         node = interface.get_node()
-        self.assertEquals(ip_address, node.gateway_link_ipv4)
+        self.assertEqual(ip_address, node.gateway_link_ipv4)
 
     def test__STATIC_sets_node_gateway_link_ipv6(self):
         # Silence update_host_maps.
@@ -396,7 +387,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(
-            cidr=unicode(network.cidr), vlan=interface.vlan)
+            cidr=str(network.cidr), vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
@@ -412,7 +403,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
         node = interface.get_node()
-        self.assertEquals(ip_address, node.gateway_link_ipv6)
+        self.assertEqual(ip_address, node.gateway_link_ipv6)
 
     def test__LINK_UP_not_allowed_with_other_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -422,7 +413,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "mode": INTERFACE_LINK_TYPE.LINK_UP,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "mode": [
                 "Cannot configure interface to link up (with no IP address) "
                 "while other links are already configured."]
@@ -439,7 +430,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = form.save()
         link_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertIsNone(link_ip.ip)
-        self.assertEquals(link_subnet, link_ip.subnet)
+        self.assertEqual(link_subnet, link_ip.subnet)
 
     def test__LINK_UP_creates_link_STICKY_without_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -460,7 +451,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "default_gateway": True,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "default_gateway": [
                 "Cannot use in mode '%s'." % (INTERFACE_LINK_TYPE.LINK_UP)]
             }, form.errors)
@@ -483,7 +474,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
             "ip_address": "%s" % ip_in_static,
             })
         self.assertFalse(form.is_valid())
-        self.assertEquals({
+        self.assertEqual({
             "bond": [("Cannot link interface(%s) when interface is in a "
                       "bond(%s)." % (eth0.name, bond0.name))]},
             form.errors)
@@ -495,7 +486,7 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = InterfaceUnlinkForm(instance=interface, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "id": ["This field is required."],
             }, form.errors)
 
@@ -506,7 +497,7 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
             "id": link_id,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "id": ["'%s' is not a valid id.  It should be one of: ." % (
                 link_id)],
             }, form.errors)
@@ -601,7 +592,7 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
     def make_ip_family_link(
             self, interface, network, alloc_type=IPADDRESS_TYPE.STICKY):
         subnet = factory.make_Subnet(
-            cidr=unicode(network.cidr), vlan=interface.vlan)
+            cidr=str(network.cidr), vlan=interface.vlan)
         if alloc_type == IPADDRESS_TYPE.STICKY:
             ip = factory.pick_ip_in_network(network)
         else:
@@ -613,7 +604,7 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         form = InterfaceSetDefaultGatwayForm(instance=interface, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "__all__": ["This interface has no usable gateways."],
             }, form.errors)
 
@@ -632,7 +623,7 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         self.make_ip_family_link(interface, factory.make_ipv6_network())
         form = InterfaceSetDefaultGatwayForm(instance=interface, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "link_id": [
                 "This field is required; Interface has more than one "
                 "usable IPv4 and IPv6 gateways."],
@@ -670,8 +661,8 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         node = interface.get_node()
-        self.assertEquals(ipv4_link, node.gateway_link_ipv4)
-        self.assertEquals(ipv6_link, node.gateway_link_ipv6)
+        self.assertEqual(ipv4_link, node.gateway_link_ipv4)
+        self.assertEqual(ipv6_link, node.gateway_link_ipv6)
 
     def test__sets_gateway_link_v4_on_node_when_link_id(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -684,7 +675,7 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         node = interface.get_node()
-        self.assertEquals(ipv4_link, node.gateway_link_ipv4)
+        self.assertEqual(ipv4_link, node.gateway_link_ipv4)
 
     def test__sets_gateway_link_v6_on_node_when_link_id(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -697,4 +688,4 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         node = interface.get_node()
-        self.assertEquals(ipv6_link, node.gateway_link_ipv6)
+        self.assertEqual(ipv6_link, node.gateway_link_ipv6)

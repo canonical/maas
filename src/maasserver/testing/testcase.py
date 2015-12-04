@@ -3,15 +3,6 @@
 
 """Custom test-case classes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'MAASServerTestCase',
     'MAASTransactionServerTestCase',
@@ -21,7 +12,7 @@ __all__ = [
     ]
 
 from contextlib import closing
-import SocketServer
+import socketserver
 import sys
 import threading
 from unittest import SkipTest
@@ -134,12 +125,12 @@ class LogSilencerFixture(Fixture):
     def silence_loggers(self):
         # Silence logging of errors to avoid the
         # "IOError: [Errno 32] Broken pipe" error.
-        SocketServer.BaseServer.handle_error = Mock()
+        socketserver.BaseServer.handle_error = Mock()
         wsgiref.handlers.BaseHandler.log_exception = Mock()
 
     def unsilence_loggers(self):
         """Restore original handle_error/log_exception methods."""
-        SocketServer.BaseServer.handle_error = self.old_handle_error
+        socketserver.BaseServer.handle_error = self.old_handle_error
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 

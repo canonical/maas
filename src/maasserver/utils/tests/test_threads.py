@@ -3,20 +3,11 @@
 
 """Tests for `maasserver.utils.threads`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.db import connection
 from maasserver.utils import (
     orm,
@@ -38,6 +29,9 @@ from twisted.internet.defer import (
     DeferredSemaphore,
     inlineCallbacks,
 )
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestMakeFunctions(MAASTestCase):
@@ -91,7 +85,7 @@ class TestInstallFunctions(MAASTestCase):
     def test__install_default_pool_will_not_work_now(self):
         error = self.assertRaises(
             AssertionError, threads.install_default_pool)
-        self.assertDocTestMatches("Too late; ...", unicode(error))
+        self.assertDocTestMatches("Too late; ...", str(error))
 
     def test__default_pool_is_disconnected_pool(self):
         pool = reactor.threadpool
@@ -102,7 +96,7 @@ class TestInstallFunctions(MAASTestCase):
     def test__install_database_pool_will_not_work_now(self):
         error = self.assertRaises(
             AssertionError, threads.install_database_pool)
-        self.assertDocTestMatches("Too late; ...", unicode(error))
+        self.assertDocTestMatches("Too late; ...", str(error))
 
     def test__database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase

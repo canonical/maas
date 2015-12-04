@@ -3,19 +3,10 @@
 
 """Tests for the maastftp Twisted plugin."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from functools import partial
-import httplib
+import http.client
 import json
 import os
 import random
@@ -24,9 +15,9 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
-from urllib import urlencode
-from urlparse import (
+from urllib.parse import (
     parse_qsl,
+    urlencode,
     urlparse,
 )
 
@@ -148,8 +139,8 @@ class TestTFTPBackend(MAASTestCase):
         # get_generator_url() merges the parameters obtained from the request
         # file path (arch, subarch, name) into the configured generator URL.
         mac = factory.make_mac_address("-")
-        dummy = factory.make_name("dummy").encode("ascii")
-        backend_url = b"http://example.com/?" + urlencode({b"dummy": dummy})
+        dummy = factory.make_name("dummy")
+        backend_url = "http://example.com/?" + urlencode({"dummy": dummy})
         backend = TFTPBackend(self.make_dir(), backend_url, sentinel.uuid)
         # params is an example of the parameters obtained from a request.
         params = {"mac": mac}
@@ -167,7 +158,7 @@ class TestTFTPBackend(MAASTestCase):
         temp_dir = os.path.dirname(temp_file)
         backend = TFTPBackend(
             temp_dir, "http://nowhere.example.com/", sentinel.uuid)
-        return backend.get_reader("example")
+        return backend.get_reader(b"example")
 
     @inlineCallbacks
     def test_get_reader_regular_file(self):
@@ -192,7 +183,7 @@ class TestTFTPBackend(MAASTestCase):
         os.mkdir(os.path.join(temp_dir, subdir))
         factory.make_file(os.path.join(temp_dir, subdir), filename, data)
 
-        path = '\\%s\\%s' % (subdir, filename)
+        path = ('\\%s\\%s' % (subdir, filename)).encode("ascii")
         backend = TFTPBackend(
             temp_dir, "http://nowhere.example.com/", sentinel.uuid)
         reader = yield backend.get_reader(path)
@@ -231,10 +222,10 @@ class TestTFTPBackend(MAASTestCase):
         backend = TFTPBackend(
             self.make_dir(), "http://example.com/", sentinel.uuid)
         get_page = self.patch(backend, 'get_page')
-        get_page.side_effect = twisted.web.error.Error(httplib.NOT_FOUND)
+        get_page.side_effect = twisted.web.error.Error(http.client.NOT_FOUND)
 
         with ExpectedException(FileNotFound):
-            yield backend.get_reader('pxelinux.cfg/default')
+            yield backend.get_reader(b'pxelinux.cfg/default')
 
     @inlineCallbacks
     def test_get_reader_converts_other_exceptions_to_tftp_error(self):
@@ -250,7 +241,7 @@ class TestTFTPBackend(MAASTestCase):
 
         with TwistedLoggerFixture() as logger:
             with ExpectedException(BackendError, re.escape(exception_message)):
-                yield backend.get_reader('pxelinux.cfg/default')
+                yield backend.get_reader(b'pxelinux.cfg/default')
 
         # The original exception is logged.
         self.assertDocTestMatches(
@@ -279,13 +270,13 @@ class TestTFTPBackend(MAASTestCase):
 
         @partial(self.patch, backend, "get_boot_method_reader")
         def get_boot_method_reader(boot_method, params):
-            params_json = json.dumps(params)
+            params_json = json.dumps(params).encode("ascii")
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
 
         reader = yield context.call(
             call_context, backend.get_reader, config_path)
-        output = reader.read(10000)
+        output = reader.read(10000).decode("ascii")
         # The addresses provided by python-tx-tftp in the call context are
         # passed over the wire as address:port strings.
         expected_params = {
@@ -331,7 +322,7 @@ class TestTFTPBackend(MAASTestCase):
         # `IReader` of a PXE configuration, rendered by
         # `PXEBootMethod.get_reader`.
         backend = TFTPBackend(
-            self.make_dir(), b"http://example.com/", sentinel.uuid)
+            self.make_dir(), "http://example.com/", sentinel.uuid)
         # Fake configuration parameters, as discovered from the file path.
         fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the API call.
@@ -359,7 +350,7 @@ class TestTFTPBackend(MAASTestCase):
         self.assertThat(backend.get_page, MockCalledOnceWith(mock.ANY))
 
         # The result has been rendered by `method.get_reader`.
-        self.assertEqual(fake_render_result.encode("utf-8"), output)
+        self.assertEqual(fake_render_result, output)
         self.assertThat(method.get_reader, MockCalledOnceWith(
             backend, kernel_params=fake_kernel_params, **fake_params))
 
@@ -371,9 +362,9 @@ class TestTFTPBackend(MAASTestCase):
         cluster_uuid = factory.make_UUID()
         with ClusterConfiguration.open() as config:
             config.cluster_uuid = cluster_uuid
-        config_path = "pxelinux.cfg/default-arm"
+        config_path = b"pxelinux.cfg/default-arm"
         backend = TFTPBackend(
-            self.make_dir(), b"http://example.com/", cluster_uuid)
+            self.make_dir(), "http://example.com/", cluster_uuid)
         # python-tx-tftp sets up call context so that backends can discover
         # more about the environment in which they're running.
         call_context = {
@@ -387,15 +378,17 @@ class TestTFTPBackend(MAASTestCase):
 
         @partial(self.patch, backend, "get_boot_method_reader")
         def get_boot_method_reader(boot_method, params):
-            params_json = json.dumps(params)
+            params_json = json.dumps(params).encode("ascii")
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
 
         reader = yield context.call(
             call_context, backend.get_reader, config_path)
-        output = reader.read(10000)
+        output = reader.read(10000).decode("ascii")
         observed_params = json.loads(output)
-        self.assertEqual("armhf", observed_params["arch"])
+        # XXX: GavinPanella 2015-11-25 bug=1519804: get_by_pxealias() on
+        # ArchitectureRegistry is not stable, so we permit either here.
+        self.assertIn(observed_params["arch"], ["armhf", "arm64"])
 
 
 class TestTFTPService(MAASTestCase):

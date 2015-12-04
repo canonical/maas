@@ -3,15 +3,6 @@
 
 """Utilities for working with asynchronous operations."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DeferredHooks',
     "gather",
@@ -20,13 +11,14 @@ __all__ = [
 from collections import deque
 from contextlib import contextmanager
 from itertools import count
-from Queue import Queue
+from queue import Queue
 import threading
 
-from crochet import wait_for_reactor
 from maasserver.exceptions import IteratorReusedError
 from provisioningserver.utils.twisted import (
     asynchronous,
+    FOREVER,
+    LONGTIME,
     synchronous,
 )
 from twisted.internet import reactor
@@ -52,18 +44,18 @@ class UseOnceIterator:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if self.has_run_once:
             raise IteratorReusedError(
                 "It is not possible to reuse a UseOnceIterator.")
         try:
-            return self.iterable.next()
+            return next(self.iterable)
         except StopIteration:
             self.has_run_once = True
             raise
 
 
-@wait_for_reactor
+@asynchronous(timeout=FOREVER)
 def gather(calls, timeout=10.0):
     """gather(calls, timeout=10.0)
 
@@ -200,7 +192,7 @@ class DeferredHooks(threading.local):
         try:
             while len(self.hooks) > 0:
                 hook = self.hooks.popleft()
-                self._fire_in_reactor(hook).wait()
+                self._fire_in_reactor(hook).wait(LONGTIME)
         finally:
             # Ensure that any remaining hooks are cancelled.
             self.reset()
@@ -216,7 +208,7 @@ class DeferredHooks(threading.local):
         try:
             while len(self.hooks) > 0:
                 hook = self.hooks.popleft()
-                self._cancel_in_reactor(hook).wait()
+                self._cancel_in_reactor(hook).wait(LONGTIME)
         finally:
             # Belt-n-braces.
             self.hooks.clear()

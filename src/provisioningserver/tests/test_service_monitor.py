@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.service_monitor`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import logging
@@ -80,7 +71,7 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor_module, "get_init_system")
         mock_has_cmd.return_value = sentinel.init_system
         service_monitor = ServiceMonitor()
-        self.assertEquals(sentinel.init_system, service_monitor.init_system)
+        self.assertEqual(sentinel.init_system, service_monitor.init_system)
 
     def test__get_service_lock_adds_lock_to_service_locks(self):
         service_monitor = ServiceMonitor()
@@ -121,7 +112,7 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "_get_service_status")
         mock_get_service_status.return_value = (
             sentinel.state, sentinel.process_state)
-        self.assertEquals(
+        self.assertEqual(
             sentinel.state, service_monitor.get_service_state(service.name))
 
     def test_ensure_all_services_calls_ensure_service_for_all_services(self):
@@ -182,7 +173,7 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor_module, "deferToThread")
         mock_deferToThread.return_value = sentinel.defer
         service_name = factory.make_name("service")
-        self.assertEquals(
+        self.assertEqual(
             sentinel.defer,
             service_monitor.async_ensure_service(service_name))
         self.assertThat(
@@ -282,7 +273,7 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor_module, "deferToThread")
         mock_deferToThread.return_value = sentinel.defer
         service_name = factory.make_name("service")
-        self.assertEquals(
+        self.assertEqual(
             sentinel.defer,
             service_monitor.async_restart_service(service_name))
         self.assertThat(
@@ -297,7 +288,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_popen = self.patch(service_monitor_module, "Popen")
         mock_popen.return_value.communicate.return_value = (b"", b"")
         service_monitor._exec_service_action(service_name, action)
-        self.assertEquals(
+        self.assertEqual(
             ["sudo", "service", service_name, action],
             mock_popen.call_args[0][0])
 
@@ -308,7 +299,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_popen = self.patch(service_monitor_module, "Popen")
         mock_popen.return_value.communicate.return_value = (b"", b"")
         service_monitor._exec_service_action(service_name, action)
-        self.assertEquals(
+        self.assertEqual(
             "C.UTF-8",
             mock_popen.call_args[1]['env']['LC_ALL'])
 
@@ -435,8 +426,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_exec_service_action.return_value = (3, systemd_status_output)
         active_state, process_state = (
             service_monitor._get_systemd_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.OFF, active_state)
-        self.assertEquals("dead", process_state)
+        self.assertEqual(SERVICE_STATE.OFF, active_state)
+        self.assertEqual("dead", process_state)
 
     def test__get_systemd_service_status_returns_on_and_running(self):
         systemd_status_output = dedent("""\
@@ -452,8 +443,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_exec_service_action.return_value = (0, systemd_status_output)
         active_state, process_state = (
             service_monitor._get_systemd_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.ON, active_state)
-        self.assertEquals("running", process_state)
+        self.assertEqual(SERVICE_STATE.ON, active_state)
+        self.assertEqual("running", process_state)
 
     def test__get_systemd_service_status_ignores_sudo_output(self):
         systemd_status_output = dedent("""\
@@ -470,8 +461,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_exec_service_action.return_value = (0, systemd_status_output)
         active_state, process_state = (
             service_monitor._get_systemd_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.ON, active_state)
-        self.assertEquals("running", process_state)
+        self.assertEqual(SERVICE_STATE.ON, active_state)
+        self.assertEqual("running", process_state)
 
     def test__get_systemd_service_status_raise_error_for_invalid_active(self):
         systemd_status_output = dedent("""\
@@ -517,8 +508,8 @@ class TestServiceMonitor(MAASTestCase):
             0, "tgt stop/waiting")
         active_state, process_state = (
             service_monitor._get_upstart_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.OFF, active_state)
-        self.assertEquals("waiting", process_state)
+        self.assertEqual(SERVICE_STATE.OFF, active_state)
+        self.assertEqual("waiting", process_state)
 
     def test__get_upstart_service_status_returns_on_and_running(self):
         service_monitor = ServiceMonitor()
@@ -528,8 +519,8 @@ class TestServiceMonitor(MAASTestCase):
             0, "tgt start/running, process 23239")
         active_state, process_state = (
             service_monitor._get_upstart_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.ON, active_state)
-        self.assertEquals("running", process_state)
+        self.assertEqual(SERVICE_STATE.ON, active_state)
+        self.assertEqual("running", process_state)
 
     def test__get_upstart_service_status_parsing_ignores_sudo_output(self):
         service_monitor = ServiceMonitor()
@@ -540,8 +531,8 @@ class TestServiceMonitor(MAASTestCase):
                 tgt start/running, process 23239"""))
         active_state, process_state = (
             service_monitor._get_upstart_service_status("tgt"))
-        self.assertEquals(SERVICE_STATE.ON, active_state)
-        self.assertEquals("running", process_state)
+        self.assertEqual(SERVICE_STATE.ON, active_state)
+        self.assertEqual("running", process_state)
 
     def test__get_upstart_service_status_raise_error_for_invalid_active(self):
         service_monitor = ServiceMonitor()
@@ -566,28 +557,28 @@ class TestServiceMonitor(MAASTestCase):
     def test__get_expected_process_state_returns_upstart_running_for_on(self):
         service_monitor = ServiceMonitor()
         service_monitor.init_system = "upstart"
-        self.assertEquals(
+        self.assertEqual(
             "running",
             service_monitor._get_expected_process_state(SERVICE_STATE.ON))
 
     def test__get_expected_process_state_returns_upstart_waiting_for_off(self):
         service_monitor = ServiceMonitor()
         service_monitor.init_system = "upstart"
-        self.assertEquals(
+        self.assertEqual(
             "waiting",
             service_monitor._get_expected_process_state(SERVICE_STATE.OFF))
 
     def test__get_expected_process_state_returns_systemd_running_for_on(self):
         service_monitor = ServiceMonitor()
         service_monitor.init_system = "systemd"
-        self.assertEquals(
+        self.assertEqual(
             "running",
             service_monitor._get_expected_process_state(SERVICE_STATE.ON))
 
     def test__get_expected_process_state_returns_systemd_dead_for_off(self):
         service_monitor = ServiceMonitor()
         service_monitor.init_system = "systemd"
-        self.assertEquals(
+        self.assertEqual(
             "dead",
             service_monitor._get_expected_process_state(SERVICE_STATE.OFF))
 

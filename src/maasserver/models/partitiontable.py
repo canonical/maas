@@ -3,15 +3,6 @@
 
 """Model for a block devices partition table."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'PartitionTable',
     ]
@@ -121,9 +112,8 @@ class PartitionTable(CleanSave, TimestampedModel):
         return Partition.objects.create(
             partition_table=self, size=size, uuid=uuid, bootable=bootable)
 
-    def __unicode__(self):
-        return "Partition table for {bd}".format(
-            bd=self.block_device.__unicode__())
+    def __str__(self):
+        return "Partition table for {bd}".format(bd=self.block_device)
 
     def save(self, *args, **kwargs):
         self._set_and_validate_table_type_for_boot_disk()

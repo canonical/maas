@@ -41,7 +41,7 @@ Python
 
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(
             consumer_token, token=resource_token, http_url=site,
-            parameters={'oauth_nonce': uuid.uuid4().get_hex()})
+            parameters={'oauth_nonce': uuid.uuid4().hex})
         oauth_request.sign_request(
             oauth.OAuthSignatureMethod_PLAINTEXT(), consumer_token,
             resource_token)

@@ -3,20 +3,11 @@
 
 """Tests for the SSLKey model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
-from django.utils.safestring import SafeUnicode
+from django.utils.safestring import SafeString
 from maasserver.models import (
     SSLKey,
     sslkey as sslkey_module,
@@ -92,7 +83,7 @@ class SSLKeyTest(MAASServerTestCase):
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
-        self.assertIsInstance(display, SafeUnicode)
+        self.assertIsInstance(display, SafeString)
 
     def test_sslkey_display_is_HTML_safe(self):
         self.patch(

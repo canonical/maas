@@ -3,15 +3,6 @@
 
 """Boot Resource Set."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootResourceSet',
     ]
@@ -84,7 +75,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
 
     label = CharField(max_length=255, editable=False)
 
-    def __unicode__(self):
+    def __str__(self):
         return "<BootResourceSet %s/%s>" % (self.version, self.label)
 
     @property

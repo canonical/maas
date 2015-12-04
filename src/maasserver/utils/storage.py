@@ -3,15 +3,6 @@
 
 """Utilities for working with the storage model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "get_effective_filesystem",
     "used_for"

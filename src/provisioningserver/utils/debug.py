@@ -3,22 +3,13 @@
 
 """Utilities for debugging."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'get_full_thread_dump',
     'print_full_thread_dump',
     'register_sigusr2_thread_dump_handler',
     ]
 
-import cStringIO
+import io
 import signal
 from sys import _current_frames as current_frames
 import threading
@@ -31,7 +22,7 @@ import traceback
 
 def get_full_thread_dump():
     """Returns a string containing a traceback for all threads"""
-    output = cStringIO.StringIO()
+    output = io.StringIO()
     time = strftime("%Y-%m-%d %H:%M:%S", gmtime())
     thread_names = {}
     for thread in threading.enumerate():

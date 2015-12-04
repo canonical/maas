@@ -3,15 +3,6 @@
 
 """UEFI Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'UEFIBootMethod',
     ]
@@ -33,6 +24,7 @@ from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
 
@@ -75,6 +67,7 @@ re_config_file = r'''
 
 re_config_file = re_config_file.format(
     re_mac_address=re_mac_address)
+re_config_file = re_config_file.encode("ascii")
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
@@ -122,7 +115,8 @@ class UEFIBootMethod(BootMethod):
         namespace = self.compose_template_namespace(kernel_params)
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Installs the required files for UEFI booting into the
         tftproot.
         """

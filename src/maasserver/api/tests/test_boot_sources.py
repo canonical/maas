@@ -3,19 +3,9 @@
 
 """Tests for the `Boot Sources` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 
 from django.core.urlresolvers import reverse
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
@@ -24,6 +14,7 @@ from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from maastesting.utils import sample_binary_data
 from testtools.matchers import MatchesStructure
 
@@ -58,8 +49,8 @@ class TestBootSourceAPI(APITestCase):
         self.become_admin()
         boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_uri(boot_source))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_boot_source = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_boot_source = json_load_bytes(response.content)
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
             reverse(
@@ -69,6 +60,9 @@ class TestBootSourceAPI(APITestCase):
             returned_boot_source['resource_uri'])
         # The other fields are the boot source's fields.
         del returned_boot_source['resource_uri']
+        # JSON loads the keyring_data as a str, but it needs to be bytes.
+        returned_boot_source['keyring_data'] = (
+            returned_boot_source['keyring_data'].encode('utf-8'))
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys())
@@ -79,19 +73,19 @@ class TestBootSourceAPI(APITestCase):
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_uri(boot_source))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
         response = self.client.delete(get_boot_source_uri(boot_source))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source))
 
     def test_DELETE_requires_admin(self):
         boot_source = factory.make_BootSource()
         response = self.client.delete(get_boot_source_uri(boot_source))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source(self):
         self.become_admin()
@@ -102,7 +96,7 @@ class TestBootSourceAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_uri(boot_source), new_values)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
         self.assertAttributes(boot_source, new_values)
 
@@ -114,7 +108,7 @@ class TestBootSourceAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_uri(boot_source), new_values)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourceBackwardAPI(APITestCase):
@@ -132,8 +126,8 @@ class TestBootSourceBackwardAPI(APITestCase):
         self.become_admin()
         boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_backward_uri(boot_source))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_boot_source = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        returned_boot_source = json_load_bytes(response.content)
         # The returned object contains a 'resource_uri' field.
         self.assertEqual(
             reverse(
@@ -143,6 +137,9 @@ class TestBootSourceBackwardAPI(APITestCase):
             returned_boot_source['resource_uri'])
         # The other fields are the boot source's fields.
         del returned_boot_source['resource_uri']
+        # JSON loads the keyring_data as a str, but it needs to be bytes.
+        returned_boot_source['keyring_data'] = (
+            returned_boot_source['keyring_data'].encode('utf-8'))
         # All the fields are present.
         self.assertItemsEqual(
             DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys())
@@ -157,9 +154,12 @@ class TestBootSourceBackwardAPI(APITestCase):
             nodegroup = factory.make_NodeGroup()
             response = self.client.get(
                 get_boot_source_backward_uri(boot_source, nodegroup))
-            self.assertEqual(httplib.OK, response.status_code)
-            returned_boot_source = json.loads(response.content)
+            self.assertEqual(http.client.OK, response.status_code)
+            returned_boot_source = json_load_bytes(response.content)
             del returned_boot_source['resource_uri']
+            # JSON loads the keyring_data as a str, but it needs to be bytes.
+            returned_boot_source['keyring_data'] = (
+                returned_boot_source['keyring_data'].encode('utf-8'))
             self.assertThat(
                 boot_source,
                 MatchesStructure.byEquality(**returned_boot_source))
@@ -167,21 +167,21 @@ class TestBootSourceBackwardAPI(APITestCase):
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_backward_uri(boot_source))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
         response = self.client.delete(
             get_boot_source_backward_uri(boot_source))
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source))
 
     def test_DELETE_requires_admin(self):
         boot_source = factory.make_BootSource()
         response = self.client.delete(
             get_boot_source_backward_uri(boot_source))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source(self):
         self.become_admin()
@@ -192,7 +192,7 @@ class TestBootSourceBackwardAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_backward_uri(boot_source), new_values)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
         self.assertAttributes(boot_source, new_values)
 
@@ -204,7 +204,7 @@ class TestBootSourceBackwardAPI(APITestCase):
         }
         response = self.client.put(
             get_boot_source_backward_uri(boot_source), new_values)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourcesAPI(APITestCase):
@@ -225,8 +225,9 @@ class TestBootSourcesAPI(APITestCase):
             factory.make_BootSource() for _ in range(3)]
         response = self.client.get(
             reverse('boot_sources_handler'))
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [boot_source.id for boot_source in sources],
             [boot_source.get('id') for boot_source in parsed_result])
@@ -234,7 +235,7 @@ class TestBootSourcesAPI(APITestCase):
     def test_GET_requires_admin(self):
         response = self.client.get(
             reverse('boot_sources_handler'))
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_with_keyring_filename(self):
         self.become_admin()
@@ -242,17 +243,17 @@ class TestBootSourcesAPI(APITestCase):
         params = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
-            'keyring_data': '',
+            'keyring_data': b'',
         }
         response = self.client.post(
             reverse('boot_sources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source = BootSource.objects.get(id=parsed_result['id'])
         # boot_source.keyring_data is returned as a read-only buffer, test
         # it separately from the rest of the attributes.
-        self.assertEqual('', bytes(boot_source.keyring_data))
+        self.assertEqual(b'', boot_source.keyring_data)
         del params['keyring_data']
         self.assertAttributes(boot_source, params)
 
@@ -267,8 +268,8 @@ class TestBootSourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_sources_handler'), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source = BootSource.objects.get(id=parsed_result['id'])
         # boot_source.keyring_data is returned as a read-only buffer, test
@@ -285,7 +286,7 @@ class TestBootSourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_sources_handler'), params)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_requires_admin(self):
         params = {
@@ -296,7 +297,7 @@ class TestBootSourcesAPI(APITestCase):
         }
         response = self.client.post(
             reverse('boot_sources_handler'), params)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestBootSourcesBackwardAPI(APITestCase):
@@ -322,8 +323,9 @@ class TestBootSourcesBackwardAPI(APITestCase):
         sources = [
             factory.make_BootSource() for _ in range(3)]
         response = self.client.get(self.get_uri())
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [boot_source.id for boot_source in sources],
             [boot_source.get('id') for boot_source in parsed_result])
@@ -336,15 +338,15 @@ class TestBootSourcesBackwardAPI(APITestCase):
             nodegroup = factory.make_NodeGroup()
             response = self.client.get(self.get_uri(nodegroup))
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_result = json.loads(response.content)
+                http.client.OK, response.status_code, response.content)
+            parsed_result = json_load_bytes(response.content)
             self.assertItemsEqual(
                 [boot_source.id for boot_source in sources],
                 [boot_source.get('id') for boot_source in parsed_result])
 
     def test_GET_requires_admin(self):
         response = self.client.get(self.get_uri())
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_with_keyring_filename(self):
         self.become_admin()
@@ -355,13 +357,13 @@ class TestBootSourcesBackwardAPI(APITestCase):
             'keyring_data': '',
         }
         response = self.client.post(self.get_uri(), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source = BootSource.objects.get(id=parsed_result['id'])
         # boot_source.keyring_data is returned as a read-only buffer, test
         # it separately from the rest of the attributes.
-        self.assertEqual('', bytes(boot_source.keyring_data))
+        self.assertEqual(b'', boot_source.keyring_data)
         del params['keyring_data']
         self.assertAttributes(boot_source, params)
 
@@ -375,8 +377,8 @@ class TestBootSourcesBackwardAPI(APITestCase):
                 factory.make_file_upload(content=sample_binary_data)),
         }
         response = self.client.post(self.get_uri(), params)
-        self.assertEqual(httplib.CREATED, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.CREATED, response.status_code)
+        parsed_result = json_load_bytes(response.content)
 
         boot_source = BootSource.objects.get(id=parsed_result['id'])
         # boot_source.keyring_data is returned as a read-only buffer, test
@@ -392,7 +394,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
             'url': 'http://example.com/',
         }
         response = self.client.post(self.get_uri(), params)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_requires_admin(self):
         params = {
@@ -402,4 +404,4 @@ class TestBootSourcesBackwardAPI(APITestCase):
                 factory.make_file_upload(content=sample_binary_data)),
         }
         response = self.client.post(self.get_uri(), params)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)

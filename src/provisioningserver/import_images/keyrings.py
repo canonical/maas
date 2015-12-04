@@ -2,26 +2,19 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """Keyring management functions for the import boot images job and script."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'write_all_keyrings',
     ]
 
 import os
-from urlparse import urlsplit
+from urllib.parse import urlsplit
 
 from provisioningserver.import_images.helpers import maaslog
+from provisioningserver.utils import typed
 
 
-def write_keyring(keyring_path, keyring_data):
+@typed
+def write_keyring(keyring_path, keyring_data: bytes):
     """Write a keyring blob to a file.
 
     :param path: The path to the keyring file.

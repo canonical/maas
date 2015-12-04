@@ -3,15 +3,6 @@
 
 """FanNetwork objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "FanNetwork",
     "FANNETWORK_NAME_VALIDATOR",
@@ -112,7 +103,7 @@ class FanNetwork(CleanSave, TimestampedModel):
         default=False, unique=False, editable=True, null=True, blank=True,
         help_text="Create the configuration, but mark it as 'off'")
 
-    def __unicode__(self):
+    def __str__(self):
         return "name=%s underlay=%s overlay=%s" % (
             self.name, self.underlay, self.overlay)
 

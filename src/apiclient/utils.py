@@ -3,33 +3,29 @@
 
 """Remote API library."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ascii_url",
     "urlencode",
     ]
 
 
-from urllib import quote_plus
-from urlparse import urlparse
+from urllib.parse import (
+    quote_plus,
+    urlparse,
+)
 
 
 def ascii_url(url):
     """Encode `url` as ASCII if it isn't already."""
-    if isinstance(url, unicode):
+    if isinstance(url, str):
         urlparts = urlparse(url)
         urlparts = urlparts._replace(
-            netloc=urlparts.netloc.encode("idna"))
-        url = urlparts.geturl()
-    return url.encode("ascii")
+            # Encode IDNA and decode back to bytes-in-unicode string.
+            netloc=urlparts.netloc.encode("idna").decode("ascii"))
+        return urlparts.geturl().encode("ascii")
+    else:
+        # Round-trip via ASCII so we at least crash if it's not.
+        return url.decode("ascii").encode("ascii")
 
 
 def urlencode(data):
@@ -41,8 +37,6 @@ def urlencode(data):
     Unicode strings will be encoded to UTF-8. This is what Django expects; see
     `smart_text` in the Django documentation.
     """
-    enc = lambda string: quote_plus(
-        string.encode("utf-8") if isinstance(string, unicode) else string)
-    return b"&".join(
-        b"%s=%s" % (enc(name), enc(value))
+    return "&".join(
+        "%s=%s" % (quote_plus(name), quote_plus(value))
         for name, value in data)

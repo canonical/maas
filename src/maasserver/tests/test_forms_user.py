@@ -3,15 +3,6 @@
 
 """Tests for user-creation forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.contrib.auth.models import User
@@ -30,7 +21,7 @@ class TestUniqueEmailForms(MAASServerTestCase):
     def assertFormFailsValidationBecauseEmailNotUnique(self, form):
         self.assertFalse(form.is_valid())
         self.assertIn('email', form._errors)
-        self.assertEquals(1, len(form._errors['email']))
+        self.assertEqual(1, len(form._errors['email']))
         # Cope with 'Email' and 'E-mail' in error message.
         self.assertThat(
             form._errors['email'][0],
@@ -109,7 +100,7 @@ class TestNewUserCreationForm(MAASServerTestCase):
         }
         form = NewUserCreationForm(params)
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {'email': ['This field is required.']},
             form._errors)
 

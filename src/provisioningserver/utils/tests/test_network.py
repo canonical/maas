@@ -3,15 +3,6 @@
 
 """Tests for network helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from socket import (
@@ -93,7 +84,7 @@ class TestFindIPViaARP(MAASTestCase):
     def patch_call(self, output):
         """Replace `call_and_check` with one that returns `output`."""
         fake = self.patch(network_module, 'call_and_check')
-        fake.return_value = output
+        fake.return_value = output.encode("ascii")
         return fake
 
     def test__resolves_MAC_address_to_IP(self):
@@ -143,7 +134,7 @@ class TestFindMACViaARP(MAASTestCase):
     def patch_call(self, output):
         """Replace `call_and_check` with one that returns `output`."""
         fake = self.patch(provisioningserver.utils.network, 'call_and_check')
-        fake.return_value = output
+        fake.return_value = output.encode("ascii")
         return fake
 
     def make_output_line(self, ip=None, mac=None, dev=None):
@@ -260,7 +251,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         ip = self.ip_address_factory()
         interface = factory.make_name('eth', sep='')
         patch_interfaces(
-            self, {interface: {self.inet_class: [{'addr': unicode(ip)}]}})
+            self, {interface: {self.inet_class: [{'addr': str(ip)}]}})
         self.assertEqual(
             [ip], list(get_all_addresses_for_interface(interface)))
 
@@ -271,10 +262,10 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         patch_interfaces(self, {
             interface: {
                 self.inet_class: [{
-                    'addr': unicode(ip),
-                    'broadcast': unicode(network.broadcast),
-                    'netmask': unicode(network.netmask),
-                    'peer': unicode(
+                    'addr': str(ip),
+                    'broadcast': str(network.broadcast),
+                    'netmask': str(network.netmask),
+                    'peer': str(
                         factory.pick_ip_in_network(network, but_not=[ip])),
                     }],
                 },
@@ -287,8 +278,8 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         patch_interfaces(self, {
             interface: {
                 AF_LINK: [{
-                    'addr': unicode(factory.make_mac_address()),
-                    'peer': unicode(factory.make_mac_address()),
+                    'addr': str(factory.make_mac_address()),
+                    'peer': str(factory.make_mac_address()),
                     }],
                 },
             })
@@ -300,8 +291,8 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         patch_interfaces(self, {
             interface: {
                 self.inet_class: [{
-                    'broadcast': unicode(network.broadcast),
-                    'netmask': unicode(network.netmask),
+                    'broadcast': str(network.broadcast),
+                    'netmask': str(network.netmask),
                     }],
                 },
             })
@@ -331,8 +322,8 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
         ips = zip(v4_ips, v6_ips)
         interfaces = {
             factory.make_name('eth', sep=''): {
-                AF_INET: [{'addr': unicode(ipv4)}],
-                AF_INET6: [{'addr': unicode(ipv6)}],
+                AF_INET: [{'addr': str(ipv4)}],
+                AF_INET6: [{'addr': str(ipv6)}],
                 }
             for ipv4, ipv6 in ips
             }
@@ -362,9 +353,9 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
         patch_interfaces(self, {
             interface: {
                 AF_INET: [
-                    {'addr': unicode(v4_ip)}],
+                    {'addr': str(v4_ip)}],
                 AF_INET6: [
-                    {'addr': unicode(v6_ip)}],
+                    {'addr': str(v6_ip)}],
                 }
             })
         self.assertEqual([v4_ip, v6_ip], list(get_all_interface_addresses()))
@@ -374,17 +365,17 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
     """Tests for `clean_up_netifaces_address`."""
 
     def test__leaves_IPv4_intact(self):
-        ip = unicode(factory.make_ipv4_address())
+        ip = str(factory.make_ipv4_address())
         interface = factory.make_name('eth')
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
     def test__leaves_clean_IPv6_intact(self):
-        ip = unicode(factory.make_ipv6_address())
+        ip = str(factory.make_ipv6_address())
         interface = factory.make_name('eth')
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
     def test__removes_zone_index_suffix(self):
-        ip = unicode(factory.make_ipv6_address())
+        ip = str(factory.make_ipv6_address())
         interface = factory.make_name('eth')
         self.assertEqual(
             ip,
@@ -397,7 +388,7 @@ class TestResolveHostname(MAASTestCase):
     def patch_getaddrinfo(self, *addrs):
         fake = self.patch(network_module, 'getaddrinfo')
         fake.return_value = [
-            (None, None, None, None, (unicode(address), None))
+            (None, None, None, None, (str(address), None))
             for address in addrs
             ]
         return fake

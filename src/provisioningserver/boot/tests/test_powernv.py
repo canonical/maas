@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.boot.powernv`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -19,7 +10,7 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import Mock
 from provisioningserver.boot import (
     BytesReader,
     powernv as powernv_module,
@@ -30,11 +21,12 @@ from provisioningserver.boot.powernv import (
     PowerNVBootMethod,
     re_config_file,
 )
+from provisioningserver.boot.testing import TFTPPathAndComponents
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.pserv_services.tftp import TFTPBackend
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from provisioningserver.utils import typed
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -42,9 +34,11 @@ from testtools.matchers import (
     Not,
     StartsWith,
 )
+from twisted.python.filepath import FilePath
 
 
-def compose_config_path(mac):
+@typed
+def compose_config_path(mac: str) -> bytes:
     """Compose the TFTP path for a PowerNV PXE configuration file.
 
     The path returned is relative to the TFTP root, as it would be
@@ -54,24 +48,24 @@ def compose_config_path(mac):
         corresponding to the machine for which this configuration is
         relevant. This relates to PXELINUX's lookup protocol.
     :return: Path for the corresponding PXE config file as exposed over
-        TFTP.
+        TFTP, as a byte string.
     """
     # Not using os.path.join: this is a TFTP path, not a native path. Yes, in
     # practice for us they're the same. We always assume that the ARP HTYPE
     # (hardware type) that PXELINUX sends is Ethernet.
     return "ppc64el/pxelinux.cfg/{htype:02x}-{mac}".format(
-        htype=ARP_HTYPE.ETHERNET, mac=mac)
+        htype=ARP_HTYPE.ETHERNET, mac=mac).encode("ascii")
 
 
-def get_example_path_and_components():
+@typed
+def get_example_path_and_components() -> TFTPPathAndComponents:
     """Return a plausible path and its components.
 
     The path is intended to match `re_config_file`, and the components are
     the expected groups from a match.
     """
-    components = {"mac": factory.make_mac_address("-")}
-    config_path = compose_config_path(components["mac"])
-    return config_path, components
+    mac = factory.make_mac_address("-")
+    return compose_config_path(mac), {"mac": mac.encode("ascii")}
 
 
 class TestPowerNVBootMethod(MAASTestCase):
@@ -80,20 +74,20 @@ class TestPowerNVBootMethod(MAASTestCase):
         """Set, and return, a temporary TFTP root directory."""
         tftproot = self.make_dir()
         self.useFixture(ClusterConfigurationFixture(tftp_root=tftproot))
-        return tftproot
+        return FilePath(tftproot)
 
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
-        name = factory.make_name('config')
+        mac = factory.make_mac_address("-")
         self.assertEqual(
-            'ppc64el/pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, name),
-            compose_config_path(name))
+            'ppc64el/pxelinux.cfg/%02x-%s' % (ARP_HTYPE.ETHERNET, mac),
+            compose_config_path(mac).decode("ascii"))
 
     def test_compose_config_path_does_not_include_tftp_root(self):
-        tftproot = self.make_tftp_root()
-        name = factory.make_name('config')
+        tftproot = self.make_tftp_root().asBytesMode()
+        mac = factory.make_mac_address("-")
         self.assertThat(
-            compose_config_path(name),
-            Not(StartsWith(tftproot)))
+            compose_config_path(mac),
+            Not(StartsWith(tftproot.path)))
 
     def test_bootloader_path(self):
         method = PowerNVBootMethod()
@@ -104,7 +98,7 @@ class TestPowerNVBootMethod(MAASTestCase):
         method = PowerNVBootMethod()
         self.assertThat(
             method.bootloader_path,
-            Not(StartsWith(tftproot)))
+            Not(StartsWith(tftproot.path)))
 
     def test_name(self):
         method = PowerNVBootMethod()
@@ -120,7 +114,7 @@ class TestPowerNVBootMethod(MAASTestCase):
 
     def test_path_prefix(self):
         method = PowerNVBootMethod()
-        self.assertEqual('ppc64el/', method.path_prefix)
+        self.assertEqual(b'ppc64el/', method.path_prefix)
 
 
 class TestPowerNVBootMethodMatchPath(MAASTestCase):
@@ -130,16 +124,16 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
 
     def test_match_path_pxe_config_with_mac(self):
         method = PowerNVBootMethod()
-        config_path, expected = get_example_path_and_components()
+        config_path, args = get_example_path_and_components()
         params = method.match_path(None, config_path)
-        expected['arch'] = 'ppc64el'
+        expected = {'arch': 'ppc64el', 'mac': args['mac'].decode("ascii")}
         self.assertEqual(expected, params)
 
     def test_match_path_pxe_config_without_mac(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.make_mac_address()
+        fake_mac = factory.make_mac_address("-")
         self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
-        config_path = 'ppc64el/pxelinux.cfg/default'
+        config_path = b'ppc64el/pxelinux.cfg/default'
         params = method.match_path(None, config_path)
         expected = {
             'arch': 'ppc64el',
@@ -149,9 +143,9 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
 
     def test_match_path_pxe_prefix_request(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.make_mac_address()
+        fake_mac = factory.make_mac_address("-")
         self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
-        file_path = 'ppc64el/file'
+        file_path = b'ppc64el/file'
         params = method.match_path(None, file_path)
         expected = {
             'arch': 'ppc64el',
@@ -174,7 +168,7 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
         self.assertThat(output, StartsWith("DEFAULT "))
@@ -219,28 +213,28 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
             "backend": None,
             "kernel_params": make_kernel_parameters(purpose="local"),
             }
-        output = method.get_reader(**options).read(10000)
+        output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("", output)
 
     def test_get_reader_appends_bootif(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.make_mac_address()
+        fake_mac = factory.make_mac_address("-")
         params = make_kernel_parameters(self, purpose="install")
         output = method.get_reader(
             backend=None, kernel_params=params, arch='ppc64el', mac=fake_mac)
-        output = output.read(10000)
+        output = output.read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         expected = 'BOOTIF=%s' % format_bootif(fake_mac)
         self.assertIn(expected, config['execute']['APPEND'])
 
     def test_format_bootif_replaces_colon(self):
-        fake_mac = factory.make_mac_address()
+        fake_mac = factory.make_mac_address("-")
         self.assertEqual(
             '01-%s' % fake_mac.replace(':', '-').lower(),
             format_bootif(fake_mac))
 
     def test_format_bootif_makes_mac_address_lower(self):
-        fake_mac = factory.make_mac_address()
+        fake_mac = factory.make_mac_address("-")
         fake_mac = fake_mac.upper()
         self.assertEqual(
             '01-%s' % fake_mac.replace(':', '-').lower(),
@@ -256,13 +250,12 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
         data = factory.make_string().encode("ascii")
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = os.path.dirname(temp_file)
-        backend = TFTPBackend(
-            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
+        backend = Mock(base=FilePath(temp_dir))  # A `TFTPBackend`.
         method = PowerNVBootMethod()
         options = {
             'backend': backend,
             'kernel_params': make_kernel_parameters(),
-            'path': 'ppc64el/example',
+            'path': b'ppc64el/example',
         }
         reader = method.get_reader(**options)
         self.addCleanup(reader.finish)
@@ -276,13 +269,12 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
         temp_subdir = os.path.join(temp_dir, 'ppc64el')
         os.mkdir(temp_subdir)
         factory.make_file(temp_subdir, "example", data)
-        backend = TFTPBackend(
-            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
+        backend = Mock(base=FilePath(temp_dir))  # A `TFTPBackend`.
         method = PowerNVBootMethod()
         options = {
             'backend': backend,
             'kernel_params': make_kernel_parameters(),
-            'path': 'ppc64el/ppc64el/example',
+            'path': b'ppc64el/ppc64el/example',
         }
         reader = method.get_reader(**options)
         self.addCleanup(reader.finish)
@@ -311,7 +303,7 @@ class TestPowerNVBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = get_example_path_and_components()
         # Ensure there's a leading slash.
-        config_path = "/" + config_path.lstrip("/")
+        config_path = b"/" + config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -322,7 +314,7 @@ class TestPowerNVBootMethodRegex(MAASTestCase):
         # easy on this point, so it makes sense to be also.
         config_path, args = get_example_path_and_components()
         # Ensure there's no leading slash.
-        config_path = config_path.lstrip("/")
+        config_path = config_path.lstrip(b"/")
         match = re_config_file.match(config_path)
         self.assertIsNotNone(match, config_path)
         self.assertEqual(args, match.groupdict())
@@ -330,27 +322,27 @@ class TestPowerNVBootMethodRegex(MAASTestCase):
     def test_re_config_file_matches_classic_pxelinux_cfg(self):
         # The default config path is simply "pxelinux.cfg" (without
         # leading slash).  The regex matches this.
-        mac = 'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match('ppc64el/pxelinux.cfg/01-%s' % mac)
+        mac = factory.make_mac_address("-").encode("ascii")
+        match = re_config_file.match(b'ppc64el/pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac}, match.groupdict())
 
     def test_re_config_file_matches_pxelinux_cfg_with_leading_slash(self):
-        mac = 'aa-bb-cc-dd-ee-ff'
-        match = re_config_file.match('/ppc64el/pxelinux.cfg/01-%s' % mac)
+        mac = factory.make_mac_address("-").encode("ascii")
+        match = re_config_file.match(b'/ppc64el/pxelinux.cfg/01-%s' % mac)
         self.assertIsNotNone(match)
         self.assertEqual({'mac': mac}, match.groupdict())
 
     def test_re_config_file_does_not_match_non_config_file(self):
-        self.assertIsNone(re_config_file.match('ppc64el/pxelinux.cfg/kernel'))
+        self.assertIsNone(re_config_file.match(b'ppc64el/pxelinux.cfg/kernel'))
 
     def test_re_config_file_does_not_match_file_in_root(self):
-        self.assertIsNone(re_config_file.match('01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b'01-aa-bb-cc-dd-ee-ff'))
 
     def test_re_config_file_does_not_match_file_not_in_pxelinux_cfg(self):
-        self.assertIsNone(re_config_file.match('foo/01-aa-bb-cc-dd-ee-ff'))
+        self.assertIsNone(re_config_file.match(b'foo/01-aa-bb-cc-dd-ee-ff'))
 
     def test_re_config_file_with_default(self):
-        match = re_config_file.match('ppc64el/pxelinux.cfg/default')
+        match = re_config_file.match(b'ppc64el/pxelinux.cfg/default')
         self.assertIsNotNone(match)
         self.assertEqual({'mac': None}, match.groupdict())

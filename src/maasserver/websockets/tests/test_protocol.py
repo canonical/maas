@@ -3,22 +3,13 @@
 
 """Tests for `maasserver.websockets.protocol`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import deque
 import json
 import random
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.core.exceptions import ValidationError
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
@@ -62,6 +53,9 @@ from twisted.internet.defer import (
 from twisted.web.server import NOT_DONE_YET
 
 
+wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
 class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     def make_protocol(self, patch_authenticate=True, transport_uri=''):
@@ -73,6 +67,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
+        protocol.transport.cookies = ""
         protocol.transport.uri = transport_uri
         if patch_authenticate:
             self.patch(protocol, "authenticate")
@@ -94,10 +89,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     def get_written_transport_message(self, protocol):
         call = protocol.transport.write.call_args_list.pop()
-        return json.loads(call[0][0])
+        return json.loads(call[0][0].decode("ascii"))
 
     def test_connectionMade_sets_user_and_processes_messages(self):
-        protocol, factory = self.make_protocol()
+        protocol, factory = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
         self.patch_autospec(protocol, "processMessages")
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
@@ -182,7 +177,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         key = maas_factory.make_name("key")
         value = maas_factory.make_name("value")
         message = {key: value}
-        self.assertEquals(value, protocol.getMessageField(message, key))
+        self.assertEqual(value, protocol.getMessageField(message, key))
 
     def test_getMessageField_calls_loseConnection_if_key_missing(self):
         protocol, factory = self.make_protocol()
@@ -210,7 +205,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol, factory = self.make_protocol()
         protocol_user = yield deferToDatabase(
             lambda: protocol.getUserFromSessionId(session_id))
-        self.assertEquals(user, protocol_user)
+        self.assertEqual(user, protocol_user)
 
     def test_getUserFromSessionId_returns_None_for_invalid_key(self):
         self.client_log_in()
@@ -334,7 +329,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             {"type": MSG_TYPE.REQUEST, "request_id": 1},
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
             ])
-        self.assertEquals([], protocol.processMessages())
+        self.assertEqual([], protocol.processMessages())
 
     def test_processMessages_process_all_messages_in_the_queue(self):
         protocol, factory = self.make_protocol()
@@ -346,7 +341,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
             ]
         protocol.messages = deque(messages)
-        self.assertEquals(messages, protocol.processMessages())
+        self.assertEqual(messages, protocol.processMessages())
 
     def test_processMessages_calls_loseConnection_if_missing_type_field(self):
         protocol, factory = self.make_protocol()
@@ -634,6 +629,7 @@ class MakeProtocolFactoryMixin:
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
+        protocol.transport.cookies = ""
         if user is None:
             user = maas_factory.make_User()
         mock_authenticate = self.patch(protocol, "authenticate")

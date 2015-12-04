@@ -3,15 +3,6 @@
 
 """Tests for the `upgrade-cluster` command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
@@ -21,6 +12,7 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.matchers import (
+    FileContains,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -33,7 +25,6 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
     DirExists,
-    FileContains,
     FileExists,
     Not,
 )
@@ -175,16 +166,16 @@ class TestRetireBootResourcesYAML(MAASTestCase):
         content = factory.make_string()
         path = self.set_bootresources_yaml(content)
         upgrade_cluster.retire_bootresources_yaml()
-        self.assertThat(
-            path,
-            FileContains(upgrade_cluster.BOOTRESOURCES_WARNING + content))
+        self.assertThat(path, FileContains(
+            upgrade_cluster.BOOTRESOURCES_WARNING + content, encoding="utf-8"))
 
     def test__is_idempotent(self):
         path = self.set_bootresources_yaml(factory.make_string())
         upgrade_cluster.retire_bootresources_yaml()
         content_after_upgrade = read_text_file(path)
         upgrade_cluster.retire_bootresources_yaml()
-        self.assertThat(path, FileContains(content_after_upgrade))
+        self.assertThat(path, FileContains(
+            content_after_upgrade, encoding="utf-8"))
 
     def test__survives_encoding_problems(self):
         path = os.path.join(self.make_dir(), 'bootresources.yaml')
@@ -194,8 +185,7 @@ class TestRetireBootResourcesYAML(MAASTestCase):
         self.patch(upgrade_cluster, 'BOOTRESOURCES_FILE', path)
         upgrade_cluster.retire_bootresources_yaml()
         self.assertThat(
-            path,
-            FileContains(
+            path, FileContains(
                 upgrade_cluster.BOOTRESOURCES_WARNING.encode('ascii') +
                 content))
 

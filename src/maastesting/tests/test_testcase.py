@@ -3,15 +3,6 @@
 
 """Tests for `MAASTestCase`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os.path
@@ -49,7 +40,7 @@ class TestTestCase(MAASTestCase):
         other_temp_root, other_subdir = os.path.split(other_temp_dir)
         temp_root, subdir = os.path.split(self.make_dir())
         self.assertEqual(other_temp_root, temp_root)
-        self.assertNotIn(subdir, [b'', u'', None])
+        self.assertNotIn(subdir, [b'', '', None])
 
     def test_make_dir_creates_one_directory_per_call(self):
         self.assertNotEqual(self.make_dir(), self.make_dir())

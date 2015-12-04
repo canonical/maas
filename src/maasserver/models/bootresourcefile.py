@@ -3,15 +3,6 @@
 
 """Boot Resource File."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootResourceFile',
     ]
@@ -70,7 +61,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 
-    def __unicode__(self):
+    def __str__(self):
         return "<BootResourceFile %s/%s>" % (self.filename, self.filetype)
 
 

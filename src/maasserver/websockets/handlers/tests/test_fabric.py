@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.fabric`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.models.fabric import Fabric
@@ -53,7 +44,7 @@ class TestFabricHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             interface.vlan = vlan
             interface.save()
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_fabric(fabric),
             handler.get({"id": fabric.id}))
 

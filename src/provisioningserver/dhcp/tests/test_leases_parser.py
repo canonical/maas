@@ -3,15 +3,6 @@
 
 """Tests for the DHCP leases parser."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import namedtuple
@@ -49,7 +40,7 @@ class Lease(object):
         self.ends = ends
 
     def __iter__(self):
-        return iter(self.__dict__.keys())
+        return iter(self.__dict__)
 
 
 def fake_parsed_lease(ip=None, mac=None, ends=None,
@@ -77,7 +68,7 @@ class Rubout(object):
         self.deleted = 'true'
 
     def __iter__(self):
-        return iter(self.__dict__.keys())
+        return iter(self.__dict__)
 
 
 def get_fake_parsed_rubouts(ip=None, mac=None):
@@ -156,7 +147,7 @@ class TestLeasesParsers(MAASTestCase):
         if mac is None:
             mac = factory.make_mac_address()
         params = {
-            'ip': unicode(ip),
+            'ip': str(ip),
             'mac': mac,
             }
         # The "six" parameter is suffixed to the fixed-address keyword:
@@ -170,7 +161,7 @@ class TestLeasesParsers(MAASTestCase):
     def make_lease_entry(self, ip, mac):
         """Create a lease entry mapping an IP address to a MAC address."""
         params = {
-            'ip': unicode(ip),
+            'ip': str(ip),
             'mac': mac,
             }
         return self.sample_lease_entry % params
@@ -185,7 +176,7 @@ class TestLeasesParsers(MAASTestCase):
         self.assertEqual([(ip, mac)], leases)
 
     def test_parse_leases_parses_IPv6_lease(self):
-        ip = unicode(factory.make_ipv6_address())
+        ip = str(factory.make_ipv6_address())
         mac = factory.make_mac_address()
         leases = self.parse(self.make_lease_entry(ip, mac))
         self.assertEqual([(ip, mac)], leases)
@@ -201,7 +192,7 @@ class TestLeasesParsers(MAASTestCase):
         ip = factory.make_ipv6_address()
         mac = factory.make_mac_address()
         leases = self.parse(self.make_host_entry(ip, mac))
-        self.assertEqual([(unicode(ip), mac)], leases)
+        self.assertEqual([(str(ip), mac)], leases)
 
     def test_parse_leases_parses_full_sized_IPv6_address(self):
         ip = 'fc00:0001:0000:0000:0000:0000:0000:0000'
@@ -436,8 +427,8 @@ class TestLeasesParserFunctions(MAASTestCase):
         lease = fake_parsed_lease(ends='0 2011/01/02 03:04:05')
         self.assertEqual(
             datetime(
-                year=2011, month=01, day=02,
-                hour=03, minute=04, second=05),
+                year=2011, month=0o1, day=0o2,
+                hour=0o3, minute=0o4, second=0o5),
             get_expiry_date(lease))
 
     def test_get_expiry_date_returns_None_for_never(self):

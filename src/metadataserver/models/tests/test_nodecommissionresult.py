@@ -3,15 +3,6 @@
 
 """Tests for the :class:`NodeResult` model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from random import randint
@@ -33,11 +24,11 @@ from metadataserver.models.commissioningscript import (
 class TestNodeResult(DjangoTestCase):
     """Test the NodeResult model."""
 
-    def test_unicode_represents_result(self):
+    def test_string_conversion_represents_result(self):
         result = factory.make_NodeResult_for_commissioning()
         self.assertEqual(
             '%s/%s' % (result.node.system_id, result.name),
-            unicode(result))
+            str(result))
 
     def test_can_store_data(self):
         node = factory.make_Node()
@@ -87,7 +78,7 @@ class TestNodeResult(DjangoTestCase):
         output = b'\x00\xff'
         result = factory.make_NodeResult_for_commissioning(data=output)
         html = result.get_data_as_html()
-        self.assertIsInstance(html, unicode)
+        self.assertIsInstance(html, str)
         # The nul byte turns into the zero character.  The 0xff is an invalid
         # character and so becomes the Unicode "replacement character" 0xfffd.
         self.assertEqual('\x00\ufffd', html)

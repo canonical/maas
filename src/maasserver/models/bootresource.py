@@ -3,15 +3,6 @@
 
 """Boot Resource."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootResource',
     ]
@@ -317,7 +308,7 @@ class BootResource(CleanSave, TimestampedModel):
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 
-    def __unicode__(self):
+    def __str__(self):
         return "<BootResource name=%s, arch=%s>" % (
             self.name, self.architecture)
 

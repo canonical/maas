@@ -3,16 +3,6 @@
 
 """Test ISC configuration file parser/generator."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import OrderedDict
@@ -43,12 +33,14 @@ class TestParseISCString(MAASTestCase):
             """)
         options = parse_isc_string(testdata)
         self.assertEqual(
-            OrderedDict({
-                u'options': OrderedDict({
-                    u'auth-nxdomain': u'no',
-                    u'directory': u'"/var/cache/bind"',
-                    u'dnssec-validation': u'auto',
-                    u'listen-on-v6': OrderedDict({u'any': True})})}),
+            OrderedDict([
+                ('options', OrderedDict([
+                    ('directory', '"/var/cache/bind"'),
+                    ('dnssec-validation', 'auto'),
+                    ('auth-nxdomain', 'no'),
+                    ('listen-on-v6', OrderedDict([('any', True)])),
+                ])),
+            ]),
             options)
 
     def test_parses_bind_acl(self):
@@ -61,9 +53,12 @@ class TestParseISCString(MAASTestCase):
             """)
         acl = parse_isc_string(testdata)
         self.assertEqual(
-            {u'acl goodclients': {u'192.0.2.0/24': True,
-                                  u'localhost': True,
-                                  u'localnets': True}}, acl)
+            {'acl goodclients': {
+                '192.0.2.0/24': True,
+                'localhost': True,
+                'localnets': True,
+            }},
+            acl)
 
     def test_parses_multiple_forwarders(self):
         testdata = dedent("""\
@@ -77,11 +72,14 @@ class TestParseISCString(MAASTestCase):
             """)
         forwarders = parse_isc_string(testdata)
         self.assertEqual(
-            {u'forwarders': {u'91.189.94.2': True,
-                             u'91.189.94.3': True,
-                             u'91.189.94.4': True,
-                             u'91.189.94.5': True,
-                             u'91.189.94.6': True}}, forwarders)
+            {'forwarders': {
+                '91.189.94.2': True,
+                '91.189.94.3': True,
+                '91.189.94.4': True,
+                '91.189.94.5': True,
+                '91.189.94.6': True,
+            }},
+            forwarders)
 
     def test_parses_bug_1413388_config(self):
         testdata = dedent("""\
@@ -113,24 +111,33 @@ class TestParseISCString(MAASTestCase):
             zone "."  { type master; file "/etc/bind/db.special"; };
             """)
         config = parse_isc_string(testdata)
-        self.assertEqual(
-            {u'acl canonical-int-ns':
-             {u'91.189.89.192': True, u'91.189.90.151': True},
-             u'options': {u'allow-query': {u'any': True},
-                          u'allow-query-cache': {u'10.222.64.0/18': True},
-                          u'allow-transfer': {u'10.222.64.1': True,
-                                              u'canonical-int-ns': True},
-                          u'also-notify': {u'91.189.89.192': True,
-                                           u'91.189.90.151': True},
-                          u'auth-nxdomain': u'no',
-                          u'directory': u'"/var/cache/bind"',
-                          u'dnssec-validation': u'auto',
-                          u'forwarders': {u'91.189.94.2': True},
-                          u'listen-on-v6': {u'any': True},
-                          u'notify': u'explicit',
-                          u'recursion': u'yes'},
-             u'zone "."':
-             {u'file': u'"/etc/bind/db.special"', u'type': u'master'}},
+        self.assertEqual({
+            'acl canonical-int-ns': {
+                '91.189.89.192': True,
+                '91.189.90.151': True,
+            },
+            'options': {
+                'allow-query': {'any': True},
+                'allow-query-cache': {'10.222.64.0/18': True},
+                'allow-transfer': {
+                    '10.222.64.1': True,
+                    'canonical-int-ns': True,
+                },
+                'also-notify': {
+                    '91.189.89.192': True,
+                    '91.189.90.151': True,
+                },
+                'auth-nxdomain': 'no',
+                'directory': '"/var/cache/bind"',
+                'dnssec-validation': 'auto',
+                'forwarders': {'91.189.94.2': True},
+                'listen-on-v6': {'any': True},
+                'notify': 'explicit',
+                'recursion': 'yes'},
+            'zone "."': {
+                'file': '"/etc/bind/db.special"',
+                'type': 'master',
+            }},
             config)
 
     def test_parse_then_make_then_parse_generates_identical_config(self):
@@ -167,30 +174,30 @@ class TestParseISCString(MAASTestCase):
         config = parse_isc_string(config_string)
         self.assertEqual(
             OrderedDict(
-                [(u'acl canonical-int-ns',
+                [('acl canonical-int-ns',
                     OrderedDict(
-                        [(u'91.189.90.151', True), (u'91.189.89.192', True)])),
-                 (u'options', OrderedDict(
-                     [(u'directory', u'"/var/cache/bind"'),
-                      (u'forwarders', OrderedDict(
-                          [(u'91.189.94.2', True)])),
-                      (u'dnssec-validation', u'auto'),
-                      (u'auth-nxdomain', u'no'),
-                      (u'listen-on-v6', OrderedDict([(u'any', True)])),
-                      (u'allow-query', OrderedDict([(u'any', True)])),
-                      (u'allow-transfer', OrderedDict(
-                          [(u'10.222.64.1', True),
-                           (u'canonical-int-ns', True)])),
-                      (u'notify', u'explicit'),
-                      (u'also-notify', OrderedDict(
-                          [(u'91.189.90.151', True),
-                           (u'91.189.89.192', True)])),
-                      (u'allow-query-cache', OrderedDict(
-                          [(u'10.222.64.0/18', True)])),
-                      (u'recursion', u'yes')])),
-                 (u'zone "."', OrderedDict(
-                     [(u'type', u'master'),
-                      (u'file', u'"/etc/bind/db.special"')]))]),
+                        [('91.189.90.151', True), ('91.189.89.192', True)])),
+                 ('options', OrderedDict(
+                     [('directory', '"/var/cache/bind"'),
+                      ('forwarders', OrderedDict(
+                          [('91.189.94.2', True)])),
+                      ('dnssec-validation', 'auto'),
+                      ('auth-nxdomain', 'no'),
+                      ('listen-on-v6', OrderedDict([('any', True)])),
+                      ('allow-query', OrderedDict([('any', True)])),
+                      ('allow-transfer', OrderedDict(
+                          [('10.222.64.1', True),
+                           ('canonical-int-ns', True)])),
+                      ('notify', 'explicit'),
+                      ('also-notify', OrderedDict(
+                          [('91.189.90.151', True),
+                           ('91.189.89.192', True)])),
+                      ('allow-query-cache', OrderedDict(
+                          [('10.222.64.0/18', True)])),
+                      ('recursion', 'yes')])),
+                 ('zone "."', OrderedDict(
+                     [('type', 'master'),
+                      ('file', '"/etc/bind/db.special"')]))]),
             config)
 
     def test_parser_preserves_order(self):
@@ -208,10 +215,10 @@ class TestParseISCString(MAASTestCase):
             };
             """)
         forwarders = parse_isc_string(testdata)
-        self.assertEqual(OrderedDict([(u'forwarders', OrderedDict(
-            [(u'9.9.9.9', True), (u'8.8.8.8', True), (u'7.7.7.7', True),
-             (u'6.6.6.6', True), (u'5.5.5.5', True), (u'4.4.4.4', True),
-             (u'3.3.3.3', True), (u'2.2.2.2', True), (u'1.1.1.1', True)]))]),
+        self.assertEqual(OrderedDict([('forwarders', OrderedDict(
+            [('9.9.9.9', True), ('8.8.8.8', True), ('7.7.7.7', True),
+             ('6.6.6.6', True), ('5.5.5.5', True), ('4.4.4.4', True),
+             ('3.3.3.3', True), ('2.2.2.2', True), ('1.1.1.1', True)]))]),
             forwarders)
 
     def test_parse_unmatched_brackets_throws_iscparseexception(self):
@@ -257,22 +264,31 @@ class TestParseISCString(MAASTestCase):
             """)
         testfile = self.make_file(contents=testdata)
         parsed = read_isc_file(testfile)
-        self.assertEqual(
-            {u'acl canonical-int-ns':
-             {u'91.189.89.192': True, u'91.189.90.151': True},
-             u'options': {u'allow-query': {u'any': True},
-                          u'allow-query-cache': {u'10.222.64.0/18': True},
-                          u'allow-transfer': {u'10.222.64.1': True,
-                                              u'canonical-int-ns': True},
-                          u'also-notify': {u'91.189.89.192': True,
-                                           u'91.189.90.151': True},
-                          u'auth-nxdomain': u'no',
-                          u'directory': u'"/var/cache/bind"',
-                          u'dnssec-validation': u'auto',
-                          u'forwarders': {u'91.189.94.2': True},
-                          u'listen-on-v6': {u'any': True},
-                          u'notify': u'explicit',
-                          u'recursion': u'yes'},
-             u'zone "."':
-             {u'file': u'"/etc/bind/db.special"', u'type': u'master'}},
+        self.assertEqual({
+            'acl canonical-int-ns': {
+                '91.189.89.192': True,
+                '91.189.90.151': True,
+            },
+            'options': {
+                'allow-query': {'any': True},
+                'allow-query-cache': {'10.222.64.0/18': True},
+                'allow-transfer': {
+                    '10.222.64.1': True,
+                    'canonical-int-ns': True,
+                },
+                'also-notify': {
+                    '91.189.89.192': True,
+                    '91.189.90.151': True,
+                },
+                'auth-nxdomain': 'no',
+                'directory': '"/var/cache/bind"',
+                'dnssec-validation': 'auto',
+                'forwarders': {'91.189.94.2': True},
+                'listen-on-v6': {'any': True},
+                'notify': 'explicit',
+                'recursion': 'yes'},
+            'zone "."': {
+                'file': '"/etc/bind/db.special"',
+                'type': 'master',
+            }},
             parsed)

@@ -3,15 +3,6 @@
 
 """Tests for all forms that are used with `RAID`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -268,8 +259,10 @@ class TestCreateRaidForm(MAASServerTestCase):
             self.assertFalse(form.is_valid())
             self.assertDictContainsSubset(
                 {
-                    u'__all__': ['At least one block device or partition must '
-                                 'be added to the array.']
+                    '__all__': [
+                        'At least one block device or partition must '
+                        'be added to the array.',
+                    ]
                 },
                 form.errors)
 
@@ -307,7 +300,7 @@ class TestUpdateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         boot_partition = boot_disk.get_partitiontable().partitions.first()
-        self.assertEquals(
+        self.assertEqual(
             boot_partition.get_effective_filesystem().filesystem_group.id,
             raid.id)
 
@@ -339,7 +332,7 @@ class TestUpdateRaidForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         raid = form.save()
         boot_partition = boot_disk.get_partitiontable().partitions.first()
-        self.assertEquals(
+        self.assertEqual(
             boot_partition.get_effective_filesystem().filesystem_group.id,
             raid.id)
 

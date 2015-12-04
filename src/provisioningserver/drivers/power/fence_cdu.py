@@ -3,9 +3,6 @@
 
 """Template-based Fence CDU Power Driver."""
 
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from provisioningserver.drivers.power import PowerDriver

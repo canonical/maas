@@ -3,16 +3,10 @@
 
 """Test generation of commissioning user data."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
+
+import base64
+import email
 
 from maasserver.preseed import get_preseed_context
 from maasserver.testing.factory import factory
@@ -31,25 +25,35 @@ class TestCommissioningUserData(MAASServerTestCase):
         # both definitions and use of various commands in python.
         node = factory.make_Node()
         user_data = generate_user_data(node)
-        # On Vivid and above the email library defaults to encoding the MIME
-        # data as base64. We only check the inner contents if its not base64.
-        if "Content-Transfer-Encoding: base64" not in user_data:
-            self.assertThat(
-                user_data, ContainsAll({
-                    'config',
-                    'user_data.sh',
-                    'maas-get',
-                    'maas-signal',
-                    'maas-ipmi-autodetect',
-                    'def authenticate_headers',
-                    'def encode_multipart_data',
-                }))
-        else:
-            self.assertThat(
-                user_data, ContainsAll({
-                    'config',
-                    'user_data.sh',
-                }))
+        parsed_data = email.message_from_string(user_data.decode("utf-8"))
+        self.assertTrue(parsed_data.is_multipart())
+
+        cloud_config = parsed_data.get_payload()[0]
+        self.assertEquals(
+            'text/cloud-config; charset="utf-8"', cloud_config['Content-Type'])
+        self.assertEquals(
+            'base64', cloud_config['Content-Transfer-Encoding'])
+        self.assertEquals(
+            'attachment; filename="config"',
+            cloud_config['Content-Disposition'])
+
+        user_data_script = parsed_data.get_payload()[1]
+        self.assertEquals(
+            'text/x-shellscript; charset="utf-8"',
+            user_data_script['Content-Type'])
+        self.assertEquals(
+            'base64', user_data_script['Content-Transfer-Encoding'])
+        self.assertEquals(
+            'attachment; filename="user_data.sh"',
+            user_data_script['Content-Disposition'])
+        self.assertThat(
+            base64.b64decode(user_data_script.get_payload()), ContainsAll({
+                b'maas-get',
+                b'maas-signal',
+                b'maas-ipmi-autodetect',
+                b'def authenticate_headers',
+                b'def encode_multipart_data',
+            }))
 
     def test_nodegroup_passed_to_get_preseed_context(self):
         # I don't care about what effect it has, I just want to know
@@ -64,15 +68,3 @@ class TestCommissioningUserData(MAASServerTestCase):
         self.assertThat(
             utils.get_preseed_context,
             MockCalledWith(nodegroup=node.nodegroup))
-
-    def test_generate_user_data_generates_mime_multipart(self):
-        # The generate_user_data func should create a MIME multipart
-        # message consisting of cloud-config and x-shellscript
-        # attachments.
-        node = factory.make_Node()
-        self.assertThat(
-            generate_user_data(node), ContainsAll({
-                'multipart',
-                'Content-Type: text/cloud-config',
-                'Content-Type: text/x-shellscript',
-            }))

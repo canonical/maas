@@ -1,15 +1,6 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_vmware',
     'power_query_vmware',
@@ -20,10 +11,10 @@ from abc import abstractmethod
 from collections import OrderedDict
 from importlib import import_module
 import traceback
-from urllib import unquote
+from urllib.parse import unquote
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )

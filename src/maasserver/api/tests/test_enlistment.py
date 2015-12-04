@@ -3,20 +3,12 @@
 
 """Tests for enlistment-related portions of the API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
@@ -38,6 +30,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
+from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 from netaddr import IPNetwork
 
@@ -71,8 +64,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
@@ -95,9 +88,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         system_id = parsed_result.get('system_id')
         node = Node.objects.get(system_id=system_id)
         self.assertNotEqual(hostname, node.hostname)
@@ -125,7 +118,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'power_parameters': json.dumps(power_parameters),
                 'power_type': power_type,
             })
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         [node] = Node.objects.filter(hostname=hostname)
         self.assertEqual(power_parameters, node.power_parameters)
         self.assertEqual(power_type, node.power_type)
@@ -143,8 +136,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
@@ -169,8 +162,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
-        self.assertEqual(httplib.OK, response.status_code)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
         nodegroup = NodeGroup.objects.ensure_master()
         domain_name = nodegroup.name
@@ -192,10 +185,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'subarchitecture': architecture.split('/')[1],
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
-            "Subarchitecture cannot be specified twice.",
+            b"Subarchitecture cannot be specified twice.",
             response.content)
 
     def test_POST_new_associates_mac_addresses(self):
@@ -243,7 +236,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': [factory.make_mac_address()],
             })
         node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
+            system_id=json_load_bytes(response.content)['system_id'])
         self.assertNotEqual("", strip_domain(node.hostname))
 
     def test_POST_fails_without_operation(self):
@@ -256,10 +249,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
-            "Unrecognised signature: method=POST op=None",
+            b"Unrecognised signature: method=POST op=None",
             response.content)
 
     def test_POST_new_fails_if_autodetect_nodegroup_required(self):
@@ -276,11 +269,11 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
-            "'autodetect_nodegroup' must be specified if 'nodegroup' "
-            "parameter missing", response.content)
+            b"'autodetect_nodegroup' must be specified if 'nodegroup' "
+            b"parameter missing", response.content)
 
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
@@ -296,9 +289,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': factory.make_string(),
                 'mac_addresses': [mac],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertIn(
             "MAC address %s already in use on" % mac,
@@ -316,9 +309,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            "Unrecognised signature: method=POST op=invalid_operation",
+            b"Unrecognised signature: method=POST op=invalid_operation",
             response.content)
 
     def test_POST_new_rejects_invalid_data(self):
@@ -332,9 +325,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertEqual(
             [
@@ -355,9 +348,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
                 'architecture': 'invalid-architecture',
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
         self.assertItemsEqual(
             ['architecture'], parsed_result, response.content)
@@ -398,8 +391,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
@@ -421,8 +415,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
@@ -445,8 +440,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'mac_addresses': [factory.make_mac_address()],
             },
             REMOTE_ADDR=origin_ip)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         node = Node.objects.get(system_id=parsed_result.get('system_id'))
         self.assertEqual(nodegroup, node.nodegroup)
 
@@ -463,8 +459,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'mac_addresses': [factory.make_mac_address()],
             },
             HTTP_HOST=unknown_host)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json_load_bytes(response.content)
         node = Node.objects.get(system_id=parsed_result.get('system_id'))
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
 
@@ -497,8 +494,9 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        system_id = json_load_bytes(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.NEW,
             Node.objects.get(system_id=system_id).status)
@@ -521,7 +519,8 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
-            (httplib.UNAUTHORIZED, "You must be logged in to accept nodes."),
+            (http.client.UNAUTHORIZED,
+             b"You must be logged in to accept nodes."),
             (response.status_code, response.content))
 
     def test_POST_returns_limited_fields(self):
@@ -534,7 +533,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'hostname': factory.make_string(),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 'hostname',
@@ -590,9 +589,10 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
-            (httplib.FORBIDDEN,
+            (http.client.FORBIDDEN, (
                 "You don't have the required permission to accept the "
-                "following node(s): %s." % node_id),
+                "following node(s): %s." % node_id).encode(
+                settings.DEFAULT_CHARSET)),
             (response.status_code, response.content))
 
     def test_POST_accept_all_does_not_accept_anything(self):
@@ -605,8 +605,8 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         factory.make_Node(status=NODE_STATUS.NEW),
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept_all'})
-        self.assertEqual(httplib.OK, response.status_code)
-        nodes_returned = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        nodes_returned = json_load_bytes(response.content)
         self.assertEqual([], nodes_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
@@ -624,9 +624,9 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 })
 
         node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
+            system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
-            (httplib.OK, {"power_address": new_power_address},
+            (http.client.OK, {"power_address": new_power_address},
              'ether_wake'),
             (response.status_code, node.power_parameters,
              node.power_type))
@@ -642,7 +642,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 'hostname',
@@ -704,7 +704,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
         node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
+            system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual('ether_wake', node.power_type)
         self.assertEqual('', node.power_parameters)
 
@@ -723,9 +723,10 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
+            system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             {'mac_address': new_mac_address},
             reload_object(node).power_parameters)
@@ -746,10 +747,10 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
         self.assertEqual(
             (
-                httplib.BAD_REQUEST,
+                http.client.BAD_REQUEST,
                 {'power_parameters': ["Unknown parameter(s): unknown_param."]}
             ),
-            (response.status_code, json.loads(response.content)))
+            (response.status_code, json_load_bytes(response.content)))
         self.assertFalse(Node.objects.filter(hostname=hostname).exists())
 
     def test_POST_new_sets_power_parameters_skip_check(self):
@@ -768,9 +769,10 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         node = Node.objects.get(
-            system_id=json.loads(response.content)['system_id'])
+            system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             {'param': param},
             reload_object(node).power_parameters)
@@ -789,8 +791,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'power_type': 'ether_wake',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
-        self.assertEqual(httplib.OK, response.status_code)
-        system_id = json.loads(response.content)['system_id']
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json_load_bytes(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.COMMISSIONING,
             Node.objects.get(system_id=system_id).status)
@@ -807,7 +809,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'power_type': 'ether_wake',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        parsed_result = json.loads(response.content)
+        parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
                 'hostname',
@@ -856,8 +858,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             ]
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept_all'})
-        self.assertEqual(httplib.OK, response.status_code)
-        nodes_returned = json.loads(response.content)
+        self.assertEqual(http.client.OK, response.status_code)
+        nodes_returned = json_load_bytes(response.content)
         self.assertSetEqual(
             {node.system_id for node in nodes},
             {node["system_id"] for node in nodes_returned})

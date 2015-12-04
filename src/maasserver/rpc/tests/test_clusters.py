@@ -3,15 +3,6 @@
 
 """Tests for :py:module:`~maasserver.rpc.cluster`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from copy import deepcopy
@@ -163,8 +154,8 @@ class TestRegister(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, register_cluster, factory.make_UUID(),
             name=("0123456789" * 11))
-        self.assertEquals(
-            [u'Ensure this value has at most 100 characters (it has 110).'],
+        self.assertEqual(
+            ['Ensure this value has at most 100 characters (it has 110).'],
             error.messages)
 
     def test__logs_creation_of_first_cluster_as_master(self):

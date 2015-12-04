@@ -3,15 +3,6 @@
 
 """Tests for node actions."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.db import transaction
@@ -71,7 +62,7 @@ from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
 
 
-ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
+ALL_STATUSES = list(NODE_STATUS_CHOICES_DICT)
 
 
 class FakeNodeAction(NodeAction):
@@ -100,7 +91,7 @@ class TestNodeAction(MAASServerTestCase):
 
         actions = compile_node_actions(
             factory.make_Node(), factory.make_admin(), classes=[MyAction])
-        self.assertEqual([MyAction.name], actions.keys())
+        self.assertEqual([MyAction.name], list(actions.keys()))
 
     def test_compile_node_actions_checks_node_status(self):
 
@@ -129,7 +120,7 @@ class TestNodeAction(MAASServerTestCase):
 
         actions = compile_node_actions(
             factory.make_Node(), factory.make_admin(), classes=[MyAction])
-        self.assertEqual([MyAction.name], actions.keys())
+        self.assertEqual([MyAction.name], list(actions.keys()))
 
     def test_compile_node_actions_maps_names(self):
 
@@ -148,13 +139,13 @@ class TestNodeAction(MAASServerTestCase):
     def test_compile_node_actions_maintains_order(self):
         names = [factory.make_string() for counter in range(4)]
         classes = [
-            type(b"Action%d" % counter, (FakeNodeAction,), {'name': name})
+            type("Action%d" % counter, (FakeNodeAction,), {'name': name})
             for counter, name in enumerate(names)]
         actions = compile_node_actions(
             factory.make_Node(), factory.make_admin(), classes=classes)
-        self.assertSequenceEqual(names, actions.keys())
+        self.assertSequenceEqual(names, list(actions.keys()))
         self.assertSequenceEqual(
-            names, [action.name for action in actions.values()])
+            names, [action.name for action in list(actions.values())])
 
     def test_is_permitted_allows_if_user_has_permission(self):
 
@@ -440,9 +431,9 @@ class TestDeployAction(MAASServerTestCase):
         }
         error = self.assertRaises(
             NodeActionError, Deploy(node, user).execute, **extra)
-        self.assertEquals(
+        self.assertEqual(
             "%s is not a support operating system." % os_name,
-            error.message)
+            str(error))
 
     def test_Deploy_sets_osystem_and_series(self):
         user = factory.make_User()
@@ -545,7 +536,7 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
 
         e = self.assertRaises(NodeActionError, Deploy(node, user).execute)
         self.expectThat(
-            e.message, Equals(
+            str(e), Equals(
                 "%s: Failed to start, static IP addresses are exhausted." %
                 node.hostname))
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -639,7 +630,7 @@ class TestPowerOffAction(MAASServerTestCase):
                 status=status, power_type='ipmi', power_state=POWER_STATE.ON)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
-            results[status] = actions.keys()
+            results[status] = list(actions.keys())
         expected_results = {status: [PowerOff.name] for status in all_statuses}
         self.assertEqual(
             expected_results, results,
@@ -653,7 +644,7 @@ class TestPowerOffAction(MAASServerTestCase):
                 status=status, power_type='ipmi', power_state=POWER_STATE.ON)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
-            results[status] = actions.keys()
+            results[status] = list(actions.keys())
         expected_results = {status: [] for status in all_statuses}
         self.assertEqual(
             expected_results, results,
@@ -667,7 +658,7 @@ class TestPowerOffAction(MAASServerTestCase):
                 status=status, power_type='ipmi', power_state=POWER_STATE.OFF)
             actions = compile_node_actions(
                 node, factory.make_admin(), classes=[PowerOff])
-            results[status] = actions.keys()
+            results[status] = list(actions.keys())
         expected_results = {status: [] for status in all_statuses}
         self.assertEqual(
             expected_results, results,
@@ -848,7 +839,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(action.node._start.side_effect),
-            unicode(exception))
+            str(exception))
 
     def test_Abort_handles_rpc_errors(self):
         action = self.make_action(
@@ -857,7 +848,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(action.node._stop.side_effect),
-            unicode(exception))
+            str(exception))
 
     def test_PowerOn_handles_rpc_errors(self):
         action = self.make_action(PowerOn, NODE_STATUS.READY)
@@ -865,7 +856,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(action.node._start.side_effect),
-            unicode(exception))
+            str(exception))
 
     def test_PowerOff_handles_rpc_errors(self):
         action = self.make_action(PowerOff, NODE_STATUS.DEPLOYED)
@@ -873,7 +864,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(action.node._stop.side_effect),
-            unicode(exception))
+            str(exception))
 
     def test_Release_handles_rpc_errors(self):
         action = self.make_action(
@@ -882,4 +873,4 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(action.node._stop.side_effect),
-            unicode(exception))
+            str(exception))

@@ -3,19 +3,9 @@
 
 """Test for RPC utility functions for Nodes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import timedelta
-from itertools import imap
 import json
 from operator import attrgetter
 import random
@@ -344,7 +334,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
     def test__returns_unchecked_nodes_first(self):
         cluster = factory.make_NodeGroup()
-        nodes = [self.make_Node(cluster) for _ in xrange(5)]
+        nodes = [self.make_Node(cluster) for _ in range(5)]
         node_unchecked = random.choice(nodes)
         node_unchecked.power_state_updated = None
         node_unchecked.save()
@@ -420,7 +410,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
     def test__returns_checked_nodes_in_last_checked_order(self):
         cluster = factory.make_NodeGroup()
-        nodes = [self.make_Node(cluster) for _ in xrange(5)]
+        nodes = [self.make_Node(cluster) for _ in range(5)]
 
         power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
         system_ids = [params["system_id"] for params in power_parameters]
@@ -437,7 +427,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         # Ensure that there are at least 64kiB of power parameters (when
         # converted to JSON) in the database.
-        example_parameters = {"key%d" % i: "value%d" % i for i in xrange(100)}
+        example_parameters = {"key%d" % i: "value%d" % i for i in range(100)}
         remaining = 2 ** 16
         while remaining > 0:
             node = self.make_Node(cluster, power_parameters=example_parameters)
@@ -446,8 +436,8 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         nodes = list_cluster_nodes_power_parameters(cluster.uuid)
 
         # The total size of the JSON is less than 60kiB, but only a bit.
-        nodes_json = imap(json.dumps, nodes)
-        nodes_json_lengths = imap(len, nodes_json)
+        nodes_json = map(json.dumps, nodes)
+        nodes_json_lengths = map(len, nodes_json)
         nodes_json_length = sum(nodes_json_lengths)
         expected_maximum = 60 * (2 ** 10)  # 60kiB
         self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))

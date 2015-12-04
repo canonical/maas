@@ -3,15 +3,6 @@
 
 """Generic helpers for `netaddr` and network-related types."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'clean_up_netifaces_address',
     'find_ip_via_arp',
@@ -59,12 +50,12 @@ class MAASIPRange(IPRange):
             purpose = {purpose}
         self.purpose = purpose
 
-    def __unicode__(self):
-        range_str = unicode(IPAddress(self.first))
+    def __str__(self):
+        range_str = str(IPAddress(self.first))
         if not self.first == self.last:
-            range_str += '-' + unicode(IPAddress(self.last))
+            range_str += '-' + str(IPAddress(self.last))
             range_str += (" num_addresses=" +
-                          unicode((self.last - self.first + 1)))
+                          str((self.last - self.first + 1)))
         if self.purpose:
             range_str += " purpose=" + repr(self.purpose)
         return range_str
@@ -209,7 +200,7 @@ class MAASIPSet(set):
                     return item
         else:
             addr = IPAddress(search)
-            addr = long(addr)
+            addr = int(addr)
             for item in self.ranges:
                 if item.first <= addr <= item.last:
                     return item
@@ -237,7 +228,7 @@ class MAASIPSet(set):
             addresses considered "unused". If an IPRange is supplied,
             all addresses in the range will be considered unused.
         """
-        if isinstance(outer_range, (bytes, unicode)):
+        if isinstance(outer_range, (bytes, str)):
             if '/' in outer_range:
                 outer_range = IPNetwork(outer_range)
         unused_ranges = []
@@ -302,12 +293,12 @@ def make_iprange(first, second=None, purpose="unknown"):
     :param purpose: If supplied, stores a comment in the range object to
         indicate the purpose of this range.
     """
-    if isinstance(first, (int, long)):
+    if isinstance(first, int):
         first = IPAddress(first)
     if second is None:
         second = first
     else:
-        if isinstance(second, (int, long)):
+        if isinstance(second, int):
             second = IPAddress(second)
     iprange = MAASIPRange(inet_ntop(first), inet_ntop(second), purpose=purpose)
     return iprange
@@ -347,8 +338,8 @@ def find_ip_via_arp(mac):
 
     :param mac: The mac address, e.g. '1c:6f:65:d5:56:98'.
     """
-
-    output = call_and_check(['arp', '-n']).split('\n')
+    output = call_and_check(['arp', '-n'])
+    output = output.decode("ascii").splitlines()
 
     for line in sorted(output):
         columns = line.split()
@@ -373,8 +364,9 @@ def find_mac_via_arp(ip):
     ip = IPAddress(ip)
     # Use "C" locale; we're parsing output so we don't want any translations.
     output = call_and_check(['ip', 'neigh'], env={'LC_ALL': 'C'})
+    output = output.decode("ascii").splitlines()
 
-    for line in sorted(output.splitlines()):
+    for line in sorted(output):
         columns = line.split()
         if len(columns) < 4:
             raise Exception(
@@ -504,7 +496,7 @@ def ip_range_within_network(ip_range, network):
 def inet_ntop(value):
     """Convert IPv4 and IPv6 addresses from binary to text form.
     (See also inet_ntop(3), the C function with the same name and function.)"""
-    return unicode(IPAddress(value))
+    return str(IPAddress(value))
 
 
 def parse_integer(value_string):

@@ -3,15 +3,6 @@
 
 """Tests for the ``maasregiond`` TAP."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import crochet
@@ -72,13 +63,13 @@ class TestRegionServiceMaker(MAASTestCase):
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "basicConfig")
         # Enable database access in the reactor just for these tests.
-        asynchronous(enable_all_database_connections, 5)()
+        asynchronous(enable_all_database_connections, timeout=5)()
         import_websocket_handlers()
 
     def tearDown(self):
         super(TestRegionServiceMaker, self).tearDown()
         # Disable database access in the reactor again.
-        asynchronous(disable_all_database_connections, 5)()
+        asynchronous(disable_all_database_connections, timeout=5)()
 
     def test_init(self):
         service_maker = RegionServiceMaker("Harry", "Hill")

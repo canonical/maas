@@ -6,39 +6,30 @@ the named.conf.options.inside.maas file, which contains the 'forwarders'
 setting.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-from collections import OrderedDict
-
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Command',
     ]
 
+from collections import OrderedDict
 from copy import deepcopy
 from datetime import datetime
 from optparse import make_option
 import os
 import shutil
 import sys
+from textwrap import dedent
 
 from django.core.management.base import (
     BaseCommand,
     CommandError,
 )
 from maasserver.models import Config
+from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 from provisioningserver.utils.isc import (
     ISCParseException,
     make_isc_string,
     parse_isc_string,
 )
-from provisioningserver.dns.config import MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
 
 
 class Command(BaseCommand):
@@ -67,20 +58,21 @@ class Command(BaseCommand):
                  "MAAS-managed configuration. Requires the MAAS database to "
                  "be configured and running."),
     )
-    help = (
-        "Edit the named.conf.options file so that it includes the "
-        "named.conf.options.inside.maas file, which contains the "
-        "'forwarders' and 'dnssec-validation' settings.  A backup "
-        "of the old file will be made with the suffix "
-        "'.maas-YYYY-MM-DDTHH:MM:SS.mmmmmm'.  This program must be run as "
-        "root.")
+    help = " ".join(dedent("""\
+    Edit the named.conf.options file so that it includes the
+    named.conf.options.inside.maas file, which contains the 'forwarders' and
+    'dnssec-validation' settings. A backup of the old file will be made with
+    the suffix '.maas-YYYY-MM-DDTHH:MM:SS.mmmmmm'. All configuration files are
+    treated as 7-bit ASCII; it's not clear what else BIND will tolerate. This
+    program must be run as root.
+    """).splitlines())
 
     def read_file(self, config_path):
         """Open the named file and return its contents as a string."""
         if not os.path.exists(config_path):
             raise CommandError("%s does not exist" % config_path)
 
-        with open(config_path, "rb") as fd:
+        with open(config_path, "r", encoding="ascii") as fd:
             options_file = fd.read()
         return options_file
 
@@ -93,7 +85,7 @@ class Command(BaseCommand):
             config_dict = parse_isc_string(options_file)
         except ISCParseException as e:
             raise CommandError("Failed to parse %s: %s" % (
-                config_path, e.message))
+                config_path, str(e))) from e
         options_block = config_dict.get("options", None)
         if options_block is None:
             # Something is horribly wrong with the file; bail out rather
@@ -178,7 +170,7 @@ class Command(BaseCommand):
         except IOError as e:
             raise CommandError(
                 "Failed to make a backup of %s, exiting: %s" % (
-                    config_path, e.message))
+                    config_path, str(e))) from e
         return backup_destination
 
     def write_new_named_conf_options(self, fd, backup_filename, new_content):
@@ -233,6 +225,6 @@ class Command(BaseCommand):
                     stdout, config_path, new_content)
             else:
                 backup_filename = self.back_up_existing_file(config_path)
-                with open(config_path, "wb") as fd:
+                with open(config_path, "w", encoding="ascii") as fd:
                     self.write_new_named_conf_options(
                         fd, backup_filename, new_content)

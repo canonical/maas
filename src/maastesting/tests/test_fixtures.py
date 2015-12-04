@@ -3,23 +3,13 @@
 
 """Tests for `maastesting.fixtures`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import __builtin__
+import builtins
 import os
 import sys
 
 from fixtures import EnvironmentVariableFixture
-from maastesting import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -33,7 +23,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from mock import call
 from testtools.matchers import (
-    DirExists,
     Equals,
     Is,
     Not,
@@ -54,16 +43,16 @@ class TestImportErrorFixture(MAASTestCase):
             from maastesting import root  # noqa
 
     def test_import_restores_original__import__(self):
-        __real_import = __builtin__.__import__
+        __real_import = builtins.__import__
         with ImportErrorFixture('maastesting', 'root'):
             self.assertNotEqual(
                 __real_import,
-                __builtin__.__import__,
+                builtins.__import__,
                 'ImportErrorFixture did not properly '
                 'patch __builtin__.__import__')
         self.assertEqual(
             __real_import,
-            __builtin__.__import__,
+            builtins.__import__,
             'ImportErrorFixture did not properly restore '
             'the original __builtin__.__import__ upon cleanup')
 
@@ -96,15 +85,13 @@ class TestTempDirectory(MAASTestCase):
 
     def test_path_is_unicode(self):
         with TempDirectory() as fixture:
-            self.assertIsInstance(fixture.path, unicode)
+            self.assertIsInstance(fixture.path, str)
 
     def test_path_is_decoded_using_filesystem_encoding(self):
-        sys = self.patch(fixtures, "sys")
-        sys.getfilesystemencoding.return_value = "rot13"
-        with TempDirectory() as fixture:
-            self.assertIsInstance(fixture.path, unicode)
-            self.assertThat(fixture.path, Not(DirExists()))
-            self.assertThat(fixture.path.decode("rot13"), DirExists())
+        with TempDirectory() as outer:
+            # Create a nested temporary directory from a BYTE path.
+            with TempDirectory(outer.path.encode("ascii")) as inner:
+                self.assertIsInstance(inner.path, str)
 
 
 class TestTempWDFixture(MAASTestCase):
@@ -233,11 +220,13 @@ class TestCaptureStandardIO(MAASTestCase):
     def test__non_text_strings_are_rejected_on_stdout(self):
         with CaptureStandardIO():
             error = self.assertRaises(
-                UnicodeError, sys.stdout.write, sample_binary_data)
-        self.assertDocTestMatches("... codec can't decode ...", unicode(error))
+                TypeError, sys.stdout.write, sample_binary_data)
+        self.assertDocTestMatches(
+            "write() argument must be str, not bytes", str(error))
 
     def test__non_text_strings_are_rejected_on_stderr(self):
         with CaptureStandardIO():
             error = self.assertRaises(
-                UnicodeError, sys.stderr.write, sample_binary_data)
-        self.assertDocTestMatches("... codec can't decode ...", unicode(error))
+                TypeError, sys.stderr.write, sample_binary_data)
+        self.assertDocTestMatches(
+            "write() argument must be str, not bytes", str(error))

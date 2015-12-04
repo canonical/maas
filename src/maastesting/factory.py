@@ -3,15 +3,6 @@
 
 """Test object factories."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "factory",
     "NO_VALUE",
@@ -20,11 +11,10 @@ __all__ = [
 
 import datetime
 from functools import partial
-import httplib
+import http.client
 import io
 from itertools import (
     count,
-    imap,
     islice,
     repeat,
 )
@@ -34,8 +24,9 @@ import random
 import string
 import subprocess
 import time
-import urllib2
-import urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
@@ -76,18 +67,18 @@ def network_clashes(network, other_networks):
 
 class Factory:
 
-    random_letters = imap(
-        random.choice, repeat(string.letters + string.digits))
+    random_letters = map(
+        random.choice, repeat(string.ascii_letters + string.digits))
 
-    random_letters_with_spaces = imap(
-        random.choice, repeat(string.letters + string.digits + ' '))
+    random_letters_with_spaces = map(
+        random.choice, repeat(string.ascii_letters + string.digits + ' '))
 
     # See django.contrib.auth.forms.UserCreationForm.username.
-    random_letters_for_usernames = imap(
-        random.choice, repeat(string.letters + '.@+-'))
+    random_letters_for_usernames = map(
+        random.choice, repeat(string.ascii_letters + '.@+-'))
 
-    random_http_responses = imap(
-        random.choice, repeat(tuple(httplib.responses)))
+    random_http_responses = map(
+        random.choice, repeat(tuple(http.client.responses)))
 
     random_octet = partial(random.randint, 0, 255)
 
@@ -116,7 +107,7 @@ class Factory:
         """Return an arbitrary HTTP status code."""
         return next(self.random_http_responses)
 
-    exception_type_names = (b"TestException#%d" % i for i in count(1))
+    exception_type_names = ("TestException#%d" % i for i in count(1))
 
     def make_exception_type(self, bases=(Exception,), **namespace):
         return type(next(self.exception_type_names), bases, namespace)
@@ -174,7 +165,7 @@ class Factory:
         # We can't use random.choice() because there are too many
         # elements in network.
         random_address_index = random.randint(0, network.size - 1)
-        return unicode(IPAddress(network[random_address_index]))
+        return str(IPAddress(network[random_address_index]))
 
     def make_ip_address(self):
         if random.randint(0, 1):
@@ -183,7 +174,7 @@ class Factory:
             return self.make_ipv4_address()
 
     def make_UUID(self):
-        return unicode(uuid1())
+        return str(uuid1())
 
     def _make_random_network(
             self, slash=None, but_not=None, disjoint_from=None,
@@ -285,7 +276,7 @@ class Factory:
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
-                return bytes(address)
+                return str(address)
         raise TooManyRandomRetries(
             "Could not find available IP in static range")
 
@@ -298,7 +289,7 @@ class Factory:
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:
-                return bytes(address)
+                return str(address)
         raise TooManyRandomRetries(
             "Could not find available IP in static range")
 
@@ -309,7 +300,7 @@ class Factory:
         for _ in range(100):
             address = IPAddress(random.randint(network.first, network.last))
             if address not in but_not:
-                return bytes(address)
+                return str(address)
         raise TooManyRandomRetries("Could not find available IP in network")
 
     def make_ipv4_range(self, network=None, but_not=None):
@@ -347,7 +338,7 @@ class Factory:
         return self.make_ip_range(network=network, but_not=but_not)
 
     def make_mac_address(self, delimiter=":"):
-        assert isinstance(delimiter, unicode)
+        assert isinstance(delimiter, str)
         octets = islice(self.random_octets, 6)
         return delimiter.join(format(octet, "02x") for octet in octets)
 
@@ -383,8 +374,9 @@ class Factory:
             make sure it gets cleaned up after the test!
         :param name: Optional name for the file.  If none is given, one will
             be made up.
-        :param contents: Optional contents for the file.  If omitted, some
-            arbitrary ASCII text will be written.
+        :param contents: Optional contents for the file. If omitted, some
+            arbitrary ASCII text will be written. If Unicode content is
+            provided, it will be encoded with UTF-8.
         :type contents: unicode, but containing only ASCII characters.
         :return: Path to the file.
         """
@@ -392,8 +384,10 @@ class Factory:
             name = self.make_string()
         if contents is None:
             contents = self.make_string().encode('ascii')
+        if isinstance(contents, str):
+            contents = contents.encode("utf-8")
         path = os.path.join(location, name)
-        with open(path, 'w') as f:
+        with open(path, 'wb') as f:
             f.write(contents)
         return path
 
@@ -411,8 +405,10 @@ class Factory:
             generally, use the default.
         :return: A randomized unicode string.
         """
-        return sep.join(
-            filter(None, [prefix, self.make_string(size=size)]))
+        if prefix is None:
+            return self.make_string(size=size)
+        else:
+            return prefix + sep + self.make_string(size=size)
 
     def make_hostname(self, prefix='host', *args, **kwargs):
         """Generate a random hostname.
@@ -425,7 +421,7 @@ class Factory:
     # that we can round-trip a URL with params successfully (otherwise
     # the params don't get parsed out of the path).
     _make_parsed_url_schemes = tuple(
-        scheme for scheme in urlparse.uses_params
+        scheme for scheme in urllib.parse.uses_params
         if scheme != "")
 
     def make_parsed_url(
@@ -455,7 +451,7 @@ class Factory:
             port = self.pick_port()
         if netloc is None:
             netloc = "%s.example.com" % self.make_name("netloc").lower()
-            if isinstance(port, (int, long)) and not isinstance(port, bool):
+            if isinstance(port, int) and not isinstance(port, bool):
                 netloc += ":%d" % port
         if path is None:
             # A leading forward-slash will be added in geturl() if we
@@ -472,7 +468,7 @@ class Factory:
             query = self.make_name("query")
         if fragment is None:
             fragment = self.make_name("fragment")
-        return urlparse.ParseResult(
+        return urllib.parse.ParseResult(
             scheme, netloc, path, params, query, fragment)
 
     def make_url(
@@ -524,15 +520,11 @@ class Factory:
         return tarball
 
     def make_response(self, status_code, content, content_type=None):
-        """Return a similar response to that which `urllib2` returns."""
-        if content_type is None:
-            headers_raw = b""
-        else:
-            if isinstance(content_type, unicode):
-                content_type = content_type.encode("ascii")
-            headers_raw = b"Content-Type: %s" % content_type
-        headers = httplib.HTTPMessage(io.BytesIO(headers_raw))
-        return urllib2.addinfourl(
+        """Return a similar response to that which `urllib` returns."""
+        headers = http.client.HTTPMessage()
+        if content_type is not None:
+            headers.set_type(content_type)
+        return urllib.request.addinfourl(
             fp=io.BytesIO(content), headers=headers,
             url=None, code=status_code)
 

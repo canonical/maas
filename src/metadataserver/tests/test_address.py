@@ -3,19 +3,11 @@
 
 """Test server-address-guessing logic."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
 from socket import gethostname
+from unittest import skip
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -45,9 +37,9 @@ class TestAddress(MAASTestCase):
 
     def test_get_command_output_uses_C_locale(self):
         locale = parse_locale_lines(address.get_command_output('locale'))
-        self.assertEqual('C', locale['LC_CTYPE'])
-        self.assertEqual('C', locale['LC_MESSAGES'])
-        self.assertEqual('en_US.UTF-8', locale['LANG'])
+        self.assertEqual('C.UTF-8', locale['LC_CTYPE'])
+        self.assertEqual('C.UTF-8', locale['LC_MESSAGES'])
+        self.assertEqual('C.UTF-8', locale['LANG'])
 
     def test_find_default_interface_finds_default_interface(self):
         sample_ip_route = [
@@ -114,6 +106,7 @@ class TestAddress(MAASTestCase):
     def test_find_default_interface_returns_None_on_failure(self):
         self.assertIsNone(address.find_default_interface([]))
 
+    @skip("`ip route` no longer shows routing for loopback device.")
     def test_get_ip_address_finds_IP_address_of_interface(self):
         self.assertEqual('127.0.0.1', address.get_ip_address(b'lo'))
 

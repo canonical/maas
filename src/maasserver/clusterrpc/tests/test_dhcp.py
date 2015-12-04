@@ -3,23 +3,11 @@
 
 """Tests for the `dhcp` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import Iterator
 from functools import partial
-from itertools import (
-    chain,
-    izip,
-)
+from itertools import chain
 
 from maasserver.clusterrpc import dhcp
 from maasserver.enum import (
@@ -275,8 +263,8 @@ class TestUpdateHostMaps(MAASServerTestCase):
         leases_in_the_dynamic_range = {
             make_DHCPLease(
                 nodegroup, get_random_dynamic_ip(), MAC(mac_address))
-            for nodegroup, mappings in static_mappings.viewitems()
-            for _, mac_address in mappings.viewitems()
+            for nodegroup, mappings in static_mappings.items()
+            for _, mac_address in mappings.items()
         }
 
         # Make the call we've all been waiting for.
@@ -305,7 +293,7 @@ class TestUpdateHostMaps(MAASServerTestCase):
         expected_mappings = [
             {"ip_address": ip_address, "mac_address": mac_address}
             for ip_address, mac_address in
-            static_mappings[nodegroup].viewitems()
+            static_mappings[nodegroup].items()
         ]
         _, _, kwargs = protocol.CreateHostMaps.mock_calls[0]
         observed_mappings = kwargs["mappings"]
@@ -482,7 +470,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
         static_mappings = {
             nodegroup: {
                 factory.make_ipv4_address(): factory.make_mac_address()
-                for _ in xrange(3)
+                for _ in range(3)
             }
             for nodegroup in nodegroups
         }
@@ -499,10 +487,10 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
                     shared_key=nodegroup.dhcp_key,
                     mappings=[
                         {"ip_address": ip_address, "mac_address": mac_address}
-                        for ip_address, mac_address in mappings.viewitems()
+                        for ip_address, mac_address in mappings.items()
                     ],
                 )
-                for nodegroup, mappings in static_mappings.viewitems()
+                for nodegroup, mappings in static_mappings.items()
             ))
         )
 
@@ -537,7 +525,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
     def make_leases_in_network(nodegroup, network, count=3):
         pick_address = factory.pick_ip_in_network
         leased_ips = set()
-        for _ in xrange(count):
+        for _ in range(count):
             ip_address = pick_address(network, but_not=leased_ips)
             yield make_DHCPLease(nodegroup=nodegroup, ip=ip_address)
             leased_ips.add(ip_address)
@@ -669,7 +657,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         nodegroup, _ = self.make_nodegroup_and_interface()
 
         # Add another 3 managed interfaces, for a total of 4.
-        for _ in xrange(3):
+        for _ in range(3):
             factory.make_NodeGroupInterface(
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
                 nodegroup=nodegroup)
@@ -704,7 +692,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 
         # Mangle the leases for the second nodegroup to have the same MAC
         # addresses as those for the first nodegroup.
-        for lease1, lease2 in izip(leases1, leases2):
+        for lease1, lease2 in zip(leases1, leases2):
             lease2.mac = lease1.interface_set.first().mac_address
             lease2.save()
 

@@ -3,15 +3,6 @@
 
 """The device handler for the WebSocket connection."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DeviceHandler",
     ]
@@ -103,7 +94,7 @@ class DeviceHandler(TimestampedModelHandler):
             .prefetch_related('zone')
             .prefetch_related('tags'))
         pk = 'system_id'
-        pk_type = unicode
+        pk_type = str
         allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
         exclude = [
             "id",
@@ -186,7 +177,7 @@ class DeviceHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
-        data["actions"] = compile_node_actions(obj, self.user).keys()
+        data["actions"] = list(compile_node_actions(obj, self.user).keys())
 
         boot_interface = obj.get_boot_interface()
         data["primary_mac"] = (
@@ -291,7 +282,7 @@ class DeviceHandler(TimestampedModelHandler):
         # Cleanup any fields that have a None value.
         new_params = {
             key: value
-            for key, value in new_params.viewitems()
+            for key, value in new_params.items()
             if value is not None
         }
         return super(DeviceHandler, self).preprocess_form(action, new_params)

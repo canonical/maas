@@ -3,19 +3,10 @@
 
 """Tests for `maascli.auth`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import Namespace
-import httplib
+import http.client
 import json
 import sys
 
@@ -44,7 +35,7 @@ def make_credentials():
 
 def make_options():
     credentials = ':'.join(make_credentials())
-    url = u'http://example.com/api/1.0/'
+    url = 'http://example.com/api/1.0/'
     options = Namespace(
         credentials=credentials, execute=None, insecure=False,
         profile_name='test', url=url)
@@ -97,7 +88,7 @@ class TestAuth(MAASTestCase):
         content = factory.make_name('content')
         mock_request = self.patch(httplib2.Http, 'request')
         response = httplib2.Response({})
-        response['status'] = httplib.OK
+        response['status'] = http.client.OK
         mock_request.return_value = response, json.dumps(content)
         self.assertTrue(auth.check_valid_apikey(
             options.url, convert_string_to_tuple(options.credentials),
@@ -108,7 +99,7 @@ class TestAuth(MAASTestCase):
         content = factory.make_name('content')
         mock_request = self.patch(httplib2.Http, 'request')
         response = httplib2.Response({})
-        response['status'] = httplib.UNAUTHORIZED
+        response['status'] = http.client.UNAUTHORIZED
         mock_request.return_value = response, json.dumps(content)
         self.assertFalse(auth.check_valid_apikey(
             options.url, convert_string_to_tuple(options.credentials),
@@ -119,7 +110,7 @@ class TestAuth(MAASTestCase):
         content = factory.make_name('content')
         mock_request = self.patch(httplib2.Http, 'request')
         response = httplib2.Response({})
-        response['status'] = httplib.GONE
+        response['status'] = http.client.GONE
         mock_request.return_value = response, json.dumps(content)
         self.assertRaises(
             auth.UnexpectedResponse, auth.check_valid_apikey,

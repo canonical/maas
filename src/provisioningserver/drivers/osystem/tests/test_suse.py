@@ -3,15 +3,6 @@
 
 """Tests for the SUSEOS module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from itertools import product
@@ -51,7 +42,7 @@ class TestSUSEOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = SUSEOS()
-        release = random.choice(DISTRO_SERIES_CHOICES.keys())
+        release = random.choice(list(DISTRO_SERIES_CHOICES))
         self.assertEqual(
             DISTRO_SERIES_CHOICES[release],
             osystem.get_release_title(release))

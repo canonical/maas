@@ -3,15 +3,6 @@
 
 """Config forms utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'DictCharField',
     'DictCharWidget',
@@ -67,7 +58,7 @@ class DictCharField(forms.MultiValueField):
         # this check even if skip_check=False because having a field named
         # 'skip_check' that isn't used to actually skip the checks would be
         # very confusing.
-        if SKIP_CHECK_NAME in self.field_dict.keys():
+        if SKIP_CHECK_NAME in self.field_dict:
             raise RuntimeError(
                 "'%s' is a reserved name "
                 "(it can't be used to name a subfield)." % SKIP_CHECK_NAME)
@@ -77,9 +68,9 @@ class DictCharField(forms.MultiValueField):
         if skip_check:
             self.field_dict[SKIP_CHECK_NAME] = forms.BooleanField(
                 required=False)
-        self.names = [name for name in self.field_dict.keys()]
+        self.names = [name for name in self.field_dict]
         # Create the DictCharWidget with init values from the list of fields.
-        self.fields = self.field_dict.values()
+        self.fields = list(self.field_dict.values())
         self.widget = DictCharWidget(
             [field.widget for field in self.fields],
             self.names,
@@ -171,7 +162,7 @@ class DictCharField(forms.MultiValueField):
             # None.
             is_empty = (
                 value in validators.EMPTY_VALUES or
-                len(filter(lambda x: x is not None, value)) == 0)
+                all(v is None for v in value))
             if is_empty:
                 if self.required:
                     raise ValidationError(self.error_messages['required'])
@@ -203,7 +194,7 @@ class DictCharField(forms.MultiValueField):
                 continue
             try:
                 clean_data.append(field.clean(field_value))
-            except ValidationError, e:
+            except ValidationError as e:
                 # Collect all validation errors in a single list, which we'll
                 # raise at the end of clean(), rather than raising a single
                 # exception for the first error we encounter.

@@ -3,17 +3,9 @@
 
 """Tests for MAAS's security module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+import binascii
 from binascii import b2a_hex
 from datetime import datetime
 from os import unlink
@@ -23,13 +15,13 @@ from maasserver import security
 from maasserver.models.config import Config
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.djangotestcase import DjangoTransactionTestCase
+from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.fs import write_text_file
 from pytz import UTC
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
-    FileContains,
     GreaterThan,
     IsInstance,
     MatchesAll,
@@ -41,7 +33,7 @@ from twisted.internet import ssl
 class TestGetSerial(MAASTestCase):
 
     def test_that_it_works_eh(self):
-        nowish = datetime(2014, 03, 24, 16, 07, tzinfo=UTC)
+        nowish = datetime(2014, 0o3, 24, 16, 0o7, tzinfo=UTC)
         security_datetime = self.patch(security, "datetime")
         # Make security.datetime() work like regular datetime.
         security_datetime.side_effect = datetime
@@ -54,7 +46,7 @@ is_valid_region_certificate = MatchesAll(
     IsInstance(ssl.PrivateCertificate),
     AfterPreprocessing(
         lambda cert: cert.getSubject(),
-        Equals({"commonName": "MAAS Region"})),
+        Equals({"commonName": b"MAAS Region"})),
     AfterPreprocessing(
         lambda cert: cert.getPublicKey().original.bits(),
         Equals(2048)),
@@ -142,13 +134,13 @@ class TestGetSharedSecret(DjangoTransactionTestCase):
         self.assertEqual(secret_before, secret_after)
         # The secret found on the filesystem is saved in the database.
         self.assertEqual(
-            b2a_hex(secret_after),
+            b2a_hex(secret_after).decode("ascii"),
             Config.objects.get_config("rpc_shared_secret"))
 
     def test__errors_when_database_value_cannot_be_decoded(self):
         security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "_")
-        self.assertRaises(TypeError, security.get_shared_secret)
+        self.assertRaises(binascii.Error, security.get_shared_secret)
 
     def test__errors_when_database_and_filesystem_values_differ(self):
         security.get_shared_secret()  # Ensure that the directory exists.

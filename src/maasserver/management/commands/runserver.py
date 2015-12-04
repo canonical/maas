@@ -3,19 +3,10 @@
 
 """Django command: run the server.  Overrides the default implementation."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = ['Command']
 
 from optparse import make_option
-from SocketServer import ThreadingMixIn
+from socketserver import ThreadingMixIn
 
 from django.core.management.commands.runserver import BaseRunserverCommand
 from django.core.servers import basehttp

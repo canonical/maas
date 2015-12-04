@@ -3,18 +3,9 @@
 
 """Tests for the top-level region RPC API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from maasserver import (
     eventloop,
     rpc,
@@ -28,6 +19,9 @@ from testtools.matchers import (
     Equals,
     Is,
 )
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestFunctions(MAASTestCase):

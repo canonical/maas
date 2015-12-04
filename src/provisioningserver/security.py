@@ -3,21 +3,13 @@
 
 """Cluster security code."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "calculate_digest",
     "get_shared_secret_filesystem_path",
     "get_shared_secret_from_filesystem",
 ]
 
+import binascii
 from binascii import (
     a2b_hex,
     b2a_hex,
@@ -49,7 +41,7 @@ def to_hex(b):
 
 def to_bin(u):
     """Convert ASCII-only unicode string to hex encoding."""
-    assert isinstance(u, unicode), "%r is not a unicode string" % (u,)
+    assert isinstance(u, str), "%r is not a unicode string" % (u,)
     # Strip ASCII whitespace from u before converting.
     return a2b_hex(u.encode("ascii").strip())
 
@@ -140,7 +132,7 @@ class InstallSharedSecretScript:
         # Obtain the secret from the invoker.
         if stdin.isatty():
             try:
-                secret_hex = raw_input("Secret (hex/base16 encoded): ")
+                secret_hex = input("Secret (hex/base16 encoded): ")
             except EOFError:
                 print()  # So that the shell prompt appears on the next line.
                 raise SystemExit(1)
@@ -151,9 +143,9 @@ class InstallSharedSecretScript:
             secret_hex = stdin.readline()
         # Decode and install the secret.
         try:
-            secret = secret_hex.strip().decode("hex")
-        except TypeError as error:
-            print("Secret could not be decoded:", unicode(error), file=stderr)
+            secret = to_bin(secret_hex.strip())
+        except binascii.Error as error:
+            print("Secret could not be decoded:", str(error), file=stderr)
             raise SystemExit(1)
         else:
             set_shared_secret_on_filesystem(secret)

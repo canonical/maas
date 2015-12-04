@@ -4,15 +4,6 @@
 """Model for a filesystem group. Contains a set of filesystems that create
 a virtual block device. E.g. LVM Volume Group."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'FilesystemGroup',
     ]
@@ -314,7 +305,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     cache_set = ForeignKey(
         CacheSet, null=True, blank=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return '%s device %s %d' % (self.group_type, self.name, self.id)
 
     @property

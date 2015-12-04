@@ -3,15 +3,6 @@
 
 """Test multipart MIME helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from io import BytesIO
@@ -42,9 +33,9 @@ class TestMultiPart(MAASTestCase):
     def test_get_content_type_guesses_type(self):
         guess = get_content_type('text.txt')
         self.assertEqual('text/plain', guess)
-        self.assertIsInstance(guess, bytes)
+        self.assertIsInstance(guess, str)
 
-    def test_encode_multipart_data_produces_bytes(self):
+    def test_encode_multipart_data_produces_str(self):
         data = {
             factory.make_string(): factory.make_string().encode('ascii'),
         }
@@ -53,13 +44,13 @@ class TestMultiPart(MAASTestCase):
                 BytesIO(factory.make_string().encode('ascii'))),
         }
         body, headers = encode_multipart_data(data, files)
-        self.assertIsInstance(body, bytes)
+        self.assertIsInstance(body, str)
 
     def test_encode_multipart_data_closes_with_closing_boundary_line(self):
-        data = {b'foo': factory.make_string().encode('ascii')}
-        files = {b'bar': BytesIO(factory.make_string().encode('ascii'))}
+        data = {'foo': factory.make_string().encode('ascii')}
+        files = {'bar': BytesIO(factory.make_string().encode('ascii'))}
         body, headers = encode_multipart_data(data, files)
-        self.assertThat(body, EndsWith(b'--'))
+        self.assertThat(body, EndsWith('--'))
 
     def test_encode_multipart_data(self):
         # The encode_multipart_data() function should take a list of

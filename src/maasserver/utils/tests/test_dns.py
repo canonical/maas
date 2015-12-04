@@ -3,11 +3,6 @@
 
 """Test DNS utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
 from math import pow
 
 from django.core.exceptions import ValidationError
@@ -22,9 +17,6 @@ from testtools.matchers import (
 )
 
 
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -65,7 +57,7 @@ class TestHostnameValidator(MAASTestCase):
         try:
             validate_hostname(hostname)
         except ValidationError as e:
-            raise AssertionError(unicode(e))
+            raise AssertionError(str(e))
 
     def assertRejects(self, hostname):
         """Assertion: the validator rejects `hostname`."""
@@ -76,7 +68,7 @@ class TestHostnameValidator(MAASTestCase):
         try:
             validate_domain_name(domain_name)
         except ValidationError as e:
-            raise AssertionError(unicode(e))
+            raise AssertionError(str(e))
 
     def assertDomainValidatorRejects(self, hostname):
         """Assertion: the validator rejects `hostname`."""

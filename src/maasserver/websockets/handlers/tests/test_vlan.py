@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.vlan`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.models.vlan import VLAN
@@ -55,7 +46,7 @@ class TestVLANHandler(MAASServerTestCase):
             interface = node.get_boot_interface()
             interface.vlan = vlan
             interface.save()
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_vlan(vlan),
             handler.get({"id": vlan.id}))
 

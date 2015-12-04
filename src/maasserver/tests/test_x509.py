@@ -4,15 +4,6 @@
 
 """Tests for `maasserver.x509`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -23,13 +14,13 @@ from maasserver.x509 import (
     WinRMX509Error,
 )
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    FileContains,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 import OpenSSL
-from testtools.matchers import (
-    FileContains,
-    FileExists,
-)
+from testtools.matchers import FileExists
 
 
 class TestWinRMX509(MAASTestCase):
@@ -124,9 +115,9 @@ class TestWinRMX509(MAASTestCase):
         _, cert = winrmx509.get_key_and_cert()
         self.assertEqual(2, cert.get_extension_count())
         self.assertEqual(
-            'subjectAltName', cert.get_extension(0).get_short_name())
+            b'subjectAltName', cert.get_extension(0).get_short_name())
         self.assertEqual(
-            'extendedKeyUsage', cert.get_extension(1).get_short_name())
+            b'extendedKeyUsage', cert.get_extension(1).get_short_name())
 
     def test_get_key_and_cert_returns_cert_with_issuer_set_from_subject(self):
         winrmx509 = self.configure_WinRMX509()
@@ -137,7 +128,7 @@ class TestWinRMX509(MAASTestCase):
         cert, winrmx509 = self.make_certificate()
         self.assertItemsEqual({
             'subject': cert.get_subject().CN,
-            'thumbprint': cert.digest(b'SHA1'),
+            'thumbprint': cert.digest('SHA1'),
             'contents': self.dump_certificate(cert),
             }, winrmx509.get_cert_details(winrmx509.pem_file))
 
@@ -154,7 +145,7 @@ class TestWinRMX509(MAASTestCase):
     def test_load_pem_file_returns_cert_and_contents(self):
         cert, winrmx509 = self.make_certificate()
         loaded_cert, contents = winrmx509.load_pem_file(winrmx509.pem_file)
-        self.assertEqual(self.dump_certificate(cert), contents)
+        self.assertEqual(self.dump_certificate(cert), contents.encode("ascii"))
         self.assertEqual(
             self.dump_certificate(cert), self.dump_certificate(loaded_cert))
 

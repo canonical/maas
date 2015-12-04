@@ -3,20 +3,10 @@
 
 """Django command: create an administrator account."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
 from getpass import getpass
-from locale import getpreferredencoding
 from optparse import make_option
 
 from django.contrib.auth.models import User
@@ -42,7 +32,7 @@ class EmptyEmail(CommandError):
 def read_input(prompt):
     while True:
         try:
-            data = raw_input(prompt)
+            data = input(prompt)
         except EOFError:
             # Ctrl-d was pressed?
             print()
@@ -51,8 +41,10 @@ def read_input(prompt):
             print()
             raise SystemExit(1)
         else:
-            encoding = getpreferredencoding()
-            return data.decode(encoding)
+            # The assumption is that, since Python 3 return a Unicode string
+            # from input(), it has Done The Right Thing with respect to
+            # character encoding.
+            return data
 
 
 def read_password(prompt):
@@ -67,8 +59,10 @@ def read_password(prompt):
             print()
             raise SystemExit(1)
         else:
-            encoding = getpreferredencoding()
-            return data.decode(encoding)
+            # The assumption is that, since Python 3 return a Unicode string
+            # from input(), it has Done The Right Thing with respect to
+            # character encoding.
+            return data
 
 
 def prompt_for_username():

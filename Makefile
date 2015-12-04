@@ -1,4 +1,4 @@
-python := python2.7
+python := python3.5
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
@@ -9,10 +9,8 @@ export PYTHONWARNINGS = \
 # non-empty string) at the command-line.
 ifeq ($(offline),)
 buildout := bin/buildout
-virtualenv := virtualenv
 else
 buildout := bin/buildout buildout:offline=true
-virtualenv := virtualenv --never-download
 endif
 
 # If offline has been selected, attempt to further block HTTP/HTTPS
@@ -59,8 +57,6 @@ build: \
     bin/test.cli \
     bin/test.cluster \
     bin/test.config \
-    bin/test.e2e \
-    bin/test.js \
     bin/test.region \
     bin/test.testing \
     bin/py bin/ipy \
@@ -68,33 +64,27 @@ build: \
 
 all: build doc
 
-release_codename = $(shell lsb_release -c -s)
-
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
+install-dependencies: release := $(shell lsb_release -c -s)
 install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    --no-install-recommends install $(shell sort -u \
-	        $(addprefix required-packages/,base build dev doc $(release_codename)))
+	        $(addprefix required-packages/,base build dev doc $(release)) | sed '/^\#/d')
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
-	    purge $(shell sort -u required-packages/forbidden)
+	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
 
 .gitignore: .bzrignore
 	sed 's:^[.]/:/:' $^ > $@
 	echo '/src/**/*.pyc' >> $@
 	echo '/etc/**/*.pyc' >> $@
 
-bin/python:
-	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
-
 configure-buildout:
 	utilities/configure-buildout
 
-bin/buildout: bin/python bootstrap/zc.buildout-1.5.2.tar.gz
+bin/buildout: bootstrap-buildout.py
 	@utilities/configure-buildout --quiet
-	bin/python -m pip --quiet install --ignore-installed \
-	    --no-dependencies bootstrap/zc.buildout-1.5.2.tar.gz
-	$(RM) README.txt  # zc.buildout installs an annoying README.txt.
+	$(python) bootstrap-buildout.py --allow-site-packages
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py
@@ -127,8 +117,13 @@ bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
+# bin/maas-region-admin is needed for South migration tests. bin/sass
+# has been removed temporarily from the dependency list because npm
+# seems to be currently broken on Xenial. bin/flake8 is needed for
+# checking lint.
 bin/test.testing: \
-	bin/buildout bin/sass buildout.cfg versions.cfg setup.py
+    bin/maas-region-admin bin/flake8 bin/buildout \
+    buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
 
@@ -147,10 +142,6 @@ bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
 
 bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install flake8
-	@touch --no-create $@
-
-bin/rst-lint: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install rst-lint
 	@touch --no-create $@
 
 bin/sphinx bin/sphinx-build: bin/buildout buildout.cfg versions.cfg setup.py
@@ -190,12 +181,19 @@ bin/sass:
 	npm install --cache-min 600 --prefix $(prefix) node-sass@3.1.0
 	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
 
-test: test-scripts-all = $(wildcard bin/test.*)
-# Don't run bin/test.e2e for now; it breaks.
-test: test-scripts = $(filter-out bin/test.e2e,$(test-scripts-all))
-test: build
+# Don't run bin/test.e2e for now; it breaks. Don't run bin/test.js for
+# now; it won't build (it seems that npm is currently broken on Xenial).
+define test-scripts
+  bin/test.cli
+  bin/test.cluster
+  bin/test.config
+  bin/test.region
+  bin/test.testing
+endef
+
+test: $(strip $(test-scripts))
 	@$(RM) coverage.data
-	@echo $(test-scripts) | xargs --verbose -n1 env
+	@echo $^ | xargs --verbose -n1 env
 
 test+coverage: export NOSE_WITH_COVERAGE = 1
 test+coverage: test
@@ -231,8 +229,10 @@ lint-css:
 # all the files in cache.
 lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint-py: bin/flake8
-	@find $(sources) -name '*.py' ! -path '*/migrations/*' ! \
-			-path '*/south_migrations/*' -print0 \
+	@find $(sources) -name '*.py' \
+	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
+	  ! -path 'src/provisioningserver/twisted/*' ! -path 'ez_setup.py' \
+	  -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
 	    --config=/dev/null
 	@utilities/check-maaslog-exception
@@ -240,22 +240,13 @@ lint-py: bin/flake8
 lint-doc:
 	@utilities/doc-lint
 
-# lint-rst 0.11.1 shouldn't be used on our documentation because it
-# doesn't understand Sphinx's extensions, and doesn't grok linking
-# between documents, hence complaints about broken links. However,
-# Sphinx itself warns about lint when building the docs.
-lint-rst: sources = README HACKING.txt
-lint-rst: bin/rst-lint
-	@find $(sources) -type f \
-	    -printf 'Linting %p...\n' \
-	    -exec bin/rst-lint --encoding=utf8 {} \;
-
 # JavaScript lint is checked in parallel for speed.  The -n20 -P4 setting
 # worked well on a multicore SSD machine with the files cached, roughly
 # doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f ! -path '*/angular/3rdparty/*' -print0 '(' -name '*.html' -o -name '*.js' ')' \
+	@find $(sources) -type f ! -path '*/angular/3rdparty/*' \
+	    '(' -name '*.html' -o -name '*.js' ')' -print0 \
 		| xargs -r0 -n20 -P4 $(pocketlint)
 
 # Apply automated formatting to all Python files.
@@ -298,7 +289,7 @@ man/%: docs/man/%.rst | bin/sphinx-build
 enums: $(js_enums)
 
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
-	 bin/py -m maasserver/utils/jsenums $(py_enums) > $@
+	bin/py -m maasserver.utils.jsenums $(py_enums) > $@
 
 styles: bin/sass clean-styles $(scss_output)
 
@@ -311,10 +302,11 @@ clean-styles:
 clean: stop clean-run
 	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
+	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
 	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
-	$(RM) $(js_enums)
+	$(RM) $(js_enums) $(js_enums).tmp
 	$(RM) *.log
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build

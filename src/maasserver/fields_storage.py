@@ -3,15 +3,6 @@
 
 """Fields for storage API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 
@@ -32,7 +23,7 @@ BYTES_REGEX = r"-?[0-9]+([KkMmGgTtPpEe]{1})?"
 
 def is_precentage(value):
     """Return true if value is percentage."""
-    if isinstance(value, (unicode, bytes)):
+    if isinstance(value, (str, bytes)):
         return re.match(PRECENTAGE_REGEX, value) is not None
     else:
         return False

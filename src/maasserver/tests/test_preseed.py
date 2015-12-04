@@ -3,22 +3,13 @@
 
 """Test `maasserver.preseed` and related bits and bobs."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import os
 from pipes import quote
 import random
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -145,7 +136,7 @@ class TestGetNetlocAndPath(MAASServerTestCase):
             ]
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
-        self.assertEqual(results, map(get_netloc_and_path, inputs))
+        self.assertEqual(results, list(map(get_netloc_and_path, inputs)))
 
 
 class TestGetPreseedFilenames(MAASServerTestCase):
@@ -280,7 +271,7 @@ class TestConfiguration(MAASServerTestCase):
     def test_setting_defined(self):
         self.assertThat(
             settings.PRESEED_TEMPLATE_LOCATIONS,
-            AllMatch(IsInstance(unicode)))
+            AllMatch(IsInstance(str)))
 
 
 class TestGetPreseedTemplate(MAASServerTestCase):
@@ -344,9 +335,9 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         rendered_content = None
         if content is None:
             rendered_content = factory.make_string()
-            content = b'{{def stuff}}%s{{enddef}}{{stuff}}' % rendered_content
+            content = '{{def stuff}}%s{{enddef}}{{stuff}}' % rendered_content
         with open(path, "wb") as outf:
-            outf.write(content)
+            outf.write(content.encode("utf-8"))
         return rendered_content
 
     def test_load_preseed_template_returns_PreseedTemplate(self):
@@ -547,7 +538,11 @@ class TestRenderPreseed(
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         preseed = render_preseed(node, self.preseed, "precise")
         self.assertThat(
-            preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
+            preseed.decode("utf-8"),
+            MatchesAll(
+                Contains(ng_url),
+                Not(Contains(maas_url)),
+            ))
 
 
 class TestRenderEnlistmentPreseed(MAASServerTestCase):
@@ -579,7 +574,11 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         preseed = render_enlistment_preseed(
             self.preseed, "precise", nodegroup=nodegroup)
         self.assertThat(
-            preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
+            preseed.decode("utf-8"),
+            MatchesAll(
+                Contains(ng_url),
+                Not(Contains(maas_url)),
+            ))
 
 
 class TestRenderPreseedWindows(
@@ -632,7 +631,8 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         reporter = curtin_maas_reporter(node, True)
-        self.assertEqual(['reporting', 'install'], list(reporter.keys()))
+        self.assertItemsEqual(
+            ['reporting', 'install'], list(reporter.keys()))
         self.assertEqual(
             absolute_reverse(
                 'metadata-status', args=[node.system_id],
@@ -678,9 +678,11 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         reporter = self.load_reporter(preseeds)
         self.assertIsInstance(reporter, dict)
         if curtin_supports_webhook_events():
-            self.assertEqual(['reporting', 'install'], list(reporter.keys()))
+            self.assertItemsEqual(
+                ['reporting', 'install'], list(reporter.keys()))
         else:
-            self.assertEqual(['reporter'], list(reporter.keys()))
+            self.assertItemsEqual(
+                ['reporter'], list(reporter.keys()))
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):
@@ -729,7 +731,7 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
     def test__returns_verbosity_config(self):
         Config.objects.set_config("curtin_verbose", True)
         preseed = compose_curtin_verbose_preseed()
-        self.assertEquals({
+        self.assertEqual({
             "verbosity": 3,
             "showtrace": True,
             }, yaml.load(preseed[0]))
@@ -755,7 +757,7 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
         mock_yaml_config = self.patch_autospec(
             preseed_module, "get_curtin_yaml_config")
         mock_yaml_config.return_value = configs
-        self.assertEquals({
+        self.assertEqual({
             "maas": {
                 "test": "data"
             },
@@ -785,7 +787,7 @@ class TestGetCurtinUserData(
             preseed_module, "compose_curtin_network_config")
         self.patch(
             preseed_module, "curtin_supports_custom_storage").value = True
-        node.osystem = u'ubuntu'
+        node.osystem = 'ubuntu'
         user_data = get_curtin_userdata(node)
         self.assertIn("PREFIX='curtin'", user_data)
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
@@ -1197,8 +1199,8 @@ class TestRenderPreseedArchives(
         self.patch(
             preseed_module, 'get_boot_images_for').return_value = boot_images
         default_snippets = [
-            "d-i     mirror/http/hostname string archive.ubuntu.com",
-            "d-i     mirror/http/directory string /ubuntu",
+            b"d-i     mirror/http/hostname string archive.ubuntu.com",
+            b"d-i     mirror/http/directory string /ubuntu",
             ]
         for node in nodes:
             preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
@@ -1211,8 +1213,8 @@ class TestRenderPreseedArchives(
                 self, arch_name="armhf", subarch_name="generic"))
         self.configure_get_boot_images_for_node(node, 'install')
         default_snippets = [
-            "d-i     mirror/http/hostname string ports.ubuntu.com",
-            "d-i     mirror/http/directory string /ubuntu-ports",
+            b"d-i     mirror/http/hostname string ports.ubuntu.com",
+            b"d-i     mirror/http/directory string /ubuntu-ports",
             ]
         preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
         self.assertThat(preseed, ContainsAll(default_snippets))
@@ -1233,7 +1235,8 @@ class TestPreseedProxy(
         preseed = render_preseed(
             node,
             PRESEED_TYPE.DEFAULT, "precise")
-        self.assertIn(expected_proxy_statement, preseed)
+        self.assertIn(
+            expected_proxy_statement.encode("utf-8"), preseed)
 
     def test_preseed_uses_configured_proxy(self):
         http_proxy = 'http://%s:%d/%s' % (
@@ -1246,7 +1249,8 @@ class TestPreseedProxy(
         preseed = render_preseed(
             node,
             PRESEED_TYPE.DEFAULT, "precise")
-        self.assertIn(expected_proxy_statement, preseed)
+        self.assertIn(
+            expected_proxy_statement.encode("utf-8"), preseed)
 
 
 class TestPreseedMethods(
@@ -1262,7 +1266,7 @@ class TestPreseedMethods(
             status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'install')
         preseed = get_preseed(node)
-        self.assertIn('preseed/late_command', preseed)
+        self.assertIn(b'preseed/late_command', preseed)
 
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node(
@@ -1271,23 +1275,23 @@ class TestPreseedMethods(
         self.configure_get_boot_images_for_node(node, 'xinstall')
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')
-        self.assertIn(curtin_url, preseed)
+        self.assertIn(curtin_url.encode("utf-8"), preseed)
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):
         preseed = get_enlist_preseed()
-        self.assertTrue(preseed.startswith('#cloud-config'))
+        self.assertTrue(preseed.startswith(b'#cloud-config'))
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
         preseed = get_preseed(node)
-        self.assertIn('#cloud-config', preseed)
+        self.assertIn(b'#cloud-config', preseed)
 
     def test_get_preseed_returns_commissioning_preseed_for_disk_erasing(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.DISK_ERASING)
         preseed = get_preseed(node)
-        self.assertIn('#cloud-config', preseed)
+        self.assertIn(b'#cloud-config', preseed)
 
 
 class TestPreseedURLs(
@@ -1297,7 +1301,7 @@ class TestPreseedURLs(
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
         response = self.client.get(compose_enlistment_preseed_url())
         self.assertEqual(
-            (httplib.OK, get_enlist_preseed()),
+            (http.client.OK, get_enlist_preseed()),
             (response.status_code, response.content))
 
     def test_compose_enlistment_preseed_url_returns_absolute_link(self):
@@ -1321,7 +1325,7 @@ class TestPreseedURLs(
         self.configure_get_boot_images_for_node(node, 'install')
         response = self.client.get(compose_preseed_url(node))
         self.assertEqual(
-            (httplib.OK, get_preseed(node)),
+            (http.client.OK, get_preseed(node)),
             (response.status_code, response.content))
 
     def test_compose_preseed_url_returns_absolute_link(self):

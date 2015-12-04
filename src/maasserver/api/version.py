@@ -3,20 +3,11 @@
 
 """API handler: API Version."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'VersionHandler',
     ]
 
-import httplib
+import http.client
 import json
 
 from django.http import HttpResponse
@@ -68,7 +59,7 @@ class VersionHandler(AnonymousOperationsHandler):
         return HttpResponse(
             json.dumps(version_info),
             content_type='application/json; charset=utf-8',
-            status=httplib.OK)
+            status=http.client.OK)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

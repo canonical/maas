@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.cluster`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.clusterrpc.power_parameters import (
@@ -91,7 +82,7 @@ class TestClusterHandler(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         for _ in range(3):
             factory.make_NodeGroupInterface(nodegroup)
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_cluster(nodegroup),
             handler.get({"id": nodegroup.id}))
 
@@ -118,9 +109,9 @@ class TestClusterHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, 3,
             "Number of queries has changed; make sure this is expected.")
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of clusters.")

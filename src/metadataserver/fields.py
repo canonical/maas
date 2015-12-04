@@ -3,15 +3,6 @@
 
 """Custom field types for the metadata server."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BinaryField',
     ]
@@ -26,7 +17,6 @@ from django.db.models import (
     Field,
     SubfieldBase,
 )
-from maasserver.utils.django import has_builtin_migrations
 
 
 class Bin(bytes):
@@ -70,16 +60,7 @@ class Bin(bytes):
         return b64encode(self)
 
 
-# The BinaryField does not introduce any new parameters compared to its
-# parent's constructor so South will handle it just fine.
-# See http://south.aeracode.org/docs/customfields.html#extending-introspection
-# for details.
-if not has_builtin_migrations():
-    from south.modelsinspector import add_introspection_rules
-    add_introspection_rules([], ["^metadataserver\.fields\.BinaryField"])
-
-
-class BinaryField(Field):
+class BinaryField(Field, metaclass=SubfieldBase):
     """A field that stores binary data.
 
     The data is base64-encoded internally, so this is not very efficient.
@@ -94,11 +75,9 @@ class BinaryField(Field):
     2. Any data you retrieve gets truncated at the first zero byte.
     """
 
-    __metaclass__ = SubfieldBase
-
     def to_python(self, value):
         """Django overridable: convert database value to python-side value."""
-        if isinstance(value, unicode):
+        if isinstance(value, str):
             # Encoded binary data from the database.  Convert.
             return Bin(b64decode(value))
         elif value is None or isinstance(value, Bin):
@@ -116,14 +95,14 @@ class BinaryField(Field):
             return None
         elif isinstance(value, Bin):
             # Python-side form.  Convert to database form.
-            return b64encode(value)
+            return b64encode(value).decode("ascii")
         elif isinstance(value, bytes):
             # Binary string.  Require a Bin to make intent explicit.
             raise AssertionError(
                 "Converting a binary string to BinaryField: "
                 "either conversion is going the wrong way, or the value "
                 "needs to be wrapped in a Bin.")
-        elif isinstance(value, unicode):
+        elif isinstance(value, str):
             # Django 1.7 migration framework generates the default value based
             # on the 'internal_type' which, in this instance, is 'TextField';
             # Here we cope with the default empty value instead of raising

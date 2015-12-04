@@ -3,19 +3,10 @@
 
 """Tests for ``provisioningserver.drivers.hardware.hmc``."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+from io import StringIO
 from random import choice
-from StringIO import StringIO
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith

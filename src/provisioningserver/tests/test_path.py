@@ -3,18 +3,9 @@
 
 """Tests for filesystem paths."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from os import getcwdu
+from os import getcwd
 import os.path
 
 from fixtures import EnvironmentVariableFixture
@@ -85,7 +76,7 @@ class TestGetPathFunctions(MAASTestCase):
         self.set_root('.')
         self.patch(provisioningserver.path, 'ensure_dir')
         self.assertThat(self.get_path_function(), StartsWith('/'))
-        self.assertEqual(getcwdu(), self.get_path_function())
+        self.assertEqual(getcwd(), self.get_path_function())
 
     def test__concatenates_despite_leading_slash(self):
         root = self.make_dir()

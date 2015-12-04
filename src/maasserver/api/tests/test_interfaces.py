@@ -3,19 +3,9 @@
 
 """Tests for NodeInterfaces API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import random
 
 from django.core.urlresolvers import reverse
@@ -29,6 +19,7 @@ from maasserver.models import Interface
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -88,14 +79,15 @@ class TestNodeInterfacesAPI(APITestCase):
         uri = get_node_interfaces_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             nic.id
             for nic in [bond] + parents + children
             ]
         result_ids = [
             nic["id"]
-            for nic in json.loads(response.content)
+            for nic in json_load_bytes(response.content)
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -120,8 +112,8 @@ class TestNodeInterfacesAPI(APITestCase):
                 })
 
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            self.assertThat(json.loads(response.content), ContainsDict({
+                http.client.OK, response.status_code, response.content)
+            self.assertThat(json_load_bytes(response.content), ContainsDict({
                 "mac_address": Equals(mac),
                 "name": Equals(name),
                 "vlan": ContainsDict({
@@ -154,8 +146,8 @@ class TestNodeInterfacesAPI(APITestCase):
                 })
 
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            self.assertThat(json.loads(response.content), ContainsDict({
+                http.client.OK, response.status_code, response.content)
+            self.assertThat(json_load_bytes(response.content), ContainsDict({
                 "mac_address": Equals(mac),
                 "name": Equals(name),
                 "vlan": ContainsDict({
@@ -179,7 +171,7 @@ class TestNodeInterfacesAPI(APITestCase):
             "vlan": vlan.id,
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_physical_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -211,7 +203,7 @@ class TestNodeInterfacesAPI(APITestCase):
                 "vlan": vlan.id,
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_create_physical_requires_mac_name_and_vlan(self):
         self.become_admin()
@@ -221,12 +213,12 @@ class TestNodeInterfacesAPI(APITestCase):
             "op": "create_physical",
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "mac_address": ["This field is required."],
             "name": ["This field is required."],
             "vlan": ["This field is required."],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
     def test_create_physical_doesnt_allow_mac_already_register(self):
         self.become_admin()
@@ -243,12 +235,12 @@ class TestNodeInterfacesAPI(APITestCase):
             "vlan": vlan.id,
             })
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "mac_address": [
                 "This MAC address is already in use by %s." % (
                     interface_on_other_node.node.hostname)],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
     def test_create_bond(self):
         self.become_admin()
@@ -275,8 +267,8 @@ class TestNodeInterfacesAPI(APITestCase):
                 })
 
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_interface = json.loads(response.content)
+                http.client.OK, response.status_code, response.content)
+            parsed_interface = json_load_bytes(response.content)
             self.assertThat(parsed_interface, ContainsDict({
                 "mac_address": Equals("%s" % parent_1_iface.mac_address),
                 "name": Equals(name),
@@ -308,7 +300,7 @@ class TestNodeInterfacesAPI(APITestCase):
             "parents": [parent_1_iface.id, parent_2_iface.id],
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_bond_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -344,7 +336,7 @@ class TestNodeInterfacesAPI(APITestCase):
                 "parents": [parent_1_iface.id, parent_2_iface.id],
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_create_bond_requires_name_vlan_and_parents(self):
         self.become_admin()
@@ -355,13 +347,13 @@ class TestNodeInterfacesAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "mac_address": ["This field cannot be blank."],
             "name": ["This field is required."],
             "vlan": ["This field is required."],
             "parents": ["A Bond interface must have one or more parents."],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
     def test_create_vlan(self):
         self.become_admin()
@@ -382,8 +374,9 @@ class TestNodeInterfacesAPI(APITestCase):
             "tags": ",".join(tags),
             })
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_interface = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
         self.assertThat(parsed_interface, ContainsDict({
             "mac_address": Equals("%s" % parent_iface.mac_address),
             "vlan": ContainsDict({
@@ -407,7 +400,7 @@ class TestNodeInterfacesAPI(APITestCase):
             "parent": parent_iface.id,
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_vlan_requires_vlan_and_parent(self):
         self.become_admin()
@@ -418,11 +411,11 @@ class TestNodeInterfacesAPI(APITestCase):
             })
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals({
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual({
             "vlan": ["This field is required."],
             "parent": ["A VLAN interface must have exactly one parent."],
-            }, json.loads(response.content))
+            }, json_load_bytes(response.content))
 
 
 class TestNodeInterfaceAPI(APITestCase):
@@ -502,8 +495,9 @@ class TestNodeInterfaceAPI(APITestCase):
 
         uri = get_node_interface_uri(bond)
         response = self.client.get(uri)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_interface = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
         self.assertThat(parsed_interface, ContainsDict({
             "id": Equals(bond.id),
             "name": Equals(bond.name),
@@ -517,18 +511,18 @@ class TestNodeInterfaceAPI(APITestCase):
             "params": Equals(bond.params),
             "effective_mtu": Equals(bond.get_effective_mtu()),
         }))
-        self.assertEquals(sorted(
+        self.assertEqual(sorted(
             nic.name
             for nic in parents
             ), parsed_interface["parents"])
-        self.assertEquals(sorted(
+        self.assertEqual(sorted(
             nic.name
             for nic in children
             ), parsed_interface["children"])
         self.assertThat(parsed_interface["links"], MatchesListwise(links))
         json_discovered = parsed_interface["discovered"][0]
-        self.assertEquals(dhcp_subnet.id, json_discovered["subnet"]["id"])
-        self.assertEquals(discovered_ip, json_discovered["ip_address"])
+        self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
+        self.assertEqual(discovered_ip, json_discovered["ip_address"])
 
     def test_read_by_specifier(self):
         node = factory.make_Node(hostname="tasty-biscuits")
@@ -536,8 +530,9 @@ class TestNodeInterfaceAPI(APITestCase):
         uri = get_node_interface_uri(
             "hostname:tasty-biscuits,name:bond0", node=node)
         response = self.client.get(uri)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_interface = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
         self.assertEqual(bond0.id, parsed_interface['id'])
 
     def test_read_404_when_invalid_id(self):
@@ -547,7 +542,7 @@ class TestNodeInterfaceAPI(APITestCase):
             args=[node.system_id, random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update_physical_interface(self):
         self.become_admin()
@@ -563,10 +558,10 @@ class TestNodeInterfaceAPI(APITestCase):
                 "vlan": new_vlan.id,
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_interface = json.loads(response.content)
-            self.assertEquals(new_name, parsed_interface["name"])
-            self.assertEquals(new_vlan.vid, parsed_interface["vlan"]["vid"])
+                http.client.OK, response.status_code, response.content)
+            parsed_interface = json_load_bytes(response.content)
+            self.assertEqual(new_name, parsed_interface["name"])
+            self.assertEqual(new_vlan.vid, parsed_interface["vlan"]["vid"])
 
     def test_update_bond_interface(self):
         self.become_admin()
@@ -579,9 +574,9 @@ class TestNodeInterfaceAPI(APITestCase):
                 "parents": [nic_0.id],
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_interface = json.loads(response.content)
-            self.assertEquals([nic_0.name], parsed_interface["parents"])
+                http.client.OK, response.status_code, response.content)
+            parsed_interface = json_load_bytes(response.content)
+            self.assertEqual([nic_0.name], parsed_interface["parents"])
 
     def test_update_vlan_interface(self):
         self.become_admin()
@@ -596,9 +591,9 @@ class TestNodeInterfaceAPI(APITestCase):
                 "parent": physical_interface.id,
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_interface = json.loads(response.content)
-            self.assertEquals(
+                http.client.OK, response.status_code, response.content)
+            parsed_interface = json_load_bytes(response.content)
+            self.assertEqual(
                 [physical_interface.name], parsed_interface["parents"])
 
     def test_update_requires_admin(self):
@@ -610,7 +605,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "name": new_name,
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_read_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -639,7 +634,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "name": new_name,
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_delete_deletes_interface(self):
         self.become_admin()
@@ -649,7 +644,7 @@ class TestNodeInterfaceAPI(APITestCase):
             uri = get_node_interface_uri(interface)
             response = self.client.delete(uri)
             self.assertEqual(
-                httplib.NO_CONTENT, response.status_code, response.content)
+                http.client.NO_CONTENT, response.status_code, response.content)
             self.assertIsNone(reload_object(interface))
 
     def test_delete_403_when_not_admin(self):
@@ -658,7 +653,7 @@ class TestNodeInterfaceAPI(APITestCase):
         uri = get_node_interface_uri(interface)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
         self.assertIsNotNone(reload_object(interface))
 
     def test_delete_404_when_invalid_id(self):
@@ -668,7 +663,7 @@ class TestNodeInterfaceAPI(APITestCase):
             args=[node.system_id, random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -693,7 +688,7 @@ class TestNodeInterfaceAPI(APITestCase):
             uri = get_node_interface_uri(interface)
             response = self.client.delete(uri)
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_link_subnet_creates_link(self):
         # The form that is used is fully tested in test_forms_interface_link.
@@ -709,8 +704,8 @@ class TestNodeInterfaceAPI(APITestCase):
                 "mode": INTERFACE_LINK_TYPE.DHCP,
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
-            parsed_response = json.loads(response.content)
+                http.client.OK, response.status_code, response.content)
+            parsed_response = json_load_bytes(response.content)
             self.assertThat(
                 parsed_response["links"][0], ContainsDict({
                     "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
@@ -726,10 +721,11 @@ class TestNodeInterfaceAPI(APITestCase):
                 "op": "link_subnet",
                 })
             self.assertEqual(
-                httplib.BAD_REQUEST, response.status_code, response.content)
-            self.assertEquals({
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual({
                 "mode": ["This field is required."]
-                }, json.loads(response.content))
+                }, json_load_bytes(response.content))
 
     def test_link_subnet_requries_admin(self):
         node = factory.make_Node(interface=True)
@@ -739,7 +735,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "op": "link_subnet",
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_link_subnet_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -767,7 +763,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "mode": INTERFACE_LINK_TYPE.DHCP,
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_unlink_subnet_deletes_link(self):
         # The form that is used is fully tested in test_forms_interface_link.
@@ -787,7 +783,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "id": dhcp_ip.id,
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
+                http.client.OK, response.status_code, response.content)
             self.assertIsNone(reload_object(dhcp_ip))
 
     def test_unlink_subnet_raises_error(self):
@@ -800,10 +796,11 @@ class TestNodeInterfaceAPI(APITestCase):
                 "op": "unlink_subnet",
                 })
             self.assertEqual(
-                httplib.BAD_REQUEST, response.status_code, response.content)
-            self.assertEquals({
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual({
                 "id": ["This field is required."]
-                }, json.loads(response.content))
+                }, json_load_bytes(response.content))
 
     def test_unlink_subnet_requries_admin(self):
         node = factory.make_Node(interface=True)
@@ -813,7 +810,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "op": "unlink_subnet",
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_unlink_subnet_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -840,7 +837,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "op": "unlink_subnet",
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)
 
     def test_set_default_gateway_sets_gateway_link_ipv4_on_node(self):
         # The form that is used is fully tested in test_forms_interface_link.
@@ -851,7 +848,7 @@ class TestNodeInterfaceAPI(APITestCase):
             interface = node.get_boot_interface()
             network = factory.make_ipv4_network()
             subnet = factory.make_Subnet(
-                cidr=unicode(network.cidr), vlan=interface.vlan)
+                cidr=str(network.cidr), vlan=interface.vlan)
             link_ip = factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.AUTO, ip="",
                 subnet=subnet, interface=interface)
@@ -861,7 +858,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "link_id": link_ip.id
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
+                http.client.OK, response.status_code, response.content)
             self.assertEqual(link_ip, reload_object(node).gateway_link_ipv4)
 
     def test_set_default_gateway_sets_gateway_link_ipv6_on_node(self):
@@ -873,7 +870,7 @@ class TestNodeInterfaceAPI(APITestCase):
             interface = node.get_boot_interface()
             network = factory.make_ipv6_network()
             subnet = factory.make_Subnet(
-                cidr=unicode(network.cidr), vlan=interface.vlan)
+                cidr=str(network.cidr), vlan=interface.vlan)
             link_ip = factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.AUTO, ip="",
                 subnet=subnet, interface=interface)
@@ -883,7 +880,7 @@ class TestNodeInterfaceAPI(APITestCase):
                 "link_id": link_ip.id
                 })
             self.assertEqual(
-                httplib.OK, response.status_code, response.content)
+                http.client.OK, response.status_code, response.content)
             self.assertEqual(link_ip, reload_object(node).gateway_link_ipv6)
 
     def test_set_default_gateway_raises_error(self):
@@ -896,10 +893,11 @@ class TestNodeInterfaceAPI(APITestCase):
                 "op": "set_default_gateway",
                 })
             self.assertEqual(
-                httplib.BAD_REQUEST, response.status_code, response.content)
-            self.assertEquals({
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual({
                 "__all__": ["This interface has no usable gateways."]
-                }, json.loads(response.content))
+                }, json_load_bytes(response.content))
 
     def test_set_default_gateway_requries_admin(self):
         node = factory.make_Node(interface=True)
@@ -909,7 +907,7 @@ class TestNodeInterfaceAPI(APITestCase):
             "op": "set_default_gateway",
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_set_default_gateway_409_when_not_ready_or_broken(self):
         self.become_admin()
@@ -936,4 +934,4 @@ class TestNodeInterfaceAPI(APITestCase):
                 "op": "set_default_gateway",
                 })
             self.assertEqual(
-                httplib.CONFLICT, response.status_code, response.content)
+                http.client.CONFLICT, response.status_code, response.content)

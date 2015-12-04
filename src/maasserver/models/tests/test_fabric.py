@@ -3,15 +3,6 @@
 
 """Tests for the Fabric model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -42,7 +33,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
     def test__user_view_returns_fabric(self):
         user = factory.make_User()
         fabric = factory.make_Fabric()
-        self.assertEquals(
+        self.assertEqual(
             fabric,
             Fabric.objects.get_fabric_or_404(
                 fabric.id, user, NODE_PERMISSION.VIEW))
@@ -66,7 +57,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
     def test__admin_view_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
-        self.assertEquals(
+        self.assertEqual(
             fabric,
             Fabric.objects.get_fabric_or_404(
                 fabric.id, admin, NODE_PERMISSION.VIEW))
@@ -74,7 +65,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
     def test__admin_edit_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
-        self.assertEquals(
+        self.assertEqual(
             fabric,
             Fabric.objects.get_fabric_or_404(
                 fabric.id, admin, NODE_PERMISSION.EDIT))
@@ -82,7 +73,7 @@ class TestFabricManagerGetFabricOr404(MAASServerTestCase):
     def test__admin_admin_returns_fabric(self):
         admin = factory.make_admin()
         fabric = factory.make_Fabric()
-        self.assertEquals(
+        self.assertEqual(
             fabric,
             Fabric.objects.get_fabric_or_404(
                 fabric.id, admin, NODE_PERMISSION.ADMIN))
@@ -142,7 +133,7 @@ class TestFabric(MAASServerTestCase):
 
     def test_get_name_for_empty_name(self):
         fabric = factory.make_Fabric()
-        self.assertEquals("fabric-%s" % fabric.id, fabric.get_name())
+        self.assertEqual("fabric-%s" % fabric.id, fabric.get_name())
 
     def test_invalid_name_raises_exception(self):
         self.assertRaises(
@@ -159,7 +150,7 @@ class TestFabric(MAASServerTestCase):
     def test_get_name_for_set_name(self):
         name = factory.make_name('name')
         fabric = factory.make_Fabric(name=name)
-        self.assertEquals(name, fabric.get_name())
+        self.assertEqual(name, fabric.get_name())
 
     def test_creates_fabric_with_default_vlan(self):
         name = factory.make_name('name')

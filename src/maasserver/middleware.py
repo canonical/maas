@@ -1,17 +1,8 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
 """Access middleware."""
 
-str = None
-
-__metaclass__ = type
 __all__ = [
     "AccessMiddleware",
     "APIErrorsMiddleware",
@@ -22,7 +13,7 @@ from abc import (
     ABCMeta,
     abstractproperty,
 )
-import httplib
+import http.client
 import json
 import logging
 import re
@@ -166,7 +157,7 @@ class ExternalComponentsMiddleware:
         return None
 
 
-class ExceptionMiddleware:
+class ExceptionMiddleware(metaclass=ABCMeta):
     """Convert exceptions into appropriate HttpResponse responses.
 
     For example, a MAASAPINotFound exception processed by a middleware
@@ -182,8 +173,6 @@ class ExceptionMiddleware:
     .. middleware: https://docs.djangoproject.com
        /en/dev/topics/http/middleware/
     """
-
-    __metaclass__ = ABCMeta
 
     path_regex = abstractproperty(
         "Regular expression for the paths that this should apply to.")
@@ -201,10 +190,10 @@ class ExceptionMiddleware:
             # We never handle serialization failures.
             return None
 
-        encoding = b'utf-8'
+        encoding = 'utf-8'
         if isinstance(exception, MAASAPIException):
             # Print a traceback if this is a 500 error.
-            if exception.api_error == httplib.INTERNAL_SERVER_ERROR:
+            if exception.api_error == http.client.INTERNAL_SERVER_ERROR:
                 self.log_exception(exception)
             # This type of exception knows how to translate itself into
             # an http response.
@@ -219,12 +208,12 @@ class ExceptionMiddleware:
             else:
                 # Simple validation error: return the error message.
                 return HttpResponseBadRequest(
-                    unicode(''.join(exception.messages)).encode(encoding),
-                    content_type=b"text/plain; charset=%s" % encoding)
+                    str(''.join(exception.messages)).encode(encoding),
+                    content_type="text/plain; charset=%s" % encoding)
         elif isinstance(exception, PermissionDenied):
             return HttpResponseForbidden(
-                content=unicode(exception).encode(encoding),
-                content_type=b"text/plain; charset=%s" % encoding)
+                content=str(exception).encode(encoding),
+                content_type="text/plain; charset=%s" % encoding)
         elif isinstance(exception, ExternalProcessError):
             # Catch problems interacting with processes that the
             # appserver spawns, e.g. rndc.
@@ -234,9 +223,9 @@ class ExceptionMiddleware:
             # could be spurious.  There's no way of knowing, so the best
             # course of action is to ask the caller to repeat.
             response = HttpResponse(
-                content=unicode(exception).encode(encoding),
-                status=httplib.SERVICE_UNAVAILABLE,
-                content_type=b"text/plain; charset=%s" % encoding)
+                content=str(exception).encode(encoding),
+                status=http.client.SERVICE_UNAVAILABLE,
+                content_type="text/plain; charset=%s" % encoding)
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
             return response
@@ -245,13 +234,13 @@ class ExceptionMiddleware:
             self.log_exception(exception)
             # Return an API-readable "Internal Server Error" response.
             return HttpResponse(
-                content=unicode(exception).encode(encoding),
-                status=httplib.INTERNAL_SERVER_ERROR,
-                content_type=b"text/plain; charset=%s" % encoding)
+                content=str(exception).encode(encoding),
+                status=http.client.INTERNAL_SERVER_ERROR,
+                content_type="text/plain; charset=%s" % encoding)
 
     def log_exception(self, exception):
         exc_info = sys.exc_info()
-        logger.error(" Exception: %s ".center(79, "#") % unicode(exception))
+        logger.error(" Exception: %s ".center(79, "#") % str(exception))
         logger.error(''.join(traceback.format_exception(*exc_info)))
 
 
@@ -326,9 +315,9 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
     """A middleware for handling RPC errors in API requests."""
 
     handled_exceptions = {
-        NoConnectionsAvailable: httplib.SERVICE_UNAVAILABLE,
-        PowerActionAlreadyInProgress: httplib.SERVICE_UNAVAILABLE,
-        TimeoutError: httplib.GATEWAY_TIMEOUT,
+        NoConnectionsAvailable: http.client.SERVICE_UNAVAILABLE,
+        PowerActionAlreadyInProgress: http.client.SERVICE_UNAVAILABLE,
+        TimeoutError: http.client.GATEWAY_TIMEOUT,
         }
 
     def process_exception(self, request, exception):
@@ -338,7 +327,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             # RPCErrorsMiddleware handles non-API requests.
             return None
 
-        handled_exceptions = self.handled_exceptions.viewkeys()
+        handled_exceptions = self.handled_exceptions.keys()
         if exception.__class__ not in handled_exceptions:
             # This isn't something we handle; allow processing to
             # continue.
@@ -348,11 +337,11 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         logging.exception(exception)
         error_message = get_error_message_for_exception(exception)
 
-        encoding = b'utf-8'
+        encoding = 'utf-8'
         response = HttpResponse(
             content=error_message.encode(encoding), status=status,
-            content_type=b"text/plain; charset=%s" % encoding)
-        if status == httplib.SERVICE_UNAVAILABLE:
+            content_type="text/plain; charset=%s" % encoding)
+        if status == http.client.SERVICE_UNAVAILABLE:
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
         return response

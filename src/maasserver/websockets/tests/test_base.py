@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.base`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from operator import attrgetter
@@ -56,9 +47,8 @@ from testtools.testcase import ExpectedException
 
 
 def make_handler(name, **kwargs):
-    meta = type(b"Meta", (object,), kwargs)
-    return object.__new__(
-        type(name.encode("utf-8"), (Handler,), {"Meta": meta}))
+    meta = type("Meta", (object,), kwargs)
+    return object.__new__(type(name, (Handler,), {"Meta": meta}))
 
 
 class TestHandlerMeta(MAASTestCase):
@@ -112,8 +102,8 @@ class TestHandlerMeta(MAASTestCase):
         exclude = [factory.make_name("field") for _ in range(3)]
         handler = make_handler(
             "TestHandler", fields=fields, exclude=exclude)
-        self.assertEquals(fields, handler._meta.list_fields)
-        self.assertEquals(exclude, handler._meta.list_exclude)
+        self.assertEqual(fields, handler._meta.list_fields)
+        self.assertEqual(exclude, handler._meta.list_exclude)
 
     def test_copy_fields_and_excludes_doesnt_overwrite_lists_if_set(self):
         fields = [factory.make_name("field") for _ in range(3)]
@@ -123,8 +113,8 @@ class TestHandlerMeta(MAASTestCase):
         handler = make_handler(
             "TestHandler", fields=fields, exclude=exclude,
             list_fields=list_fields, list_exclude=list_exclude)
-        self.assertEquals(list_fields, handler._meta.list_fields)
-        self.assertEquals(list_exclude, handler._meta.list_exclude)
+        self.assertEqual(list_fields, handler._meta.list_fields)
+        self.assertEqual(list_exclude, handler._meta.list_exclude)
 
 
 class TestHandler(MAASServerTestCase):
@@ -133,19 +123,19 @@ class TestHandler(MAASServerTestCase):
         kwargs["queryset"] = Node.objects.all()
         kwargs["object_class"] = Node
         kwargs["pk"] = "system_id"
-        kwargs["pk_type"] = unicode
+        kwargs["pk_type"] = str
         handler = make_handler("TestNodesHandler", **kwargs)
         handler.__init__(factory.make_User(), {})
         return handler
 
     def make_mock_node_with_fields(self, **kwargs):
         return object.__new__(
-            type(b"MockNode", (object,), kwargs))
+            type("MockNode", (object,), kwargs))
 
     def test_full_dehydrate_only_includes_allowed_fields(self):
         handler = self.make_nodes_handler(fields=["hostname", "power_type"])
         node = factory.make_Node()
-        self.assertEquals({
+        self.assertEqual({
             "hostname": node.hostname,
             "power_type": node.power_type,
             }, handler.full_dehydrate(node))
@@ -154,7 +144,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(
             fields=["hostname", "power_type"], exclude=["power_type"])
         node = factory.make_Node()
-        self.assertEquals({
+        self.assertEqual({
             "hostname": node.hostname,
             }, handler.full_dehydrate(node))
 
@@ -162,7 +152,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(
             list_fields=["power_type", "power_state"])
         node = factory.make_Node()
-        self.assertEquals({
+        self.assertEqual({
             "power_type": node.power_type,
             "power_state": node.power_state,
             }, handler.full_dehydrate(node, for_list=True))
@@ -172,7 +162,7 @@ class TestHandler(MAASServerTestCase):
             list_fields=["power_type", "power_state"],
             list_exclude=["power_type"])
         node = factory.make_Node()
-        self.assertEquals({
+        self.assertEqual({
             "power_state": node.power_state,
             }, handler.full_dehydrate(node, for_list=True))
 
@@ -203,7 +193,7 @@ class TestHandler(MAASServerTestCase):
 
     def test_dehydrate_does_nothing(self):
         handler = self.make_nodes_handler()
-        self.assertEquals(
+        self.assertEqual(
             sentinel.nothing,
             handler.dehydrate(sentinel.obj, sentinel.nothing))
 
@@ -306,7 +296,7 @@ class TestHandler(MAASServerTestCase):
 
     def test_hydrate_does_nothing(self):
         handler = self.make_nodes_handler()
-        self.assertEquals(
+        self.assertEqual(
             sentinel.obj,
             handler.hydrate(sentinel.obj, sentinel.nothing))
 
@@ -326,7 +316,7 @@ class TestHandler(MAASServerTestCase):
     def test_get_object_returns_object(self):
         handler = self.make_nodes_handler()
         node = factory.make_Node()
-        self.assertEquals(
+        self.assertEqual(
             node.hostname,
             handler.get_object(
                 {"system_id": node.system_id}).hostname)
@@ -334,12 +324,12 @@ class TestHandler(MAASServerTestCase):
     def test_execute_only_allows_meta_allowed_methods(self):
         handler = self.make_nodes_handler(allowed_methods=['list'])
         with ExpectedException(HandlerNoSuchMethodError):
-            handler.execute("get", {}).wait()
+            handler.execute("get", {}).wait(30)
 
     def test_execute_raises_HandlerNoSuchMethodError(self):
         handler = self.make_nodes_handler(allowed_methods=['extra_method'])
         with ExpectedException(HandlerNoSuchMethodError):
-            handler.execute("extra_method", {}).wait()
+            handler.execute("extra_method", {}).wait(30)
 
     def test_execute_calls_method_with_params(self):
         # Methods are assumed by default to be synchronous and are called in a
@@ -347,7 +337,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler()
         params = {"system_id": factory.make_name("system_id")}
         self.patch(base, "deferToDatabase").return_value = sentinel.thing
-        result = handler.execute("get", params).wait()
+        result = handler.execute("get", params).wait(30)
         self.assertThat(result, Is(sentinel.thing))
         self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
         [func, _] = base.deferToDatabase.call_args[0]
@@ -359,7 +349,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler()
         handler.get = asynchronous(lambda params: sentinel.thing)
         params = {"system_id": factory.make_name("system_id")}
-        result = handler.execute("get", params).wait()
+        result = handler.execute("get", params).wait(30)
         self.assertThat(result, Is(sentinel.thing))
 
     def test_list(self):
@@ -433,7 +423,7 @@ class TestHandler(MAASServerTestCase):
     def test_get(self):
         node = factory.make_Node()
         handler = self.make_nodes_handler(fields=['hostname'])
-        self.assertEquals(
+        self.assertEqual(
             {"hostname": node.hostname},
             handler.get({"system_id": node.system_id}))
 
@@ -613,7 +603,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler()
         node = factory.make_Node()
         handler.cache["loaded_pks"].add(node.system_id)
-        self.assertEquals(
+        self.assertEqual(
             (handler._meta.handler_name, "delete", node.system_id),
             handler.on_listen(
                 sentinel.channel, "delete", node.system_id))
@@ -624,7 +614,7 @@ class TestHandler(MAASServerTestCase):
     def test_on_listen_delete_returns_None_if_pk_not_in_loaded(self):
         handler = self.make_nodes_handler()
         node = factory.make_Node()
-        self.assertEquals(
+        self.assertEqual(
             None,
             handler.on_listen(
                 sentinel.channel, "delete", node.system_id))
@@ -632,7 +622,7 @@ class TestHandler(MAASServerTestCase):
     def test_on_listen_create_adds_pk_to_loaded(self):
         handler = self.make_nodes_handler(fields=['hostname'])
         node = factory.make_Node(owner=handler.user)
-        self.assertEquals(
+        self.assertEqual(
             (
                 handler._meta.handler_name,
                 "create",
@@ -647,7 +637,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(fields=['hostname'])
         node = factory.make_Node(owner=handler.user)
         handler.cache["loaded_pks"].add(node.system_id)
-        self.assertEquals(
+        self.assertEqual(
             (
                 handler._meta.handler_name,
                 "update",
@@ -660,7 +650,7 @@ class TestHandler(MAASServerTestCase):
         node = factory.make_Node()
         handler.cache["loaded_pks"].add(node.system_id)
         self.patch(handler, "listen").return_value = None
-        self.assertEquals(
+        self.assertEqual(
             (handler._meta.handler_name, "delete", node.system_id),
             handler.on_listen(
                 sentinel.channel, "update", node.system_id))
@@ -672,7 +662,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(fields=['hostname'])
         node = factory.make_Node()
         handler.cache["loaded_pks"].add(node.system_id)
-        self.assertEquals(
+        self.assertEqual(
             (
                 handler._meta.handler_name,
                 "update",
@@ -687,7 +677,7 @@ class TestHandler(MAASServerTestCase):
     def test_on_listen_update_returns_create_action_if_not_in_loaded(self):
         handler = self.make_nodes_handler(fields=['hostname'])
         node = factory.make_Node()
-        self.assertEquals(
+        self.assertEqual(
             (
                 handler._meta.handler_name,
                 "create",

@@ -22,14 +22,6 @@ If no service has a preceding "+" then all the services named are started and
 their logs tailed.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-__metaclass__ = type
-
 from contextlib import contextmanager
 from os.path import join
 from subprocess import (

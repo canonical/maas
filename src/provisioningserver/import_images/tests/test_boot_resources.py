@@ -3,15 +3,6 @@
 
 """Tests for the boot_resources module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import (
@@ -191,7 +182,7 @@ class TestUpdateCurrentSymlink(MAASTestCase):
 
 def checksum_sha256(data):
     """Return the SHA256 checksum for `data`, as a hex string."""
-    assert isinstance(data, bytes)
+    assert isinstance(data, bytes), repr(data)
     summer = hashlib.sha256()
     summer.update(data)
     return summer.hexdigest()
@@ -252,7 +243,7 @@ class TestMain(MAASTestCase):
                            filename='boot-kernel'):
         """Fake a downloadable file in `repo`.
 
-        Return the new file's POSIX path, and its contents.
+        Return the new file's POSIX path, and its contents (as bytes).
         """
         path = [
             image_spec.release,
@@ -264,8 +255,9 @@ class TestMain(MAASTestCase):
             ]
         native_path = os.path.join(repo, *path)
         os.makedirs(os.path.dirname(native_path))
-        contents = ("Contents: %s" % filename).encode('utf-8')
-        write_text_file(native_path, contents)
+        contents = ("Contents: %s" % filename).encode("utf-8")
+        with open(native_path, "wb") as fd:
+            fd.write(contents)
         # Return POSIX path for inclusion in Simplestreams data, not
         # system-native path for filesystem access.
         return '/'.join(path), contents
@@ -278,6 +270,7 @@ class TestMain(MAASTestCase):
         The image is written into the directory that holds the indexes.  It
         contains one downloadable file, as specified by the arguments.
         """
+        assert isinstance(contents, bytes), repr(contents)
         index = {
             'format': 'products:1.0',
             'data-type': 'image-ids',
@@ -411,14 +404,15 @@ class TestMain(MAASTestCase):
             DirExists())
 
         # Verify the contents of the "meta" file.
-        with open(os.path.join(current, 'maas.meta'), 'rb') as meta_file:
+        meta_file_path = os.path.join(current, 'maas.meta')
+        with open(meta_file_path, 'r', encoding="ascii") as meta_file:
             meta_data = json.load(meta_file)
-        self.assertEqual([osystem], meta_data.keys())
-        self.assertEqual([arch], meta_data[osystem].keys())
-        self.assertEqual([subarch], meta_data[osystem][arch].keys())
-        self.assertEqual([release], meta_data[osystem][arch][subarch].keys())
+        self.assertEqual([osystem], list(meta_data))
+        self.assertEqual([arch], list(meta_data[osystem]))
+        self.assertEqual([subarch], list(meta_data[osystem][arch]))
+        self.assertEqual([release], list(meta_data[osystem][arch][subarch]))
         self.assertEqual(
-            [label], meta_data[osystem][arch][subarch][release].keys())
+            [label], list(meta_data[osystem][arch][subarch][release]))
         self.assertItemsEqual(
             [
                 'content_id',
@@ -427,7 +421,7 @@ class TestMain(MAASTestCase):
                 'version_name',
                 'subarches',
             ],
-            meta_data[osystem][arch][subarch][release][label].keys())
+            list(meta_data[osystem][arch][subarch][release][label]))
 
     def test_warns_if_no_sources_selected(self):
         self.patch_maaslog()
@@ -437,7 +431,7 @@ class TestMain(MAASTestCase):
         boot_resources.main(args)
 
         self.assertThat(
-            boot_resources.maaslog.warn,
+            boot_resources.maaslog.warning,
             MockAnyCall("Can't import: region did not provide a source."))
 
     def test_warns_if_no_boot_resources_found(self):
@@ -462,7 +456,7 @@ class TestMain(MAASTestCase):
         boot_resources.main(args)
 
         self.assertThat(
-            boot_resources.maaslog.warn,
+            boot_resources.maaslog.warning,
             MockAnyCall(
                 "Finished importing boot images, the region does not have "
                 "any boot images available."))

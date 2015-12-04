@@ -3,15 +3,6 @@
 
 """Obtain OS information from clusters."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "gen_all_known_operating_systems",
     "get_preseed_data",
@@ -21,7 +12,7 @@ __all__ = [
 
 from collections import defaultdict
 from functools import partial
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource

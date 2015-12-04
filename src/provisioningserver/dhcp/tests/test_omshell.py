@@ -3,15 +3,6 @@
 
 """Tests for the omshell.py file."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from itertools import product
@@ -374,7 +365,7 @@ class Test_generate_omapi_key(MAASTestCase):
         def returns_junk(tmpdir):
             key_name = factory.make_string()
             factory.make_file(tmpdir, "%s.private" % key_name)
-            return key_name
+            return key_name.encode("ascii")
 
         self.patch(omshell, 'call_dnssec_keygen', returns_junk)
         self.assertRaises(AssertionError, generate_omapi_key)

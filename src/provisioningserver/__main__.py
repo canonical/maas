@@ -4,16 +4,6 @@
 
 """Command-line interface for the MAAS provisioning component."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 from provisioningserver import security
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub

@@ -4,15 +4,6 @@
 
 """Windows PXE Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'WindowsPXEBootMethod',
     ]
@@ -33,7 +24,10 @@ from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
-from provisioningserver.utils import tftp
+from provisioningserver.utils import (
+    tftp,
+    typed,
+)
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -276,7 +270,8 @@ class WindowsPXEBootMethod(BootMethod):
             return self.compose_bcd(kernel_params, local_host)
         return self.output_static(kernel_params, path)
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Installs the required files for Windows booting into the
         tftproot.
 

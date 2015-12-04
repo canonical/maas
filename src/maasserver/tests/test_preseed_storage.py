@@ -3,15 +3,6 @@
 
 """Test `maasserver.preseed_storage`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from textwrap import dedent
@@ -59,7 +50,7 @@ class AssertStorageConfigMixin:
         expected = yaml.load(expected)
         output_storage = output["storage"]["config"]
         expected_storage = expected["config"]
-        expected_equals = map(Equals, expected_storage)
+        expected_equals = list(map(Equals, expected_storage))
         self.assertThat(output_storage, MatchesListwise(expected_equals))
 
 

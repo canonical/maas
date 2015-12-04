@@ -3,15 +3,6 @@
 
 """Tests for commission form."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.enum import (
@@ -39,7 +30,7 @@ class TestCommissionForm(MAASServerTestCase):
         user = factory.make_admin()
         form = CommissionForm(instance=node, user=user, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             '__all__': [
                 "Commission is not available because of the current state "
                 "of the node."],
@@ -51,7 +42,7 @@ class TestCommissionForm(MAASServerTestCase):
         user = factory.make_admin()
         form = CommissionForm(instance=node, user=user, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             '__all__': [
                 "Commission is not available because of the node is currently "
                 "powered on."],

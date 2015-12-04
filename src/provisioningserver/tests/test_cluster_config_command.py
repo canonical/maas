@@ -3,22 +3,12 @@
 
 """Tests for configuration update code."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
-from exceptions import SystemExit
+import io
 from itertools import combinations
 import pprint
-import StringIO
 import uuid
 
 from maastesting.factory import factory
@@ -56,9 +46,9 @@ class TestAddArguments(MAASTestCase):
             for test_arg_names in combinations(all_test_arguments, r):
                 test_values = {
                     '--region-url': factory.make_simple_http_url(),
-                    '--uuid': unicode(uuid.uuid4()),
+                    '--uuid': str(uuid.uuid4()),
                     '--init': '',
-                    '--tftp-port': unicode(factory.pick_port()),
+                    '--tftp-port': str(factory.pick_port()),
                     '--tftp-root': factory.make_string(),
                 }
 
@@ -97,12 +87,12 @@ class TestAddArguments(MAASTestCase):
                                 observed_args[parsed_param_name]
 
                     if expected_args != observed_args:
-                        failures[unicode(test_arg_names)] = {
+                        failures[str(test_arg_names)] = {
                             'expected_args': expected_args,
                             'observed_args': observed_args,
                         }
 
-        error_message = StringIO.StringIO()
+        error_message = io.StringIO()
         error_message.write(
             "One or more key / value argument list(s)"
             "passed in the query string (expected_args)"
@@ -145,7 +135,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         self.assertEqual(expected, observed)
 
     def test_config_set_cluster_uuid_sets_cluster_uuid(self):
-        expected = unicode(uuid.uuid4())
+        expected = str(uuid.uuid4())
         cluster_config_command.run(self.make_args(uuid=expected))
         with ClusterConfiguration.open() as config:
             observed = config.cluster_uuid
@@ -155,14 +145,14 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         with ClusterConfiguration.open() as config:
             observed = config.cluster_uuid
         try:
-            parsed_observed = unicode(uuid.UUID(observed))
+            parsed_observed = str(uuid.UUID(observed))
         except:
             parsed_observed = None
 
         return (parsed_observed, observed)
 
     def test_config_set_cluster_uuid_without_setting_does_nothing(self):
-        expected_previous_value = unicode(uuid.uuid4())
+        expected_previous_value = str(uuid.uuid4())
         with ClusterConfiguration.open() as config:
             config.cluster_uuid = expected_previous_value
         with ClusterConfiguration.open() as config:
@@ -186,7 +176,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         self.assertEqual(expected, observed)
 
     def test_config_init_when_already_configured_does_nothing(self):
-        expected_previous_value = unicode(uuid.uuid4())
+        expected_previous_value = str(uuid.uuid4())
         with ClusterConfiguration.open() as config:
             config.cluster_uuid = expected_previous_value
         with ClusterConfiguration.open() as config:

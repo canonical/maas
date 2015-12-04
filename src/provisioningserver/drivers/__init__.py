@@ -3,15 +3,6 @@
 
 """Hardware Drivers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Architecture",
     "ArchitectureRegistry",
@@ -25,6 +16,7 @@ from abc import (
 
 from jsonschema import validate
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
+from provisioningserver.utils import typed
 from provisioningserver.utils.registry import Registry
 
 # JSON schema representing the Django choices format as JSON; an array of
@@ -166,15 +158,13 @@ class Architecture:
         self.kernel_options = kernel_options
 
 
-class BootResource:
+class BootResource(metaclass=ABCMeta):
     """Abstraction of ephemerals and pxe resources required for a hardware
     driver.
 
     This resource is responsible for importing and reporting on
     what is potentially available in relation to a cluster controller.
     """
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, name):
         self.name = name
@@ -213,9 +203,7 @@ class BootResource:
         """
 
 
-class HardwareDiscoverContext:
-
-    __metaclass__ = ABCMeta
+class HardwareDiscoverContext(metaclass=ABCMeta):
 
     @abstractmethod
     def startDiscovery(self):
@@ -230,7 +218,8 @@ class ArchitectureRegistry(Registry):
     """Registry for architecture classes."""
 
     @classmethod
-    def get_by_pxealias(cls, alias):
+    @typed
+    def get_by_pxealias(cls, alias: str):
         for _, arch in cls:
             if alias in arch.pxealiases:
                 return arch

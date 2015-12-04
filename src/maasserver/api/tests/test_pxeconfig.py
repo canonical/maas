@@ -3,21 +3,13 @@
 
 """Tests for PXE configuration retrieval from the API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
 from crochet import TimeoutError
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import (
@@ -171,7 +163,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         if params is None:
             params = self.get_default_params()
         response = self.client.get(reverse('pxeconfig'), params)
-        return json.loads(response.content)
+        return json.loads(response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_pxeconfig_returns_json(self):
         params = self.get_default_params()
@@ -182,11 +174,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 response.status_code,
                 response['Content-Type'],
                 response.content,
-                response.content,
+                response.content.decode(settings.DEFAULT_CHARSET),
             ),
             MatchesListwise(
                 (
-                    Equals(httplib.OK),
+                    Equals(http.client.OK),
                     Equals("application/json"),
                     StartsWith(b'{'),
                     Contains('arch'),
@@ -202,14 +194,14 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_returns_success_for_known_node(self):
         params = self.get_mac_params()
         response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
         params = dict(
             mac=factory.make_mac_address(delimiter='-'),
             local=factory.make_ipv4_address())
         response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.NO_CONTENT, response.status_code)
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
 
     def test_pxeconfig_returns_success_for_detailed_but_unknown_node(self):
         architecture = make_usable_architecture(self)
@@ -222,7 +214,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             subarch=subarch,
             cluster_uuid=nodegroup.uuid)
         response = self.client.get(reverse('pxeconfig'), params)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
 
     def test_pxeconfig_returns_global_kernel_params_for_enlisting_node(self):
         # An 'enlisting' node means it looks like a node with details but we
@@ -240,7 +232,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
             subarch=subarch,
             cluster_uuid=nodegroup.uuid)
         response = self.client.get(reverse('pxeconfig'), params)
-        response_dict = json.loads(response.content)
+        response_dict = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(value, response_dict['extra_opts'])
 
     def test_pxeconfig_uses_present_boot_image(self):
@@ -316,7 +309,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             compose_enlistment_preseed_url(),
-            json.loads(response.content)["preseed_url"])
+            json.loads(response.content.decode(
+                settings.DEFAULT_CHARSET))["preseed_url"])
 
     def test_pxeconfig_enlistment_preseed_url_detects_request_origin(self):
         self.silence_get_ephemeral_name()
@@ -336,7 +330,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(
             reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertThat(
-            json.loads(response.content)["preseed_url"],
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))["preseed_url"],
             StartsWith(ng_url))
 
     def test_pxeconfig_enlistment_log_host_url_detects_request_origin(self):
@@ -359,7 +355,10 @@ class TestPXEConfigAPI(MAASServerTestCase):
             reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertEqual(
             (ip, hostname),
-            (json.loads(response.content)["log_host"], mock.call_args[0][0]))
+            (json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))["log_host"],
+             mock.call_args[0][0]))
 
     def test_pxeconfig_enlistment_checks_default_min_hwe_kernel(self):
         params = self.get_default_params()
@@ -368,7 +367,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             "hwe-v",
-            json.loads(response.content)["subarch"])
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))["subarch"])
 
     def test_pxeconfig_has_preseed_url_for_known_node(self):
         params = self.get_mac_params()
@@ -376,7 +376,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             compose_preseed_url(node),
-            json.loads(response.content)["preseed_url"])
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))["preseed_url"])
 
     def test_find_nodegroup_for_pxeconfig_request_uses_cluster_uuid(self):
         # find_nodegroup_for_pxeconfig_request returns the nodegroup
@@ -407,7 +409,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(
             reverse('pxeconfig'), params, REMOTE_ADDR=ip)
         self.assertThat(
-            json.loads(response.content)["preseed_url"],
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))["preseed_url"],
             StartsWith(ng_url))
 
     def test_pxeconfig_uses_boot_purpose_enlistment(self):
@@ -418,7 +422,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             "commissioning",
-            json.loads(response.content)["purpose"])
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))["purpose"])
 
     def test_pxeconfig_returns_enlist_config_if_no_architecture_provided(self):
         params = self.get_default_params()
@@ -649,7 +654,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             "hwe-v",
-            json.loads(response.content)["subarch"])
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))["subarch"])
 
     def test_pxeconfig_returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         nodegroup = factory.make_NodeGroup()

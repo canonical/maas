@@ -3,21 +3,12 @@
 
 """Tests for miscellaneous helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import threading
-from urllib import urlencode
-from urlparse import (
+from urllib.parse import (
+    urlencode,
     urljoin,
     urlparse,
 )
@@ -210,7 +201,7 @@ class TestStripDomain(MAASTestCase):
             ]
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
-        self.assertEqual(results, map(strip_domain, inputs))
+        self.assertEqual(results, list(map(strip_domain, inputs)))
 
 
 class TestGetLocalClusterUUID(MAASTestCase):
@@ -227,7 +218,7 @@ class TestGetLocalClusterUUID(MAASTestCase):
 
 def make_request(origin_ip):
     """Return a fake HTTP request with the given remote address."""
-    return RequestFactory().post('/', REMOTE_ADDR=unicode(origin_ip))
+    return RequestFactory().post('/', REMOTE_ADDR=str(origin_ip))
 
 
 class TestFindNodegroup(MAASServerTestCase):
@@ -299,7 +290,7 @@ class TestFindNodegroup(MAASServerTestCase):
             NodeGroupMisconfiguration,
             find_nodegroup, make_request(requesting_ip))
         self.assertEqual(
-            (httplib.CONFLICT,
+            (http.client.CONFLICT,
              "Multiple clusters on the same network; only "
              "one cluster may manage the network of which "
              "%s is a member." % requesting_ip),

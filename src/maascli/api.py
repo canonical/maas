@@ -3,15 +3,6 @@
 
 """Interact with a remote MAAS server."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "register_api_commands",
     ]
@@ -19,7 +10,7 @@ __all__ = [
 import argparse
 from collections import defaultdict
 from functools import partial
-import httplib
+import http.client
 import json
 from operator import itemgetter
 import re
@@ -29,7 +20,7 @@ from textwrap import (
     fill,
     wrap,
 )
-from urlparse import (
+from urllib.parse import (
     urljoin,
     urlparse,
 )
@@ -65,7 +56,7 @@ def http_request(url, method, body=None, headers=None,
         disable_ssl_certificate_validation=insecure)
     try:
         return http.request(url, method, body=body, headers=headers)
-    except httplib2.SSLHandshakeError:
+    except httplib2.ssl.SSLError:
         raise CommandError(
             "Certificate verification failed, use --insecure/-k to "
             "disable the certificate check.")
@@ -76,7 +67,7 @@ def fetch_api_description(url, insecure=False):
     url_describe = urljoin(url, "describe/")
     response, content = http_request(
         ascii_url(url_describe), "GET", insecure=insecure)
-    if response.status != httplib.OK:
+    if response.status != http.client.OK:
         raise CommandError(
             "{0.status} {0.reason}:\n{1}".format(response, content))
     if response["content-type"] != "application/json":
@@ -392,7 +383,7 @@ def register_actions(profile, handler, parser):
     """Register a handler's actions."""
     for action in handler["actions"]:
         help_title, help_body = parse_docstring(action["doc"])
-        action_name = safe_name(action["name"]).encode("ascii")
+        action_name = safe_name(action["name"])
         action_bases = get_action_class_bases(handler, action)
         action_ns = {
             "action": action,

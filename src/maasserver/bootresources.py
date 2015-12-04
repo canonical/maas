@@ -3,15 +3,6 @@
 
 """Boot Resources."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ensure_boot_source_definition",
     "get_simplestream_endpoint",
@@ -25,7 +16,6 @@ __all__ = [
 ]
 
 from datetime import timedelta
-from itertools import imap
 from operator import itemgetter
 from subprocess import CalledProcessError
 from textwrap import dedent
@@ -91,6 +81,7 @@ from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
 )
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -110,7 +101,6 @@ from twisted.internet.defer import (
     DeferredList,
     inlineCallbacks,
 )
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
 
@@ -171,7 +161,7 @@ class ConnectionWrapper:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         self._set_up()
         data = self._stream.read(self.largeobject.block_size)
         if len(data) == 0:
@@ -202,7 +192,7 @@ class SimpleStreamsHandler:
 
     def get_json_response(self, content):
         """Return `HttpResponse` for JSON content."""
-        response = HttpResponse(content.encode('utf-8'))
+        response = HttpResponse(content)
         response['Content-Type'] = "application/json"
         return response
 
@@ -252,9 +242,10 @@ class SimpleStreamsHandler:
             'updated': updated,
             'format': "index:1.0"
             }
-        data = sutil.dump_data(index) + "\n"
+        data = sutil.dump_data(index) + b"\n"
         maaslog.debug(
-            "Simplestreams product index: %s.", data)
+            "Simplestreams product index: %s.",
+            data.decode("utf-8", "replace"))
         return self.get_json_response(data)
 
     def get_product_item(self, resource, resource_set, rfile):
@@ -323,7 +314,7 @@ class SimpleStreamsHandler:
             'products': products,
             'format': "products:1.0"
             }
-        data = sutil.dump_data(index) + "\n"
+        data = sutil.dump_data(index) + b"\n"
         return self.get_json_response(data)
 
     def streams_handler(self, request, filename):
@@ -975,7 +966,7 @@ def _import_resources_with_lock(force=False):
 
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
-            maaslog.warn(
+            maaslog.warning(
                 "Unable to import boot images, no image "
                 "descriptions avaliable.")
             return
@@ -1130,7 +1121,7 @@ class ImportResourcesProgressService(TimerService, object):
             d.addCallback(itemgetter("images"))
             return d
 
-        d = DeferredList(imap(get_images, clients), consumeErrors=True)
+        d = DeferredList(map(get_images, clients), consumeErrors=True)
 
         def has_boot_images(results):
             return any(

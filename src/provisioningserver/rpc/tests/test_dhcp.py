@@ -3,15 +3,6 @@
 
 """Tests for :py:module:`~provisioningserver.rpc.dhcp`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from fixtures import FakeLogger
@@ -296,7 +287,7 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         with ExpectedException(fake_exception_type):
             dhcp._ensure_dhcpv4_is_accessible(fake_exception_type)
         self.assertThat(mock_ensure_service, MockCalledOnceWith("dhcp4"))
-        self.assertEquals(mock_try_connection.call_count, 3)
+        self.assertEqual(mock_try_connection.call_count, 3)
 
     def test__raises_exception_on_ServiceActionError(self):
         service = self.make_dhcpv4_service()
@@ -376,7 +367,7 @@ class TestCreateHostMaps(MAASTestCase):
         # problematic mapping.
         self.assertDocTestMatches(
             "%s -> %s: ..." % (mac_address, ip_address),
-            unicode(error))
+            str(error))
         # A message is also written to the maas.dhcp logger that describes the
         # problematic mapping.
         self.assertDocTestMatches(
@@ -433,7 +424,7 @@ class TestRemoveHostMaps(MAASTestCase):
                 [mac_address], sentinel.shared_key)
         # The CannotRemoveHostMap exception includes a message describing the
         # problematic mapping.
-        self.assertDocTestMatches("%s: ..." % mac_address, unicode(error))
+        self.assertDocTestMatches("%s: ..." % mac_address, str(error))
         # A message is also written to the maas.dhcp logger that describes the
         # problematic mapping.
         self.assertDocTestMatches(
@@ -449,7 +440,7 @@ class TestOmshellError(MAASTestCase):
         # Patch _ensure_dhcpv4_is_accessible.
         self._ensure_dhcpv4_is_accessible = self.patch_autospec(
             dhcp, "_ensure_dhcpv4_is_accessible")
-        self.patch(ExternalProcessError, '__unicode__', lambda x: 'Error')
+        self.patch(ExternalProcessError, '__str__', lambda x: 'Error')
 
         def raise_ExternalProcessError(*args, **kwargs):
             raise ExternalProcessError(*args, **kwargs)

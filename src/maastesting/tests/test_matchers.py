@@ -3,20 +3,12 @@
 
 """Test matchers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maastesting import matchers
 from maastesting.factory import factory
 from maastesting.matchers import (
+    FileContains,
     GreaterThanOrEqual,
     HasAttribute,
     IsCallable,
@@ -24,6 +16,7 @@ from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
     LessThanOrEqual,
+    Matches,
     MockAnyCall,
     MockCalledOnce,
     MockCalledOnceWith,
@@ -40,10 +33,37 @@ from mock import (
     sentinel,
 )
 from testtools.matchers import (
+    AfterPreprocessing,
+    Contains,
+    Equals,
     MatchesStructure,
     Mismatch,
 )
 from twisted.internet import defer
+
+
+class TestMatches(MAASTestCase):
+
+    def test__string_representation(self):
+        matcher = AfterPreprocessing(set, Equals({1, 2, "three"}))
+        self.assertThat(
+            Matches(matcher), AfterPreprocessing(
+                str, Equals("Matches " + str(matcher))))
+
+    def test__representation(self):
+        matcher = AfterPreprocessing(set, Equals({1, 2, "three"}))
+        self.assertThat(
+            Matches(matcher), AfterPreprocessing(
+                repr, Equals("<Matches " + str(matcher) + ">")))
+
+    def test__equality(self):
+        matcher = AfterPreprocessing(set, Equals({1, 2, "three"}))
+        self.assertEqual(Matches(matcher), [1, 2, "three"])
+        self.assertEqual(Matches(matcher), (1, 2, "three"))
+        self.assertEqual(Matches(matcher), dict.fromkeys((1, 2, "three")))
+        self.assertNotEqual(Matches(matcher), (1, 2, 3))
+        self.assertNotEqual(Matches(matcher), (1, 2, "three", 4))
+        self.assertNotEqual(Matches(matcher), dict.fromkeys((2, "three")))
 
 
 class TestIsCallable(MAASTestCase):
@@ -130,7 +150,8 @@ class TestMockCalledOnceWith(MAASTestCase, MockTestMixin):
 
         matcher = MockCalledOnceWith(1, 2, frob=5, nob=6)
         result = matcher.match(mock)
-        self.assertMismatch(result, "Expected to be called once")
+        self.assertMismatch(
+            result, "Expected 'mock' to be called once. Called 2 times.")
 
     def test_returns_mismatch_when_single_call_does_not_match(self):
         mock = Mock()
@@ -392,3 +413,88 @@ class TestLessThanOrEqual(MAASTestCase, MockTestMixin):
             LessThanOrEqual(4).match(5), "Differences:")
         self.assertMismatch(
             LessThanOrEqual("aaa").match("bbb"), "Differences:")
+
+
+class TestFileContains(MAASTestCase, MockTestMixin):
+
+    def test__does_not_match_if_file_does_not_exist(self):
+        self.assertMismatch(
+            FileContains("").match("/does/not/exist"),
+            "/does/not/exist does not exist")
+
+    def test__cannot_supply_both_contents_and_matcher(self):
+        self.assertRaises(AssertionError, FileContains, contents=1, matcher=2)
+
+    def test__cannot_supply_neither_contents_nor_matcher(self):
+        self.assertRaises(AssertionError, FileContains)
+
+    def test__compares_in_binary_mode_when_encoding_not_supplied(self):
+        contents = factory.make_bytes()  # bytes
+        filename = self.make_file(contents=contents)
+        self.assertThat(filename, FileContains(contents=contents))
+
+    def test__compares_in_text_mode_when_encoding_supplied(self):
+        contents = factory.make_string()  # text
+        filename = self.make_file(contents=contents.encode("ascii"))
+        self.assertThat(filename, FileContains(
+            contents=contents, encoding="ascii"))
+
+    def test__does_not_match_when_comparing_binary_to_text(self):
+        contents = factory.make_string().encode("ascii")  # bytes
+        filename = self.make_file(contents=contents)
+        matcher = FileContains(contents=contents, encoding="ascii")
+        self.assertMismatch(
+            matcher.match(filename), "%r != %r" % (
+                contents, contents.decode("ascii")))
+
+    def test__does_not_match_when_comparing_text_to_binary(self):
+        contents = factory.make_string()  # text
+        filename = self.make_file(contents=contents.encode("ascii"))
+        matcher = FileContains(contents=contents)
+        self.assertMismatch(
+            matcher.match(filename), "%r != %r" % (
+                contents, contents.encode("ascii")))
+
+    def test__compares_using_matcher_without_encoding(self):
+        contents = factory.make_string()  # text
+        filename = self.make_file(contents=contents.encode("ascii"))
+        self.assertThat(filename, FileContains(
+            matcher=Contains(contents[:5].encode("ascii"))))
+
+    def test__compares_using_matcher_with_encoding(self):
+        contents = factory.make_string()  # text
+        filename = self.make_file(contents=contents.encode("ascii"))
+        self.assertThat(filename, FileContains(
+            matcher=Contains(contents[:5]), encoding="ascii"))
+
+    def test__string_representation_explains_binary_match(self):
+        contents_binary = factory.make_bytes()
+        self.assertDocTestMatches(
+            "File at path exists and its contents (unencoded; raw) "
+            "match Equals(%r)" % (contents_binary, ),
+            FileContains(contents=contents_binary))
+
+    def test__string_representation_explains_text_match(self):
+        encoding = factory.make_name("encoding")
+        contents_text = factory.make_string()
+        self.assertDocTestMatches(
+            "File at path exists and its contents (encoded as %s) "
+            "match Equals(%r)" % (encoding, contents_text),
+            FileContains(contents=contents_text, encoding=encoding))
+
+    def test__string_representation_explains_binary_match_with_matcher(self):
+        contents_binary = factory.make_bytes()
+        contents_matcher = Contains(contents_binary)
+        self.assertDocTestMatches(
+            "File at path exists and its contents (unencoded; raw) "
+            "match %s" % (contents_matcher, ),
+            FileContains(matcher=contents_matcher))
+
+    def test__string_representation_explains_text_match_with_matcher(self):
+        encoding = factory.make_name("encoding")
+        contents_text = factory.make_string()
+        contents_matcher = Contains(contents_text)
+        self.assertDocTestMatches(
+            "File at path exists and its contents (encoded as %s) "
+            "match %s" % (encoding, contents_matcher),
+            FileContains(matcher=contents_matcher, encoding=encoding))

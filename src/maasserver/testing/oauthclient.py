@@ -3,15 +3,6 @@
 
 """OAuth client for API testing."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'OAuthAuthenticatedClient',
     ]
@@ -47,12 +38,8 @@ class OAuthAuthenticatedClient(MAASSensibleClient):
             token = get_auth_tokens(user)[0]
         assert token.user == user, "Token does not match User."
         consumer = token.consumer
-        self.consumer = OAuthConsumer(
-            consumer.key.encode("ascii"),
-            consumer.secret.encode("ascii"))
-        self.token = OAuthToken(
-            token.key.encode("ascii"),
-            token.secret.encode("ascii"))
+        self.consumer = OAuthConsumer(consumer.key, consumer.secret)
+        self.token = OAuthToken(token.key, token.secret)
 
     def _compose_auth_header(self, url):
         """Return additional header entries for request to `url`."""

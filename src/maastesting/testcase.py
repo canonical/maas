@@ -3,15 +3,6 @@
 
 """Test related classes and functions for MAAS and its applications."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'MAASRunTest',
     'MAASTestCase',
@@ -21,10 +12,8 @@ __all__ = [
 import abc
 from collections import Sequence
 from contextlib import contextmanager
-import doctest
 from importlib import import_module
 import os
-import unittest
 
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
@@ -36,6 +25,7 @@ from maastesting.runtest import (
 )
 from maastesting.scenarios import WithScenarios
 import mock
+import mock.mock
 from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
@@ -97,9 +87,8 @@ class MAASTestType(abc.ABCMeta):
 
 
 class MAASTestCase(
-        WithScenarios,
-        EventualResultCatchingMixin,
-        testtools.TestCase):
+        WithScenarios, EventualResultCatchingMixin, testtools.TestCase,
+        metaclass=MAASTestType):
     """Base `TestCase` for MAAS.
 
     Supports `test resources`_, `test scenarios`_, and `fixtures`_.
@@ -111,8 +100,6 @@ class MAASTestCase(
     .. _fixtures: https://launchpad.net/python-fixtures
 
     """
-
-    __metaclass__ = MAASTestType
 
     # Use a customised executor.
     run_tests_with = MAASRunTest
@@ -192,9 +179,7 @@ class MAASTestCase(
 
     # Django's implementation for this seems to be broken and was
     # probably only added to support compatibility with python 2.6.
-    assertItemsEqual = unittest.TestCase.assertItemsEqual
-
-    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+    assertItemsEqual = testtools.TestCase.assertItemsEqual
 
     def assertAttributes(self, tested_object, attributes):
         """Check multiple attributes of `tested_object` against a dict.
@@ -263,8 +248,6 @@ class MAASTestCase(
         if attribute is None:
             attribute = obj.__name__
             obj = import_module(obj.__module__)
-        if isinstance(attribute, unicode):
-            attribute = attribute.encode("ascii")
         if value is mock.sentinel.unset:
             value = mock.MagicMock(__name__=attribute)
         super(MAASTestCase, self).patch(obj, attribute, value)
@@ -278,6 +261,21 @@ class MAASTestCase(
         :return: The patched-in object.
         """
         spec = getattr(obj, attribute)
+        if isinstance(spec, mock.mock.Base):
+            raise TypeError(
+                "Cannot use a mock object as a specification: %s.%s = %r"
+                % (_get_name(obj), attribute, spec))
         value = mock.create_autospec(spec, spec_set, instance)
         super(MAASTestCase, self).patch(obj, attribute, value)
         return value
+
+
+def _get_name(thing):
+    """Return a "nice" name for `thing`."""
+    try:
+        return thing.__qualname__
+    except AttributeError:
+        try:
+            return thing.__name__
+        except AttributeError:
+            return repr(thing)

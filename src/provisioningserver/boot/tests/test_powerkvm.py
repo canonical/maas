@@ -3,15 +3,6 @@
 
 """Tests for `provisioningserver.boot.powerkvm`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from contextlib import contextmanager
@@ -49,15 +40,16 @@ class TestPowerKVMBootMethod(MAASTestCase):
 
     def test_install_bootloader_get_package_raises_error(self):
         method = PowerKVMBootMethod()
-        self.patch(powerkvm_module, 'get_ports_archive_url')
+        gpau = self.patch(powerkvm_module, 'get_ports_archive_url')
+        gpau.return_value = factory.make_simple_http_url()
         self.patch(utils, 'get_updates_package').return_value = (None, None)
         self.assertRaises(
-            BootMethodInstallError, method.install_bootloader, None)
+            BootMethodInstallError, method.install_bootloader, "bogus")
 
     def test_install_bootloader(self):
         method = PowerKVMBootMethod()
         filename = factory.make_name('dpkg')
-        data = factory.make_string()
+        data = factory.make_string().encode("ascii")
         tmp = self.make_dir()
         dest = self.make_dir()
 

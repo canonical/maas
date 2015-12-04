@@ -3,15 +3,6 @@
 
 """Model for a partition in a partition table."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Partition',
     ]
@@ -211,10 +202,10 @@ class Partition(CleanSave, TimestampedModel):
         self._validate_enough_space()
         super(Partition, self).clean(*args, **kwargs)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{size} partition on {bd}".format(
             size=human_readable_bytes(self.size),
-            bd=self.partition_table.block_device.__unicode__())
+            bd=self.partition_table.block_device.__str__())
 
     def _round_size(self):
         """Round the size of this partition down for alignment."""

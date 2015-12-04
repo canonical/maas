@@ -3,19 +3,11 @@
 
 """Test the documentation of defined commands.
 
-Specifically, check :py:class:`~twisted.protocols.amp.Command`
-subclasses in the MAAS codebase.
+Specifically, check
+:py:class:`~provisioningserver.twisted.protocols.amp.Command` subclasses in the
+MAAS codebase.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from inspect import getdoc
@@ -26,18 +18,18 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.rpc.cluster
 import provisioningserver.rpc.common
 import provisioningserver.rpc.region
+from provisioningserver.twisted.protocols import amp
 from testtools.matchers import (
     Annotate,
     Contains,
     MatchesAll,
     MatchesRegex,
 )
-from twisted.protocols import amp
 
 
 def get_commands(module):
     """Return command classes from the given module."""
-    for name, value in vars(module).iteritems():
+    for name, value in vars(module).items():
         if isinstance(value, type):
             if issubclass(value, amp.Command):
                 yield value

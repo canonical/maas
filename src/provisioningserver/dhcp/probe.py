@@ -11,16 +11,6 @@ Exit code is zero ("success") if no servers were detected, or the number of
 DHCP servers that were found.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import argparse
 from sys import exit
 

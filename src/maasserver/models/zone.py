@@ -3,15 +3,6 @@
 
 """Physical zone objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DEFAULT_ZONE_NAME",
     "Zone",
@@ -82,7 +73,7 @@ class Zone(CleanSave, TimestampedModel):
 
     description = TextField(blank=True, editable=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def is_default(self):

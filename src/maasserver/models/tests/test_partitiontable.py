@@ -3,15 +3,6 @@
 
 """Tests for `PartitionTable`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
@@ -39,12 +30,12 @@ class TestPartitionTable(MAASServerTestCase):
 
     def test_get_node_returns_block_device_node(self):
         partition_table = factory.make_PartitionTable()
-        self.assertEquals(
+        self.assertEqual(
             partition_table.block_device.node, partition_table.get_node())
 
     def test_get_size_returns_block_device_size_minus_initial_offset(self):
         partition_table = factory.make_PartitionTable()
-        self.assertEquals(
+        self.assertEqual(
             round_size_to_nearest_block(
                 partition_table.block_device.size -
                 PARTITION_TABLE_EXTRA_SPACE,
@@ -54,7 +45,7 @@ class TestPartitionTable(MAASServerTestCase):
 
     def test_get_block_size_returns_block_device_block_size(self):
         partition_table = factory.make_PartitionTable()
-        self.assertEquals(
+        self.assertEqual(
             partition_table.block_device.block_size,
             partition_table.get_block_size())
 
@@ -130,7 +121,7 @@ class TestPartitionTable(MAASServerTestCase):
             block_size=block_size)
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition(size=MIN_PARTITION_SIZE)
-        self.assertEquals(
+        self.assertEqual(
             MIN_PARTITION_SIZE * 2, partition_table.get_available_size())
 
     def test_get_available_size_skips_partitions(self):
@@ -144,7 +135,7 @@ class TestPartitionTable(MAASServerTestCase):
             for _ in range(2)
             ]
         partition_table.add_partition(size=MIN_PARTITION_SIZE)
-        self.assertEquals(
+        self.assertEqual(
             MIN_PARTITION_SIZE * 2,
             partition_table.get_available_size(
                 ignore_partitions=ignore_partitions))
@@ -154,20 +145,20 @@ class TestPartitionTable(MAASServerTestCase):
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=BlockDevice.objects.get(id=boot_disk.id))
-        self.assertEquals(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=boot_disk)
-        self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_sets_table_type_to_gpt_for_none_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
         factory.make_PhysicalBlockDevice(node=node)
         other_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=other_disk)
-        self.assertEquals(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
 
     def test_save_force_mbr_on_boot_disk_pxe(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="pxe")
@@ -176,7 +167,7 @@ class TestPartitionTable(MAASServerTestCase):
             ValidationError,
             factory.make_PartitionTable,
             table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
-        self.assertEquals({
+        self.assertEqual({
             "table_type": [
                 "Partition table on this node's boot disk must "
                 "be using 'MBR'."],
@@ -189,7 +180,7 @@ class TestPartitionTable(MAASServerTestCase):
             ValidationError,
             factory.make_PartitionTable,
             table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk)
-        self.assertEquals({
+        self.assertEqual({
             "table_type": [
                 "Partition table on this node's boot disk must "
                 "be using 'GPT'."],
@@ -209,7 +200,7 @@ class TestPartitionTable(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError,
             factory.make_PartitionTable, block_device=virtual_device)
-        self.assertEquals({
+        self.assertEqual({
             "block_device": [
                 "Cannot create a partition table on a logical volume."],
             }, error.message_dict)
@@ -223,7 +214,7 @@ class TestPartitionTable(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError,
             factory.make_PartitionTable, block_device=bcache_device)
-        self.assertEquals({
+        self.assertEqual({
             "block_device": [
                 "Cannot create a partition table on a Bcache volume."],
             }, error.message_dict)

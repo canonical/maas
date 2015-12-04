@@ -3,15 +3,6 @@
 
 """Tests for node forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from crochet import TimeoutError
@@ -218,7 +209,7 @@ class TestNodeForm(MAASServerTestCase):
             instance=node)
         form.set_distro_series(release)
         form.save()
-        self.assertEquals(release + '6', node.distro_series)
+        self.assertEqual(release + '6', node.distro_series)
 
     def test_set_distro_series_doesnt_allow_short_ubuntu_series(self):
         self.client_log_in()
@@ -471,7 +462,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_shows_disable_ipv4_if_IPv6_configured(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            cidr=unicode(factory.make_ipv6_network().cidr))
+            cidr=str(factory.make_ipv6_network().cidr))
         form = NodeForm(
             instance=node,
             data={'architecture': make_usable_architecture(self)})
@@ -480,7 +471,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_hides_disable_ipv4_if_IPv6_not_configured(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            cidr=unicode(factory.make_ipv4_network().cidr))
+            cidr=str(factory.make_ipv4_network().cidr))
         form = NodeForm(
             instance=node,
             data={'architecture': make_usable_architecture(self)})
@@ -488,7 +479,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_shows_disable_ipv4_on_new_node_if_any_cluster_supports_it(self):
         factory.make_Node_with_Interface_on_Subnet(
-            cidr=unicode(factory.make_ipv6_network().cidr))
+            cidr=str(factory.make_ipv6_network().cidr))
         form = NodeForm(data={'architecture': make_usable_architecture(self)})
         self.assertIsInstance(
             form.fields['disable_ipv4'].widget, CheckboxInput)

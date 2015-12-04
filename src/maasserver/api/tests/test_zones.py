@@ -3,20 +3,12 @@
 
 """Tests for physical `Zone` API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.models import Zone
 from maasserver.testing.api import APITestCase
@@ -39,7 +31,8 @@ class TestZonesAPI(APITestCase):
                 'name': name,
                 'description': description,
             })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         zones = Zone.objects.filter(name=name)
         self.assertItemsEqual(
             [(name, description)],
@@ -55,7 +48,7 @@ class TestZonesAPI(APITestCase):
                 'description': description,
             })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_list_returns_zone_list(self):
         [factory.make_Zone(sortable_name=True) for _ in range(3)]
@@ -63,8 +56,10 @@ class TestZonesAPI(APITestCase):
         response = self.client.get(
             reverse('zones_handler'),
             {})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
             [(
                 zone.name,
@@ -83,8 +78,10 @@ class TestZonesAPI(APITestCase):
         response = self.client.get(
             reverse('zones_handler'),
             {})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         # Sorting is case-insensitive.
         self.assertEqual(
             sorted(

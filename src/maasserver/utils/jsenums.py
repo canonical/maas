@@ -14,15 +14,6 @@ libraries, including their dependencies.
 The resulting JavaScript module is printed to standard output.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
@@ -66,7 +57,7 @@ def is_enum(item):
 
 def get_enum_classes(namespace):
     """Collect all enum classes exported from `namespace`."""
-    return filter(is_enum, namespace.values())
+    return list(filter(is_enum, namespace.values()))
 
 
 def get_enums(filename):

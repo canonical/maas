@@ -3,15 +3,6 @@
 
 """SQL Sequence."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Sequence',
     'INT_MAX',

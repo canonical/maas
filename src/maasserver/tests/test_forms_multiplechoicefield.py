@@ -3,15 +3,6 @@
 
 """Tests for multiple-choice fields."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
@@ -42,4 +33,4 @@ class TestValidatorMultipleChoiceField(MAASServerTestCase):
         value = ['test@example.com', 'invalid-email']
         field = ValidatorMultipleChoiceField(validator=validate_email)
         error = self.assertRaises(ValidationError, field.clean, value)
-        self.assertEquals(['Enter a valid email address.'], error.messages)
+        self.assertEqual(['Enter a valid email address.'], error.messages)

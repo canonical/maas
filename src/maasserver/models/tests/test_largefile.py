@@ -3,21 +3,12 @@
 
 """Tests for :class:`LargeFile`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from cStringIO import StringIO
+from io import BytesIO
 from random import randint
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.db import transaction
 from maasserver.fields import LargeObjectFile
 from maasserver.models import largefile as largefile_module
@@ -67,19 +58,20 @@ class TestLargeFileManager(MAASServerTestCase):
             LargeFile.objects.get_or_create_file_from_content(stream))
 
     def test_get_or_create_file_from_content_returns_new_largefile(self):
-        content = factory.make_string(1024)
+        content = factory.make_bytes(1024)
         largefile = LargeFile.objects.get_or_create_file_from_content(
-            StringIO(content))
+            BytesIO(content))
         with largefile.content.open('rb') as stream:
             written_content = stream.read()
-        self.assertEqual(content, written_content)
+        self.assertEqual(
+            content, written_content)
 
 
 class TestLargeFile(MAASServerTestCase):
 
     def test_content(self):
         size = randint(512, 1024)
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=size)
         with largefile.content.open('rb') as stream:
             data = stream.read()
@@ -87,7 +79,7 @@ class TestLargeFile(MAASServerTestCase):
 
     def test_empty_content(self):
         size = 0
-        content = ""
+        content = b""
         largefile = factory.make_LargeFile(content, size=size)
         with largefile.content.open('rb') as stream:
             data = stream.read()
@@ -96,27 +88,27 @@ class TestLargeFile(MAASServerTestCase):
     def test_size(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=total_size)
         self.assertEqual(size, largefile.size)
 
     def test_progress(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=total_size)
         self.assertEqual(total_size / float(size), largefile.progress)
 
     def test_progress_of_empty_file(self):
         size = 0
-        content = ""
+        content = b""
         largefile = factory.make_LargeFile(content, size=size)
         self.assertEqual(0, largefile.progress)
 
     def test_complete_returns_False_when_content_incomplete(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=total_size)
         self.assertFalse(largefile.complete)
 
@@ -127,14 +119,14 @@ class TestLargeFile(MAASServerTestCase):
     def test_valid_returns_False_when_complete_is_False(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content, size=total_size)
         self.assertFalse(largefile.valid)
 
     def test_valid_returns_False_when_content_doesnt_have_equal_sha256(self):
         largefile = factory.make_LargeFile()
         with largefile.content.open('wb') as stream:
-            stream.write(factory.make_string(size=largefile.total_size))
+            stream.write(factory.make_bytes(size=largefile.total_size))
         self.assertFalse(largefile.valid)
 
     def test_valid_returns_True_when_content_has_equal_sha256(self):
@@ -200,7 +192,7 @@ class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
 
         # Call the delayed function ourselves instead of advancing `clock` so
         # that we can wait for it to complete (it returns a Deferred).
-        func = wait_for_reactor(delayed_call.func)
+        func = wait_for(30)(delayed_call.func)  # Wait 30 seconds.
         func(*delayed_call.args, **delayed_call.kw)
 
         # The content has been removed from the database.
@@ -210,4 +202,4 @@ class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
                 LargeObjectFile(oid).open, "rb")
             self.assertDocTestMatches(
                 "ERROR: large object ... does not exist",
-                unicode(error))
+                str(error))

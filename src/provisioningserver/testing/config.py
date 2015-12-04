@@ -3,15 +3,6 @@
 
 """Fixtures for working with local configuration in the cluster."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "BootSourcesFixture",
     "ClusterConfigurationFixture",
@@ -56,7 +47,7 @@ class ConfigFixtureBase(Fixture):
         self.dir = self.useFixture(TempDirectory()).path
         self.filename = path.join(self.dir, self.name)
         with open(self.filename, "wb") as stream:
-            yaml.safe_dump(self.config, stream=stream)
+            yaml.safe_dump(self.config, stream=stream, encoding="utf-8")
         # Export this filename to the environment, so that subprocesses will
         # pick up this configuration. Define the new environment as an
         # instance variable so that users of this fixture can use this to
@@ -104,7 +95,7 @@ class ConfigurationFixtureBase(Fixture):
             self.useFixture(TempDirectory()).path,
             path.basename(self.configuration.DEFAULT_FILENAME))
         with self.configuration.open(self.path) as config:
-            for key, value in self.options.viewitems():
+            for key, value in self.options.items():
                 setattr(config, key, value)
         # Export this filename to the environment, so that subprocesses will
         # pick up this configuration. Define the new environment as an

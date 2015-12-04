@@ -9,15 +9,6 @@ The parser works out no other information than that, and does not
 pretend to parse the full format of the leases file faithfully.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'parse_leases',
     ]

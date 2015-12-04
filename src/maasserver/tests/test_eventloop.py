@@ -3,20 +3,11 @@
 
 """Tests for `maasserver.eventloop`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import socket
 
-from crochet import wait_for_reactor
+from crochet import wait_for
 from django.db import connections
 from maasserver import (
     bootresources,
@@ -43,6 +34,9 @@ from twisted.internet import reactor
 from twisted.python.threadable import isInIOThread
 
 
+wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
 class TestRegionEventLoop(MAASTestCase):
 
     def test_name(self):
@@ -56,7 +50,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual(
             set(), {service.name for service in an_eventloop.services})
         # populate() creates a service with each factory.
-        an_eventloop.populate().wait()
+        an_eventloop.populate().wait(30)
         self.assertEqual(
             {name for name, _ in an_eventloop.factories},
             {svc.name for svc in an_eventloop.services})

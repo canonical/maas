@@ -3,15 +3,6 @@
 
 """Model for subnets."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'create_cidr',
     'Subnet',
@@ -80,21 +71,21 @@ def create_cidr(network, subnet_mask=None):
     :return:An IPNetwork representing the CIDR.
     """
     if isinstance(network, IPNetwork) and subnet_mask is None:
-        return unicode(network.cidr)
+        return str(network.cidr)
     else:
         network = make_ipaddress(network)
-    if subnet_mask is None and isinstance(network, (bytes, unicode)):
+    if subnet_mask is None and isinstance(network, (bytes, str)):
         if '/' in network:
-            return unicode(IPNetwork(network).cidr)
+            return str(IPNetwork(network).cidr)
         else:
             assert False, "Network passed as CIDR string must contain '/'."
-    network = unicode(make_ipaddress(network))
-    if isinstance(subnet_mask, (int, long)):
-        mask = unicode(subnet_mask)
+    network = str(make_ipaddress(network))
+    if isinstance(subnet_mask, int):
+        mask = str(subnet_mask)
     else:
-        mask = unicode(make_ipaddress(subnet_mask))
+        mask = str(make_ipaddress(subnet_mask))
     cidr = IPNetwork(network + '/' + mask).cidr
-    return unicode(cidr)
+    return str(cidr)
 
 
 class SubnetQueriesMixin(MAASQueriesMixin):
@@ -112,7 +103,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         """Find the most specific Subnet the specified IP address belongs in.
         """
         return self.raw(
-            self.find_subnets_with_ip_query, params=[unicode(ip)])
+            self.find_subnets_with_ip_query, params=[str(ip)])
 
     # Note: << is the postgresql "is contained within" operator.
     # See http://www.postgresql.org/docs/8.4/static/functions-net.html
@@ -158,7 +149,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         """
         subnets = self.raw(
             self.find_best_subnet_for_ip_query,
-            params=[unicode(ip)])
+            params=[str(ip)])
 
         for subnet in subnets:
             return subnet  # This is stable because the query is ordered.
@@ -236,19 +227,19 @@ class SubnetQueriesMixin(MAASQueriesMixin):
             # The user didn't pass in a valid CIDR, so try the subnet name.
             return op(current_q, Q(name=item))
         else:
-            cidr = unicode(ip.cidr)
+            cidr = str(ip.cidr)
             return op(current_q, Q(cidr=cidr))
 
     def _add_unvalidated_cidr_query(self, current_q, op, item):
         ip = IPNetwork(item)
-        cidr = unicode(ip.cidr)
+        cidr = str(ip.cidr)
         current_q = op(current_q, Q(cidr=cidr))
         return current_q
 
     def _add_ip_in_subnet_query(self, current_q, op, item):
         # Try to validate this before it hits the database, since this
         # is going to be a raw query.
-        item = unicode(IPAddress(item))
+        item = str(IPAddress(item))
         # This is a special case. If a specific IP filter is included,
         # a custom query is needed to get the result. We can't chain
         # a raw query using Q without grabbing the IDs first.
@@ -282,7 +273,7 @@ class SubnetManager(Manager, SubnetQueriesMixin):
 
     def create_from_cidr(self, cidr, vlan=None, space=None):
         """Create a subnet from the given CIDR."""
-        name = "subnet-" + unicode(cidr)
+        name = "subnet-" + str(cidr)
         from maasserver.models import (Space, VLAN)
         if space is None:
             space = Space.objects.get_default_space()
@@ -367,15 +358,15 @@ class Subnet(CleanSave, TimestampedModel):
         return self.get_ipnetwork().version
 
     def update_cidr(self, cidr):
-        cidr = unicode(cidr)
+        cidr = str(cidr)
         # If the old name had the CIDR embedded in it, update that first.
         if self.name:
-            self.name = self.name.replace(unicode(self.cidr), cidr)
+            self.name = self.name.replace(str(self.cidr), cidr)
         else:
             self.name = cidr
         self.cidr = cidr
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s:%s(vid=%s)" % (
             self.name, self.cidr, self.vlan.vid)
 

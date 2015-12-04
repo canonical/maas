@@ -3,30 +3,21 @@
 
 """Twisted Application Plugin for the MAAS TFTP server."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "TFTPBackend",
     "TFTPService",
     ]
 
 from functools import partial
-import httplib
+import http.client
 import json
 from socket import (
     AF_INET,
     AF_INET6,
 )
-from urllib import urlencode
-from urlparse import (
+from urllib.parse import (
     parse_qsl,
+    urlencode,
     urlparse,
 )
 
@@ -41,8 +32,12 @@ from provisioningserver.events import (
     send_event_node_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.utils import tftp
+from provisioningserver.utils import (
+    tftp,
+    typed,
+)
 from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.tftp import TFTPPath
 from provisioningserver.utils.twisted import (
     deferred,
     PageFetcher,
@@ -71,6 +66,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 from twisted.python import log
+from twisted.python.filepath import FilePath
 import twisted.web.error
 
 
@@ -80,6 +76,10 @@ def log_request(mac_address, file_name, clock=reactor):
     This will be logged at a later iteration of the `clock` so as to not delay
     the task currently in progress.
     """
+    # If the file name is a byte string, decode it as ASCII, replacing
+    # non-ASCII characters, so that we have at least something to log.
+    if isinstance(file_name, bytes):
+        file_name = file_name.decode("ascii", "replace")
     d = deferLater(
         clock, 0, send_event_node_mac_address,
         event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
@@ -116,6 +116,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             expected to accept.
         :param cluster_uuid: The cluster's UUID, as a string.
         """
+        if not isinstance(base_path, FilePath):
+            base_path = FilePath(base_path)
         super(TFTPBackend, self).__init__(
             base_path, can_read=True, can_write=False)
         self.generator_url = urlparse(generator_url)
@@ -139,10 +141,11 @@ class TFTPBackend(FilesystemSynchronousBackend):
         url = self.generator_url._replace(query=urlencode(query))
         # TODO: do something more intelligent with unicode URLs here; see
         # apiclient.utils.ascii_url() for inspiration.
-        return url.geturl().encode("ascii")
+        return url.geturl()
 
     @inlineCallbacks
-    def get_boot_method(self, file_name):
+    @typed
+    def get_boot_method(self, file_name: TFTPPath):
         """Finds the correct boot method."""
         for _, method in BootMethodRegistry:
             params = yield maybeDeferred(method.match_path, self, file_name)
@@ -197,10 +200,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
             # Assume that it's some other error and propagate it
             return failure
 
-        if status_int == httplib.NO_CONTENT:
+        if status_int == http.client.NO_CONTENT:
             # Convert HTTP No Content to a TFTP file not found
             raise FileNotFound(file_name)
-        elif status_int == httplib.NOT_FOUND:
+        elif status_int == http.client.NOT_FOUND:
             # Convert HTTP NotFound to a TFTP file not found
             raise FileNotFound(file_name)
         else:
@@ -208,7 +211,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return failure
 
     @deferred
-    def handle_boot_method(self, file_name, result):
+    @typed
+    def handle_boot_method(self, file_name: TFTPPath, result):
         boot_method, params = result
         if boot_method is None:
             return super(TFTPBackend, self).get_reader(file_name)
@@ -242,7 +246,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             raise BackendError(failure.getErrorMessage())
 
     @deferred
-    def get_reader(self, file_name):
+    @typed
+    def get_reader(self, file_name: TFTPPath):
         """See `IBackend.get_reader()`.
 
         If `file_name` matches a boot method then the response is obtained
@@ -252,7 +257,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # It is possible for a client to request the file with '\' instead
         # of '/', example being 'bootx64.efi'. Convert all '\' to '/' to be
         # unix compatiable.
-        file_name = file_name.replace('\\', '/')
+        file_name = file_name.replace(b'\\', b'/')
         mac_address = get_remote_mac()
         if mac_address is not None:
             log_request(mac_address, file_name)

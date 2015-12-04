@@ -4,16 +4,6 @@
 
 """..."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import argparse
 
 # See http://docs.python.org/release/2.7/library/argparse.html.

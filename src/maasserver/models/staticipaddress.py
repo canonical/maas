@@ -10,15 +10,6 @@ from the dynamic range that the DHCP server itself allocates to unknown
 clients.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'StaticIPAddress',
 ]
@@ -442,14 +433,14 @@ class StaticIPAddressManager(Manager):
         ip_leases = convert_leases_to_dict(leases)
         discoved_ips = discoved_ips.prefetch_related('interface_set')
         discoved_ips = {
-            unicode(ip.ip): ip
+            str(ip.ip): ip
             for ip in discoved_ips
         }
 
         # Update all the DISCOVERED allocations for the lease information.
         mac_leases = defaultdict(list)
         subnet = None
-        for ipaddr, mac_list in ip_leases.viewitems():
+        for ipaddr, mac_list in ip_leases.items():
             # So we don't make a query for every IP address we check to see if
             # the IP address is in the same subnet from the previous IP.
             if subnet is None:
@@ -617,7 +608,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     objects = StaticIPAddressManager()
 
-    def __unicode__(self):
+    def __str__(self):
         # Attempt to show the symbolic alloc_type name if possible.
         type_names = map_enum_reverse(IPADDRESS_TYPE)
         strtype = type_names.get(self.alloc_type, '%s' % self.alloc_type)
@@ -732,7 +723,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             if address not in network:
                 raise ValidationError(
                     {'ip': ["IP address %s is not within the subnet: %s."
-                            % (unicode(address), unicode(network))]})
+                            % (str(address), str(network))]})
 
     def get_ipaddress(self):
         """Returns this StaticIPAddress wrapped in an IPAddress object.

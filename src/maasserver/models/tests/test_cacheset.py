@@ -3,15 +3,6 @@
 
 """Tests for `CacheSet`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -31,9 +22,9 @@ class TestCacheSetManager(MAASServerTestCase):
         node = factory.make_Node()
         cache_set_zero = factory.make_CacheSet(node=node)
         cache_set_one = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             0, CacheSet.objects.get_cache_set_idx(cache_set_zero))
-        self.assertEquals(
+        self.assertEqual(
             1, CacheSet.objects.get_cache_set_idx(cache_set_one))
 
     def test_get_cache_sets_for_node(self):
@@ -48,14 +39,14 @@ class TestCacheSetManager(MAASServerTestCase):
     def test_get_cache_set_for_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = factory.make_CacheSet(block_device=block_device)
-        self.assertEquals(
+        self.assertEqual(
             cache_set, CacheSet.objects.get_cache_set_for_block_device(
                 block_device))
 
     def test_get_cache_set_for_partition(self):
         partition = factory.make_Partition()
         cache_set = factory.make_CacheSet(partition=partition)
-        self.assertEquals(
+        self.assertEqual(
             cache_set, CacheSet.objects.get_cache_set_for_partition(
                 partition))
 
@@ -63,7 +54,7 @@ class TestCacheSetManager(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = CacheSet.objects.get_or_create_cache_set_for_block_device(
             block_device)
-        self.assertEquals(block_device, cache_set.get_device())
+        self.assertEqual(block_device, cache_set.get_device())
 
     def test_get_or_create_cache_set_for_block_device_returns_previous(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -72,13 +63,13 @@ class TestCacheSetManager(MAASServerTestCase):
         cache_set_prev = (
             CacheSet.objects.get_or_create_cache_set_for_block_device(
                 block_device))
-        self.assertEquals(cache_set_prev, cache_set)
+        self.assertEqual(cache_set_prev, cache_set)
 
     def test_get_or_create_cache_set_for_partition_creates_new(self):
         partition = factory.make_Partition()
         cache_set = CacheSet.objects.get_or_create_cache_set_for_partition(
             partition)
-        self.assertEquals(partition, cache_set.get_device())
+        self.assertEqual(partition, cache_set.get_device())
 
     def test_get_or_create_cache_set_for_partition_returns_previous(self):
         partition = factory.make_Partition()
@@ -87,12 +78,12 @@ class TestCacheSetManager(MAASServerTestCase):
         cache_set_prev = (
             CacheSet.objects.get_or_create_cache_set_for_partition(
                 partition))
-        self.assertEquals(cache_set_prev, cache_set)
+        self.assertEqual(cache_set_prev, cache_set)
 
     def test_get_cache_set_by_id_or_name_by_id(self):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set,
             CacheSet.objects.get_cache_set_by_id_or_name(cache_set.id, node))
 
@@ -107,7 +98,7 @@ class TestCacheSetManager(MAASServerTestCase):
     def test_get_cache_set_by_id_or_name_by_name(self):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set,
             CacheSet.objects.get_cache_set_by_id_or_name(cache_set.name, node))
 
@@ -159,7 +150,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
                 node.system_id, cache_set.name, user, NODE_PERMISSION.VIEW).id)
 
@@ -167,7 +158,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
                 node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
 
@@ -175,7 +166,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
                 node.system_id, cache_set.id, user, NODE_PERMISSION.VIEW).id)
 
@@ -192,7 +183,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
                 node.system_id, cache_set.id, user, NODE_PERMISSION.EDIT).id)
 
@@ -209,7 +200,7 @@ class TestCacheSetManagerGetCacheSetOr404(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(
+        self.assertEqual(
             cache_set.id, CacheSet.objects.get_cache_set_or_404(
                 node.system_id, cache_set.id, user, NODE_PERMISSION.ADMIN).id)
 
@@ -221,29 +212,29 @@ class TestCacheSet(MAASServerTestCase):
         node = factory.make_Node()
         cache_set_zero = factory.make_CacheSet(node=node)
         cache_set_one = factory.make_CacheSet(node=node)
-        self.assertEquals("cache0", cache_set_zero.name)
-        self.assertEquals("cache1", cache_set_one.name)
+        self.assertEqual("cache0", cache_set_zero.name)
+        self.assertEqual("cache1", cache_set_one.name)
 
     def test_get_name(self):
         node = factory.make_Node()
         cache_set_zero = factory.make_CacheSet(node=node)
         cache_set_one = factory.make_CacheSet(node=node)
-        self.assertEquals("cache0", cache_set_zero.get_name())
-        self.assertEquals("cache1", cache_set_one.get_name())
+        self.assertEqual("cache0", cache_set_zero.get_name())
+        self.assertEqual("cache1", cache_set_one.get_name())
 
     def test_get_node(self):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        self.assertEquals(node, cache_set.get_node())
+        self.assertEqual(node, cache_set.get_node())
 
     def test_get_filesystem(self):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = factory.make_CacheSet(block_device=block_device)
-        self.assertEquals(
+        self.assertEqual(
             block_device.get_effective_filesystem(),
             cache_set.get_filesystem())
 
     def test_get_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         cache_set = factory.make_CacheSet(block_device=block_device)
-        self.assertEquals(block_device, cache_set.get_device())
+        self.assertEqual(block_device, cache_set.get_device())

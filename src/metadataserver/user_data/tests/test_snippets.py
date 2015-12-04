@@ -3,15 +3,6 @@
 
 """Test the snippets-related support routines for commissioning user data."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os.path

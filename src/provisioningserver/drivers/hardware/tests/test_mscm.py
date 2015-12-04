@@ -3,20 +3,11 @@
 
 """Tests for ``provisioningserver.drivers.hardware.mscm``."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+from io import StringIO
 from random import randint
 import re
-from StringIO import StringIO
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -62,13 +53,13 @@ def make_node_id():
 def make_show_node_list(length=10):
     """Make a fake return value for discover_nodes."""
     return re.findall(r'c\d+n\d', ''.join(make_node_id()
-                                          for _ in xrange(length)))
+                                          for _ in range(length)))
 
 
 def make_show_node_macaddr(length=10):
     """Make a fake return value for get_node_macaddr."""
     return ''.join((factory.make_mac_address() + ' ')
-                   for _ in xrange(length))
+                   for _ in range(length))
 
 
 class TestMSCMCliApi(MAASTestCase):
@@ -124,7 +115,7 @@ class TestMSCMCliApi(MAASTestCase):
         api = make_mscm_api()
         ssh_mock = self.patch(api, '_ssh')
         expected = make_show_node_list()
-        stdout = StringIO(expected)
+        stdout = StringIO("\n".join(expected))
         streams = factory.make_streams(stdout=stdout)
         ssh_mock.exec_command = Mock(return_value=streams)
         output = api.discover_nodes()

@@ -3,15 +3,6 @@
 
 """Patch django to work with twisted for MAAS."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "patch_get_script_prefix",
 ]
@@ -25,4 +16,4 @@ def patch_get_script_prefix():
     using reverse. This converts the local() into an object that is global.
     """
     from django.core import urlresolvers
-    urlresolvers._prefixes = type(b'', (), {})()
+    urlresolvers._prefixes = type('', (), {})()

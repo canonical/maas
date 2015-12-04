@@ -3,15 +3,6 @@
 
 """Low-level actions to manage the DNS service, like reloading zones."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "bind_reconfigure",
     "bind_reload",
@@ -78,7 +69,7 @@ def bind_reload_with_retries(attempts=10, interval=2):
     :param attempts: The number of attempts.
     :param interval: The time in seconds to sleep between each attempt.
     """
-    for countdown in xrange(attempts - 1, -1, -1):
+    for countdown in range(attempts - 1, -1, -1):
         if bind_reload():
             break
         if countdown == 0:
@@ -121,7 +112,7 @@ def bind_write_configuration(zones, trusted_networks):
     # trusted_networks was formerly specified as a single IP address with
     # netmask. These assertions are here to prevent code that assumes that
     # slipping through.
-    assert not isinstance(trusted_networks, (bytes, unicode))
+    assert not isinstance(trusted_networks, (bytes, str))
     assert isinstance(trusted_networks, collections.Sequence)
 
     dns_config = DNSConfig(zones=zones)
@@ -135,7 +126,7 @@ def bind_write_options(upstream_dns, dnssec_validation):
     """
     # upstream_dns was formerly specified as a single IP address. These
     # assertions are here to prevent code that assumes that slipping through.
-    assert not isinstance(upstream_dns, (bytes, unicode))
+    assert not isinstance(upstream_dns, (bytes, str))
     assert isinstance(upstream_dns, collections.Sequence)
 
     set_up_options_conf(

@@ -1,16 +1,5 @@
 #!/usr/bin/python
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    # unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
-import commands
 import glob
 import re
 import subprocess
@@ -24,7 +13,7 @@ def detect_ipmi():
             if line.startswith('model name') and 'QEMU' in line:
                 return (False, None)
 
-    (status, output) = commands.getstatusoutput('ipmi-locate')
+    (status, output) = subprocess.getstatusoutput('ipmi-locate')
     show_re = re.compile('(IPMI\ Version:) (\d\.\d)')
     res = show_re.search(output)
     if res is None:

@@ -3,15 +3,6 @@
 
 """Test cases for dns.config"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import errno
@@ -123,17 +114,17 @@ class TestHelpers(MAASTestCase):
         self.assertThat(
             config.get_dns_config_dir(), MatchesAll(
                 SamePath(locate_config("../bind/maas")),
-                IsInstance(unicode),
+                IsInstance(str),
             ))
 
     def test_get_dns_config_dir_checks_environ_first(self):
         directory = self.make_dir()
         self.useFixture(EnvironmentVariable(
-            "MAAS_DNS_CONFIG_DIR", directory.encode("ascii")))
+            "MAAS_DNS_CONFIG_DIR", directory))
         self.assertThat(
             config.get_dns_config_dir(), MatchesAll(
                 SamePath(directory),
-                IsInstance(unicode),
+                IsInstance(str),
             ))
 
     def test_get_bind_config_dir_defaults_to_etc_bind_maas(self):
@@ -141,17 +132,17 @@ class TestHelpers(MAASTestCase):
         self.assertThat(
             config.get_bind_config_dir(), MatchesAll(
                 SamePath(locate_config("../bind")),
-                IsInstance(unicode),
+                IsInstance(str),
             ))
 
     def test_get_bind_config_dir_checks_environ_first(self):
         directory = self.make_dir()
         self.useFixture(EnvironmentVariable(
-            "MAAS_BIND_CONFIG_DIR", directory.encode("ascii")))
+            "MAAS_BIND_CONFIG_DIR", directory))
         self.assertThat(
             config.get_bind_config_dir(), MatchesAll(
                 SamePath(directory),
-                IsInstance(unicode),
+                IsInstance(str),
             ))
 
     def test_get_dns_root_port_defaults_to_954(self):
@@ -161,7 +152,7 @@ class TestHelpers(MAASTestCase):
     def test_get_dns_root_port_checks_environ_first(self):
         port = factory.pick_port()
         self.useFixture(EnvironmentVariable(
-            "MAAS_DNS_RNDC_PORT", b"%d" % port))
+            "MAAS_DNS_RNDC_PORT", "%d" % port))
         self.assertEqual(port, config.get_dns_rndc_port())
 
     def test_get_dns_default_controls_defaults_to_affirmative(self):
@@ -191,7 +182,8 @@ class TestRNDCUtilities(MAASTestCase):
             (MAAS_RNDC_CONF_NAME, '# Start of rndc.conf'),
             (MAAS_NAMED_RNDC_CONF_NAME, 'controls {'))
         for filename, content in expected:
-            with open(os.path.join(dns_conf_dir, filename), "rb") as stream:
+            filepath = os.path.join(dns_conf_dir, filename)
+            with open(filepath, "r", encoding="ascii") as stream:
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
 
@@ -279,7 +271,7 @@ class TestRNDCUtilities(MAASTestCase):
         patch_dns_default_controls(self, enable=True)
         set_up_rndc()
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
-        with open(rndc_file, "rb") as stream:
+        with open(rndc_file, "r", encoding="ascii") as stream:
             conf_content = stream.read()
             self.assertIn(DEFAULT_CONTROLS, conf_content)
 
@@ -406,7 +398,7 @@ class TestRenderDNSTemplate(MAASTestCase):
             DNSConfigFail,
             render_dns_template,
             self.make_file(contents='{{x}}'), {'y': '?'})
-        self.assertIn("'x' is not defined", unicode(e))
+        self.assertIn("'x' is not defined", str(e))
 
 
 class TestReportMissingConfigDir(MAASTestCase):
@@ -424,8 +416,10 @@ class TestReportMissingConfigDir(MAASTestCase):
         pass
 
     def test_passes_on_other_similar_errors(self):
-        with ExpectedException(OSError):
+        with ExpectedException(PermissionError):
             with report_missing_config_dir():
+                # OSError(EACCESS) is transmogrified, by Python itself, into
+                # PermissionError. It's a subclass of OSError.
                 raise OSError(errno.EACCES, "Deliberate error for testing.")
 
     def test_passes_on_dissimilar_errors(self):

@@ -3,15 +3,6 @@
 
 """Command-related classes."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'Command',
     'CommandError',
@@ -23,13 +14,11 @@ from abc import (
 )
 
 
-class Command:
+class Command(metaclass=ABCMeta):
     """A base class for composing commands.
 
     This adheres to the expectations of `register`.
     """
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, parser):
         super(Command, self).__init__()

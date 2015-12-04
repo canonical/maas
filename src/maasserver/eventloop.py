@@ -33,15 +33,6 @@ that are not tied to an HTTP reqoest.
 
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "loop",
     "reset",

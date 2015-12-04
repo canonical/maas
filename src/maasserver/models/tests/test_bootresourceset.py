@@ -3,15 +3,6 @@
 
 """Tests for `BootResourceSet`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -113,7 +104,7 @@ class TestBootResourceSet(MAASServerTestCase):
         for size in sizes:
             final_size += size
             filetype = types.pop()
-            content = factory.make_string(size=size)
+            content = factory.make_bytes(size=size)
             largefile = factory.make_LargeFile(
                 content=content, size=total_sizes.pop())
             factory.make_BootResourceFile(
@@ -125,9 +116,7 @@ class TestBootResourceSet(MAASServerTestCase):
         resource_set = factory.make_BootResourceSet(resource)
         filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
         total_size = random.randint(1025, 2048)
-        content = ""
-        largefile = factory.make_LargeFile(
-            content=content, size=total_size)
+        largefile = factory.make_LargeFile(content=b"", size=total_size)
         factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertEqual(0, resource_set.progress)
@@ -138,8 +127,7 @@ class TestBootResourceSet(MAASServerTestCase):
         filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
         total_size = 100
         current_size = 0
-        largefile = factory.make_LargeFile(
-            content="", size=total_size)
+        largefile = factory.make_LargeFile(content=b"", size=total_size)
         factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)
         stream = largefile.content.open()
@@ -169,7 +157,7 @@ class TestBootResourceSet(MAASServerTestCase):
             total_size = total_sizes.pop()
             final_total_size += total_size
             filetype = types.pop()
-            content = factory.make_string(size=size)
+            content = factory.make_bytes(size=size)
             largefile = factory.make_LargeFile(
                 content=content, size=total_size)
             factory.make_BootResourceFile(
@@ -197,7 +185,7 @@ class TestBootResourceSet(MAASServerTestCase):
         size = random.randint(512, 1024)
         total_size = random.randint(1025, 2048)
         filetype = types.pop()
-        content = factory.make_string(size=size)
+        content = factory.make_bytes(size=size)
         largefile = factory.make_LargeFile(content=content, size=total_size)
         factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)

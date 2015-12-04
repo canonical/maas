@@ -3,21 +3,13 @@
 
 """Tests for Space API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import random
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.models.space import Space
 from maasserver.testing.api import APITestCase
@@ -52,14 +44,16 @@ class TestSpacesAPI(APITestCase):
         uri = get_spaces_uri()
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             space.id
             for space in Space.objects.all()
             ]
         result_ids = [
             space["id"]
-            for space in json.loads(response.content)
+            for space in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -70,8 +64,12 @@ class TestSpacesAPI(APITestCase):
         response = self.client.post(uri, {
             "name": space_name,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(space_name, json.loads(response.content)['name'])
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            space_name,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['name'])
 
     def test_create_admin_only(self):
         space_name = factory.make_name("space")
@@ -80,15 +78,15 @@ class TestSpacesAPI(APITestCase):
             "name": space_name,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_does_not_require_name(self):
         self.become_admin()
         uri = get_spaces_uri()
         response = self.client.post(uri, {})
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        data = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual("space-%d" % data['id'], data['name'])
 
 
@@ -109,8 +107,10 @@ class TestSpaceAPI(APITestCase):
         uri = get_space_uri(space)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_space = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_space = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(parsed_space, ContainsDict({
             "id": Equals(space.id),
             "name": Equals(space.get_name()),
@@ -126,7 +126,7 @@ class TestSpaceAPI(APITestCase):
             'space_handler', args=[random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update(self):
         self.become_admin()
@@ -136,8 +136,12 @@ class TestSpaceAPI(APITestCase):
         response = self.client.put(uri, {
             "name": new_name,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(new_name, json.loads(response.content)['name'])
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            new_name,
+            json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['name'])
         self.assertEqual(new_name, reload_object(space).name)
 
     def test_update_admin_only(self):
@@ -148,7 +152,7 @@ class TestSpaceAPI(APITestCase):
             "name": new_name,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_space(self):
         self.become_admin()
@@ -156,7 +160,7 @@ class TestSpaceAPI(APITestCase):
         uri = get_space_uri(space)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(space))
 
     def test_delete_403_when_not_admin(self):
@@ -164,7 +168,7 @@ class TestSpaceAPI(APITestCase):
         uri = get_space_uri(space)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
         self.assertIsNotNone(reload_object(space))
 
     def test_delete_404_when_invalid_id(self):
@@ -173,4 +177,4 @@ class TestSpaceAPI(APITestCase):
             'space_handler', args=[random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)

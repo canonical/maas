@@ -3,15 +3,6 @@
 
 """API handlers: `Network`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'NetworkHandler',
     'NetworksHandler',
@@ -148,7 +139,7 @@ class NetworkHandler(OperationsHandler):
             unique_interfaces_by_mac,
             key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()))
         return [
-            {"mac_address": unicode(interface.mac_address)}
+            {"mac_address": str(interface.mac_address)}
             for interface in unique_interfaces_by_mac
         ]
 

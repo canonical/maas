@@ -3,15 +3,6 @@
 
 """Helpers for testing database locks and related."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "lock_held_in_other_thread",
 ]

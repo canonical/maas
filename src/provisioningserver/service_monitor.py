@@ -4,15 +4,6 @@
 """Services monitor ensures services are in their expected state."""
 
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "service_monitor",
 ]
@@ -317,7 +308,7 @@ class ServiceMonitor:
             expected_process_state = self._get_expected_process_state(
                 active_state)
             if process_state != expected_process_state:
-                maaslog.warn(
+                maaslog.warning(
                     "Service '%s' is %s but not in the expected state of "
                     "'%s', its current state is '%s'.",
                     service.service_name, active_state,

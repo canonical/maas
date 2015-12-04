@@ -12,15 +12,6 @@ provide the missing pieces documented in the class, and add it to
 order as they do in `ACTION_CLASSES`.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compile_node_actions',
 ]
@@ -76,10 +67,8 @@ RPC_EXCEPTIONS = (
 )
 
 
-class NodeAction:
+class NodeAction(metaclass=ABCMeta):
     """Base class for node actions."""
-
-    __metaclass__ = ABCMeta
 
     name = abstractproperty("""
         Action name.

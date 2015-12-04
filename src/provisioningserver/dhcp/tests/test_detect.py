@@ -3,23 +3,16 @@
 
 """Tests for dhcp/detect.py"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import errno
 import fcntl
-import httplib
+import http.client
 import socket
 import textwrap
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
@@ -28,6 +21,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
+from mock import sentinel
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,
@@ -316,7 +310,7 @@ class MockResponse:
     # This implements just enough to look lke a urllib2 response object.
     def __init__(self, code=None, response=None):
         if code is None:
-            code = httplib.OK
+            code = http.client.OK
         self.code = code
         if response is None:
             response = ""
@@ -373,7 +367,7 @@ class TestPeriodicTask(PservTestCase):
         # should first call this helper to set up the required fake response.
         interfaces_json = self.make_fake_interfaces_response(interfaces_pairs)
         self.patch(MAASClient, 'get').return_value = MockResponse(
-            httplib.OK, interfaces_json)
+            http.client.OK, interfaces_json)
 
     def test_determine_cluster_interfaces_returns_interface_names(self):
         eth0_addr = factory.make_ipv4_address()
@@ -438,24 +432,23 @@ class TestPeriodicTask(PservTestCase):
         results = probe_interface(*interfaces[0])
         self.assertEqual(set(), results)
 
-    def test_determine_cluster_interfaces_catchs_HTTPError_in_MASClient(self):
-        self.patch(MAASClient, 'get').side_effect = urllib2.HTTPError(
-            mock.sentinel, mock.sentinel, mock.sentinel,
-            mock.sentinel, mock.sentinel)
+    def test_determine_cluster_interfaces_catchs_HTTPError_in_MAASClient(self):
+        self.patch(MAASClient, 'get').side_effect = urllib.error.HTTPError(
+            sentinel.url, sentinel.code, sentinel.msg, sentinel.hdrs, None)
         determine_cluster_interfaces(self.knowledge)
         self.assertIn(
             "Failed to contact region controller:", self.maaslog.output)
 
-    def test_determine_cluster_interfaces_catches_URLError_in_MASClient(self):
-        self.patch(MAASClient, 'get').side_effect = urllib2.URLError(
-            mock.sentinel.arg1)
+    def test_determine_cluster_interfaces_catches_URLError_in_MAASClient(self):
+        self.patch(MAASClient, 'get').side_effect = urllib.error.URLError(
+            sentinel.arg1)
         determine_cluster_interfaces(self.knowledge)
         self.assertIn(
             "Failed to contact region controller:", self.maaslog.output)
 
     def test_determine_cluster_interfaces_catches_non_OK_response(self):
         self.patch(MAASClient, 'get').return_value = MockResponse(
-            httplib.NOT_FOUND, "error text")
+            http.client.NOT_FOUND, "error text")
         determine_cluster_interfaces(self.knowledge)
         self.assertIn(
             "Failed talking to region controller, it returned:",
@@ -482,22 +475,21 @@ class TestPeriodicTask(PservTestCase):
             'report_foreign_dhcp', foreign_dhcp_ip=''))
 
     def test_update_region_controller_catches_HTTPError_in_MAASClient(self):
-        self.patch(MAASClient, 'post').side_effect = urllib2.HTTPError(
-            mock.sentinel, mock.sentinel, mock.sentinel,
-            mock.sentinel, mock.sentinel)
+        self.patch(MAASClient, 'post').side_effect = urllib.error.HTTPError(
+            sentinel.url, sentinel.code, sentinel.msg, sentinel.hdrs, None)
         update_region_controller(self.knowledge, "eth0", None)
         self.assertIn(
             "Failed to contact region controller:", self.maaslog.output)
 
     def test_update_region_controller_catches_URLError_in_MAASClient(self):
-        self.patch(MAASClient, 'post').side_effect = urllib2.URLError(
-            mock.sentinel.arg1)
+        self.patch(MAASClient, 'post').side_effect = urllib.error.URLError(
+            sentinel.arg1)
         update_region_controller(self.knowledge, "eth0", None)
         self.assertIn(
             "Failed to contact region controller:", self.maaslog.output)
 
     def test_update_region_controller_catches_non_OK_response(self):
-        mock_response = MockResponse(httplib.NOT_FOUND, "error text")
+        mock_response = MockResponse(http.client.NOT_FOUND, "error text")
         self.patch(MAASClient, 'post').return_value = mock_response
         update_region_controller(self.knowledge, "eth0", None)
         self.assertIn(

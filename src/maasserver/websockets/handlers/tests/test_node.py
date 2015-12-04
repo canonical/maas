@@ -3,21 +3,11 @@
 
 """Tests for `maasserver.websockets.handlers.node`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import logging
 from operator import itemgetter
 import random
-import re
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -142,7 +132,7 @@ class TestNodeHandler(MAASServerTestCase):
         disks = sorted(disks, key=itemgetter("name"))
         subnets = handler.get_all_subnets(node)
         data = {
-            "actions": compile_node_actions(node, handler.user).keys(),
+            "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
             "boot_type": node.boot_type,
             "boot_disk": node.boot_disk,
@@ -242,7 +232,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "storage",
                 "storage_tags",
             ]
-            for key in data.keys():
+            for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
         if include_summary:
@@ -263,18 +253,18 @@ class TestNodeHandler(MAASServerTestCase):
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
-        self.assertEquals("", handler.dehydrate_owner(None))
+        self.assertEqual("", handler.dehydrate_owner(None))
 
     def test_dehydrate_owner_username(self):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
-        self.assertEquals(owner.username, handler.dehydrate_owner(owner))
+        self.assertEqual(owner.username, handler.dehydrate_owner(owner))
 
     def test_dehydrate_zone(self):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
         zone = factory.make_Zone()
-        self.assertEquals({
+        self.assertEqual({
             "id": zone.id,
             "name": zone.name,
             }, handler.dehydrate_zone(zone))
@@ -288,7 +278,7 @@ class TestNodeHandler(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
-        self.assertEquals({
+        self.assertEqual({
             "id": node.nodegroup.id,
             "uuid": node.nodegroup.uuid,
             "name": node.nodegroup.name,
@@ -298,7 +288,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_dehydrate_routers_returns_empty_list_when_None(self):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
-        self.assertEquals([], handler.dehydrate_routers(None))
+        self.assertEqual([], handler.dehydrate_routers(None))
 
     def test_dehydrate_routers_returns_list_of_strings(self):
         owner = factory.make_User()
@@ -311,7 +301,7 @@ class TestNodeHandler(MAASServerTestCase):
             "%s" % router
             for router in routers
         ]
-        self.assertEquals(expected, handler.dehydrate_routers(routers))
+        self.assertEqual(expected, handler.dehydrate_routers(routers))
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()
@@ -325,7 +315,7 @@ class TestNodeHandler(MAASServerTestCase):
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
         }
-        self.assertEquals(params, handler.dehydrate_power_parameters(params))
+        self.assertEqual(params, handler.dehydrate_power_parameters(params))
 
     def test_dehydrate_show_os_info_returns_true(self):
         owner = factory.make_User()
@@ -346,7 +336,7 @@ class TestNodeHandler(MAASServerTestCase):
         device = factory.make_Node(installable=False, parent=node)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
-        self.assertEquals({
+        self.assertEqual({
             "fqdn": device.fqdn,
             "interfaces": [handler.dehydrate_interface(interface, device)],
             }, handler.dehydrate_device(device))
@@ -358,7 +348,7 @@ class TestNodeHandler(MAASServerTestCase):
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
         is_boot = blockdevice.id == node.get_boot_disk().id
-        self.assertEquals({
+        self.assertEqual({
             "id": blockdevice.id,
             "is_boot": is_boot,
             "name": blockdevice.get_name(),
@@ -389,7 +379,7 @@ class TestNodeHandler(MAASServerTestCase):
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         is_boot = blockdevice.id == node.get_boot_disk().id
-        self.assertEquals({
+        self.assertEqual({
             "id": blockdevice.id,
             "is_boot": is_boot,
             "name": blockdevice.get_name(),
@@ -419,7 +409,7 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
         blockdevice = factory.make_VirtualBlockDevice(node=node)
-        self.assertEquals({
+        self.assertEqual({
             "id": blockdevice.id,
             "is_boot": False,
             "name": blockdevice.get_name(),
@@ -455,7 +445,7 @@ class TestNodeHandler(MAASServerTestCase):
         handler = NodeHandler(owner, {})
         volume_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
-        self.assertEquals({
+        self.assertEqual({
             "id": volume_group.id,
             "name": volume_group.name,
             "tags": [],
@@ -492,7 +482,7 @@ class TestNodeHandler(MAASServerTestCase):
                 factory.make_FilesystemGroup(
                     group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
                     filesystems=[fs], cache_set=cache_set))
-        self.assertEquals({
+        self.assertEqual({
             "id": cache_set.id,
             "name": cache_set.name,
             "tags": [],
@@ -561,7 +551,7 @@ class TestNodeHandler(MAASServerTestCase):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
         filesystem = factory.make_Filesystem()
-        self.assertEquals({
+        self.assertEqual({
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
             "fstype": filesystem.fstype,
@@ -580,7 +570,7 @@ class TestNodeHandler(MAASServerTestCase):
         expected_links = interface.get_links()
         for link in expected_links:
             link["subnet_id"] = link.pop("subnet").id
-        self.assertEquals({
+        self.assertEqual({
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
@@ -618,7 +608,7 @@ class TestNodeHandler(MAASServerTestCase):
         expected_discovered = interface.get_discovered()
         for discovered in expected_discovered:
             discovered["subnet_id"] = discovered.pop("subnet").id
-        self.assertEquals({
+        self.assertEqual({
             "id": interface.id,
             "type": interface.type,
             "name": interface.get_name(),
@@ -643,7 +633,7 @@ class TestNodeHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
         observed = handler.dehydrate_summary_output(node, {})
-        self.assertEquals({
+        self.assertEqual({
             "summary_xml": None,
             "summary_yaml": None,
             }, observed)
@@ -658,12 +648,12 @@ class TestNodeHandler(MAASServerTestCase):
         observed = handler.dehydrate_summary_output(node, {})
         probed_details = merge_details_cleanly(
             get_single_probed_details(node.system_id))
-        self.assertEquals({
+        self.assertEqual({
             "summary_xml": etree.tostring(
-                probed_details, encoding=unicode, pretty_print=True),
+                probed_details, encoding=str, pretty_print=True),
             "summary_yaml": XMLToYAML(
                 etree.tostring(
-                    probed_details, encoding=unicode,
+                    probed_details, encoding=str,
                     pretty_print=True)).convert(),
             }, observed)
 
@@ -674,7 +664,7 @@ class TestNodeHandler(MAASServerTestCase):
         lldp_data = "<foo>bar</foo>".encode("utf-8")
         result = factory.make_NodeResult_for_commissioning(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
-        self.assertEquals([{
+        self.assertEqual([{
             "id": result.id,
             "result": result.script_result,
             "name": result.name,
@@ -707,7 +697,7 @@ class TestNodeHandler(MAASServerTestCase):
             }
             for event in list(reversed(events))[:50]
         ]
-        self.assertEquals(expected, handler.dehydrate_events(node))
+        self.assertEqual(expected, handler.dehydrate_events(node))
 
     def test_dehydrate_events_doesnt_include_debug(self):
         owner = factory.make_User()
@@ -716,7 +706,7 @@ class TestNodeHandler(MAASServerTestCase):
         event_type = factory.make_EventType(level=logging.DEBUG)
         for _ in range(5):
             factory.make_Event(node=node, type=event_type)
-        self.assertEquals([], handler.dehydrate_events(node))
+        self.assertEqual([], handler.dehydrate_events(node))
 
     def make_node_with_subnets(self):
         user = factory.make_User()
@@ -849,7 +839,7 @@ class TestNodeHandler(MAASServerTestCase):
         node.boot_interface = boot_interface
         node.save()
 
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_node(node, handler, include_summary=True),
             handler.get({"system_id": node.system_id}))
 
@@ -888,10 +878,10 @@ class TestNodeHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, 11,
             "Number of queries has changed; make sure this is expected.")
-        self.assertEquals(
+        self.assertEqual(
             query_10_count, query_20_count,
             "Number of queries is not independent to the number of nodes.")
 
@@ -913,21 +903,21 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         handler = NodeHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_returns_node_if_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = NodeHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_returns_node_if_owner_empty(self):
         user = factory.make_User()
         node = factory.make_Node()
         handler = NodeHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_raises_error_if_owner_by_another_user(self):
@@ -941,14 +931,14 @@ class TestNodeHandler(MAASServerTestCase):
     def test_get_form_class_for_create(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             AdminNodeWithMACAddressesForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
         handler = NodeHandler(user, {})
-        self.assertEquals(
+        self.assertEqual(
             AdminNodeWithMACAddressesForm,
             handler.get_form_class("update"))
 
@@ -980,10 +970,10 @@ class TestNodeHandler(MAASServerTestCase):
                 "uuid": nodegroup.uuid,
             },
         }
-        with ExpectedException(
-                HandlerValidationError,
-                re.escape("{u'mac_addresses': [u'This field is required.']}")):
-            handler.create(params)
+        error = self.assertRaises(
+            HandlerValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'mac_addresses': ['This field is required.']}))
 
     def test_create_raises_validation_error_for_missing_architecture(self):
         user = factory.make_admin()
@@ -999,12 +989,11 @@ class TestNodeHandler(MAASServerTestCase):
                 "uuid": nodegroup.uuid,
             },
         }
-        with ExpectedException(
-                HandlerValidationError,
-                re.escape(
-                    "{u'architecture': [u'Architecture must be "
-                    "defined for installable nodes.']}")):
-            handler.create(params)
+        error = self.assertRaises(
+            HandlerValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'architecture': [
+                'Architecture must be defined for installable nodes.']}))
 
     def test_create_creates_node(self):
         user = factory.make_admin()
@@ -1086,12 +1075,14 @@ class TestNodeHandler(MAASServerTestCase):
         node_data = self.dehydrate_node(node, handler)
         arch = factory.make_name("arch")
         node_data["architecture"] = arch
-        with ExpectedException(
-                HandlerValidationError,
-                re.escape(
-                    "{u'architecture': [u\"'%s' is not a valid architecture.  "
-                    "It should be one of: ''.\"]}" % arch)):
-            handler.update(node_data)
+        error = self.assertRaises(
+            HandlerValidationError, handler.update, node_data)
+        self.assertThat(error.message_dict, Equals({
+            'architecture': [
+                "'%s' is not a valid architecture.  "
+                "It should be one of: ''." % arch
+            ]
+        }))
 
     def test_update_updates_node(self):
         user = factory.make_admin()
@@ -1184,7 +1175,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fs.fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             None, block_device.get_effective_filesystem().mount_point)
 
     def test_unmount_partition_filesystem(self):
@@ -1204,7 +1195,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fs.fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             None, partition.get_effective_filesystem().mount_point)
 
     def test_mount_blockdevice_filesystem(self):
@@ -1223,7 +1214,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fs.fstype,
             'mount_point': '/mnt'
             })
-        self.assertEquals(
+        self.assertEqual(
             '/mnt', block_device.get_effective_filesystem().mount_point)
 
     def test_mount_partition_filesystem(self):
@@ -1243,7 +1234,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fs.fstype,
             'mount_point': '/mnt'
             })
-        self.assertEquals(
+        self.assertEqual(
             '/mnt', partition.get_effective_filesystem().mount_point)
 
     def test_change_blockdevice_filesystem(self):
@@ -1265,7 +1256,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': new_fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             new_fstype, block_device.get_effective_filesystem().fstype)
 
     def test_change_partition_filesystem(self):
@@ -1288,7 +1279,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': new_fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             new_fstype, partition.get_effective_filesystem().fstype)
 
     def test_new_blockdevice_filesystem(self):
@@ -1307,7 +1298,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             fstype, block_device.get_effective_filesystem().fstype)
 
     def test_new_partition_filesystem(self):
@@ -1327,7 +1318,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': fstype,
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             fstype, partition.get_effective_filesystem().fstype)
 
     def test_delete_blockdevice_filesystem(self):
@@ -1346,7 +1337,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': '',
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             None, block_device.get_effective_filesystem())
 
     def test_delete_partition_filesystem(self):
@@ -1366,7 +1357,7 @@ class TestNodeHandler(MAASServerTestCase):
             'fstype': '',
             'mount_point': None
             })
-        self.assertEquals(
+        self.assertEqual(
             None, partition.get_effective_filesystem())
 
     def test_update_disk_for_physical_block_device(self):
@@ -1384,7 +1375,7 @@ class TestNodeHandler(MAASServerTestCase):
             'block_id': block_device.id,
             'name': new_name,
             })
-        self.assertEquals(new_name, reload_object(block_device).name)
+        self.assertEqual(new_name, reload_object(block_device).name)
 
     def test_update_disk_for_virtual_block_device(self):
         user = factory.make_admin()
@@ -1401,7 +1392,7 @@ class TestNodeHandler(MAASServerTestCase):
             'block_id': block_device.id,
             'name': new_name,
             })
-        self.assertEquals(new_name, reload_object(block_device).name)
+        self.assertEqual(new_name, reload_object(block_device).name)
 
     def test_delete_disk(self):
         user = factory.make_admin()
@@ -1475,16 +1466,16 @@ class TestNodeHandler(MAASServerTestCase):
         block_device = factory.make_BlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device, node=node)
-        size = partition_table.block_device.size / 2
+        size = partition_table.block_device.size // 2
         handler.create_partition({
             'system_id': node.system_id,
             'block_id': partition_table.block_device_id,
             'partition_size': size
             })
         partition = partition_table.partitions.first()
-        self.assertEquals(
+        self.assertEqual(
             2, Partition.objects.count())
-        self.assertEquals(
+        self.assertEqual(
             human_readable_bytes(
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
@@ -1502,7 +1493,7 @@ class TestNodeHandler(MAASServerTestCase):
         partition_table = factory.make_PartitionTable(
             block_device=block_device, node=node)
         partition = partition_table.partitions.first()
-        size = partition_table.block_device.size / 2
+        size = partition_table.block_device.size // 2
         fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
         mount_point = factory.make_absolute_path()
         handler.create_partition({
@@ -1513,17 +1504,17 @@ class TestNodeHandler(MAASServerTestCase):
             'mount_point': mount_point,
             })
         partition = partition_table.partitions.first()
-        self.assertEquals(
+        self.assertEqual(
             2, Partition.objects.count())
-        self.assertEquals(
+        self.assertEqual(
             human_readable_bytes(
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
             human_readable_bytes(partition.size))
-        self.assertEquals(
+        self.assertEqual(
             fstype,
             partition.get_effective_filesystem().fstype)
-        self.assertEquals(
+        self.assertEqual(
             mount_point,
             partition.get_effective_filesystem().mount_point)
 
@@ -1539,7 +1530,7 @@ class TestNodeHandler(MAASServerTestCase):
             })
         cache_set = CacheSet.objects.get_cache_sets_for_node(node).first()
         self.assertIsNotNone(cache_set)
-        self.assertEquals(partition, cache_set.get_filesystem().partition)
+        self.assertEqual(partition, cache_set.get_filesystem().partition)
 
     def test_create_cache_set_for_block_device(self):
         user = factory.make_admin()
@@ -1553,7 +1544,7 @@ class TestNodeHandler(MAASServerTestCase):
             })
         cache_set = CacheSet.objects.get_cache_sets_for_node(node).first()
         self.assertIsNotNone(cache_set)
-        self.assertEquals(
+        self.assertEqual(
             block_device.id, cache_set.get_filesystem().block_device.id)
 
     def test_create_bcache_for_partition(self):
@@ -1575,10 +1566,10 @@ class TestNodeHandler(MAASServerTestCase):
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
-        self.assertEquals(name, bcache.name)
-        self.assertEquals(cache_set, bcache.cache_set)
-        self.assertEquals(cache_mode, bcache.cache_mode)
-        self.assertEquals(
+        self.assertEqual(name, bcache.name)
+        self.assertEqual(cache_set, bcache.cache_set)
+        self.assertEqual(cache_mode, bcache.cache_mode)
+        self.assertEqual(
             partition, bcache.get_bcache_backing_filesystem().partition)
 
     def test_create_bcache_for_partition_with_filesystem(self):
@@ -1604,15 +1595,15 @@ class TestNodeHandler(MAASServerTestCase):
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
-        self.assertEquals(name, bcache.name)
-        self.assertEquals(cache_set, bcache.cache_set)
-        self.assertEquals(cache_mode, bcache.cache_mode)
-        self.assertEquals(
+        self.assertEqual(name, bcache.name)
+        self.assertEqual(cache_set, bcache.cache_set)
+        self.assertEqual(cache_mode, bcache.cache_mode)
+        self.assertEqual(
             partition, bcache.get_bcache_backing_filesystem().partition)
-        self.assertEquals(
+        self.assertEqual(
             fstype,
             bcache.virtual_device.get_effective_filesystem().fstype)
-        self.assertEquals(
+        self.assertEqual(
             mount_point,
             bcache.virtual_device.get_effective_filesystem().mount_point)
 
@@ -1634,10 +1625,10 @@ class TestNodeHandler(MAASServerTestCase):
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
-        self.assertEquals(name, bcache.name)
-        self.assertEquals(cache_set, bcache.cache_set)
-        self.assertEquals(cache_mode, bcache.cache_mode)
-        self.assertEquals(
+        self.assertEqual(name, bcache.name)
+        self.assertEqual(cache_set, bcache.cache_set)
+        self.assertEqual(cache_mode, bcache.cache_mode)
+        self.assertEqual(
             block_device.id,
             bcache.get_bcache_backing_filesystem().block_device.id)
 
@@ -1663,16 +1654,16 @@ class TestNodeHandler(MAASServerTestCase):
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
-        self.assertEquals(name, bcache.name)
-        self.assertEquals(cache_set, bcache.cache_set)
-        self.assertEquals(cache_mode, bcache.cache_mode)
-        self.assertEquals(
+        self.assertEqual(name, bcache.name)
+        self.assertEqual(cache_set, bcache.cache_set)
+        self.assertEqual(cache_mode, bcache.cache_mode)
+        self.assertEqual(
             block_device.id,
             bcache.get_bcache_backing_filesystem().block_device.id)
-        self.assertEquals(
+        self.assertEqual(
             fstype,
             bcache.virtual_device.get_effective_filesystem().fstype)
-        self.assertEquals(
+        self.assertEqual(
             mount_point,
             bcache.virtual_device.get_effective_filesystem().mount_point)
 
@@ -1695,8 +1686,8 @@ class TestNodeHandler(MAASServerTestCase):
             })
         raid = RAID.objects.filter_by_node(node).first()
         self.assertIsNotNone(raid)
-        self.assertEquals(name, raid.name)
-        self.assertEquals("raid-5", raid.group_type)
+        self.assertEqual(name, raid.name)
+        self.assertEqual("raid-5", raid.group_type)
 
     def test_create_raid_with_filesystem(self):
         user = factory.make_admin()
@@ -1721,12 +1712,12 @@ class TestNodeHandler(MAASServerTestCase):
             })
         raid = RAID.objects.filter_by_node(node).first()
         self.assertIsNotNone(raid)
-        self.assertEquals(name, raid.name)
-        self.assertEquals("raid-5", raid.group_type)
-        self.assertEquals(
+        self.assertEqual(name, raid.name)
+        self.assertEqual("raid-5", raid.group_type)
+        self.assertEqual(
             fstype,
             raid.virtual_device.get_effective_filesystem().fstype)
-        self.assertEquals(
+        self.assertEqual(
             mount_point,
             raid.virtual_device.get_effective_filesystem().mount_point)
 
@@ -1746,7 +1737,7 @@ class TestNodeHandler(MAASServerTestCase):
             })
         volume_group = VolumeGroup.objects.filter_by_node(node).first()
         self.assertIsNotNone(volume_group)
-        self.assertEquals(name, volume_group.name)
+        self.assertEqual(name, volume_group.name)
 
     def test_create_logical_volume(self):
         user = factory.make_admin()
@@ -1765,9 +1756,9 @@ class TestNodeHandler(MAASServerTestCase):
             })
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
-        self.assertEquals(
+        self.assertEqual(
             "%s-%s" % (volume_group.name, name), logical_volume.get_name())
-        self.assertEquals(size, logical_volume.size)
+        self.assertEqual(size, logical_volume.size)
 
     def test_create_logical_volume_with_filesystem(self):
         user = factory.make_admin()
@@ -1790,13 +1781,13 @@ class TestNodeHandler(MAASServerTestCase):
             })
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
-        self.assertEquals(
+        self.assertEqual(
             "%s-%s" % (volume_group.name, name), logical_volume.get_name())
-        self.assertEquals(size, logical_volume.size)
-        self.assertEquals(
+        self.assertEqual(size, logical_volume.size)
+        self.assertEqual(
             fstype,
             logical_volume.get_effective_filesystem().fstype)
-        self.assertEquals(
+        self.assertEqual(
             mount_point,
             logical_volume.get_effective_filesystem().mount_point)
 
@@ -1810,7 +1801,7 @@ class TestNodeHandler(MAASServerTestCase):
             'system_id': node.system_id,
             'block_id': boot_disk.id,
             })
-        self.assertEquals(boot_disk.id, reload_object(node).get_boot_disk().id)
+        self.assertEqual(boot_disk.id, reload_object(node).get_boot_disk().id)
 
     def test_set_boot_disk_raises_error_for_none_physical(self):
         user = factory.make_admin()
@@ -1822,8 +1813,8 @@ class TestNodeHandler(MAASServerTestCase):
             'system_id': node.system_id,
             'block_id': boot_disk.id,
             })
-        self.assertEquals(
-            error.message, "Only a physical disk can be set as the boot disk.")
+        self.assertEqual(
+            str(error), "Only a physical disk can be set as the boot disk.")
 
     def test_update_raise_HandlerError_if_tag_has_definition(self):
         user = factory.make_admin()
@@ -1919,7 +1910,7 @@ class TestNodeHandler(MAASServerTestCase):
             "mac_address": mac_address,
             "vlan": vlan.id,
             })
-        self.assertEquals(
+        self.assertEqual(
             1, node.interface_set.count(),
             "Should have one interface on the node.")
 
@@ -2089,7 +2080,7 @@ class TestNodeHandler(MAASServerTestCase):
                 node=node, type=INTERFACE_TYPE.BOND, parents=nic1,
                 name=name, vlan=nic1.vlan))
         self.assertIsNotNone(bond_interface)
-        self.assertEquals(bond_mode, bond_interface.params["bond_mode"])
+        self.assertEqual(bond_mode, bond_interface.params["bond_mode"])
 
     def test_create_bond_raises_ValidationError(self):
         user = factory.make_admin()
@@ -2118,8 +2109,8 @@ class TestNodeHandler(MAASServerTestCase):
             "vlan": new_vlan.id,
             })
         interface = reload_object(interface)
-        self.assertEquals(new_name, interface.name)
-        self.assertEquals(new_vlan, interface.vlan)
+        self.assertEqual(new_name, interface.name)
+        self.assertEqual(new_vlan, interface.vlan)
 
     def test_update_interface_raises_ValidationError(self):
         user = factory.make_admin()
@@ -2220,7 +2211,7 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
     def call_check_power(self, node):
         params = {"system_id": node.system_id}
         handler = self.make_handler_with_user()
-        return handler.check_power(params).wait()
+        return handler.check_power(params).wait(30)
 
     def prepare_rpc(self, nodegroup, side_effect=None):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -2238,30 +2229,30 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
         self.expectThat(reload_object(node).power_state, Equals(state))
 
     def test__raises_HandlerError_when_NoConnectionsAvailable(self):
-        node = self.make_node().wait()
+        node = self.make_node().wait(30)
         user = factory.make_User()
         handler = NodeHandler(user, {})
         mock_getClientFor = self.patch(node_module, "getClientFor")
         mock_getClientFor.side_effect = NoConnectionsAvailable()
         with ExpectedException(HandlerError):
-            handler.check_power({"system_id": node.system_id}).wait()
+            handler.check_power({"system_id": node.system_id}).wait(30)
 
     def test__sets_power_state_to_unknown_when_no_power_type(self):
-        node = self.make_node(power_type="").wait()
+        node = self.make_node(power_type="").wait(30)
         self.prepare_rpc(
             node.nodegroup,
             side_effect=always_succeed_with({"state": "on"}))
         self.assertCheckPower(node, "unknown")
 
     def test__sets_power_state_to_unknown_when_power_cannot_be_started(self):
-        node = self.make_node(power_type="ether_wake").wait()
+        node = self.make_node(power_type="ether_wake").wait(30)
         self.prepare_rpc(
             node.nodegroup,
             side_effect=always_succeed_with({"state": "on"}))
         self.assertCheckPower(node, "unknown")
 
     def test__sets_power_state_to_PowerQuery_result(self):
-        node = self.make_node().wait()
+        node = self.make_node().wait(30)
         power_state = random.choice(["on", "off"])
         self.prepare_rpc(
             node.nodegroup,
@@ -2269,7 +2260,7 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
         self.assertCheckPower(node, power_state)
 
     def test__sets_power_state_to_error_on_time_out(self):
-        node = self.make_node().wait()
+        node = self.make_node().wait(30)
         getClientFor = self.patch(node_module, 'getClientFor')
         getClientFor.return_value = sentinel.client
         deferWithTimeout = self.patch(node_module, 'deferWithTimeout')
@@ -2277,11 +2268,11 @@ class TestNodeHandlerCheckPower(MAASTransactionServerTestCase):
         self.assertCheckPower(node, "error")
 
     def test__sets_power_state_to_unknown_on_NotImplementedError(self):
-        node = self.make_node().wait()
+        node = self.make_node().wait(30)
         self.prepare_rpc(node.nodegroup, side_effect=NotImplementedError())
         self.assertCheckPower(node, "unknown")
 
     def test__sets_power_state_to_error_on_PowerActionFail(self):
-        node = self.make_node().wait()
+        node = self.make_node().wait(30)
         self.prepare_rpc(node.nodegroup, side_effect=PowerActionFail())
         self.assertCheckPower(node, "error")

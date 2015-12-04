@@ -3,15 +3,6 @@
 
 """Node objects."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "Node",
     "fqdn_is_duplicate",
@@ -112,7 +103,6 @@ from maasserver.storage_layouts import (
     StorageLayoutMissingBootDiskError,
 )
 from maasserver.utils import strip_domain
-from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -129,6 +119,7 @@ from maasserver.utils.threads import (
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
 import petname
+from piston3.models import Token
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
@@ -148,15 +139,6 @@ from provisioningserver.utils.twisted import (
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
-
-# To support upgrading from MAAS versions <2.0 the piston module was named
-# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
-# same the import names are important because it will break south migrations
-# unless piston is imported as 'piston'.
-if has_builtin_migrations():
-    from piston3.models import Token
-else:
-    from piston.models import Token
 
 
 maaslog = get_maas_logger("node")
@@ -711,7 +693,7 @@ class Node(CleanSave, TimestampedModel):
     # 'devices' are all the non-installable nodes.
     devices = DeviceManager()
 
-    def __unicode__(self):
+    def __str__(self):
         if self.hostname:
             return "%s (%s)" % (self.system_id, self.fqdn)
         else:
@@ -1279,7 +1261,7 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToDatabase, self._set_status, self.system_id,
+                callOutToDatabase, Node._set_status, self.system_id,
                 status=old_status)
 
             def eb_start(failure, hostname):
@@ -1793,7 +1775,7 @@ class Node(CleanSave, TimestampedModel):
 
             # If there's an error, reset the node's status.
             starting.addErrback(
-                callOutToDatabase, self._set_status, self.system_id,
+                callOutToDatabase, Node._set_status, self.system_id,
                 status=NODE_STATUS.FAILED_DISK_ERASING)
 
             def eb_start(failure, hostname):
@@ -1930,7 +1912,7 @@ class Node(CleanSave, TimestampedModel):
             except Exception as ex:
                 maaslog.error(
                     "%s: Unable to shut node down: %s", self.hostname,
-                    unicode(ex))
+                    str(ex))
                 raise
 
         if self.power_state == POWER_STATE.OFF:
@@ -2228,7 +2210,7 @@ class Node(CleanSave, TimestampedModel):
             claimed_ips = interface.claim_auto_ips(
                 exclude_addresses=exclude_addresses)
             for ip in claimed_ips:
-                exclude_addresses.add(unicode(ip.ip))
+                exclude_addresses.add(str(ip.ip))
 
     @transactional
     def release_auto_ips(self):

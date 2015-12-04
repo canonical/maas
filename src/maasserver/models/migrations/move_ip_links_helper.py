@@ -17,15 +17,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 def _migrate_links_forward(MACAddress, Interface):

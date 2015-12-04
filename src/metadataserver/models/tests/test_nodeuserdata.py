@@ -3,15 +3,6 @@
 
 """Tests for :class:`NodeUserData` and manager."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.testing.factory import factory
@@ -81,14 +72,14 @@ class TestNodeUserDataManager(DjangoTestCase):
         self.assertTrue(NodeUserData.objects.has_user_data(node))
 
     def test_bulk_set_user_data(self):
-        nodes = [factory.make_Node() for _ in xrange(5)]
+        nodes = [factory.make_Node() for _ in range(5)]
         data = factory.make_bytes()
         NodeUserData.objects.bulk_set_user_data(nodes, data)
         for node in nodes:
             self.assertEqual(data, NodeUserData.objects.get_user_data(node))
 
     def test_bulk_set_user_data_only_deletes_when_data_is_None(self):
-        nodes = [factory.make_Node() for _ in xrange(5)]
+        nodes = [factory.make_Node() for _ in range(5)]
         NodeUserData.objects.bulk_set_user_data(nodes, None)
         for node in nodes:
             self.assertRaises(
@@ -96,10 +87,10 @@ class TestNodeUserDataManager(DjangoTestCase):
                 NodeUserData.objects.get_user_data, node)
 
     def test_bulk_set_user_data_with_preexisting_data(self):
-        nodes = [factory.make_Node() for _ in xrange(2)]
+        nodes = [factory.make_Node() for _ in range(2)]
         data1 = factory.make_bytes()
         NodeUserData.objects.bulk_set_user_data(nodes, data1)
-        nodes.extend(factory.make_Node() for _ in xrange(3))
+        nodes.extend(factory.make_Node() for _ in range(3))
         data2 = factory.make_bytes()
         NodeUserData.objects.bulk_set_user_data(nodes, data2)
         for node in nodes:

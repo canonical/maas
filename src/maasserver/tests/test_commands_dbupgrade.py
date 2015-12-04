@@ -3,15 +3,6 @@
 
 """Tests for the `dbupgrade` management command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import datetime
@@ -28,14 +19,11 @@ from maasserver.management.commands.dbupgrade import (
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
 )
-from mock import call
 from testtools.matchers import (
-    ContainsDict,
+    EndsWith,
     Equals,
-    MatchesDict,
     MatchesListwise,
     StartsWith,
 )
@@ -44,7 +32,8 @@ from testtools.matchers import (
 class TestDBUpgrade(MAASServerTestCase):
 
     def patch_subprocess(self, rc=0):
-        popen = self.patch(subprocess, "Popen")
+        popen = self.patch_autospec(subprocess, "Popen")
+        popen.return_value.__enter__.return_value = popen.return_value
         popen.return_value.wait.return_value = rc
         return popen
 
@@ -68,7 +57,7 @@ class TestDBUpgrade(MAASServerTestCase):
             "VALUES(%s,%s,%s)", [app, migration, datetime.datetime.now()])
 
     def assertCalledTar(self, mock, call=0):
-        path = dbupgrade_command._path_to_django16_south()
+        path = dbupgrade_command._path_to_django16_south_maas19()
         call = mock.call_args_list[call][0][0]
         self.assertThat(call, MatchesListwise([
             Equals('tar'),
@@ -81,18 +70,10 @@ class TestDBUpgrade(MAASServerTestCase):
     def assertCalledSouth(self, mock, database="default", call=1):
         call = mock.call_args_list[call]
         self.assertThat(call[0][0], MatchesListwise([
-            Equals(sys.argv[0]),
-            Equals('dbupgrade'),
-            Equals("--database"),
+            Equals("python2.7"),
+            EndsWith("migrate.py"),
             Equals(database),
-            Equals("--south"),
         ]))
-        self.assertThat(call[1], MatchesDict({
-            'env': ContainsDict({
-                'DJANGO16_SOUTH_MODULES_PATH': StartsWith(
-                    '/tmp/maas-upgrade-'),
-            }),
-        }))
 
     def assertCalledDjango(
             self, mock, database="default", call=2):
@@ -155,24 +136,6 @@ class TestDBUpgrade(MAASServerTestCase):
         self.assertCalledTar(popen)
         self.assertCalledSouth(popen)
         self.assertCalledDjango(popen)
-
-    def test_south_run_calls_correct_commands(self):
-        # Mock get_version as the subcommand is required to be running under
-        # the extracted django 1.6.6.
-        self.patch(
-            dbupgrade_module.django, "get_version").return_value = "1.6.6"
-        mock_call = self.patch(dbupgrade_module, "call_command")
-        call_command('dbupgrade', south=True)
-        self.assertThat(mock_call, MockCallsMatch(
-            call(
-                "syncdb", database="default", interactive=False),
-            call(
-                "migrate", "maasserver", database="default",
-                interactive=False),
-            call(
-                "migrate", "metadataserver", database="default",
-                interactive=False),
-        ))
 
     def test_django_run_renames_piston_tables_if_south_ran_before(self):
         self.patch(

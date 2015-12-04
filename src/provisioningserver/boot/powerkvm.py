@@ -3,15 +3,6 @@
 
 """PowerKVM and PowerVM Boot Method"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'PowerKVMBootMethod',
     ]
@@ -19,7 +10,7 @@ __all__ = [
 import glob
 import os.path
 from textwrap import dedent
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from provisioningserver.boot import (
     BootMethod,
@@ -28,6 +19,7 @@ from provisioningserver.boot import (
     utils,
 )
 from provisioningserver.boot.install_bootloader import install_bootloader
+from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
 
@@ -59,7 +51,8 @@ class PowerKVMBootMethod(BootMethod):
         """
         return None
 
-    def install_bootloader(self, destination):
+    @typed
+    def install_bootloader(self, destination: str):
         """Installs the required files for PowerKVM/PowerVM booting into the
         tftproot.
         """

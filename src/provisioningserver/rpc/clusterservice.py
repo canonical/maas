@@ -3,15 +3,6 @@
 
 """RPC implementation for clusters."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ClusterClientService",
 ]
@@ -21,7 +12,7 @@ import json
 from os import urandom
 import random
 import re
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
@@ -83,6 +74,7 @@ from provisioningserver.security import (
     calculate_digest,
     get_shared_secret_from_filesystem,
 )
+from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import DeferredValue
@@ -101,7 +93,6 @@ from twisted.internet.error import (
     ConnectionClosed,
 )
 from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
@@ -142,7 +133,7 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
         with ClusterConfiguration.open() as config:
-            return {b"ident": config.cluster_uuid}
+            return {"ident": config.cluster_uuid}
 
     @cluster.Authenticate.responder
     def authenticate(self, message):
@@ -338,7 +329,8 @@ class Cluster(RPCProtocol):
     def get_tls_parameters(self):
         """get_tls_parameters()
 
-        Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
+        Implementation of
+        :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
         """
         try:
             from provisioningserver.rpc.testing import tls
@@ -662,21 +654,18 @@ class PatchedURI(URI):
         scheme, netloc, path, params, query, fragment = http.urlparse(uri)
 
         if defaultPort is None:
-            scheme_ports = {
-                'https': 443,
-                'http': 80,
-                }
+            scheme_ports = {b'https': 443, b'http': 80}
             defaultPort = scheme_ports.get(scheme, 80)
 
-        if '[' in netloc:
+        if b'[' in netloc:
             # IPv6 address.  This is complicated.
             parsed_netloc = re.match(
-                '\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
+                b'\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
                 netloc)
             host, port = parsed_netloc.group('host', 'port')
-        elif ':' in netloc:
+        elif b':' in netloc:
             # IPv4 address or hostname, with port spec.  This is easy.
-            host, port = netloc.split(':')
+            host, port = netloc.split(b':')
         else:
             # IPv4 address or hostname, without port spec.  This is trivial.
             host = netloc
@@ -741,7 +730,7 @@ class ClusterClientService(TimerService, object):
         :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when
             there are no open connections to a region controller.
         """
-        conns = list(self.connections.viewvalues())
+        conns = list(self.connections.values())
         if len(conns) == 0:
             raise exceptions.NoConnectionsAvailable()
         else:
@@ -869,7 +858,7 @@ class ClusterClientService(TimerService, object):
         # they'll work as dictionary keys.
         eventloops = {
             name: [tuple(address) for address in addresses]
-            for name, addresses in eventloops.iteritems()
+            for name, addresses in eventloops.items()
         }
         # Drop connections to event-loops that no longer include one of
         # this cluster's established connections among its advertised
@@ -878,7 +867,7 @@ class ClusterClientService(TimerService, object):
         # and so the connection may have dropped already, but there's
         # nothing wrong with a bit of belt-and-braces engineering
         # between consenting adults.
-        for eventloop, addresses in eventloops.iteritems():
+        for eventloop, addresses in eventloops.items():
             if eventloop in self.connections:
                 connection = self.connections[eventloop]
                 if connection.address not in addresses:
@@ -886,7 +875,7 @@ class ClusterClientService(TimerService, object):
         # Create new connections to event-loops that the cluster does
         # not yet have a connection to. Try each advertised endpoint
         # (address) in turn until one of them bites.
-        for eventloop, addresses in eventloops.iteritems():
+        for eventloop, addresses in eventloops.items():
             if eventloop not in self.connections:
                 for address in addresses:
                     try:

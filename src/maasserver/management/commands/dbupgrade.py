@@ -6,15 +6,6 @@ Django command: Upgrade MAAS regiond database using both south and django
 >1.7 migration system.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from importlib import import_module
@@ -25,7 +16,6 @@ import subprocess
 import sys
 import tempfile
 
-import django
 from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
@@ -39,6 +29,70 @@ SOUTH_MODULES = [
     "maasserver",
     "metadataserver",
 ]
+
+# Script that performs the south migrations for MAAS under django 1.6 and
+# python2.7.
+MAAS_UPGRADE_SCRIPT = """\
+# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = [
+    ]
+
+import os
+import sys
+
+# Inject the sys.path from the parent process so that the python path is
+# is similar, except that the directory that this script is running from is
+# already the first path in sys.path.
+for path in os.environ["MAAS_SYSPATH_COPY"].split(":"):
+    if path not in sys.path:
+        sys.path.append(path)
+
+# Import django and ensure that it is actually 1.6.6 that is provided by
+# the tarball.
+import django
+assert django.get_version() == "1.6.6"
+
+# Install piston and south.
+from django.conf import settings
+settings.INSTALLED_APPS += (
+    'piston',
+    'south',
+)
+
+# Remove the following applications as they should not exist when running
+# under python2.7 and performing the south migrations.
+REMOVE_APPS = [
+    "piston3",
+    "django_nose",
+    "maastesting",
+]
+settings.INSTALLED_APPS = [
+    app
+    for app in settings.INSTALLED_APPS
+    if app not in REMOVE_APPS
+]
+
+# Perform the migrations.
+from django.core.management import call_command
+call_command(
+    "syncdb", database=sys.argv[1], interactive=False)
+call_command(
+    "migrate", "maasserver", database=sys.argv[1], interactive=False)
+call_command(
+    "migrate", "metadataserver", database=sys.argv[1],
+    interactive=False)
+"""
 
 
 class Command(BaseCommand):
@@ -54,11 +108,6 @@ class Command(BaseCommand):
             '--always-south', action='store_true', help=(
                 'Always run the south migrations even if not required.')),
         # Hidden argument that is not shown to the user. This argument is used
-        # internally to call itself again to run the south migrations in a
-        # subprocess.
-        optparse.make_option(
-            '--south', action='store_true', help=optparse.SUPPRESS_HELP),
-        # Hidden argument that is not shown to the user. This argument is used
         # internally to call itself again to run the django builtin migrations
         # in a subprocess.
         optparse.make_option(
@@ -66,21 +115,26 @@ class Command(BaseCommand):
     )
 
     @classmethod
-    def _path_to_django16_south(cls):
-        """Return path to the in-tree django16 and south source code."""
+    def _path_to_django16_south_maas19(cls):
+        """Return path to the in-tree django16, south, and
+        MAAS 1.9 source code."""
         from maasserver.migrations import south
         path_to_south_dir = os.path.dirname(south.__file__)
         return os.path.join(
-            path_to_south_dir, "django16_south.tar.gz")
+            path_to_south_dir, "django16_south_maas19.tar.gz")
 
     @classmethod
-    def _extract_django16_south(cls):
-        """Extract the django16 and south source code in to a temp path."""
-        path_to_tarball = cls._path_to_django16_south()
+    def _extract_django16_south_maas19(cls):
+        """Extract the django16, south, and MAAS 1.9 source code in to a temp
+        path."""
+        path_to_tarball = cls._path_to_django16_south_maas19()
         tempdir = tempfile.mkdtemp(prefix='maas-upgrade-')
         subprocess.check_call([
             "tar", "zxf", path_to_tarball, "-C", tempdir])
-        return tempdir
+        script_path = os.path.join(tempdir, "migrate.py")
+        with open(script_path, "wb") as fp:
+            fp.write(MAAS_UPGRADE_SCRIPT.encode("utf-8"))
+        return tempdir, script_path
 
     @classmethod
     def _south_was_performed(cls, database):
@@ -145,15 +199,24 @@ class Command(BaseCommand):
         cursor.execute("ALTER TABLE piston_token RENAME TO piston3_token")
 
     @classmethod
-    def _perform_south_migrations(cls, database, tempdir):
-        """Perform the south migrations."""
-        env = os.environ.copy()
-        env['DJANGO16_SOUTH_MODULES_PATH'] = tempdir
-        cmd = [
-            sys.argv[0], "dbupgrade", "--database", database,
-            "--south",
+    def _perform_south_migrations(cls, script_path, database):
+        """Perform the south migrations.
+
+        This forces the south migrations to run under python2.7. python2.7 is
+        required to run the south migrations.
+        """
+        # Send a copy of the current sys.path of this process into the child
+        # process. Except anything that references /usr/lib/python3 which will
+        # be excluded since the child process will run under python2.7.
+        paths = [
+            path
+            for path in sys.path
+            if not path.startswith('/usr/lib/python3')
         ]
-        process = subprocess.Popen(cmd, env=env)
+        env = os.environ.copy()
+        env['MAAS_SYSPATH_COPY'] = ":".join(paths)
+        process = subprocess.Popen(
+            ["python2.7", script_path, database], env=env)
         return process.wait()
 
     @classmethod
@@ -169,9 +232,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         database = options.get('database')
         always_south = options.get('always_south', False)
-        run_south = options.get('south', False)
         run_django = options.get('django', False)
-        if not run_south and not run_django:
+        if not run_django:
             # Neither south or django provided as an option then this is the
             # main process that will do the initial sync and spawn the
             # subprocesses.
@@ -179,11 +241,11 @@ class Command(BaseCommand):
             # Run south migrations only if forced or needed.
             if always_south or self._south_needs_to_be_performed(database):
                 # Extract django16 and south for the subprocess.
-                tempdir = self._extract_django16_south()
+                tempdir, script_path = self._extract_django16_south_maas19()
 
                 # Perform south migrations.
                 try:
-                    rc = self._perform_south_migrations(database, tempdir)
+                    rc = self._perform_south_migrations(script_path, database)
                 finally:
                     # Placed in try-finally just to make sure that even if
                     # an exception is raised that the temp directory is
@@ -196,18 +258,7 @@ class Command(BaseCommand):
             rc = self._perform_django_migrations(database)
             if rc != 0:
                 sys.exit(rc)
-        elif run_south:
-            # Because of maasserver/__init__.py execute_from_command_line we
-            # are now running under django 1.6 and south.
-            assert django.get_version() == "1.6.6"
-            call_command(
-                "syncdb", database=database, interactive=False)
-            call_command(
-                "migrate", "maasserver", database=database, interactive=False)
-            call_command(
-                "migrate", "metadataserver", database=database,
-                interactive=False)
-        elif run_django:
+        else:
             # Piston has been renamed from piston to piston3. If south was ever
             # performed then the tables need to be renamed.
             south_was_performed = self._south_was_performed(database)

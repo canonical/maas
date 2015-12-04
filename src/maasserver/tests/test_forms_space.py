@@ -3,15 +3,6 @@
 
 """Tests for Space forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.forms_space import SpaceForm
@@ -33,7 +24,7 @@ class TestSpaceForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         space = form.save()
-        self.assertEquals(space_name, space.get_name())
+        self.assertEqual(space_name, space.get_name())
 
     def test__doest_require_name_on_update(self):
         space = factory.make_Space()
@@ -48,4 +39,4 @@ class TestSpaceForm(MAASServerTestCase):
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEquals(new_name, reload_object(space).name)
+        self.assertEqual(new_name, reload_object(space).name)

@@ -10,15 +10,6 @@ parsing a leases file that contains a modest number of unique host and
 lease entries, but has become very large because of churn.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'parse_leases',
     ]
@@ -55,7 +46,7 @@ def find_lease_starts(leases_contents):
         stanza, address = match.groups()
         results[stanza][match.start()] = address
     return chain.from_iterable(
-        mapping.keys() for mapping in results.itervalues())
+        mapping.keys() for mapping in results.values())
 
 
 def extract_leases(leases_contents):

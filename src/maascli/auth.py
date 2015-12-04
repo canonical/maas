@@ -3,23 +3,14 @@
 
 """MAAS CLI authentication."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'obtain_credentials',
     ]
 
 from getpass import getpass
-import httplib
+import http.client
 import sys
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 from apiclient.creds import convert_string_to_tuple
 from maascli.api import (
@@ -78,9 +69,9 @@ def check_valid_apikey(url, credentials, insecure=False):
         insecure=insecure)
 
     status = int(response['status'])
-    if status == httplib.UNAUTHORIZED:
+    if status == http.client.UNAUTHORIZED:
         return False
-    elif status == httplib.OK:
+    elif status == http.client.OK:
         return True
     else:
         raise UnexpectedResponse(

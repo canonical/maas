@@ -3,15 +3,6 @@
 
 """Tests for the Subnet model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -359,7 +350,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
     def test__user_view_returns_subnet(self):
         user = factory.make_User()
         subnet = factory.make_Subnet()
-        self.assertEquals(
+        self.assertEqual(
             subnet,
             Subnet.objects.get_subnet_or_404(
                 subnet.id, user, NODE_PERMISSION.VIEW))
@@ -383,7 +374,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
     def test__admin_view_returns_subnet(self):
         admin = factory.make_admin()
         subnet = factory.make_Subnet()
-        self.assertEquals(
+        self.assertEqual(
             subnet,
             Subnet.objects.get_subnet_or_404(
                 subnet.id, admin, NODE_PERMISSION.VIEW))
@@ -391,7 +382,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
     def test__admin_edit_returns_subnet(self):
         admin = factory.make_admin()
         subnet = factory.make_Subnet()
-        self.assertEquals(
+        self.assertEqual(
             subnet,
             Subnet.objects.get_subnet_or_404(
                 subnet.id, admin, NODE_PERMISSION.EDIT))
@@ -399,7 +390,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
     def test__admin_admin_returns_subnet(self):
         admin = factory.make_admin()
         subnet = factory.make_Subnet()
-        self.assertEquals(
+        self.assertEqual(
             subnet,
             Subnet.objects.get_subnet_or_404(
                 subnet.id, admin, NODE_PERMISSION.ADMIN))
@@ -421,7 +412,7 @@ class SubnetTest(MAASServerTestCase):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
         dns_servers = [
             factory.make_ip_address()
@@ -445,7 +436,7 @@ class SubnetTest(MAASServerTestCase):
 
     def test_create_from_cidr_creates_subnet(self):
         vlan = factory.make_VLAN()
-        cidr = unicode(factory.make_ip4_or_6_network().cidr)
+        cidr = str(factory.make_ip4_or_6_network().cidr)
         space = factory.make_Space()
         name = "subnet-" + cidr
         subnet = Subnet.objects.create_from_cidr(cidr, vlan, space)
@@ -493,7 +484,7 @@ class SubnetTest(MAASServerTestCase):
         ngi = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             subnet=subnet)
-        self.assertEquals(ngi, subnet.get_managed_cluster_interface())
+        self.assertEqual(ngi, subnet.get_managed_cluster_interface())
 
 
 class SubnetIPRangeTest(MAASServerTestCase):

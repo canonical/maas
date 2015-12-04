@@ -3,15 +3,6 @@
 
 """Tests for the VLAN model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -100,12 +91,12 @@ class TestVLAN(MAASServerTestCase):
 
     def test_get_name_for_default_vlan_is_untagged(self):
         fabric = factory.make_Fabric()
-        self.assertEquals("untagged", fabric.get_default_vlan().get_name())
+        self.assertEqual("untagged", fabric.get_default_vlan().get_name())
 
     def test_get_name_for_set_name(self):
         name = factory.make_name('name')
         vlan = factory.make_VLAN(name=name)
-        self.assertEquals(name, vlan.get_name())
+        self.assertEqual(name, vlan.get_name())
 
     def test_creates_vlan(self):
         name = factory.make_name('name')

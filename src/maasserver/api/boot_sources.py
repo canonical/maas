@@ -3,22 +3,13 @@
 
 """API handlers: `BootSource`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'BootSourceHandler',
     'BootSourcesHandler',
     ]
 
 from base64 import b64encode
-import httplib
+import http.client
 
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -76,7 +67,7 @@ class BootSourceHandler(OperationsHandler):
         stream = json_boot_source(boot_source, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=httplib.OK)
+            status=http.client.OK)
 
     def update(self, request, id):
         """Update a specific boot source.
@@ -174,7 +165,7 @@ class BootSourcesHandler(OperationsHandler):
             stream = json_boot_source(boot_source, request)
             return HttpResponse(
                 stream, content_type='application/json; charset=utf-8',
-                status=httplib.CREATED)
+                status=http.client.CREATED)
         else:
             raise MAASAPIValidationError(form.errors)
 

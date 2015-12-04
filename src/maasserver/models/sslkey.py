@@ -4,22 +4,14 @@
 
 """:class:`SSLKey` and friends."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'SSLKey',
     ]
 
 
-from cgi import escape
+from html import escape
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -64,8 +56,8 @@ def find_ssl_common_name(subject):
     for component in subject.get_components():
         if len(component) < 2:
             continue
-        if component[0] == 'CN':
-            return component[1]
+        if component[0] == b'CN':
+            return component[1].decode(settings.DEFAULT_CHARSET)
     return None
 
 
@@ -73,12 +65,12 @@ def get_html_display_for_key(key):
     """Returns the html escaped string for the key."""
     cert = crypto.load_certificate(crypto.FILETYPE_PEM, key)
     subject = cert.get_subject()
-    md5 = cert.digest(b'MD5')
+    md5 = cert.digest('MD5')
     cn = find_ssl_common_name(subject)
     if cn is not None:
         key = "%s %s" % (cn, md5)
     else:
-        key = md5
+        key = "%s" % md5
     return escape(key, quote=True)
 
 
@@ -108,7 +100,7 @@ class SSLKey(CleanSave, TimestampedModel):
         return super(
             SSLKey, self).unique_error_message(model_class, unique_check)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.key
 
     def display_html(self):

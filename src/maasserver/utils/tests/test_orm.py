@@ -3,15 +3,6 @@
 
 """Test ORM utilities."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from itertools import (
@@ -187,10 +178,10 @@ class TestGetOne(MAASTestCase):
         self.assertRaises(
             FakeModel.MultipleObjectsReturned,
             get_one,
-            FakeQueryResult(FakeModel, range(2)))
+            FakeQueryResult(FakeModel, list(range(2))))
 
     def test_get_one_raises_generic_error_if_other_sequence_is_too_big(self):
-        self.assertRaises(MultipleObjectsReturned, get_one, range(2))
+        self.assertRaises(MultipleObjectsReturned, get_one, list(range(2)))
 
 
 class TestGetFirst(MAASTestCase):
@@ -304,13 +295,13 @@ class TestIsSerializationFailure(SerializationFailureTestCase):
 
     def test_rejects_operational_error_without_matching_cause(self):
         error = OperationalError()
-        cause = self.patch(error, "__cause__")
+        cause = self.patch(error, "__cause__", Exception())
         cause.pgcode = factory.make_name("pgcode")
         self.assertFalse(is_serialization_failure(error))
 
     def test_rejects_operational_error_with_unrelated_cause(self):
         error = OperationalError()
-        error.__cause__ = object()
+        error.__cause__ = Exception()
         self.assertFalse(is_serialization_failure(error))
 
     def test_rejects_operational_error_without_cause(self):
@@ -319,7 +310,7 @@ class TestIsSerializationFailure(SerializationFailureTestCase):
 
     def test_rejects_non_operational_error_with_matching_cause(self):
         error = factory.make_exception()
-        cause = self.patch(error, "__cause__")
+        cause = self.patch(error, "__cause__", Exception())
         cause.pgcode = SERIALIZATION_FAILURE
         self.assertFalse(is_serialization_failure(error))
 
@@ -328,7 +319,7 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
 
     def make_mock_function(self):
         function_name = factory.make_name("function")
-        function = Mock(__name__=function_name.encode("ascii"))
+        function = Mock(__name__=function_name)
         return function
 
     def test_retries_on_serialization_failure(self):

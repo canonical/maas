@@ -3,15 +3,6 @@
 
 """Start-up utilities for the MAAS server."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'start_up'
 ]
@@ -96,21 +87,21 @@ def start_up():
         except DatabaseError as e:
             psycopg2_exception = get_psycopg2_exception(e)
             if psycopg2_exception is None:
-                maaslog.warn(
+                maaslog.warning(
                     "Database error during start-up; "
                     "pausing for 3 seconds.")
             elif psycopg2_exception.pgcode is None:
-                maaslog.warn(
+                maaslog.warning(
                     "Database error during start-up (PostgreSQL error "
                     "not reported); pausing for 3 seconds.")
             else:
-                maaslog.warn(
+                maaslog.warning(
                     "Database error during start-up (PostgreSQL error %s); "
                     "pausing for 3 seconds.", psycopg2_exception.pgcode)
             logger.error("Database error during start-up", exc_info=True)
             yield pause(3.0)  # Wait 3 seconds before having another go.
         except:
-            maaslog.warn("Error during start-up; pausing for 3 seconds.")
+            maaslog.warning("Error during start-up; pausing for 3 seconds.")
             logger.error("Error during start-up.", exc_info=True)
             yield pause(3.0)  # Wait 3 seconds before having another go.
         else:

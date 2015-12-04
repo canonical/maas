@@ -3,15 +3,6 @@
 
 """Tests for :class:`NodeGroupInterface`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -81,15 +72,15 @@ class TestFindingByNetwork(MAASServerTestCase):
 
     def test__finds_all_matching_interfaces(self):
         network = factory.make_ipv4_network()
-        interfaces = [make_interface(network=network) for _ in xrange(3)]
+        interfaces = [make_interface(network=network) for _ in range(3)]
         self.assertSequenceEqual(interfaces, self.find(network))
         self.assertEqual(interfaces[0], self.get(network))
 
     def test__finds_only_matching_interfaces(self):
         network1 = factory.make_ipv4_network()
-        network1_ifs = [make_interface(network=network1) for _ in xrange(3)]
+        network1_ifs = [make_interface(network=network1) for _ in range(3)]
         network2 = factory.make_ipv4_network(disjoint_from=[network1])
-        network2_ifs = [make_interface(network=network2) for _ in xrange(3)]
+        network2_ifs = [make_interface(network=network2) for _ in range(3)]
         self.assertSequenceEqual(network1_ifs, self.find(network1))
         self.assertSequenceEqual(network2_ifs, self.find(network2))
         self.assertEqual(network1_ifs[0], self.get(network1))
@@ -150,7 +141,7 @@ class TestFindingByAddress(MAASServerTestCase):
 
     def test__finds_all_matching_interfaces(self):
         network = factory.make_ipv4_network()
-        interfaces = [make_interface(network=network) for _ in xrange(3)]
+        interfaces = [make_interface(network=network) for _ in range(3)]
         address = factory.pick_ip_in_network(network)
         self.assertSequenceEqual(interfaces, self.find(address))
         self.assertEqual(interfaces[0], self.get(address))
@@ -158,10 +149,10 @@ class TestFindingByAddress(MAASServerTestCase):
     def test__finds_only_matching_interfaces(self):
         network1 = factory.make_ipv4_network()
         network1_addr = factory.pick_ip_in_network(network1)
-        network1_ifs = [make_interface(network=network1) for _ in xrange(3)]
+        network1_ifs = [make_interface(network=network1) for _ in range(3)]
         network2 = factory.make_ipv4_network(disjoint_from=[network1])
         network2_addr = factory.pick_ip_in_network(network2)
-        network2_ifs = [make_interface(network=network2) for _ in xrange(3)]
+        network2_ifs = [make_interface(network=network2) for _ in range(3)]
         self.assertSequenceEqual(network1_ifs, self.find(network1_addr))
         self.assertSequenceEqual(network2_ifs, self.find(network2_addr))
         self.assertEqual(network1_ifs[0], self.get(network1_addr))
@@ -181,7 +172,7 @@ class TestFindingByAddressForStaticAllocation(MAASServerTestCase):
     def test__finds_only_interfaces_with_static_range(self):
         network = factory.make_ipv4_network()
         address = factory.pick_ip_in_network(network)
-        interfaces = [make_interface(network) for _ in xrange(4)]
+        interfaces = [make_interface(network) for _ in range(4)]
 
         if1, if2, if3, if4 = interfaces
         # if1 is left alone.
@@ -330,7 +321,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
         interface.full_clean()
-        self.assertEqual(unicode(network.broadcast), interface.broadcast_ip)
+        self.assertEqual(str(network.broadcast), interface.broadcast_ip)
 
     def test_clean_network_config_sets_no_broadcast_without_netmask(self):
         network = factory.make_ipv4_network()
@@ -381,13 +372,13 @@ class TestNodeGroupInterface(MAASServerTestCase):
     def test_clean_ip_ranges_works_with_ipv6_ranges(self):
         network = factory.make_ipv6_network()
         interface = make_interface(network)
-        interface.ip_range_low = unicode(
+        interface.ip_range_low = str(
             IPAddress(network.first))
-        interface.ip_range_high = unicode(
+        interface.ip_range_high = str(
             IPAddress(network.last))
-        interface.static_ip_range_low = unicode(
+        interface.static_ip_range_low = str(
             IPAddress(network.first + 1))
-        interface.static_ip_range_high = unicode(
+        interface.static_ip_range_high = str(
             IPAddress(network.last - 1))
         exception = self.assertRaises(
             ValidationError, interface.full_clean)
@@ -678,8 +669,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=factory.make_ipv6_network(slash=64))
         network = factory.make_ipv6_network(slash=64)
-        static_low = unicode(IPAddress(network.first + 1))
-        static_high = unicode(IPAddress(network.last - 1))
+        static_low = str(IPAddress(network.first + 1))
+        static_high = str(IPAddress(network.last - 1))
         extra_interface = NodeGroupInterface(
             nodegroup=cluster, interface=net_interface,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
@@ -836,9 +827,9 @@ class TestNodeGroupInterfacePostSaveHandler(MAASServerTestCase):
             ng, ip='10.0.0.1', subnet_mask='255.255.255.0')
         subnet = reload_object(ngi.subnet)
         self.assertThat(
-            unicode(subnet.get_ipnetwork().netmask), Equals('255.255.255.0'))
+            str(subnet.get_ipnetwork().netmask), Equals('255.255.255.0'))
         ngi.subnet_mask = '255.255.0.0'
         ngi.save()
         subnet = reload_object(ngi.subnet)
         self.assertThat(
-            unicode(subnet.get_ipnetwork().netmask), Equals('255.255.0.0'))
+            str(subnet.get_ipnetwork().netmask), Equals('255.255.0.0'))

@@ -3,15 +3,6 @@
 
 """Tests for `BlockDevice`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -70,7 +61,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.name, user, NODE_PERMISSION.VIEW).id)
 
@@ -87,7 +78,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node()
         device = factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
 
@@ -95,7 +86,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         device = factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.id, user, NODE_PERMISSION.VIEW).id)
 
@@ -112,7 +103,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         device = factory.make_BlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.id, user, NODE_PERMISSION.EDIT).id)
 
@@ -129,7 +120,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
 
@@ -157,7 +148,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         user = factory.make_admin()
         node = factory.make_Node()
         device = factory.make_BlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             device.id, BlockDevice.objects.get_block_device_or_404(
                 node.system_id, device.id, user, NODE_PERMISSION.ADMIN).id)
 
@@ -281,17 +272,17 @@ class TestBlockDevice(MAASServerTestCase):
 
     def test_path(self):
         block_device = factory.make_PhysicalBlockDevice()
-        self.assertEquals(
+        self.assertEqual(
             "/dev/disk/by-dname/%s" % block_device.name,
             block_device.path)
 
     def test_type_physical(self):
         block_device = factory.make_PhysicalBlockDevice()
-        self.assertEquals("physical", block_device.type)
+        self.assertEqual("physical", block_device.type)
 
     def test_type_virtual(self):
         block_device = factory.make_VirtualBlockDevice()
-        self.assertEquals("virtual", block_device.type)
+        self.assertEqual("virtual", block_device.type)
 
     def test_type_raise_ValueError(self):
         block_device = factory.make_BlockDevice()
@@ -320,7 +311,7 @@ class TestBlockDevice(MAASServerTestCase):
             blockdevice_module, "get_effective_filesystem")
         mock_get_effective_filesystem.return_value = sentinel.filesystem
         block_device = factory.make_BlockDevice()
-        self.assertEquals(
+        self.assertEqual(
             sentinel.filesystem, block_device.get_effective_filesystem())
 
     def test_display_size(self):
@@ -342,7 +333,7 @@ class TestBlockDevice(MAASServerTestCase):
     def test_get_name(self):
         name = factory.make_name("name")
         block_device = BlockDevice(name=name)
-        self.assertEquals(name, block_device.get_name())
+        self.assertEqual(name, block_device.get_name())
 
     def test_add_tag_adds_new_tag(self):
         block_device = BlockDevice()
@@ -403,7 +394,7 @@ class TestBlockDevice(MAASServerTestCase):
         VolumeGroup.objects.create_volume_group(
             factory.make_name("vg"), [block_device], [])
         error = self.assertRaises(ValidationError, block_device.delete)
-        self.assertEquals(
+        self.assertEqual(
             "Cannot delete block device because its part of a volume group.",
             error.message)
 
@@ -466,7 +457,7 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
         newname = factory.make_name("name")
         virtual_device.name = newname
         virtual_device.save()
-        self.assertEquals(newname, reload_object(filesystem_group).name)
+        self.assertEqual(newname, reload_object(filesystem_group).name)
 
     def test__doesnt_update_filesystem_group_name_when_volume_group(self):
         virtual_device = factory.make_VirtualBlockDevice()
@@ -475,7 +466,7 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
         newname = factory.make_name("name")
         virtual_device.name = newname
         virtual_device.save()
-        self.assertEquals(group_name, reload_object(filesystem_group).name)
+        self.assertEqual(group_name, reload_object(filesystem_group).name)
 
 
 class TestBlockDevicePostDelete(MAASServerTestCase):

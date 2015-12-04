@@ -3,15 +3,6 @@
 
 """Tests for the NodeGroup model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from random import randint
@@ -807,7 +798,7 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_api_credentials(self):
         nodegroup = factory.make_NodeGroup()
-        self.assertThat(nodegroup.api_credentials, IsInstance(unicode))
+        self.assertThat(nodegroup.api_credentials, IsInstance(str))
         consumer_key, token_key, token_secret = (
             convert_string_to_tuple(nodegroup.api_credentials))
         self.expectThat(consumer_key, Equals(nodegroup.api_token.consumer.key))

@@ -3,22 +3,12 @@
 
 """Populate what nodes are associated with a tag."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'populate_tags',
     'populate_tags_for_single_node',
     ]
 
 from functools import partial
-from itertools import izip
 
 from lxml import etree
 from maasserver import logger
@@ -89,7 +79,7 @@ def _do_populate_tags(clusters, tag_name, tag_definition, tag_nsmap):
     creds = {uuid: creds for uuid, _, creds in clusters}
     tag_nsmap_on_wire = [
         {"prefix": prefix, "uri": uri}
-        for prefix, uri in tag_nsmap.viewitems()
+        for prefix, uri in tag_nsmap.items()
     ]
 
     def make_call(client):
@@ -104,7 +94,7 @@ def _do_populate_tags(clusters, tag_name, tag_definition, tag_nsmap):
             consumeErrors=True)
 
     def check_results(results):
-        for (uuid, name, creds), (success, result) in izip(clusters, results):
+        for (uuid, name, creds), (success, result) in zip(clusters, results):
             if success:
                 maaslog.info(
                     "Tag %s (%s) evaluated on cluster %s (%s)", tag_name,
@@ -143,7 +133,7 @@ def _get_clients_for_populating_tags(clusters, tag_name):
 
     def got_clients(results):
         clients = []
-        for (uuid, name), (success, result) in izip(clusters, results):
+        for (uuid, name), (success, result) in zip(clusters, results):
             if success:
                 clients.append(result)
             else:

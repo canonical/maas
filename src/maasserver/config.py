@@ -3,39 +3,35 @@
 
 """Configuration for the MAAS region."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "RegionConfiguration",
 ]
 
 from os import path
 
-from formencode.validators import UnicodeString
 from provisioningserver.config import (
     Configuration,
     ConfigurationFile,
     ConfigurationMeta,
     ConfigurationOption,
-    ExtendedURL,
     is_dev_environment,
+)
+from provisioningserver.utils.config import (
+    ExtendedURL,
+    UnicodeString,
 )
 
 
-class RegionConfiguration(Configuration):
-    """Local configuration for the MAAS region."""
+class RegionConfigurationMeta(ConfigurationMeta):
+    """Local meta-configuration for the MAAS region."""
 
-    class __metaclass__(ConfigurationMeta):
-        envvar = "MAAS_REGION_CONFIG"
-        default = "/etc/maas/regiond.conf"
-        backend = ConfigurationFile
+    envvar = "MAAS_REGION_CONFIG"
+    default = "/etc/maas/regiond.conf"
+    backend = ConfigurationFile
+
+
+class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
+    """Local configuration for the MAAS region."""
 
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.", ExtendedURL(

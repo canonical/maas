@@ -1,15 +1,7 @@
 #!/usr/bin/python
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    # unicode_literals,
-    )
-
 # TODO: Don't use str.  It stands in the way of Python 3 compatibility.
 # str = None
-
-__metaclass__ = type
 
 import json
 import mimetypes
@@ -18,7 +10,9 @@ import random
 import socket
 import string
 import sys
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from maas_api_helper import (
     geturl,
@@ -211,9 +205,9 @@ def main():
             raise TypeError("Unexpected result from call: %s" % payload)
         else:
             msg = "Success"
-    except urllib2.HTTPError as exc:
+    except urllib.error.HTTPError as exc:
         msg = "http error [%s]" % exc.code
-    except urllib2.URLError as exc:
+    except urllib.error.URLError as exc:
         msg = "url error [%s]" % exc.reason
     except socket.timeout as exc:
         msg = "socket timeout [%s]" % exc

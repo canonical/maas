@@ -3,15 +3,6 @@
 
 """Tests for creating disks for diskless booting."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -241,7 +232,7 @@ class TestTgtHelpers(DisklessTestMixin, MAASTestCase):
             factory.make_file(storage_dir, system_id)
             tgt_entries.append(
                 tgt_entry(system_id, os.path.join(storage_dir, system_id)))
-        tgt_output = compose_diskless_tgt_config()
+        tgt_output = compose_diskless_tgt_config().decode("utf-8")
         self.assertItemsEqual(
             tgt_entries, [
                 '%s</target>\n' % entry

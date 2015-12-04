@@ -3,20 +3,11 @@
 
 """Low-level composition code for preseeds."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'compose_preseed',
     ]
 
-from urllib import urlencode
+from urllib.parse import urlencode
 
 from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.enum import PRESEED_TYPE

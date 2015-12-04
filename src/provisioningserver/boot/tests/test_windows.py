@@ -4,17 +4,9 @@
 
 """Tests for `provisioningserver.boot.windows`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+import io
 import logging
 import os
 import shutil
@@ -31,7 +23,10 @@ from maastesting.twisted import (
     always_succeed_with,
 )
 import mock
-from mock import sentinel
+from mock import (
+    sentinel,
+    ANY,
+)
 from provisioningserver.boot import (
     BootMethodError,
     BytesReader,
@@ -133,7 +128,7 @@ class TestBcd(MAASTestCase):
         mock_uid_1 = factory.make_name('uid')
         bcd = self.configure_bcd(uids=[mock_uid_0, mock_uid_1])
 
-        fake_value = factory.make_name('value')
+        fake_value = factory.make_name('value').encode("ascii")
         mock_get_load_options_key = self.patch(Bcd, '_get_load_options_key')
         mock_get_load_options_key.return_value = None
 
@@ -353,10 +348,12 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         self.patch(shutil, 'copyfile')
         self.patch(windows_module, 'Bcd')
 
-        with mock.patch(
-                'provisioningserver.boot.windows.open',
-                mock.mock_open(read_data=fake_output), create=True):
-            output = method.compose_bcd(kernel_params, local_host)
+        # https://bugs.python.org/issue23004 -- mock_open() should allow
+        # reading binary data -- prevents the use of mock_open() here.
+        self.patch(windows_module, "open")
+        windows_module.open.return_value = io.BytesIO(fake_output)
+        output = method.compose_bcd(kernel_params, local_host)
+        self.assertThat(windows_module.open, MockCalledOnceWith(ANY, "rb"))
 
         self.assertTrue(isinstance(output, BytesReader))
         self.assertEqual(fake_output, output.read(-1))
@@ -385,7 +382,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_output_static(self):
         method = WindowsPXEBootMethod()
-        contents = factory.make_string()
+        contents = factory.make_bytes()
         temp_dir = self.make_dir()
         filename = factory.make_file(temp_dir, "resource", contents=contents)
         self.patch(method, 'get_resource_path').return_value = filename

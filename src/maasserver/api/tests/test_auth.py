@@ -3,15 +3,6 @@
 
 """Test `api.auth` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.api.auth import OAuthUnauthorized
@@ -28,7 +19,7 @@ class TestOAuthUnauthorized(MAASTestCase):
         original_exception = oauth.OAuthError(error_msg)
         maas_exception = OAuthUnauthorized(original_exception)
         self.assertThat(
-            unicode(maas_exception),
+            str(maas_exception),
             Contains("Authorization Error: %r" % error_msg))
 
     def test_exception_unicode_includes_user_friendly_message(self):
@@ -37,5 +28,5 @@ class TestOAuthUnauthorized(MAASTestCase):
         original_exception = oauth.OAuthError('Invalid consumer.')
         maas_exception = OAuthUnauthorized(original_exception)
         self.assertThat(
-            unicode(maas_exception),
+            str(maas_exception),
             Contains("Authorization Error: Invalid API key."))

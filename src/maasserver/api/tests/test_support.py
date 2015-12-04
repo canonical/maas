@@ -3,20 +3,11 @@
 
 """Tests for API helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
 from collections import namedtuple
-import httplib
+import http.client
 
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -62,7 +53,7 @@ class TestOperationsResource(APITestCase):
                 'name': name,
             })
         self.assertEqual(
-            httplib.INTERNAL_SERVER_ERROR, response.status_code,
+            http.client.INTERNAL_SERVER_ERROR, response.status_code,
             response.content)
 
     def test_api_hash_is_set_in_headers(self):
@@ -111,12 +102,12 @@ class TestOperationsHandlerMixin(MAASTestCase):
     """Tests for :py:class:`maasserver.api.support.OperationsHandlerMixin`."""
 
     def make_handler(self, **namespace):
-        return type(b"TestHandler", (OperationsHandlerMixin,), namespace)
+        return type("TestHandler", (OperationsHandlerMixin,), namespace)
 
     def test__decorate_decorates_exports(self):
         handler = self.make_handler(
             exports={"foo": sentinel.foo, "bar": sentinel.bar})
-        handler.decorate(lambda thing: unicode(thing).upper())
+        handler.decorate(lambda thing: str(thing).upper())
         self.assertEqual(
             {"foo": "SENTINEL.FOO", "bar": "SENTINEL.BAR"},
             handler.exports)
@@ -124,6 +115,6 @@ class TestOperationsHandlerMixin(MAASTestCase):
     def test__decorate_decorates_anonymous_exports(self):
         handler = self.make_handler(exports={"foo": sentinel.foo})
         handler.anonymous = self.make_handler(exports={"bar": sentinel.bar})
-        handler.decorate(lambda thing: unicode(thing).upper())
+        handler.decorate(lambda thing: str(thing).upper())
         self.assertEqual({"foo": "SENTINEL.FOO"}, handler.exports)
         self.assertEqual({"bar": "SENTINEL.BAR"}, handler.anonymous.exports)

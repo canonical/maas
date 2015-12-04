@@ -3,15 +3,6 @@
 
 """:class:`NodeResult` model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'NodeResult',
     ]
@@ -116,7 +107,7 @@ class NodeResult(CleanSave, TimestampedModel):
         max_length=1024 * 1024, editable=True, blank=True, default=b'',
         null=False)
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s/%s" % (self.node.system_id, self.name)
 
     def get_data_as_html(self):

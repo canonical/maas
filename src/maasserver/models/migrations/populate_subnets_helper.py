@@ -16,15 +16,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from netaddr import IPNetwork
@@ -43,7 +34,7 @@ def _get_cidr(ip, subnet_mask):
     # vague: MAASIPAddressField seems to represent nulls as empty
     # strings.
     if subnet_mask:
-        return unicode(IPNetwork("%s/%s" % (ip, subnet_mask)).cidr)
+        return str(IPNetwork("%s/%s" % (ip, subnet_mask)).cidr)
     else:
         return None
 

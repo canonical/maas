@@ -3,29 +3,17 @@
 
 """Tests for provisioning configuration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import contextlib
 from operator import methodcaller
 import os.path
-import random
-import re
 import sqlite3
 from uuid import uuid4
 
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
-from formencode.validators import Invalid
 from maastesting.factory import factory
 from maastesting.fixtures import ImportErrorFixture
 from maastesting.matchers import (
@@ -41,10 +29,7 @@ from provisioningserver.config import (
     ConfigurationFile,
     ConfigurationMeta,
     ConfigurationOption,
-    Directory,
-    ExtendedURL,
     is_dev_environment,
-    UUID,
 )
 from provisioningserver.path import get_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -59,176 +44,24 @@ from testtools.matchers import (
 from twisted.python.filepath import FilePath
 import yaml
 
-
-class TestUUID(MAASTestCase):
-    """Tests for `Directory`."""
-
-    def test__validation_succeeds_when_uuid_is_good(self):
-        uuid = unicode(uuid4())
-        validator = UUID(accept_python=False)
-        self.assertEqual(uuid, validator.from_python(uuid))
-        self.assertEqual(uuid, validator.to_python(uuid))
-
-    def test__validation_fails_when_uuid_is_bad(self):
-        uuid = unicode(uuid4()) + "can't-be-a-uuid"
-        validator = UUID(accept_python=False)
-        expected_exception = ExpectedException(
-            formencode.validators.Invalid, "^%s$" % re.escape(
-                "%r Failed to parse UUID" % uuid))
-        with expected_exception:
-            validator.from_python(uuid)
-        with expected_exception:
-            validator.to_python(uuid)
-
-
-class TestDirectory(MAASTestCase):
-    """Tests for `Directory`."""
-
-    def test__validation_succeeds_when_directory_exists(self):
-        directory = self.make_dir()
-        validator = Directory(accept_python=False)
-        self.assertEqual(directory, validator.from_python(directory))
-        self.assertEqual(directory, validator.to_python(directory))
-
-    def test__validation_fails_when_directory_does_not_exist(self):
-        directory = os.path.join(self.make_dir(), "not-here")
-        validator = Directory(accept_python=False)
-        expected_exception = ExpectedException(
-            formencode.validators.Invalid, "^%s$" % re.escape(
-                "%r does not exist or is not a directory" % directory))
-        with expected_exception:
-            validator.from_python(directory)
-        with expected_exception:
-            validator.to_python(directory)
-
-
-class TestExtendedURL(MAASTestCase):
-    def setUp(self):
-        super(TestExtendedURL, self).setUp()
-        self.validator = ExtendedURL(
-            require_tld=False,
-            accept_python=False)
-
-    def test_takes_numbers_anywhere(self):
-        # Could use factory.make_string() here, as it contains
-        # digits, but this is a little bit more explicit and
-        # clear to troubleshoot.
-
-        hostname = '%dstart' % random.randint(0, 9)
-        url = factory.make_simple_http_url(netloc=hostname)
-
-        hostname = 'mid%ddle' % random.randint(0, 9)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        hostname = 'end%d' % random.randint(0, 9)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-    def test_takes_hyphen_but_not_start_or_end(self):
-        # Reject leading hyphen
-        hostname = '-start'
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-        # Allow hyphens in the middle
-        hostname = 'mid-dle'
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Reject trailing hyphen
-        hostname = 'end-'
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-    def test_allows_hostnames_as_short_as_a_single_char(self):
-        # Single digit
-        hostname = unicode(random.randint(0, 9))
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Single char
-        hostname = factory.make_string(1)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Reject single hyphen
-        hostname = '-'
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-    def test_allows_hostnames_up_to_63_chars_long(self):
-        max_length = 63
-
-        # Alow 63 chars
-        hostname = factory.make_string(max_length)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Reject 64 chars
-        hostname = factory.make_string(max_length + 1)
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-    def test_allows_domain_names_up_to_63_chars_long(self):
-        max_length = 63
-
-        # Alow 63 chars without hypen
-        hostname = '%s.example.com' % factory.make_string(max_length)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Reject 64 chars without hypen
-        hostname = '%s.example.com' % factory.make_string(max_length + 1)
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-        # Alow 63 chars with hypen
-        hyphen_loc = random.randint(1, max_length - 1)
-        name = factory.make_string(max_length - 1)
-        hname = name[:hyphen_loc] + '-' + name[hyphen_loc:]
-        hostname = '%s.example.com' % (hname)
-        url = factory.make_simple_http_url(netloc=hostname)
-        self.assertEqual(url, self.validator.to_python(url), "url: %s" % url)
-
-        # Reject 64 chars with hypen
-        hyphen_loc = random.randint(1, max_length)
-        name = factory.make_string(max_length)
-        hname = name[:hyphen_loc] + '-' + name[hyphen_loc:]
-        hostname = '%s.example.com' % (hname)
-        url = factory.make_simple_http_url(netloc=hostname)
-        with ExpectedException(Invalid, 'That is not a valid URL'):
-            self.assertEqual(url, self.validator.to_python(url),
-                             "url: %s" % url)
-
-
 ###############################################################################
 # New configuration API follows.
 ###############################################################################
 
 
-class ExampleConfiguration(Configuration):
+class ExampleConfigurationMeta(ConfigurationMeta):
+    envvar = "MAAS_TESTING_SETTINGS"
+    default = get_path("example.db")
+    backend = None  # Define this in sub-classes.
+
+
+class ExampleConfiguration(Configuration, metaclass=ExampleConfigurationMeta):
     """An example configuration object.
 
     It derives from :class:`ConfigurationBase` and has a metaclass derived
     from :class:`ConfigurationMeta`, just as a "real" configuration object
     must.
     """
-
-    class __metaclass__(ConfigurationMeta):
-        envvar = "MAAS_TESTING_SETTINGS"
-        default = get_path("example.db")
-        backend = None  # Define this in sub-classes.
 
     something = ConfigurationOption(
         "something", "Something alright, don't know what, just something.",
@@ -435,7 +268,7 @@ class TestConfigurationDatabase(MAASTestCase):
         # the database on exit.
         config_file = os.path.join(self.make_dir(), "config")
         config = ConfigurationDatabase.open(config_file)
-        self.assertIsInstance(config, contextlib.GeneratorContextManager)
+        self.assertIsInstance(config, contextlib._GeneratorContextManager)
         with config as config:
             self.assertIsInstance(config, ConfigurationDatabase)
             with config.cursor() as cursor:
@@ -533,7 +366,7 @@ class TestConfigurationFile(MAASTestCase):
 
     def test_load_empty_file_results_in_empty_config(self):
         config_file = os.path.join(self.make_dir(), "config")
-        with open(config_file, "wb"):
+        with open(config_file, "w"):
             pass  # Write nothing to the file.
         config = ConfigurationFile(config_file)
         config.load()
@@ -541,19 +374,19 @@ class TestConfigurationFile(MAASTestCase):
 
     def test_load_file_with_non_mapping_crashes(self):
         config_file = os.path.join(self.make_dir(), "config")
-        with open(config_file, "wb") as fd:
+        with open(config_file, "w") as fd:
             yaml.safe_dump([1, 2, 3], stream=fd)
         config = ConfigurationFile(config_file)
         error = self.assertRaises(ValueError, config.load)
         self.assertDocTestMatches(
             "Configuration in /.../config is not a mapping: [1, 2, 3]",
-            unicode(error))
+            str(error))
 
     def test_open_and_close(self):
         # ConfigurationFile.open() returns a context manager.
         config_file = os.path.join(self.make_dir(), "config")
         config_ctx = ConfigurationFile.open(config_file)
-        self.assertIsInstance(config_ctx, contextlib.GeneratorContextManager)
+        self.assertIsInstance(config_ctx, contextlib._GeneratorContextManager)
         with config_ctx as config:
             self.assertIsInstance(config, ConfigurationFile)
             self.assertThat(config_file, FileExists())
@@ -725,9 +558,9 @@ class TestClusterConfiguration(MAASTestCase):
         example_uuid = uuid4()
         config = ClusterConfiguration({})
         config.cluster_uuid = example_uuid
-        self.assertEqual(unicode(example_uuid), config.cluster_uuid)
+        self.assertEqual(str(example_uuid), config.cluster_uuid)
         # It's also stored in the configuration database.
-        self.assertEqual({"cluster_uuid": unicode(example_uuid)}, config.store)
+        self.assertEqual({"cluster_uuid": str(example_uuid)}, config.store)
 
 
 class TestClusterConfigurationTFTPGeneratorURL(MAASTestCase):

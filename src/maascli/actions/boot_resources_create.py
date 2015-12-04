@@ -3,23 +3,14 @@
 
 """MAAS Boot Resources Action."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'action_class'
     ]
 
-from cStringIO import StringIO
 import hashlib
+from io import BytesIO
 import json
-from urlparse import urljoin
+from urllib.parse import urljoin
 
 from apiclient.multipart import (
     build_multipart_message,
@@ -119,7 +110,7 @@ class BootResourcesCreateAction(Action):
         data['size'] = '%s' % size
         data['sha256'] = sha256
 
-        data = [(key, value) for key, value in data.items()]
+        data = sorted((key, value) for key, value in data.items())
         message = build_multipart_message(data)
         headers, body = encode_multipart_message(message)
         return body, headers
@@ -162,7 +153,7 @@ class BootResourcesCreateAction(Action):
         if self.credentials is not None:
             self.sign(upload_uri, headers, self.credentials)
         # httplib2 expects the body to be file-like if its binary data
-        data = StringIO(data)
+        data = BytesIO(data)
         response, content = http_request(
             upload_uri, 'PUT', body=data, headers=headers,
             insecure=insecure)

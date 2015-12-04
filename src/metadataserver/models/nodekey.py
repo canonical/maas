@@ -3,15 +3,6 @@
 
 """:class:`NodeKey` model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'NodeKey',
     ]
@@ -24,25 +15,13 @@ from django.db.models import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
-from maasserver.utils.django import has_builtin_migrations
 from maasserver.utils.orm import get_one
 from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
-
-# To support upgrading from MAAS versions <2.0 the piston module was named
-# 'piston' not 'piston3'. Even though 'piston' and 'piston3' module are the
-# same the import names are important because it will break south migrations
-# unless piston is imported as 'piston'.
-if has_builtin_migrations():
-    from piston3.models import (
-        KEY_SIZE,
-        Token,
-    )
-else:
-    from piston.models import (
-        KEY_SIZE,
-        Token,
-    )
+from piston3.models import (
+    KEY_SIZE,
+    Token,
+)
 
 
 class NodeKeyManager(Manager):

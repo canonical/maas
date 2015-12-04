@@ -3,16 +3,6 @@
 
 """Django settings for maas project."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import os
 from sys import stdout
 
@@ -34,7 +24,7 @@ def _read_timezone(tzfilename='/etc/timezone'):
     if os.path.isfile(tzfilename):
         try:
             with open(tzfilename, 'rb') as tzfile:
-                return tzfile.read().strip()
+                return tzfile.read().decode('ascii').strip()
         except IOError:
             pass
     return None
@@ -54,6 +44,7 @@ def _get_local_timezone(tzfilename='/etc/timezone'):
     else:
         # If this fails, just use 'UTC', which should always exist.
         return 'UTC'
+
 
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
@@ -297,16 +288,8 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'maasserver',
     'metadataserver',
+    'piston3',
 )
-
-if django.VERSION >= (1, 7):
-    INSTALLED_APPS += (
-        'piston3',
-    )
-else:
-    INSTALLED_APPS += (
-        'piston',
-    )
 
 if DEBUG:
     INSTALLED_APPS += (

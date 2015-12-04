@@ -3,15 +3,6 @@
 
 """Tests for power parameters."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from django import forms
@@ -72,7 +63,7 @@ class TestPowerActionRendering(MAASServerTestCase):
         script = action.render_template(
             action.get_template(), action.update_context(params))
         # The real check is that the rendering went fine.
-        self.assertIsInstance(script, bytes)
+        self.assertIsInstance(script, str)
 
 
 class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
@@ -100,7 +91,7 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
         }]
         power_type_parameters = get_power_type_parameters_from_json(
             json_parameters)
-        self.assertEqual(['', 'something'], power_type_parameters.keys())
+        self.assertEqual(['', 'something'], list(power_type_parameters))
 
     def test_creates_dict_char_fields(self):
         json_parameters = [{

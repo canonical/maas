@@ -3,15 +3,6 @@
 
 """Miscellaneous fixtures, here until they find a better home."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "CaptureStandardIO",
     "DetectLeakedFileDescriptors",
@@ -22,10 +13,13 @@ __all__ = [
     "TempDirectory",
 ]
 
-import __builtin__
+import builtins
 import codecs
 from errno import ENOENT
-from io import BytesIO
+from io import (
+    BytesIO,
+    TextIOWrapper,
+)
 import logging
 import os
 from subprocess import (
@@ -76,10 +70,10 @@ class ImportErrorFixture(Fixture):
 
             return self.__real_import(name, *import_args, **kwargs)
 
-        self.__real_import = __builtin__.__import__
-        __builtin__.__import__ = mock_import
+        self.__real_import = builtins.__import__
+        builtins.__import__ = mock_import
 
-        self.addCleanup(setattr, __builtin__, "__import__", self.__real_import)
+        self.addCleanup(setattr, builtins, "__import__", self.__real_import)
 
 
 class LoggerSilencerFixture(Fixture):
@@ -145,7 +139,7 @@ class DisplayFixture(Fixture):
     def setUp(self):
         super(DisplayFixture, self).setUp()
         self.process = Popen(self.command, stdin=PIPE, stdout=PIPE)
-        self.display = self.process.stdout.readline().strip()
+        self.display = self.process.stdout.readline().decode("ascii").strip()
         if not self.display or self.process.poll() is not None:
             raise CalledProcessError(self.process.returncode, self.command)
         self.useFixture(EnvironmentVariableFixture("DISPLAY", self.display))
@@ -163,15 +157,15 @@ class SeleniumFixture(Fixture):
     # browser-name -> (driver-name, driver-args)
     browsers = {
         "Chrome": (
-            b"selenium.webdriver.Chrome",
+            "selenium.webdriver.Chrome",
             ("/usr/lib/chromium-browser/chromedriver",),
         ),
         "Firefox": (
-            b"selenium.webdriver.Firefox",
+            "selenium.webdriver.Firefox",
             (),
         ),
         "PhantomJS": (
-            b"selenium.webdriver.PhantomJS",
+            "selenium.webdriver.PhantomJS",
             (),
         ),
     }
@@ -277,6 +271,7 @@ class CaptureStandardIO(Fixture):
     def __init__(self, encoding="utf-8"):
         super(CaptureStandardIO, self).__init__()
         self.codec = codecs.lookup(encoding)
+        self.encoding = encoding
         # Create new buffers.
         self._buf_in = BytesIO()
         self._buf_out = BytesIO()
@@ -286,14 +281,17 @@ class CaptureStandardIO(Fixture):
         super(CaptureStandardIO, self).setUp()
         self.patcher = MonkeyPatcher()
         self.addCleanup(self.patcher.restore)
-        # Convenience.
-        reader = self.codec.streamreader
-        writer = self.codec.streamwriter
-        # Patch sys.std* and self.std*.
-        self._addStream("stdin", reader(self._buf_in))
-        self._addStream("stdout", writer(self._buf_out))
-        self._addStream("stderr", writer(self._buf_err))
+        # Patch sys.std* and self.std*. Use TextIOWrapper to provide an
+        # identical API to the "real" stdin, stdout, and stderr objects.
+        self._addStream("stdin", self._wrapStream(self._buf_in))
+        self._addStream("stdout", self._wrapStream(self._buf_out))
+        self._addStream("stderr", self._wrapStream(self._buf_err))
         self.patcher.patch()
+
+    def _wrapStream(self, stream):
+        return TextIOWrapper(
+            stream, encoding=self.encoding,
+            write_through=True)
 
     def _addStream(self, name, stream):
         self.patcher.add_patch(self, name, stream)
@@ -402,5 +400,5 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
             message = ["File descriptor(s) leaked:"]
             message.extend(
                 "* %s --> %s" % (fd, desc)
-                for (fd, desc) in fds_new.viewitems())
+                for (fd, desc) in fds_new.items())
             raise AssertionError("\n".join(message))

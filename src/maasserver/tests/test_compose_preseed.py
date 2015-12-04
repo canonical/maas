@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.compose_preseed`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.compose_preseed import (
@@ -106,7 +97,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS'],
             KeysEqual(
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
-        self.assertEquals(apt_proxy, preseed['apt_proxy'])
+        self.assertEqual(apt_proxy, preseed['apt_proxy'])
         self.assertThat(
             preseed['reporting']['maas'],
             KeysEqual(

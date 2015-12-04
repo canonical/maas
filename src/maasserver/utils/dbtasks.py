@@ -8,15 +8,6 @@ A service that runs deferred database operations, and then ensures they're
 finished before stopping.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "DatabaseTaskAlreadyRunning",
     "DatabaseTasksService",

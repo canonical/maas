@@ -3,15 +3,6 @@
 
 """Service to periodically refresh the boot images."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "ImageDownloadService",
     ]
@@ -28,6 +19,7 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
     GetProxies,
 )
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -38,7 +30,6 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.python import log
-from twisted.spread.pb import NoSuchMethod
 
 
 maaslog = get_maas_logger("boot_image_download_service")
@@ -82,7 +73,7 @@ class ImageDownloadService(TimerService, object):
         """Gets the boot sources from the region."""
         try:
             sources = yield client(GetBootSourcesV2, uuid=self.uuid)
-        except NoSuchMethod:
+        except UnhandledCommand:
             # Region has not been upgraded to support the new call, use the
             # old call. The old call did not provide the new os selection
             # parameter. Region does not support boot source selection by os,

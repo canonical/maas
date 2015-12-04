@@ -3,19 +3,9 @@
 
 """Check there's no lint in the tree."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from difflib import unified_diff
-from itertools import ifilter
 from os import (
     mkdir,
     walk,
@@ -69,11 +59,11 @@ class TestLint(MAASTestCase):
 
         # Copy all visible Python source files over.
         for dirpath, dirnames, filenames in walk(root):
-            dirnames[:] = ifilter(p_visible, dirnames)
+            dirnames[:] = filter(p_visible, dirnames)
             dirpath_export = join(root_export, relpath(dirpath, start=root))
             for dirname in dirnames:
                 mkdir(join(dirpath_export, dirname))
-            for filename in ifilter(p_visible, filenames):
+            for filename in filter(p_visible, filenames):
                 if p_is_python(filename):
                     src = join(dirpath, filename)
                     dst = join(dirpath_export, filename)
@@ -97,19 +87,20 @@ class TestLint(MAASTestCase):
         for dirpath, dirnames, filenames in walk(root_export):
             dirpath_relative = relpath(dirpath, start=root_export)
             dirpath_original = join(root, dirpath_relative)
-            for filename in ifilter(p_is_python, filenames):
+            for filename in filter(p_is_python, filenames):
                 filepath_original = join(dirpath_original, filename)
-                with open(filepath_original, "rb") as file_original:
-                    file_lines_original = file_original.readlines()
+                with open(filepath_original, "r", encoding="utf8") as f:
+                    file_lines_original = f.readlines()
                 filepath_formatted = join(dirpath, filename)
-                with open(filepath_formatted, "rb") as file_formatted:
-                    file_lines_formatted = file_formatted.readlines()
+                with open(filepath_formatted, "r", encoding="utf8") as f:
+                    file_lines_formatted = f.readlines()
                 diff.extend(unified_diff(
                     file_lines_original, file_lines_formatted,
                     filepath_original, filepath_formatted))
 
         if len(diff) != 0:
-            self.addDetail("diff", Content(UTF8_TEXT, lambda: diff))
+            self.addDetail("diff", Content(
+                UTF8_TEXT, lambda: (line.encode("utf8") for line in diff)))
             self.fail(
                 "Some imports are not formatted; see the diff for the "
                 "missing changes. Use `make format` to address them.")

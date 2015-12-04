@@ -3,23 +3,17 @@
 
 """Tests for the metadata progress reporting API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import base64
 import bz2
-import httplib
+import http.client
 import json
-import urllib
+import urllib.error
+import urllib.parse
+import urllib.request
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
@@ -42,6 +36,7 @@ from metadataserver.models import (
 )
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
+from provisioningserver.utils import typed
 
 
 def make_node_client(node=None):
@@ -50,6 +45,11 @@ def make_node_client(node=None):
         node = factory.make_Node()
     token = NodeKey.objects.get_token_for_node(node)
     return OAuthAuthenticatedClient(get_node_init_user(), token)
+
+
+@typed
+def encode_as_base64(content: bytes) -> str:
+    return base64.encodebytes(content).decode("ascii")
 
 
 def call_status(client=None, node=None, payload=None):
@@ -75,7 +75,7 @@ class TestStatusAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = OAuthAuthenticatedClient(factory.make_User())
         response = call_status(client, node)
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
         # No node events were logged.
@@ -93,7 +93,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node1, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node2).status)
         # Check last node1 event.
@@ -114,7 +114,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         # Check last node event.
         self.assertEqual(
@@ -135,8 +135,8 @@ class TestStatusAPI(MAASServerTestCase):
         url = reverse('metadata-status', args=[node.system_id])
         response = client.post(
             url, content_type='application/json',
-            data=urllib.urlencode(payload))
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+            data=urllib.parse.urlencode(payload))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_status_comissioning_success_populates_tags(self):
         populate_tags_for_single_node = self.patch(
@@ -152,7 +152,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             populate_tags_for_single_node,
             MockCalledOnceWith(ANY, node))
@@ -170,7 +170,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
@@ -189,7 +189,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockCalledOnceWith(node))
@@ -206,7 +206,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         # Check last node event.
@@ -228,7 +228,7 @@ class TestStatusAPI(MAASServerTestCase):
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         self.assertIsNone(reload_object(node).owner)
@@ -244,7 +244,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         # Check last node event.
@@ -263,7 +263,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         # Check last node event.
@@ -285,7 +285,7 @@ class TestStatusAPI(MAASServerTestCase):
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
         self.assertIsNotNone(reload_object(node).owner)
@@ -304,7 +304,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Commissioning',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
@@ -321,7 +321,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Erasing disk',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
         # Check last node event.
@@ -343,7 +343,7 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Erasing disk',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
@@ -362,7 +362,7 @@ class TestStatusAPI(MAASServerTestCase):
         }
         self.assertEqual(user, node.owner)  # Node has an owner
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
         self.assertIsNone(reload_object(node).owner)
@@ -371,8 +371,8 @@ class TestStatusAPI(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        contents = 'These are the contents of the file.'
-        encoded_content = base64.encodestring(bz2.compress(contents))
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
         payload = {
             'event_type': 'finish',
             'result': 'FAILURE',
@@ -389,15 +389,17 @@ class TestStatusAPI(MAASServerTestCase):
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual('Invalid encoding: uuencode', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            'Invalid encoding: uuencode',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_file_bad_compression_fails(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        contents = 'These are the contents of the file.'
-        encoded_content = base64.encodestring(bz2.compress(contents))
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
         payload = {
             'event_type': 'finish',
             'result': 'FAILURE',
@@ -414,15 +416,17 @@ class TestStatusAPI(MAASServerTestCase):
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertEqual('Invalid compression: jpeg', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            'Invalid compression: jpeg',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_file_no_compression_succeeds(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        contents = 'These are the contents of the file.'
-        encoded_content = base64.encodestring(contents)
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(contents)
         payload = {
             'event_type': 'finish',
             'result': 'FAILURE',
@@ -438,7 +442,7 @@ class TestStatusAPI(MAASServerTestCase):
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(contents, NodeResult.objects.get(node=node).data)
 
     def test_status_with_file_invalid_statuses_fails(self):
@@ -462,8 +466,8 @@ class TestStatusAPI(MAASServerTestCase):
                 NODE_STATUS.FAILED_DISK_ERASING]:
             node = factory.make_Node(interface=True, status=node_status)
             client = make_node_client(node=node)
-            contents = 'These are the contents of the file.'
-            encoded_content = base64.encodestring(bz2.compress(contents))
+            contents = b'These are the contents of the file.'
+            encoded_content = encode_as_base64(bz2.compress(contents))
             payload = {
                 'event_type': 'finish',
                 'result': 'FAILURE',
@@ -480,10 +484,10 @@ class TestStatusAPI(MAASServerTestCase):
                 ]
             }
             response = call_status(client, node, payload)
-            self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+            self.assertEqual(http.client.BAD_REQUEST, response.status_code)
             self.assertEqual(
                 'Invalid status for saving files: %d' % node_status,
-                response.content)
+                response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_file_succeeds(self):
         """Adding files should succeed for every status that's either
@@ -493,8 +497,8 @@ class TestStatusAPI(MAASServerTestCase):
                 (NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT)]:
             node = factory.make_Node(interface=True, status=node_status)
             client = make_node_client(node=node)
-            contents = 'These are the contents of the file.'
-            encoded_content = base64.encodestring(bz2.compress(contents))
+            contents = b'These are the contents of the file.'
+            encoded_content = encode_as_base64(bz2.compress(contents))
             payload = {
                 'event_type': 'finish',
                 'result': 'FAILURE',
@@ -511,7 +515,7 @@ class TestStatusAPI(MAASServerTestCase):
                 ]
             }
             response = call_status(client, node, payload)
-            self.assertEqual(httplib.OK, response.status_code)
+            self.assertEqual(http.client.OK, response.status_code)
             self.assertEqual(
                 target_status, reload_object(node).status)
             # Check the node result.
@@ -522,8 +526,8 @@ class TestStatusAPI(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        contents = 'These are the contents of the file.'
-        encoded_content = base64.encodestring(bz2.compress(contents))
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
         payload = {
             'event_type': 'finish',
             'result': 'FAILURE',
@@ -541,7 +545,7 @@ class TestStatusAPI(MAASServerTestCase):
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         # Check the node result.
         node_result = NodeResult.objects.get(node=node)
         self.assertEqual(contents, node_result.data)
@@ -553,8 +557,8 @@ class TestStatusAPI(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        contents = 'These are the contents of the file.'
-        encoded_content = base64.encodestring(bz2.compress(contents))
+        contents = b'These are the contents of the file.'
+        encoded_content = encode_as_base64(bz2.compress(contents))
         payload = {
             'event_type': 'finish',
             'result': 'FAILURE',
@@ -571,7 +575,7 @@ class TestStatusAPI(MAASServerTestCase):
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         # Check the node result.
         node_result = NodeResult.objects.get(node=node)
         self.assertEqual(0, node_result.script_result)
@@ -586,8 +590,10 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('Missing parameter in status message', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            'Missing parameter in status message',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_missing_origin_fails(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -599,8 +605,10 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('Missing parameter in status message', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            'Missing parameter in status message',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_missing_name_fails(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -612,8 +620,10 @@ class TestStatusAPI(MAASServerTestCase):
             'description': 'Command Install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('Missing parameter in status message', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            'Missing parameter in status message',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_with_missing_description_fails(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -625,8 +635,10 @@ class TestStatusAPI(MAASServerTestCase):
             'name': 'cmd-install',
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('Missing parameter in status message', response.content)
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertIn(
+            'Missing parameter in status message',
+            response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_status_stores_virtual_tag_on_node_if_virtual(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -642,12 +654,12 @@ class TestStatusAPI(MAASServerTestCase):
                 {
                     "path": "00-maas-02-virtuality.out",
                     "encoding": "base64",
-                    "content": base64.encodestring(content),
+                    "content": encode_as_base64(content),
                 }
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             ["virtual"], [each_tag.name for each_tag in node.tags.all()])
@@ -672,12 +684,12 @@ class TestStatusAPI(MAASServerTestCase):
                 {
                     "path": "00-maas-02-virtuality.out",
                     "encoding": "base64",
-                    "content": base64.encodestring(content),
+                    "content": encode_as_base64(content),
                 }
             ]
         }
         response = call_status(client, node, payload)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(
             [], [each_tag.name for each_tag in node.tags.all()])

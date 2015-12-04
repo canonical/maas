@@ -3,15 +3,6 @@
 
 """Model mixin: check `full_clean` on every `save`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'CleanSave',
     ]

@@ -2,15 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 """__init__ for the provisioningserver.logger package."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "basicConfig",
     "DEFAULT_LOG_FORMAT",

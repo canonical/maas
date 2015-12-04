@@ -3,15 +3,6 @@
 
 """MAAS OAuth API connection library."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'MAASClient',
     'MAASDispatcher',
@@ -21,7 +12,9 @@ __all__ = [
 import collections
 import gzip
 from io import BytesIO
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 
 from apiclient.encode_json import encode_json_data
@@ -48,7 +41,7 @@ class MAASOAuth:
         """
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(
             self.consumer_token, token=self.resource_token, http_url=url,
-            parameters={'oauth_nonce': uuid.uuid4().get_hex()})
+            parameters={'oauth_nonce': uuid.uuid4().hex})
         oauth_request.sign_request(
             oauth.OAuthSignatureMethod_PLAINTEXT(), self.consumer_token,
             self.resource_token)
@@ -68,11 +61,11 @@ class NoAuth:
         """
 
 
-class RequestWithMethod(urllib2.Request):
+class RequestWithMethod(urllib.request.Request):
     """Enhances urllib2.Request so an http method can be supplied."""
     def __init__(self, *args, **kwargs):
         self._method = kwargs.pop('method', None)
-        urllib2.Request.__init__(self, *args, **kwargs)
+        urllib.request.Request.__init__(self, *args, **kwargs)
 
     def get_method(self):
         return (
@@ -113,7 +106,7 @@ class MAASDispatcher:
             set_accept_encoding = True
             headers['Accept-encoding'] = 'gzip'
         req = RequestWithMethod(request_url, data, headers, method=method)
-        res = urllib2.urlopen(req)
+        res = urllib.request.urlopen(req)
         # If we set the Accept-encoding header, then we decode the header for
         # the caller.
         is_gzip = (
@@ -124,7 +117,8 @@ class MAASDispatcher:
             # to seek the file object.
             res_content_io = BytesIO(res.read())
             ungz = gzip.GzipFile(mode='rb', fileobj=res_content_io)
-            res = urllib2.addinfourl(ungz, res.headers, res.url, res.code)
+            res = urllib.request.addinfourl(
+                ungz, res.headers, res.url, res.code)
         return res
 
 
@@ -158,9 +152,9 @@ class MAASClient:
         :return: An absolute URL leading to `path`.
         """
         assert not isinstance(path, bytes)
-        if not isinstance(path, unicode):
+        if not isinstance(path, str):
             assert not any(isinstance(element, bytes) for element in path)
-            path = '/'.join(unicode(element) for element in path)
+            path = '/'.join(str(element) for element in path)
         # urljoin is very sensitive to leading slashes and when spurious
         # slashes appear it removes path parts. This is why joining is
         # done manually here.
@@ -170,8 +164,8 @@ class MAASClient:
         """Flatten dictionary values if they are not an instance of
         (bytes, unicode) and they are an interable.
         """
-        for name, value in kwargs.viewitems():
-            if isinstance(value, (bytes, unicode)):
+        for name, value in kwargs.items():
+            if isinstance(value, (bytes, str)):
                     yield name, value
             elif isinstance(value, collections.Sequence):
                 for iterable_item in value:

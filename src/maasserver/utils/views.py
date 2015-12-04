@@ -3,20 +3,11 @@
 
 """View utilities configuration."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'WebApplicationHandler',
 ]
 
-import httplib
+import http.client
 from itertools import count
 import logging
 import sys
@@ -36,11 +27,11 @@ from maasserver.utils.orm import (
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
 from piston3.oauth import OAuthError
+from provisioningserver.twisted.web import wsgi
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
 from twisted.python import log
 from twisted.python.failure import Failure
-from twisted.web import wsgi
 
 
 logger = logging.getLogger(__name__)
@@ -119,13 +110,13 @@ class MAASDjangoTemplateResponse(SimpleTemplateResponse):
         # on the new object when the original was content-less
         # will render as a template with the new status code.
         if response is not None and hasattr(response, 'status_code'):
-            if response.status_code == httplib.OK and hasattr(
+            if response.status_code == http.client.OK and hasattr(
                     response, 'content'):
                 self.content = response.content
 
 
 class HttpResponseConflict(MAASDjangoTemplateResponse):
-    status_code = httplib.CONFLICT
+    status_code = http.client.CONFLICT
 
 
 class WebApplicationHandler(WSGIHandler):

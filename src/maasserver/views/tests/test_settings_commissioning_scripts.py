@@ -3,19 +3,11 @@
 
 """Test maasserver clusters views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.testing import (
@@ -45,7 +37,14 @@ class CommissioningScriptListingTest(MAASServerTestCase):
         response = self.client.get(reverse('settings'))
         names = [script.name for script in scripts]
         contents = [script.content for script in scripts]
-        self.assertThat(response.content, ContainsAll(names + contents))
+        self.assertThat(response.content, ContainsAll([
+            name.encode(settings.DEFAULT_CHARSET)
+            for name in names
+        ]))
+        self.assertThat(response.content, ContainsAll([
+            content
+            for content in contents
+        ]))
 
     def test_settings_link_to_upload_script(self):
         self.client_log_in(as_admin=True)
@@ -84,7 +83,7 @@ class CommissioningScriptDeleteTest(MAASServerTestCase):
         delete_link = reverse('commissioning-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
-            (httplib.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         self.assertFalse(
             CommissioningScript.objects.filter(id=script.id).exists())
@@ -94,7 +93,7 @@ class CommissioningScriptUploadTest(MAASServerTestCase):
 
     def test_can_create_commissioning_script(self):
         self.client_log_in(as_admin=True)
-        content = factory.make_string()
+        content = factory.make_string().encode("ascii")
         name = factory.make_name('filename')
         create_link = reverse('commissioning-script-add')
         filepath = self.make_file(name=name, contents=content)
@@ -102,7 +101,7 @@ class CommissioningScriptUploadTest(MAASServerTestCase):
             response = self.client.post(
                 create_link, {'name': name, 'content': fp})
         self.assertEqual(
-            (httplib.FOUND, reverse('settings')),
+            (http.client.FOUND, reverse('settings')),
             (response.status_code, extract_redirect(response)))
         new_script = CommissioningScript.objects.get(name=name)
         self.assertThat(

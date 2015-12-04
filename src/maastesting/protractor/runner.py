@@ -3,15 +3,6 @@
 
 """Helper to start the Protractor environment to run MAAS JS E2E tests."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     ]
 

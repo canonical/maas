@@ -3,21 +3,13 @@
 
 """Tests for Subnet API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
+import http.client
 import json
 import random
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -48,7 +40,7 @@ def get_subnets_uri():
 
 def get_subnet_uri(subnet):
     """Return a Subnet URI on the API."""
-    if isinstance(subnet, unicode):
+    if isinstance(subnet, str):
         return reverse(
             'subnet_handler', args=[subnet])
     else:
@@ -70,14 +62,16 @@ class TestSubnetsAPI(APITestCase):
         uri = get_subnets_uri()
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         expected_ids = [
             subnet.id
             for subnet in subnets
             ]
         result_ids = [
             subnet["id"]
-            for subnet in json.loads(response.content)
+            for subnet in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
@@ -87,7 +81,7 @@ class TestSubnetsAPI(APITestCase):
         vlan = factory.make_VLAN()
         space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
-        cidr = unicode(network.cidr)
+        cidr = str(network.cidr)
         gateway_ip = factory.pick_ip_in_network(network)
         dns_servers = []
         for _ in range(2):
@@ -103,8 +97,10 @@ class TestSubnetsAPI(APITestCase):
             "gateway_ip": gateway_ip,
             "dns_servers": ','.join(dns_servers),
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        created_subnet = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        created_subnet = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(subnet_name, created_subnet['name'])
         self.assertEqual(vlan.vid, created_subnet['vlan']['vid'])
         self.assertEqual(space.get_name(), created_subnet['space'])
@@ -119,17 +115,17 @@ class TestSubnetsAPI(APITestCase):
             "name": subnet_name,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_requires_name_vlan_space_cidr(self):
         self.become_admin()
         uri = get_subnets_uri()
         response = self.client.post(uri, {})
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual({
             "cidr": ["This field is required."],
-            }, json.loads(response.content))
+            }, json.loads(response.content.decode(settings.DEFAULT_CHARSET)))
 
 
 class TestSubnetAPI(APITestCase):
@@ -145,8 +141,10 @@ class TestSubnetAPI(APITestCase):
         uri = get_subnet_uri(subnet)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_subnet = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_subnet = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(parsed_subnet, ContainsDict({
             "id": Equals(subnet.id),
             "name": Equals(subnet.name),
@@ -164,14 +162,14 @@ class TestSubnetAPI(APITestCase):
             'subnet_handler', args=[random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_read_400_when_blank_id(self):
         uri = reverse(
             'subnet_handler', args=[" "])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
     def test_read_403_when_ambiguous(self):
         fabric = factory.make_Fabric(name="foo")
@@ -181,7 +179,7 @@ class TestSubnetAPI(APITestCase):
             'subnet_handler', args=["fabric:foo"])
         response = self.client.get(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update(self):
         self.become_admin()
@@ -191,8 +189,11 @@ class TestSubnetAPI(APITestCase):
         response = self.client.put(uri, {
             "name": new_name,
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        self.assertEqual(new_name, json.loads(response.content)['name'])
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(
+            new_name, json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET))['name'])
         self.assertEqual(new_name, reload_object(subnet).name)
 
     def test_update_admin_only(self):
@@ -203,7 +204,7 @@ class TestSubnetAPI(APITestCase):
             "name": new_name,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_subnet(self):
         self.become_admin()
@@ -211,7 +212,7 @@ class TestSubnetAPI(APITestCase):
         uri = get_subnet_uri(subnet)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(subnet))
 
     def test_delete_deletes_subnet_by_name(self):
@@ -220,7 +221,7 @@ class TestSubnetAPI(APITestCase):
         uri = get_subnet_uri("name:%s" % subnet.name)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(subnet))
 
     def test_delete_deletes_subnet_by_cidr(self):
@@ -229,7 +230,7 @@ class TestSubnetAPI(APITestCase):
         uri = get_subnet_uri("cidr:%s" % subnet.cidr)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(subnet))
 
     def test_delete_403_when_not_admin(self):
@@ -237,7 +238,7 @@ class TestSubnetAPI(APITestCase):
         uri = get_subnet_uri(subnet)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
         self.assertIsNotNone(reload_object(subnet))
 
     def test_delete_404_when_invalid_id(self):
@@ -246,7 +247,7 @@ class TestSubnetAPI(APITestCase):
             'subnet_handler', args=[random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
 
 class TestSubnetAPIAuth(MAASServerTestCase):
@@ -257,8 +258,8 @@ class TestSubnetAPIAuth(MAASServerTestCase):
             get_subnet_uri(subnet),
             {'op': 'reserved_ip_ranges'})
         self.assertEqual(
-            httplib.UNAUTHORIZED, response.status_code,
-            explain_unexpected_response(httplib.UNAUTHORIZED, response))
+            http.client.UNAUTHORIZED, response.status_code,
+            explain_unexpected_response(http.client.UNAUTHORIZED, response))
 
     def test__unreserved_ip_ranges_fails_if_not_logged_in(self):
         subnet = factory.make_Subnet()
@@ -266,8 +267,8 @@ class TestSubnetAPIAuth(MAASServerTestCase):
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})
         self.assertEqual(
-            httplib.UNAUTHORIZED, response.status_code,
-            explain_unexpected_response(httplib.UNAUTHORIZED, response))
+            http.client.UNAUTHORIZED, response.status_code,
+            explain_unexpected_response(http.client.UNAUTHORIZED, response))
 
 
 class TestSubnetReservedIPRangesAPI(APITestCase):
@@ -278,9 +279,9 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
             get_subnet_uri(subnet),
             {'op': 'reserved_ip_ranges'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result, Equals([]))
 
     def test__accounts_for_reserved_ip_address(self):
@@ -292,9 +293,9 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
             get_subnet_uri(subnet),
             {'op': 'reserved_ip_ranges'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result, Equals([
             {
                 "start": ip,
@@ -313,9 +314,9 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_addresses = (network.last - network.first + 1)
         expected_first_address = inet_ntop(network.first + 1)
         if network.version == 6:
@@ -350,12 +351,12 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})
-        result = json.loads(response.content)
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
         self.assertThat(
-            result, Equals([]), unicode(subnet.get_ipranges_in_use()))
+            result, Equals([]), str(subnet.get_ipranges_in_use()))
 
     def test__accounts_for_reserved_ip_address(self):
         subnet = factory.make_Subnet()
@@ -363,7 +364,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
         # Pick an address in the middle of the range. (that way we'll always
         # expect there to be two unreserved ranges, arranged around the
         # allocated IP address.)
-        middle_ip = (network.first + network.last) / 2
+        middle_ip = (network.first + network.last) // 2
         ip = inet_ntop(middle_ip)
         factory.make_StaticIPAddress(
             ip=ip, alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet)
@@ -388,9 +389,9 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result, Equals([
             {
                 "start": expected_first_address,
@@ -415,9 +416,9 @@ class TestSubnetStatisticsAPI(APITestCase):
                 'op': 'statistics',
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         full_iprange = subnet.get_iprange_usage()
         statistics = IPRangeStatistics(full_iprange)
         expected_result = statistics.render_json(include_ranges=False)
@@ -433,9 +434,9 @@ class TestSubnetStatisticsAPI(APITestCase):
                 'include_ranges': 'true'
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         full_iprange = subnet.get_iprange_usage()
         statistics = IPRangeStatistics(full_iprange)
         expected_result = statistics.render_json(include_ranges=True)
@@ -451,9 +452,9 @@ class TestSubnetStatisticsAPI(APITestCase):
                 'include_ranges': 'false'
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         full_iprange = subnet.get_iprange_usage()
         statistics = IPRangeStatistics(full_iprange)
         expected_result = statistics.render_json(include_ranges=False)
@@ -477,9 +478,9 @@ class TestSubnetIPAddressesAPI(APITestCase):
                 'op': 'ip_addresses',
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
             with_username=True, with_node_summary=True)
         self.assertThat(result, Equals(expected_result))
@@ -500,9 +501,9 @@ class TestSubnetIPAddressesAPI(APITestCase):
                 'with_username': 'false',
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
             with_username=False, with_node_summary=True)
         self.assertThat(result, Equals(expected_result))
@@ -523,9 +524,9 @@ class TestSubnetIPAddressesAPI(APITestCase):
                 'with_node_summary': 'false',
             })
         self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-        result = json.loads(response.content)
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected_result = subnet.render_json_for_related_ips(
             with_username=True, with_node_summary=False)
         self.assertThat(result, Equals(expected_result))

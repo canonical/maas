@@ -3,15 +3,6 @@
 
 """Tests for Interface forms."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -208,7 +199,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "mtu": mtu,
             "accept_ra": accept_ra,
             "autoconf": autoconf,
@@ -237,7 +228,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "mtu": mtu,
             "accept_ra": accept_ra,
             "autoconf": autoconf,
@@ -266,7 +257,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "mtu": new_mtu,
             "accept_ra": new_accept_ra,
             "autoconf": new_autoconf,
@@ -292,7 +283,7 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({}, interface.params)
+        self.assertEqual({}, interface.params)
 
 
 class VLANInterfaceFormTest(MAASServerTestCase):
@@ -451,7 +442,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 'bond_mode': bond_mode,
             })
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": [
                 compose_invalid_choice_text(
                     "bond_mode", BOND_MODE_CHOICES) % {"value": bond_mode}],
@@ -497,11 +488,11 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals(
+        self.assertEqual(
             0,
             parent1.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED).count())
-        self.assertEquals(
+        self.assertEqual(
             0,
             parent2.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED).count())
@@ -546,7 +537,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": "balance-rr",
             "bond_miimon": 100,
             "bond_downdelay": 0,
@@ -583,7 +574,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": bond_mode,
             "bond_miimon": bond_miimon,
             "bond_downdelay": bond_downdelay,
@@ -743,7 +734,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": bond_mode,
             "bond_miimon": bond_miimon,
             "bond_downdelay": bond_downdelay,
@@ -798,7 +789,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": new_bond_mode,
             "bond_miimon": new_bond_miimon,
             "bond_downdelay": new_bond_downdelay,
@@ -853,7 +844,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
-        self.assertEquals({
+        self.assertEqual({
             "bond_mode": new_bond_mode,
             "bond_miimon": new_bond_miimon,
             "bond_downdelay": new_bond_downdelay,

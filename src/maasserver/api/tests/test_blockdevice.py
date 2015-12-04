@@ -3,21 +3,12 @@
 
 """Tests for blockdevice API."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-import httplib
-import json
+import http.client
 import uuid
 
+from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
@@ -29,6 +20,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -84,9 +76,10 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
 
-        devices = json.loads(response.content)
+        devices = json_load_bytes(response.content)
 
         # We should have four devices, three physical, one virtual.
         self.assertEqual(len(devices), 4)
@@ -109,8 +102,9 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_devices = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
         self.assertDictContainsSubset({
             "model": block_device.model,
             }, parsed_devices[0])
@@ -122,8 +116,9 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_devices = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
         self.assertDictContainsSubset({
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
@@ -139,8 +134,9 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_devices = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
 
         self.assertEqual(parsed_devices[0]['partition_table_type'],
                          partition_table.table_type)
@@ -160,8 +156,9 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_devices = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
 
         self.assertEqual(parsed_devices[0]['partition_table_type'], 'MBR')
         self.assertEqual(len(parsed_devices[0]['partitions']), 2)
@@ -191,8 +188,9 @@ class TestBlockDevices(APITestCase):
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_devices = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_devices = json_load_bytes(response.content)
 
         # We should have one device
         self.assertEqual(len(parsed_devices), 1)
@@ -217,7 +215,7 @@ class TestBlockDevices(APITestCase):
             'model': 'A2M0003',
             'serial': '42',
         })
-        self.assertEqual(httplib.FORBIDDEN, response.status_code,
+        self.assertEqual(http.client.FORBIDDEN, response.status_code,
                          response.content)
 
     def test_create_physicalblockdevice_as_admin(self):
@@ -234,7 +232,8 @@ class TestBlockDevices(APITestCase):
             'model': 'A2M0003',
             'serial': '42',
         })
-        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
         reload_object(node)
         pbd = node.physicalblockdevice_set.first()
         self.assertEqual(pbd.node_id, node.id)
@@ -258,7 +257,7 @@ class TestBlockDevices(APITestCase):
             'model': 'A2M0003',
             'serial': '42',
         })
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code,
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code,
                          response.content)
 
 
@@ -269,11 +268,12 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals(block_device.id, parsed_device["id"])
-        self.assertEquals("physical", parsed_device["type"])
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(block_device.id, parsed_device["id"])
+        self.assertEqual("physical", parsed_device["type"])
+        self.assertEqual(
             get_blockdevice_uri(block_device), parsed_device["resource_uri"])
 
     def test_read_block_device_by_name(self):
@@ -281,21 +281,23 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device, by_name=True)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals(block_device.id, parsed_device["id"])
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(block_device.id, parsed_device["id"])
 
     def test_read_virtual_block_device(self):
         block_device = factory.make_VirtualBlockDevice()
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals(block_device.id, parsed_device["id"])
-        self.assertEquals(block_device.get_name(), parsed_device["name"])
-        self.assertEquals("virtual", parsed_device["type"])
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(block_device.id, parsed_device["id"])
+        self.assertEqual(block_device.get_name(), parsed_device["name"])
+        self.assertEqual("virtual", parsed_device["type"])
+        self.assertEqual(
             get_blockdevice_uri(block_device), parsed_device["resource_uri"])
 
     def test_read_returns_filesystem(self):
@@ -303,8 +305,9 @@ class TestBlockDeviceAPI(APITestCase):
         filesystem = factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertDictContainsSubset({
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
@@ -323,8 +326,9 @@ class TestBlockDeviceAPI(APITestCase):
         partition2 = partition_table.add_partition()
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertThat(
             parsed_device['partitions'][0],
             ContainsDict({
@@ -359,15 +363,16 @@ class TestBlockDeviceAPI(APITestCase):
             partition=partition2, fstype=FILESYSTEM_TYPE.EXT2)
         uri = get_blockdevice_uri(block_device)
         response = self.client.get(uri)
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals({
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual({
             "fstype": filesystem1.fstype,
             "label": filesystem1.label,
             "uuid": filesystem1.uuid,
             "mount_point": filesystem1.mount_point,
             }, parsed_device['partitions'][0]['filesystem'])
-        self.assertEquals({
+        self.assertEqual({
             "fstype": filesystem2.fstype,
             "label": filesystem2.label,
             "uuid": filesystem2.uuid,
@@ -379,7 +384,7 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_returns_404_when_system_id_doesnt_match(self):
         self.become_admin()
@@ -388,7 +393,7 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device, node=other_node)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_delete_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
@@ -398,7 +403,7 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_delete_deletes_block_device(self):
         self.become_admin()
@@ -407,7 +412,7 @@ class TestBlockDeviceAPI(APITestCase):
         uri = get_blockdevice_uri(block_device)
         response = self.client.delete(uri)
         self.assertEqual(
-            httplib.NO_CONTENT, response.status_code, response.content)
+            http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(block_device))
 
     def test_add_tag_returns_403_when_not_admin(self):
@@ -416,7 +421,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_add_tag_returns_404_when_system_id_doesnt_match(self):
         self.become_admin()
@@ -426,7 +431,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_add_tag_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
@@ -437,7 +442,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_add_tag_to_block_device(self):
         self.become_admin()
@@ -448,8 +453,9 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(
             uri, {'op': 'add_tag', 'tag': tag_to_be_added})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertIn(tag_to_be_added, parsed_device['tags'])
         block_device = reload_object(block_device)
         self.assertIn(tag_to_be_added, block_device.tags)
@@ -461,7 +467,7 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_remove_tag_returns_404_when_system_id_doesnt_match(self):
         self.become_admin()
@@ -472,7 +478,7 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+            http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_remove_tag_returns_409_when_the_nodes_not_ready(self):
         self.become_admin()
@@ -484,7 +490,7 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
 
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_remove_tag_from_block_device(self):
         self.become_admin()
@@ -495,8 +501,9 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.get(
             uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertNotIn(tag_to_be_removed, parsed_device['tags'])
         block_device = reload_object(block_device)
         self.assertNotIn(tag_to_be_removed, block_device.tags)
@@ -512,7 +519,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_format_returns_403_if_ready_and_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -523,7 +530,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_format_formats_block_device_as_admin(self):
         self.become_admin()
@@ -535,8 +542,9 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertDictContainsSubset({
             'fstype': fstype,
             'uuid': fsuuid,
@@ -555,8 +563,9 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'format', 'fstype': fstype, 'uuid': fsuuid})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertDictContainsSubset({
             'fstype': fstype,
             'uuid': fsuuid,
@@ -575,7 +584,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'unformat'})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_unformat_returns_403_if_ready_and_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -585,7 +594,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'unformat'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_unformat_returns_400_if_not_formatted(self):
         self.become_admin()
@@ -596,8 +605,8 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unformat'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual("Block device is not formatted.", response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(b"Block device is not formatted.", response.content)
 
     def test_unformat_returns_400_if_mounted(self):
         self.become_admin()
@@ -609,10 +618,10 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unformat'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
-            "Filesystem is mounted and cannot be unformatted. Unmount the "
-            "filesystem before unformatting the block device.",
+            b"Filesystem is mounted and cannot be unformatted. Unmount the "
+            b"filesystem before unformatting the block device.",
             response.content)
 
     def test_unformat_returns_400_if_in_filesystem_group(self):
@@ -629,12 +638,14 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unformat'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        expected = (
             "Filesystem is part of a %s, and cannot be "
             "unformatted. Remove block device from %s "
             "before unformatting the block device." % (
-                fsgroup.get_nice_name(), fsgroup.get_nice_name()),
+                fsgroup.get_nice_name(), fsgroup.get_nice_name()))
+        self.assertEqual(
+            expected.encode(settings.DEFAULT_CHARSET),
             response.content)
 
     def test_unformat_deletes_filesystem_as_admin(self):
@@ -647,8 +658,8 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unformat'})
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertIsNone(parsed_device["filesystem"])
         block_device = reload_object(block_device)
         self.assertIsNone(block_device.get_effective_filesystem())
@@ -663,8 +674,8 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unformat'})
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertIsNone(parsed_device["filesystem"])
         block_device = reload_object(block_device)
         self.assertIsNone(block_device.get_effective_filesystem())
@@ -679,7 +690,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'mount'})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_mount_returns_403_if_ready_and_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -689,7 +700,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'mount'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_mount_sets_mount_path_on_filesystem_as_admin(self):
         self.become_admin()
@@ -701,11 +712,12 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'mount', 'mount_point': mount_point})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(
             mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEquals(
+        self.assertEqual(
             mount_point, reload_object(filesystem).mount_point)
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
@@ -719,11 +731,12 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'mount', 'mount_point': mount_point})
 
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
-        self.assertEquals(
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertEqual(
             mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEquals(
+        self.assertEqual(
             mount_point, reload_object(filesystem).mount_point)
 
     def test_unmount_returns_409_if_not_allocated_or_ready(self):
@@ -736,7 +749,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'unmount'})
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     def test_unmount_returns_403_if_ready_and_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -746,7 +759,7 @@ class TestBlockDeviceAPI(APITestCase):
         response = self.client.post(
             uri, {'op': 'unmount'})
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_mount_returns_400_on_missing_mount_point(self):
         self.become_admin()
@@ -758,9 +771,9 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'mount'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        parsed_error = json.loads(response.content)
-        self.assertEquals(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        parsed_error = json_load_bytes(response.content)
+        self.assertEqual(
             {"mount_point": ["This field is required."]},
             parsed_error)
 
@@ -773,9 +786,9 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unmount'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals(
-            "Block device is not formatted.", response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            b"Block device is not formatted.", response.content)
 
     def test_unmount_returns_400_if_already_unmounted(self):
         self.become_admin()
@@ -787,9 +800,9 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unmount'})
 
         self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertEquals(
-            "Filesystem is already unmounted.", response.content)
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            b"Filesystem is already unmounted.", response.content)
 
     def test_unmount_unmounts_filesystem_as_admin(self):
         self.become_admin()
@@ -802,9 +815,9 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unmount'})
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         self.assertIsNone(
-            json.loads(response.content)['filesystem']['mount_point'])
+            json_load_bytes(response.content)['filesystem']['mount_point'])
         self.assertIsNone(
             reload_object(filesystem).mount_point)
 
@@ -819,9 +832,9 @@ class TestBlockDeviceAPI(APITestCase):
             uri, {'op': 'unmount'})
 
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
+            http.client.OK, response.status_code, response.content)
         self.assertIsNone(
-            json.loads(response.content)['filesystem']['mount_point'])
+            json_load_bytes(response.content)['filesystem']['mount_point'])
         self.assertIsNone(
             reload_object(filesystem).mount_point)
 
@@ -845,8 +858,8 @@ class TestBlockDeviceAPI(APITestCase):
         })
         block_device = reload_object(block_device)
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(parsed_device['id'], block_device.id)
         self.assertEqual('mynewname', parsed_device['name'])
         self.assertEqual(4096, parsed_device['block_size'])
@@ -870,8 +883,8 @@ class TestBlockDeviceAPI(APITestCase):
         })
         block_device = reload_object(block_device)
         self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        parsed_device = json.loads(response.content)
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
         self.assertEqual(block_device.id, parsed_device['id'])
         self.assertEqual(name, parsed_device['name'])
 
@@ -890,7 +903,7 @@ class TestBlockDeviceAPI(APITestCase):
             'block_size': 4096
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update_virtual_block_device_as_normal_user(self):
         """Check update block device with a virtual one fails for a normal
@@ -904,7 +917,7 @@ class TestBlockDeviceAPI(APITestCase):
             'name': newname,
         })
         self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+            http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_update_returns_409_for_non_ready_node(self):
         """Check update block device with a virtual one fails for a normal
@@ -919,7 +932,7 @@ class TestBlockDeviceAPI(APITestCase):
             'name': newname,
         })
         self.assertEqual(
-            httplib.CONFLICT, response.status_code, response.content)
+            http.client.CONFLICT, response.status_code, response.content)
 
     """
     def test_set_boot_disk_returns_400_for_virtual_device(self):

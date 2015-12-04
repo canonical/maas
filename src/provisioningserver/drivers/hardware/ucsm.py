@@ -60,31 +60,23 @@ UUID - The UUID for a server. MAAS persists the UUID of each UCS managed
 server it enlists, and uses it as a key for looking the server up later.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
 import contextlib
-import urllib2
-import urlparse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from lxml.etree import (
     Element,
     tostring,
     XML,
 )
-from provisioningserver.utils import (
+from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
 from provisioningserver.utils.twisted import synchronous
 
 
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_ucsm',
     'power_state_ucsm',
@@ -134,15 +126,15 @@ class UCSM_XML_API:
 
     def __init__(self, url, username, password):
         self.url = url
-        self.api_url = urlparse.urljoin(self.url, 'nuova')
+        self.api_url = urllib.parse.urljoin(self.url, 'nuova')
         self.username = username
         self.password = password
         self.cookie = None
 
     def _send_request(self, request_data):
         """Issue a request via HTTP and parse the response."""
-        request = urllib2.Request(self.api_url, request_data)
-        response = urllib2.urlopen(request)
+        request = urllib.request.Request(self.api_url, request_data)
+        response = urllib.request.urlopen(request)
         response_text = response.read()
         response_doc = parse_response(response_text)
         return response_doc

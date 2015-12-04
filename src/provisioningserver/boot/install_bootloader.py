@@ -3,15 +3,6 @@
 
 """Install a pre-boot loader for TFTP download."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "install_bootloader",
     "make_destination",
@@ -22,9 +13,11 @@ import os.path
 from shutil import copyfile
 
 from provisioningserver.boot.tftppath import locate_tftp_path
+from provisioningserver.utils import typed
 
 
-def make_destination(tftproot):
+@typed
+def make_destination(tftproot: str):
     """Locate a loader's destination, creating the directory if needed.
 
     :param tftproot: The root directory served up by the TFTP server,
@@ -39,7 +32,8 @@ def make_destination(tftproot):
     return directory
 
 
-def are_identical_files(old, new):
+@typed
+def are_identical_files(old: str, new: str):
     """Are `old` and `new` identical?
 
     If `old` does not exist, the two are considered different (`new` is
@@ -51,7 +45,8 @@ def are_identical_files(old, new):
         return False
 
 
-def install_bootloader(loader, destination):
+@typed
+def install_bootloader(loader: str, destination: str):
     """Install bootloader file at path `loader` as `destination`.
 
     Installation will be atomic.  If an identical loader is already

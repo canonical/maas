@@ -11,49 +11,49 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         
         # Deleting field 'NodeGroup.ip_range_high'
-        db.delete_column(u'maasserver_nodegroup', 'ip_range_high')
+        db.delete_column('maasserver_nodegroup', 'ip_range_high')
 
         # Deleting field 'NodeGroup.ip_range_low'
-        db.delete_column(u'maasserver_nodegroup', 'ip_range_low')
+        db.delete_column('maasserver_nodegroup', 'ip_range_low')
 
         # Deleting field 'NodeGroup.broadcast_ip'
-        db.delete_column(u'maasserver_nodegroup', 'broadcast_ip')
+        db.delete_column('maasserver_nodegroup', 'broadcast_ip')
 
         # Deleting field 'NodeGroup.dhcp_interfaces'
-        db.delete_column(u'maasserver_nodegroup', 'dhcp_interfaces')
+        db.delete_column('maasserver_nodegroup', 'dhcp_interfaces')
 
         # Deleting field 'NodeGroup.worker_ip'
-        db.delete_column(u'maasserver_nodegroup', 'worker_ip')
+        db.delete_column('maasserver_nodegroup', 'worker_ip')
 
         # Deleting field 'NodeGroup.subnet_mask'
-        db.delete_column(u'maasserver_nodegroup', 'subnet_mask')
+        db.delete_column('maasserver_nodegroup', 'subnet_mask')
 
         # Deleting field 'NodeGroup.router_ip'
-        db.delete_column(u'maasserver_nodegroup', 'router_ip')
+        db.delete_column('maasserver_nodegroup', 'router_ip')
 
 
     def backwards(self, orm):
         
         # Adding field 'NodeGroup.ip_range_high'
-        db.add_column(u'maasserver_nodegroup', 'ip_range_high', self.gf('django.db.models.fields.IPAddressField')(default=u'', unique=True, max_length=15, null=True, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'ip_range_high', self.gf('django.db.models.fields.IPAddressField')(default='', unique=True, max_length=15, null=True, blank=True), keep_default=False)
 
         # Adding field 'NodeGroup.ip_range_low'
-        db.add_column(u'maasserver_nodegroup', 'ip_range_low', self.gf('django.db.models.fields.IPAddressField')(default=u'', unique=True, max_length=15, null=True, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'ip_range_low', self.gf('django.db.models.fields.IPAddressField')(default='', unique=True, max_length=15, null=True, blank=True), keep_default=False)
 
         # Adding field 'NodeGroup.broadcast_ip'
-        db.add_column(u'maasserver_nodegroup', 'broadcast_ip', self.gf('django.db.models.fields.IPAddressField')(default=u'', max_length=15, null=True, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'broadcast_ip', self.gf('django.db.models.fields.IPAddressField')(default='', max_length=15, null=True, blank=True), keep_default=False)
 
         # Adding field 'NodeGroup.dhcp_interfaces'
-        db.add_column(u'maasserver_nodegroup', 'dhcp_interfaces', self.gf('django.db.models.fields.CharField')(default=u'', max_length=255, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'dhcp_interfaces', self.gf('django.db.models.fields.CharField')(default='', max_length=255, blank=True), keep_default=False)
 
         # User chose to not deal with backwards NULL issues for 'NodeGroup.worker_ip'
         raise RuntimeError("Cannot reverse this migration. 'NodeGroup.worker_ip' and its values cannot be restored.")
 
         # Adding field 'NodeGroup.subnet_mask'
-        db.add_column(u'maasserver_nodegroup', 'subnet_mask', self.gf('django.db.models.fields.IPAddressField')(default=u'', max_length=15, null=True, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'subnet_mask', self.gf('django.db.models.fields.IPAddressField')(default='', max_length=15, null=True, blank=True), keep_default=False)
 
         # Adding field 'NodeGroup.router_ip'
-        db.add_column(u'maasserver_nodegroup', 'router_ip', self.gf('django.db.models.fields.IPAddressField')(default=u'', max_length=15, null=True, blank=True), keep_default=False)
+        db.add_column('maasserver_nodegroup', 'router_ip', self.gf('django.db.models.fields.IPAddressField')(default='', max_length=15, null=True, blank=True), keep_default=False)
 
 
     models = {
@@ -93,7 +93,7 @@ class Migration(SchemaMigration):
             'model': ('django.db.models.fields.CharField', [], {'max_length': '100'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '100'})
         },
-        u'maasserver.bootimage': {
+        'maasserver.bootimage': {
             'Meta': {'unique_together': "((u'architecture', u'subarchitecture', u'release', u'purpose'),)", 'object_name': 'BootImage'},
             'architecture': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -101,34 +101,34 @@ class Migration(SchemaMigration):
             'release': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'subarchitecture': ('django.db.models.fields.CharField', [], {'max_length': '255'})
         },
-        u'maasserver.config': {
+        'maasserver.config': {
             'Meta': {'object_name': 'Config'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             'value': ('maasserver.fields.JSONObjectField', [], {'null': 'True'})
         },
-        u'maasserver.dhcplease': {
+        'maasserver.dhcplease': {
             'Meta': {'object_name': 'DHCPLease'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'ip': ('django.db.models.fields.IPAddressField', [], {'unique': 'True', 'max_length': '15'}),
             'mac': ('maasserver.fields.MACAddressField', [], {}),
-            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.NodeGroup']"})
+            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.NodeGroup']"})
         },
-        u'maasserver.filestorage': {
+        'maasserver.filestorage': {
             'Meta': {'object_name': 'FileStorage'},
             'data': ('django.db.models.fields.files.FileField', [], {'max_length': '255'}),
             'filename': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '200'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
-        u'maasserver.macaddress': {
+        'maasserver.macaddress': {
             'Meta': {'object_name': 'MACAddress'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'mac_address': ('maasserver.fields.MACAddressField', [], {'unique': 'True'}),
-            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.Node']"}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.node': {
+        'maasserver.node': {
             'Meta': {'object_name': 'Node'},
             'after_commissioning_action': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'architecture': ('django.db.models.fields.CharField', [], {'default': "u'i386'", 'max_length': '10'}),
@@ -137,7 +137,7 @@ class Migration(SchemaMigration):
             'hostname': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '255', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'netboot': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
-            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.NodeGroup']", 'null': 'True'}),
+            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.NodeGroup']", 'null': 'True'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': "orm['auth.User']", 'null': 'True', 'blank': 'True'}),
             'power_parameters': ('maasserver.fields.JSONObjectField', [], {'default': "u''", 'blank': 'True'}),
             'power_type': ('django.db.models.fields.CharField', [], {'default': "u''", 'max_length': '10', 'blank': 'True'}),
@@ -146,7 +146,7 @@ class Migration(SchemaMigration):
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.nodegroup': {
+        'maasserver.nodegroup': {
             'Meta': {'object_name': 'NodeGroup'},
             'api_key': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '18'}),
             'api_token': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['piston.Token']", 'unique': 'True'}),
@@ -158,7 +158,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
         },
-        u'maasserver.nodegroupinterface': {
+        'maasserver.nodegroupinterface': {
             'Meta': {'unique_together': "((u'nodegroup', u'interface'),)", 'object_name': 'NodeGroupInterface'},
             'broadcast_ip': ('django.db.models.fields.IPAddressField', [], {'default': 'None', 'max_length': '15', 'null': 'True', 'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
@@ -168,12 +168,12 @@ class Migration(SchemaMigration):
             'ip_range_high': ('django.db.models.fields.IPAddressField', [], {'default': 'None', 'max_length': '15', 'unique': 'True', 'null': 'True', 'blank': 'True'}),
             'ip_range_low': ('django.db.models.fields.IPAddressField', [], {'default': 'None', 'max_length': '15', 'unique': 'True', 'null': 'True', 'blank': 'True'}),
             'management': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.NodeGroup']"}),
+            'nodegroup': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['maasserver.NodeGroup']"}),
             'router_ip': ('django.db.models.fields.IPAddressField', [], {'default': 'None', 'max_length': '15', 'null': 'True', 'blank': 'True'}),
             'subnet_mask': ('django.db.models.fields.IPAddressField', [], {'default': 'None', 'max_length': '15', 'null': 'True', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
-        u'maasserver.sshkey': {
+        'maasserver.sshkey': {
             'Meta': {'unique_together': "((u'user', u'key'),)", 'object_name': 'SSHKey'},
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -181,7 +181,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"})
         },
-        u'maasserver.userprofile': {
+        'maasserver.userprofile': {
             'Meta': {'object_name': 'UserProfile'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'user': ('django.db.models.fields.related.OneToOneField', [], {'to': "orm['auth.User']", 'unique': 'True'})

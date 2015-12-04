@@ -3,21 +3,13 @@
 
 """Test maasserver preferences views."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
-import httplib
+import http.client
 
 from apiclient.creds import convert_tuple_to_string
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -77,7 +69,7 @@ class UserPrefsViewTest(MAASServerTestCase):
         response = self.client.post(
             '/account/prefs/', get_prefixed_form_data('profile', params))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         user = User.objects.get(id=self.logged_in_user.id)
         self.assertAttributes(user, params)
 
@@ -96,7 +88,7 @@ class UserPrefsViewTest(MAASServerTestCase):
                     'new_password2': 'new',
                 }))
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         user = User.objects.get(id=self.logged_in_user.id)
         # The password is SHA1ized, we just make sure that it has changed.
         self.assertNotEqual(old_pw, user.password)
@@ -104,7 +96,7 @@ class UserPrefsViewTest(MAASServerTestCase):
     def test_prefs_displays_message_when_no_public_keys_are_configured(self):
         self.client_log_in()
         response = self.client.get('/account/prefs/')
-        self.assertIn("No SSH key configured.", response.content)
+        self.assertIn(b"No SSH key configured.", response.content)
 
     def test_prefs_displays_add_ssh_key_button(self):
         self.client_log_in()
@@ -117,7 +109,9 @@ class UserPrefsViewTest(MAASServerTestCase):
         _, keys = factory.make_user_with_keys(user=self.logged_in_user)
         response = self.client.get('/account/prefs/')
         for key in keys:
-            self.assertIn(key.display_html(), response.content)
+            self.assertIn(
+                key.display_html().encode(settings.DEFAULT_CHARSET),
+                response.content)
 
     def test_prefs_displays_link_to_delete_ssh_keys(self):
         self.client_log_in()
@@ -150,7 +144,7 @@ class KeyManagementTest(MAASServerTestCase):
         response = self.client.post(
             reverse('prefs-add-sshkey'), {'key': key_string})
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertTrue(SSHKey.objects.filter(key=key_string).exists())
 
     def test_add_key_POST_fails_if_key_already_exists_for_the_user(self):
@@ -161,9 +155,9 @@ class KeyManagementTest(MAASServerTestCase):
         response = self.client.post(
             reverse('prefs-add-sshkey'), {'key': key_string})
 
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertIn(
-            "This key has already been added for this user.",
+            b"This key has already been added for this user.",
             response.content)
         self.assertItemsEqual([key], SSHKey.objects.filter(key=key_string))
 
@@ -176,7 +170,7 @@ class KeyManagementTest(MAASServerTestCase):
             reverse('prefs-add-sshkey'), {'key': key_string})
         new_key = SSHKey.objects.get(key=key_string, user=self.logged_in_user)
 
-        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(http.client.FOUND, response.status_code)
         self.assertItemsEqual(
             [key, new_key], SSHKey.objects.filter(key=key_string))
 
@@ -189,7 +183,7 @@ class KeyManagementTest(MAASServerTestCase):
         doc = fromstring(response.content)
 
         self.assertIn(
-            "Are you sure you want to delete the following key?",
+            b"Are you sure you want to delete the following key?",
             response.content)
         # The page features a form that submits to itself.
         self.assertSequenceEqual(
@@ -203,7 +197,7 @@ class KeyManagementTest(MAASServerTestCase):
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_delete_key_GET_nonexistent_key_redirects_to_prefs(self):
         # Deleting a nonexistent key requires no confirmation.  It just

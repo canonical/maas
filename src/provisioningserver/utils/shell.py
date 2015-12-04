@@ -3,15 +3,6 @@
 
 """Utilities for executing external commands."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'call_and_check',
     'ExternalProcessError',
@@ -20,8 +11,8 @@ __all__ = [
     ]
 
 from contextlib import contextmanager
-import cPickle
 import os
+import pickle
 from pipes import quote
 import signal
 from string import printable
@@ -41,16 +32,16 @@ from twisted.python.failure import Failure
 # A mapping of signal numbers to names. It is strange that this isn't in the
 # standard library (but I did check).
 signal_names = {
-    value: name for name, value in vars(signal).viewitems()
+    value: name for name, value in vars(signal).items()
     if name.startswith('SIG') and '_' not in name
 }
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
 # mark, mimicking the "replace" strategy when encoding and decoding.
-non_printable_replace_table = b"".join(
-    chr(i) if chr(i) in printable else b"?"
-    for i in xrange(0xff + 0x01))
+non_printable_replace_table = "".join(
+    chr(i) if chr(i) in printable else "?"
+    for i in range(0xff + 0x01)).encode("ascii")
 
 
 class ExternalProcessError(CalledProcessError):
@@ -59,12 +50,8 @@ class ExternalProcessError(CalledProcessError):
     Unlike `CalledProcessError`:
 
     - `__str__()` returns a string containing the output of the failed
-      external process, if available. All non-printable and non-ASCII
-      characters are filtered out, replaced by question marks.
-
-    - `__unicode__()` is defined, and tries to return something
-      analagous to `__str__()` but keeping in valid unicode characters
-      from the error message.
+      external process, if available, and tries to keep in valid Unicode
+      characters from the error message.
 
     """
 
@@ -94,25 +81,21 @@ class ExternalProcessError(CalledProcessError):
         if isinstance(string, bytes):
             return string.decode("ascii", "replace")
         else:
-            return unicode(string)
+            return str(string)
 
     @staticmethod
     def _to_ascii(string, table=non_printable_replace_table):
-        if isinstance(string, unicode):
-            return string.encode("ascii", "replace")
+        if isinstance(string, bytes):
+            return string.translate(table)
+        elif isinstance(string, str):
+            return string.encode("ascii", "replace").translate(table)
         else:
-            return bytes(string).translate(table)
-
-    def __unicode__(self):
-        cmd = u" ".join(quote(self._to_unicode(part)) for part in self.cmd)
-        output = self._to_unicode(self.output)
-        return u"Command `%s` returned non-zero exit status %d:\n%s" % (
-            cmd, self.returncode, output)
+            return str(string).encode("ascii", "replace").translate(table)
 
     def __str__(self):
-        cmd = b" ".join(quote(self._to_ascii(part)) for part in self.cmd)
-        output = self._to_ascii(self.output)
-        return b"Command `%s` returned non-zero exit status %d:\n%s" % (
+        cmd = " ".join(quote(self._to_unicode(part)) for part in self.cmd)
+        output = self._to_unicode(self.output)
+        return "Command `%s` returned non-zero exit status %d:\n%s" % (
             cmd, self.returncode, output)
 
     @property
@@ -201,6 +184,9 @@ def pipefork():
     the child has died for another reason, a signal perhaps, a `PipeForkError`
     is raised with an explanatory message.
 
+    Signal handlers in the child are NOT modified. This means that signal
+    handlers set in the parent will still be present in the child.
+
     :raises: `PipeForkError` when the child process dies a somewhat unnatural
         death, e.g. by a signal or when writing a crash-dump fails.
     """
@@ -229,7 +215,7 @@ def pipefork():
         except:
             try:
                 # Pickle error to crash file.
-                cPickle.dump(Failure(), crashfile, cPickle.HIGHEST_PROTOCOL)
+                pickle.dump(Failure(), crashfile, pickle.HIGHEST_PROTOCOL)
                 crashfile.flush()
             finally:
                 # Exit hard.
@@ -254,7 +240,7 @@ def pipefork():
         # Check for a saved crash.
         crashfile.seek(0)
         try:
-            error = cPickle.load(crashfile)
+            error = pickle.load(crashfile)
         except EOFError:
             # No crash was recorded.
             error = None
@@ -307,10 +293,10 @@ def objectfork():
     with pipefork() as (pid, fin, fout):
 
         def recv():
-            return cPickle.load(fin)
+            return pickle.load(fin)
 
         def send(obj):
-            cPickle.dump(obj, fout, cPickle.HIGHEST_PROTOCOL)
+            pickle.dump(obj, fout, pickle.HIGHEST_PROTOCOL)
             fout.flush()  # cPickle.dump() does not flush.
 
         yield pid, recv, send
@@ -323,3 +309,23 @@ def has_command_available(command):
     except ExternalProcessError:
         return False
     return True
+
+
+def select_c_utf8_locale(environ=os.environ):
+    """Return a dict containing an environment that uses the C.UTF-8 locale.
+
+    C.UTF-8 is the new en_US.UTF-8, i.e. it's the new default locale when no
+    other locale makes sense.
+
+    :param environ: A base environment to start from. By default this is
+        ``os.environ``. It will not be modified.
+    """
+    environ = {
+        name: value for name, value in environ.items()
+        if not name.startswith('LC_')
+    }
+    environ.update({
+        'LC_ALL': 'C.UTF-8',
+        'LANG': 'C.UTF-8',
+    })
+    return environ

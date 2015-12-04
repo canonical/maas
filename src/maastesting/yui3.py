@@ -3,15 +3,6 @@
 
 """Helpers for dealing with YUI3."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "extract_tests",
     "gen_failed_test_messages",

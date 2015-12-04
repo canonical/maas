@@ -3,15 +3,6 @@
 
 """Test the factory where appropriate.  Don't overdo this."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from datetime import datetime
@@ -25,6 +16,7 @@ from maastesting.factory import (
     factory,
     TooManyRandomRetries,
 )
+from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import FakeRandInt
 from netaddr import (
@@ -34,7 +26,6 @@ from netaddr import (
 from testtools.matchers import (
     Contains,
     EndsWith,
-    FileContains,
     FileExists,
     MatchesAll,
     Not,
@@ -75,7 +66,7 @@ class TestFactory(MAASTestCase):
 
     def test_make_ipv4_address(self):
         ip_address = factory.make_ipv4_address()
-        self.assertIsInstance(ip_address, unicode)
+        self.assertIsInstance(ip_address, str)
         octets = ip_address.split('.')
         self.assertEqual(4, len(octets))
         for octet in octets:
@@ -92,11 +83,11 @@ class TestFactory(MAASTestCase):
         networks = []
         for _ in range(100):
             networks.append(factory.make_ipv4_network(but_not=networks))
-        self.assertEquals(len(networks), len(set(networks)))
+        self.assertEqual(len(networks), len(set(networks)))
 
     def test_make_UUID(self):
         uuid = factory.make_UUID()
-        self.assertIsInstance(uuid, unicode)
+        self.assertIsInstance(uuid, str)
         self.assertEqual(36, len(uuid))
 
     def test_make_ipv4_network(self):
@@ -189,7 +180,7 @@ class TestFactory(MAASTestCase):
 
     def test_make_mac_address(self):
         mac_address = factory.make_mac_address()
-        self.assertIsInstance(mac_address, unicode)
+        self.assertIsInstance(mac_address, str)
         self.assertEqual(17, len(mac_address))
         for hex_octet in mac_address.split(":"):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
@@ -210,13 +201,13 @@ class TestFactory(MAASTestCase):
 
     def test_make_random_leases_randomizes_ips(self):
         self.assertNotEqual(
-            factory.make_random_leases().keys(),
-            factory.make_random_leases().keys())
+            list(factory.make_random_leases().keys()),
+            list(factory.make_random_leases().keys()))
 
     def test_make_random_leases_randomizes_macs(self):
         self.assertNotEqual(
-            factory.make_random_leases().values(),
-            factory.make_random_leases().values())
+            list(factory.make_random_leases().values()),
+            list(factory.make_random_leases().values()))
 
     def test_make_random_leases_returns_requested_number_of_leases(self):
         num_leases = randint(0, 3)
@@ -227,11 +218,17 @@ class TestFactory(MAASTestCase):
     def test_make_file_creates_file(self):
         self.assertThat(factory.make_file(self.make_dir()), FileExists())
 
-    def test_make_file_writes_contents(self):
+    def test_make_file_writes_binary_contents(self):
         contents = factory.make_string().encode('ascii')
         self.assertThat(
             factory.make_file(self.make_dir(), contents=contents),
             FileContains(contents))
+
+    def test_make_file_writes_textual_contents_as_utf8(self):
+        contents = factory.make_string() + "\xa3\u20ac"
+        self.assertThat(
+            factory.make_file(self.make_dir(), contents=contents),
+            FileContains(contents, encoding="utf-8"))
 
     def test_make_file_makes_up_contents_if_none_given(self):
         with open(factory.make_file(self.make_dir())) as temp_file:
@@ -252,7 +249,7 @@ class TestFactory(MAASTestCase):
             os.path.split(factory.make_file(directory, name=name)))
 
     def test_make_name_returns_unicode(self):
-        self.assertIsInstance(factory.make_name(), unicode)
+        self.assertIsInstance(factory.make_name(), str)
 
     def test_make_name_includes_prefix_and_separator(self):
         self.assertThat(factory.make_name('abc'), StartsWith('abc-'))
@@ -293,7 +290,7 @@ class TestFactory(MAASTestCase):
 
     def test_make_tarball_writes_tarball(self):
         filename = factory.make_name()
-        contents = {filename: factory.make_string()}
+        contents = {filename: factory.make_string().encode("ascii")}
 
         tarball = factory.make_tarball(self.make_dir(), contents)
 

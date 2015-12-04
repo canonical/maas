@@ -5,16 +5,6 @@
 
 """Import boot resources into MAAS cluster controller."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
-
 import logging
 from provisioningserver.import_images.boot_resources import (
     maaslog,

@@ -3,15 +3,6 @@
 
 """Tests for the FanNetwork model."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -33,7 +24,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
     def test__user_view_returns_fannetwork(self):
         user = factory.make_User()
         fannetwork = factory.make_FanNetwork()
-        self.assertEquals(
+        self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
                 fannetwork.id, user, NODE_PERMISSION.VIEW))
@@ -55,7 +46,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
     def test__admin_view_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
-        self.assertEquals(
+        self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
                 fannetwork.id, admin, NODE_PERMISSION.VIEW))
@@ -63,7 +54,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
     def test__admin_edit_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
-        self.assertEquals(
+        self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
                 fannetwork.id, admin, NODE_PERMISSION.EDIT))
@@ -71,7 +62,7 @@ class TestFanNetworkManagerGetFanNetworkOr404(MAASServerTestCase):
     def test__admin_admin_returns_fannetwork(self):
         admin = factory.make_admin()
         fannetwork = factory.make_FanNetwork()
-        self.assertEquals(
+        self.assertEqual(
             fannetwork,
             FanNetwork.objects.get_fannetwork_or_404(
                 fannetwork.id, admin, NODE_PERMISSION.ADMIN))
@@ -126,7 +117,7 @@ class TestFanNetwork(MAASServerTestCase):
                 host_reserve=256)
 
     def test_stores_dhcp(self):
-        dhcp = (random.random > 0.5)
+        dhcp = factory.pick_bool()
         fannetwork = factory.make_FanNetwork(dhcp=dhcp)
         self.assertEqual(dhcp, fannetwork.dhcp)
 
@@ -136,7 +127,7 @@ class TestFanNetwork(MAASServerTestCase):
         self.assertEqual(bridge, fannetwork.bridge)
 
     def test_stores_off(self):
-        off = (random.random > 0.5)
+        off = factory.pick_bool()
         fannetwork = factory.make_FanNetwork(off=off)
         self.assertEqual(off, fannetwork.off)
 

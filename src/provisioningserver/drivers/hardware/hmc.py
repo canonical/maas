@@ -6,14 +6,6 @@
 This module provides support for interacting with IBM's HMC via SSH.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-str = None
-
-__metaclass__ = type
 __all__ = [
     'power_control_hmc',
     'power_state_hmc',

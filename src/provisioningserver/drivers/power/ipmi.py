@@ -3,15 +3,6 @@
 
 """IPMI Power Driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from subprocess import (
@@ -21,7 +12,6 @@ from subprocess import (
 from tempfile import NamedTemporaryFile
 
 from provisioningserver.drivers.power import (
-    get_c_environment,
     is_power_parameter_set,
     PowerAuthError,
     PowerDriver,
@@ -60,8 +50,9 @@ class IPMIPowerDriver(PowerDriver):
 
     @staticmethod
     def _issue_ipmi_chassis_config_command(
-            command, power_change, power_address, env):
-        with NamedTemporaryFile() as tmp_config:
+            command, power_change, power_address):
+        env = shell.select_c_utf8_locale()
+        with NamedTemporaryFile("w+", encoding="utf-8") as tmp_config:
             # Write out the chassis configuration.
             tmp_config.write(IPMI_CONFIG)
             tmp_config.flush()
@@ -71,7 +62,8 @@ class IPMIPowerDriver(PowerDriver):
             command = tuple(command) + ("--filename", tmp_config.name)
             process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
             stdout, stderr = process.communicate()
-            stderr = stderr.strip()
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8").strip()
         if "password invalid" in stderr:
             raise PowerAuthError("Invalid password.")
         if process.returncode != 0:
@@ -80,7 +72,8 @@ class IPMIPowerDriver(PowerDriver):
                     power_address, stderr))
 
     @staticmethod
-    def _issue_ipmi_power_command(command, power_change, power_address, env):
+    def _issue_ipmi_power_command(command, power_change, power_address):
+        env = shell.select_c_utf8_locale()
         command = tuple(command)  # For consistency when testing.
         try:
             output = call_and_check(command, env=env)
@@ -110,9 +103,6 @@ class IPMIPowerDriver(PowerDriver):
                 is_power_parameter_set(power_address)):
             power_address = find_ip_via_arp(mac_address)
 
-        # Set environment variables
-        env = get_c_environment()
-
         # The `-W opensesspriv` workaround is required on many BMCs, and
         # should have no impact on BMCs that don't require it.
         # See https://bugs.launchpad.net/maas/+bug/1287964
@@ -140,7 +130,7 @@ class IPMIPowerDriver(PowerDriver):
         # Before changing state run the chassis config command.
         if power_change in ("on", "off"):
             self._issue_ipmi_chassis_config_command(
-                ipmi_chassis_config_command, power_change, power_address, env)
+                ipmi_chassis_config_command, power_change, power_address)
 
         # Additional arguments for the power command.
         if power_change == 'on':
@@ -156,7 +146,7 @@ class IPMIPowerDriver(PowerDriver):
 
         # Update or query the power state.
         return self._issue_ipmi_power_command(
-            ipmipower_command, power_change, power_address, env)
+            ipmipower_command, power_change, power_address)
 
     def power_on(self, system_id, context):
         self._issue_ipmi_command('on', **context)

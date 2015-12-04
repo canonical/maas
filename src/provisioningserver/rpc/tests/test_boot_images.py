@@ -3,15 +3,6 @@
 
 """Tests for provisioningserver.rpc.boot_images"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -107,7 +98,7 @@ class TestReloadBootImages(PservTestCase):
         mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
         mock_list_boot_images.return_value = fake_boot_images
         reload_boot_images()
-        self.assertEquals(
+        self.assertEqual(
             boot_images.CACHED_BOOT_IMAGES, fake_boot_images)
 
 
@@ -131,7 +122,7 @@ class TestFixSourcesForCluster(PservTestCase):
             }
         ]
         observered = fix_sources_for_cluster(sources)
-        self.assertEquals(
+        self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observered[0]['url'])
 
@@ -143,7 +134,7 @@ class TestFixSourcesForCluster(PservTestCase):
             }
         ]
         observered = fix_sources_for_cluster(sources)
-        self.assertEquals(
+        self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observered[0]['url'])
 
@@ -155,7 +146,7 @@ class TestFixSourcesForCluster(PservTestCase):
             }
         ]
         observered = fix_sources_for_cluster(sources)
-        self.assertEquals(
+        self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
             observered[0]['url'])
 
@@ -167,7 +158,7 @@ class TestFixSourcesForCluster(PservTestCase):
             }
         ]
         observered = fix_sources_for_cluster(sources)
-        self.assertEquals(
+        self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
             observered[0]['url'])
 
@@ -179,7 +170,7 @@ class TestFixSourcesForCluster(PservTestCase):
             }
         ]
         observered = fix_sources_for_cluster(sources)
-        self.assertEquals(
+        self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
             observered[0]['url'])
 

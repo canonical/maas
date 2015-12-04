@@ -3,15 +3,6 @@
 
 """Tests for the `osystems` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from collections import (
@@ -86,7 +77,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             return count
 
         self.assertThat(
-            counter.viewitems(), AllMatch(
+            counter.items(), AllMatch(
                 AfterPreprocessing(get_count, Equals(1))))
 
     def test_os_data_is_passed_through_unmolested(self):

@@ -3,15 +3,6 @@
 
 """Common code for MAAS Cluster RPC operations."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'call_clusters',
     'get_error_message_for_exception',
@@ -101,7 +92,7 @@ def get_error_message_for_exception(exception):
             "Unable to connect to cluster '%s' (%s); no connections "
             "available." % (cluster.cluster_name, cluster.uuid))
 
-    error_message = unicode(exception)
+    error_message = str(exception)
     if len(error_message) == 0:
         error_message = (
             "Unexpected exception: %s. See /var/log/maas/regiond.log "

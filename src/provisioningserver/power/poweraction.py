@@ -6,15 +6,6 @@
 :deprecated: This relates to template-based power control.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "PowerAction",
     "PowerActionFail",
@@ -31,6 +22,7 @@ from provisioningserver.utils import (
     ShellTemplate,
 )
 from provisioningserver.utils.network import find_ip_via_arp
+from provisioningserver.utils.shell import select_c_utf8_locale
 
 
 class UnknownPowerType(Exception):
@@ -86,7 +78,7 @@ class PowerAction:
         return locate_config('templates/power')
 
     def get_template(self):
-        with open(self.path, "rb") as f:
+        with open(self.path, "r", encoding="utf-8") as f:
             return ShellTemplate(f.read(), name=self.path)
 
     def update_context(self, context):
@@ -120,10 +112,11 @@ class PowerAction:
         shell = ("/bin/sh",)
         process = subprocess.Popen(
             shell, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, close_fds=True)
-        output, _ = process.communicate(commands)
+            stderr=subprocess.STDOUT, env=select_c_utf8_locale(),
+            close_fds=True)
+        output, _ = process.communicate(commands.encode("utf-8"))
         if process.wait() == 0:
-            return output.strip()
+            return output.strip().decode("utf-8")
         else:
             raise PowerActionFail.from_action(
                 self, subprocess.CalledProcessError(

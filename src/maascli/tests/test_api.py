@@ -3,19 +3,11 @@
 
 """Tests for `maascli.api`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
+from base64 import b64encode
 from functools import partial
-import httplib
+import http.client
 import json
 import sys
 from textwrap import dedent
@@ -58,7 +50,7 @@ class TestRegisterAPICommands(MAASTestCase):
         return ProfileConfig.open.return_value
 
     def test_registers_subparsers(self):
-        profile_name = self.make_profile().keys()[0]
+        profile_name = list(self.make_profile().keys())[0]
         parser = ArgumentParser()
         self.assertIsNone(parser._subparsers)
         api.register_api_commands(parser)
@@ -69,10 +61,10 @@ class TestRegisterAPICommands(MAASTestCase):
         profile = self.make_profile()
         parser = ArgumentParser()
         api.register_api_commands(parser)
-        for resource in profile.values()[0]["description"]["resources"]:
+        for resource in list(profile.values())[0]["description"]["resources"]:
             for action in resource["auth"]["actions"]:
                 # Profile names are matched as-is.
-                profile_name = profile.keys()[0]
+                [profile_name] = profile
                 # Handler names are processed with handler_command_name before
                 # being added to the argument parser tree.
                 handler_name = handler_command_name(resource["name"])
@@ -94,7 +86,7 @@ class TestFunctions(MAASTestCase):
         content = factory.make_name("content")
         request = self.patch(httplib2.Http, "request")
         response = httplib2.Response({})
-        response.status = httplib.OK
+        response.status = http.client.OK
         response["content-type"] = "application/json"
         request.return_value = response, json.dumps(content)
         self.assertEqual(
@@ -108,14 +100,15 @@ class TestFunctions(MAASTestCase):
         content = factory.make_name("content")
         request = self.patch(httplib2.Http, "request")
         response = httplib2.Response({})
-        response.status = httplib.BAD_REQUEST
-        response.reason = httplib.responses[httplib.BAD_REQUEST]
+        response.status = http.client.BAD_REQUEST
+        response.reason = http.client.responses[http.client.BAD_REQUEST]
         request.return_value = response, json.dumps(content)
         error = self.assertRaises(
             CommandError, api.fetch_api_description,
             "http://example.com/api/1.0/")
         error_expected = "%d %s:\n%s" % (
-            httplib.BAD_REQUEST, httplib.responses[httplib.BAD_REQUEST],
+            http.client.BAD_REQUEST,
+            http.client.responses[http.client.BAD_REQUEST],
             json.dumps(content))
         self.assertEqual(error_expected, "%s" % error)
 
@@ -125,7 +118,7 @@ class TestFunctions(MAASTestCase):
         content = factory.make_name("content")
         request = self.patch(httplib2.Http, "request")
         response = httplib2.Response({})
-        response.status = httplib.OK
+        response.status = http.client.OK
         response["content-type"] = "text/css"
         request.return_value = response, json.dumps(content)
         error = self.assertRaises(
@@ -138,7 +131,7 @@ class TestFunctions(MAASTestCase):
     def test_http_request_raises_error_if_cert_verify_fails(self):
         self.patch(
             httplib2.Http, "request",
-            Mock(side_effect=httplib2.SSLHandshakeError()))
+            Mock(side_effect=httplib2.ssl.SSLError()))
         error = self.assertRaises(
             CommandError, api.http_request, factory.make_name('fake_url'),
             factory.make_name('fake_method'))
@@ -647,7 +640,7 @@ class TestPayloadPreparationWithFiles(MAASTestCase):
         expected_body_template = """\
             --...
             Content-Transfer-Encoding: base64
-            Content-Disposition: form-data; name="%s"; filename="%s"
+            Content-Disposition: form-data; ...name="%s"; ...name="%s"
             MIME-Version: 1.0
             Content-Type: application/octet-stream
 
@@ -655,6 +648,6 @@ class TestPayloadPreparationWithFiles(MAASTestCase):
             --...--
             """
         expected_body = expected_body_template % (
-            parameter, parameter, contents.encode("base64"))
+            parameter, parameter, b64encode(contents).decode("ascii"))
 
         self.assertDocTestMatches(expected_body, body)

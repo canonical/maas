@@ -4,15 +4,6 @@
 """Tests for `provisioningserver.drivers.hardware.vmware`.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 
@@ -343,8 +334,8 @@ class TestVMwarePyvmomi(MAASTestCase):
         search_index = \
             mock_vmomi_api.SmartConnect.return_value.content.searchIndex
 
-        bios_uuids = search_index.vms_by_uuid.keys()
-        instance_uuids = search_index.vms_by_instance_uuid.keys()
+        bios_uuids = list(search_index.vms_by_uuid)
+        instance_uuids = list(search_index.vms_by_instance_uuid)
 
         # at least one should have a randomly-invalid state (just checking
         # for coverage, but since it's random, don't want to assert)
@@ -356,7 +347,7 @@ class TestVMwarePyvmomi(MAASTestCase):
         for uuid in instance_uuids:
             vmware.power_query_vmware(
                 host, username, password, vm_name, uuid)
-        for vm_name in servers.keys():
+        for vm_name in servers:
             vmware.power_query_vmware(
                 host, username, password, vm_name, None)
 

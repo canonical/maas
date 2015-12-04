@@ -3,15 +3,6 @@
 
 """Tests for the `boot_images` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os
@@ -76,6 +67,7 @@ from provisioningserver.testing.boot_images import (
     make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -88,7 +80,6 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.task import Clock
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 
@@ -428,7 +419,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
 from mock import sentinel
 from maasserver.clusterrpc.boot_images import ClustersImporter
 from testtools.matchers import MatchesStructure, Is, Equals
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 
 class TestClustersImporter(MAASTestCase):
@@ -447,7 +438,7 @@ class TestClustersImporter(MAASTestCase):
         ))
 
     def test__init_with_multiple_UUIDs(self):
-        uuids = [factory.make_UUID() for _ in xrange(3)]
+        uuids = [factory.make_UUID() for _ in range(3)]
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
 
@@ -473,7 +464,7 @@ class TestClustersImporter(MAASTestCase):
         # Avoid actually initiating a run.
         self.patch_autospec(ClustersImporter, "run")
 
-        uuids = [factory.make_UUID() for _ in xrange(3)]
+        uuids = [factory.make_UUID() for _ in range(3)]
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
 
@@ -500,7 +491,7 @@ class TestClustersImporter(MAASTestCase):
 
     def test__run_will_not_error_instead_it_logs(self):
         call = self.patch(ClustersImporter, "__call__")
-        call.return_value = fail(ZeroDivisionError)
+        call.return_value = fail(ZeroDivisionError())
 
         with TwistedLoggerFixture() as logger:
             ClustersImporter([], []).run().wait(5)
@@ -609,7 +600,7 @@ class TestClustersImporterInAction(MAASServerTestCase):
 
         # Cluster #2 will break.
         cluster_2 = self.rpc.makeCluster(nodegroup_2, ImportBootImages)
-        cluster_2.ImportBootImages.return_value = fail(ZeroDivisionError)
+        cluster_2.ImportBootImages.return_value = fail(ZeroDivisionError())
 
         # Cluster #3 is not connected.
 

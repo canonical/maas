@@ -16,15 +16,6 @@ requires. Importing from the model is not allowed here. (but the unit tests
 do it, to ensure that the migrations meet validation requirements.)
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "create_physical_interfaces",
 ]
@@ -99,7 +90,7 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
         now = datetime.datetime.now()
         iface = Interface.objects.create(
             mac=mac, type=INTERFACE_TYPE.PHYSICAL,
-            name='eth' + unicode(index),
+            name='eth' + str(index),
             vlan=get_or_create_default_vlan(Fabric, VLAN),
             created=now, updated=now,
         )
@@ -112,7 +103,7 @@ def create_physical_interfaces(MACAddress, Interface, Subnet, Fabric, VLAN):
             # Known cluster interface subnet.
             subnet = ngi.subnet
             for ip in mac.ip_addresses.all():
-                if unicode(ip.ip) in subnet.cidr:
+                if str(ip.ip) in subnet.cidr:
                     ip.subnet = subnet
                     ip.save()
                     # Since we found the Subnet, adjust the new Interface's

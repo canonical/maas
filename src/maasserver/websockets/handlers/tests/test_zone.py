@@ -3,15 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.zone`"""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.models.zone import Zone
@@ -37,7 +28,7 @@ class TestZoneHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = ZoneHandler(user, {})
         zone = factory.make_Zone()
-        self.assertEquals(
+        self.assertEqual(
             self.dehydrate_zone(zone),
             handler.get({"id": zone.id}))
 

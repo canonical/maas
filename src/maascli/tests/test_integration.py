@@ -3,15 +3,6 @@
 
 """Integration-test the `maascli` command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import os.path
@@ -41,18 +32,25 @@ class TestMAASCli(MAASTestCase):
         self.output_file = self.make_file('output')
         try:
             self.run_command()
-        except CalledProcessError as e:
-            pass
-        self.assertIn(
-            "Run %s --help for usage details." % locate_maascli(),
-            e.output)
+        except CalledProcessError as error:
+            self.assertIn(
+                "Run %s --help for usage details." % locate_maascli(),
+                error.output.decode("ascii"))
 
     def test_help_option_succeeds(self):
-        self.run_command('-h')
-        # The test is that we get here without error.
-        pass
+        try:
+            self.run_command('-h')
+        except CalledProcessError as error:
+            self.fail(error.output.decode("ascii"))
+        else:
+            # The test is that we get here without error.
+            pass
 
     def test_list_command_succeeds(self):
-        self.run_command('list')
-        # The test is that we get here without error.
-        pass
+        try:
+            self.run_command('list')
+        except CalledProcessError as error:
+            self.fail(error.output.decode("ascii"))
+        else:
+            # The test is that we get here without error.
+            pass

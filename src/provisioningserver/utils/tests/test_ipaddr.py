@@ -3,15 +3,6 @@
 
 """Test parser for 'ip addr show'."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import json
@@ -143,7 +134,7 @@ state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
         ip_link = parse_ip_addr(testdata)
-        self.assertEquals(2, ip_link['eth0']['index'])
+        self.assertEqual(2, ip_link['eth0']['index'])
 
     def test_parses_name(self):
         testdata = dedent("""
@@ -152,7 +143,7 @@ state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
         ip_link = parse_ip_addr(testdata)
-        self.assertEquals('eth0', ip_link['eth0']['name'])
+        self.assertEqual('eth0', ip_link['eth0']['name'])
 
     def test_parses_mac(self):
         testdata = dedent("""
@@ -161,7 +152,7 @@ state UP mode DEFAULT group default qlen 1000
             link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
         """)
         ip_link = parse_ip_addr(testdata)
-        self.assertEquals('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
+        self.assertEqual('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
 
     def test_parses_flags(self):
         testdata = dedent("""
@@ -298,16 +289,16 @@ mode DORMANT group default qlen 1000
                 valid_lft forever preferred_lft forever
         """)
         ip_link = parse_ip_addr(testdata)
-        self.assertEquals(2, ip_link['eth0']['index'])
-        self.assertEquals('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
-        self.assertEquals(['192.168.0.3/24'], ip_link['eth0']['inet'])
-        self.assertEquals(
+        self.assertEqual(2, ip_link['eth0']['index'])
+        self.assertEqual('80:fa:5c:0d:43:5e', ip_link['eth0']['mac'])
+        self.assertEqual(['192.168.0.3/24'], ip_link['eth0']['inet'])
+        self.assertEqual(
             ['2001:db8:85a3:8d3:1319:8a2e:370:7350/64'],
             ip_link['eth0']['inet6'])
-        self.assertEquals(3, ip_link['eth1']['index'])
-        self.assertEquals('48:51:bb:7a:d5:e2', ip_link['eth1']['mac'])
-        self.assertEquals(['192.168.0.5/24'], ip_link['eth1']['inet'])
-        self.assertEquals(
+        self.assertEqual(3, ip_link['eth1']['index'])
+        self.assertEqual('48:51:bb:7a:d5:e2', ip_link['eth1']['mac'])
+        self.assertEqual(['192.168.0.5/24'], ip_link['eth1']['inet'])
+        self.assertEqual(
             ['2001:db8:85a3:8d3:1319:8a2e:370:7348/64',
              '2001:db8:85a3:8d3:1319:8a2e:370:3645/64',
              '2001:db8:85a3:8d3::1111/64',
@@ -334,20 +325,19 @@ class TestGetInterfaceType(MAASTestCase):
         ifdir = os.path.join(self.tmp_sys_net, ifname)
         os.mkdir(ifdir)
         type_file = os.path.join(ifdir, 'type')
-        f = open(type_file, 'w')
-        f.write(b"%d\n" % iftype)
-        f.close()
+        with open(type_file, 'w', encoding="utf-8") as f:
+            f.write("%d\n" % iftype)
         if is_bridge:
             os.mkdir(os.path.join(ifdir, 'bridge'))
         if is_vlan:
-            f = open(os.path.join(self.tmp_proc_net_vlan, ifname), 'w')
-            f.close()
+            with open(os.path.join(self.tmp_proc_net_vlan, ifname), 'w'):
+                pass  # Just touch.
         if is_bond:
             os.mkdir(os.path.join(ifdir, 'bonding'))
             if bonded_interfaces is not None:
-                f = open(os.path.join(ifdir, 'bonding', 'slaves'), 'w')
-                f.write(b"%s\n" % ' '.join(bonded_interfaces).encode('utf-8'))
-                f.close()
+                filename_slaves = os.path.join(ifdir, 'bonding', 'slaves')
+                with open(filename_slaves, 'w', encoding="utf-8") as f:
+                    f.write("%s\n" % ' '.join(bonded_interfaces))
         if is_physical or is_wireless:
             device_real = os.path.join(ifdir, 'device.real')
             os.mkdir(device_real)

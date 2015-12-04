@@ -3,15 +3,6 @@
 
 """Tests for the `network` module."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
@@ -38,7 +29,7 @@ def make_inet_address(subnet=None):
         subnet = factory.make_ipv4_network()
     subnet = IPNetwork(subnet)
     addr = {
-        'netmask': unicode(subnet.netmask),
+        'netmask': str(subnet.netmask),
         'addr': factory.pick_ip_in_network(subnet),
     }
     if subnet.version == 4:
@@ -72,7 +63,7 @@ class TestNetworks(MAASTestCase):
         :param interfaces: A dict mapping each interface's name to its
             definition as `netifaces` would return it.
         """
-        self.patch(network, 'interfaces').return_value = interfaces.keys()
+        self.patch(network, 'interfaces').return_value = list(interfaces)
         self.patch(
             network, 'ifaddresses', lambda interface: interfaces[interface])
 

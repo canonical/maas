@@ -3,15 +3,6 @@
 
 """Monitored service driver."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "SERVICE_STATE",
     "Service",
@@ -35,10 +26,8 @@ class SERVICE_STATE:
     OFF = 'off'
 
 
-class Service:
+class Service(metaclass=ABCMeta):
     """Skeleton for a monitored service."""
-
-    __metaclass__ = ABCMeta
 
     @abstractproperty
     def name(self):

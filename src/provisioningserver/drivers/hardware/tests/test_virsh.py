@@ -4,15 +4,6 @@
 """Tests for `provisioningserver.drivers.hardware.virsh`.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -239,7 +230,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(arch, expected)
 
     def test_get_arch_returns_valid_fixed(self):
-        arch = random.choice(virsh.ARCH_FIX.keys())
+        arch = random.choice(list(virsh.ARCH_FIX))
         fixed_arch = virsh.ARCH_FIX[arch]
         output = SAMPLE_DUMPXML % arch
         conn = self.configure_virshssh(output)

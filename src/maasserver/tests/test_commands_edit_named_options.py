@@ -3,20 +3,10 @@
 
 """Tests for the edit_named_options command."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
-from codecs import getwriter
 from collections import OrderedDict
-from io import BytesIO
+from io import StringIO
 import os
 import shutil
 import textwrap
@@ -95,15 +85,14 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
     def setUp(self):
         super(TestEditNamedOptionsCommand, self).setUp()
-        out = BytesIO()
-        self.stdout = getwriter("UTF-8")(out)
+        self.stdout = StringIO()
 
     def assertFailsWithMessage(self, config_path, message):
         e = self.assertRaises(
             CommandError,
             call_command, "edit_named_options", config_path=config_path,
             stdout=self.stdout)
-        self.assertIn(message, e.message)
+        self.assertIn(message, str(e))
 
     def assertContentFailsWithMessage(self, content, message):
         options_file = self.make_file(contents=content)

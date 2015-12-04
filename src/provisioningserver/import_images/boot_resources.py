@@ -1,15 +1,6 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     'import_images',
     'main',
@@ -19,6 +10,7 @@ __all__ = [
 
 from argparse import ArgumentParser
 import errno
+from io import StringIO
 import os
 from textwrap import dedent
 
@@ -174,16 +166,20 @@ def update_current_symlink(storage, latest_snapshot):
 
 
 def write_snapshot_metadata(snapshot, meta_file_content):
-    """Write "maas.meta" file."""
+    """Write "maas.meta" file.
+
+    :param meta_file_content: A Unicode string (`str`) containing JSON using
+        only ASCII characters.
+    """
     meta_file = os.path.join(snapshot, 'maas.meta')
-    atomic_write(meta_file_content, meta_file, mode=0644)
+    atomic_write(meta_file_content.encode("ascii"), meta_file, mode=0o644)
 
 
 def write_targets_conf(snapshot):
     """Write "maas.tgt" file."""
     targets_conf = os.path.join(snapshot, 'maas.tgt')
     targets_conf_content = compose_targets_conf(snapshot)
-    atomic_write(targets_conf_content, targets_conf, mode=0644)
+    atomic_write(targets_conf_content, targets_conf, mode=0o644)
 
 
 def update_targets_conf(snapshot):
@@ -224,7 +220,6 @@ def read_sources(sources_yaml):
 
 def parse_sources(sources_yaml):
     """Given a YAML `config` string, return a `BootSources` for it."""
-    from StringIO import StringIO
     return BootSources.parse(StringIO(sources_yaml))
 
 
@@ -236,10 +231,17 @@ def import_images(sources):
     """
     maaslog.info("Started importing boot images.")
     if len(sources) == 0:
-        maaslog.warn("Can't import: region did not provide a source.")
+        maaslog.warning("Can't import: region did not provide a source.")
         return
 
     with tempdir('keyrings') as keyrings_path:
+        # XXX: Band-aid to ensure that the keyring_data is bytes. Future task:
+        # try to figure out why this sometimes happens.
+        for source in sources:
+            if ('keyring_data' in source and
+                    not isinstance(source['keyring_data'], bytes)):
+                source['keyring_data'] = source['keyring_data'].encode('utf-8')
+
         # We download the keyrings now  because we need them for both
         # download_all_image_descriptions() and
         # download_all_boot_resources() later.
@@ -247,7 +249,7 @@ def import_images(sources):
 
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
-            maaslog.warn(
+            maaslog.warning(
                 "Finished importing boot images, the region does not have "
                 "any boot images available.")
             return

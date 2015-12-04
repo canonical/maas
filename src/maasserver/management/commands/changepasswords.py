@@ -5,7 +5,7 @@
 
 from fileinput import (
     hook_encoded,
-    input,
+    input as fileinput,
 )
 from textwrap import dedent
 
@@ -35,7 +35,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         count = 0
         UserModel = get_user_model()
-        for line in input(args, openhook=hook_encoded("utf-8")):
+        for line in fileinput(args, openhook=hook_encoded("utf-8")):
             try:
                 username, password = line.rstrip('\r\n').split(":", 1)
             except ValueError:

@@ -3,23 +3,16 @@
 
 """Tests for tag updating."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import doctest
-import httplib
+import http.client
 from itertools import chain
 import json
 from textwrap import dedent
-import urllib2
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from apiclient.maas_client import MAASClient
 import bson
@@ -30,7 +23,12 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
 )
-from maastesting.matchers import IsCallable
+from maastesting.matchers import (
+    IsCallable,
+    Matches,
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from mock import (
     call,
     MagicMock,
@@ -40,6 +38,7 @@ from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
+    AfterPreprocessing,
     DocTestMatches,
     Equals,
     MatchesStructure,
@@ -55,30 +54,31 @@ class TestProcessResponse(PservTestCase):
     def test_process_OK_response_with_JSON_content(self):
         data = {"abc": 123}
         response = factory.make_response(
-            httplib.OK, json.dumps(data), "application/json")
+            http.client.OK, json.dumps(data).encode("ascii"),
+            "application/json")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_OK_response_with_BSON_content(self):
         data = {"abc": 123}
         response = factory.make_response(
-            httplib.OK, bson.BSON.encode(data), "application/bson")
+            http.client.OK, bson.BSON.encode(data), "application/bson")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_OK_response_with_other_content(self):
         data = factory.make_bytes()
         response = factory.make_response(
-            httplib.OK, data, "application/octet-stream")
+            http.client.OK, data, "application/octet-stream")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_not_OK_response(self):
         response = factory.make_response(
-            httplib.NOT_FOUND,
+            http.client.NOT_FOUND,
             b"",
             "application/json"
         )
         response.url = factory.make_string()
         error = self.assertRaises(
-            urllib2.HTTPError, tags.process_response, response)
+            urllib.error.HTTPError, tags.process_response, response)
         self.assertThat(
             error, MatchesStructure.byEquality(
                 url=response.url, code=response.code,
@@ -90,7 +90,7 @@ class EqualsXML(Equals):
 
     @staticmethod
     def normalise(xml):
-        if isinstance(xml, (bytes, unicode)):
+        if isinstance(xml, (bytes, str)):
             xml = etree.fromstring(dedent(xml))
         return etree.tostring(xml, pretty_print=True)
 
@@ -387,8 +387,8 @@ class TestGenBatchSlices(PservTestCase):
             list(tags.gen_batch_slices(10, 4)))
 
     def test_batches_by_brute_force(self):
-        expected = range(99)
-        for size in xrange(1, len(expected) // 2):
+        expected = list(range(99))
+        for size in range(1, len(expected) // 2):
             slices = tags.gen_batch_slices(len(expected), size)
             batches = list(expected[sl] for sl in slices)
             # Every element in the original list is present in the
@@ -426,11 +426,11 @@ class TestGenBatches(PservTestCase):
     def test_more_things(self):
         self.assertSequenceEqual(
             [[0, 3, 6, 9], [1, 4, 7], [2, 5, 8]],
-            list(tags.gen_batches(range(10), 4)))
+            list(tags.gen_batches(list(range(10)), 4)))
 
     def test_brute(self):
-        expected = range(99)
-        for size in xrange(1, len(expected) // 2):
+        expected = list(range(99))
+        for size in range(1, len(expected) // 2):
             batches = list(tags.gen_batches(expected, size))
             # Every element in the original list is present in the
             # reconsolidated list.
@@ -494,7 +494,7 @@ class TestTagUpdating(PservTestCase):
     def test_get_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
         response = factory.make_response(
-            httplib.OK,
+            http.client.OK,
             b'["system-id1", "system-id2"]',
             'application/json',
         )
@@ -509,17 +509,17 @@ class TestTagUpdating(PservTestCase):
         client, uuid = self.fake_cached_knowledge()
         data = {
             "system-1": {
-                "lshw": bson.binary.Binary(b"<lshw><data1 /></lshw>"),
-                "lldp": bson.binary.Binary(b"<lldp><data1 /></lldp>"),
+                "lshw": b"<lshw><data1 /></lshw>",
+                "lldp": b"<lldp><data1 /></lldp>",
             },
             "system-2": {
-                "lshw": bson.binary.Binary(b"<lshw><data2 /></lshw>"),
-                "lldp": bson.binary.Binary(b"<lldp><data2 /></lldp>"),
+                "lshw": b"<lshw><data2 /></lshw>",
+                "lldp": b"<lldp><data2 /></lldp>",
             },
         }
         content = bson.BSON.encode(data)
         response = factory.make_response(
-            httplib.OK,
+            http.client.OK,
             content,
             'application/bson'
         )
@@ -536,7 +536,7 @@ class TestTagUpdating(PservTestCase):
         client, uuid = self.fake_cached_knowledge()
         content = b'{"added": 1, "removed": 2}'
         response = factory.make_response(
-            httplib.OK,
+            http.client.OK,
             content,
             'application/json'
         )
@@ -565,7 +565,8 @@ class TestTagUpdating(PservTestCase):
         content = ("Definition supplied '%s' doesn't match"
                    " current definition '%s'"
                    % (wrong_tag_definition, right_tag_defintion))
-        err = urllib2.HTTPError('url', httplib.CONFLICT, content, {}, None)
+        err = urllib.error.HTTPError(
+            'url', http.client.CONFLICT, content, {}, None)
         post_mock = MagicMock(side_effect=err)
         self.patch(client, 'post', post_mock)
         result = tags.post_updated_nodes(
@@ -597,13 +598,13 @@ class TestTagUpdating(PservTestCase):
             maas_url=factory.make_simple_http_url()))
         get_nodes = FakeMethod(
             result=factory.make_response(
-                httplib.OK,
+                http.client.OK,
                 b'["system-id1", "system-id2"]',
                 'application/json',
             ))
         post_hw_details = FakeMethod(
             result=factory.make_response(
-                httplib.OK,
+                http.client.OK,
                 bson.BSON.encode({
                     'system-id1': {'lshw': b'<node />'},
                     'system-id2': {'lshw': b'<not-node />'},
@@ -613,7 +614,7 @@ class TestTagUpdating(PservTestCase):
         get_fake = MultiFakeMethod([get_nodes])
         post_update_fake = FakeMethod(
             result=factory.make_response(
-                httplib.OK,
+                http.client.OK,
                 b'{"added": 1, "removed": 1}',
                 'application/json',
             ))
@@ -656,27 +657,30 @@ class TestTagUpdating(PservTestCase):
     def test_process_node_tags_requests_details_in_batches(self):
         client = object()
         uuid = factory.make_name('nodegroupuuid')
-        self.patch(
-            tags, 'get_nodes_for_node_group',
-            MagicMock(return_value=['a', 'b', 'c']))
-        fake_first = FakeMethod(result={
-            'a': {'lshw': b'<node />'},
-            'c': {'lshw': b'<parent><node /></parent>'},
-        })
-        fake_second = FakeMethod(result={
-            'b': {'lshw': b'<not-node />'},
-        })
-        self.patch(
-            tags, 'get_details_for_nodes',
-            MultiFakeMethod([fake_first, fake_second]))
+        self.patch(tags, 'get_nodes_for_node_group')
+        tags.get_nodes_for_node_group.return_value = ['a', 'b', 'c']
+        self.patch(tags, 'get_details_for_nodes')
+        tags.get_details_for_nodes.side_effect = [
+            {'a': {'lshw': b'<node />'},
+             'c': {'lshw': b'<parent><node /></parent>'}},
+            {'b': {'lshw': b'<not-node />'}},
+        ]
         self.patch(tags, 'post_updated_nodes')
         tag_name = factory.make_name('tag')
         tag_definition = '//node'
         tags.process_node_tags(
             tag_name, tag_definition, tag_nsmap=None, client=client,
             nodegroup_uuid=uuid, batch_size=2)
-        tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
-        self.assertEqual([((client, uuid, ['a', 'c']), {})], fake_first.calls)
-        self.assertEqual([((client, uuid, ['b']), {})], fake_second.calls)
-        tags.post_updated_nodes.assert_called_once_with(
-            client, tag_name, tag_definition, uuid, ['a', 'c'], ['b'])
+        self.assertThat(
+            tags.get_nodes_for_node_group,
+            MockCalledOnceWith(client, uuid))
+        self.assertThat(
+            tags.get_details_for_nodes, MockCallsMatch(
+                call(client, uuid, ['a', 'c']),
+                call(client, uuid, ['b']),
+            ))
+        batch1 = Matches(AfterPreprocessing(sorted, Equals(['a', 'c'])))
+        batch2 = Matches(AfterPreprocessing(sorted, Equals(['b'])))
+        self.assertThat(
+            tags.post_updated_nodes, MockCalledOnceWith(
+                client, tag_name, tag_definition, uuid, batch1, batch2))

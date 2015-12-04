@@ -3,15 +3,6 @@
 
 """Test `maasserver.preseed_network`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-)
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -87,7 +78,7 @@ class AssertNetworkConfigMixin:
         }))
         expected_network = yaml.load(expected)
         output_network = output["network"]["config"]
-        expected_equals = map(Equals, expected_network)
+        expected_equals = list(map(Equals, expected_network))
         self.assertThat(output_network, MatchesListwise(expected_equals))
 
     def collect_interface_config(self, node, filter="physical"):
@@ -118,7 +109,7 @@ class AssertNetworkConfigMixin:
             return (ret, ipv4_set, ipv6_set)
 
         def get_param_value(value):
-            if isinstance(value, (bytes, unicode)):
+            if isinstance(value, (bytes, str)):
                 return value
             elif isinstance(value, bool):
                 return 1 if value else 0
@@ -146,7 +137,7 @@ class AssertNetworkConfigMixin:
         ret = ""
         for iface in interfaces:
             self.assertIn(iface.type, ["physical", "bond", "vlan"])
-            fmt_dict = {"name": iface.name, "mac": unicode(iface.mac_address)}
+            fmt_dict = {"name": iface.name, "mac": str(iface.mac_address)}
             if iface.type == "physical":
                 ret += self.IFACE_CONFIG % fmt_dict
             elif iface.type == "bridge":
@@ -183,7 +174,7 @@ class AssertNetworkConfigMixin:
                     if subnet is not None:
                         subnet_len = subnet.cidr.split('/')[1]
                         ret += "  - address: %s/%s\n" % (
-                            unicode(address.ip), subnet_len)
+                            str(address.ip), subnet_len)
                         ret += "    type: static\n"
                         ret, ipv4_gateway_set, ipv6_gateway_set = (
                             set_gateway_ip(
@@ -331,5 +322,5 @@ class TestDHCPNetworkLayout(MAASServerTestCase,
         config_yaml = yaml.load(config[0])
         self.assertThat(
             config_yaml['network']['config'][0]['subnets'][0]['type'],
-            Equals('dhcp' + unicode(IPNetwork(subnet.cidr).version))
+            Equals('dhcp' + str(IPNetwork(subnet.cidr).version))
         )

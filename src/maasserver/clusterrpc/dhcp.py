@@ -3,15 +3,6 @@
 
 """DHCP related RPC helpers."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = [
     "update_host_maps",
     "remove_host_maps",
@@ -50,10 +41,10 @@ def gen_calls_to_create_host_maps(clients, static_mappings):
     """
     make_mappings_for_call = lambda mappings: [
         {"ip_address": ip_address, "mac_address": mac_address}
-        for ip_address, mac_address in mappings.viewitems()
+        for ip_address, mac_address in mappings.items()
         if IPAddress(ip_address).version == 4
     ]
-    for nodegroup, mappings in static_mappings.viewitems():
+    for nodegroup, mappings in static_mappings.items():
         yield partial(
             clients[nodegroup], CreateHostMaps,
             mappings=make_mappings_for_call(mappings),
@@ -75,7 +66,7 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
     # Avoid circular imports.
     from maasserver.models.staticipaddress import StaticIPAddress
 
-    for nodegroup, mappings in static_mappings.viewitems():
+    for nodegroup, mappings in static_mappings.items():
         managed_ranges = tuple(
             IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)
             for ngi in nodegroup.get_managed_interfaces()
@@ -87,7 +78,7 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
         # a nodegroup is implicit (via the attached Subnet).
         dhcp_leases = StaticIPAddress.objects.filter(
             subnet__nodegroupinterface__nodegroup=nodegroup,
-            interface__mac_address__in=mappings.viewvalues(),
+            interface__mac_address__in=mappings.values(),
             ip__isnull=False)
         for dhcp_lease in dhcp_leases:
             if dhcp_lease.ip:
@@ -120,7 +111,7 @@ def gen_calls_to_remove_dynamic_host_maps(clients, static_mappings):
         gen_dynamic_ip_addresses_with_host_maps(static_mappings))
     for nodegroup, ip_or_mac in ip_mac_with_maps:
         mac_addresses_to_remove[nodegroup].add(ip_or_mac)
-    for nodegroup, mac_addresses in mac_addresses_to_remove.viewitems():
+    for nodegroup, mac_addresses in mac_addresses_to_remove.items():
         yield partial(
             clients[nodegroup], RemoveHostMaps, ip_addresses=mac_addresses,
             shared_key=nodegroup.dhcp_key)
@@ -171,7 +162,7 @@ def gen_calls_to_remove_host_maps(clients, removal_mappings):
         sequences of IP addresses.
     :return: A generator of callables.
     """
-    for nodegroup, ip_addresses in removal_mappings.viewitems():
+    for nodegroup, ip_addresses in removal_mappings.items():
         yield partial(
             clients[nodegroup], RemoveHostMaps, ip_addresses=ip_addresses,
             shared_key=nodegroup.dhcp_key)

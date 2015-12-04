@@ -3,15 +3,6 @@
 
 """Tests for `PhysicalBlockDevice`."""
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 import random
@@ -63,7 +54,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         num_of_devices = random.randint(2, 4)
         for _ in range(num_of_devices):
             factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(
+        self.assertEqual(
             num_of_devices,
             PhysicalBlockDevice.objects.number_of_physical_devices_for(node))
 
@@ -74,7 +65,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node)
         for _ in range(3):
             factory.make_PhysicalBlockDevice()
-        self.assertEquals(
+        self.assertEqual(
             num_of_devices,
             PhysicalBlockDevice.objects.number_of_physical_devices_for(node))
 
@@ -86,7 +77,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             ]
         for size in sizes:
             factory.make_PhysicalBlockDevice(node=node, size=size)
-        self.assertEquals(
+        self.assertEqual(
             sum(sizes),
             PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
                 node))
@@ -101,7 +92,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node, size=size)
         for _ in range(3):
             factory.make_PhysicalBlockDevice()
-        self.assertEquals(
+        self.assertEqual(
             sum(sizes),
             PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
                 node))
