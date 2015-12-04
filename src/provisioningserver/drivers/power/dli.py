@@ -14,8 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from time import sleep
+
 from provisioningserver.drivers.power import (
     PowerDriver,
+    PowerError,
     PowerFatalError,
 )
 from provisioningserver.utils import shell
@@ -93,6 +96,13 @@ class DLIPowerDriver(PowerDriver):
 
     def power_on(self, system_id, context):
         """Power on DLI outlet."""
+        if self._query_outlet_state(**context) == 'on':
+            self._set_outlet_state('OFF', **context)
+            sleep(1)
+            if self._query_outlet_state(**context) != 'off':
+                raise PowerError(
+                    "Unable to power off outlet %s that is already on."
+                    % context['outlet_id'])
         self._set_outlet_state('ON', **context)
 
     def power_off(self, system_id, context):

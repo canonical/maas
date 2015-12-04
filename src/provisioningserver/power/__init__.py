@@ -30,7 +30,6 @@ from provisioningserver.utils.twisted import asynchronous
 # querying the power state of a node.
 QUERY_POWER_TYPES = [
     'amt',
-    'dli',
     'hmc',
     'ipmi',
     'mscm',
