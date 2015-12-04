@@ -8,11 +8,18 @@ __all__ = []
 from random import choice
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    call,
+    sentinel,
+)
 from provisioningserver.drivers.power import (
     dli as dli_module,
+    PowerError,
     PowerFatalError,
 )
 from provisioningserver.utils.shell import (
@@ -134,10 +141,35 @@ class TestDLIPowerDriver(MAASTestCase):
         driver = dli_module.DLIPowerDriver()
         system_id = factory.make_name('system_id')
         context = {'context': factory.make_name('context')}
+        _query_outlet_state_mock = self.patch(driver, '_query_outlet_state')
+        _query_outlet_state_mock.side_effect = ('on', 'off')
         _set_outlet_state_mock = self.patch(driver, '_set_outlet_state')
+        self.patch(dli_module, 'sleep')
+
         driver.power_on(system_id, context)
-        self.assertThat(
-            _set_outlet_state_mock, MockCalledOnceWith('ON', **context))
+
+        self.expectThat(
+            _query_outlet_state_mock, MockCallsMatch(
+                call(**context), call(**context)))
+        self.expectThat(
+            _set_outlet_state_mock, MockCallsMatch(
+                call('OFF', **context), call('ON', **context)))
+
+    def test_power_on_raises_power_error(self):
+        driver = dli_module.DLIPowerDriver()
+        system_id = factory.make_name('system_id')
+        context = {'outlet_id': factory.make_name('outlet_id')}
+        _query_outlet_state_mock = self.patch(driver, '_query_outlet_state')
+        _query_outlet_state_mock.side_effect = ('on', 'not-off')
+        _set_outlet_state_mock = self.patch(driver, '_set_outlet_state')
+        self.patch(dli_module, 'sleep')
+
+        self.assertRaises(PowerError, driver.power_on, system_id, context)
+        self.expectThat(
+            _query_outlet_state_mock, MockCallsMatch(
+                call(**context), call(**context)))
+        self.expectThat(
+            _set_outlet_state_mock, MockCalledOnceWith('OFF', **context))
 
     def test_power_off(self):
         driver = dli_module.DLIPowerDriver()
