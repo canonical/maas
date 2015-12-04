@@ -169,6 +169,7 @@ class Omshell:
         # the key) and new host mappings (using the MAC as the key).
         maaslog.debug(
             "Creating host mapping %s->%s" % (mac_address, ip_address))
+        name = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}
@@ -177,11 +178,12 @@ class Omshell:
             set ip-address = {ip_address}
             set hardware-address = {mac_address}
             set hardware-type = 1
-            set name = "{mac_address}"
+            set name = "{name}"
             create
             """)
         stdin = stdin.format(
-            self=self, ip_address=ip_address, mac_address=mac_address)
+            self=self, ip_address=ip_address, mac_address=mac_address,
+            name=name)
 
         returncode, output = self._run(stdin)
         # If the call to omshell doesn't result in output containing the
@@ -210,6 +212,7 @@ class Omshell:
         # be the key for the mapping (it will be the IP if the record was
         # created with by an old version of MAAS and the MAC otherwise).
         maaslog.debug("Removing host mapping key=%s" % mac_address)
+        mac_address = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
             key omapi_key {self.shared_key}

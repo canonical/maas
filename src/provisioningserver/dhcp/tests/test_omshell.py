@@ -120,12 +120,12 @@ class TestOmshell(MAASTestCase):
             set ip-address = {ip}
             set hardware-address = {mac}
             set hardware-type = 1
-            set name = "{mac}"
+            set name = "{name}"
             create
             """)
         expected_script = expected_script.format(
             server=server_address, key=shared_key, ip=ip_address,
-            mac=mac_address)
+            mac=mac_address, name=mac_address.replace(':', '-'))
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.

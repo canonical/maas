@@ -203,7 +203,7 @@ def create_host_maps(mappings, shared_key):
 
 
 @synchronous
-def remove_host_maps(mac_addresses, shared_key):
+def remove_host_maps(identifiers, shared_key):
     """Remove DHCP host maps for the given IP addresses.
 
     Additionally, this will ensure that any lease present for the MAC
@@ -219,17 +219,21 @@ def remove_host_maps(mac_addresses, shared_key):
     _ensure_dhcpv4_is_accessible(CannotRemoveHostMap)
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
-    for mac_address in mac_addresses:
+    for identifier in identifiers:
         try:
-            omshell.remove(mac_address)
-            omshell.nullify_lease(mac_address)
+            # Note: identifiers can be either MAC addresses or IP addresses;
+            # the region will send us a set of both, due to backward
+            # compatibility issues (MAAS 1.8 used the IP address as the
+            # identifier; now we use the MAC.)
+            omshell.remove(identifier)
+            omshell.nullify_lease(identifier)
         except ExternalProcessError as e:
             maaslog.error(
                 "Could not remove host map for %s: %s.",
-                mac_address, unicode(e))
+                identifier, unicode(e))
             if 'not connected.' in e.output_as_unicode:
                 raise CannotRemoveHostMap(
                     "The DHCP server could not be reached.")
             else:
                 raise CannotRemoveHostMap("%s: %s." % (
-                    mac_address, e.output_as_unicode))
+                    identifier, e.output_as_unicode))
