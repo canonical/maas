@@ -1317,6 +1317,11 @@ class Interface(CleanSave, TimestampedModel):
                 if ngi is not None and ngi.subnet is not None:
                     discovered_subnets.append(ngi.subnet)
 
+        # This must be a set because it is highly possible that the parent
+        # has multiple subnets on the same interface or same subnet on multiple
+        # interfaces. We only want to allocate one ip address per subnet.
+        discovered_subnets = set(discovered_subnets)
+
         if len(discovered_subnets) == 0:
             node = self.node
             if parent is not None:

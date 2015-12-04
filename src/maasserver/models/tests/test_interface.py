@@ -2575,6 +2575,42 @@ class TestClaimStaticIPs(MAASServerTestCase):
                 call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
                 call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
 
+    def test__without_address_calls_link_subnet_once_per_subnet(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v4)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v4, interface=interface)
+        # Make it have the same subnet twice.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v4, interface=interface)
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v6)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v6, interface=interface)
+        # Make it have the same subnet twice.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v6, interface=interface)
+
+        mock_link_subnet = self.patch_autospec(interface, "link_subnet")
+        interface.claim_static_ips()
+        self.assertThat(
+            mock_link_subnet,
+            MockCallsMatch(
+                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
+                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+
     def test__without_address_does_nothing_if_none_managed(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network()
@@ -2647,6 +2683,49 @@ class TestClaimStaticIPs(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
             subnet=subnet_v6, interface=interface)
+        device = factory.make_Device(parent=parent)
+        device_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+
+        mock_link_subnet = self.patch_autospec(device_interface, "link_subnet")
+        device_interface.claim_static_ips()
+        self.assertThat(
+            mock_link_subnet,
+            MockCallsMatch(
+                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
+                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+
+    def test__device_no_address_calls_link_subnet_once_per_subnet(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        parent = factory.make_Node()
+        parent_nic0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent)
+        parent_nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent)
+        network_v4 = factory.make_ipv4_network()
+        subnet_v4 = factory.make_Subnet(cidr=unicode(network_v4.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v4)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v4, interface=parent_nic0)
+        # Make second interface on the parent have the same subnet.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v4, interface=parent_nic1)
+        network_v6 = factory.make_ipv6_network()
+        subnet_v6 = factory.make_Subnet(cidr=unicode(network_v6.cidr))
+        factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            subnet=subnet_v6)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v6, interface=parent_nic0)
+        # Make second interface on the parent have the same subnet.
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet_v6, interface=parent_nic1)
         device = factory.make_Device(parent=parent)
         device_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
