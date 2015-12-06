@@ -3,6 +3,35 @@ Changelog
 =========
 
 
+1.9.0 (RC3)
+=============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1519527    Juju 1.25.1 proposed: lxc units all have the same IP address after upgrade from 1.7/1.8.
+
+LP: #1522294    MAAS fails to parse some DHCP leases.
+
+LP: #1519090    DHCP interface automatically obtains an IP even when the subnet is unmanaged.
+
+LP: #1519077    MAAS assigns IP addresses on unmanaged subnets without consideration for some addresses known to be in use.
+
+LP: #1519396    MTU field is not exposed over the API for VLAN.
+
+LP: #1521833    Updating subnet name removes dns_server.
+
+LP: #1519919    CC looks for NICs with kernel module loaded and fall back doesn't check persistent device names.
+
+LP: #1522225    Migration 0181 can fail on upgrade if disks across nodes have duplicate serial numbers.
+
+LP: #1519247    Migration 0146 can fail on upgrade when migrating unmanaged subnets.
+
+LP: #1519397    [UI] Once a cache_set is created the UI fails with ERROR.
+
+LP: #1519918    [UI] "failed to detect a valid IP address" when trying to view node details.
+
+
 1.9.0 (RC2)
 =============
 
