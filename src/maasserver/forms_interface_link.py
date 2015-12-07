@@ -52,13 +52,6 @@ GATEWAY_OPTION_MODES = [
 class InterfaceLinkForm(forms.Form):
     """Interface link form."""
 
-    mode = CaseInsensitiveChoiceField(
-        choices=INTERFACE_LINK_TYPE_CHOICES, required=True,
-        error_messages={
-            'invalid_choice': compose_invalid_choice_text(
-                'mode', INTERFACE_LINK_TYPE_CHOICES),
-        })
-
     subnet = SpecifierOrModelChoiceField(queryset=None, required=False)
 
     ip_address = forms.GenericIPAddressField(required=False)
@@ -66,8 +59,29 @@ class InterfaceLinkForm(forms.Form):
     default_gateway = forms.BooleanField(initial=False, required=False)
 
     def __init__(self, *args, **kwargs):
+        # Get list of allowed modes for this interface.
+        allowed_modes = kwargs.pop("allowed_modes", [
+            INTERFACE_LINK_TYPE.AUTO,
+            INTERFACE_LINK_TYPE.DHCP,
+            INTERFACE_LINK_TYPE.STATIC,
+            INTERFACE_LINK_TYPE.LINK_UP,
+        ])
+        mode_choices = [
+            (key, value)
+            for key, value in INTERFACE_LINK_TYPE_CHOICES
+            if key in allowed_modes
+        ]
+
         self.instance = kwargs.pop("instance")
         super(InterfaceLinkForm, self).__init__(*args, **kwargs)
+
+        # Create the mode field and setup the queryset on the subnet.
+        self.fields['mode'] = CaseInsensitiveChoiceField(
+            choices=mode_choices, required=True,
+            error_messages={
+                'invalid_choice': compose_invalid_choice_text(
+                    'mode', mode_choices),
+            })
         self.fields['subnet'].queryset = self.instance.vlan.subnet_set.all()
 
     def clean(self):

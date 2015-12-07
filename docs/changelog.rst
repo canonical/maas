@@ -9,6 +9,8 @@ Changelog
 Major bugs fixed in this release
 --------------------------------
 
+LP: #1522898    "node-interface" API should just be "interface" - to allow devices to use it
+
 LP: #1519527    Juju 1.25.1 proposed: lxc units all have the same IP address after upgrade from 1.7/1.8.
 
 LP: #1522294    MAAS fails to parse some DHCP leases.
@@ -2398,4 +2400,3 @@ list's "allocated"
 #1185897  expose ability to re-commission node in api and cli
 
 #997092  Can't delete allocated node even if owned by self
-

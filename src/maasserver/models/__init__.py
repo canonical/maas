@@ -263,7 +263,26 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (Fabric, FanNetwork, Interface, Subnet, Space)):
+        elif isinstance(obj, Interface):
+            if perm == NODE_PERMISSION.VIEW:
+                # Any registered user can view a interface regardless
+                # of its state.
+                return True
+            elif perm in NODE_PERMISSION.EDIT:
+                # A device can be editted by its owner a node must be admin.
+                node = obj.get_node()
+                if node is None or node.installable:
+                    return user.is_superuser
+                else:
+                    return node.owner == user
+            elif perm in NODE_PERMISSION.ADMIN:
+                # Admin permission is solely granted to superusers.
+                return user.is_superuser
+            else:
+                raise NotImplementedError(
+                    'Invalid permission check (invalid permission name: %s).' %
+                    perm)
+        elif isinstance(obj, (Fabric, FanNetwork, Subnet, Space)):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a fabric or interface regardless
                 # of its state.

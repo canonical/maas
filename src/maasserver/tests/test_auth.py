@@ -232,6 +232,34 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
                 user, NODE_PERMISSION.ADMIN, factory.make_FilesystemGroup()))
 
 
+class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
+
+    def test_owner_can_edit_device_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        parent = factory.make_Node()
+        device = factory.make_Node(
+            owner=user, installable=False, parent=parent)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertTrue(
+            backend.has_perm(
+                user, NODE_PERMISSION.EDIT, interface))
+
+    def test_non_owner_cannot_edit_device_interface(self):
+        backend = MAASAuthorizationBackend()
+        user = factory.make_User()
+        owner = factory.make_User()
+        parent = factory.make_Node()
+        device = factory.make_Node(
+            owner=owner, installable=False, parent=parent)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device)
+        self.assertFalse(
+            backend.has_perm(
+                user, NODE_PERMISSION.EDIT, interface))
+
+
 class TestMAASAuthorizationBackendForNetworking(MAASServerTestCase):
 
     scenarios = (

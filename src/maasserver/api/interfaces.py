@@ -18,6 +18,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
@@ -75,29 +76,29 @@ def raise_error_for_invalid_state_on_allocated_operations(
             "Cannot %s interface because the node is not Ready." % operation)
 
 
-class NodeInterfacesHandler(OperationsHandler):
-    """Manage interfaces on a node."""
-    api_doc_section_name = "Node Interfaces"
+class InterfacesHandler(OperationsHandler):
+    """Manage interfaces on a node or device."""
+    api_doc_section_name = "Interfaces"
     create = update = delete = None
     fields = DISPLAYED_INTERFACE_FIELDS
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('node_interfaces_handler', ["system_id"])
+        return ('interfaces_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all interfaces belonging to node.
+        """List all interfaces belonging to a node or device.
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
         return node.interface_set.all()
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
-        """Create a physical interface on node.
+        """Create a physical interface on a node or device.
 
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
@@ -112,10 +113,12 @@ class NodeInterfacesHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "create")
+        node = Node.objects.get_node_or_404(
+            system_id, request.user, NODE_PERMISSION.EDIT)
+        # Installable nodes require the node needs to be in the correct state.
+        if node.installable:
+            raise_error_for_invalid_state_on_allocated_operations(
+                node, request.user, "create")
         form = PhysicalInterfaceForm(node=node, data=request.data)
         if form.is_valid():
             return form.save()
@@ -237,9 +240,9 @@ class NodeInterfacesHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
 
-class NodeInterfaceHandler(OperationsHandler):
-    """Manage a node's interface."""
-    api_doc_section_name = "Node Interface"
+class InterfaceHandler(OperationsHandler):
+    """Manage a node's or device's interface."""
+    api_doc_section_name = "Interface"
     create = None
     model = Interface
     fields = DISPLAYED_INTERFACE_FIELDS
@@ -254,7 +257,7 @@ class NodeInterfaceHandler(OperationsHandler):
             node = interface.get_node()
             if node is not None:
                 system_id = node.system_id
-        return ('node_interface_handler', (system_id, interface_id))
+        return ('interface_handler', (system_id, interface_id))
 
     @classmethod
     def mac_address(cls, interface):
@@ -372,9 +375,12 @@ class NodeInterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            interface.node, request.user, "update interface")
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        if interface.get_node().installable:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                interface.node, request.user, "update interface")
         interface_form = InterfaceForm.get_interface_form(interface.type)
         # For VLAN interface we cast parents to parent. As a VLAN can only
         # have one parent.
@@ -399,9 +405,12 @@ class NodeInterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            interface.node, request.user, "delete interface")
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        if interface.get_node().installable:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                interface.node, request.user, "delete interface")
         interface.delete()
         return rc.DELETED
 
@@ -437,10 +446,24 @@ class NodeInterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            interface.node, request.user, "link subnet")
-        form = InterfaceLinkForm(instance=interface, data=request.data)
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        node = interface.get_node()
+        if node.installable:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                interface.node, request.user, "link subnet")
+            allowed_modes = [
+                INTERFACE_LINK_TYPE.AUTO,
+                INTERFACE_LINK_TYPE.DHCP,
+                INTERFACE_LINK_TYPE.STATIC,
+                INTERFACE_LINK_TYPE.LINK_UP,
+            ]
+        else:
+            # Devices can only be set in static IP mode.
+            allowed_modes = [INTERFACE_LINK_TYPE.STATIC]
+        form = InterfaceLinkForm(
+            instance=interface, data=request.data, allowed_modes=allowed_modes)
         if form.is_valid():
             return form.save()
         else:
@@ -455,9 +478,12 @@ class NodeInterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            interface.node, request.user, "unlink subnet")
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        if interface.get_node().installable:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                interface.node, request.user, "unlink subnet")
         form = InterfaceUnlinkForm(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
@@ -479,9 +505,12 @@ class NodeInterfaceHandler(OperationsHandler):
         Returns 404 if the node or interface is not found.
         """
         interface = Interface.objects.get_interface_or_404(
-            system_id, interface_id, request.user, NODE_PERMISSION.ADMIN)
-        raise_error_for_invalid_state_on_allocated_operations(
-            interface.node, request.user, "set default gateway")
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        if interface.get_node().installable:
+            # This node needs to be in the correct state to modify
+            # the interface.
+            raise_error_for_invalid_state_on_allocated_operations(
+                interface.node, request.user, "set default gateway")
         form = InterfaceSetDefaultGatwayForm(
             instance=interface, data=request.data)
         if form.is_valid():
@@ -490,7 +519,17 @@ class NodeInterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
 
-class PhysicalInterfaceHandler(NodeInterfaceHandler):
+class NodeInterfacesHandler(InterfacesHandler):
+    """Manage interfaces on a node. (Deprecated)"""
+    api_doc_section_name = "Node Interfaces"
+
+
+class NodeInterfaceHandler(InterfaceHandler):
+    """Manage a node's interface. (Deprecated)"""
+    api_doc_section_name = "Node Interface"
+
+
+class PhysicaInterfaceHandler(InterfaceHandler):
     """
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
@@ -504,7 +543,7 @@ class PhysicalInterfaceHandler(NodeInterfaceHandler):
     model = PhysicalInterface
 
 
-class BondInterfaceHandler(NodeInterfaceHandler):
+class BondInterfaceHandler(InterfaceHandler):
     """
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
@@ -518,7 +557,7 @@ class BondInterfaceHandler(NodeInterfaceHandler):
     model = BondInterface
 
 
-class VLANInterfaceHandler(NodeInterfaceHandler):
+class VLANInterfaceHandler(InterfaceHandler):
     """
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
