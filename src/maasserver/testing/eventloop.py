@@ -57,9 +57,14 @@ class RegionEventLoopFixture(Fixture):
         self.addCleanup(setattr, loop, "factories", loop.factories)
         # Set the new `factories` tuple, with all factories stubbed-out
         # except those in `self.services`.
-        loop.factories = tuple(
-            (name, (factory if name in self.services else Service))
-            for name, factory in loop.factories)
+        fakeFactoryInfo = {
+            "factory": Service,
+            "requires": [],
+        }
+        loop.factories = {
+            name: (factoryInfo if name in self.services else fakeFactoryInfo)
+            for name, factoryInfo in loop.factories.items()
+        }
 
 
 class RunningEventLoopFixture(Fixture):

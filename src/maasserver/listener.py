@@ -4,6 +4,8 @@
 """Listens for NOTIFY events from the postgres database."""
 
 __all__ = [
+    "PostgresListenerNotifyError",
+    "PostgresListenerService",
     ]
 
 from collections import defaultdict
@@ -17,6 +19,7 @@ from provisioningserver.utils.twisted import (
     callOut,
     synchronous,
 )
+from twisted.application.service import Service
 from twisted.internet import (
     defer,
     error,
@@ -50,7 +53,7 @@ class PostgresListenerNotifyError(Exception):
 
 
 @implementer(interfaces.IReadDescriptor)
-class PostgresListener:
+class PostgresListenerService(Service, object):
     """Listens for NOTIFY messages from postgres.
 
     A new connection is made to postgres with the isolation level of
@@ -83,14 +86,17 @@ class PostgresListener:
         self.notifier = task.LoopingCall(self.handleNotifies)
         self.connecting = None
         self.disconnecting = None
+        self.registeredChannels = False
 
-    def start(self):
+    def startService(self):
         """Start the listener."""
+        super(PostgresListenerService, self).startService()
         self.autoReconnect = True
         return self.tryConnection()
 
-    def stop(self):
+    def stopService(self):
         """Stop the listener."""
+        super(PostgresListenerService, self).stopService()
         self.autoReconnect = False
         return self.loseConnection()
 
@@ -177,6 +183,10 @@ class PostgresListener:
         be called with the action and object id.
         """
         self.listeners[channel].append(handler)
+        if self.registeredChannels and self.connection:
+            # Channels have already been registered. Register the
+            # new channel on the already existing connection.
+            self.registerChannel(channel)
 
     @synchronous
     def createConnection(self):
@@ -189,6 +199,7 @@ class PostgresListener:
     @synchronous
     def startConnection(self):
         """Start the database connection."""
+        self.registeredChannels = False
         self.connection = self.createConnection()
         self.connection.connect()
         self.connection.set_autocommit(True)
@@ -204,6 +215,7 @@ class PostgresListener:
             if connection is not None and not connection.closed:
                 connection_wrapper.commit()
                 connection_wrapper.close()
+        self.registeredChannels = False
 
     def tryConnection(self):
         """Keep retrying to make the connection."""
@@ -280,12 +292,17 @@ class PostgresListener:
         if self.autoReconnect:
             reactor.callLater(3, self.tryConnection)
 
+    def registerChannel(self, channel):
+        """Register the channel."""
+        with closing(self.connection.cursor()) as cursor:
+            for action in map_enum(ACTIONS).values():
+                cursor.execute("LISTEN %s_%s;" % (channel, action))
+
     def registerChannels(self):
         """Register the all the channels."""
         for channel in self.listeners.keys():
-            with closing(self.connection.cursor()) as cursor:
-                for action in map_enum(ACTIONS).values():
-                    cursor.execute("LISTEN %s_%s;" % (channel, action))
+            self.registerChannel(channel)
+        self.registeredChannels = True
 
     def convertChannel(self, channel):
         """Convert the postgres channel to a registered channel and action.

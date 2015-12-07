@@ -12,9 +12,14 @@ import random
 from crochet import wait_for
 from django.contrib.auth.models import User
 from django.db import connection
+from maasserver import listener as listener_module
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+)
+from maasserver.listener import (
+    PostgresListenerNotifyError,
+    PostgresListenerService,
 )
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
@@ -43,11 +48,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_all_triggers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets import listener as listener_module
-from maasserver.websockets.listener import (
-    PostgresListener,
-    PostgresListenerNotifyError,
-)
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -86,7 +86,7 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 
 
-class TestPostgresListener(MAASServerTestCase):
+class TestPostgresListenerService(MAASServerTestCase):
 
     @transactional
     def send_notification(self, event, obj_id):
@@ -97,32 +97,59 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_notification(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.send_notification, "node_create", 1)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '1'), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_notification_with_delayed_registration(self):
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        yield listener.startService()
+        try:
+            # Register after the service has been started. The handler should
+            # still be called.
+            listener.register("node", lambda *args: dv.set(args))
+            yield deferToDatabase(self.send_notification, "node_create", 1)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '1'), dv.value)
+        finally:
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_connects_to_database(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         yield listener.tryConnection()
         try:
             self.assertTrue(listener.connected())
         finally:
-            yield listener.stop()
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__tryConnection_sets_registeredChannels_to_True(self):
+        listener = PostgresListenerService()
+
+        yield listener.tryConnection()
+        try:
+            self.assertTrue(listener.registeredChannels)
+        finally:
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_logs_error(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         exception_type = factory.make_exception_type()
         exception_message = factory.make_name("message")
@@ -143,7 +170,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_will_retry_in_3_seconds_if_autoReconnect_set(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         listener.autoReconnect = True
 
         startConnection = self.patch(listener, "startConnection")
@@ -159,7 +186,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_will_not_retry_if_autoReconnect_not_set(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         listener.autoReconnect = False
 
         exception_type = factory.make_exception_type()
@@ -178,13 +205,13 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__stopping_cancels_start(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         # Start then stop immediately, without waiting for start to complete.
-        starting = listener.start()
+        starting = listener.startService()
         starting_spy = DeferredValue()
         starting_spy.observe(starting)
-        stopping = listener.stop()
+        stopping = listener.stopService()
 
         # Both `starting` and `stopping` have callbacks yet to fire.
         self.assertThat(starting.callbacks, Not(Equals([])))
@@ -204,20 +231,20 @@ class TestPostgresListener(MAASServerTestCase):
 
     @wait_for_reactor
     def test__multiple_starts_return_same_Deferred(self):
-        listener = PostgresListener()
-        self.assertThat(listener.start(), Is(listener.start()))
-        return listener.stop()
+        listener = PostgresListenerService()
+        self.assertThat(listener.startService(), Is(listener.startService()))
+        return listener.stopService()
 
     @wait_for_reactor
     def test__multiple_stops_return_same_Deferred(self):
-        listener = PostgresListener()
-        self.assertThat(listener.stop(), Is(listener.stop()))
-        return listener.stop()
+        listener = PostgresListenerService()
+        self.assertThat(listener.stopService(), Is(listener.stopService()))
+        return listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_calls_registerChannels_after_startConnection(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         exception_type = factory.make_exception_type()
 
@@ -235,7 +262,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_adds_self_to_reactor(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         # Spy on calls to reactor.addReader.
         self.patch(reactor, "addReader").side_effect = reactor.addReader
@@ -246,12 +273,12 @@ class TestPostgresListener(MAASServerTestCase):
                 reactor.addReader,
                 MockCalledOnceWith(listener))
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_closes_connection_on_failure(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         exc_type = factory.make_exception_type()
         startReading = self.patch(listener, "startReading")
@@ -265,7 +292,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__tryConnection_logs_success(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         mock_logMsg = self.patch(listener, "logMsg")
         yield listener.tryConnection()
@@ -274,11 +301,11 @@ class TestPostgresListener(MAASServerTestCase):
                 mock_logMsg,
                 MockCalledOnceWith("Listening for database notifications."))
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     def test__connectionLost_logs_reason(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         self.patch(listener, "logErr")
 
         failure = Failure(factory.make_exception())
@@ -291,7 +318,7 @@ class TestPostgresListener(MAASServerTestCase):
 
     @wait_for_reactor
     def test__connectionLost_does_not_log_reason_when_lost_cleanly(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         self.patch(listener, "logErr")
 
         listener.connectionLost(Failure(error.ConnectionDone()))
@@ -299,20 +326,20 @@ class TestPostgresListener(MAASServerTestCase):
         self.assertThat(listener.logErr, MockNotCalled())
 
     def test_register_adds_channel_and_handler(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         channel = factory.make_name("channel")
         listener.register(channel, sentinel.handler)
         self.assertEqual(
             [sentinel.handler], listener.listeners[channel])
 
     def test__convertChannel_raises_exception_if_not_valid_channel(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         self.assertRaises(
             PostgresListenerNotifyError,
             listener.convertChannel, "node_create")
 
     def test__convertChannel_raises_exception_if_not_valid_action(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         self.assertRaises(
             PostgresListenerNotifyError,
             listener.convertChannel, "node_unknown")
@@ -320,7 +347,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__doRead_removes_self_from_reactor_on_error(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         connection = self.patch(listener, "connection")
         connection.connection.poll.side_effect = OperationalError()
@@ -330,8 +357,8 @@ class TestPostgresListener(MAASServerTestCase):
 
         failure = listener.doRead()
 
-        # No failure is returned; see the comment in PostgresListener.doRead()
-        # that explains why we don't do that.
+        # No failure is returned; see the comment in
+        # PostgresListenerService.doRead() that explains why we don't do that.
         self.assertThat(failure, Is(None))
 
         # The listener has begun disconnecting.
@@ -347,7 +374,7 @@ class TestPostgresListener(MAASServerTestCase):
         self.assertThat(failure.value, IsInstance(error.ConnectionLost))
 
     def test__doRead_adds_notifies_to_notifications(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         notifications = [
             FakeNotify(
                 channel=factory.make_name("channel_action"),
@@ -369,7 +396,7 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__listener_ignores_ENOENT_when_removing_itself_from_reactor(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
         self.patch(reactor, "addReader")
         self.patch(reactor, "removeReader")
@@ -380,8 +407,8 @@ class TestPostgresListener(MAASServerTestCase):
         reactor.removeReader.side_effect = enoent
 
         # The listener starts and stops without issue.
-        yield listener.start()
-        yield listener.stop()
+        yield listener.startService()
+        yield listener.stopService()
 
         # addReader() and removeReader() were both called.
         self.assertThat(reactor.addReader, MockCalledOnceWith(listener))
@@ -390,13 +417,13 @@ class TestPostgresListener(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__listener_waits_for_notifier_to_complete(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
 
-        yield listener.start()
+        yield listener.startService()
         try:
             self.assertTrue(listener.notifier.running)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
             self.assertFalse(listener.notifier.running)
 
 
@@ -404,7 +431,7 @@ class TransactionalHelpersMixin:
     """Helpers performing actions in transactions."""
 
     def make_listener_without_delay(self):
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
         return listener
 
@@ -904,13 +931,13 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             node = yield deferToDatabase(self.create_node, self.params)
             yield dv.get(timeout=2)
             self.assertEqual(('create', node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -920,7 +947,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToDatabase(self.create_node, self.params)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_node,
@@ -929,7 +956,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield dv.get(timeout=2)
             self.assertEqual(('update', node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -939,13 +966,13 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToDatabase(self.create_node, self.params)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentListener(
@@ -960,7 +987,7 @@ class TestDeviceWithParentListener(
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         parent = yield deferToDatabase(self.create_node)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_node, {
@@ -970,7 +997,7 @@ class TestDeviceWithParentListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -980,7 +1007,7 @@ class TestDeviceWithParentListener(
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         device, parent = yield deferToDatabase(self.create_device_with_parent)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_node,
@@ -989,7 +1016,7 @@ class TestDeviceWithParentListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -999,13 +1026,13 @@ class TestDeviceWithParentListener(
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
         device, parent = yield deferToDatabase(self.create_device_with_parent)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, device.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestClusterListener(
@@ -1020,13 +1047,13 @@ class TestClusterListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             nodegroup = yield deferToDatabase(self.create_nodegroup)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1037,7 +1064,7 @@ class TestClusterListener(
         listener.register("nodegroup", lambda *args: dv.set(args))
         nodegroup = yield deferToDatabase(self.create_nodegroup)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_nodegroup,
@@ -1046,7 +1073,7 @@ class TestClusterListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1056,13 +1083,13 @@ class TestClusterListener(
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
         nodegroup = yield deferToDatabase(self.create_nodegroup)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_nodegroup, nodegroup.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestClusterInterfaceListener(
@@ -1079,14 +1106,14 @@ class TestClusterInterfaceListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_nodegroupinterface, nodegroup)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1099,7 +1126,7 @@ class TestClusterInterfaceListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_nodegroupinterface,
@@ -1108,7 +1135,7 @@ class TestClusterInterfaceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1122,7 +1149,7 @@ class TestClusterInterfaceListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_nodegroupinterface_subnet_mask,
@@ -1130,7 +1157,7 @@ class TestClusterInterfaceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1143,13 +1170,13 @@ class TestClusterInterfaceListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_nodegroupinterface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1163,13 +1190,13 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             zone = yield deferToDatabase(self.create_zone)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % zone.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1180,7 +1207,7 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener.register("zone", lambda *args: dv.set(args))
         zone = yield deferToDatabase(self.create_zone)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_zone,
@@ -1189,7 +1216,7 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % zone.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1199,13 +1226,13 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
         zone = yield deferToDatabase(self.create_zone)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_zone, zone.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % zone.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1219,13 +1246,13 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             tag = yield deferToDatabase(self.create_tag)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % tag.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1236,7 +1263,7 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener.register("tag", lambda *args: dv.set(args))
         tag = yield deferToDatabase(self.create_tag)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_tag,
@@ -1245,7 +1272,7 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % tag.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1255,13 +1282,13 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
         tag = yield deferToDatabase(self.create_tag)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_tag, tag.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % tag.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeTagListener(
@@ -1290,13 +1317,13 @@ class TestNodeTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.add_node_to_tag, node, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1308,13 +1335,13 @@ class TestNodeTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.remove_node_from_tag, node, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1327,14 +1354,14 @@ class TestNodeTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             tag = yield deferToDatabase(
                 self.update_tag, tag.id, {'name': factory.make_name("tag")})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentTagListener(
@@ -1352,13 +1379,13 @@ class TestDeviceWithParentTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.add_node_to_tag, device, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1370,13 +1397,13 @@ class TestDeviceWithParentTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.remove_node_from_tag, device, tag)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1389,14 +1416,14 @@ class TestDeviceWithParentTagListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             tag = yield deferToDatabase(
                 self.update_tag, tag.id, {'name': factory.make_name("tag")})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1410,13 +1437,13 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             user = yield deferToDatabase(self.create_user)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1427,7 +1454,7 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener.register("user", lambda *args: dv.set(args))
         user = yield deferToDatabase(self.create_user)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_user,
@@ -1436,7 +1463,7 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1446,13 +1473,13 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
         user = yield deferToDatabase(self.create_user)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_user, user.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -1466,13 +1493,13 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             event = yield deferToDatabase(self.create_event)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % event.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1483,7 +1510,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         listener.register("event", lambda *args: dv.set(args))
         event = yield deferToDatabase(self.create_event)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_event,
@@ -1492,7 +1519,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % event.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1502,13 +1529,13 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
         event = yield deferToDatabase(self.create_event)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_event, event.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % event.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeEventListener(
@@ -1536,13 +1563,13 @@ class TestNodeEventListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_event, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentEventListener(
@@ -1559,13 +1586,13 @@ class TestDeviceWithParentEventListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_event, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeStaticIPAddressListener(
@@ -1592,17 +1619,17 @@ class TestNodeStaticIPAddressListener(
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_staticipaddress, {"interface": interface})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1614,16 +1641,16 @@ class TestNodeStaticIPAddressListener(
         sip = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentStaticIPAddressListener(
@@ -1640,17 +1667,17 @@ class TestDeviceWithParentStaticIPAddressListener(
         interface = yield deferToDatabase(
             self.get_node_boot_interface, device.system_id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_staticipaddress, {"interface": interface})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1663,16 +1690,16 @@ class TestDeviceWithParentStaticIPAddressListener(
         sip = yield deferToDatabase(
             self.create_staticipaddress, {"interface": interface})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeNodeResultListener(
@@ -1697,16 +1724,16 @@ class TestNodeNodeResultListener(
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_noderesult, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1715,16 +1742,16 @@ class TestNodeNodeResultListener(
         node = yield deferToDatabase(self.create_node, self.params)
         result = yield deferToDatabase(self.create_noderesult, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentNodeResultListener(
@@ -1738,16 +1765,16 @@ class TestDeviceWithParentNodeResultListener(
         yield deferToDatabase(register_all_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_noderesult, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1757,16 +1784,16 @@ class TestDeviceWithParentNodeResultListener(
         result = yield deferToDatabase(
             self.create_noderesult, {"node": device})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_noderesult, result.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeInterfaceListener(
@@ -1791,16 +1818,16 @@ class TestNodeInterfaceListener(
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_interface, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1810,16 +1837,16 @@ class TestNodeInterfaceListener(
         interface = yield deferToDatabase(
             self.create_interface, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1829,10 +1856,10 @@ class TestNodeInterfaceListener(
         interface = yield deferToDatabase(
             self.create_interface, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
                 "mac_address": factory.make_MAC()
@@ -1840,7 +1867,7 @@ class TestNodeInterfaceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1858,9 +1885,9 @@ class TestNodeInterfaceListener(
                     dv.set(args)
                     break
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         listener.register(self.listener, set_defer_value)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
                 "node": node2
@@ -1872,7 +1899,7 @@ class TestNodeInterfaceListener(
                 ('update', '%s' % node2.system_id),
                 ], [dvs[0].value, dvs[1].value])
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentInterfaceListener(
@@ -1886,16 +1913,16 @@ class TestDeviceWithParentInterfaceListener(
         yield deferToDatabase(register_all_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_interface, {"node": device})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1905,16 +1932,16 @@ class TestDeviceWithParentInterfaceListener(
         interface = yield deferToDatabase(
             self.create_interface, {"node": device})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1924,10 +1951,10 @@ class TestDeviceWithParentInterfaceListener(
         interface = yield deferToDatabase(
             self.create_interface, {"node": device})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
                 "mac_address": factory.make_MAC()
@@ -1935,7 +1962,7 @@ class TestDeviceWithParentInterfaceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1955,9 +1982,9 @@ class TestDeviceWithParentInterfaceListener(
                     dv.set(args)
                     break
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         listener.register("node", set_defer_value)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
                 "node": device2
@@ -1969,7 +1996,7 @@ class TestDeviceWithParentInterfaceListener(
                 ('update', '%s' % parent2.system_id),
                 ], [dvs[0].value, dvs[1].value])
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestFabricListener(
@@ -1984,13 +2011,13 @@ class TestFabricListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             fabric = yield deferToDatabase(self.create_fabric)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % fabric.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2001,7 +2028,7 @@ class TestFabricListener(
         listener.register("fabric", lambda *args: dv.set(args))
         fabric = yield deferToDatabase(self.create_fabric)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_fabric,
@@ -2010,7 +2037,7 @@ class TestFabricListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % fabric.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2020,13 +2047,13 @@ class TestFabricListener(
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
         fabric = yield deferToDatabase(self.create_fabric)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_fabric, fabric.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % fabric.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestVLANListener(
@@ -2042,13 +2069,13 @@ class TestVLANListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % vlan.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2060,7 +2087,7 @@ class TestVLANListener(
         listener.register("vlan", lambda *args: dv.set(args))
         vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_vlan,
@@ -2069,7 +2096,7 @@ class TestVLANListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % vlan.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2080,13 +2107,13 @@ class TestVLANListener(
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
         vlan = yield deferToDatabase(self.create_vlan, {'fabric': fabric})
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_vlan, vlan.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % vlan.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestSubnetListener(
@@ -2101,13 +2128,13 @@ class TestSubnetListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             subnet = yield deferToDatabase(self.create_subnet)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % subnet.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2118,7 +2145,7 @@ class TestSubnetListener(
         listener.register("subnet", lambda *args: dv.set(args))
         subnet = yield deferToDatabase(self.create_subnet)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_subnet,
@@ -2127,7 +2154,7 @@ class TestSubnetListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % subnet.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2137,13 +2164,13 @@ class TestSubnetListener(
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
         subnet = yield deferToDatabase(self.create_subnet)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % subnet.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestSpaceListener(
@@ -2158,13 +2185,13 @@ class TestSpaceListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             space = yield deferToDatabase(self.create_space)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % space.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2175,7 +2202,7 @@ class TestSpaceListener(
         listener.register("space", lambda *args: dv.set(args))
         space = yield deferToDatabase(self.create_space)
 
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_space,
@@ -2184,7 +2211,7 @@ class TestSpaceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % space.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2194,13 +2221,13 @@ class TestSpaceListener(
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
         space = yield deferToDatabase(self.create_space)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_space, space.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % space.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeNetworkListener(
@@ -2231,10 +2258,10 @@ class TestNodeNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         fabric = yield deferToDatabase(self.get_interface_fabric, interface.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_fabric,
@@ -2242,7 +2269,7 @@ class TestNodeNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2255,10 +2282,10 @@ class TestNodeNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         vlan = yield deferToDatabase(self.get_interface_vlan, interface.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_vlan,
@@ -2266,7 +2293,7 @@ class TestNodeNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2279,10 +2306,10 @@ class TestNodeNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         subnet = yield deferToDatabase(self.get_ipaddress_subnet, ipaddress.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_subnet,
@@ -2290,7 +2317,7 @@ class TestNodeNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2303,10 +2330,10 @@ class TestNodeNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         space = yield deferToDatabase(self.get_ipaddress_space, ipaddress.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_space, space.id,
@@ -2314,7 +2341,7 @@ class TestNodeNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2333,10 +2360,10 @@ class TestNodeNetworkListener(
                 "ip": "",
                 })
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_staticipaddress, ipaddress.id,
@@ -2344,7 +2371,7 @@ class TestNodeNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestDeviceWithParentNetworkListener(
@@ -2365,10 +2392,10 @@ class TestDeviceWithParentNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         fabric = yield deferToDatabase(self.get_interface_fabric, interface.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_fabric,
@@ -2376,7 +2403,7 @@ class TestDeviceWithParentNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2390,10 +2417,10 @@ class TestDeviceWithParentNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         vlan = yield deferToDatabase(self.get_interface_vlan, interface.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_vlan,
@@ -2401,7 +2428,7 @@ class TestDeviceWithParentNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2415,10 +2442,10 @@ class TestDeviceWithParentNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         subnet = yield deferToDatabase(self.get_ipaddress_subnet, ipaddress.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_subnet,
@@ -2426,7 +2453,7 @@ class TestDeviceWithParentNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2440,10 +2467,10 @@ class TestDeviceWithParentNetworkListener(
             self.create_staticipaddress, {"interface": interface})
         space = yield deferToDatabase(self.get_ipaddress_space, ipaddress.id)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_space, space.id,
@@ -2451,7 +2478,7 @@ class TestDeviceWithParentNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2471,10 +2498,10 @@ class TestDeviceWithParentNetworkListener(
                 "ip": "",
                 })
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("node", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_staticipaddress, ipaddress.id,
@@ -2482,7 +2509,7 @@ class TestDeviceWithParentNetworkListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % parent.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestStaticIPAddressSubnetListener(
@@ -2503,10 +2530,10 @@ class TestStaticIPAddressSubnetListener(
                 "ip": "",
                 })
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_staticipaddress,
@@ -2514,7 +2541,7 @@ class TestStaticIPAddressSubnetListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % subnet.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2537,9 +2564,9 @@ class TestStaticIPAddressSubnetListener(
                     dv.set(args)
                     break
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         listener.register("subnet", set_defer_value)
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_staticipaddress, ipaddress.id, {
                 "ip": selected_ip,
@@ -2552,7 +2579,7 @@ class TestStaticIPAddressSubnetListener(
                 ('update', '%s' % new_subnet.id),
                 ], [dvs[0].value, dvs[1].value])
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeBlockDeviceListener(
@@ -2574,16 +2601,16 @@ class TestNodeBlockDeviceListener(
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_blockdevice, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2593,16 +2620,16 @@ class TestNodeBlockDeviceListener(
         blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_blockdevice, blockdevice.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2612,10 +2639,10 @@ class TestNodeBlockDeviceListener(
         blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_blockdevice, blockdevice.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
@@ -2623,7 +2650,7 @@ class TestNodeBlockDeviceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2633,10 +2660,10 @@ class TestNodeBlockDeviceListener(
         blockdevice = yield deferToDatabase(
             self.create_physicalblockdevice, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_physicalblockdevice, blockdevice.id, {
@@ -2645,7 +2672,7 @@ class TestNodeBlockDeviceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2655,10 +2682,10 @@ class TestNodeBlockDeviceListener(
         blockdevice = yield deferToDatabase(
             self.create_virtualblockdevice, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_virtualblockdevice, blockdevice.id, {
@@ -2667,7 +2694,7 @@ class TestNodeBlockDeviceListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodePartitionTableListener(
@@ -2688,16 +2715,16 @@ class TestNodePartitionTableListener(
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_partitiontable, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2707,17 +2734,17 @@ class TestNodePartitionTableListener(
         partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.delete_partitiontable, partitiontable.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2727,10 +2754,10 @@ class TestNodePartitionTableListener(
         partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_partitiontable, partitiontable.id, {
@@ -2739,7 +2766,7 @@ class TestNodePartitionTableListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodePartitionListener(
@@ -2760,16 +2787,16 @@ class TestNodePartitionListener(
         yield deferToDatabase(register_all_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_partition, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2779,16 +2806,16 @@ class TestNodePartitionListener(
         partition = yield deferToDatabase(
             self.create_partition, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_partition, partition.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2798,10 +2825,10 @@ class TestNodePartitionListener(
         partition = yield deferToDatabase(
             self.create_partition, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             # Only downsize the partition otherwise the test may fail due
             # to the random number being generated is greater than the mock
@@ -2812,7 +2839,7 @@ class TestNodePartitionListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeFilesystemListener(
@@ -2835,17 +2862,17 @@ class TestNodeFilesystemListener(
         partition = yield deferToDatabase(
             self.create_partition, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_filesystem, {"partition": partition})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2857,16 +2884,16 @@ class TestNodeFilesystemListener(
         filesystem = yield deferToDatabase(
             self.create_filesystem, {"partition": partition})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_filesystem, filesystem.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2878,10 +2905,10 @@ class TestNodeFilesystemListener(
         filesystem = yield deferToDatabase(
             self.create_filesystem, {"partition": partition})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_filesystem, filesystem.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
@@ -2889,7 +2916,7 @@ class TestNodeFilesystemListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeFilesystemgroupListener(
@@ -2911,16 +2938,16 @@ class TestNodeFilesystemgroupListener(
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.create_partitiontable, {'node': node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_filesystemgroup, {"node": node})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2932,17 +2959,17 @@ class TestNodeFilesystemgroupListener(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.delete_filesystemgroup, filesystemgroup.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2954,10 +2981,10 @@ class TestNodeFilesystemgroupListener(
             self.create_filesystemgroup, {
                 "node": node, "group_type": "raid-5"})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.update_filesystemgroup, filesystemgroup.id, {
@@ -2966,7 +2993,7 @@ class TestNodeFilesystemgroupListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestNodeCachesetListener(
@@ -2989,17 +3016,17 @@ class TestNodeCachesetListener(
         partition = yield deferToDatabase(
             self.create_partition, {"node": node})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(
                 self.create_cacheset, {"node": node, "partition": partition})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3011,16 +3038,16 @@ class TestNodeCachesetListener(
         cacheset = yield deferToDatabase(
             self.create_cacheset, {"node": node, "partition": partition})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_cacheset, cacheset.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3032,10 +3059,10 @@ class TestNodeCachesetListener(
         cacheset = yield deferToDatabase(
             self.create_cacheset, {"node": node, "partition": partition})
 
-        listener = PostgresListener()
+        listener = PostgresListenerService()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.update_cacheset, cacheset.id, {
                 "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
@@ -3043,7 +3070,7 @@ class TestNodeCachesetListener(
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestUserSSHKeyListener(
@@ -3060,13 +3087,13 @@ class TestUserSSHKeyListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_sshkey, {"user": user})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3078,13 +3105,13 @@ class TestUserSSHKeyListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_sshkey, sshkey.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
 
 class TestUserSSLKeyListener(
@@ -3101,13 +3128,13 @@ class TestUserSSLKeyListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.create_sslkey, {"user": user})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -3119,10 +3146,10 @@ class TestUserSSLKeyListener(
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
-        yield listener.start()
+        yield listener.startService()
         try:
             yield deferToDatabase(self.delete_sslkey, sslkey.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % user.id), dv.value)
         finally:
-            yield listener.stop()
+            yield listener.stopService()

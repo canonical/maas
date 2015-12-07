@@ -18,6 +18,7 @@ from maasserver import (
 from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.utils import dbtasks
 from maasserver.utils.orm import (
     DisabledDatabaseConnection,
@@ -45,6 +46,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual("foo:pid=12345", eventloop.loop.name)
 
     def test_populate(self):
+        self.patch(eventloop.services, "getServiceNamed")
         an_eventloop = eventloop.RegionEventLoop()
         # At first there are no services.
         self.assertEqual(
@@ -52,11 +54,11 @@ class TestRegionEventLoop(MAASTestCase):
         # populate() creates a service with each factory.
         an_eventloop.populate().wait(30)
         self.assertEqual(
-            {name for name, _ in an_eventloop.factories},
+            {name for name in an_eventloop.factories.keys()},
             {svc.name for svc in an_eventloop.services})
         # The services are not started.
         self.assertEqual(
-            {name: False for name, _ in an_eventloop.factories},
+            {name: False for name in an_eventloop.factories.keys()},
             {svc.name: svc.running for svc in an_eventloop.services})
 
     def test_start_and_stop(self):
@@ -79,7 +81,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertTrue(eventloop.loop.running)
         self.assertEqual(
             {service.name for service in eventloop.loop.services},
-            {name for name, _ in eventloop.loop.factories})
+            {name for name in eventloop.loop.factories.keys()})
         # A shutdown hook is registered with the reactor.
         stopService = eventloop.loop.services.stopService
         self.assertEqual(
@@ -92,7 +94,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertFalse(eventloop.loop.running)
         self.assertEqual(
             {service.name for service in eventloop.loop.services},
-            {name for name, _ in eventloop.loop.factories})
+            {name for name in eventloop.loop.factories.keys()})
         # The hook has been cleared.
         self.assertIsNone(eventloop.loop.handle)
 
@@ -137,47 +139,48 @@ class TestFactories(MAASTestCase):
         service = eventloop.make_DatabaseTaskService()
         self.assertThat(service, IsInstance(dbtasks.DatabaseTasksService))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_DatabaseTaskService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["database-tasks"]["factory"])
 
     def test_make_RegionService(self):
         service = eventloop.make_RegionService()
         self.assertThat(service, IsInstance(regionservice.RegionService))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_RegionService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["rpc"]["factory"])
 
     def test_make_RegionAdvertisingService(self):
         service = eventloop.make_RegionAdvertisingService()
         self.assertThat(service, IsInstance(
             regionservice.RegionAdvertisingService))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_RegionAdvertisingService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["rpc-advertise"]["factory"])
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()
         self.assertThat(service, IsInstance(
             nonces_cleanup.NonceCleanupService))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_NonceCleanupService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["nonce-cleanup"]["factory"])
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()
         self.assertThat(service, IsInstance(
             bootresources.ImportResourcesService))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_ImportResourcesService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["import-resources"]["factory"])
 
     def test_make_WebApplicationService(self):
-        service = eventloop.make_WebApplicationService()
+        service = eventloop.make_WebApplicationService(
+            FakePostgresListenerService())
         self.assertThat(service, IsInstance(webapp.WebApplicationService))
         # The endpoint is set to port 5243 on localhost.
         self.assertThat(service.endpoint, MatchesStructure.byEquality(
@@ -188,9 +191,13 @@ class TestFactories(MAASTestCase):
             service.endpoint.socket.getsockname(),
             Equals(("0.0.0.0", DEFAULT_PORT)))
         # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
+        self.assertIs(
             eventloop.make_WebApplicationService,
-            {factory for _, factory in eventloop.loop.factories})
+            eventloop.loop.factories["web"]["factory"])
+        # Has a dependency of postgres-listener.
+        self.assertEquals(
+            ["postgres-listener"],
+            eventloop.loop.factories["web"]["requires"])
 
 
 class TestDisablingDatabaseConnections(MAASTestCase):

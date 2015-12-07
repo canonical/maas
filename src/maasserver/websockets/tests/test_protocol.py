@@ -13,6 +13,7 @@ from crochet import wait_for
 from django.core.exceptions import ValidationError
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
+from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -59,8 +60,8 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     def make_protocol(self, patch_authenticate=True, transport_uri=''):
-        self.patch(protocol_module, "PostgresListener")
-        factory = WebSocketFactory()
+        listener = FakePostgresListenerService()
+        factory = WebSocketFactory(listener)
         self.patch(factory, "registerRPCEvents")
         self.patch(factory, "unregisterRPCEvents")
         factory.startFactory()
@@ -617,7 +618,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 class MakeProtocolFactoryMixin:
 
     def make_factory(self, rpc_service=None):
-        factory = WebSocketFactory()
+        listener = FakePostgresListenerService()
+        factory = WebSocketFactory(listener)
         if rpc_service is None:
             rpc_service = MagicMock()
         self.patch(services, "getServiceNamed").return_value = rpc_service
@@ -703,22 +705,10 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         self.assertIsInstance(
             factory.buildProtocol(sentinel.addr), WebSocketProtocol)
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_startFactory_starts_listener(self):
-        factory = self.make_factory()
-        yield factory.startFactory()
-        try:
-            self.expectThat(factory.listener.connected(), Equals(True))
-        finally:
-            yield factory.stopFactory()
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_startFactory_registers_rpc_handlers(self):
         rpc_service = MagicMock()
         factory = self.make_factory(rpc_service)
-        yield factory.startFactory()
+        factory.startFactory()
         try:
             self.expectThat(
                 rpc_service.events.connected.registerHandler,
@@ -727,23 +717,13 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
                 rpc_service.events.disconnected.registerHandler,
                 MockCalledOnceWith(factory.updateCluster))
         finally:
-            yield factory.stopFactory()
+            factory.stopFactory()
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_stopFactory_stops_listener(self):
-        factory = self.make_factory()
-        yield factory.startFactory()
-        yield factory.stopFactory()
-        self.expectThat(factory.listener.connected(), Equals(False))
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_stopFactory_unregisters_rpc_handlers(self):
         rpc_service = MagicMock()
         factory = self.make_factory(rpc_service)
-        yield factory.startFactory()
-        yield factory.stopFactory()
+        factory.startFactory()
+        factory.stopFactory()
         self.expectThat(
             rpc_service.events.connected.unregisterHandler,
             MockCalledOnceWith(factory.updateCluster))

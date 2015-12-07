@@ -16,6 +16,7 @@ from maasserver import (
     start_up,
     webapp,
 )
+from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -101,8 +102,10 @@ class TestWebApplicationService(MAASTestCase):
         return TCP4ServerEndpoint(reactor, 0, interface="localhost")
 
     def make_webapp(self):
+        listener = FakePostgresListenerService()
         service_endpoint = self.make_endpoint()
-        service = webapp.WebApplicationService(service_endpoint)
+        service = webapp.WebApplicationService(
+            service_endpoint, listener)
         # Patch the getServiceNamed so the WebSocketFactory does not
         # error trying to register for events from the RPC service. In this
         # test the RPC service is not started.
@@ -135,7 +138,7 @@ class TestWebApplicationService(MAASTestCase):
             request.outgoingHeaders,
             ContainsDict({b"retry-after": Equals(b"5")}))
 
-    def test__startService_starts_websocket_and_application(self):
+    def test__startService_starts_application(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
@@ -148,7 +151,6 @@ class TestWebApplicationService(MAASTestCase):
 
         self.assertTrue(service.running)
         self.assertThat(start_up.start_up, MockCalledOnceWith())
-        self.assertTrue(service.websocket.listener.connected())
 
     def test__error_when_starting_is_logged(self):
         service = self.make_webapp()
@@ -221,7 +223,7 @@ class TestWebApplicationService(MAASTestCase):
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),
             _application=IsInstance(WSGIHandler)))
 
-    def test__stopService_stops_the_service_and_the_websocket(self):
+    def test__stopService_stops_the_service(self):
         service = self.make_webapp()
         self.patch_autospec(start_up, "start_up")
         start_up.start_up.return_value = defer.succeed(None)
@@ -232,8 +234,6 @@ class TestWebApplicationService(MAASTestCase):
         self.expectThat(
             logger.output, DocTestMatches("""\
             Site starting on ...
-            ---
-            Listening for database notifications.
             """))
 
         with TwistedLoggerFixture() as logger:
@@ -242,9 +242,6 @@ class TestWebApplicationService(MAASTestCase):
         self.expectThat(
             logger.output, DocTestMatches("""\
             (TCP Port ... Closed)
-            ---
-            Connection closed.
             """))
 
         self.assertFalse(service.running)
-        self.assertFalse(service.websocket.listener.connected())

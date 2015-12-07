@@ -30,7 +30,6 @@ from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
-from maasserver.websockets.listener import PostgresListener
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import (
@@ -332,23 +331,20 @@ class WebSocketFactory(Factory):
 
     protocol = WebSocketProtocol
 
-    def __init__(self):
+    def __init__(self, listener):
         self.handlers = {}
         self.clients = []
-        self.listener = PostgresListener()
+        self.listener = listener
         self.cacheHandlers()
         self.registerNotifiers()
 
     def startFactory(self):
-        """Start the thread pool and the listener."""
+        """Register for RPC events."""
         self.registerRPCEvents()
-        return self.listener.start()
 
     def stopFactory(self):
-        """Stop the thread pool and the listener."""
-        stopped = self.listener.stop()
+        """Unregister RPC events."""
         self.unregisterRPCEvents()
-        return stopped
 
     def getSessionEngine(self):
         """Returns the session engine being used by Django.

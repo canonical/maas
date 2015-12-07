@@ -98,7 +98,12 @@ def make_ImportResourcesProgressService():
     return bootresources.ImportResourcesProgressService()
 
 
-def make_WebApplicationService():
+def make_PostgresListenerService():
+    from maasserver.listener import PostgresListenerService
+    return PostgresListenerService()
+
+
+def make_WebApplicationService(postgresListener):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
     # Make a socket with SO_REUSEPORT set so that we can run multiple web
@@ -124,7 +129,7 @@ def make_WebApplicationService():
     site_endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
     site_endpoint.port = site_port  # Make it easy to get the port number.
     site_endpoint.socket = s  # Prevent garbage collection.
-    site_service = WebApplicationService(site_endpoint)
+    site_service = WebApplicationService(site_endpoint, postgresListener)
     return site_service
 
 
@@ -148,15 +153,40 @@ class RegionEventLoop:
 
     """
 
-    factories = (
-        ("database-tasks", make_DatabaseTaskService),
-        ("rpc", make_RegionService),
-        ("rpc-advertise", make_RegionAdvertisingService),
-        ("nonce-cleanup", make_NonceCleanupService),
-        ("import-resources", make_ImportResourcesService),
-        ("import-resources-progress", make_ImportResourcesProgressService),
-        ("web", make_WebApplicationService),
-    )
+    factories = {
+        "database-tasks": {
+            "factory": make_DatabaseTaskService,
+            "requires": [],
+        },
+        "rpc": {
+            "factory": make_RegionService,
+            "requires": [],
+        },
+        "rpc-advertise": {
+            "factory": make_RegionAdvertisingService,
+            "requires": [],
+        },
+        "nonce-cleanup": {
+            "factory": make_NonceCleanupService,
+            "requires": [],
+        },
+        "import-resources": {
+            "factory": make_ImportResourcesService,
+            "requires": [],
+        },
+        "import-resources-progress": {
+            "factory": make_ImportResourcesProgressService,
+            "requires": [],
+        },
+        "postgres-listener": {
+            "factory": make_PostgresListenerService,
+            "requires": [],
+        },
+        "web": {
+            "factory": make_WebApplicationService,
+            "requires": ["postgres-listener"],
+        },
+    }
 
     def __init__(self):
         super(RegionEventLoop, self).__init__()
@@ -164,15 +194,28 @@ class RegionEventLoop:
         self.handle = None
 
     @asynchronous
+    def populateService(self, name):
+        """Prepare a service."""
+        factoryInfo = self.factories[name]
+        try:
+            service = self.services.getServiceNamed(name)
+        except KeyError:
+            # Get all dependent services for this services.
+            dependencies = []
+            for require in factoryInfo["requires"]:
+                dependencies.append(self.populateService(require))
+
+            # Create the service with dependencies.
+            service = factoryInfo["factory"](*dependencies)
+            service.setName(name)
+            service.setServiceParent(self.services)
+        return service
+
+    @asynchronous
     def populate(self):
         """Prepare all services."""
-        for name, factory in self.factories:
-            try:
-                self.services.getServiceNamed(name)
-            except KeyError:
-                service = factory()
-                service.setName(name)
-                service.setServiceParent(self.services)
+        for name in self.factories.keys():
+            self.populateService(name)
 
     @asynchronous
     def start(self):

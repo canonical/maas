@@ -119,11 +119,11 @@ class WebApplicationService(StreamServerEndpointService):
         the web application.
     """
 
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, listener):
         self.site = Site(StartPage())
         self.site.requestFactory = CleanPathRequest
         super(WebApplicationService, self).__init__(endpoint, self.site)
-        self.websocket = WebSocketFactory()
+        self.websocket = WebSocketFactory(listener)
         self.threadpool = ThreadPoolLimiter(
             reactor.threadpoolForDatabase, concurrency.webapp)
 
@@ -140,9 +140,8 @@ class WebApplicationService(StreamServerEndpointService):
 
     def startWebsocket(self, application):
         """Start the websocket factory for the `WebSocketsResource`."""
-        d = self.websocket.startFactory()
-        d.addCallback(lambda _: application)
-        return d
+        self.websocket.startFactory()
+        return application
 
     def installApplication(self, application):
         """Install the WSGI application into the Twisted site.
