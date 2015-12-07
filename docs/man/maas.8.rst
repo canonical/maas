@@ -226,7 +226,7 @@ nodes
 ^^^^^
 
 Usage: maas <profile> nodes [-h] is-registered | list-allocated |
-acquire | list | accept | accept-all | new | check-commissioning
+acquire | list | accept | accept-all | new
 
 .. program:: maas nodes
 
@@ -277,14 +277,6 @@ acquire | list | accept | accept-all | new | check-commissioning
      allocated to this node.
      power_type="<value>" - the power type of
      the node (e.g. virsh, ipmi)
-
-
-:samp:`check-commissioning`
-
-   Displays current status of nodes in the commissioning phase. Any
-   that have not returned before the system timeout value are listed
-   as "failed".
-
 
 Examples:
 Accept and commission all discovered nodes::

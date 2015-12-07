@@ -13,7 +13,6 @@ import re
 
 import bson
 import crochet
-from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -1241,47 +1240,6 @@ class NodesHandler(OperationsHandler):
         nodes = nodes.filter(status=NODE_STATUS.NEW)
         nodes = (node.accept_enlistment(request.user) for node in nodes)
         return [node for node in nodes if node is not None]
-
-    @operation(idempotent=False)
-    def check_commissioning(self, request):
-        """Check all commissioning nodes to see if they are taking too long.
-
-        Anything that has been commissioning for longer than
-        settings.COMMISSIONING_TIMEOUT is moved into the
-        FAILED_COMMISSIONING status.
-        """
-        # Compute the cutoff time on the database, using the database's
-        # clock to compare to the "updated" timestamp, also set from the
-        # database's clock.  Otherwise, a sufficient difference between the
-        # two clocks (including timezone offset!) might cause commissioning to
-        # "time out" immediately, or hours late.
-        #
-        # This timeout relies on nothing else updating the commissioning node
-        # within the hour.  Otherwise, the timestamp will be refreshed as a
-        # side effect and timeout will be postponed.
-        #
-        # This query both identifies and updates the failed nodes.  It
-        # refreshes the "updated" timestamp, but does not run any Django-side
-        # code associated with saving the nodes.
-        params = {
-            'commissioning': NODE_STATUS.COMMISSIONING,
-            'failed_tests': NODE_STATUS.FAILED_COMMISSIONING,
-            'minutes': settings.COMMISSIONING_TIMEOUT
-        }
-        query = Node.nodes.raw("""
-            UPDATE maasserver_node
-            SET
-                status = %(failed_tests)s,
-                updated = now()
-            WHERE
-                status = %(commissioning)s AND
-                updated <= (now() - interval '%(minutes)f minutes')
-            RETURNING *
-            """ % params)
-        results = list(query)
-        # Note that Django doesn't call save() on updated nodes here,
-        # but I don't think anything requires its effects anyway.
-        return results
 
     @operation(idempotent=False)
     def release(self, request):
