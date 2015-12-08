@@ -170,14 +170,14 @@ class Command(BaseCommand):
     @classmethod
     def _get_last_app_south_migration(cls, app):
         """Return the name of the last migration for the application."""
-        return cls._get_all_south_migrations(app)[-1]
+        return cls._get_all_app_south_migrations(app)[-1]
 
     @classmethod
     def _south_migrations_are_complete(cls, database):
         """Return True if all of the south migrations have been performed."""
         for module in SOUTH_MODULES:
-            should_have_ran = cls._get_last_south_migration(module)
-            last_ran = cls._get_last_ran_south_migration(database, module)
+            should_have_ran = cls._get_last_app_south_migration(module)
+            last_ran = cls._get_last_db_south_migration(database, module)
             if should_have_ran != last_ran:
                 return False
         return True

@@ -117,7 +117,7 @@ class TestDBUpgrade(MAASServerTestCase):
             "metadataserver",
             dbupgrade_command._get_all_app_south_migrations(
                 "metadataserver")[-1])
-        call_command('dbupgrade', always_south=True)
+        call_command('dbupgrade', always_south=False)
         self.assertCalledTar(popen)
         self.assertCalledSouth(popen)
         self.assertCalledDjango(popen)
