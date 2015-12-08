@@ -50,11 +50,11 @@ class TestCleanPathRequest(MAASTestCase):
             webapp.Request, "requestReceived")
         request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
         path_pieces = [
-            factory.make_name("path")
+            factory.make_name("path").encode("utf-8")
             for _ in range(3)
             ]
-        double_path = ("/" * random.randint(2, 8)).join(path_pieces)
-        single_path = "/".join(path_pieces)
+        double_path = (b"/" * random.randint(2, 8)).join(path_pieces)
+        single_path = b"/".join(path_pieces)
         request.requestReceived(
             sentinel.command, double_path, sentinel.version)
         self.assertThat(
@@ -67,12 +67,12 @@ class TestCleanPathRequest(MAASTestCase):
             webapp.Request, "requestReceived")
         request = webapp.CleanPathRequest(sentinel.channel, sentinel.queued)
         path_pieces = [
-            factory.make_name("path")
+            factory.make_name("path").encode("utf-8")
             for _ in range(3)
             ]
-        args = "?op=extra//data"
-        double_path = ("/" * random.randint(2, 8)).join(path_pieces) + args
-        single_path = "/".join(path_pieces) + args
+        args = b"?op=extra//data"
+        double_path = (b"/" * random.randint(2, 8)).join(path_pieces) + args
+        single_path = b"/".join(path_pieces) + args
         request.requestReceived(
             sentinel.command, double_path, sentinel.version)
         self.assertThat(
@@ -217,7 +217,7 @@ class TestWebApplicationService(MAASTestCase):
 
         resource = service.site.resource
         self.assertThat(resource, IsInstance(Resource))
-        overlay_resource = resource.getChildWithDefault("MAAS", request=None)
+        overlay_resource = resource.getChildWithDefault(b"MAAS", request=None)
         self.assertThat(overlay_resource, IsInstance(webapp.ResourceOverlay))
         self.assertThat(overlay_resource.basis, MatchesStructure(
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),

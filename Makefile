@@ -59,6 +59,8 @@ build: \
     bin/test.config \
     bin/test.region \
     bin/test.testing \
+		bin/test.js \
+		bin/test.e2e \
     bin/py bin/ipy \
     $(js_enums)
 
@@ -117,12 +119,10 @@ bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
-# bin/maas-region-admin is needed for South migration tests. bin/sass
-# has been removed temporarily from the dependency list because npm
-# seems to be currently broken on Xenial. bin/flake8 is needed for
-# checking lint.
+# bin/maas-region-admin is needed for South migration tests. bin/flake8 is
+# needed for checking lint and bin/sass is needed for checking css.
 bin/test.testing: \
-    bin/maas-region-admin bin/flake8 bin/buildout \
+    bin/maas-region-admin bin/flake8 bin/sass bin/buildout \
     buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -153,13 +153,15 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create bin/py bin/ipy
 
 define karma-deps
-  karma@0.12.32
-  karma-chrome-launcher@0.1.12
-  karma-firefox-launcher@0.1.6
-  karma-jasmine@0.3.5
-  karma-opera-launcher@0.1.0
-  karma-phantomjs-launcher@0.1.4
+  jasmine-core@2.4.1
+  karma@0.13.15
+  karma-chrome-launcher@0.2.2
+  karma-firefox-launcher@0.1.7
+  karma-jasmine@0.3.6
+  karma-opera-launcher@0.3.0
+  karma-phantomjs-launcher@0.2.1
   karma-failed-reporter@0.0.3
+	phantomjs@1.9.19
 endef
 
 bin/karma: deps = $(strip $(karma-deps))
@@ -172,23 +174,23 @@ bin/karma:
 bin/protractor: prefix = include/nodejs
 bin/protractor:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 600 --prefix $(prefix) protractor@2.0.0
+	npm install --cache-min 600 --prefix $(prefix) protractor@3.0.0
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
 bin/sass: prefix = include/nodejs
 bin/sass:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 600 --prefix $(prefix) node-sass@3.1.0
+	npm install --cache-min 600 --prefix $(prefix) node-sass@3.4.2
 	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
 
-# Don't run bin/test.e2e for now; it breaks. Don't run bin/test.js for
-# now; it won't build (it seems that npm is currently broken on Xenial).
 define test-scripts
   bin/test.cli
   bin/test.cluster
   bin/test.config
   bin/test.region
   bin/test.testing
+	bin/test.js
+	bin/test.e2e
 endef
 
 test: $(strip $(test-scripts))

@@ -30,7 +30,8 @@ class TestBootMethodUtils(MAASTestCase):
         packages_path = '%s/binary-%s/Packages.gz' % (comp, arch)
         packages_url = utils.urljoin(url, packages_path)
         packages_gz_md5 = utils.get_md5sum(packages_gz)
-        release_data = "  %s  012 %s" % (packages_gz_md5, packages_path)
+        release_data = (
+            "  %s  012 %s" % (packages_gz_md5, packages_path)).encode("utf-8")
 
         get_file = self.patch(utils, "get_file")
         get_file.side_effect = [release_data, release_gpg, packages_gz]
@@ -60,7 +61,8 @@ class TestBootMethodUtils(MAASTestCase):
 
         packages_path = '%s/binary-%s/Packages.gz' % (comp, arch)
         packages_gz_md5 = utils.get_md5sum(packages_gz + b'0')
-        release_data = "  %s  012 %s" % (packages_gz_md5, packages_path)
+        release_data = (
+            "  %s  012 %s" % (packages_gz_md5, packages_path)).encode("utf-8")
 
         get_file = self.patch(utils, "get_file")
         get_file.side_effect = [release_data, release_gpg, packages_gz]

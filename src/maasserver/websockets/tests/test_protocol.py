@@ -9,6 +9,7 @@ from collections import deque
 import json
 import random
 
+from apiclient.utils import ascii_url
 from crochet import wait_for
 from django.core.exceptions import ValidationError
 from maasserver.eventloop import services
@@ -68,7 +69,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
-        protocol.transport.cookies = ""
+        protocol.transport.cookies = b""
         protocol.transport.uri = transport_uri
         if patch_authenticate:
             self.patch(protocol, "authenticate")
@@ -86,7 +87,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             maas_factory.make_name("path"))
         if csrftoken is not None:
             url += "?csrftoken=%s" % csrftoken
-        return url
+        return ascii_url(url)
 
     def get_written_transport_message(self, protocol):
         call = protocol.transport.write.call_args_list.pop()
@@ -132,7 +133,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         cookies["csrftoken"] = csrftoken
         protocol.transport.cookies = "; ".join(
             "%s=%s" % (key, value)
-            for key, value in cookies.items())
+            for key, value in cookies.items()).encode("ascii")
         mock_authenticate = self.patch(protocol, "authenticate")
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
@@ -301,7 +302,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_dataReceived_calls_loseConnection_if_json_error(self):
         protocol, factory = self.make_protocol()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        self.expectThat(protocol.dataReceived("{{{{"), Is(""))
+        self.expectThat(protocol.dataReceived(b"{{{{"), Is(""))
         self.expectThat(
             mock_loseConnection,
             MockCalledOnceWith(
@@ -313,7 +314,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
         self.expectThat(
-            protocol.dataReceived(json.dumps(message)), Is(NOT_DONE_YET))
+            protocol.dataReceived(
+                json.dumps(message).encode("ascii")), Is(NOT_DONE_YET))
         self.expectThat(protocol.messages, Equals(deque([message])))
 
     def test_dataReceived_calls_processMessages(self):
@@ -321,7 +323,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         mock_processMessages = self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
         self.expectThat(
-            protocol.dataReceived(json.dumps(message)), Is(NOT_DONE_YET))
+            protocol.dataReceived(
+                json.dumps(message).encode("ascii")), Is(NOT_DONE_YET))
         self.expectThat(mock_processMessages, MockCalledOnceWith())
 
     def test_processMessages_does_nothing_if_no_user(self):
@@ -631,7 +634,7 @@ class MakeProtocolFactoryMixin:
         self.addCleanup(factory.stopFactory)
         protocol = factory.buildProtocol(None)
         protocol.transport = MagicMock()
-        protocol.transport.cookies = ""
+        protocol.transport.cookies = b""
         if user is None:
             user = maas_factory.make_User()
         mock_authenticate = self.patch(protocol, "authenticate")

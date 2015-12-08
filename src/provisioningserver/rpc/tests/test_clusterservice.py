@@ -544,7 +544,7 @@ class TestClusterClientService(MAASTestCase):
                 ("2.2.2.2", 5555),
             ],
         },
-    })
+    }).encode("ascii")
 
     def test_update_calls__update_connections(self):
         maas_url = "http://%s/%s/" % (
@@ -575,7 +575,7 @@ class TestClusterClientService(MAASTestCase):
         _make_connection = self.patch(service, "_make_connection")
         _drop_connection = self.patch(service, "_drop_connection")
 
-        info = json.loads(self.example_rpc_info_view_response)
+        info = json.loads(self.example_rpc_info_view_response.decode("ascii"))
         yield service._update_connections(info["eventloops"])
 
         _make_connection_expected = [

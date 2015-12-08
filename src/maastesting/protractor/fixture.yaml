@@ -2,12 +2,12 @@
     callback: null, callback_confirmed: false, consumer: 7, is_approved: true,
     key: 3trwZ3uDXYACfY36wD, secret: T2fkbcnbWsS3k2YtMVvLCCKfb7F7mQSE, timestamp: 1370247090,
     token_type: 2, user: 1, verifier: ''}
-  model: piston.token
+  model: piston3.token
   pk: 7
 - fields: {
     description: '', key: y7FgR8SgJS6X9BAUek, name: MAAS consumer, secret: '',
     status: accepted, user: 1}
-  model: piston.consumer
+  model: piston3.consumer
   pk: 7
 - fields: {
     created: 2012-01-24, cluster_name: master,
@@ -15,28 +15,6 @@
     updated: !!timestamp '2012-01-24 10:52:38.735954'}
   model: maasserver.nodegroup
   pk: 1
-- fields: {
-    created: 2012-01-24, hostname: sun, architecture: 'i386/generic',
-    owner: null, status: 0, nodegroup: 1, tags: [],
-    cpu_count: 16, memory: 16384,
-    system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
-    updated: !!timestamp '2012-01-24 10:52:38.735954'}
-  model: maasserver.node
-  pk: 15
-- fields: {
-    created: 2012-01-24, hostname: moon, architecture: 'i386/generic',
-    owner: null, status: 2, nodegroup: 1, tags: [],
-    cpu_count: 1, memory: 512,
-    system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
-    updated: !!timestamp '2012-01-24 10:52:44.507777'}
-  model: maasserver.node
-  pk: 16
-- fields: {created: 2012-01-24, mac_address: '08:34:2a:b5:8a:45', node: 15, updated: !!timestamp '2012-01-24 11:00:59.951873'}
-  model: maasserver.macaddress
-  pk: 1
-- fields: {created: 2012-01-24, mac_address: '08:05:44:c7:bb:45', node: 16, updated: !!timestamp '2012-01-22 11:01:23.998278'}
-  model: maasserver.macaddress
-  pk: 2
 - fields:
     date_joined: 2012-01-23 11:52:14
     email: admin@example.com

@@ -67,9 +67,9 @@ class CleanPathRequest(Request, object):
     """
 
     def requestReceived(self, command, path, version):
-        path, sep, args = path.partition("?")
-        path = re.sub(r'/+', '/', path)
-        path = "".join([path, sep, args])
+        path, sep, args = path.partition(b"?")
+        path = re.sub(rb'/+', b'/', path)
+        path = b"".join([path, sep, args])
         return super(CleanPathRequest, self).requestReceived(
             command, path, version)
 
@@ -156,11 +156,12 @@ class WebApplicationService(StreamServerEndpointService):
         root = Resource()
         webapp = ResourceOverlay(
             WSGIResource(reactor, self.threadpool, application))
-        root.putChild("", Redirect(b"MAAS/"))
-        root.putChild("MAAS", webapp)
+        root.putChild(b"", Redirect(b"MAAS/"))
+        root.putChild(b"MAAS", webapp)
         webapp.putChild(
-            'ws', WebSocketsResource(lookupProtocolForFactory(self.websocket)))
-        webapp.putChild('static', static_root)
+            b'ws',
+            WebSocketsResource(lookupProtocolForFactory(self.websocket)))
+        webapp.putChild(b'static', static_root)
         self.site.resource = root
 
     def installFailed(self, failure):

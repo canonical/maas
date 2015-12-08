@@ -792,6 +792,7 @@ class ClusterClientService(TimerService, object):
                 return {"eventloops": None}
 
         d = getPage(url, agent=fullyQualifiedName(cls))
+        d.addCallback(lambda data: data.decode("ascii"))
         d.addCallback(json.loads)
         d.addErrback(catch_503_error)
         return d

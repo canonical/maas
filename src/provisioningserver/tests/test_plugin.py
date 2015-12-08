@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import crochet
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
@@ -70,6 +71,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         super(TestProvisioningServiceMaker, self).setUp()
         self.useFixture(ClusterConfigurationFixture())
         self.patch(provisioningserver, "services", MultiService())
+        self.patch_autospec(crochet, "no_setup")
         self.tempdir = self.make_dir()
 
     def test_init(self):
@@ -95,14 +97,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             len(service.namedServices), len(service.services),
             "Not all services are named.")
         self.assertEqual(service, provisioningserver.services)
-
-    def test_makeService_patches_simplestreams(self):
-        mock_simplestreams_patch = (
-            self.patch(plugin_module, 'force_simplestreams_to_use_urllib2'))
-        options = Options()
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service_maker.makeService(options)
-        self.assertThat(mock_simplestreams_patch, MockCalledOnceWith())
+        self.assertThat(crochet.no_setup, MockCalledOnceWith())
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = (

@@ -93,7 +93,7 @@ class WebSocketProtocol(Protocol):
         # the client. If this fails or if the CSRF token can't be found, it
         # will call loseConnection. A websocket connection is only allowed
         # from an authenticated user.
-        cookies = self.transport.cookies
+        cookies = self.transport.cookies.decode("ascii")
         d = self.authenticate(
             get_cookie(cookies, 'sessionid'),
             get_cookie(cookies, 'csrftoken'),
@@ -175,8 +175,16 @@ class WebSocketProtocol(Protocol):
         """
         # Check the CSRF token.
         tokens = parse_qs(
-            urlparse(self.transport.uri).query).get('csrftoken')
+            urlparse(self.transport.uri).query).get(b'csrftoken')
+        # Convert tokens from bytes to str as the transport sends it
+        # as ascii bytes and the cookie is decoded as unicode.
+        if tokens is not None:
+            tokens = [
+                token.decode("ascii")
+                for token in tokens
+            ]
         if tokens is None or csrftoken not in tokens:
+            # No csrftoken in the request or the token does not match.
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
             return None
@@ -204,7 +212,7 @@ class WebSocketProtocol(Protocol):
     def dataReceived(self, data):
         """Received message from client and queue up the message."""
         try:
-            message = json.loads(data)
+            message = json.loads(data.decode("ascii"))
         except ValueError:
             # Only accept JSON data over the protocol. Close the connect
             # with invalid data.

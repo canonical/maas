@@ -12,10 +12,7 @@ import socket
 from socket import error as socket_error
 
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.monkey import (
-    add_term_error_code_to_tftp,
-    force_simplestreams_to_use_urllib2,
-)
+from provisioningserver.monkey import add_term_error_code_to_tftp
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
@@ -160,11 +157,18 @@ class ProvisioningServiceMaker:
             config.cluster_uuid, config.tftp_root, config.tftp_port,
             config.tftp_generator_url)
 
+    def _configureCrochet(self):
+        # Prevent other libraries from starting the reactor via crochet.
+        # In other words, this makes crochet.setup() a no-op.
+        import crochet
+        crochet.no_setup()
+
     def makeService(self, options):
         """Construct the MAAS Cluster service."""
         register_sigusr2_thread_dump_handler()
-        force_simplestreams_to_use_urllib2()
         add_term_error_code_to_tftp()
+
+        self._configureCrochet()
 
         from provisioningserver import services
         with ClusterConfiguration.open() as config:

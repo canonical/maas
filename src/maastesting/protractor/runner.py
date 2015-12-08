@@ -13,6 +13,7 @@ import sys
 import time
 import traceback
 
+import django
 from django.conf import settings
 from django.core.management import call_command
 from django.db import DEFAULT_DB_ALIAS
@@ -131,6 +132,7 @@ class MAASRegionServiceFixture(Fixture):
 
     def setup_databases(self):
         """Setup the test databases."""
+        django.setup()
         self._old_config = setup_databases(self.verbosity, self.interactive)
 
         # Load the fixture into the database.
@@ -155,7 +157,8 @@ class MAASClusterServiceFixture(Fixture):
         super(MAASClusterServiceFixture, self).setUp()
         self.useFixture(ClusterConfigurationFixture(
             cluster_uuid="adfd3977-f251-4f2c-8d61-745dbd690bf2",
-            maas_url="http://0.0.0.0:5253/MAAS/"))
+            maas_url="http://0.0.0.0:5253/MAAS/",
+            tftp_port=5255))
 
         # Fork the process to have clusterd run in its own process.
         twistd_pid = os.fork()

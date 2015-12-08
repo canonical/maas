@@ -78,7 +78,7 @@ def gpg_verify_data(signature, data_file):
 
 
 def decompress_packages(packages):
-    compressed = io.StringIO(packages)
+    compressed = io.BytesIO(packages)
     decompressed = gzip.GzipFile(fileobj=compressed)
     return str(decompressed.read(), errors='ignore')
 
@@ -97,10 +97,10 @@ def get_packages(archive, component, architecture, release=None):
     packages_url = urljoin(url, path)
     packages = get_file(packages_url)
     md5sum = re.search(
-        r"^\s*?([a-zA-Z0-9]{32})\s+?[0-9]+\s+%s$" % path,
+        rb"^\s*?([a-zA-Z0-9]{32})\s+?[0-9]+\s+%s$" % path.encode("utf-8"),
         release_file,
         re.MULTILINE).group(1)
-    if get_md5sum(packages) != md5sum:
+    if get_md5sum(packages).encode("utf-8") != md5sum:
         raise ValueError("%s failed checksum." % packages_url)
 
     return decompress_packages(packages)
