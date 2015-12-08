@@ -235,7 +235,6 @@ lint-py: bin/flake8
 	  -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
 	    --config=/dev/null
-	@utilities/check-maaslog-exception
 
 lint-doc:
 	@utilities/doc-lint
