@@ -102,7 +102,3 @@ def power_state_hmc(ip, username, password, server_name, lpar):
     elif power_state in HMCState.ON:
         return 'on'
     raise HMCException('Unknown power state: %s' % power_state)
-
-
-def required_package():
-    return ['chsysstate', 'HMC Management Software']
