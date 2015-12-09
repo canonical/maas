@@ -190,13 +190,25 @@ class Command(BaseCommand):
             not cls._south_migrations_are_complete(database))
 
     @classmethod
-    def _rename_piston_to_piston3(cls, database):
-        """Rename piston to piston3."""
+    def _find_tables(cls, database, startwith):
+        """Return list of tables that start with `startwith`."""
         cursor = connections[database].cursor()
         cursor.execute(
-            "ALTER TABLE piston_consumer RENAME TO piston3_consumer")
-        cursor.execute("ALTER TABLE piston_nonce RENAME TO piston3_nonce")
-        cursor.execute("ALTER TABLE piston_token RENAME TO piston3_token")
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name LIKE %s",
+            [startwith + "%"])
+        return [
+            row[0]
+            for row in cursor.fetchall()
+        ]
+
+    @classmethod
+    def _rename_piston_to_piston3(cls, database, tables):
+        """Rename piston to piston3."""
+        cursor = connections[database].cursor()
+        for table in tables:
+            cursor.execute(
+                "ALTER TABLE piston_%s RENAME TO piston3_%s" % (table, table))
 
     @classmethod
     def _perform_south_migrations(cls, script_path, database):
@@ -259,13 +271,19 @@ class Command(BaseCommand):
             if rc != 0:
                 sys.exit(rc)
         else:
-            # Piston has been renamed from piston to piston3. If south was ever
-            # performed then the tables need to be renamed.
-            south_was_performed = self._south_was_performed(database)
-            if south_was_performed:
-                self._rename_piston_to_piston3(database)
+            # Piston has been renamed from piston to piston3.
+            piston_tables = self._find_tables(database, "piston")
+            piston_tables = [
+                table[7:]
+                for table in piston_tables
+                if not table.startswith("piston3")
+            ]
+            if len(piston_tables):
+                self._rename_piston_to_piston3(database, piston_tables)
 
             # Perform the builtin migration faking the initial migrations
             # if south was ever performed.
             call_command(
-                "migrate", interactive=False, fake_initial=south_was_performed)
+                "migrate",
+                interactive=False,
+                fake_initial=self._south_was_performed(database))

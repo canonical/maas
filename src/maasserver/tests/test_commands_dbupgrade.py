@@ -137,14 +137,36 @@ class TestDBUpgrade(MAASServerTestCase):
         self.assertCalledSouth(popen)
         self.assertCalledDjango(popen)
 
-    def test_django_run_renames_piston_tables_if_south_ran_before(self):
+    def test_django_run_renames_piston_tables_if_piston_tables_exists(self):
         self.patch(
             dbupgrade_command, "_south_was_performed").return_value = True
+        self.patch(dbupgrade_command, "_find_tables").return_value = [
+            "piston_consumer",
+            "piston_token",
+        ]
         mock_rename = self.patch(
             dbupgrade_command, "_rename_piston_to_piston3")
         mock_call = self.patch(dbupgrade_module, "call_command")
         call_command('dbupgrade', django=True)
-        self.assertThat(mock_rename, MockCalledOnceWith("default"))
+        self.assertThat(
+            mock_rename, MockCalledOnceWith("default", ["consumer", "token"]))
+        self.assertThat(
+            mock_call, MockCalledOnceWith(
+                "migrate", interactive=False, fake_initial=True))
+
+    def test_django_run_doesnt_renames_piston_tables_if_piston3(self):
+        self.patch(
+            dbupgrade_command, "_south_was_performed").return_value = True
+        self.patch(dbupgrade_command, "_find_tables").return_value = [
+            "piston3_consumer",
+            "piston3_token",
+        ]
+        mock_rename = self.patch(
+            dbupgrade_command, "_rename_piston_to_piston3")
+        mock_call = self.patch(dbupgrade_module, "call_command")
+        call_command('dbupgrade', django=True)
+        self.assertThat(
+            mock_rename, MockNotCalled())
         self.assertThat(
             mock_call, MockCalledOnceWith(
                 "migrate", interactive=False, fake_initial=True))
