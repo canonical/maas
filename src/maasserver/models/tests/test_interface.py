@@ -58,6 +58,7 @@ from maasserver.testing.orm import (
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
+    MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -2571,9 +2572,10 @@ class TestClaimStaticIPs(MAASServerTestCase):
         interface.claim_static_ips()
         self.assertThat(
             mock_link_subnet,
-            MockCallsMatch(
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
+        self.assertThat(
+            mock_link_subnet,
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
 
     def test__without_address_calls_link_subnet_once_per_subnet(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2607,9 +2609,10 @@ class TestClaimStaticIPs(MAASServerTestCase):
         interface.claim_static_ips()
         self.assertThat(
             mock_link_subnet,
-            MockCallsMatch(
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
+        self.assertThat(
+            mock_link_subnet,
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
 
     def test__without_address_does_nothing_if_none_managed(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2691,9 +2694,10 @@ class TestClaimStaticIPs(MAASServerTestCase):
         device_interface.claim_static_ips()
         self.assertThat(
             mock_link_subnet,
-            MockCallsMatch(
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
+        self.assertThat(
+            mock_link_subnet,
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
 
     def test__device_no_address_calls_link_subnet_once_per_subnet(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2734,9 +2738,10 @@ class TestClaimStaticIPs(MAASServerTestCase):
         device_interface.claim_static_ips()
         self.assertThat(
             mock_link_subnet,
-            MockCallsMatch(
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v4),
-                call(INTERFACE_LINK_TYPE.STATIC, subnet_v6)))
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
+        self.assertThat(
+            mock_link_subnet,
+            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
 
     def test__device_with_address_calls_link_subnet_with_ip_address(self):
         parent = factory.make_Node()
