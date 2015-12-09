@@ -17,10 +17,8 @@ __all__ = []
 from provisioningserver.drivers.hardware.hmc import (
     power_control_hmc,
     power_state_hmc,
-    required_package,
 )
 from provisioningserver.drivers.power import PowerDriver
-from provisioningserver.utils import shell
 
 
 def extract_hmc_parameters(context):
@@ -39,9 +37,7 @@ class HMCPowerDriver(PowerDriver):
     settings = []
 
     def detect_missing_packages(self):
-        binary, package = required_package()
-        if not shell.has_command_available(binary):
-            return [package]
+        # uses pure-python paramiko ssh client - nothing to look for!
         return []
 
     def power_on(self, system_id, context):
