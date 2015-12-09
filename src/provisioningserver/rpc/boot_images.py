@@ -45,7 +45,8 @@ def reload_boot_images():
     most up-to-date boot images list."""
     global CACHED_BOOT_IMAGES
     with ClusterConfiguration.open() as config:
-        CACHED_BOOT_IMAGES = tftppath.list_boot_images(config.tftp_root)
+        tftp_root = config.tftp_root
+    CACHED_BOOT_IMAGES = tftppath.list_boot_images(tftp_root)
 
 
 def get_hosts_from_sources(sources):
