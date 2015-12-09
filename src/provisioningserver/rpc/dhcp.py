@@ -138,9 +138,18 @@ def _try_omshell_connection():
     return False
 
 
-def _ensure_dhcpv4_is_accessible(exception):
-    """Ensure that the DHCPv4 server is accessible. Raise `exception` if
-    it will not be possible to contact the server."""
+def _is_dhcpv4_managed_and_active(exception):
+    """Ensure that the DHCPv4 server is accessible (if necessary), and return
+    its status.
+
+    Returns True if the DHCPv4 server is accessible and should be accessible.
+    Returns False if the DHCPv4 server is not accessible, and should not be
+    accessible.
+    Raise `exception` if the DHCP server should be accessible, but cannot
+    be started.
+
+    :return:bool
+    """
     service = ServiceRegistry.get_item("dhcp4")
     if service.is_on():
         if service_monitor.get_service_state("dhcp4") != SERVICE_STATE.ON:
@@ -150,6 +159,8 @@ def _ensure_dhcpv4_is_accessible(exception):
                     raise exception(
                         "DHCPv4 server started but was unable to connect "
                         "to omshell.")
+                else:
+                    return True
             except ServiceActionError as e:
                 # Error is already logged by the service monitor, nothing to
                 # log for this exception.
@@ -160,9 +171,11 @@ def _ensure_dhcpv4_is_accessible(exception):
                 raise exception(error_msg)
         else:
             # Service should be on and is already on, nothing needs to be done.
-            pass
+            return True
     else:
-        raise exception("DHCPv4 server is disabled.")
+        # This is not an error; it just needs to be distinguished here so it
+        # can be handled differently.
+        return False
 
 
 @synchronous
@@ -173,7 +186,12 @@ def create_host_maps(mappings, shared_key):
         ``mac_address`` keys.
     :param shared_key: The key used to access the DHCP server via OMAPI.
     """
-    _ensure_dhcpv4_is_accessible(CannotCreateHostMap)
+    if not _is_dhcpv4_managed_and_active(CannotCreateHostMap):
+        # This will raise if DHCP is offline, but should be online.
+        # If the server is offline *and* should be offline, we'll get False
+        # back, which means this is a no-op.
+        return
+
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
     for mapping in mappings:
@@ -207,7 +225,12 @@ def remove_host_maps(identifiers, shared_key):
     :param mac_addresses: A list of MAC addresses.
     :param shared_key: The key used to access the DHCP server via OMAPI.
     """
-    _ensure_dhcpv4_is_accessible(CannotRemoveHostMap)
+    if not _is_dhcpv4_managed_and_active(CannotRemoveHostMap):
+        # This will raise if DHCP is offline, but should be online.
+        # If the server is offline *and* should be offline, we'll get False
+        # back, which means this is a no-op.
+        return
+
     # See bug 1039362 regarding server_address.
     omshell = Omshell(server_address='127.0.0.1', shared_key=shared_key)
     for identifier in identifiers:
