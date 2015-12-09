@@ -48,6 +48,7 @@ from provisioningserver.service_monitor import ServiceActionError
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import RegistryFixture
 from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestConfigureDHCP(MAASTestCase):
@@ -247,14 +248,14 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         ServiceRegistry.register_item(service.name, service)
         return service
 
-    def test__raises_exception_if_service_should_be_off(self):
+    def test__returns_false_if_service_should_be_off(self):
         service = self.make_dhcpv4_service()
         service.off()
         exception_type = factory.make_exception_type()
-        with ExpectedException(exception_type):
-            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+        return_value = dhcp._is_dhcpv4_managed_and_active(exception_type)
+        self.assertThat(return_value, Equals(False))
 
-    def test__does_nothing_if_service_already_on(self):
+    def test__returns_true_if_service_already_on(self):
         service = self.make_dhcpv4_service()
         service.on()
         mock_get_state = self.patch(
@@ -262,8 +263,10 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         mock_get_state.return_value = SERVICE_STATE.ON
         mock_ensure_service = self.patch(
             dhcp.service_monitor, "ensure_service")
-        dhcp._ensure_dhcpv4_is_accessible(factory.make_exception_type())
+        return_value = dhcp._is_dhcpv4_managed_and_active(
+            factory.make_exception_type())
         self.assertThat(mock_ensure_service, MockNotCalled())
+        self.assertThat(return_value, Equals(True))
 
     def test__calls_try_connection_to_check_omshell(self):
         service = self.make_dhcpv4_service()
@@ -276,7 +279,7 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         mock_omshell = self.patch_autospec(dhcp, "Omshell")
         mock_try_connection = mock_omshell.return_value.try_connection
         mock_try_connection.return_value = True
-        dhcp._ensure_dhcpv4_is_accessible(factory.make_exception_type())
+        dhcp._is_dhcpv4_managed_and_active(factory.make_exception_type())
         self.assertThat(mock_ensure_service, MockCalledOnceWith("dhcp4"))
         self.assertThat(mock_try_connection, MockCalledOnceWith())
 
@@ -294,7 +297,7 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         mock_try_connection.return_value = False
         fake_exception_type = factory.make_exception_type()
         with ExpectedException(fake_exception_type):
-            dhcp._ensure_dhcpv4_is_accessible(fake_exception_type)
+            dhcp._is_dhcpv4_managed_and_active(fake_exception_type)
         self.assertThat(mock_ensure_service, MockCalledOnceWith("dhcp4"))
         self.assertEquals(mock_try_connection.call_count, 3)
 
@@ -309,7 +312,7 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         mock_ensure_service.side_effect = ServiceActionError()
         exception_type = factory.make_exception_type()
         with ExpectedException(exception_type):
-            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+            dhcp._is_dhcpv4_managed_and_active(exception_type)
 
     def test__raises_exception_on_other_exceptions(self):
         service = self.make_dhcpv4_service()
@@ -322,22 +325,22 @@ class TestEnsureDHCPv4IsAccessible(MAASTestCase):
         mock_ensure_service.side_effect = factory.make_exception()
         exception_type = factory.make_exception_type()
         with ExpectedException(exception_type):
-            dhcp._ensure_dhcpv4_is_accessible(exception_type)
+            dhcp._is_dhcpv4_managed_and_active(exception_type)
 
 
 class TestCreateHostMaps(MAASTestCase):
 
     def setUp(self):
         super(TestCreateHostMaps, self).setUp()
-        # Patch _ensure_dhcpv4_is_accessible.
-        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
-            dhcp, "_ensure_dhcpv4_is_accessible")
+        # Patch _is_dhcpv4_managed_and_active.
+        self._is_dhcpv4_managed_and_active = self.patch_autospec(
+            dhcp, "_is_dhcpv4_managed_and_active")
 
-    def test_calls__ensure_dhcpv4_is_accessible(self):
+    def test_calls__is_dhcpv4_managed_and_active(self):
         self.patch(dhcp, "Omshell")
         dhcp.create_host_maps([], sentinel.shared_key)
         self.assertThat(
-            self._ensure_dhcpv4_is_accessible,
+            self._is_dhcpv4_managed_and_active,
             MockCalledOnceWith(CannotCreateHostMap))
 
     def test_creates_omshell(self):
@@ -390,15 +393,15 @@ class TestRemoveHostMaps(MAASTestCase):
         super(TestRemoveHostMaps, self).setUp()
         self.patch(Omshell, "remove")
         self.patch(Omshell, "nullify_lease")
-        # Patch _ensure_dhcpv4_is_accessible.
-        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
-            dhcp, "_ensure_dhcpv4_is_accessible")
+        # Patch _is_dhcpv4_managed_and_active.
+        self._is_dhcpv4_managed_and_active = self.patch_autospec(
+            dhcp, "_is_dhcpv4_managed_and_active")
 
-    def test_calls__ensure_dhcpv4_is_accessible(self):
+    def test_calls__is_dhcpv4_managed_and_active(self):
         self.patch(dhcp, "Omshell")
         dhcp.remove_host_maps([], sentinel.shared_key)
         self.assertThat(
-            self._ensure_dhcpv4_is_accessible,
+            self._is_dhcpv4_managed_and_active,
             MockCalledOnceWith(CannotRemoveHostMap))
 
     def test_removes_omshell(self):
@@ -446,9 +449,9 @@ class TestOmshellError(MAASTestCase):
 
     def setUp(self):
         super(TestOmshellError, self).setUp()
-        # Patch _ensure_dhcpv4_is_accessible.
-        self._ensure_dhcpv4_is_accessible = self.patch_autospec(
-            dhcp, "_ensure_dhcpv4_is_accessible")
+        # Patch _is_dhcpv4_managed_and_active.
+        self._is_dhcpv4_managed_and_active = self.patch_autospec(
+            dhcp, "_is_dhcpv4_managed_and_active")
         self.patch(ExternalProcessError, '__unicode__', lambda x: 'Error')
 
         def raise_ExternalProcessError(*args, **kwargs):
