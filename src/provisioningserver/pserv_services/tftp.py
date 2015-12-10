@@ -21,6 +21,7 @@ from urllib.parse import (
     urlparse,
 )
 
+from apiclient.utils import ascii_url
 from netaddr import IPAddress
 from provisioningserver.boot import (
     BootMethodRegistry,
@@ -139,9 +140,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         query.update(params)
         # Merge updated query into the generator URL.
         url = self.generator_url._replace(query=urlencode(query))
-        # TODO: do something more intelligent with unicode URLs here; see
-        # apiclient.utils.ascii_url() for inspiration.
-        return url.geturl()
+        return ascii_url(url.geturl())
 
     @inlineCallbacks
     @typed
@@ -168,6 +167,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return KernelParameters(**data)
 
         d = self.get_page(url)
+        d.addCallback(lambda data: data.decode("ascii"))
         d.addCallback(json.loads)
         d.addCallback(reassemble)
         return d

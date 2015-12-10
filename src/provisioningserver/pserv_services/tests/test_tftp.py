@@ -145,11 +145,11 @@ class TestTFTPBackend(MAASTestCase):
         # params is an example of the parameters obtained from a request.
         params = {"mac": mac}
         generator_url = urlparse(backend.get_generator_url(params))
-        self.assertEqual("example.com", generator_url.hostname)
+        self.assertEqual(b"example.com", generator_url.hostname)
         query = parse_qsl(generator_url.query)
         query_expected = [
-            ("dummy", dummy),
-            ("mac", mac),
+            (b"dummy", dummy.encode("ascii")),
+            (b"mac", mac.encode("ascii")),
             ]
         self.assertItemsEqual(query_expected, query)
 
@@ -329,7 +329,8 @@ class TestTFTPBackend(MAASTestCase):
         fake_kernel_params = make_kernel_parameters()
 
         # Stub get_page to return the fake API configuration parameters.
-        fake_get_page_result = json.dumps(fake_kernel_params._asdict())
+        fake_get_page_result = json.dumps(
+            fake_kernel_params._asdict()).encode("ascii")
         get_page_patch = self.patch(backend, "get_page")
         get_page_patch.return_value = succeed(fake_get_page_result)
 

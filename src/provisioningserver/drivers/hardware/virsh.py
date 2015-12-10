@@ -156,7 +156,7 @@ class VirshSSH(pexpect.spawn):
         cmd = ' '.join(args)
         self.sendline(cmd)
         self.prompt()
-        result = self.before.splitlines()
+        result = self.before.decode("utf-8").splitlines()
         return '\n'.join(result[1:])
 
     def list(self):

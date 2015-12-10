@@ -183,7 +183,7 @@ class TestVirshSSH(MAASTestCase):
         expected = ' '.join(cmd)
         names = [factory.make_name('machine') for _ in range(3)]
         conn = self.configure_virshssh_pexpect()
-        conn.before = '\n'.join([expected] + names)
+        conn.before = ('\n'.join([expected] + names)).encode("utf-8")
         mock_sendline = self.patch(conn, 'sendline')
         mock_prompt = self.patch(conn, 'prompt')
         output = conn.run(cmd)
