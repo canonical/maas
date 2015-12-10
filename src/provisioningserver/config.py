@@ -142,6 +142,7 @@ from formencode.validators import (
     Set,
 )
 from provisioningserver.path import get_tentative_path
+from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     DirectoryString,
     ExtendedURL,
@@ -335,11 +336,16 @@ def touch(path, mode=default_file_mode):
     os.close(os.open(path, os.O_CREAT | os.O_APPEND, mode))
 
 
+class ConfigurationImmutable(Exception):
+    """The configuration is read-only; it cannot be mutated."""
+
+
 class ConfigurationDatabase:
     """Store configuration in an sqlite3 database."""
 
-    def __init__(self, database):
+    def __init__(self, database, *, mutable=False):
         self.database = database
+        self.mutable = mutable
         with self.cursor() as cursor:
             cursor.execute(
                 "CREATE TABLE IF NOT EXISTS configuration "
@@ -367,31 +373,70 @@ class ConfigurationDatabase:
             return json.loads(data[0])
 
     def __setitem__(self, name, data):
-        with self.cursor() as cursor:
-            cursor.execute(
-                "INSERT OR REPLACE INTO configuration (name, data) "
-                "VALUES (?, ?)", (name, json.dumps(data)))
+        if self.mutable:
+            with self.cursor() as cursor:
+                cursor.execute(
+                    "INSERT OR REPLACE INTO configuration (name, data) "
+                    "VALUES (?, ?)", (name, json.dumps(data)))
+        else:
+            raise ConfigurationImmutable(
+                "%s: Cannot set `%s'." % (self, name))
 
     def __delitem__(self, name):
+        if self.mutable:
+            with self.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM configuration"
+                    " WHERE name = ?", (name,))
+        else:
+            raise ConfigurationImmutable(
+                "%s: Cannot set `%s'." % (self, name))
+
+    def __str__(self):
         with self.cursor() as cursor:
-            cursor.execute(
-                "DELETE FROM configuration"
-                " WHERE name = ?", (name,))
+            # https://www.sqlite.org/pragma.html#pragma_database_list
+            databases = "; ".join(
+                "%s=%s" % (name, ":memory:" if path == "" else path)
+                for (_, name, path) in cursor.execute("PRAGMA database_list"))
+        return "%s(%s)" % (self.__class__.__qualname__, databases)
 
     @classmethod
     @contextmanager
-    def open(cls, dbpath):
+    @typed
+    def open(cls, dbpath: str):
         """Open a configuration database.
 
-        **Note** that this returns a context manager which will close the
-        database on exit, saving if the exit is clean.
+        **Note** that this returns a context manager which will open the
+        database READ-ONLY.
         """
         # Ensure `dbpath` exists...
         touch(dbpath)
         # before opening it with sqlite.
         database = sqlite3.connect(dbpath)
         try:
-            yield cls(database)
+            yield cls(database, mutable=False)
+        except:
+            raise
+        else:
+            database.rollback()
+        finally:
+            database.close()
+
+    @classmethod
+    @contextmanager
+    @typed
+    def open_for_update(cls, dbpath: str):
+        """Open a configuration database.
+
+        **Note** that this returns a context manager which will close the
+        database on exit, COMMITTING changes if the exit is clean.
+        """
+        # Ensure `dbpath` exists...
+        touch(dbpath)
+        # before opening it with sqlite.
+        database = sqlite3.connect(dbpath)
+        try:
+            yield cls(database, mutable=True)
         except:
             raise
         else:
@@ -415,11 +460,12 @@ class ConfigurationFile:
     got to use this.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, *, mutable=False):
         super(ConfigurationFile, self).__init__()
         self.config = {}
         self.dirty = False
         self.path = path
+        self.mutable = mutable
 
     def __iter__(self):
         return iter(self.config)
@@ -428,13 +474,21 @@ class ConfigurationFile:
         return self.config[name]
 
     def __setitem__(self, name, data):
-        self.config[name] = data
-        self.dirty = True
+        if self.mutable:
+            self.config[name] = data
+            self.dirty = True
+        else:
+            raise ConfigurationImmutable(
+                "%s: Cannot set `%s'." % (self, name))
 
     def __delitem__(self, name):
-        if name in self.config:
-            del self.config[name]
-            self.dirty = True
+        if self.mutable:
+            if name in self.config:
+                del self.config[name]
+                self.dirty = True
+        else:
+            raise ConfigurationImmutable(
+                "%s: Cannot set `%s'." % (self, name))
 
     def load(self):
         """Load the configuration."""
@@ -467,9 +521,32 @@ class ConfigurationFile:
             self.path, mode=mode)
         self.dirty = False
 
+    def __str__(self):
+        return "%s(%r)" % (self.__class__.__qualname__, self.path)
+
     @classmethod
     @contextmanager
-    def open(cls, path):
+    @typed
+    def open(cls, path: str):
+        """Open a configuration file read-only.
+
+        This avoids all the locking that happens in `open_for_update`. However,
+        it will create the configuration file if it does not yet exist.
+
+        **Note** that this returns a context manager which will DISCARD
+        changes to the configuration on exit.
+        """
+        # Ensure `path` exists...
+        touch(path)
+        # before loading it in.
+        configfile = cls(path, mutable=False)
+        configfile.load()
+        yield configfile
+
+    @classmethod
+    @contextmanager
+    @typed
+    def open_for_update(cls, path: str):
         """Open a configuration file.
 
         Locks are taken so that there can only be *one* reader or writer for a
@@ -477,7 +554,7 @@ class ConfigurationFile:
         multiple concurrent processes it follows that each process should hold
         the file open for the shortest time possible.
 
-        **Note** that this returns a context manager which will save changes
+        **Note** that this returns a context manager which will SAVE changes
         to the configuration on a clean exit.
         """
         time_opened = None
@@ -488,7 +565,7 @@ class ConfigurationFile:
                 # Ensure `path` exists...
                 touch(path)
                 # before loading it in.
-                configfile = cls(path)
+                configfile = cls(path, mutable=True)
                 configfile.load()
                 try:
                     yield configfile
@@ -609,6 +686,15 @@ class Configuration:
             filepath = cls.DEFAULT_FILENAME
         ensure_dir(os.path.dirname(filepath))
         with cls.backend.open(filepath) as store:
+            yield cls(store)
+
+    @classmethod
+    @contextmanager
+    def open_for_update(cls, filepath=None):
+        if filepath is None:
+            filepath = cls.DEFAULT_FILENAME
+        ensure_dir(os.path.dirname(filepath))
+        with cls.backend.open_for_update(filepath) as store:
             yield cls(store)
 
 

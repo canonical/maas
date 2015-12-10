@@ -188,7 +188,7 @@ class ResetCommand(LocalConfigCommand):
     help = "Reset local configuration for the MAAS region controller."
 
     def handle(self, *args, **options):
-        with RegionConfiguration.open() as config:
+        with RegionConfiguration.open_for_update() as config:
             for name, option in gen_configuration_options():
                 if options.get(name):
                     delattr(config, name)
@@ -204,7 +204,7 @@ class SetCommand(LocalConfigCommand):
     help = "Set local configuration for the MAAS region controller."
 
     def handle(self, *args, **options):
-        with RegionConfiguration.open() as config:
+        with RegionConfiguration.open_for_update() as config:
             for name, option in gen_configuration_options():
                 value = options.get(name)
                 if value is not None:

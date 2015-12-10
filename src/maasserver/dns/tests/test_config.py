@@ -520,7 +520,7 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_dns_config_has_NS_record(self):
         ip = factory.make_ipv4_address()
-        with RegionConfiguration.open() as config:
+        with RegionConfiguration.open_for_update() as config:
             config.maas_url = 'http://%s/' % ip
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)

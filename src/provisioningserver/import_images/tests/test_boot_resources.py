@@ -196,7 +196,7 @@ class TestMain(MAASTestCase):
         self.storage = self.make_dir()
         current_dir = os.path.join(self.storage, 'current') + os.sep
         os.makedirs(current_dir)
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.tftp_root = current_dir
         os.rmdir(current_dir)
         # Forcing arch to amd64 causes pxelinux.0 to be installed, giving more
