@@ -84,8 +84,10 @@ def configure(server, subnet_configs):
         interfaces = {subnet['interface'] for subnet in subnet_configs}
         interfaces_config = ' '.join(sorted(interfaces))
         try:
-            sudo_write_file(server.config_filename, dhcpd_config)
-            sudo_write_file(server.interfaces_filename, interfaces_config)
+            sudo_write_file(
+                server.config_filename, dhcpd_config.encode("utf-8"))
+            sudo_write_file(
+                server.interfaces_filename, interfaces_config.encode("utf-8"))
         except ExternalProcessError as e:
             # ExternalProcessError.__str__ contains a generic failure message
             # as well as the command and its error output. On the other hand,

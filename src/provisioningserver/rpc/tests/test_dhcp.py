@@ -76,11 +76,13 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_restart_service()
         subnets = [make_subnet_config() for _ in range(3)]
         self.configure(factory.make_name('key'), subnets)
+        interfaces = ' '.join(
+            sorted(subnet['interface'] for subnet in subnets))
         self.assertThat(
             write_file,
             MockCalledWith(
                 ANY,
-                ' '.join(sorted(subnet['interface'] for subnet in subnets))))
+                interfaces.encode("utf-8")))
 
     def test__eliminates_duplicate_interfaces(self):
         write_file = self.patch_sudo_write_file()
@@ -90,7 +92,8 @@ class TestConfigureDHCP(MAASTestCase):
         for subnet in subnets:
             subnet['interface'] = interface
         self.configure(factory.make_name('key'), subnets)
-        self.assertThat(write_file, MockCalledWith(ANY, interface))
+        self.assertThat(
+            write_file, MockCalledWith(ANY, interface.encode("utf-8")))
 
     def test__composes_dhcp_config(self):
         self.patch_sudo_write_file()
@@ -117,7 +120,8 @@ class TestConfigureDHCP(MAASTestCase):
 
         self.assertThat(
             write_file,
-            MockAnyCall(self.server.config_filename, expected_config))
+            MockAnyCall(
+                self.server.config_filename, expected_config.encode("utf-8")))
 
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
