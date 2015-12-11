@@ -3,6 +3,23 @@ Changelog
 =========
 
 
+1.9.0 (RC4)
+============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1523674    Virsh is reporting ppc64le, not ppc64el.
+
+LP: #1524091    Don't require DHCP to be on if it should be off.
+
+LP: #1523988    No required packages for HMC as it uses pure python paramiko ssh client.
+
+LP: #1524007    Don't hold the cluster configuration lock while reloading boot images.
+
+LP: #1524924    Fix commissioning to correctly identify secondary subnets, VLAN's and fabrics.
+
+
 1.9.0 (RC3)
 =============
 
