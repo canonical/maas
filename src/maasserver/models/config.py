@@ -43,7 +43,7 @@ def get_default_config():
         'commissioning_distro_series':
         DEFAULT_OS.get_default_commissioning_release(),
         'default_min_hwe_kernel': '',
-        'default_storage_layout': 'lvm',
+        'default_storage_layout': 'flat',
         # Network section configuration.
         'maas_name': gethostname(),
         'default_osystem': DEFAULT_OS.name,

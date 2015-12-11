@@ -48,7 +48,7 @@ def service(services):
 
 
 def control(service, action):
-    print("--> %s `%s`" % (action.capitalize(), service), file=stderr)
+    stderr.write("--> %s `%s`\n" % (action.capitalize(), service))
     return check_call(
         ("make", "--no-print-directory",
          "services/%s/@%s" % (service, action)))
