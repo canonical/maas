@@ -236,7 +236,7 @@ def pxeconfig(request):
             if 'mac' in request.GET:
                 # Request was pxelinux.cfg/01-<mac>, so attempt fall back
                 # to pxelinux.cfg/default-<arch>-<subarch> for arch detection.
-                return HttpResponse(status=http.client.NO_CONTENT)
+                return HttpResponse(status=int(http.client.NO_CONTENT))
             else:
                 # Look in BootResource for an resource that actually exists for
                 # the current series. If nothing is found, fall back to i386

@@ -117,7 +117,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def test_reports_MAASAPIException_with_appropriate_api_error(self):
         class MyException(MAASAPIException):
-            api_error = http.client.UNAUTHORIZED
+            api_error = int(http.client.UNAUTHORIZED)
 
         error_message = factory.make_string()
         exception = MyException(error_message)
@@ -130,7 +130,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def test_renders_MAASAPIException_as_unicode(self):
         class MyException(MAASAPIException):
-            api_error = http.client.UNAUTHORIZED
+            api_error = int(http.client.UNAUTHORIZED)
 
         error_message = "Error %s" % chr(233)
         response = self.process_exception(MyException(error_message))
@@ -244,7 +244,6 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request("/api/1.0/nodes/")
         response = HttpResponse(
             content="test content",
-            status=http.client.OK,
             content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
@@ -262,7 +261,6 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content="test content",
-            status=http.client.OK,
             content_type=b"text/plain; charset=utf-8")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(
@@ -274,7 +272,6 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request("foo")
         response = HttpResponse(
             content=sample_binary_data,
-            status=http.client.OK,
             content_type=b"application/octet-stream")
         DebuggingLoggerMiddleware().process_response(request, response)
         self.assertThat(

@@ -13,7 +13,10 @@ import http.client
 
 import bson
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+)
 from django.shortcuts import get_object_or_404
 from formencode import validators
 from maasserver.api.support import (
@@ -93,7 +96,8 @@ class NodeGroupsHandler(OperationsHandler):
         for uuid in uuids:
             nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
             nodegroup.accept()
-        return HttpResponse("Nodegroup(s) accepted.", status=http.client.OK)
+        return HttpResponse(
+            "Nodegroup(s) accepted.", status=int(http.client.OK))
 
     @admin_method
     @operation(idempotent=False)
@@ -105,7 +109,7 @@ class NodeGroupsHandler(OperationsHandler):
         post_commit_do(ClustersImporter.schedule)
         return HttpResponse(
             "Import of boot images started on all cluster controllers",
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @operation(idempotent=True)
     def describe_power_types(self, request):
@@ -132,7 +136,8 @@ class NodeGroupsHandler(OperationsHandler):
         for uuid in uuids:
             nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
             nodegroup.reject()
-        return HttpResponse("Nodegroup(s) rejected.", status=http.client.OK)
+        return HttpResponse(
+            "Nodegroup(s) rejected.", status=int(http.client.OK))
 
     @classmethod
     def resource_uri(cls):
@@ -228,7 +233,7 @@ class NodeGroupHandler(OperationsHandler):
         post_commit_do(ClustersImporter.schedule, nodegroup.uuid)
         return HttpResponse(
             "Import of boot images started on cluster %r" % nodegroup.uuid,
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @operation(idempotent=True)
     def list_nodes(self, request, uuid):
@@ -362,7 +367,7 @@ class NodeGroupHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
         form.save()
 
-        return HttpResponse(status=http.client.OK)
+        return HttpResponse(status=int(http.client.OK))
 
     @admin_method
     @operation(idempotent=False)
@@ -517,9 +522,9 @@ class NodeGroupHandler(OperationsHandler):
                 protocol=protocol, prefix_filter=prefix_filter,
                 accept_all=accept_all)
         else:
-            return HttpResponse(status=http.client.BAD_REQUEST)
+            return HttpResponseBadRequest()
 
-        return HttpResponse(status=http.client.OK)
+        return HttpResponse(status=int(http.client.OK))
 
     def do_probe_and_enlist_ucsm(self, nodegroup, request, user):
         """Probe and enlist UCSM"""
@@ -558,7 +563,7 @@ class NodeGroupHandler(OperationsHandler):
 
         self.do_probe_and_enlist_ucsm(nodegroup, request, user)
 
-        return HttpResponse(status=http.client.OK)
+        return HttpResponse()
 
     def do_probe_and_enlist_mscm(self, nodegroup, request, user):
         """Probe and enlist MSCM"""
@@ -597,7 +602,7 @@ class NodeGroupHandler(OperationsHandler):
         user = request.user.username
         self.do_probe_and_enlist_mscm(nodegroup, request, user)
 
-        return HttpResponse(status=http.client.OK)
+        return HttpResponse(status=int(http.client.OK))
 
     def do_probe_and_enlist_msftocs(self, nodegroup, request, user):
         """Probe and enlist Microsoft OCS."""

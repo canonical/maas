@@ -45,7 +45,7 @@ def get_file_by_name(handler, request):
         db_file = FileStorage.objects.filter(filename=filename).latest('id')
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
-    return HttpResponse(db_file.content, status=http.client.OK)
+    return HttpResponse(db_file.content, status=int(http.client.OK))
 
 
 def get_file_by_key(handler, request):
@@ -57,7 +57,7 @@ def get_file_by_key(handler, request):
     """
     key = get_mandatory_param(request.GET, 'key')
     db_file = get_object_or_404(FileStorage, key=key)
-    return HttpResponse(db_file.content, status=http.client.OK)
+    return HttpResponse(db_file.content, status=int(http.client.OK))
 
 
 class AnonFilesHandler(AnonymousOperationsHandler):
@@ -138,7 +138,7 @@ class FileHandler(OperationsHandler):
         stream = json_file_storage(stored_file, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @operation(idempotent=False)
     def delete(self, request, filename):
@@ -195,7 +195,7 @@ class FilesHandler(OperationsHandler):
         # chunks instead of reading the file into memory, but large
         # files are not expected.
         FileStorage.objects.save_file(filename, uploaded_file, request.user)
-        return HttpResponse('', status=http.client.CREATED)
+        return HttpResponse('', status=int(http.client.CREATED))
 
     @operation(idempotent=True)
     def list(self, request):

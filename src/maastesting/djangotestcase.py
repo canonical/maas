@@ -25,9 +25,33 @@ from django.db import (
     reset_queries,
 )
 from django.db.utils import DatabaseError
+from django.http.response import HttpResponseBase
 import django.test
 from maastesting.djangoclient import SensibleClient
 from maastesting.testcase import MAASTestCase
+
+# Patch django.http.response.HttpResponseBase to type check that status can be
+# converted to a str and then to an integer. Django converts the `status` from
+# an integer to a string causing issues where status is not an integer. Any
+# class that is passed to status that implements __str__ that does not equal
+# the HTTP status code value will cause the wsgi application to error.
+# See lp:1524883 for the issue this causes without this check.
+original_HttpResponseBase__init__ = HttpResponseBase.__init__
+
+
+def patched_HttpResponseBase__init__(
+        self, content_type=None, status=None, reason=None, charset=None):
+    # This will raise a ValueError if this status cannot be converted to str
+    # and then into integer.
+    if status is not None:
+        int(str(status))
+
+    # Made it this far then the status is usable.
+    original_HttpResponseBase__init__(
+        self, content_type=content_type, status=status,
+        reason=reason, charset=charset)
+
+HttpResponseBase.__init__ = patched_HttpResponseBase__init__
 
 
 class CountQueries:

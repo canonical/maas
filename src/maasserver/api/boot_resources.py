@@ -164,7 +164,7 @@ class BootResourcesHandler(OperationsHandler):
         stream = json_object(resource_list, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @admin_method
     def create(self, request):
@@ -210,7 +210,7 @@ class BootResourcesHandler(OperationsHandler):
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=http.client.CREATED)
+            status=int(http.client.CREATED))
 
     @admin_method
     @operation(idempotent=False, exported_as='import')
@@ -219,7 +219,7 @@ class BootResourcesHandler(OperationsHandler):
         import_resources()
         return HttpResponse(
             "Import of boot resources started",
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -240,7 +240,7 @@ class BootResourceHandler(OperationsHandler):
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @admin_method
     def delete(self, request, id):

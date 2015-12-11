@@ -169,7 +169,7 @@ class TagHandler(OperationsHandler):
                 "Definition supplied '%s' "
                 "doesn't match current definition '%s'"
                 % (definition, tag.definition),
-                status=http.client.CONFLICT)
+                status=int(http.client.CONFLICT))
         nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)
         tag.node_set.add(*nodes_to_add)
         nodes_to_remove = self._get_nodes_for(request, 'remove', nodegroup)

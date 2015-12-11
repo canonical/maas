@@ -669,7 +669,7 @@ class UserDataHandler(MetadataViewHandler):
         except NodeUserData.DoesNotExist:
             logger.info(
                 "No user data registered for node named %s" % node.hostname)
-            return HttpResponse(status=http.client.NOT_FOUND)
+            return HttpResponse(status=int(http.client.NOT_FOUND))
 
 
 class CurtinUserDataHandler(MetadataViewHandler):

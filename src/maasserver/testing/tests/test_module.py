@@ -46,7 +46,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_extract_redirect_errors_out_helpfully_if_not_a_redirect(self):
         content = factory.make_string(10).encode("ascii")
-        other_response = HttpResponse(status=http.client.OK, content=content)
+        other_response = HttpResponse(content=content)
         try:
             extract_redirect(other_response)
         except ValueError as e:

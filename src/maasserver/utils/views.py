@@ -116,7 +116,7 @@ class MAASDjangoTemplateResponse(SimpleTemplateResponse):
 
 
 class HttpResponseConflict(MAASDjangoTemplateResponse):
-    status_code = http.client.CONFLICT
+    status_code = int(http.client.CONFLICT)
 
 
 class WebApplicationHandler(WSGIHandler):

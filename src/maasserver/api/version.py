@@ -59,7 +59,7 @@ class VersionHandler(AnonymousOperationsHandler):
         return HttpResponse(
             json.dumps(version_info),
             content_type='application/json; charset=utf-8',
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

@@ -10,7 +10,10 @@ __all__ = [
 
 import http.client
 
-from django.http import HttpResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseForbidden,
+)
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
@@ -53,7 +56,7 @@ class SSHKeysHandler(OperationsHandler):
             stream = emitter.render(request)
             return HttpResponse(
                 stream, content_type='application/json; charset=utf-8',
-                status=http.client.CREATED)
+                status=int(http.client.CREATED))
         else:
             raise MAASAPIValidationError(form.errors)
 
@@ -90,9 +93,8 @@ class SSHKeyHandler(OperationsHandler):
         """
         key = get_object_or_404(SSHKey, id=keyid)
         if key.user != request.user:
-            return HttpResponse(
-                "Can't delete a key you don't own.",
-                status=http.client.FORBIDDEN)
+            return HttpResponseForbidden(
+                "Can't delete a key you don't own.")
         key.delete()
         return rc.DELETED
 

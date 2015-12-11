@@ -67,7 +67,7 @@ class BootSourceHandler(OperationsHandler):
         stream = json_boot_source(boot_source, request)
         return HttpResponse(
             stream, content_type='application/json; charset=utf-8',
-            status=http.client.OK)
+            status=int(http.client.OK))
 
     def update(self, request, id):
         """Update a specific boot source.
@@ -165,7 +165,7 @@ class BootSourcesHandler(OperationsHandler):
             stream = json_boot_source(boot_source, request)
             return HttpResponse(
                 stream, content_type='application/json; charset=utf-8',
-                status=http.client.CREATED)
+                status=int(http.client.CREATED))
         else:
             raise MAASAPIValidationError(form.errors)
 

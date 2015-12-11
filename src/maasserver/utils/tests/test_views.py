@@ -405,7 +405,6 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             recorder.append(content)
             response = HttpResponse(
                 content=content,
-                status=http.client.OK,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response
@@ -447,7 +446,6 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             recorder.append(created)
             response = HttpResponse(
                 content='',
-                status=http.client.OK,
                 content_type=b"text/plain; charset=utf-8")
             handler._WebApplicationHandler__retry.add(response)
             return response

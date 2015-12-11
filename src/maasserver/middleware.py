@@ -224,7 +224,7 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             # course of action is to ask the caller to repeat.
             response = HttpResponse(
                 content=str(exception).encode(encoding),
-                status=http.client.SERVICE_UNAVAILABLE,
+                status=int(http.client.SERVICE_UNAVAILABLE),
                 content_type="text/plain; charset=%s" % encoding)
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
@@ -235,7 +235,7 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             # Return an API-readable "Internal Server Error" response.
             return HttpResponse(
                 content=str(exception).encode(encoding),
-                status=http.client.INTERNAL_SERVER_ERROR,
+                status=int(http.client.INTERNAL_SERVER_ERROR),
                 content_type="text/plain; charset=%s" % encoding)
 
     def log_exception(self, exception):
@@ -315,9 +315,9 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
     """A middleware for handling RPC errors in API requests."""
 
     handled_exceptions = {
-        NoConnectionsAvailable: http.client.SERVICE_UNAVAILABLE,
-        PowerActionAlreadyInProgress: http.client.SERVICE_UNAVAILABLE,
-        TimeoutError: http.client.GATEWAY_TIMEOUT,
+        NoConnectionsAvailable: int(http.client.SERVICE_UNAVAILABLE),
+        PowerActionAlreadyInProgress: int(http.client.SERVICE_UNAVAILABLE),
+        TimeoutError: int(http.client.GATEWAY_TIMEOUT),
         }
 
     def process_exception(self, request, exception):
