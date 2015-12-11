@@ -464,8 +464,20 @@ class Interface(CleanSave, TimestampedModel):
             # to create or update the Subnet)
             try:
                 subnet = Subnet.objects.get(cidr=cidr)
+                # Update VLAN based on the VLAN this Subnet belongs to.
+                if subnet.vlan != self.vlan:
+                    vlan = subnet.vlan
+                    maaslog.info("%s: Observed connected to %s via %s." % (
+                        self.get_log_string(), vlan.fabric.get_name(), cidr))
+                    self.vlan = vlan
+                    self.save()
             except Subnet.DoesNotExist:
-                # XXX mpontillo 2015-11-01 configuration != state
+                # XXX mpontillo 2015-11-01 Configuration != state. That is,
+                # this means we have just a subnet on an unknown Fabric/VLAN,
+                # and this fact should be recorded somewhere, so that the user
+                # gets a chance to configure it. Note, however, that if this
+                # is already a managed cluster interface, a Fabric/VLAN will
+                # already have been created.
                 subnet = Subnet.objects.create_from_cidr(cidr)
                 maaslog.info(
                     "Creating subnet %s connected to interface %s "
