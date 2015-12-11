@@ -1038,6 +1038,38 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet_list[i],
                 ip=str(IPNetwork(cidr_list[i]).ip)))
 
+    def test__links_interface_to_vlan_on_existing_subnet_with_logging(self):
+        ng = factory.make_NodeGroup()
+        fabric2 = factory.make_Fabric()
+        fabric3 = factory.make_Fabric()
+        ngi1 = factory.make_NodeGroupInterface(ng)
+        ngi2 = factory.make_NodeGroupInterface(ng, fabric=fabric2)
+        ngi3 = factory.make_NodeGroupInterface(ng, fabric=fabric3)
+        interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface3 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan1 = ngi1.subnet.vlan
+        vlan2 = ngi2.subnet.vlan
+        vlan3 = ngi3.subnet.vlan
+        maaslog = self.patch_autospec(interface_module, "maaslog")
+        interface1.update_ip_addresses([ngi1.subnet.cidr])
+        interface2.update_ip_addresses([ngi2.subnet.cidr])
+        interface3.update_ip_addresses([ngi3.subnet.cidr])
+        self.assertThat(interface1.vlan, Equals(vlan1))
+        self.assertThat(interface2.vlan, Equals(vlan2))
+        self.assertThat(interface3.vlan, Equals(vlan3))
+        self.assertThat(maaslog.info, MockCallsMatch(
+            call(("%s: Observed connected to %s via %s." % (
+                interface1.get_log_string(), interface1.vlan.fabric.get_name(),
+                ngi1.subnet.cidr))),
+            call(("%s: Observed connected to %s via %s." % (
+                interface2.get_log_string(), interface2.vlan.fabric.get_name(),
+                ngi2.subnet.cidr))),
+            call(("%s: Observed connected to %s via %s." % (
+                interface3.get_log_string(), interface3.vlan.fabric.get_name(),
+                ngi3.subnet.cidr))),
+        ))
+
     def test__deletes_old_discovered_ip_addresses_on_interface(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         # Create existing DISCOVERED IP address on the interface. These should

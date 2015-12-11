@@ -130,8 +130,7 @@ _xpath_memory_bytes = """\
 """
 
 
-def _create_default_physical_interface(
-        node, ifname, mac, fabric=None, vlan=None):
+def _create_default_physical_interface(node, ifname, mac):
     """Assigns the specified interface to the specified Node.
 
     Creates or updates a PhysicalInterface that corresponds to the given MAC.
@@ -140,18 +139,15 @@ def _create_default_physical_interface(
     :param ifname: the interface name (for example, 'eth0')
     :param mac: the Interface to update and associate
     """
-    if fabric is None:
-        fabric = Fabric.objects.get_default_fabric()
-
-    if vlan is None:
-        vlan = fabric.get_default_vlan()
-
+    # We don't yet have enough information to put this newly-created Interface
+    # into the proper Fabric/VLAN. (We'll do this on a "best effort" basis
+    # later, if we are able to determine that the interface is on a particular
+    # subnet due to a DHCP reply during commissioning.)
+    fabric = Fabric.objects.get_default_fabric()
+    vlan = fabric.get_default_vlan()
     interface = PhysicalInterface.objects.create(
         mac_address=mac, name=ifname, node=node, vlan=vlan)
 
-    # XXX:fabric - for now we use the default fabric, but we need to be smarter
-    # about determining which fabric the node is in. (perhaps the cluster
-    # interface the node is linked to has an associated fabric, for example)
     return interface
 
 
@@ -185,7 +181,6 @@ def update_node_network_information(node, output, exit_status):
         else:
             ifname = link['name']
             try:
-                # XXX:fabric - this MAC might exist on a different Fabric
                 interface = PhysicalInterface.objects.get(
                     mac_address=link_mac)
                 if interface.node is not None and interface.node != node:
@@ -195,7 +190,6 @@ def update_node_network_information(node, output, exit_status):
                         (interface.mac_address, interface.node.fqdn,
                          node.fqdn))
                     interface.delete()
-                    # XXX: mpontillo 2015-08-27 how do we get Fabric/VLAN here?
                     interface = _create_default_physical_interface(
                         node, ifname, link_mac)
                 else:
@@ -204,7 +198,6 @@ def update_node_network_information(node, output, exit_status):
                     interface.name = ifname
                     interface.save()
             except PhysicalInterface.DoesNotExist:
-                # XXX: mpontillo 2015-08-27 how do we get Fabric/VLAN here?
                 interface = _create_default_physical_interface(
                     node, ifname, link_mac)
 
@@ -681,10 +674,6 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
     },
-    '00-maas-05-network-interfaces.out': {
-        'content': IPADDR_SCRIPT.encode('ascii'),
-        'hook': update_node_network_information,
-    },
     '00-maas-06-dhcp-unconfigured-ifaces': {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
@@ -701,6 +690,10 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     LLDP_OUTPUT_NAME: {
         'content': make_function_call_script(lldpd_capture),
         'hook': set_node_routers,
+    },
+    '99-maas-03-network-interfaces.out': {
+        'content': IPADDR_SCRIPT.encode('ascii'),
+        'hook': update_node_network_information,
     },
 }
 

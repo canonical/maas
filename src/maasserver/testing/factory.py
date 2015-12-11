@@ -482,7 +482,8 @@ class Factory(maastesting.factory.Factory):
                                 ip_range_low=None, ip_range_high=None,
                                 interface=None, management=None,
                                 static_ip_range_low=None,
-                                static_ip_range_high=None, **kwargs):
+                                static_ip_range_high=None, fabric=None,
+                                **kwargs):
         interface_settings = self.get_interface_fields(
             name=name, ip=ip, router_ip=router_ip,
             network=network, subnet=subnet, subnet_mask=subnet_mask,
@@ -498,12 +499,17 @@ class Factory(maastesting.factory.Factory):
             cidr = create_cidr(
                 interface_settings['ip'], interface_settings['subnet_mask'])
 
+            defaults = {
+                'name': cidr,
+                'cidr': cidr,
+                'space': Space.objects.get_default_space(),
+            }
+
+            if fabric is not None:
+                defaults['vlan'] = fabric.get_default_vlan()
+
             subnet, _ = Subnet.objects.get_or_create(
-                cidr=cidr, defaults={
-                    'name': cidr,
-                    'cidr': cidr,
-                    'space': Space.objects.get_default_space(),
-                })
+                cidr=cidr, defaults=defaults)
         elif interface_settings['subnet']:
             subnet = interface_settings.pop('subnet')
             interface_settings['subnet_mask'] = subnet.get_ipnetwork().netmask
