@@ -35,7 +35,7 @@ You can do this using the API or the web UI.  To do this via the API you
 can use the ``maas`` (see :doc:`maascli`) command, logged in as the admin
 user::
 
-  $ maas <profile> boot-sources create url=http://<server>keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
+  $ maas <profile> boot-sources create url=http://<server>/images/ephemeral-v2/releases/ keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
 
 And then initiate the download with::
 
