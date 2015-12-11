@@ -69,11 +69,10 @@ def clear_full_storage_configuration(
             pass
 
 
-def create_lvm_layout(
+def create_flat_layout(
         node, boot_disk,
-        PartitionTable, Partition, Filesystem, FilesystemGroup,
-        VirtualBlockDevice):
-    """Create the lvm layout for the boot disk."""
+        PartitionTable, Partition, Filesystem):
+    """Create the flat layout for the boot disk."""
     # Create the partition table and root partition.
     now = datetime.now()
     partition_table = PartitionTable.objects.create(
@@ -92,36 +91,8 @@ def create_lvm_layout(
     root_partition = Partition.objects.create(
         partition_table=partition_table, size=partition_size, bootable=True,
         created=now, updated=now, uuid=uuid4())
-
-    # Add the extra partitions if there is more space.
-    partitions = [root_partition]
-    while available_size > MIN_PARTITION_SIZE:
-        size = round_size_to_nearest_block(
-            available_size, PARTITION_ALIGNMENT_SIZE, False)
-        if size > max_mbr_size:
-            size = max_mbr_size
-        partitions.append(
-            Partition.objects.create(
-                partition_table=partition_table, size=size, bootable=False,
-                created=now, updated=now, uuid=uuid4()))
-        available_size -= size
-        total_size += size
-
-    # Create the volume group and logical volume.
-    volume_group = FilesystemGroup.objects.create(
-        name="vgroot", group_type=FILESYSTEM_GROUP_TYPE.LVM_VG,
-        created=now, updated=now, uuid=uuid4())
-    for partition in partitions:
-        Filesystem.objects.create(
-            fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition, uuid=uuid4(),
-            filesystem_group=volume_group, created=now, updated=now)
-    number_of_extents, _ = divmod(total_size, LVM_PE_SIZE)
-    lv_size = (number_of_extents - len(partitions)) * LVM_PE_SIZE
-    logical_volume = VirtualBlockDevice.objects.create(
-        node=node, name="lvroot", size=lv_size, block_size=4096,
-        filesystem_group=volume_group, created=now, updated=now, uuid=uuid4())
     Filesystem.objects.create(
-        block_device=logical_volume,
+        partition=root_partition,
         fstype=FILESYSTEM_TYPE.EXT4,
         label="root",
         mount_point="/",

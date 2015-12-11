@@ -36,7 +36,7 @@ from maasserver.models import (
 )
 from maasserver.models.migrations.create_default_storage_layout import (
     clear_full_storage_configuration,
-    create_lvm_layout,
+    create_flat_layout,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -121,82 +121,25 @@ class TestClearFullStorageConfigration(MAASServerTestCase):
             "been removed.")
 
 
-class TestCreateLVMLayout(MAASServerTestCase):
+class TestCreateFlatLayout(MAASServerTestCase):
 
     def test__creates_layout_for_1TiB_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=1024 ** 4, block_size=512)
-        create_lvm_layout(
+        create_flat_layout(
             node,
             boot_disk,
             PartitionTable=PartitionTable,
             Partition=Partition,
-            Filesystem=Filesystem,
-            FilesystemGroup=FilesystemGroup,
-            VirtualBlockDevice=VirtualBlockDevice)
+            Filesystem=Filesystem)
 
-        # Validate the volume group on root partition.
+        # Validate the filesystem on the root partition.
         partition_table = boot_disk.get_partitiontable()
         partitions = partition_table.partitions.order_by('id').all()
         root_partition = partitions[0]
-        volume_group = VolumeGroup.objects.get(
-            filesystems__partition=root_partition)
-        self.assertIsNotNone(volume_group)
-        self.assertEquals("vgroot", volume_group.name)
-
-        # Validate one logical volume on volume group.
-        self.assertEquals(
-            1, volume_group.virtual_devices.count(),
-            "Should have only 1 logical volume.")
-        logical_volume = volume_group.virtual_devices.first()
-        self.assertEquals(volume_group.get_size(), logical_volume.size)
-        self.assertEquals("lvroot", logical_volume.name)
         self.assertThat(
-            logical_volume.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4,
-                label="root",
-                mount_point="/",
-                ))
-
-    def test__creates_layout_for_3TiB_disk(self):
-        node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=3 * (1024 ** 4), block_size=512)
-        create_lvm_layout(
-            node,
-            boot_disk,
-            PartitionTable=PartitionTable,
-            Partition=Partition,
-            Filesystem=Filesystem,
-            FilesystemGroup=FilesystemGroup,
-            VirtualBlockDevice=VirtualBlockDevice)
-
-        # Validate the volume group on root partition.
-        partition_table = boot_disk.get_partitiontable()
-        partitions = partition_table.partitions.order_by('id').all()
-        root_partition = partitions[0]
-        volume_group = VolumeGroup.objects.get(
-            filesystems__partition=root_partition)
-        self.assertIsNotNone(volume_group)
-        self.assertEquals("vgroot", volume_group.name)
-
-        # Since its a 3TiB disk it should have 2 partitions in
-        # the volume group.
-        self.assertEquals(
-            2, volume_group.filesystems.count(),
-            "Should have 2 partitions in volume group.")
-
-        # Validate one logical volume on volume group.
-        self.assertEquals(
-            1, volume_group.virtual_devices.count(),
-            "Should have only 1 logical volume.")
-        logical_volume = volume_group.virtual_devices.first()
-        self.assertEquals(volume_group.get_size(), logical_volume.size)
-        self.assertEquals("lvroot", logical_volume.name)
-        self.assertThat(
-            logical_volume.get_effective_filesystem(),
+            root_partition.get_effective_filesystem(),
             MatchesStructure.byEquality(
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="root",

@@ -2,7 +2,7 @@ from django.db import models
 from maasserver.enum import NODE_STATUS
 from maasserver.models.migrations.create_default_storage_layout import (
     clear_full_storage_configuration,
-    create_lvm_layout,
+    create_flat_layout,
 )
 from south.db import db
 from south.utils import datetime_utils as datetime
@@ -44,20 +44,18 @@ class Migration(DataMigration):
                 Filesystem=Filesystem,
                 FilesystemGroup=FilesystemGroup)
 
-            # Create the LVM layout on the boot disk.
+            # Create the flat layout on the boot disk.
             boot_device = node.boot_disk
             if boot_device is None:
                 boot_device = PhysicalBlockDevice.objects.filter(
                     node=node).order_by('id').first()
             if boot_device is not None:
-                create_lvm_layout(
+                create_flat_layout(
                     node,
                     boot_device,
                     PartitionTable=PartitionTable,
                     Partition=Partition,
-                    Filesystem=Filesystem,
-                    FilesystemGroup=FilesystemGroup,
-                    VirtualBlockDevice=VirtualBlockDevice)
+                    Filesystem=Filesystem)
 
     def backwards(self, orm):
         # No need to go backward.
