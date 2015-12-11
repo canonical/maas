@@ -29,6 +29,7 @@ XPATH_OS = "/domain/os"
 ARCH_FIX = {
     'x86_64': 'amd64',
     'ppc64': 'ppc64el',
+    'ppc64le': 'ppc64el',
     'i686': 'i386',
     }
 
