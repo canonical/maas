@@ -103,7 +103,7 @@ class ConfigurationFixtureBase(Fixture):
         self.path = path.join(
             self.useFixture(TempDirectory()).path,
             path.basename(self.configuration.DEFAULT_FILENAME))
-        with self.configuration.open(self.path) as config:
+        with self.configuration.open_for_update(self.path) as config:
             for key, value in self.options.viewitems():
                 setattr(config, key, value)
         # Export this filename to the environment, so that subprocesses will

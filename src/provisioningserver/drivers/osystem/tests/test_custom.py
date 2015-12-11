@@ -41,7 +41,7 @@ class TestCustomOS(MAASTestCase):
             current_dir, 'custom', arch, subarch, release, label)
         os.makedirs(dirpath)
         factory.make_file(dirpath, filename)
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.tftp_root = current_dir
         return arch, subarch, release, label
 

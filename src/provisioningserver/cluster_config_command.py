@@ -42,7 +42,7 @@ def update_maas_cluster_conf(
     and init be passed at the same time, as these are mutually exclusive
     parameters.
     """
-    with ClusterConfiguration.open() as config:
+    with ClusterConfiguration.open_for_update() as config:
         if url is not None:
             config.maas_url = url
         if uuid is not None:

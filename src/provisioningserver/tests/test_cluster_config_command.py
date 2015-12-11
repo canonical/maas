@@ -163,7 +163,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_config_set_cluster_uuid_without_setting_does_nothing(self):
         expected_previous_value = unicode(uuid.uuid4())
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = expected_previous_value
         with ClusterConfiguration.open() as config:
             observed_previous_value = config.cluster_uuid
@@ -187,7 +187,7 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_config_init_when_already_configured_does_nothing(self):
         expected_previous_value = unicode(uuid.uuid4())
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = expected_previous_value
         with ClusterConfiguration.open() as config:
             observed_previous_value = config.cluster_uuid

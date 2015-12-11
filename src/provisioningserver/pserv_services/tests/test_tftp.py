@@ -225,7 +225,7 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_converts_404s_to_tftp_error(self):
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = factory.make_UUID()
 
         backend = TFTPBackend(
@@ -238,7 +238,7 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_converts_other_exceptions_to_tftp_error(self):
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = factory.make_UUID()
 
         exception_type = factory.make_exception_type()
@@ -267,7 +267,7 @@ class TestTFTPBackend(MAASTestCase):
         # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
         # returns a Deferred that will yield a BytesReader.
         cluster_uuid = factory.make_UUID()
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = cluster_uuid
         mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
@@ -369,7 +369,7 @@ class TestTFTPBackend(MAASTestCase):
         # arch field of the parameters (mapping from pxe to maas
         # namespace).
         cluster_uuid = factory.make_UUID()
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.cluster_uuid = cluster_uuid
         config_path = "pxelinux.cfg/default-arm"
         backend = TFTPBackend(

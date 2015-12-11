@@ -15,7 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 import contextlib
-from operator import methodcaller
+from operator import (
+    delitem,
+    methodcaller,
+    setitem,
+)
 import os.path
 import random
 import re
@@ -39,6 +43,7 @@ from provisioningserver.config import (
     Configuration,
     ConfigurationDatabase,
     ConfigurationFile,
+    ConfigurationImmutable,
     ConfigurationMeta,
     ConfigurationOption,
     Directory,
@@ -51,6 +56,7 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.fs import RunLock
 from testtools import ExpectedException
 from testtools.matchers import (
+    Equals,
     FileContains,
     FileExists,
     Is,
@@ -311,17 +317,39 @@ class TestConfiguration(MAASTestCase):
         with expected_exception:
             config.foo = "bar"
 
-    def test_opens_using_backend(self):
+    def test_open_uses_backend_as_context_manager(self):
         config_file = self.make_file()
         backend = self.patch(ExampleConfiguration, "backend")
-        with backend.open(config_file) as config:
-            backend_ctx = backend.open.return_value
+        with ExampleConfiguration.open(config_file) as config:
+            # The backend was opened using open() too.
+            self.assertThat(backend.open, MockCalledOnceWith(config_file))
             # The object returned from backend.open() has been used as the
             # context manager, providing `config`.
-            self.assertThat(config, Is(backend_ctx.__enter__.return_value))
+            backend_ctx = backend.open.return_value
+            self.assertThat(config.store, Is(
+                backend_ctx.__enter__.return_value))
             # We're within the context, as expected.
             self.assertThat(backend_ctx.__exit__, MockNotCalled())
-        # The context has been exited.
+        # The backend context has also been exited.
+        self.assertThat(
+            backend_ctx.__exit__,
+            MockCalledOnceWith(None, None, None))
+
+    def test_open_for_update_uses_backend_as_context_manager(self):
+        config_file = self.make_file()
+        backend = self.patch(ExampleConfiguration, "backend")
+        with ExampleConfiguration.open_for_update(config_file) as config:
+            # The backend was opened using open_for_update() too.
+            self.assertThat(
+                backend.open_for_update, MockCalledOnceWith(config_file))
+            # The object returned from backend.open_for_update() has been used
+            # as the context manager, providing `config`.
+            backend_ctx = backend.open_for_update.return_value
+            self.assertThat(config.store, Is(
+                backend_ctx.__enter__.return_value))
+            # We're within the context, as expected.
+            self.assertThat(backend_ctx.__exit__, MockNotCalled())
+        # The backend context has also been exited.
         self.assertThat(
             backend_ctx.__exit__,
             MockCalledOnceWith(None, None, None))
@@ -338,10 +366,10 @@ class TestConfigurationOption(MAASTestCase):
     def make_database_store(self):
         database = sqlite3.connect(":memory:")
         self.addCleanup(database.close)
-        return ConfigurationDatabase(database)
+        return ConfigurationDatabase(database, mutable=True)
 
     def make_file_store(self):
-        return ConfigurationFile(self.make_file())
+        return ConfigurationFile(self.make_file(), mutable=True)
 
     def make_config(self):
         store = self.make_store(self)
@@ -399,14 +427,14 @@ class TestConfigurationDatabase(MAASTestCase):
 
     def test_adding_configuration_option(self):
         database = sqlite3.connect(":memory:")
-        config = ConfigurationDatabase(database)
+        config = ConfigurationDatabase(database, mutable=True)
         config["alice"] = {"abc": 123}
         self.assertEqual({"alice"}, set(config))
         self.assertEqual({"abc": 123}, config["alice"])
 
     def test_replacing_configuration_option(self):
         database = sqlite3.connect(":memory:")
-        config = ConfigurationDatabase(database)
+        config = ConfigurationDatabase(database, mutable=True)
         config["alice"] = {"abc": 123}
         config["alice"] = {"def": 456}
         self.assertEqual({"alice"}, set(config))
@@ -414,7 +442,7 @@ class TestConfigurationDatabase(MAASTestCase):
 
     def test_getting_configuration_option(self):
         database = sqlite3.connect(":memory:")
-        config = ConfigurationDatabase(database)
+        config = ConfigurationDatabase(database, mutable=True)
         config["alice"] = {"abc": 123}
         self.assertEqual({"abc": 123}, config["alice"])
 
@@ -425,7 +453,7 @@ class TestConfigurationDatabase(MAASTestCase):
 
     def test_removing_configuration_option(self):
         database = sqlite3.connect(":memory:")
-        config = ConfigurationDatabase(database)
+        config = ConfigurationDatabase(database, mutable=True)
         config["alice"] = {"abc": 123}
         del config["alice"]
         self.assertEqual(set(), set(config))
@@ -434,7 +462,7 @@ class TestConfigurationDatabase(MAASTestCase):
         # ConfigurationDatabase.open() returns a context manager that closes
         # the database on exit.
         config_file = os.path.join(self.make_dir(), "config")
-        config = ConfigurationDatabase.open(config_file)
+        config = ConfigurationDatabase.open_for_update(config_file)
         self.assertIsInstance(config, contextlib.GeneratorContextManager)
         with config as config:
             self.assertIsInstance(config, ConfigurationDatabase)
@@ -465,7 +493,7 @@ class TestConfigurationDatabase(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         config_key = factory.make_name("key")
         config_value = factory.make_name("value")
-        with ConfigurationDatabase.open(config_file) as config:
+        with ConfigurationDatabase.open_for_update(config_file) as config:
             config[config_key] = config_value
         with ConfigurationDatabase.open(config_file) as config:
             self.assertEqual(config_value, config[config_key])
@@ -477,12 +505,50 @@ class TestConfigurationDatabase(MAASTestCase):
         exception_type = factory.make_exception_type()
         # Set a configuration option, then crash.
         with ExpectedException(exception_type):
-            with ConfigurationDatabase.open(config_file) as config:
+            with ConfigurationDatabase.open_for_update(config_file) as config:
                 config[config_key] = config_value
                 raise exception_type()
         # No value has been saved for `config_key`.
         with ConfigurationDatabase.open(config_file) as config:
             self.assertRaises(KeyError, lambda: config[config_key])
+
+    def test_as_string(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        self.assertThat(unicode(config), Equals(
+            "ConfigurationDatabase(main=:memory:)"))
+
+
+class TestConfigurationDatabaseMutability(MAASTestCase):
+    """Tests for `ConfigurationDatabase` mutability."""
+
+    def test_immutable(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database, mutable=False)
+        self.assertRaises(ConfigurationImmutable, setitem, config, "alice", 1)
+        self.assertRaises(ConfigurationImmutable, delitem, config, "alice")
+
+    def test_mutable(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database, mutable=True)
+        config["alice"] = 1234
+        del config["alice"]
+
+    def test_open_yields_immutable_backend(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        with ConfigurationDatabase.open(config_file) as config:
+            with ExpectedException(ConfigurationImmutable):
+                config[config_key] = factory.make_name("value")
+            with ExpectedException(ConfigurationImmutable):
+                del config[config_key]
+
+    def test_open_for_update_yields_mutable_backend(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        with ConfigurationDatabase.open_for_update(config_file) as config:
+            config[config_key] = factory.make_name("value")
+            del config[config_key]
 
 
 class TestConfigurationFile(MAASTestCase):
@@ -496,14 +562,14 @@ class TestConfigurationFile(MAASTestCase):
                 config={}, dirty=False, path=sentinel.filename))
 
     def test_adding_configuration_option(self):
-        config = ConfigurationFile(sentinel.filename)
+        config = ConfigurationFile(sentinel.filename, mutable=True)
         config["alice"] = {"abc": 123}
         self.assertEqual({"alice"}, set(config))
         self.assertEqual({"abc": 123}, config["alice"])
         self.assertTrue(config.dirty)
 
     def test_replacing_configuration_option(self):
-        config = ConfigurationFile(sentinel.filename)
+        config = ConfigurationFile(sentinel.filename, mutable=True)
         config["alice"] = {"abc": 123}
         config["alice"] = {"def": 456}
         self.assertEqual({"alice"}, set(config))
@@ -511,7 +577,7 @@ class TestConfigurationFile(MAASTestCase):
         self.assertTrue(config.dirty)
 
     def test_getting_configuration_option(self):
-        config = ConfigurationFile(sentinel.filename)
+        config = ConfigurationFile(sentinel.filename, mutable=True)
         config["alice"] = {"abc": 123}
         self.assertEqual({"abc": 123}, config["alice"])
 
@@ -520,7 +586,7 @@ class TestConfigurationFile(MAASTestCase):
         self.assertRaises(KeyError, lambda: config["alice"])
 
     def test_removing_configuration_option(self):
-        config = ConfigurationFile(sentinel.filename)
+        config = ConfigurationFile(sentinel.filename, mutable=True)
         config["alice"] = {"abc": 123}
         del config["alice"]
         self.assertEqual(set(), set(config))
@@ -575,7 +641,7 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
         os.chmod(config_file, 0o644)  # u=rw,go=r
-        with ConfigurationFile.open(config_file):
+        with ConfigurationFile.open_for_update(config_file):
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
         perms = FilePath(config_file).getPermissions()
@@ -587,7 +653,7 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
         os.chmod(config_file, 0o644)  # u=rw,go=r
-        with ConfigurationFile.open(config_file) as config:
+        with ConfigurationFile.open_for_update(config_file) as config:
             perms = FilePath(config_file).getPermissions()
             self.assertEqual("rw-r--r--", perms.shorthand())
             config["foobar"] = "I am a modification"
@@ -601,7 +667,7 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         open(config_file, "wb").close()  # touch.
         os.chmod(config_file, 0o644)  # u=rw,go=r
-        with ConfigurationFile.open(config_file) as config:
+        with ConfigurationFile.open_for_update(config_file) as config:
             config["foobar"] = "I am a modification"
             os.unlink(config_file)
         perms = FilePath(config_file).getPermissions()
@@ -613,7 +679,7 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         config_key = factory.make_name("key")
         config_value = factory.make_name("value")
-        with ConfigurationFile.open(config_file) as config:
+        with ConfigurationFile.open_for_update(config_file) as config:
             config[config_key] = config_value
             self.assertEqual({config_key: config_value}, config.config)
             self.assertTrue(config.dirty)
@@ -627,7 +693,7 @@ class TestConfigurationFile(MAASTestCase):
         exception_type = factory.make_exception_type()
         # Set a configuration option, then crash.
         with ExpectedException(exception_type):
-            with ConfigurationFile.open(config_file) as config:
+            with ConfigurationFile.open_for_update(config_file) as config:
                 config[config_key] = config_value
                 raise exception_type()
         # No value has been saved for `config_key`.
@@ -638,9 +704,47 @@ class TestConfigurationFile(MAASTestCase):
         config_file = os.path.join(self.make_dir(), "config")
         config_lock = RunLock(config_file)
         self.assertFalse(config_lock.is_locked())
-        with ConfigurationFile.open(config_file):
+        with ConfigurationFile.open_for_update(config_file):
             self.assertTrue(config_lock.is_locked())
         self.assertFalse(config_lock.is_locked())
+
+    def test_as_string(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config = ConfigurationFile(config_file)
+        self.assertThat(unicode(config), Equals(
+            "ConfigurationFile(%r)" % config_file))
+
+
+class TestConfigurationFileMutability(MAASTestCase):
+    """Tests for `ConfigurationFile` mutability."""
+
+    def test_immutable(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config = ConfigurationFile(config_file, mutable=False)
+        self.assertRaises(ConfigurationImmutable, setitem, config, "alice", 1)
+        self.assertRaises(ConfigurationImmutable, delitem, config, "alice")
+
+    def test_mutable(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config = ConfigurationFile(config_file, mutable=True)
+        config["alice"] = 1234
+        del config["alice"]
+
+    def test_open_yields_immutable_backend(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        with ConfigurationFile.open(config_file) as config:
+            with ExpectedException(ConfigurationImmutable):
+                config[config_key] = factory.make_name("value")
+            with ExpectedException(ConfigurationImmutable):
+                del config[config_key]
+
+    def test_open_for_update_yields_mutable_backend(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        with ConfigurationFile.open_for_update(config_file) as config:
+            config[config_key] = factory.make_name("value")
+            del config[config_key]
 
 
 class TestClusterConfiguration(MAASTestCase):

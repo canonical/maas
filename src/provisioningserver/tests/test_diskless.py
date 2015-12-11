@@ -79,7 +79,7 @@ class DisklessTestMixin:
         os.mkdir(os.path.join(resource_dir, 'diskless'))
         current_dir = os.path.join(resource_dir, 'current') + '/'
         os.mkdir(current_dir)
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.tftp_root = current_dir
         return resource_dir
 
@@ -122,7 +122,7 @@ class TestHelpers(DisklessTestMixin, MAASTestCase):
         storage_dir = self.make_dir()
         current_dir = os.path.join(storage_dir, 'current') + '/'
         os.mkdir(current_dir)
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             config.tftp_root = current_dir
         self.assertEqual(
             os.path.join(storage_dir, 'diskless', 'store'),
@@ -303,7 +303,7 @@ class TestComposeSourcePath(DisklessTestMixin, MAASTestCase):
         osystem = OperatingSystemRegistry[os_name]
         mock_xi_params = self.patch(osystem, 'get_xinstall_parameters')
         mock_xi_params.return_value = (root_path, 'tgz')
-        with ClusterConfiguration.open() as config:
+        with ClusterConfiguration.open_for_update() as config:
             tftp_root = config.tftp_root
         self.assertEqual(
             os.path.join(

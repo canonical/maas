@@ -99,7 +99,7 @@ class TestConfigurationReset(MAASTestCase):
         self.useFixture(RegionConfigurationFixture())
         # Give the option a random value.
         value = factory.make_name("foobar")
-        with RegionConfiguration.open() as configuration:
+        with RegionConfiguration.open_for_update() as configuration:
             setattr(configuration, self.option.dest, value)
         stdio = call_reset(**{self.option.dest: True})
         # Nothing is echoed back to the user.
