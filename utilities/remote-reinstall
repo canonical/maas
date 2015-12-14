@@ -65,7 +65,7 @@ for dir in $directories; do
     rsync -${rsync_options} --delete-after --exclude 'tests/' src/${dir}/ \
         root@${hostname}:${remote_dir} \
         && echo "Success." || die "Syncrhonization failed."
-    $ssh_run "python -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
+    $ssh_run "python3 -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
 done
 $ssh_run service maas-regiond restart
 $ssh_run service apache2 restart
