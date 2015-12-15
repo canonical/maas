@@ -284,6 +284,15 @@ class WebSocketProtocol(Protocol):
             partial(self.sendError, request_id, handler, method))
         return d
 
+    def _json_encode(self, obj):
+        """Allow byte strings embedded in the 'result' object passed to
+        `sendResult` to be seamlessly decoded.
+        """
+        if isinstance(obj, bytes):
+            return obj.decode(encoding='utf-8', errors='ignore')
+        else:
+            raise TypeError("Could not convert object to JSON: %r" % obj)
+
     def sendResult(self, request_id, result):
         """Send final result to client."""
         result_msg = {
@@ -292,7 +301,8 @@ class WebSocketProtocol(Protocol):
             "rtype": RESPONSE_TYPE.SUCCESS,
             "result": result,
             }
-        self.transport.write(json.dumps(result_msg).encode("utf-8"))
+        self.transport.write(json.dumps(
+            result_msg, default=self._json_encode).encode("utf-8"))
         return result
 
     def sendError(self, request_id, handler, method, failure):
