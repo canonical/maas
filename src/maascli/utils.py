@@ -21,6 +21,7 @@ from inspect import (
     cleandoc,
     getdoc,
 )
+import io
 import re
 import sys
 from urllib.parse import urlparse
@@ -170,19 +171,25 @@ def print_response_content(response, content, file=None):
     """Write the response's content to stdout.
 
     If the response is textual, a trailing \n is appended.
+    :param response: HTTP response metadata
+    :param content: bytes
+    :param file: a binary stream opened for writing (optional)
     """
     file = sys.stdout if file is None else file
-    if file.isatty():
-        if is_response_textual(response) and response.status // 100 == 2:
-            file.write("Success.\n")
-            file.write("Machine-readable output follows:\n")
-
-        file.write(content)
-
-        if is_response_textual(response):
-            file.write("\n")
-    else:
-        file.write(content)
+    is_tty = file.isatty()
+    success = response.status // 100 == 2
+    is_textual = is_response_textual(response)
+    # Get the underlying buffer if we're writing to stdout. This allows us to
+    # write bytes directly, without attempting to convert the bytes to unicode.
+    # Unicode output may not be desired; the HTTP response could be raw bytes.
+    if isinstance(file, io.TextIOWrapper):
+        file = file.buffer
+    if is_tty and success and is_textual:
+        file.write(b"Success.\n")
+        file.write(b"Machine-readable output follows:\n")
+    file.write(content)
+    if is_tty and is_textual:
+        file.write(b"\n")
 
 
 def dump_response_summary(response, file=None):

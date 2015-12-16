@@ -24,7 +24,10 @@ from maastesting.fixtures import (
     CaptureStandardIO,
     TempDirectory,
 )
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    IsInstance,
+    MockCalledOnceWith,
+)
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
@@ -37,6 +40,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
     """Tests for `BootResourcesCreateAction`."""
 
     def configure_http_request(self, status, content):
+        self.assertThat(content, IsInstance(bytes))
         response = httplib2.Response(
             {'status': status, 'content-type': 'text/plain'})
         http_request = self.patch(boot_resources_create, 'http_request')
@@ -47,7 +51,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action_bases = (BootResourcesCreateAction,)
         action_ns = {
             "action": {'method': 'POST'},
-            "handler": {'uri': '/api/1.0/boot-resources/', 'params': []},
+            "handler": {'uri': b'/api/1.0/boot-resources/', 'params': []},
             "profile": {'credentials': make_api_credentials()}
             }
         action_class = type("create", action_bases, action_ns)
@@ -68,14 +72,16 @@ class TestBootResourcesCreateAction(MAASTestCase):
 
     def test_initial_request_returns_content(self):
         content = factory.make_name('content')
-        self.configure_http_request(200, content)
+        self.configure_http_request(200, content.encode('ascii'))
         action = self.make_boot_resources_create_action()
         self.patch(action, 'prepare_initial_payload').return_value = ("", {})
         self.assertEqual(
-            content, action.initial_request(sentinel.uri, Mock()))
+            content.encode('ascii'),
+            action.initial_request(sentinel.uri, Mock()))
 
     def test_initial_request_raises_CommandError_on_error(self):
-        self.configure_http_request(500, factory.make_name('content'))
+        self.configure_http_request(
+            500, factory.make_name('content').encode('ascii'))
         action = self.make_boot_resources_create_action()
         self.patch(action, 'prepare_initial_payload').return_value = ("", {})
         self.assertRaises(
@@ -161,7 +167,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
             action.get_resource_file(json.dumps(content)))
 
     def test_put_upload_raise_CommandError_if_status_not_200(self):
-        self.configure_http_request(500, '')
+        self.configure_http_request(500, b'')
         action = self.make_boot_resources_create_action()
         self.assertRaises(
             CommandError,
@@ -170,7 +176,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
     def test_put_upload_sends_content_type_and_length_headers(self):
         response = httplib2.Response({'status': 200})
         mock_request = self.patch(boot_resources_create, 'http_request')
-        mock_request.return_value = (response, '')
+        mock_request.return_value = (response, b'')
         action = self.make_boot_resources_create_action()
         self.patch(action, 'sign')
         data = factory.make_bytes()

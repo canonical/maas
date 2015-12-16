@@ -302,7 +302,7 @@ class WebSocketProtocol(Protocol):
             "result": result,
             }
         self.transport.write(json.dumps(
-            result_msg, default=self._json_encode).encode("utf-8"))
+            result_msg, default=self._json_encode).encode("ascii"))
         return result
 
     def sendError(self, request_id, handler, method, failure):

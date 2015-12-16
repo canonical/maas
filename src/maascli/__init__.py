@@ -23,15 +23,17 @@ def main(argv=sys.argv):
 
     parser = prepare_parser(argv)
 
-    # Run, doing polite things with exceptions.
     try:
         options = parser.parse_args(argv[1:])
         options.execute(options)
     except KeyboardInterrupt:
         raise SystemExit(1)
     except Exception as error:
-        parser.error("%s" % error)
-
+        if options.debug:
+            raise
+        else:
+            # Note: this will call sys.exit() when finished.
+            parser.error("%s" % error)
 
 try:
     import maasfascist

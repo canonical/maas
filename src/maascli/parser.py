@@ -69,4 +69,7 @@ def prepare_parser(argv):
         epilog="http://maas.ubuntu.com/")
     register_cli_commands(parser)
     api.register_api_commands(parser)
+    parser.add_argument(
+        '--debug', action='store_true', default=False,
+        help=argparse.SUPPRESS)
     return parser

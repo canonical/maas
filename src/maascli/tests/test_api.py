@@ -88,11 +88,11 @@ class TestFunctions(MAASTestCase):
         response = httplib2.Response({})
         response.status = http.client.OK
         response["content-type"] = "application/json"
-        request.return_value = response, json.dumps(content)
+        request.return_value = response, bytes(json.dumps(content), "utf-8")
         self.assertEqual(
             content, api.fetch_api_description("http://example.com/api/1.0/"))
         self.assertThat(request, MockCalledOnceWith(
-            b"http://example.com/api/1.0/describe/", "GET", body=None,
+            "http://example.com/api/1.0/describe/", "GET", body=None,
             headers=None))
 
     def test_fetch_api_description_not_okay(self):

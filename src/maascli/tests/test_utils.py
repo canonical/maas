@@ -247,13 +247,13 @@ class TestPrintResponseContent(MAASTestCase):
         # newline.
         response = httplib2.Response({
             'status': http.client.NOT_FOUND,
-            'content': "Lorem ipsum dolor sit amet.",
+            'content': b"Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })
-        buf = io.StringIO()
+        buf = io.BytesIO()
         self.patch(buf, 'isatty').return_value = True
         utils.print_response_content(response, response['content'], buf)
-        self.assertEqual(response['content'] + "\n", buf.getvalue())
+        self.assertEqual(response['content'] + b"\n", buf.getvalue())
 
     def test__prints_textual_response_when_redirected(self):
         # If the response content is textual and sys.stdout is not connected
@@ -261,10 +261,10 @@ class TestPrintResponseContent(MAASTestCase):
         # trailing newline.
         response = httplib2.Response({
             'status': http.client.FOUND,
-            'content': "Lorem ipsum dolor sit amet.",
+            'content': b"Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })
-        buf = io.StringIO()
+        buf = io.BytesIO()
         utils.print_response_content(response, response['content'], buf)
         self.assertEqual(response['content'], buf.getvalue())
 
@@ -273,10 +273,10 @@ class TestPrintResponseContent(MAASTestCase):
         # using write(), so it carries no trailing newline, even if
         # stdout is connected to a tty
         response = httplib2.Response({
-            'content': "Lorem ipsum dolor sit amet.",
+            'content': b"Lorem ipsum dolor sit amet.",
             'content-type': 'image/jpeg',
             })
-        buf = io.StringIO()
+        buf = io.BytesIO()
         self.patch(buf, 'isatty').return_value = True
         utils.print_response_content(response, response['content'], buf)
         self.assertEqual(response['content'], buf.getvalue())
@@ -288,13 +288,13 @@ class TestPrintResponseContent(MAASTestCase):
         status_code = random.randrange(200, 300)
         response = httplib2.Response({
             'status': status_code,
-            'content': "Lorem ipsum dolor sit amet.",
+            'content': b"Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })
-        buf = io.StringIO()
+        buf = io.BytesIO()
         self.patch(buf, 'isatty').return_value = True
         utils.print_response_content(response, response['content'], buf)
         self.assertEqual(
-            "Success.\n"
-            "Machine-readable output follows:\n" +
-            response['content'] + "\n", buf.getvalue())
+            b"Success.\n"
+            b"Machine-readable output follows:\n" +
+            response['content'] + b"\n", buf.getvalue())

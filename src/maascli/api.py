@@ -49,12 +49,16 @@ from maascli.utils import (
 )
 
 
-def http_request(url, method, body=None, headers=None,
-                 insecure=False):
+def http_request(url, method, body=None, headers=None, insecure=False):
     """Issue an http request."""
     http = httplib2.Http(
         disable_ssl_certificate_validation=insecure)
     try:
+        # XXX mpontillo 2015-12-15: Should force input to be in bytes here.
+        # This calls into httplib2, which is going to call a parser which
+        # expects this to be a `str`.
+        if isinstance(url, bytes):
+            url = url.decode('ascii')
         return http.request(url, method, body=body, headers=headers)
     except httplib2.ssl.SSLError:
         raise CommandError(
@@ -73,7 +77,10 @@ def fetch_api_description(url, insecure=False):
     if response["content-type"] != "application/json":
         raise CommandError(
             "Expected application/json, got: %(content-type)s" % response)
-    return json.loads(content)
+    # XXX mpontillo 2015-12-15: We don't actually know that this is UTF-8, but
+    # I'm keeping it here, because if it happens to be non-ASCII, chances are
+    # good that it'll be UTF-8.
+    return json.loads(content.decode('utf-8'))
 
 
 class Action(Command):
