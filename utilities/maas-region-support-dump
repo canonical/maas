@@ -1,6 +1,17 @@
 #!/bin/bash
 
 TMPFILE=$(mktemp)
+cd $(dirname $0)
+PSQL_ARGS="maasdb"
+SUDO_ARGS="sudo -u postgres"
+
+# Detect a development environment
+if [ -d ../db -a -f ../HACKING.txt ]; then
+    echo "Using development database."
+    cd ..
+    SUDO_ARGS=""
+    PSQL_ARGS="-h $(pwd)/db maas"
+fi
 
 function cleanup {
     rm -f $TMPFILE
@@ -74,19 +85,6 @@ FROM maasserver_interface iface
         node.hostname, iface.name, sip.alloc_type
 /*
  * Node networking overview
- */
-;
-
-SELECT
-     nodegroup.cluster_name,
-     lease.ip,
-     lease.mac
-FROM maasserver_dhcplease lease, maasserver_nodegroup nodegroup
-    where nodegroup.id = lease.nodegroup_id
-ORDER BY
-    CAST(lease.ip AS inet), mac
-/*
- * DHCP Leases
  */
 ;
 
@@ -257,5 +255,4 @@ EOF
 chmod o+r $TMPFILE
 
 cd /tmp
-sudo -u postgres psql maasdb -e -f $TMPFILE 2>&1
-
+$SUDO_ARGS psql $PSQL_ARGS -e -f $TMPFILE 2>&1
