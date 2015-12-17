@@ -285,14 +285,15 @@ class AMTPowerDriver(PowerDriver):
             ('amttool', ip_address, 'info'), stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate()
         stderr = stderr.strip()
-        # Note: we set the encoding to UTF-8 when we initialize `env`.
-        stdout = stdout.decode('utf-8')
         # Need to check for both because querying normally gives
         # stdout and returncode !=0.  Only when both conditions are met
         # do we know that we should raise an exception.
         if process.returncode != 0 and not stdout:
             raise PowerFatalError(
                 "Unable to retrieve AMT version: %s" % stderr)
+        # Note: we set the encoding to UTF-8 when we initialize `env`.
+        if stdout is not None:
+            stdout = stdout.decode('utf-8')
         version = stdout.split(
             'AMT version:')[1].split()[0].split('.')[0]
         if version > '8':
