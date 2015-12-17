@@ -41,6 +41,7 @@ Introduction
 
    about
    orientation
+   releases
    changelog
 
 
