@@ -43,5 +43,4 @@ class TestPoweroffUserData(MAASServerTestCase):
         self.assertThat(
             base64.b64decode(user_data_script.get_payload()), ContainsAll({
                 b'Powering node off',
-                b'poweroff',
             }))

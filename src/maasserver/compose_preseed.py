@@ -7,10 +7,14 @@ __all__ = [
     'compose_preseed',
     ]
 
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from maasserver.clusterrpc.osystems import get_preseed_data
-from maasserver.enum import PRESEED_TYPE
+from maasserver.enum import (
+    NODE_STATUS,
+    PRESEED_TYPE,
+)
 from maasserver.models.config import Config
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import absolute_reverse
@@ -139,8 +143,13 @@ def compose_commissioning_preseed(node, token, base_url=''):
     """Compose the preseed value for a Commissioning node."""
     apt_proxy = get_apt_proxy_for_node(node)
     metadata_url = absolute_reverse('metadata', base_url=base_url)
+    poweroff_timeout = timedelta(hours=1).total_seconds()  # 1 hour
+    if node.status == NODE_STATUS.DISK_ERASING:
+        poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     return _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy)
+        node, token, metadata_url, base_url=base_url, apt_proxy=apt_proxy,
+        poweroff=True, poweroff_timeout=int(poweroff_timeout),
+        poweroff_condition="test ! -e /tmp/block-poweroff")
 
 
 def compose_curtin_preseed(node, token, base_url=''):
@@ -152,7 +161,8 @@ def compose_curtin_preseed(node, token, base_url=''):
 
 
 def _compose_cloud_init_preseed(
-        node, token, metadata_url, base_url, apt_proxy=None):
+        node, token, metadata_url, base_url, apt_proxy=None,
+        poweroff=False, poweroff_timeout=3600, poweroff_condition=None):
     cloud_config = {
         'datasource': {
             'MAAS': {
@@ -179,6 +189,14 @@ def _compose_cloud_init_preseed(
     cloud_config.update(get_system_info())
     if apt_proxy:
         cloud_config['apt_proxy'] = apt_proxy
+    if poweroff:
+        cloud_config['power_state'] = {
+            'delay': 'now',
+            'mode': 'poweroff',
+            'timeout': poweroff_timeout,
+        }
+        if poweroff_condition is not None:
+            cloud_config['power_state']['condition'] = poweroff_condition
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 

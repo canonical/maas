@@ -178,6 +178,9 @@ def update_node_network_information(node, output, exit_status):
         # Ignore loopback interfaces.
         if link_mac is None:
             continue
+        # Ignore lxcbr0 which is created by default on Xenial+.
+        elif link['name'] == 'lxcbr0':
+            continue
         else:
             ifname = link['name']
             try:

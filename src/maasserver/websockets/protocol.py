@@ -324,7 +324,8 @@ class WebSocketProtocol(Protocol):
             "rtype": RESPONSE_TYPE.ERROR,
             "error": error,
             }
-        self.transport.write(json.dumps(error_msg).encode("utf-8"))
+        self.transport.write(
+            json.dumps(error_msg, default=self._json_encode).encode("ascii"))
         return None
 
     def sendNotify(self, name, action, data):
@@ -335,7 +336,8 @@ class WebSocketProtocol(Protocol):
             "action": action,
             "data": data,
             }
-        self.transport.write(json.dumps(notify_msg).encode("utf-8"))
+        self.transport.write(
+            json.dumps(notify_msg, default=self._json_encode).encode("ascii"))
 
     def buildHandler(self, handler_class):
         """Return an initialised instance of `handler_class`."""

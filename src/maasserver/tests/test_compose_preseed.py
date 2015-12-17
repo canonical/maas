@@ -132,6 +132,28 @@ class TestComposePreseed(MAASServerTestCase):
             absolute_reverse('metadata-status', args=[node.system_id]),
             preseed['reporting']['maas']['endpoint'])
 
+    def test_compose_preseed_for_commissioning_includes_poweroff(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertEquals({
+            'delay': 'now',
+            'mode': 'poweroff',
+            'timeout': 3600,
+            'condition': 'test ! -e /tmp/block-poweroff',
+        }, preseed['power_state'])
+
+    def test_compose_preseed_for_disk_erasing_includes_poweroff(self):
+        node = factory.make_Node(status=NODE_STATUS.DISK_ERASING)
+        preseed = yaml.safe_load(
+            compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
+        self.assertEquals({
+            'delay': 'now',
+            'mode': 'poweroff',
+            'timeout': 604800,
+            'condition': 'test ! -e /tmp/block-poweroff',
+        }, preseed['power_state'])
+
     def test_compose_preseed_includes_node_oauth_token(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node.nodegroup.accept()
