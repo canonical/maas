@@ -22,9 +22,9 @@ fi
 hostname="$1"
 shift
 
-remote_basedir=/usr/lib/python3/dist-packages
-directories="maascli maasserver provisioningserver metadataserver"
-rsync_options=rlptv
+src_directories="maascli maasserver provisioningserver metadataserver"
+remote_src_base=/usr/lib/python3/dist-packages
+rsync_options=rlptvz
 ssh_run="ssh -oBatchMode=yes -l root $hostname"
 
 echo "Checking $hostname..."
@@ -50,23 +50,36 @@ echo "MAAS packages, and DELETE any extra files found on the server."
 echo ""
 echo "The MAAS server must be running Xenial with MAAS 2.0+ for this to work."
 echo ""
-echo "Destination directory:"
-echo "    $remote_basedir"
+echo "Destination directories:"
+for dir in $src_directories; do
+echo "    $remote_src_base/$dir"
+done
+echo "    /etc/maas"
 echo ""
-echo "The following directories (under src/ in this sandbox) will be copied:"
-echo "    $directories"
+echo "The following directories from this sandbox will be copied:"
+for dir in $src_directories; do
+echo "    src/$dir"
+done
+echo "    etc/maas"
 echo ""
 echo "Press <enter> to continue, ^C to cancel."
 read
 
-echo "Synchronizing files..."
-for dir in $directories; do
-    remote_dir=${remote_basedir}/${dir}
+echo "Synchronizing Python code..."
+for dir in $src_directories; do
+    remote_dir=${remote_src_base}/${dir}
     rsync -${rsync_options} --delete-after --exclude 'tests/' src/${dir}/ \
         root@${hostname}:${remote_dir} \
         && echo "Success." || die "Syncrhonization failed."
     $ssh_run "python3 -c \"import compileall; compileall.compile_dir('$remote_dir', force=True)\""
 done
+
+echo "Updating /etc/maas..."
+rsync -${rsync_options} etc/maas/ \
+    root@${hostname}:/etc/maas \
+    && echo "Success." || die "Syncrhonization failed."
+$ssh_run "chown -R maas:maas /etc/maas"
+
 $ssh_run service maas-regiond restart
 $ssh_run service apache2 restart
 $ssh_run service maas-clusterd restart
