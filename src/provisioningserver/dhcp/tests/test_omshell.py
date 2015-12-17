@@ -50,7 +50,7 @@ class TestOmshell(MAASTestCase):
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
-        recorder = FakeMethod(result=(0, "obj: <null>"))
+        recorder = FakeMethod(result=(0, b"obj: <null>"))
         shell._run = recorder
 
         shell.try_connection()
@@ -64,7 +64,7 @@ class TestOmshell(MAASTestCase):
         # Check that the 'stdin' arg contains the correct set of
         # commands.
         self.assertEqual(
-            [1, (expected_script,)],
+            [1, (expected_script.encode("utf-8"),)],
             [recorder.call_count, recorder.extract_args()[0]])
 
     def test_try_connection_returns_True(self):
@@ -73,7 +73,7 @@ class TestOmshell(MAASTestCase):
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
-        recorder = FakeMethod(result=(0, "obj: <null>"))
+        recorder = FakeMethod(result=(0, b"obj: <null>"))
         shell._run = recorder
 
         self.assertTrue(shell.try_connection())
@@ -84,7 +84,7 @@ class TestOmshell(MAASTestCase):
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
-        recorder = FakeMethod(result=(0, factory.make_string()))
+        recorder = FakeMethod(result=(0, factory.make_bytes()))
         shell._run = recorder
 
         self.assertFalse(shell.try_connection())
@@ -98,7 +98,7 @@ class TestOmshell(MAASTestCase):
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
-        recorder = FakeMethod(result=(0, "hardware-type"))
+        recorder = FakeMethod(result=(0, b"hardware-type"))
         shell._run = recorder
 
         shell.create(ip_address, mac_address)
@@ -121,7 +121,7 @@ class TestOmshell(MAASTestCase):
         # Check that the 'stdin' arg contains the correct set of
         # commands.
         self.assertEqual(
-            [1, (expected_script,)],
+            [1, (expected_script.encode("utf-8"),)],
             [recorder.call_count, recorder.extract_args()[0]])
 
     def test_create_raises_when_omshell_fails(self):
@@ -136,7 +136,7 @@ class TestOmshell(MAASTestCase):
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
-        random_output = factory.make_string()
+        random_output = factory.make_bytes()
         recorder = FakeMethod(result=(0, random_output))
         shell._run = recorder
 
@@ -168,7 +168,7 @@ class TestOmshell(MAASTestCase):
             hardware-address = %(mac)s
             name = "%(hostname)s"
             """) % params
-        shell._run = Mock(return_value=(0, error_output))
+        shell._run = Mock(return_value=(0, error_output.encode("ascii")))
         shell.create(params['ip'], params['mac'])
         # The test is that we get here without error.
         pass
@@ -181,7 +181,7 @@ class TestOmshell(MAASTestCase):
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
-        recorder = FakeMethod(result=(0, "thing1\nthing2\nobj: <null>"))
+        recorder = FakeMethod(result=(0, b"thing1\nthing2\nobj: <null>"))
         shell._run = recorder
 
         shell.remove(ip_address)
@@ -200,7 +200,8 @@ class TestOmshell(MAASTestCase):
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
-        self.assertEqual([(expected_script,)], recorder.extract_args())
+        self.assertEqual(
+            [(expected_script.encode("utf-8"),)], recorder.extract_args())
 
     def test_remove_raises_when_omshell_fails(self):
         # If the call to omshell doesn't result in output ending in the
@@ -212,7 +213,7 @@ class TestOmshell(MAASTestCase):
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
-        random_output = factory.make_string()
+        random_output = factory.make_bytes()
         recorder = FakeMethod(result=(0, random_output))
         shell._run = recorder
 
@@ -229,7 +230,7 @@ class TestOmshell(MAASTestCase):
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a something with our special output.
-        output = "\n> obj: <null>\n\n"
+        output = b"\n> obj: <null>\n\n"
         self.patch(shell, '_run').return_value = (0, output)
         self.assertIsNone(shell.remove(ip_address))
 
@@ -242,7 +243,7 @@ class TestOmshell(MAASTestCase):
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a something with our special output.
-        output = "\n>obj: <null>\n>\n"
+        output = b"\n>obj: <null>\n>\n"
         self.patch(shell, '_run').return_value = (0, output)
         self.assertIsNone(shell.remove(ip_address))
 
@@ -252,7 +253,7 @@ class TestOmshell(MAASTestCase):
         ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
-        output = "obj: <null>\nobj: host\ncan't open object: not found\n"
+        output = b"obj: <null>\nobj: host\ncan't open object: not found\n"
         self.patch(shell, '_run').return_value = (0, output)
         self.assertIsNone(shell.remove(ip_address))
 
@@ -269,7 +270,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
         run = self.patch(shell, '_run')
-        run.return_value = (0, '\nends = 00:00:00:00')
+        run.return_value = (0, b'\nends = 00:00:00:00')
         expected_script = dedent("""\
             server {server}
             key omapi_key {key}
@@ -283,7 +284,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         expected_script = expected_script.format(
             server=server_address, key=shared_key, ip=ip_address)
         shell.nullify_lease(ip_address)
-        self.assertThat(run, MockCalledOnceWith(expected_script))
+        self.assertThat(
+            run, MockCalledOnceWith(expected_script.encode("utf-8")))
 
     def test__considers_nonexistent_lease_a_success(self):
         server_address = factory.make_string()
@@ -292,8 +294,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         shell = Omshell(server_address, shared_key)
 
         output = (
-            "obj: <null>\nobj: lease\nobj: lease\n"
-            "can't open object: not found\nobj: lease\n")
+            b"obj: <null>\nobj: lease\nobj: lease\n"
+            b"can't open object: not found\nobj: lease\n")
         self.patch(shell, '_run').return_value = (0, output)
         shell.nullify_lease(ip_address)  # No exception.
         self.assertThat(shell._run, MockCalledOnceWith(ANY))
@@ -304,7 +306,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
-        output = "obj: <null>\nobj: lease\ninvalid value."
+        output = b"obj: <null>\nobj: lease\ninvalid value."
         self.patch(shell, '_run').return_value = (0, output)
         self.assertRaises(
             ExternalProcessError, shell.nullify_lease, ip_address)
@@ -334,7 +336,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
             atsfp = 00:00:00:00
             cltt = "T@v'"
             flags = 00
-            """)
+            """).encode("ascii")
         self.patch(shell, '_run').return_value = (0, output)
         self.assertRaises(
             ExternalProcessError, shell.nullify_lease, ip_address)

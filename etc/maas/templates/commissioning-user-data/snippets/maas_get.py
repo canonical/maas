@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 
@@ -41,7 +41,7 @@ def main():
         args.path,
         )
 
-    sys.stdout.write(geturl(url, creds))
+    sys.stdout.buffer.write(geturl(url, creds))
 
 if __name__ == '__main__':
     main()

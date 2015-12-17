@@ -1,7 +1,4 @@
-#!/usr/bin/python
-
-# TODO: Don't use str.  It stands in the way of Python 3 compatibility.
-# str = None
+#!/usr/bin/python3
 
 import json
 import mimetypes
@@ -26,26 +23,37 @@ POWER_TYPES = ("ipmi", "virsh", "ether_wake", "moonshot")
 
 
 def _encode_field(field_name, data, boundary):
+    assert isinstance(field_name, bytes)
+    assert isinstance(data, bytes)
+    assert isinstance(boundary, bytes)
     return (
-        '--' + boundary,
-        'Content-Disposition: form-data; name="%s"' % field_name,
-        '', str(data),
+        b'--' + boundary,
+        b'Content-Disposition: form-data; name=\"' + field_name + b'\"',
+        b'', data,
         )
 
 
 def _encode_file(name, fileObj, boundary):
+    assert isinstance(name, str)
+    assert isinstance(boundary, bytes)
+    byte_name = name.encode("utf-8")
     return (
-        '--' + boundary,
-        'Content-Disposition: form-data; name="%s"; filename="%s"'
-        % (name, name),
-        'Content-Type: %s' % _get_content_type(name),
-        '',
+        b'--' + boundary,
+        (
+            b'Content-Disposition: form-data; name=\"' + byte_name + b'\"; ' +
+            b'filename=\"' + byte_name + b'\"'
+        ),
+        b'Content-Type: ' + _get_content_type(name).encode("utf-8"),
+        b'',
         fileObj.read(),
         )
 
 
 def _random_string(length):
-    return ''.join(random.choice(string.letters) for ii in range(length + 1))
+    return b''.join(
+        random.choice(string.ascii_letters).encode("ascii")
+        for ii in range(length + 1)
+    )
 
 
 def _get_content_type(filename):
@@ -69,12 +77,13 @@ def encode_multipart_data(data, files):
         lines.extend(_encode_field(name, data[name], boundary))
     for name in files:
         lines.extend(_encode_file(name, files[name], boundary))
-    lines.extend(('--%s--' % boundary, ''))
-    body = '\r\n'.join(lines)
+    lines.extend((b'--' + boundary + b'--', b''))
+    body = b'\r\n'.join(lines)
 
     headers = {
-        'content-type': 'multipart/form-data; boundary=' + boundary,
-        'content-length': "%d" % len(body),
+        'Content-Type': (
+            'multipart/form-data; boundary=' + boundary.decode("ascii")),
+        'Content-Length': str(len(body)),
     }
 
     return body, headers
@@ -154,13 +163,13 @@ def main():
     url = "%s/%s/" % (url, args.apiver)
 
     params = {
-        "op": "signal",
-        "status": args.status,
-        "error": args.message,
+        b"op": b"signal",
+        b"status": args.status.encode("utf-8"),
+        b"error": args.message.encode("utf-8"),
         }
 
     if args.script_result is not None:
-        params['script_result'] = args.script_result
+        params[b'script_result'] = str(args.script_result).encode("utf-8")
 
     for ent in args.posts:
         try:
@@ -168,11 +177,11 @@ def main():
         except ValueError:
             sys.stderr.write("'%s' had no '='" % ent)
             sys.exit(1)
-        params[key] = val
+        params[key.encode("utf-8")] = val.encode("utf-8")
 
     if args.power_parms is not None:
-        params["power_type"] = args.power_type
-        if params["power_type"] == "moonshot":
+        params[b"power_type"] = args.power_type.encode("utf-8")
+        if params[b"power_type"] == b"moonshot":
             user, passwd, address, hwaddress = args.power_parms.split(",")
             power_parms = dict(
                 power_user=user,
@@ -188,36 +197,41 @@ def main():
                 power_address=address,
                 power_driver=driver
                 )
-        params["power_parameters"] = json.dumps(power_parms)
+        params[b"power_parameters"] = json.dumps(power_parms)
 
     files = {}
     for fpath in args.files:
-        files[os.path.basename(fpath)] = open(fpath, "r")
+        files[os.path.basename(fpath)] = open(fpath, "rb")
 
     data, headers = encode_multipart_data(params, files)
 
-    exc = None
+    error = None
     msg = ""
 
     try:
         payload = geturl(url, creds=creds, headers=headers, data=data)
-        if payload != "OK":
+        if payload != b"OK":
             raise TypeError("Unexpected result from call: %s" % payload)
         else:
             msg = "Success"
     except urllib.error.HTTPError as exc:
+        error = exc
         msg = "http error [%s]" % exc.code
     except urllib.error.URLError as exc:
+        error = exc
         msg = "url error [%s]" % exc.reason
     except socket.timeout as exc:
+        error = exc
         msg = "socket timeout [%s]" % exc
     except TypeError as exc:
-        msg = exc.message
+        error = exc
+        msg = str(exc)
     except Exception as exc:
+        error = exc
         msg = "unexpected error [%s]" % exc
 
     sys.stderr.write("%s\n" % msg)
-    sys.exit((exc is None))
+    sys.exit((error is None))
 
 if __name__ == '__main__':
     main()

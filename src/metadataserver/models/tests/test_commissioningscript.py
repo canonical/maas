@@ -249,9 +249,10 @@ def isolate_function(function, namespace=None):
 
 class TestLLDPScripts(TestWithoutCrochetMixin, MAASServerTestCase):
 
-    def test_install_script_installs_configures_and_restarts(self):
+    def test_install_script_installs_configures_and_restarts_upstart(self):
         config_file = self.make_file("config", "# ...")
         check_call = self.patch(subprocess, "check_call")
+        self.patch(os.path, "isdir").return_value = False
         lldpd_install = isolate_function(cs_module.lldpd_install)
         lldpd_install(config_file)
         # lldpd is installed and restarted.
@@ -260,6 +261,32 @@ class TestLLDPScripts(TestWithoutCrochetMixin, MAASServerTestCase):
             [
                 call(("apt-get", "install", "--yes", "lldpd")),
                 call(("initctl", "reload-configuration")),
+                call(("service", "lldpd", "restart"))
+            ])
+        # lldpd's config was updated to include an updated DAEMON_ARGS
+        # setting. Note that the new comment is on a new line, and
+        # does not interfere with existing config.
+        config_expected = dedent("""\
+            # ...
+            # Configured by MAAS:
+            DAEMON_ARGS="-c -f -s -e -r"
+            """).encode("ascii")
+        with open(config_file, "rb") as fd:
+            config_observed = fd.read()
+        self.assertEqual(config_expected, config_observed)
+
+    def test_install_script_installs_configures_and_restarts_systemd(self):
+        config_file = self.make_file("config", "# ...")
+        check_call = self.patch(subprocess, "check_call")
+        self.patch(os.path, "isdir").return_value = True
+        lldpd_install = isolate_function(cs_module.lldpd_install)
+        lldpd_install(config_file)
+        # lldpd is installed and restarted.
+        self.assertEqual(
+            check_call.call_args_list,
+            [
+                call(("apt-get", "install", "--yes", "lldpd")),
+                call(("systemctl", "daemon-reload")),
                 call(("service", "lldpd", "restart"))
             ])
         # lldpd's config was updated to include an updated DAEMON_ARGS

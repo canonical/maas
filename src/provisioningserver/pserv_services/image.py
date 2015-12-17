@@ -27,6 +27,6 @@ class BootImageEndpointService(StreamServerEndpointService):
 
         """
         resource = Resource()
-        resource.putChild('images', File(resource_root))
+        resource.putChild(b'images', File(resource_root))
         self.site = Site(resource)
         super(BootImageEndpointService, self).__init__(endpoint, self.site)

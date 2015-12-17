@@ -76,7 +76,7 @@ def make_function_call_script(function, *args, **kwargs):
     :return: `bytes`
     """
     template = dedent("""\
-    #!/usr/bin/python3.5
+    #!/usr/bin/python3
     # -*- coding: utf-8 -*-
 
     import json
@@ -333,6 +333,7 @@ def lldpd_install(config_file):
     node's temporary presence.
 
     """
+    import os
     from subprocess import check_call
     check_call(("apt-get", "install", "--yes", "lldpd"))
     from codecs import open
@@ -344,7 +345,10 @@ def lldpd_install(config_file):
     # lldpd init script is available before restart, otherwise
     # it might cause commissioning to fail. This is due bug
     # (LP: #882147) in the kernel.
-    check_call(("initctl", "reload-configuration"))
+    if os.path.isdir("/run/systemd/system"):
+        check_call(("systemctl", "daemon-reload"))
+    else:
+        check_call(("initctl", "reload-configuration"))
     check_call(("service", "lldpd", "restart"))
 
 

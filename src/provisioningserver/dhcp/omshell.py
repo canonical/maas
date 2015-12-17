@@ -19,7 +19,10 @@ from subprocess import (
 from textwrap import dedent
 
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.utils import parse_key_value_file
+from provisioningserver.utils import (
+    parse_key_value_file,
+    typed,
+)
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import (
     call_and_check,
@@ -135,22 +138,23 @@ class Omshell:
             """)
         stdin = stdin.format(self=self)
 
-        returncode, output = self._run(stdin)
+        returncode, output = self._run(stdin.encode("utf-8"))
 
         # If the omshell worked, the last line should reference a null
         # object.  We need to strip blanks, newlines and '>' characters
         # for this to work.
-        lines = output.strip('\n >').splitlines()
+        lines = output.strip(b'\n >').splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
             last_line = ""
-        if "obj: <null" in last_line:
+        if b"obj: <null" in last_line:
             return True
         else:
             return False
 
-    def create(self, ip_address, mac_address):
+    @typed
+    def create(self, ip_address: str, mac_address: str):
         # The "name" is not a host name; it's an identifier used within
         # the DHCP server. We use the MAC address. Prior to 1.9, MAAS used
         # the IPs as the key but changing to using MAC addresses allows the
@@ -176,22 +180,23 @@ class Omshell:
             self=self, ip_address=ip_address, mac_address=mac_address,
             name=name)
 
-        returncode, output = self._run(stdin)
+        returncode, output = self._run(stdin.encode("utf-8"))
         # If the call to omshell doesn't result in output containing the
         # magic string 'hardware-type' then we can be reasonably sure
         # that the 'create' command failed.  Unfortunately there's no
         # other output like "successful" to check so this is the best we
         # can do.
-        if "hardware-type" in output:
+        if b"hardware-type" in output:
             # Success.
             pass
-        elif "can't open object: I/O error" in output:
+        elif b"can't open object: I/O error" in output:
             # Host map already existed.  Treat as success.
             pass
         else:
             raise ExternalProcessError(returncode, self.command, output)
 
-    def remove(self, mac_address):
+    @typed
+    def remove(self, mac_address: str):
         # The "name" is not a host name; it's an identifier used within
         # the DHCP server. We use the MAC address. Prior to 1.9, MAAS using
         # the IPs as the key but changing to using MAC addresses allows the
@@ -216,26 +221,27 @@ class Omshell:
         stdin = stdin.format(
             self=self, mac_address=mac_address)
 
-        returncode, output = self._run(stdin)
+        returncode, output = self._run(stdin.encode("utf-8"))
 
         # If the omshell worked, the last line should reference a null
         # object.  We need to strip blanks, newlines and '>' characters
         # for this to work.
-        lines = output.strip('\n >').splitlines()
+        lines = output.strip(b'\n >').splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
             last_line = ""
-        if "obj: <null" in last_line:
+        if b"obj: <null" in last_line:
             # Success.
             pass
-        elif "can't open object: not found" in output:
+        elif b"can't open object: not found" in output:
             # It was already removed. Consider success.
             pass
         else:
             raise ExternalProcessError(returncode, self.command, output)
 
-    def nullify_lease(self, ip_address):
+    @typed
+    def nullify_lease(self, ip_address: str):
         """Reset an existing lease so it's no longer valid.
 
         You can't delete leases with omshell, so we're setting the expiry
@@ -254,9 +260,9 @@ class Omshell:
         stdin = stdin.format(
             self=self, ip_address=ip_address)
 
-        returncode, output = self._run(stdin)
+        returncode, output = self._run(stdin.encode("utf-8"))
 
-        if "can't open object: not found" in output:
+        if b"can't open object: not found" in output:
             # Consider nonexistent leases a success.
             return None
 
@@ -264,7 +270,7 @@ class Omshell:
         # but omshell is so esoteric that this is probably quite safe.
         # If the update succeeded, "ends = 00:00:00:00" will most certainly
         # be in the output.  If it's not, there's been a failure.
-        if "invalid" not in output and "\nends = 00:00:00:00" in output:
+        if b"invalid" not in output and b"\nends = 00:00:00:00" in output:
             return None
 
         raise ExternalProcessError(returncode, self.command, output)

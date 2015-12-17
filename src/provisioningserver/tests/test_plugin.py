@@ -171,7 +171,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(image_service, BootImageEndpointService)
         self.assertIsInstance(image_service.site, Site)
         resource = image_service.site.resource
-        root = resource.getChildWithDefault("images", request=None)
+        root = resource.getChildWithDefault(b"images", request=None)
         self.assertThat(root, IsInstance(FilePath))
 
         with ClusterConfiguration.open() as config:
