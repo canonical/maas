@@ -164,9 +164,9 @@ class AMTPowerDriver(PowerDriver):
             raise PowerFatalError("amttool power querying FAILED.")
         # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
         # will lead to a fresh boot.
-        if 'S5' in output:
+        if b'S5' in output:
             return 'off'
-        for state in ('S0', 'S1', 'S2', 'S3', 'S4'):
+        for state in (b'S0', b'S1', b'S2', b'S3', b'S4'):
             if state in output:
                 return 'on'
         raise PowerActionError(
@@ -216,7 +216,7 @@ class AMTPowerDriver(PowerDriver):
         """Restart the node via amttool."""
         self._issue_amttool_command(
             'power_cycle', ip_address, power_pass,
-            amttool_boot_mode=amttool_boot_mode, stdin='yes')
+            amttool_boot_mode=amttool_boot_mode, stdin=b'yes')
 
     def wsman_restart(self, ip_address, power_pass):
         """Restart the node via wsman."""
@@ -229,7 +229,7 @@ class AMTPowerDriver(PowerDriver):
             # Issue the AMT command; amttool will prompt for confirmation.
             self._issue_amttool_command(
                 'powerup', ip_address, power_pass,
-                amttool_boot_mode=amttool_boot_mode, stdin='yes')
+                amttool_boot_mode=amttool_boot_mode, stdin=b'yes')
             if self.amttool_query_state(ip_address, power_pass) == 'on':
                 return
             sleep(1)
@@ -256,7 +256,7 @@ class AMTPowerDriver(PowerDriver):
                 return
                 # Issue the AMT command; amttool will prompt for confirmation.
             self._issue_amttool_command(
-                'powerdown', ip_address, power_pass, stdin='yes')
+                'powerdown', ip_address, power_pass, stdin=b'yes')
             sleep(1)
         raise PowerActionError("Machine is not powering off.  Giving up.")
 
@@ -285,6 +285,8 @@ class AMTPowerDriver(PowerDriver):
             ('amttool', ip_address, 'info'), stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate()
         stderr = stderr.strip()
+        # Note: we set the encoding to UTF-8 when we initialize `env`.
+        stdout = stdout.decode('utf-8')
         # Need to check for both because querying normally gives
         # stdout and returncode !=0.  Only when both conditions are met
         # do we know that we should raise an exception.

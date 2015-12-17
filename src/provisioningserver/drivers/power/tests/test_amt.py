@@ -41,7 +41,7 @@ Remote Control Capabilities:
     SpecialCommandsSupported        PXE-boot HD-boot cd-boot
     SystemCapabilitiesSupported     powercycle powerdown powerup reset
     SystemFirmwareCapabilities      0
-""")
+""").encode('utf-8')
 
 WSMAN_OUTPUT = dedent("""\
 ...
@@ -54,7 +54,7 @@ WSMAN_OUTPUT = dedent("""\
           <h:RequestedPowerState>2</h:RequestedPowerState>
           <h:ServiceProvided>
           ...
-""")
+""").encode('utf-8')
 
 
 def make_parameters():
@@ -150,13 +150,15 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.env = None
         command = factory.make_name('command')
         power_pass = factory.make_name('power_pass')
-        stdin = factory.make_name('stdin')
-        popen_mock = self.patch_popen(return_value=('stdout', 'stderr'))
+        stdin = factory.make_name('stdin').encode('utf-8')
+        popen_mock = self.patch_popen(return_value=(b'stdout', b'stderr'))
 
-        result = amt_power_driver._run(command, power_pass, stdin)
+        result = amt_power_driver._run(
+            command, power_pass, stdin)
 
-        self.expectThat(popen_mock.communicate, MockCalledOnceWith(stdin))
-        self.expectThat(result, Equals('stdout'))
+        self.expectThat(popen_mock.communicate, MockCalledOnceWith(
+            stdin))
+        self.expectThat(result, Equals(b'stdout'))
 
     def test__run_raises_power_fatal_error(self):
         amt_power_driver = AMTPowerDriver()
@@ -170,7 +172,7 @@ class TestAMTPowerDriver(MAASTestCase):
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name('power_pass')
         amttool_boot_mode = factory.make_name('amttool_boot_mode')
-        stdin = factory.make_name('stdin')
+        stdin = factory.make_name('stdin').encode('utf-8')
         cmd = choice(['power-cycle', 'powerup'])
         command = (
             'amttool', ip_address,
@@ -204,21 +206,21 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         _render_wsman_state_xml_mock = self.patch(
             amt_power_driver, '_render_wsman_state_xml')
-        _render_wsman_state_xml_mock.return_value = 'stdin'
+        _render_wsman_state_xml_mock.return_value = b'stdin'
         command = (
             'wsman', 'invoke', '-a',
             'RequestPowerStateChange',
             wsman_power_schema_uri
         ) + wsman_power_opts + ('-J', '-')
         _run_mock = self.patch(amt_power_driver, '_run')
-        _run_mock.return_value = 'output'
+        _run_mock.return_value = b'output'
 
         result = amt_power_driver._issue_wsman_command(
             power_change, ip_address, power_pass)
 
         self.expectThat(
-            _run_mock, MockCalledOnceWith(command, power_pass, stdin='stdin'))
-        self.expectThat(result, Equals('output'))
+            _run_mock, MockCalledOnceWith(command, power_pass, stdin=b'stdin'))
+        self.expectThat(result, Equals(b'output'))
 
     def test__issue_wsman_command_calls__run_for_query(self):
         amt_power_driver = AMTPowerDriver()
@@ -249,7 +251,8 @@ class TestAMTPowerDriver(MAASTestCase):
         power_pass = factory.make_name('power_pass')
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
-        _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % ('', 'S0')
+        _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
+            b'', b'S0')
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
@@ -265,7 +268,7 @@ class TestAMTPowerDriver(MAASTestCase):
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
         _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
-            '', 'S5 (soft-off)')
+            b'', b'S5 (soft-off)')
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
@@ -282,7 +285,7 @@ class TestAMTPowerDriver(MAASTestCase):
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
         _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
-            '', 'error')
+            b'', b'error')
 
         self.assertRaises(
             PowerActionError, amt_power_driver.amttool_query_state,
@@ -317,7 +320,7 @@ class TestAMTPowerDriver(MAASTestCase):
         self.assertThat(
             _issue_amttool_command_mock, MockCalledOnceWith(
                 'power_cycle', ip_address, power_pass,
-                amttool_boot_mode=amttool_boot_mode, stdin='yes'))
+                amttool_boot_mode=amttool_boot_mode, stdin=b'yes'))
 
     def test_amttool_power_on_powers_on(self):
         amt_power_driver = AMTPowerDriver()
@@ -336,7 +339,7 @@ class TestAMTPowerDriver(MAASTestCase):
         self.expectThat(
             _issue_amttool_command_mock, MockCalledOnceWith(
                 'powerup', ip_address, power_pass,
-                amttool_boot_mode=amttool_boot_mode, stdin='yes'))
+                amttool_boot_mode=amttool_boot_mode, stdin=b'yes'))
         self.expectThat(
             amttool_query_state_mock, MockCalledOnceWith(
                 ip_address, power_pass))
@@ -390,7 +393,7 @@ class TestAMTPowerDriver(MAASTestCase):
         get_power_state_mock.return_value = '2'
         _issue_wsman_command_mock = self.patch(
             amt_power_driver, '_issue_wsman_command')
-        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % '2'
+        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % b'2'
 
         result = amt_power_driver.wsman_query_state(ip_address, power_pass)
 
@@ -407,7 +410,7 @@ class TestAMTPowerDriver(MAASTestCase):
         get_power_state_mock.return_value = '6'
         _issue_wsman_command_mock = self.patch(
             amt_power_driver, '_issue_wsman_command')
-        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % '6'
+        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % b'6'
 
         result = amt_power_driver.wsman_query_state(ip_address, power_pass)
 
@@ -424,7 +427,7 @@ class TestAMTPowerDriver(MAASTestCase):
         get_power_state_mock.return_value = 'unknown'
         _issue_wsman_command_mock = self.patch(
             amt_power_driver, '_issue_wsman_command')
-        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % 'error'
+        _issue_wsman_command_mock.return_value = WSMAN_OUTPUT % b'error'
 
         self.assertRaises(
             PowerFatalError, amt_power_driver.wsman_query_state,
@@ -530,7 +533,7 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver, '_get_amt_environment')
         amt_environment_mock.return_value = None
         popen_mock = self.patch_popen(return_value=(
-            AMTTOOL_OUTPUT % ('8', ''), 'stderr'))
+            AMTTOOL_OUTPUT % (b'8', b''), b'stderr'))
 
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
 
@@ -547,7 +550,7 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver, '_get_amt_environment')
         amt_environment_mock.return_value = None
         popen_mock = self.patch_popen(return_value=(
-            AMTTOOL_OUTPUT % ('9', ''), 'stderr'))
+            AMTTOOL_OUTPUT % (b'9', b''), b'stderr'))
 
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
 
@@ -558,7 +561,7 @@ class TestAMTPowerDriver(MAASTestCase):
 
     def test__get_amt_command_crashes_when_amttool_exits_nonzero(self):
         amt_power_driver = AMTPowerDriver()
-        self.patch_popen(return_value=('', ''), returncode=1)
+        self.patch_popen(return_value=(b'', b''), returncode=1)
         self.assertRaises(
             PowerFatalError, amt_power_driver._get_amt_command,
             sentinel.ip_address, sentinel.power_pass)
