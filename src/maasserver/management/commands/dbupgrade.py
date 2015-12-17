@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from textwrap import dedent
 
 from django.conf import settings
 from django.core.management import call_command
@@ -140,9 +141,19 @@ class Command(BaseCommand):
     def _south_was_performed(cls, database):
         """Return True if the database had south migrations performed."""
         cursor = connections[database].cursor()
-        cursor.execute("SELECT to_regclass('public.south_migrationhistory')")
+        cursor.execute(dedent("""\
+            SELECT c.relname
+            FROM pg_catalog.pg_class c
+            JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+            AND c.relname = 'south_migrationhistory'
+            AND c.relkind = 'r'
+            """))
         output = cursor.fetchone()
-        return output[0] == 'south_migrationhistory'
+        if output is None:
+            return False
+        else:
+            return output[0] == 'south_migrationhistory'
 
     @classmethod
     def _get_last_db_south_migration(cls, database, app):
