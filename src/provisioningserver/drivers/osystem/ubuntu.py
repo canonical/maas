@@ -20,6 +20,9 @@ class UbuntuOS(OperatingSystem):
     name = "ubuntu"
     title = "Ubuntu"
 
+    def __init__(self):
+        self.ubuntu_distro_info = UbuntuDistroInfo()
+
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image."""
         return [
@@ -36,7 +39,7 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
-        return UbuntuDistroInfo().lts()
+        return self.ubuntu_distro_info.lts()
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
@@ -48,7 +51,10 @@ class UbuntuOS(OperatingSystem):
         only exists on Ubuntu, because that is the only operating
         system that supports commissioning.
         """
-        return [self.get_lts_release()]
+        unsupported_releases = ['precise']
+        return [name for name in self.ubuntu_distro_info.supported()
+                if name not in unsupported_releases
+                if self.ubuntu_distro_info.is_lts(name)]
 
     def get_default_commissioning_release(self):
         """Gets the default commissioning release for Ubuntu. This only exists
@@ -60,7 +66,7 @@ class UbuntuOS(OperatingSystem):
     def get_distro_series_info_row(self, release):
         """Returns the distro series row information from python-distro-info.
         """
-        info = UbuntuDistroInfo()
+        info = self.ubuntu_distro_info
         for row in info._avail(info._date):
             if row['series'] == release:
                 return row
@@ -71,4 +77,4 @@ class UbuntuOS(OperatingSystem):
         row = self.get_distro_series_info_row(release)
         if row is None:
             return None
-        return UbuntuDistroInfo()._format("fullname", row)
+        return self.ubuntu_distro_info._format("fullname", row)

@@ -51,10 +51,57 @@ class TestUbuntuOS(MAASTestCase):
         self.assertEqual(expected, self.get_lts_release())
 
     def test_get_supported_commissioning_releases(self):
+        self.patch_autospec(UbuntuDistroInfo, "is_lts").return_value = True
+        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
+            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+        ]
         osystem = UbuntuOS()
-        expected = osystem.get_supported_commissioning_releases()
-        self.assertIsInstance(expected, list)
-        self.assertEqual(expected, [self.get_lts_release()])
+        releases = osystem.get_supported_commissioning_releases()
+        self.assertIsInstance(releases, list)
+        self.assertSequenceEqual(
+            ['trusty', 'vivid', 'wily', 'xenial'], releases)
+
+    def test_get_supported_commissioning_releases_excludes_non_lts(self):
+        supported = [
+            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+        ]
+        self.patch_autospec(
+            UbuntuDistroInfo, "supported").return_value = supported
+        osystem = UbuntuOS()
+        releases = osystem.get_supported_commissioning_releases()
+        self.assertIsInstance(releases, list)
+        udi = UbuntuDistroInfo()
+        non_lts_releases = [name for name in supported if not udi.is_lts(name)]
+        for release in non_lts_releases:
+            self.assertNotIn(release, releases)
+
+    def test_get_supported_commissioning_releases_excludes_precise(self):
+        """Make sure we remove 'precise' from the list."""
+        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
+            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+        ]
+        osystem = UbuntuOS()
+        releases = osystem.get_supported_commissioning_releases()
+        self.assertIsInstance(releases, list)
+        self.assertNotIn('precise', releases)
+
+    def test_get_supported_commissioning_releases_excludes_unsupported_lts(
+            self):
+        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = [
+            'precise', 'trusty', 'vivid', 'wily', 'xenial'
+        ]
+        unsupported = [
+            'warty', 'hoary', 'breezy', 'dapper', 'edgy', 'feisty', 'gutsy',
+            'hardy', 'intrepid', 'jaunty', 'karmic', 'lucid', 'maverick',
+            'natty', 'oneiric', 'quantal', 'raring', 'saucy', 'utopic'
+        ]
+        self.patch_autospec(
+            UbuntuDistroInfo, "unsupported").return_value = unsupported
+        osystem = UbuntuOS()
+        releases = osystem.get_supported_commissioning_releases()
+        self.assertIsInstance(releases, list)
+        for release in unsupported:
+            self.assertNotIn(release, releases)
 
     def test_default_commissioning_release(self):
         osystem = UbuntuOS()
