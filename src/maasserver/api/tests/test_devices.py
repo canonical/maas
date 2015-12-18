@@ -33,7 +33,6 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import json_load_bytes
-from mock import patch
 from testtools.matchers import (
     HasLength,
     Not,
@@ -447,8 +446,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             http.client.SERVICE_UNAVAILABLE, response.status_code,
             response.content)
 
-    @patch.object(Interface, 'claim_static_ips')
-    def test_503_if_no_ip_found(self, claim_static_ips):
+    def test_503_if_no_ip_found(self):
+        claim_static_ips = self.patch_autospec(
+            Interface, 'claim_static_ips')
         claim_static_ips.side_effect = [list()]
 
         device = factory.make_Device(
