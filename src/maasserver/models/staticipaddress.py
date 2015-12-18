@@ -794,7 +794,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 data["node_summary"] = {
                     "hostname": node.hostname,
                     "system_id": node.system_id,
-                    "installable": node.installable,
+                    "node_type": node.node_type,
                 }
                 if (with_username and
                         self.alloc_type != IPADDRESS_TYPE.DISCOVERED):

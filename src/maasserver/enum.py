@@ -127,6 +127,21 @@ ALLOCATED_NODE_STATUSES = [
 ]
 
 
+class NODE_TYPE:
+    """ Valid node types."""
+    DEFAULT = 0
+    MACHINE = 0
+    DEVICE = 1
+    RACK_CONTROLLER = 2
+
+
+NODE_TYPE_CHOICES = (
+    (NODE_TYPE.MACHINE, "Machine"),
+    (NODE_TYPE.DEVICE, "Device"),
+    (NODE_TYPE.RACK_CONTROLLER, "Rack controller"),
+)
+
+
 class NODE_PERMISSION:
     """Permissions relating to nodes."""
     VIEW = 'view_node'

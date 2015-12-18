@@ -32,6 +32,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
@@ -147,13 +148,19 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node.system_id, HasLength(41))
         self.assertTrue(node.system_id.startswith('node-'))
 
-    def test_empty_architecture_rejected_for_installable_nodes(self):
+    def test_empty_architecture_rejected_for_type_node(self):
         self.assertRaises(
             ValidationError,
-            factory.make_Node, installable=True, architecture='')
+            factory.make_Node, node_type=NODE_TYPE.MACHINE, architecture='')
 
-    def test_empty_architecture_accepted_for_non_installable_nodes(self):
-        node = factory.make_Node(installable=False, architecture='')
+    def test_empty_architecture_rejected_for_type_rack_controller(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Node, node_type=NODE_TYPE.RACK_CONTROLLER,
+            architecture='')
+
+    def test_empty_architecture_accepted_for_type_device(self):
+        node = factory.make_Node(node_type=NODE_TYPE.DEVICE, architecture='')
         self.assertThat(node, IsInstance(Node))
 
     def test_hostname_is_validated(self):
@@ -1848,8 +1855,10 @@ class TestNode(MAASServerTestCase):
             node.save)
 
     def test_full_clean_checks_architecture_for_installable_nodes(self):
-        node = factory.make_Node(installable=False, architecture='')
-        node.installable = True
+        node = factory.make_Node(node_type=NODE_TYPE.DEVICE, architecture='')
+        # Set type here so we don't cause exception while creating object
+        node.node_type = factory.pick_enum(
+            NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
         exception = self.assertRaises(ValidationError, node.full_clean)
         self.assertEqual(
             exception.message_dict,
@@ -2900,26 +2909,54 @@ class TestNodeParentRelationShip(MAASServerTestCase):
 class TestAllNodeManagers(MAASServerTestCase):
     """Test the node's managers."""
 
-    def test_objects_lists_installable_nodes(self):
+    def test_nodes_lists_node_type_nodes(self):
         # Create nodes.
-        nodes = [factory.make_Node(installable=True) for _ in range(3)]
+        nodes = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
+                 for _ in range(3)]
         # Create devices.
-        [factory.make_Node(installable=False) for _ in range(3)]
+        [factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
+        # Create rack_controllers.
+        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+         for _ in range(3)]
         self.assertItemsEqual(nodes, Node.nodes.all())
 
-    def test_devices_lists_noninstallable_nodes(self):
+    def test_devices_lists_node_type_devices(self):
         # Create nodes.
-        [factory.make_Node(installable=True) for _ in range(3)]
+        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
         # Create devices.
-        devices = [factory.make_Node(installable=False) for _ in range(3)]
+        devices = [factory.make_Node(node_type=NODE_TYPE.DEVICE)
+                   for _ in range(3)]
+        # Create rack_controllers.
+        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+         for _ in range(3)]
         self.assertItemsEqual(devices, Node.devices.all())
 
-    def test_all_lists_all_nodes(self):
+    def test_rack_controllers_lists_node_type_rack_controller(self):
         # Create nodes.
-        nodes = [factory.make_Node(installable=True) for _ in range(3)]
+        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
         # Create devices.
-        devices = [factory.make_Node(installable=False) for _ in range(3)]
-        self.assertItemsEqual(nodes + devices, Node.objects.all())
+        [factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
+        # Create rack_controllers.
+        rack_controllers = [
+            factory.make_Node(
+                node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)]
+        self.assertItemsEqual(rack_controllers, Node.rack_controllers.all())
+
+    def test_objects_lists_all_nodes(self):
+        # Create nodes.
+        nodes = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
+                 for _ in range(3)]
+        # Create devices.
+        devices = [
+            factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
+        # Create rack_controllers.
+        rack_controllers = [
+            factory.make_Node(
+                node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)]
+        self.assertItemsEqual(
+            nodes + devices + rack_controllers, Node.objects.all())
 
 
 class TestNodeTransitionMonitors(MAASServerTestCase):

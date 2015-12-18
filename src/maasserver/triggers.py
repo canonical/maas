@@ -24,6 +24,7 @@ from contextlib import closing
 from textwrap import dedent
 
 from django.db import connection
+from maasserver.enum import NODE_TYPE
 from maasserver.utils.orm import transactional
 
 # Note that the corresponding test module (test_triggers) only tests that the
@@ -35,18 +36,18 @@ from maasserver.utils.orm import transactional
 
 # Procedure that is called when a tag is added or removed from a node/device.
 # Sends a notify message for node_update or device_update depending on if the
-# node is installable.
+# node type is node.
 NODE_TAG_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
       pnode RECORD;
     BEGIN
-      SELECT system_id, installable, parent_id INTO node
+      SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
       WHERE id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -74,13 +75,13 @@ TAG_NODES_NOTIFY = dedent("""\
       FOR node IN (
         SELECT
           maasserver_node.system_id,
-          maasserver_node.installable,
+          maasserver_node.node_type,
           maasserver_node.parent_id
         FROM maasserver_node_tags, maasserver_node
         WHERE maasserver_node_tags.tag_id = NEW.id
         AND maasserver_node_tags.node_id = maasserver_node.id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -99,7 +100,7 @@ TAG_NODES_NOTIFY = dedent("""\
 
 # Procedure that is called when a event is created.
 # Sends a notify message for node_update or device_update depending on if the
-# link node is installable.
+# link node type is a node.
 EVENT_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION event_create_node_device_notify()
     RETURNS trigger AS $$
@@ -107,11 +108,11 @@ EVENT_NODE_NOTIFY = dedent("""\
       node RECORD;
       pnode RECORD;
     BEGIN
-      SELECT system_id, installable, parent_id INTO node
+      SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
       WHERE id = NEW.node_id;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -167,19 +168,19 @@ SUBNET_NODEGROUP_INTERFACE_NOTIFY = dedent("""\
 
 # Procedure that is called when a static ip address is linked or unlinked to
 # an Interface. Sends a notify message for node_update or device_update
-# depending on if the node is installable.
+# depending on if the node type is node.
 INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
       pnode RECORD;
     BEGIN
-      SELECT system_id, installable, parent_id INTO node
+      SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node, maasserver_interface
       WHERE maasserver_node.id = maasserver_interface.node_id
       AND maasserver_interface.id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -198,8 +199,8 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
 # Procedure that is called when a Interface address updated. Will send
 # node_update or device_update when the Interface is moved from another node
 # to a new node. Sends a notify message for node_update or device_update
-# depending on if the node is installable, both for the old node and the
-# new node.
+# depending on if the node type is node, both for the old node and the new
+# node.
 INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION nd_interface_update_notify()
     RETURNS trigger AS $$
@@ -208,11 +209,11 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
       pnode RECORD;
     BEGIN
       IF OLD.node_id != NEW.node_id THEN
-        SELECT system_id, installable, parent_id INTO node
+        SELECT system_id, node_type, parent_id INTO node
         FROM maasserver_node
         WHERE id = OLD.node_id;
 
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -224,11 +225,11 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
         END IF;
       END IF;
 
-      SELECT system_id, installable, parent_id INTO node
+      SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
       WHERE id = NEW.node_id;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -246,18 +247,18 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
 
 # Procedure that is called when a physical or virtual block device is updated.
 # Sends a notify message for node_update or device_update depending on if the
-# node is installable.
+# node type is node.
 PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node, maasserver_blockdevice
       WHERE maasserver_node.id = maasserver_blockdevice.node_id
       AND maasserver_blockdevice.id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -273,12 +274,12 @@ PARTITIONTABLE_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node, maasserver_blockdevice
         WHERE maasserver_node.id = maasserver_blockdevice.node_id
         AND maasserver_blockdevice.id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -293,7 +294,7 @@ PARTITION_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partitiontable
@@ -301,7 +302,7 @@ PARTITION_NODE_NOTIFY = dedent("""\
       AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
       AND maasserver_partitiontable.id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
         PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -316,7 +317,7 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -331,7 +332,7 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
               maasserver_partition.partition_table_id
           AND maasserver_partition.id = %s));
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -346,7 +347,7 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -360,7 +361,7 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
       AND (maasserver_filesystem.filesystem_group_id = %s
           OR maasserver_filesystem.cache_set_id = %s);
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -375,7 +376,7 @@ CACHESET_NODE_NOTIFY = dedent("""\
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
+      SELECT system_id, node_type INTO node
       FROM maasserver_node,
            maasserver_blockdevice,
            maasserver_partition,
@@ -388,7 +389,7 @@ CACHESET_NODE_NOTIFY = dedent("""\
       AND maasserver_partition.id = maasserver_filesystem.partition_id
       AND maasserver_filesystem.cache_set_id = %s;
 
-      IF node.installable THEN
+      IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
@@ -405,7 +406,7 @@ SUBNET_NODE_NOTIFY = dedent("""\
     BEGIN
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
-          system_id, installable, parent_id
+          system_id, node_type, parent_id
         FROM
           maasserver_node,
           maasserver_subnet,
@@ -418,7 +419,7 @@ SUBNET_NODE_NOTIFY = dedent("""\
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -444,7 +445,7 @@ FABRIC_NODE_NOTIFY = dedent("""\
     BEGIN
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
-          system_id, installable, parent_id
+          system_id, node_type, parent_id
         FROM
           maasserver_node,
           maasserver_fabric,
@@ -455,7 +456,7 @@ FABRIC_NODE_NOTIFY = dedent("""\
         AND maasserver_node.id = maasserver_interface.node_id
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -481,7 +482,7 @@ SPACE_NODE_NOTIFY = dedent("""\
     BEGIN
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
-          system_id, installable, parent_id
+          system_id, node_type, parent_id
         FROM
           maasserver_node,
           maasserver_space,
@@ -496,7 +497,7 @@ SPACE_NODE_NOTIFY = dedent("""\
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -522,13 +523,13 @@ VLAN_NODE_NOTIFY = dedent("""\
     BEGIN
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
-          system_id, installable, parent_id
+          system_id, node_type, parent_id
         FROM maasserver_node, maasserver_interface, maasserver_vlan
         WHERE maasserver_vlan.id = %s
         AND maasserver_node.id = maasserver_interface.node_id
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -555,7 +556,7 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
     BEGIN
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
-          system_id, installable, parent_id
+          system_id, node_type, parent_id
         FROM
           maasserver_node,
           maasserver_interface,
@@ -564,7 +565,7 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.installable THEN
+        IF node.node_type = %d THEN
           PERFORM pg_notify('node_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -638,11 +639,11 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           node RECORD;
           pnode RECORD;
         BEGIN
-          SELECT system_id, installable, parent_id INTO node
+          SELECT system_id, node_type, parent_id INTO node
           FROM maasserver_node
           WHERE id = %s;
 
-          IF node.installable THEN
+          IF node.node_type = %d THEN
             PERFORM pg_notify('node_update',CAST(node.system_id AS text));
           ELSIF node.parent_id IS NOT NULL THEN
             SELECT system_id INTO pnode
@@ -655,7 +656,7 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        """ % (proc_name, node_id_relation))
+        """ % (proc_name, node_id_relation, NODE_TYPE.MACHINE))
 
 
 def register_trigger(table, procedure, event, params=None, when="after"):
@@ -699,7 +700,7 @@ def register_procedure(procedure):
 @transactional
 def register_all_triggers():
     """Register all triggers into the database."""
-    # Node(installable) table
+    # Node where type is node table
     register_procedure(
         render_notification_procedure(
             'node_create_notify', 'node_create', 'NEW.system_id'))
@@ -711,13 +712,13 @@ def register_all_triggers():
             'node_delete_notify', 'node_delete', 'OLD.system_id'))
     register_trigger(
         "maasserver_node", "node_create_notify", "insert",
-        {'NEW.installable': True})
+        {'NEW.node_type': NODE_TYPE.MACHINE})
     register_trigger(
         "maasserver_node", "node_update_notify", "update",
-        {'NEW.installable': True})
+        {'NEW.node_type': NODE_TYPE.MACHINE})
     register_trigger(
         "maasserver_node", "node_delete_notify", "delete",
-        {'OLD.installable': True})
+        {'OLD.node_type': NODE_TYPE.MACHINE})
 
     # Node(device) table
     register_procedure(
@@ -731,13 +732,13 @@ def register_all_triggers():
             'device_delete_notify', 'device_delete', 'OLD'))
     register_trigger(
         "maasserver_node", "device_create_notify", "insert",
-        {'NEW.installable': False})
+        {'NEW.node_type': NODE_TYPE.DEVICE})
     register_trigger(
         "maasserver_node", "device_update_notify", "update",
-        {'NEW.installable': False})
+        {'NEW.node_type': NODE_TYPE.DEVICE})
     register_trigger(
         "maasserver_node", "device_delete_notify", "delete",
-        {'OLD.installable': False})
+        {'OLD.node_type': NODE_TYPE.DEVICE})
 
     # VLAN table
     register_procedure(
@@ -856,28 +857,32 @@ def register_all_triggers():
 
     # Subnet node notifications
     register_procedure(
-        SUBNET_NODE_NOTIFY % ('subnet_node_update_notify', 'NEW.id',))
+        SUBNET_NODE_NOTIFY % ('subnet_node_update_notify', 'NEW.id',
+                              NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_subnet",
         "subnet_node_update_notify", "update")
 
     # Fabric node notifications
     register_procedure(
-        FABRIC_NODE_NOTIFY % ('fabric_node_update_notify', 'NEW.id',))
+        FABRIC_NODE_NOTIFY % ('fabric_node_update_notify', 'NEW.id',
+                              NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_fabric",
         "fabric_node_update_notify", "update")
 
     # Space node notifications
     register_procedure(
-        SPACE_NODE_NOTIFY % ('space_node_update_notify', 'NEW.id',))
+        SPACE_NODE_NOTIFY % ('space_node_update_notify', 'NEW.id',
+                             NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_space",
         "space_node_update_notify", "update")
 
     # VLAN node notifications
     register_procedure(
-        VLAN_NODE_NOTIFY % ('vlan_node_update_notify', 'NEW.id',))
+        VLAN_NODE_NOTIFY % ('vlan_node_update_notify', 'NEW.id',
+                            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_vlan",
         "vlan_node_update_notify", "update")
@@ -885,7 +890,7 @@ def register_all_triggers():
     # IP address node notifications
     register_procedure(
         STATIC_IP_ADDRESS_NODE_NOTIFY % (
-            'ipaddress_node_update_notify', 'NEW.id',))
+            'ipaddress_node_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_staticipaddress",
         "ipaddress_node_update_notify", "update")
@@ -934,21 +939,17 @@ def register_all_triggers():
     # Node tag link table
     register_procedure(
         NODE_TAG_NOTIFY % (
-            'node_device_tag_link_notify',
-            'NEW.node_id',
-            ))
+            'node_device_tag_link_notify', 'NEW.node_id', NODE_TYPE.MACHINE))
     register_procedure(
         NODE_TAG_NOTIFY % (
-            'node_device_tag_unlink_notify',
-            'OLD.node_id',
-            ))
+            'node_device_tag_unlink_notify', 'OLD.node_id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_node_tags", "node_device_tag_link_notify", "insert")
     register_trigger(
         "maasserver_node_tags", "node_device_tag_unlink_notify", "delete")
 
     # Tag table, update to linked nodes.
-    register_procedure(TAG_NODES_NOTIFY)
+    register_procedure(TAG_NODES_NOTIFY % NODE_TYPE.MACHINE)
     register_trigger(
         "maasserver_tag", "tag_update_node_device_notify", "update")
 
@@ -987,21 +988,19 @@ def register_all_triggers():
         "maasserver_event", "event_delete_notify", "delete")
 
     # Events table, update to linked node.
-    register_procedure(EVENT_NODE_NOTIFY)
+    register_procedure(EVENT_NODE_NOTIFY % NODE_TYPE.MACHINE)
     register_trigger(
         "maasserver_event", "event_create_node_device_notify", "insert")
 
     # MAC static ip address table, update to linked node.
     register_procedure(
         INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
-            'nd_sipaddress_link_notify',
-            'NEW.interface_id',
-            ))
+            'nd_sipaddress_link_notify', 'NEW.interface_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
-            'nd_sipaddress_unlink_notify',
-            'OLD.interface_id',
-            ))
+            'nd_sipaddress_unlink_notify', 'OLD.interface_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_link_notify", "insert")
@@ -1030,7 +1029,8 @@ def register_all_triggers():
     register_procedure(
         render_node_related_notification_procedure(
             'nd_interface_unlink_notify', 'OLD.node_id'))
-    register_procedure(INTERFACE_UPDATE_NODE_NOTIFY)
+    register_procedure(
+        INTERFACE_UPDATE_NODE_NOTIFY % (NODE_TYPE.MACHINE, NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_interface",
         "nd_interface_link_notify", "insert")
@@ -1053,10 +1053,12 @@ def register_all_triggers():
             'nd_blockdevice_unlink_notify', 'OLD.node_id'))
     register_procedure(
         PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY % (
-            'nd_physblockdevice_update_notify', 'NEW.blockdevice_ptr_id'))
+            'nd_physblockdevice_update_notify', 'NEW.blockdevice_ptr_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY % (
-            'nd_virtblockdevice_update_notify', 'NEW.blockdevice_ptr_id'))
+            'nd_virtblockdevice_update_notify', 'NEW.blockdevice_ptr_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_blockdevice",
         "nd_blockdevice_link_notify", "insert")
@@ -1076,13 +1078,17 @@ def register_all_triggers():
     # Partition table, update to linked user.
     register_procedure(
         PARTITIONTABLE_NODE_NOTIFY % (
-            'nd_partitiontable_link_notify', 'NEW.block_device_id'))
+            'nd_partitiontable_link_notify', 'NEW.block_device_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         PARTITIONTABLE_NODE_NOTIFY % (
-            'nd_partitiontable_update_notify', 'NEW.block_device_id'))
+            'nd_partitiontable_update_notify',
+            'NEW.block_device_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         PARTITIONTABLE_NODE_NOTIFY % (
-            'nd_partitiontable_unlink_notify', 'OLD.block_device_id'))
+            'nd_partitiontable_unlink_notify', 'OLD.block_device_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_partitiontable",
         "nd_partitiontable_link_notify", "insert")
@@ -1096,13 +1102,16 @@ def register_all_triggers():
     # Partition, update to linked user.
     register_procedure(
         PARTITION_NODE_NOTIFY % (
-            'nd_partition_link_notify', 'NEW.partition_table_id'))
+            'nd_partition_link_notify', 'NEW.partition_table_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         PARTITION_NODE_NOTIFY % (
-            'nd_partition_update_notify', 'NEW.partition_table_id'))
+            'nd_partition_update_notify', 'NEW.partition_table_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         PARTITION_NODE_NOTIFY % (
-            'nd_partition_unlink_notify', 'OLD.partition_table_id'))
+            'nd_partition_unlink_notify', 'OLD.partition_table_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_partition",
         "nd_partition_link_notify", "insert")
@@ -1117,15 +1126,15 @@ def register_all_triggers():
     register_procedure(
         FILESYSTEM_NODE_NOTIFY % (
             'nd_filesystem_link_notify', 'NEW.block_device_id',
-            'NEW.partition_id'))
+            'NEW.partition_id', NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEM_NODE_NOTIFY % (
             'nd_filesystem_update_notify', 'NEW.block_device_id',
-            'NEW.partition_id'))
+            'NEW.partition_id', NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEM_NODE_NOTIFY % (
             'nd_filesystem_unlink_notify', 'OLD.block_device_id',
-            'OLD.partition_id'))
+            'OLD.partition_id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_filesystem",
         "nd_filesystem_link_notify", "insert")
@@ -1139,13 +1148,16 @@ def register_all_triggers():
     # Filesystemgroup, update to linked user.
     register_procedure(
         FILESYSTEMGROUP_NODE_NOTIFY % (
-            'nd_filesystemgroup_link_notify', 'NEW.id', 'NEW.cache_set_id'))
+            'nd_filesystemgroup_link_notify', 'NEW.id', 'NEW.cache_set_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEMGROUP_NODE_NOTIFY % (
-            'nd_filesystemgroup_update_notify', 'NEW.id', 'NEW.cache_set_id'))
+            'nd_filesystemgroup_update_notify', 'NEW.id', 'NEW.cache_set_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEMGROUP_NODE_NOTIFY % (
-            'nd_filesystemgroup_unlink_notify', 'OLD.id', 'OLD.cache_set_id'))
+            'nd_filesystemgroup_unlink_notify', 'OLD.id', 'OLD.cache_set_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_filesystemgroup",
         "nd_filesystemgroup_link_notify", "insert")
@@ -1159,13 +1171,13 @@ def register_all_triggers():
     # Cacheset, update to linked user.
     register_procedure(
         CACHESET_NODE_NOTIFY % (
-            'nd_cacheset_link_notify', 'NEW.id'))
+            'nd_cacheset_link_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_procedure(
         CACHESET_NODE_NOTIFY % (
-            'nd_cacheset_update_notify', 'NEW.id'))
+            'nd_cacheset_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_procedure(
         CACHESET_NODE_NOTIFY % (
-            'nd_cacheset_unlink_notify', 'OLD.id'))
+            'nd_cacheset_unlink_notify', 'OLD.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_cacheset",
         "nd_cacheset_link_notify", "insert")

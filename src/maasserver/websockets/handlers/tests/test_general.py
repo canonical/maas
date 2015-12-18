@@ -115,8 +115,8 @@ class TestGeneralHandler(MAASServerTestCase):
         actions_expected = dict()
         for name, action in ACTIONS_DICT.items():
             permission = action.permission
-            if action.installable_permission is not None:
-                permission = action.installable_permission
+            if action.node_permission is not None:
+                permission = action.node_permission
             if permission != NODE_PERMISSION.ADMIN:
                 actions_expected[name] = action
         actions_expected = self.dehydrate_actions(actions_expected)
@@ -127,7 +127,7 @@ class TestGeneralHandler(MAASServerTestCase):
         actions_expected = self.dehydrate_actions({
             name: action
             for name, action in ACTIONS_DICT.items()
-            if not action.installable_only
+            if not action.node_only
             })
         self.assertItemsEqual(actions_expected, handler.device_actions({}))
 

@@ -86,6 +86,7 @@ from maasserver.enum import (
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_STATUS,
+    NODE_TYPE,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
 )
@@ -775,7 +776,7 @@ class DeviceForm(MAASModelForm):
 
     def save(self, commit=True):
         device = super(DeviceForm, self).save(commit=False)
-        device.installable = False
+        device.node_type = NODE_TYPE.DEVICE
         if self.new_device:
             # Set the owner: devices are owned by their creator.
             device.owner = self.request.user

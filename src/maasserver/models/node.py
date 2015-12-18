@@ -65,6 +65,8 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
     POWER_STATE_CHOICES,
     PRESEED_TYPE,
@@ -400,19 +402,25 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
 
 
 class GeneralManager(BaseNodeManager):
-    """All the nodes: installable and non-installable together."""
+    """All the node types:"""
 
 
 class NodeManager(BaseNodeManager):
-    """Installable nodes (i.e. non-devices objects)."""
+    """Nodes (i.e. deployable objects)."""
 
-    extra_filters = {'installable': True}
+    extra_filters = {'node_type': NODE_TYPE.MACHINE}
 
 
 class DeviceManager(BaseNodeManager):
-    """Devices are all the non-installable nodes."""
+    """Devices are all the non-deployable nodes."""
 
-    extra_filters = {'installable': False}
+    extra_filters = {'node_type': NODE_TYPE.DEVICE}
+
+
+class RackControllerManager(BaseNodeManager):
+    """Rack controllers are nodes which are used by MAAS to deploy nodes."""
+
+    extra_filters = {'node_type': NODE_TYPE.RACK_CONTROLLER}
 
 
 def patch_pgarray_types():
@@ -488,12 +496,11 @@ class Node(CleanSave, TimestampedModel):
     :ivar system_id: The unique identifier for this `Node`.
         (e.g. 'node-41eba45e-4cfa-11e1-a052-00225f89f211').
     :ivar hostname: This `Node`'s hostname.  Must conform to RFCs 952 and 1123.
-    :ivar installable: An optional flag to indicate if this node can be
-        installed or not.  Non-installable nodes are nodes for which MAAS only
-        manages DHCP and DNS.
+    :ivar node_type: The type of node. This is used to specify if the node is
+        to be used as a node for deployment, as a device, or a rack controller
     :ivar parent: An optional parent `Node`.  This node will be deleted along
         with all its resources when the parent node gets deleted or released.
-        This is only relevant for non-installable nodes.
+        This is only relevant for node types other than node.
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar error_description: A human-readable description of why a node is
@@ -557,7 +564,8 @@ class Node(CleanSave, TimestampedModel):
 
     hwe_kernel = CharField(max_length=31, blank=True, null=True)
 
-    installable = BooleanField(default=True, db_index=True, editable=False)
+    node_type = IntegerField(
+        choices=NODE_TYPE_CHOICES, editable=False, default=NODE_TYPE.DEFAULT)
 
     parent = ForeignKey(
         "Node", default=None, blank=True, null=True, editable=True,
@@ -684,14 +692,17 @@ class Node(CleanSave, TimestampedModel):
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
     # managers") for details.
-    # 'objects' are all the nodes: installable and non-installable together.
+    # 'objects' are all the nodes types
     objects = GeneralManager()
 
-    # 'nodes' are all the installable nodes (i.e. non-devices objects).
+    # 'nodes' are all of nodes of type node.
     nodes = NodeManager()
 
-    # 'devices' are all the non-installable nodes.
+    # 'devices' are all of node of type device
     devices = DeviceManager()
+
+    # 'rack controller' are all of node of type rack_controller
+    rack_controllers = RackControllerManager()
 
     def __str__(self):
         if self.hostname:
@@ -1037,7 +1048,9 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(error_text)
 
     def clean_architecture(self, prev):
-        if self.architecture == '' and self.installable:
+        if (self.architecture == '' and
+            (self.node_type == NODE_TYPE.MACHINE or
+             self.node_type == NODE_TYPE.RACK_CONTROLLER)):
             raise ValidationError(
                 {'architecture':
                     ["Architecture must be defined for installable nodes."]})
@@ -2673,4 +2686,5 @@ class Device(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Device, self).__init__(installable=False, *args, **kwargs)
+        super(Device, self).__init__(node_type=NODE_TYPE.DEVICE,
+                                     *args, **kwargs)

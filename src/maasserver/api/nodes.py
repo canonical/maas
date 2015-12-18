@@ -761,7 +761,6 @@ class NodeHandler(OperationsHandler):
         :return: a dict whose key is "state" with a value of one of
             'on' or 'off'.
 
-        Returns 400 if the node is not installable.
         Returns 404 if the node is not found.
         Returns 503 (with explanatory text) if the power state could not
         be queried.
@@ -776,11 +775,6 @@ class NodeHandler(OperationsHandler):
         addTask = eventloop.services.getServiceNamed("database-tasks").addTask
 
         node = get_object_or_404(Node, system_id=system_id)
-        if not node.installable:
-            raise MAASAPIBadRequest(
-                "%s: Unable to query power state; not an installable node" %
-                node.hostname)
-
         ng = node.nodegroup
 
         try:

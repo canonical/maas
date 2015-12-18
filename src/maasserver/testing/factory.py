@@ -33,6 +33,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_STATUS,
+    NODE_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PARTITION_TABLE_TYPE,
@@ -254,22 +255,30 @@ class Factory(maastesting.factory.Factory):
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
 
-    def make_Device(self, hostname=None, nodegroup=None, **kwargs):
+    def make_Device(self, hostname=None, nodegroup=None, interface=False,
+                    disable_ipv4=None, vlan=None, fabric=None, **kwargs):
         if hostname is None:
             hostname = self.make_string(20)
         if nodegroup is None:
             nodegroup = self.make_NodeGroup()
-        device = Device(hostname=hostname, nodegroup=nodegroup, **kwargs)
+        if disable_ipv4 is None:
+            disable_ipv4 = self.pick_bool()
+        device = Device(hostname=hostname, nodegroup=nodegroup,
+                        disable_ipv4=disable_ipv4, **kwargs)
         device.save()
-        return device
+        if interface:
+            self.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
+        return reload_object(device)
 
     def make_Node(
             self, interface=False, hostname=None, status=None,
-            architecture="i386/generic", min_hwe_kernel=None, hwe_kernel=None,
-            installable=True, updated=None, created=None, nodegroup=None,
-            routers=None, zone=None, networks=None, boot_type=None,
-            sortable_name=False, power_type=None, power_parameters=None,
-            power_state=None, power_state_updated=undefined, disable_ipv4=None,
+            architecture="i386/generic", min_hwe_kernel=None,
+            hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
+            created=None, nodegroup=None, routers=None, zone=None,
+            networks=None, boot_type=None, sortable_name=False,
+            power_type=None, power_parameters=None, power_state=None,
+            power_state_updated=undefined, disable_ipv4=None,
             with_boot_disk=True, vlan=None, fabric=None, **kwargs):
         """Make a :class:`Node`.
 
@@ -308,7 +317,7 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
-            installable=installable, nodegroup=nodegroup, routers=routers,
+            node_type=node_type, nodegroup=nodegroup, routers=routers,
             zone=zone, boot_type=boot_type, power_type=power_type,
             power_parameters=power_parameters, power_state=power_state,
             power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,
@@ -322,7 +331,7 @@ class Factory(maastesting.factory.Factory):
         if interface:
             self.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan, fabric=fabric)
-        if installable and with_boot_disk:
+        if node_type == NODE_TYPE.MACHINE and with_boot_disk:
             root_partition = self.make_Partition(node=node)
             acquired = node.status in ALLOCATED_NODE_STATUSES
             self.make_Filesystem(

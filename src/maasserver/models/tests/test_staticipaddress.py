@@ -1107,4 +1107,4 @@ class TestRenderJSON(MAASServerTestCase):
         node_summary = json["node_summary"]
         self.expectThat(node_summary["hostname"], Equals(node.hostname))
         self.expectThat(node_summary["system_id"], Equals(node.system_id))
-        self.expectThat(node_summary["installable"], Equals(node.installable))
+        self.expectThat(node_summary["node_type"], Equals(node.node_type))

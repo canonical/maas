@@ -16,6 +16,7 @@ from maasserver import listener as listener_module
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_TYPE,
 )
 from maasserver.listener import (
     PostgresListenerNotifyError,
@@ -464,7 +465,7 @@ class TransactionalHelpersMixin:
         if params is None:
             params = {}
         parent = factory.make_Node(with_boot_disk=False)
-        params["installable"] = False
+        params["node_type"] = NODE_TYPE.DEVICE
         params["parent"] = parent
         device = factory.make_Node(**params)
         return device, parent
@@ -915,11 +916,11 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False},
+            'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
     )
@@ -991,7 +992,7 @@ class TestDeviceWithParentListener(
         try:
             yield deferToDatabase(
                 self.create_node, {
-                    "installable": False,
+                    "node_type": NODE_TYPE.DEVICE,
                     "parent": parent,
                     })
             yield dv.get(timeout=2)
@@ -1298,11 +1299,11 @@ class TestNodeTagListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False},
+            'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
     )
@@ -1545,11 +1546,11 @@ class TestNodeEventListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False},
+            'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
     )
@@ -1602,11 +1603,11 @@ class TestNodeStaticIPAddressListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True, 'interface': True},
+            'params': {'node_type': NODE_TYPE.MACHINE, 'interface': True},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False, 'interface': True},
+            'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
             'listener': 'device',
             }),
     )
@@ -1709,11 +1710,11 @@ class TestNodeNodeResultListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False},
+            'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
     )
@@ -1803,11 +1804,11 @@ class TestNodeInterfaceListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False},
+            'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
     )
@@ -2238,11 +2239,11 @@ class TestNodeNetworkListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True, 'interface': True},
+            'params': {'node_type': NODE_TYPE.MACHINE, 'interface': True},
             'listener': 'node',
             }),
         ('device', {
-            'params': {'installable': False, 'interface': True},
+            'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
             'listener': 'device',
             }),
     )
@@ -2590,7 +2591,7 @@ class TestNodeBlockDeviceListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
     )
@@ -2704,7 +2705,7 @@ class TestNodePartitionTableListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
     )
@@ -2776,7 +2777,7 @@ class TestNodePartitionListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
     )
@@ -2849,7 +2850,7 @@ class TestNodeFilesystemListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
     )
@@ -2926,7 +2927,7 @@ class TestNodeFilesystemgroupListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True, 'with_boot_disk': True},
+            'params': {'node_type': NODE_TYPE.MACHINE, 'with_boot_disk': True},
             'listener': 'node',
             }),
     )
@@ -3003,7 +3004,7 @@ class TestNodeCachesetListener(
 
     scenarios = (
         ('node', {
-            'params': {'installable': True},
+            'params': {'node_type': NODE_TYPE.MACHINE},
             'listener': 'node',
             }),
     )

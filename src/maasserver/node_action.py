@@ -30,6 +30,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.exceptions import (
@@ -82,10 +83,10 @@ class NodeAction(metaclass=ABCMeta):
         Will be used as the label for the action's button.
         """)
 
-    installable_only = abstractproperty("""
-        Can only be performed on a installable node.
+    node_only = abstractproperty("""
+        Can only be performed when the node type is node.
 
-        A boolean value.  True for only available for installable node, false
+        A boolean value.  True for only available for node_type node, false
         otherwise.
         """)
 
@@ -103,9 +104,9 @@ class NodeAction(metaclass=ABCMeta):
         user has this given permission on the subject node.
         """)
 
-    # Optional installable permission that will be used when the action
-    # is being applied to a node that is installable.
-    installable_permission = None
+    # Optional node permission that will be used when the action
+    # is being applied to a node_type which is node
+    node_permission = None
 
     def __init__(self, node, user, request=None):
         """Initialize a node action.
@@ -120,12 +121,12 @@ class NodeAction(metaclass=ABCMeta):
     def is_actionable(self):
         """Can this action be performed?
 
-        If the node is not installable then actionable_statuses will not
-        be used, as the status doesn't matter for an uninstallable node.
+        If the node is not node_type node then actionable_statuses will not
+        be used, as the status doesn't matter for a non-node type.
         """
-        if self.installable_only and not self.node.installable:
+        if self.node_only and not self.node.node_type == NODE_TYPE.MACHINE:
             return False
-        if self.node.installable:
+        if self.node.node_type == NODE_TYPE.MACHINE:
             return self.node.status in self.actionable_statuses
         return True
 
@@ -151,10 +152,10 @@ class NodeAction(metaclass=ABCMeta):
         """
 
     def get_permission(self):
-        """Return the permission value depending on if the node is
-        installable or not."""
-        if self.node.installable and self.installable_permission is not None:
-            return self.installable_permission
+        """Return the permission value depending on if the node_type."""
+        if(self.node.node_type == NODE_TYPE.MACHINE and
+           self.node_permission is not None):
+            return self.node_permission
         return self.permission
 
     def is_permitted(self):
@@ -179,8 +180,8 @@ class Delete(NodeAction):
     display_sentence = "deleted"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
-    installable_permission = NODE_PERMISSION.ADMIN
-    installable_only = False
+    node_permission = NODE_PERMISSION.ADMIN
+    node_only = False
 
     def execute(self):
         """Redirect to the delete view's confirmation page.
@@ -199,8 +200,8 @@ class SetZone(NodeAction):
     display_sentence = "Zone set"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
-    installable_permission = NODE_PERMISSION.ADMIN
-    installable_only = False
+    node_permission = NODE_PERMISSION.ADMIN
+    node_only = False
 
     def execute(self, zone_id=None):
         """See `NodeAction.execute`."""
@@ -224,7 +225,7 @@ class Commission(NodeAction):
         NODE_STATUS.BROKEN,
     )
     permission = NODE_PERMISSION.ADMIN
-    installable_only = True
+    node_only = True
 
     def execute(
             self, enable_ssh=False, skip_networking=False,
@@ -255,7 +256,7 @@ class Abort(NodeAction):
         NODE_STATUS.DEPLOYING
     )
     permission = NODE_PERMISSION.ADMIN
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -272,7 +273,7 @@ class Acquire(NodeAction):
     display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -287,7 +288,7 @@ class Deploy(NodeAction):
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.VIEW
-    installable_only = True
+    node_only = True
 
     def execute(self, osystem=None, distro_series=None, hwe_kernel=None):
         """See `NodeAction.execute`."""
@@ -333,7 +334,7 @@ class PowerOn(NodeAction):
         NODE_STATUS.BROKEN,
     )
     permission = NODE_PERMISSION.EDIT
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -365,7 +366,7 @@ class PowerOff(NodeAction):
     # Let a user power off a node in any non-active status.
     actionable_statuses = NON_MONITORED_STATUSES
     permission = NODE_PERMISSION.EDIT
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -394,7 +395,7 @@ class Release(NodeAction):
         NODE_STATUS.FAILED_DISK_ERASING,
     )
     permission = NODE_PERMISSION.EDIT
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -422,7 +423,7 @@ class MarkBroken(NodeAction):
         NODE_STATUS.DISK_ERASING,
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -436,7 +437,7 @@ class MarkFixed(NodeAction):
     display_sentence = "marked fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
-    installable_only = True
+    node_only = True
 
     def execute(self):
         """See `NodeAction.execute`."""

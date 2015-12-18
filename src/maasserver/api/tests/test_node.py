@@ -23,6 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.fields import (
@@ -299,7 +300,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_rejects_device(self):
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -352,7 +353,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_stop_rejects_device(self):
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -455,7 +456,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_start_rejects_device(self):
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -724,7 +725,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_rejects_device(self):
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -931,7 +932,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_rejects_device(self):
         self.become_admin()
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.put(self.get_node_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -1389,7 +1390,7 @@ class TestNodeAPI(APITestCase):
 
     def test_DELETE_rejects_device(self):
         node = factory.make_Node(
-            installable=False, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
         response = self.client.delete(self.get_node_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
@@ -1717,8 +1718,8 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         network = factory._make_random_network(slash=24)
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, installable=True, subnet=subnet,
-            disable_ipv4=False, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, node_type=NODE_TYPE.MACHINE,
+            subnet=subnet, disable_ipv4=False, owner=self.logged_in_user)
         boot_interface = node.get_boot_interface()
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch(interface_module, "update_host_maps")
@@ -1739,8 +1740,8 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         network = factory._make_random_network(slash=24)
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, installable=True, subnet=subnet,
-            disable_ipv4=False, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, node_type=NODE_TYPE.MACHINE,
+            subnet=subnet, disable_ipv4=False, owner=self.logged_in_user)
         boot_interface = node.get_boot_interface()
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch(interface_module, "update_host_maps")

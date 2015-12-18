@@ -74,7 +74,6 @@ def _gen_cluster_nodes_power_parameters(nodes):
         .filter(power_state_updated=None)
         .filter(power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
-        .exclude(installable=False)
     )
     nodes_checked = (
         nodes
@@ -82,7 +81,6 @@ def _gen_cluster_nodes_power_parameters(nodes):
         .exclude(power_state_updated__gt=five_minutes_ago)
         .filter(power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
-        .exclude(installable=False)
         .order_by("power_state_updated", "system_id")
     )
 

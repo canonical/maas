@@ -19,7 +19,10 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.api import events as events_module
 from maasserver.api.tests.test_nodes import RequestFixture
-from maasserver.enum import INTERFACE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    NODE_TYPE,
+)
 from maasserver.models.eventtype import LOGGING_LEVELS
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -311,7 +314,7 @@ class TestEventsAPI(APITestCase):
 
         # Create devices.
         device_nodes = [
-            factory.make_Node(installable=False)
+            factory.make_Node(node_type=NODE_TYPE.DEVICE)
             for _ in range(3)]
         [factory.make_Event(node=node) for node in device_nodes]
 

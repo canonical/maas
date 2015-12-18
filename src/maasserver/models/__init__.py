@@ -56,7 +56,10 @@ from django.core.urlresolvers import (
 )
 from django.db.models.signals import post_save
 from maasserver import logger
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_TYPE,
+)
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
@@ -260,7 +263,7 @@ class MAASAuthorizationBackend(ModelBackend):
             elif perm in NODE_PERMISSION.EDIT:
                 # A device can be editted by its owner a node must be admin.
                 node = obj.get_node()
-                if node is None or node.installable:
+                if node is None or node.node_type == NODE_TYPE.MACHINE:
                     return user.is_superuser
                 else:
                     return node.owner == user
