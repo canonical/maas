@@ -171,7 +171,9 @@ has several features:
       which always issue NUL as the first byte.
 """
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, division
+
+__metaclass__ = type
 
 # SKIP; format-import should not modify this file.
 import types, warnings
@@ -288,29 +290,6 @@ MAX_VALUE_LENGTH = 0xffff
 
 
 
-def byteString(string, encoding="ascii"):
-    """Coerce C{string} to a byte string.
-
-    If C{string} is already a byte string, it is returned unchanged. If it's a
-    Unicode string, it is encoded with C{encoding}, ASCII by default.
-
-    @raise TypeError: If C{string} is neither a Unicode nor a byte string.
-    @raise LookupError: If C{encoding} is not a recognised encoding.
-    @raise UnicodeEncodeError: If encoding C{string} fails.
-
-    @rtype: C{bytes}
-    """
-    if isinstance(string, bytes):
-        return string
-    elif isinstance(string, unicode):
-        return string.encode(encoding)
-    else:
-        raise TypeError(
-            "Expected Unicode string or byte string, got: %r (%r)"
-            % (string, type(string)))
-
-
-
 class IArgumentType(Interface):
     """
     An L{IArgumentType} can serialize a Python object into an AMP box and
@@ -324,18 +303,19 @@ class IArgumentType(Interface):
         extract one or more Python objects and add them to the C{objects}
         dictionary.
 
-        @param name: The name associated with this argument.  Most commonly,
+        @param name: The name associated with this argument. Most commonly
             this is the key which can be used to find a serialized value in
-            C{strings} and which should be used as the key in C{objects} to
-            associate with a structured Python object.
-        @type name: C{str}
+            C{strings}.
+        @type name: C{bytes}
 
         @param strings: The AMP box from which to extract one or more
             values.
         @type strings: C{dict}
 
         @param objects: The output dictionary to populate with the value for
-            this argument.
+            this argument. The key used will be derived from C{name}. It may
+            differ; in Python 3, for example, the key will be a Unicode/native
+            string. See L{_wireNameToPythonIdentifier}.
         @type objects: C{dict}
 
         @param proto: The protocol instance which received the AMP box being
@@ -352,19 +332,18 @@ class IArgumentType(Interface):
         objects, serialize values into one or more strings and add them to
         the C{strings} dictionary.
 
-        @param name: The name associated with this argument.  Most commonly,
-            this is the key which can be used to find an object in
-            C{objects} and which should be used as the key in C{strings} to
-            associate with a C{str} giving the serialized form of that
-            object.
-        @type name: C{str}
+        @param name: The name associated with this argument. Most commonly
+            this is the key in C{strings} to associate with a C{bytes} giving
+            the serialized form of that object.
+        @type name: C{bytes}
 
-        @param strings: The AMP box into which to insert one or more
-            strings.
+        @param strings: The AMP box into which to insert one or more strings.
         @type strings: C{dict}
 
         @param objects: The input dictionary from which to extract Python
-            objects to serialize.
+            objects to serialize. The key used will be derived from C{name}.
+            It may differ; in Python 3, for example, the key will be a
+            Unicode/native string. See L{_wireNameToPythonIdentifier}.
         @type objects: C{dict}
 
         @param proto: The protocol instance which will send the AMP box once
@@ -444,6 +423,7 @@ class IResponderLocator(Interface):
 
         @param name: the wire-level name (commandName) of the AMP command to be
         responded to.
+        @type name: C{bytes}
 
         @return: a 1-argument callable that takes an L{AmpBox} with argument
         values for the given command, and returns an L{AmpBox} containing
@@ -551,8 +531,10 @@ class RemoteAmpError(AmpError):
         """Create a remote error with an error code and description.
 
         @param errorCode: the AMP error code of this error.
+        @type errorCode: C{bytes}
 
         @param description: some text to show to the user.
+        @type description: C{str}
 
         @param fatal: a boolean, true if this error should terminate the
         connection.
@@ -565,9 +547,26 @@ class RemoteAmpError(AmpError):
         else:
             localwhat = ''
             othertb = ''
-        Exception.__init__(self, "Code<%s>%s: %s%s" % (
-                errorCode, localwhat,
-                description, othertb))
+
+        # Backslash-escape errorCode. Python 3.5 can do this natively
+        # ("backslashescape") but Python 2.7 and Python 3.4 can't.
+        if _PY3:
+            errorCodeForMessage = "".join(
+                "\\x%2x" % (c,) if c >= 0x80 else chr(c)
+                for c in errorCode)
+        else:
+            errorCodeForMessage = "".join(
+                "\\x%2x" % (ord(c),) if ord(c) >= 0x80 else c
+                for c in errorCode)
+
+        if othertb:
+            message = "Code<%s>%s: %s\n%s" % (
+                errorCodeForMessage, localwhat, description, othertb)
+        else:
+            message = "Code<%s>%s: %s" % (
+                errorCodeForMessage, localwhat, description)
+
+        super(RemoteAmpError, self).__init__(message)
         self.local = local
         self.errorCode = errorCode
         self.description = description
@@ -611,19 +610,43 @@ PROTOCOL_ERRORS = {UNHANDLED_ERROR_CODE: UnhandledCommand}
 
 class AmpBox(dict):
     """
-    I am a packet in the AMP protocol, much like a regular str:str dictionary.
+    I am a packet in the AMP protocol, much like a regular bytes:bytes dictionary.
     """
     __slots__ = []              # be like a regular dictionary, don't magically
                                 # acquire a __dict__...
 
 
     def __init__(self, *args, **kw):
+        """
+        Initialize a new L{AmpBox}.
+
+        In Python 3, keyword arguments MUST be Unicode/native strings whereas
+        in Python 2 they could be either byte strings or Unicode strings.
+
+        However, all keys of an L{AmpBox} MUST be byte strings, or possible to
+        transparently coerce into byte strings (i.e. Python 2).
+
+        In Python 3, therefore, native string keys are coerced to byte strings
+        by encoding as ASCII. This can result in C{UnicodeEncodeError} being
+        raised.
+
+        @param args: See C{dict}, but all keys and values should be C{bytes}.
+            On Python 3, native strings may be used as keys provided they
+            contain only ASCII characters.
+
+        @param kw: See C{dict}, but all keys and values should be C{bytes}.
+            On Python 3, native strings may be used as keys provided they
+            contain only ASCII characters.
+
+        @raise UnicodeEncodeError: When a native string key cannot be coerced
+            to an ASCII byte string (Python 3 only).
+        """
         super(AmpBox, self).__init__(*args, **kw)
         if _PY3:
-            non_byte_names = [n for n in self if not isinstance(n, bytes)]
-            for non_byte_name in non_byte_names:
-                byte_name = byteString(non_byte_name)
-                self[byte_name] = self.pop(non_byte_name)
+            nonByteNames = [n for n in self if not isinstance(n, bytes)]
+            for nonByteName in nonByteNames:
+                byteName = nonByteName.encode("ascii")
+                self[byteName] = self.pop(nonByteName)
 
 
     def copy(self):
@@ -639,8 +662,8 @@ class AmpBox(dict):
         """
         Convert me into a wire-encoded string.
 
-        @return: a str encoded according to the rules described in the module
-        docstring.
+        @return: a C{bytes} encoded according to the rules described in the
+            module docstring.
         """
         i = sorted(iteritems(self))
         L = []
@@ -817,9 +840,9 @@ class BoxDispatcher:
         if _PY3:
             # Python 3.4 cannot do % interpolation on byte strings so we must
             # work with a Unicode string and then encode.
-            return (u'%x' % self._counter).encode("ascii")
+            return (u'%x' % (self._counter,)).encode("ascii")
         else:
-            return (b'%x' % self._counter)
+            return (b'%x' % (self._counter,))
 
 
     def _sendBoxCommand(self, command, box, requiresAnswer=True):
@@ -836,7 +859,7 @@ class BoxDispatcher:
         If the Deferred fails and the error is not handled by the caller of
         this method, the failure will be logged and the connection dropped.
 
-        @param command: a str, the name of the command to issue.
+        @param command: a C{bytes}, the name of the command to issue.
 
         @param box: an AmpBox with the arguments for the command.
 
@@ -868,7 +891,7 @@ class BoxDispatcher:
         This is a low-level API, designed only for optimizing simple messages
         for which the overhead of parsing is too great.
 
-        @param command: a str naming the command.
+        @param command: a C{bytes} naming the command.
 
         @param kw: arguments to the amp box.
 
@@ -959,7 +982,7 @@ class BoxDispatcher:
         question.addErrback(self.unhandledError)
         errorCode = box[ERROR_CODE]
         description = box[ERROR_DESCRIPTION]
-        if _PY3 and isinstance(description, bytes):
+        if isinstance(description, bytes):
             description = description.decode("utf-8", "replace")
         if errorCode in PROTOCOL_ERRORS:
             exc = PROTOCOL_ERRORS[errorCode](errorCode, description)
@@ -980,7 +1003,7 @@ class BoxDispatcher:
             if error.check(RemoteAmpError):
                 code = error.value.errorCode
                 desc = error.value.description
-                if _PY3 and isinstance(desc, unicode):
+                if isinstance(desc, unicode):
                     desc = desc.encode("utf-8", "replace")
                 if error.value.fatal:
                     errorBox = QuitBox()
@@ -1048,9 +1071,10 @@ class BoxDispatcher:
         cmd = box[COMMAND]
         responder = self.locator.locateResponder(cmd)
         if responder is None:
+            description = "Unhandled Command: %r" % (cmd,)
             return fail(RemoteAmpError(
                     UNHANDLED_ERROR_CODE,
-                    byteString("Unhandled Command: %r" % (cmd,)),
+                    description,
                     False,
                     local=Failure(UnhandledCommand())))
         return maybeDeferred(responder, box)
@@ -1122,11 +1146,6 @@ class CommandLocator:
         """
         def doit(box):
             kw = command.parseArguments(box, self)
-            if _PY3:
-                kw = {
-                    nativeString(name): value
-                    for name, value in iteritems(kw)
-                }
             def checkKnownErrors(error):
                 key = error.trap(*command.allErrors)
                 code = command.allErrors[key]
@@ -1169,6 +1188,7 @@ class CommandLocator:
         Locate a callable to invoke when executing the named command.
 
         @param name: the normalized name (from the wire) of the command.
+        @type name: C{bytes}
 
         @return: a 1-argument function that takes a Box and returns a box or a
         Deferred which fires a Box, for handling the command identified by the
@@ -1190,7 +1210,10 @@ class CommandLocator:
 
 
 if _PY3:
-    # Apply __metaclass__ to CommandLocator.
+    # Python 3 ignores the __metaclass__ attribute and has instead new syntax
+    # for setting the metaclass. Unfortunately it's not valid Python 2 syntax
+    # so we work-around it by recreating CommandLocator using the metaclass
+    # here.
     CommandLocator = CommandLocator.__metaclass__(
         "CommandLocator", (CommandLocator, ), {})
 
@@ -1214,6 +1237,7 @@ class SimpleStringLocator(object):
         L{AmpBox} itself as an argument.
 
         @param name: the normalized name (from the wire) of the command.
+        @type name: C{bytes}
         """
         fName = nativeString(self.baseDispatchPrefix + name.upper())
         return getattr(self, fName, None)
@@ -1246,12 +1270,12 @@ def _wireNameToPythonIdentifier(key):
     implemented in a lisp amp dialect may use dashes in argument or command
     names.
 
-    @param key: a str, looking something like 'foo-bar-baz' or 'from'
+    @param key: a C{bytes}, looking something like 'foo-bar-baz' or 'from'
+    @type key: C{bytes}
 
-    @return: a str which is a valid python identifier, looking something like
-    'foo_bar_baz' or 'From'.
+    @return: a native string which is a valid python identifier, looking
+    something like 'foo_bar_baz' or 'From'.
     """
-    assert isinstance(key, bytes), repr(key)
     lkey = nativeString(key.replace(b"-", b"_"))
     if lkey in PYTHON_KEYWORDS:
         return lkey.title()
@@ -1313,14 +1337,14 @@ class Argument:
         decoded from an 'in' AmpBox mapping strings to string values.
 
         @param name: the argument name to retrieve
-        @type name: str
+        @type name: C{bytes}
 
         @param strings: The AmpBox to read string(s) from, a mapping of
         argument names to string values.
         @type strings: AmpBox
 
         @param objects: The dictionary to write object(s) to, a mapping of
-        names to Python objects.
+        names to Python objects. Keys will be native strings.
         @type objects: dict
 
         @param proto: an AMP instance.
@@ -1330,9 +1354,6 @@ class Argument:
         if self.optional and st is None:
             objects[nk] = None
         else:
-            assert isinstance(st, bytes), (
-                "%s.fromStringProto(...) should only receive byte strings, "
-                "got: %r" % (self.__class__.__name__, st))
             objects[nk] = self.fromStringProto(st, proto)
 
 
@@ -1342,14 +1363,14 @@ class Argument:
         mapping names to Python values.
 
         @param name: the argument name to retrieve
-        @type name: str
+        @type name: C{bytes}
 
         @param strings: The AmpBox to write string(s) to, a mapping of
         argument names to string values.
         @type strings: AmpBox
 
         @param objects: The dictionary to read object(s) from, a mapping of
-        names to Python objects.
+        names to Python objects. Keys should be native strings.
 
         @type objects: dict
 
@@ -1361,11 +1382,7 @@ class Argument:
             # strings[name] = None
             pass
         else:
-            value = self.toStringProto(obj, proto)
-            assert not isinstance(value, unicode), (
-                "%s.toStringProto(...) should not return Unicode strings, "
-                "got: %r" % (self.__class__.__name__, value))
-            strings[name] = value
+            strings[name] = self.toStringProto(obj, proto)
 
 
     def fromStringProto(self, inString, proto):
@@ -1373,6 +1390,7 @@ class Argument:
         Convert a string to a Python value.
 
         @param inString: the string to convert.
+        @type inString: C{bytes}
 
         @param proto: the protocol we are converting for.
         @type proto: AMP
@@ -1399,9 +1417,9 @@ class Argument:
         Convert a string to a Python object.  Subclasses must implement this.
 
         @param inString: the string to convert.
-        @type inString: str
+        @type inString: C{bytes}
 
-        @return: the decoded value from inString
+        @return: the decoded value from C{inString}
         """
 
 
@@ -1413,7 +1431,7 @@ class Argument:
         to deal with.
 
         @return: the wire encoding of inObject
-        @rtype: str
+        @rtype: C{bytes}
         """
 
 
@@ -1439,7 +1457,6 @@ class String(Argument):
         return inObject
 
     def fromString(self, inString):
-        assert isinstance(inString, bytes), repr(inString)
         return inString
 
 
@@ -1480,12 +1497,10 @@ class Unicode(String):
     """
 
     def toString(self, inObject):
-        assert isinstance(inObject, unicode), repr(inObject)
         return String.toString(self, inObject.encode('utf-8'))
 
 
     def fromString(self, inString):
-        assert isinstance(inString, bytes), repr(inString)
         return String.fromString(self, inString).decode('utf-8')
 
 
@@ -1585,11 +1600,14 @@ class AmpList(Argument):
 
         @param subargs: a list of 2-tuples of ('name', argument) describing the
         schema of the dictionaries in the sequence of amp boxes.
+        @type subargs: A C{list} of (C{bytes}, L{Argument}) tuples.
 
         @param optional: a boolean indicating whether this argument can be
         omitted in the protocol.
         """
-        assert all(isinstance(name, bytes) for name, _ in subargs), repr(subargs)
+        assert all(isinstance(name, bytes) for name, _ in subargs), (
+            "AmpList should be defined with a list of (name, argument) "
+            "tuples where `name' is a byte string, got: %r" % (subargs, ))
         self.subargs = subargs
         Argument.__init__(self, optional)
 
@@ -1792,6 +1810,15 @@ class Command:
         Create an instance of this command with specified values for its
         parameters.
 
+        In Python 3, keyword arguments MUST be Unicode/native strings whereas
+        in Python 2 they could be either byte strings or Unicode strings.
+
+        A L{Command}'s arguments are defined in its schema using C{bytes}
+        names. The values for those arguments are plucked from the keyword
+        arguments using the name returned from L{_wireNameToPythonIdentifier}.
+        In other words, keyword arguments should be named using the
+        Python-side equivalent of the on-wire (C{bytes}) name.
+
         @param kw: a dict containing an appropriate value for each name
         specified in the L{arguments} attribute of my class.
 
@@ -1955,7 +1982,9 @@ class Command:
 
 
 if _PY3:
-    # Apply __metaclass__ to Command.
+    # Python 3 ignores the __metaclass__ attribute and has instead new syntax
+    # for setting the metaclass. Unfortunately it's not valid Python 2 syntax
+    # so we work-around it by recreating Command using the metaclass here.
     Command = Command.__metaclass__("Command", (Command, ), {})
 
 
@@ -2551,6 +2580,8 @@ class AMP(BinaryBoxProtocol, BoxDispatcher,
         Unify the implementations of L{CommandLocator} and
         L{SimpleStringLocator} to perform both kinds of dispatch, preferring
         L{CommandLocator}.
+
+        @type name: C{bytes}
         """
         firstResponder = CommandLocator.locateResponder(self, name)
         if firstResponder is not None:
