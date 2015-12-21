@@ -321,6 +321,8 @@ clean: stop clean-run
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
+	pkill -u $(USER) postgres ||:
+	$(RM) -r .db .db.lock
 
 # Be selective about what to remove from run and run-e2e.
 define clean-run-template
