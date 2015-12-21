@@ -307,16 +307,26 @@ class TestEventsAPI(APITestCase):
         self.assertEqual(parsed_result['count'], len(matching_event_ids))
 
     def test_GET_query_doesnt_list_devices(self):
-        nodes = [
-            factory.make_Node(agent_name=factory.make_name('agent-name'))
+        machines = [
+            factory.make_Node(
+                agent_name=factory.make_name('agent-name'),
+                node_type=NODE_TYPE.MACHINE)
             for _ in range(3)]
-        [factory.make_Event(node=node) for node in nodes]
+        [factory.make_Event(node=node) for node in machines]
 
         # Create devices.
         device_nodes = [
-            factory.make_Node(node_type=NODE_TYPE.DEVICE)
+            factory.make_Device()
             for _ in range(3)]
         [factory.make_Event(node=node) for node in device_nodes]
+
+        # Create rack controllers.
+        rack_controllers = [
+            factory.make_Node(
+                agent_name=factory.make_name('agent-name'),
+                node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)]
+        [factory.make_Event(node=node) for node in rack_controllers]
 
         response = self.client.get(reverse('events_handler'), {
             'op': 'query',
@@ -331,7 +341,8 @@ class TestEventsAPI(APITestCase):
             [node.system_id for node in
              device_nodes if node.system_id in system_ids],
             "Node listing contains devices.")
-        self.assertEqual(parsed_result['count'], len(nodes))
+        self.assertEqual(
+            parsed_result['count'], len(machines) + len(rack_controllers))
 
     def test_GET_query_with_zone_filters_by_zone(self):
         non_listed_node = factory.make_Node(

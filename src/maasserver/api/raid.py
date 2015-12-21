@@ -18,7 +18,7 @@ from maasserver.forms import (
     UpdateRaidForm,
 )
 from maasserver.models import (
-    Node,
+    Machine,
     RAID,
 )
 from maasserver.utils.converters import human_readable_bytes
@@ -60,15 +60,15 @@ class RaidsHandler(OperationsHandler):
         :param partitions: Partitions to add to the RAID.
         :param spare_partitions: Spare partitions to add to the RAID.
 
-        Returns 404 if the node is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine is not found.
+        Returns 409 if the machine is not Ready.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
-        if node.status != NODE_STATUS.READY:
+        if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create RAID because the node is not Ready.")
-        form = CreateRaidForm(node, data=request.data)
+        form = CreateRaidForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:
@@ -77,11 +77,11 @@ class RaidsHandler(OperationsHandler):
     def read(self, request, system_id):
         """List all RAID devices belonging to node.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the machine is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return RAID.objects.filter_by_node(node)
+        return RAID.objects.filter_by_node(machine)
 
 
 class RaidHandler(OperationsHandler):

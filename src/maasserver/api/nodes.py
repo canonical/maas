@@ -39,10 +39,12 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
+    MAASAPIForbidden,
     MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
@@ -72,7 +74,6 @@ from maasserver.preseed import get_curtin_merged_config
 from maasserver.rpc import getClientFor
 from maasserver.storage_layouts import (
     StorageLayoutError,
-    StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
 from maasserver.utils import find_nodegroup
@@ -140,6 +141,7 @@ DISPLAYED_NODE_FIELDS = (
     'substatus_action',
     'substatus_message',
     'substatus_name',
+    'node_type',
 )
 
 
@@ -169,7 +171,7 @@ def store_node_power_parameters(node, request):
     node.save()
 
 
-def filtered_nodes_list_from_request(request):
+def filtered_nodes_list_from_request(request, model=None):
     """List Nodes visible to the user, optionally filtered by criteria.
 
     Nodes are sorted by id (i.e. most recent last).
@@ -198,8 +200,10 @@ def filtered_nodes_list_from_request(request):
             raise MAASAPIValidationError(
                 "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
 
+    if model is None:
+        model = Node
     # Fetch nodes and apply filters.
-    nodes = Node.nodes.get_nodes(
+    nodes = model.objects.get_nodes(
         request.user, NODE_PERMISSION.VIEW, ids=match_ids)
     if match_macs is not None:
         nodes = nodes.filter(interface__mac_address__in=match_macs)
@@ -214,31 +218,6 @@ def filtered_nodes_list_from_request(request):
         nodes = nodes.filter(agent_name=match_agent_name)
 
     return nodes.order_by('id')
-
-
-def get_storage_layout_params(request, required=False, extract_params=False):
-    """Return and validate the storage_layout parameter."""
-    form = StorageLayoutForm(required=required, data=request.data)
-    if not form.is_valid():
-        raise MAASAPIValidationError(form.errors)
-    # The request data needs to be mutable so replace the immutable QueryDict
-    # with a mutable one.
-    request.data = request.data.copy()
-    storage_layout = request.data.pop('storage_layout', None)
-    if not storage_layout:
-        storage_layout = None
-    else:
-        storage_layout = storage_layout[0]
-    params = {}
-    # Grab all the storage layout parameters.
-    if extract_params:
-        for key, value in request.data.items():
-            if key.startswith("storage_layout_"):
-                params[key.replace("storage_layout_", "")] = value
-        # Remove the storage_layout_ parameters from the request.
-        for key in params:
-            request.data.pop("storage_layout_%s" % key)
-    return storage_layout, params
 
 
 class NodeHandler(OperationsHandler):
@@ -260,6 +239,9 @@ class NodeHandler(OperationsHandler):
         of things (allocated, deploying and deployed).  This is a backward
         compatiblity layer so that clients relying on the old behavior won't
         break.
+
+        This is deprecated as of MAAS 2.0 and will be replaced with the
+        logic in substatus
         """
         old_allocated_status_aliases = [
             NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYING,
@@ -284,7 +266,14 @@ class NodeHandler(OperationsHandler):
         compatiblity between MAAS releases.  This 'substatus' field exposes
         all the node's possible statuses as designed after the lifecyle of a
         node got reworked.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API as the status call.
         """
+        if type(node).__name__ != "Node":
+            raise MAASAPIForbidden(
+                "substatus API call has been deprecated and is only supported "
+                "through the node API.")
         return node.status
 
     # Override the 'hostname' field so that it returns the FQDN instead as
@@ -303,6 +292,10 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def macaddress_set(handler, node):
+        if type(node).__name__ != "Node":
+            raise MAASAPIForbidden(
+                "macaddress_set API call has been deprecated and is only "
+                "supported through the node API.")
         return [
             {"mac_address": "%s" % interface.mac_address}
             for interface in node.interface_set.all()
@@ -311,6 +304,9 @@ class NodeHandler(OperationsHandler):
 
     @classmethod
     def pxe_mac(handler, node):
+        """This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+        """
         boot_interface = node.get_boot_interface()
         if boot_interface is None:
             return None
@@ -322,12 +318,16 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        return Node.nodes.get_node_or_404(
+        return self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     @admin_method
     def update(self, request, system_id):
         """Update a specific Node.
+
+        The arguments of this call are deprecated in MAAS 2.0 and have been
+        moved to the Machine API. Future versions of the API will only have a
+        subset of the arguments below.
 
         :param hostname: The new hostname for this node.
         :type hostname: unicode
@@ -363,17 +363,17 @@ class NodeHandler(OperationsHandler):
             accept K, M, G and T suffixes for values expressed respectively in
             kilobytes, megabytes, gigabytes and terabytes.
         :type swap_size: unicode
-        :param boot_type: The installation type of the node. 'fastpath': use
-            the default installer. 'di' use the debian installer.
-            Note that using 'di' is now deprecated and will be removed in favor
-            of the default installer in MAAS 1.9.
-        :type boot_type: unicode
 
         Returns 404 if the node is node found.
         Returns 403 if the user does not have permission to update the node.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        # XXX ltrager 2015-12-10: To remain backwards compatible with older
+        # versions of the MAAS API only search for machines. Once the MAAS
+        # API is bumped the node_type filter should be removed
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT,
+            node_type=NODE_TYPE.MACHINE)
+
         Form = get_node_edit_form(request.user)
         form = Form(data=request.data, instance=node)
 
@@ -389,7 +389,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to delete the node.
         Returns 204 if the node is successfully deleted.
         """
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
         node.delete()
@@ -427,7 +427,7 @@ class NodeHandler(OperationsHandler):
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
         comment = get_optional_param(request.POST, 'comment')
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
         power_action_sent = node.stop(
@@ -440,6 +440,10 @@ class NodeHandler(OperationsHandler):
     @operation(idempotent=False)
     def start(self, request, system_id):
         """Power up a node.
+
+        The arguments of this call are deprecated in MAAS 2.0 and have been
+        moved to the Machine API. Future versions of the API will only have a
+        subset of the arguments below.
 
         :param user_data: If present, this blob of user-data to be made
             available to the nodes through the metadata service.
@@ -470,9 +474,12 @@ class NodeHandler(OperationsHandler):
         hwe_kernel = request.POST.get('hwe_kernel', None)
         comment = get_optional_param(request.POST, 'comment')
 
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+        # XXX ltrager 2015-12-10: To remain backwards compatible with older
+        # versions of the MAAS API only search for machines. Once the MAAS
+        # API is bumped the node_type filter should be removed
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT,
+            node_type=NODE_TYPE.MACHINE)
 
         if node.owner is None:
             raise NodeStateViolation(
@@ -481,7 +488,7 @@ class NodeHandler(OperationsHandler):
             user_data = b64decode(user_data)
         if not node.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
-        if (series, license_key, hwe_kernel) != (None, None, None):
+        if None in (series, license_key, hwe_kernel):
             Form = get_node_edit_form(request.user)
             form = Form(instance=node)
             if series is not None:
@@ -509,6 +516,9 @@ class NodeHandler(OperationsHandler):
     def release(self, request, system_id):
         """Release a node.  Opposite of `NodesHandler.acquire`.
 
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
         :param comment: Optional comment for the event log.
         :type comment: unicode
 
@@ -517,10 +527,10 @@ class NodeHandler(OperationsHandler):
         Returns 409 if the node is in a state where it may not be released.
         """
         comment = get_optional_param(request.POST, 'comment')
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        if node.status == NODE_STATUS.RELEASING or \
-                node.status == NODE_STATUS.READY:
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT,
+            node_type=NODE_TYPE.MACHINE)
+        if node.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
             # Nothing to do if this node is already releasing, otherwise
             # this may be a redundant retry, and the
             # postcondition is achieved, so call this success.
@@ -536,6 +546,9 @@ class NodeHandler(OperationsHandler):
     @operation(idempotent=False)
     def commission(self, request, system_id):
         """Begin commissioning process for a node.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         :param enable_ssh: Whether to enable SSH for the commissioning
             environment using the user's SSH key(s).
@@ -556,8 +569,9 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN,
+            node_type=NODE_TYPE.MACHINE)
         form = CommissionForm(
             instance=node, user=request.user, data=request.data)
         if form.is_valid():
@@ -580,7 +594,7 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = get_object_or_404(Node, system_id=system_id)
+        node = get_object_or_404(self.model, system_id=system_id)
         probe_details = get_single_probed_details(node.system_id)
         probe_details_report = {
             name: None if data is None else bson.Binary(data)
@@ -615,7 +629,7 @@ class NodeHandler(OperationsHandler):
         Returns 503 if there are not enough IPs left on the cluster interface
         to which the mac_address is linked.
         """
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
@@ -654,7 +668,7 @@ class NodeHandler(OperationsHandler):
         Returns 404 if the node is not found.
         Returns 409 if the node is in an allocated state.
         """
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         address = request.POST.get('address', None)
 
@@ -701,7 +715,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to mark the node
         broken.
         """
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         comment = get_optional_param(request.POST, 'comment')
         if not comment:
@@ -722,7 +736,7 @@ class NodeHandler(OperationsHandler):
         fixed.
         """
         comment = get_optional_param(request.POST, 'comment')
-        node = Node.nodes.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed(request.user, comment)
         maaslog.info(
@@ -744,7 +758,7 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = get_object_or_404(Node, system_id=system_id)
+        node = get_object_or_404(self.model, system_id=system_id)
         return node.power_parameters
 
     @operation(idempotent=True)
@@ -774,7 +788,7 @@ class NodeHandler(OperationsHandler):
         # however, we would not be making RPC calls from within transactions.
         addTask = eventloop.services.getServiceNamed("database-tasks").addTask
 
-        node = get_object_or_404(Node, system_id=system_id)
+        node = get_object_or_404(self.model, system_id=system_id)
         ng = node.nodegroup
 
         try:
@@ -821,6 +835,9 @@ class NodeHandler(OperationsHandler):
     def abort_operation(self, request, system_id):
         """Abort a node's current operation.
 
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
         :param comment: Optional comment for the event log.
         :type comment: unicode
 
@@ -831,15 +848,18 @@ class NodeHandler(OperationsHandler):
         current operation.
         """
         comment = get_optional_param(request.POST, 'comment')
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT,
+            node_type=NODE_TYPE.MACHINE)
         node.abort_operation(request.user, comment)
         return node
 
     @operation(idempotent=False)
     def set_storage_layout(self, request, system_id):
         """Changes the storage layout on the node.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         This can only be preformed on an allocated node.
 
@@ -876,12 +896,15 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to set the storage
         layout.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN,
+            node_type=NODE_TYPE.MACHINE)
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot change the storage layout on a node "
                 "that is not Ready.")
+        # Avoid circular imports
+        from maasserver.api.machines import get_storage_layout_params
         storage_layout, _ = get_storage_layout_params(request, required=True)
         try:
             node.set_storage_layout(
@@ -899,6 +922,9 @@ class NodeHandler(OperationsHandler):
     @operation(idempotent=False)
     def clear_default_gateways(self, request, system_id):
         """Clear any set default gateways on the node.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         This will clear both IPv4 and IPv6 gateways on the node. This will
         transition the logic of identifing the best gateway to MAAS. This logic
@@ -919,8 +945,9 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to clear the default
         gateways.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN)
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.ADMIN,
+            node_type=NODE_TYPE.MACHINE)
         node.gateway_link_ipv4 = None
         node.gateway_link_ipv6 = None
         node.save()
@@ -930,12 +957,16 @@ class NodeHandler(OperationsHandler):
     def get_curtin_config(self, request, system_id):
         """Return the rendered curtin configuration for the node.
 
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
         Returns 404 if the node could not be found.
         Returns 403 if the user does not have permission to get the curtin
         configuration.
         """
-        node = Node.nodes.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW,
+            node_type=NODE_TYPE.MACHINE)
         if node.status not in [
                 NODE_STATUS.DEPLOYING,
                 NODE_STATUS.DEPLOYED,
@@ -948,6 +979,8 @@ class NodeHandler(OperationsHandler):
             content_type='text/plain')
 
 
+# XXX ltrager 2015-12-14 - After the new calls have been deprecated with MAAS
+# API 2.0 this can be removed.
 def create_node(request):
     """Service an http request to create a node.
 
@@ -1000,6 +1033,7 @@ def create_node(request):
             raise MAASAPIValidationError(
                 'min_hwe_kernel must be in the form of hwe-<LETTER>.')
 
+    # XXX ltrager 2015-12-10: Change this to rack controller
     if 'nodegroup' not in altered_query_data:
         # If 'nodegroup' is not explicitly specified, get the origin of the
         # request to figure out which nodegroup the new node should be
@@ -1029,7 +1063,7 @@ def create_node(request):
 
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
-    create = read = update = delete = None
+    create = update = delete = None
     model = Node
     fields = DISPLAYED_NODE_FIELDS
 
@@ -1043,6 +1077,13 @@ class AnonNodesHandler(AnonymousOperationsHandler):
     def new(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Node.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
+        The arguments of this call are deprecated in MAAS 2.0 and have been
+        moved to the Machine API. Future versions of the API will only have a
+        subset of the arguments below.
 
         Adding a server to a MAAS puts it on a path that will wipe its disks
         and re-install its operating system, in the event that it PXE boots.
@@ -1105,6 +1146,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
     def accept(self, request):
         """Accept a node's enlistment: not allowed to anonymous users.
 
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
         Always returns 401.
         """
         raise Unauthorized("You must be logged in to accept nodes.")
@@ -1117,13 +1161,17 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 class NodesHandler(OperationsHandler):
     """Manage the collection of all the nodes in the MAAS."""
     api_doc_section_name = "Nodes"
-    create = read = update = delete = None
+    create = update = delete = None
     anonymous = AnonNodesHandler
+    base_model = Node
 
     @operation(idempotent=False)
     def new(self, request):
         # Note: this docstring is duplicated above. Be sure to update both.
         """Create a new Node.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         Adding a server to a MAAS puts it on a path that will wipe its disks
         and re-install its operating system, in the event that it PXE boots.
@@ -1169,10 +1217,13 @@ class NodesHandler(OperationsHandler):
         We don't check if the current user has rights to do anything with them
         yet, just that the strings are valid. If not valid raise a BadRequest
         error.
+
+        XXX ltrager 2015-12-10: This will be removed with the accept call
         """
         if not system_ids:
             return
-        existing_nodes = Node.nodes.filter(system_id__in=system_ids)
+        existing_nodes = self.base_model.objects.filter(
+            system_id__in=system_ids, node_type=NODE_TYPE.MACHINE)
         existing_ids = set(existing_nodes.values_list('system_id', flat=True))
         unknown_ids = system_ids - existing_ids
         if len(unknown_ids) > 0:
@@ -1182,6 +1233,9 @@ class NodesHandler(OperationsHandler):
     @operation(idempotent=False)
     def accept(self, request):
         """Accept declared nodes into the MAAS.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         Nodes can be enlisted in the MAAS anonymously or by non-admin users,
         as opposed to by an admin.  These nodes are held in the New
@@ -1205,8 +1259,10 @@ class NodesHandler(OperationsHandler):
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.nodes.get_nodes(
+        from maasserver.models import Machine
+        machines = Machine.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN, ids=system_ids)
+        nodes = [Node.objects.get(id=machine.id) for machine in machines]
         if len(nodes) < len(system_ids):
             permitted_ids = set(node.system_id for node in nodes)
             raise PermissionDenied(
@@ -1220,6 +1276,9 @@ class NodesHandler(OperationsHandler):
     def accept_all(self, request):
         """Accept all declared nodes into the MAAS.
 
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+
         Nodes can be enlisted in the MAAS anonymously or by non-admin users,
         as opposed to by an admin.  These nodes are held in the New
         state; a MAAS admin must first verify the authenticity of these
@@ -1229,7 +1288,7 @@ class NodesHandler(OperationsHandler):
             by this call.  Thus, nodes that were already accepted are excluded
             from the result.
         """
-        nodes = Node.nodes.get_nodes(
+        nodes = self.base_model.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN)
         nodes = nodes.filter(status=NODE_STATUS.NEW)
         nodes = (node.accept_enlistment(request.user) for node in nodes)
@@ -1238,6 +1297,9 @@ class NodesHandler(OperationsHandler):
     @operation(idempotent=False)
     def release(self, request):
         """Release multiple nodes.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         This places the nodes back into the pool, ready to be reallocated.
 
@@ -1260,7 +1322,7 @@ class NodesHandler(OperationsHandler):
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.nodes.get_nodes(
+        nodes = self.base_model.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.EDIT, ids=system_ids)
         if len(nodes) < len(system_ids):
             permitted_ids = set(node.system_id for node in nodes)
@@ -1291,8 +1353,29 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def list(self, request):
+        """List all nodes.
+
+        This call is deprecated in MAAS 2.0 and replaced with the read
+        call."""
+        if self.base_model.__name__ != "Node":
+            raise MAASAPIForbidden(
+                "list API call has been deprecated and is only supported "
+                "through the node API.")
+        nodes = filtered_nodes_list_from_request(request, self.base_model)
+
+        # Prefetch related objects that are needed for rendering the result.
+        nodes = nodes.prefetch_related('interface_set__node')
+        nodes = nodes.prefetch_related(
+            'interface_set__ip_addresses')
+        nodes = nodes.prefetch_related('tags')
+        nodes = nodes.select_related('nodegroup')
+        nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
+        nodes = nodes.prefetch_related('zone')
+        return nodes.order_by('id')
+
+    def read(self, request):
         """List all nodes."""
-        nodes = filtered_nodes_list_from_request(request)
+        nodes = filtered_nodes_list_from_request(request, self.base_model)
 
         # Prefetch related objects that are needed for rendering the result.
         nodes = nodes.prefetch_related('interface_set__node')
@@ -1306,15 +1389,26 @@ class NodesHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def list_allocated(self, request):
-        """Fetch Nodes that were allocated to the User/oauth token."""
+        """Fetch Nodes that were allocated to the User/oauth token.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
+        """
         token = get_oauth_token(request)
         match_ids = get_optional_list(request.GET, 'id')
-        nodes = Node.nodes.get_allocated_visible_nodes(token, match_ids)
-        return nodes.order_by('id')
+        # Avoid circular imports
+        from maasserver.models import Machine
+        machines = Machine.objects.get_allocated_visible_machines(
+            token, match_ids)
+        return [Node.objects.get(id=node.id)
+                for node in machines.order_by('id')]
 
     @operation(idempotent=False)
     def acquire(self, request):
         """Acquire an available node for deployment.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         Constraints parameters can be used to acquire a node that possesses
         certain characteristics.  All the constraints are optional and when
@@ -1398,7 +1492,12 @@ class NodesHandler(OperationsHandler):
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
-            nodes = Node.nodes.get_available_nodes_for_acquisition(
+            # To keep compatibility with MAAS < 2.0 we only search for
+            # machines, the easiest way to do this is to use the Machine
+            # object
+            # Avoid circular imports
+            from maasserver.models import Machine
+            nodes = Machine.objects.get_available_machines_for_acquisition(
                 request.user)
             nodes, storage, interfaces = form.filter_nodes(nodes)
             node = get_first(nodes)
@@ -1413,6 +1512,9 @@ class NodesHandler(OperationsHandler):
                         "No available node matches constraints: %s"
                         % constraints)
                 raise NodesNotAvailable(message)
+            # If we don't return a node object the resource_uri doesn't
+            # get generated
+            node = Node.objects.get(id=node.id)
             agent_name = request.data.get('agent_name', '')
             if not dry_run:
                 node.acquire(
@@ -1485,15 +1587,18 @@ class NodesHandler(OperationsHandler):
         match_ids = get_optional_list(request.GET, 'id')
 
         if match_ids is None:
-            nodes = Node.nodes.all()
+            nodes = self.base_model.objects.all()
         else:
-            nodes = Node.nodes.filter(system_id__in=match_ids)
+            nodes = self.base_model.objects.filter(system_id__in=match_ids)
 
         return {node.system_id: node.power_parameters for node in nodes}
 
     @operation(idempotent=True)
     def deployment_status(self, request):
         """Retrieve deployment status for multiple nodes.
+
+        This call is deprecated in MAAS 2.0 from the node API and has been
+        moved to the Machine API.
 
         :param nodes: Mandatory list of system IDs for nodes whose status
             you wish to check.
@@ -1505,7 +1610,7 @@ class NodesHandler(OperationsHandler):
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.nodes.get_nodes(
+        nodes = self.base_model.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.VIEW, ids=system_ids)
         permitted_ids = set(node.system_id for node in nodes)
         if len(nodes) != len(system_ids):

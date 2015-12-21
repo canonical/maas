@@ -88,7 +88,7 @@ class DeviceHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Device.devices.filter(node_type=NODE_TYPE.DEVICE, parent=None)
+            Device.objects.filter(node_type=NODE_TYPE.DEVICE, parent=None)
             .select_related('nodegroup', 'owner')
             .prefetch_related('interface_set__ip_addresses__subnet')
             .prefetch_related('nodegroup__nodegroupinterface_set')
@@ -146,7 +146,7 @@ class DeviceHandler(TimestampedModelHandler):
     def get_queryset(self):
         """Return `QuerySet` for devices only vewable by `user`."""
         nodes = super(DeviceHandler, self).get_queryset()
-        return Device.devices.get_nodes(
+        return Device.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=nodes)
 
     def dehydrate_owner(self, user):

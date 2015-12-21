@@ -95,7 +95,7 @@ class DeviceHandler(OperationsHandler):
 
         Returns 404 if the device is not found.
         """
-        return Device.devices.get_node_or_404(
+        return Device.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id):
@@ -303,7 +303,7 @@ class DevicesHandler(OperationsHandler):
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
 
         # Fetch nodes and apply filters.
-        devices = Device.devices.get_nodes(
+        devices = Device.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             devices = devices.filter(interface__mac_address__in=match_macs)

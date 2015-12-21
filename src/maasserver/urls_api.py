@@ -78,6 +78,10 @@ from maasserver.api.license_keys import (
     LicenseKeysHandler,
 )
 from maasserver.api.maas import MaasHandler
+from maasserver.api.machines import (
+    MachineHandler,
+    MachinesHandler,
+)
 from maasserver.api.networks import (
     NetworkHandler,
     NetworksHandler,
@@ -164,6 +168,8 @@ network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
+machine_handler = RestrictedResource(MachineHandler, authentication=api_auth)
+machines_handler = RestrictedResource(MachinesHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 blockdevices_handler = RestrictedResource(
@@ -262,7 +268,6 @@ license_key_handler = AdminRestrictedResource(
 license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth)
 
-
 # API URLs accessible to anonymous users.
 urlpatterns = patterns(
     '',
@@ -321,6 +326,10 @@ urlpatterns += patterns(
     # For backward compatibility, handle obviously repeated paths as if they
     # were not repeated. See https://bugs.launchpad.net/maas/+bug/1131323.
     url(r'^nodes/.*/nodes/$', nodes_handler),
+    url(
+        r'^machines/(?P<system_id>[^/]+)/$', machine_handler,
+        name='machine_handler'),
+    url(r'^machines/$', machines_handler, name='machines_handler'),
     url(
         r'^devices/(?P<system_id>[^/]+)/$', device_handler,
         name='device_handler'),

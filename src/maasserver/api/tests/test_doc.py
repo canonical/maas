@@ -51,7 +51,6 @@ from testtools.matchers import (
     AllMatch,
     ContainsAll,
     Equals,
-    HasLength,
     Is,
     IsInstance,
     MatchesAll,
@@ -369,7 +368,7 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_api_returns_description_document(self):
         is_list = IsInstance(list)
         is_tuple = IsInstance(tuple)
-        is_text = MatchesAll(IsInstance((str, bytes)), Not(HasLength(0)))
+        is_text = MatchesAny(IsInstance((str, bytes)), Is(None))
         is_bool = IsInstance(bool)
 
         is_operation = MatchesAny(Is(None), is_text)

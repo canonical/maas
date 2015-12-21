@@ -21,6 +21,7 @@ from maasserver.api.utils import (
     get_optional_param,
     get_overridden_query_dict,
 )
+from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.models import Event
 from maasserver.models.eventtype import LOGGING_LEVELS_BY_NAME
@@ -92,6 +93,8 @@ class EventsHandler(OperationsHandler):
 
         # Filter first by optional node id, hostname, or mac
         nodes = filtered_nodes_list_from_request(request)
+        # Event lists aren't supported on devices
+        nodes = nodes.exclude(node_type=NODE_TYPE.DEVICE)
         limit = get_optional_param(
             request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int)
 

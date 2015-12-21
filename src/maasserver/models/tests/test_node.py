@@ -44,9 +44,11 @@ from maasserver.models import (
     Device,
     Interface,
     LicenseKey,
+    Machine,
     Node,
     node as node_module,
     PhysicalInterface,
+    RackController,
     UnknownInterface,
 )
 from maasserver.models.event import Event
@@ -132,6 +134,108 @@ from twisted.internet import (
 )
 
 
+class TestNodeManager(MAASServerTestCase):
+    def test_node_lists_all_node_types(self):
+        # Create machines.
+        machines = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
+                    for _ in range(3)]
+        # Create devices.
+        devices = [factory.make_Device() for _ in range(3)]
+        # Create rack_controllers.
+        rack_controllers = [
+            factory.make_Node(
+                node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)]
+        self.assertItemsEqual(
+            machines + devices + rack_controllers, Node.objects.all())
+
+
+class TestMachineManager(MAASServerTestCase):
+    def make_machine(self, user=None, **kwargs):
+        """Create a machine, allocated to `user` if given."""
+        if user is None:
+            status = NODE_STATUS.READY
+        else:
+            status = NODE_STATUS.ALLOCATED
+        return factory.make_Node(status=status, owner=user, **kwargs)
+
+    def test_machine_lists_node_type_machine(self):
+        # Create machines.
+        machines = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
+                    for _ in range(3)]
+        # Create devices.
+        [factory.make_Device() for _ in range(3)]
+        # Create rack_controllers.
+        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+         for _ in range(3)]
+        self.assertItemsEqual(machines, Machine.objects.all())
+
+    def test_get_available_machines_finds_available_machines(self):
+        user = factory.make_User()
+        machine1 = self.make_machine(None)
+        machine2 = self.make_machine(None)
+        self.assertItemsEqual(
+            [machine1, machine2],
+            Machine.objects.get_available_machines_for_acquisition(user))
+
+    def test_get_available_machines_returns_empty_list_if_empty(self):
+        user = factory.make_User()
+        self.assertEqual(
+            [],
+            list(Machine.objects.get_available_machines_for_acquisition(user)))
+
+    def test_get_available_machines_ignores_taken_machines(self):
+        user = factory.make_User()
+        available_status = NODE_STATUS.READY
+        unavailable_statuses = (
+            set(NODE_STATUS_CHOICES_DICT) - set([available_status]))
+        for status in unavailable_statuses:
+            factory.make_Node(status=status)
+        self.assertEqual(
+            [],
+            list(Machine.objects.get_available_machines_for_acquisition(user)))
+
+    def test_get_available_machines_ignores_invisible_machines(self):
+        user = factory.make_User()
+        machine = self.make_machine()
+        machine.owner = factory.make_User()
+        machine.save()
+        self.assertEqual(
+            [],
+            list(Machine.objects.get_available_machines_for_acquisition(user)))
+
+
+class TestRackControllerManager(MAASServerTestCase):
+    def test_rack_controller_lists_node_type_rack_controller(self):
+        # Create machines.
+        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
+        # Create devices.
+        [factory.make_Device() for _ in range(3)]
+        # Create rack_controllers.
+        rack_controllers = [
+            factory.make_Node(
+                node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)]
+        self.assertItemsEqual(rack_controllers, RackController.objects.all())
+
+
+class TestDeviceManager(MAASServerTestCase):
+    def test_device_lists_node_type_devices(self):
+        # Create machines.
+        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
+        # Create devices.
+        devices = [factory.make_Device() for _ in range(3)]
+        # Create rack_controllers.
+        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+         for _ in range(3)]
+        self.assertItemsEqual(devices, Device.objects.all())
+
+    def test_empty_architecture_accepted_for_type_device(self):
+        device = factory.make_Device(architecture='')
+        self.assertThat(device, IsInstance(Device))
+        self.assertEqual('', device.architecture)
+
+
 class TestNode(MAASServerTestCase):
 
     def setUp(self):
@@ -158,10 +262,6 @@ class TestNode(MAASServerTestCase):
             ValidationError,
             factory.make_Node, node_type=NODE_TYPE.RACK_CONTROLLER,
             architecture='')
-
-    def test_empty_architecture_accepted_for_type_device(self):
-        node = factory.make_Node(node_type=NODE_TYPE.DEVICE, architecture='')
-        self.assertThat(node, IsInstance(Node))
 
     def test_hostname_is_validated(self):
         bad_hostname = '-_?!@*-'
@@ -1855,8 +1955,9 @@ class TestNode(MAASServerTestCase):
             node.save)
 
     def test_full_clean_checks_architecture_for_installable_nodes(self):
-        node = factory.make_Node(node_type=NODE_TYPE.DEVICE, architecture='')
+        device = factory.make_Device(architecture='')
         # Set type here so we don't cause exception while creating object
+        node = Node.objects.get(system_id=device.system_id)
         node.node_type = factory.pick_enum(
             NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
         exception = self.assertRaises(ValidationError, node.full_clean)
@@ -2801,7 +2902,7 @@ class NodeManagerTest(MAASServerTestCase):
                          .filter_by_fabrics([fabric1])
                          .exclude_subnet_cidrs(['192.168.1.0/24']))
 
-    def test_get_visible_node_or_404_ok(self):
+    def test_get_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""
         user = factory.make_User()
         node = self.make_node(user)
@@ -2809,37 +2910,6 @@ class NodeManagerTest(MAASServerTestCase):
             node,
             Node.objects.get_node_or_404(
                 node.system_id, user, NODE_PERMISSION.VIEW))
-
-    def test_get_available_nodes_finds_available_nodes(self):
-        user = factory.make_User()
-        node1 = self.make_node(None)
-        node2 = self.make_node(None)
-        self.assertItemsEqual(
-            [node1, node2],
-            Node.objects.get_available_nodes_for_acquisition(user))
-
-    def test_get_available_node_returns_empty_list_if_empty(self):
-        user = factory.make_User()
-        self.assertEqual(
-            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
-
-    def test_get_available_nodes_ignores_taken_nodes(self):
-        user = factory.make_User()
-        available_status = NODE_STATUS.READY
-        unavailable_statuses = (
-            set(NODE_STATUS_CHOICES_DICT) - set([available_status]))
-        for status in unavailable_statuses:
-            factory.make_Node(status=status)
-        self.assertEqual(
-            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
-
-    def test_get_available_node_ignores_invisible_nodes(self):
-        user = factory.make_User()
-        node = self.make_node()
-        node.owner = factory.make_User()
-        node.save()
-        self.assertEqual(
-            [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
     def test_netboot_on(self):
         node = factory.make_Node(netboot=False)
@@ -2904,59 +2974,6 @@ class TestNodeParentRelationShip(MAASServerTestCase):
             parent.release()
         self.assertItemsEqual([], parent.children.all())
         self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
-
-
-class TestAllNodeManagers(MAASServerTestCase):
-    """Test the node's managers."""
-
-    def test_nodes_lists_node_type_nodes(self):
-        # Create nodes.
-        nodes = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
-                 for _ in range(3)]
-        # Create devices.
-        [factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
-        # Create rack_controllers.
-        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-         for _ in range(3)]
-        self.assertItemsEqual(nodes, Node.nodes.all())
-
-    def test_devices_lists_node_type_devices(self):
-        # Create nodes.
-        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
-        # Create devices.
-        devices = [factory.make_Node(node_type=NODE_TYPE.DEVICE)
-                   for _ in range(3)]
-        # Create rack_controllers.
-        [factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-         for _ in range(3)]
-        self.assertItemsEqual(devices, Node.devices.all())
-
-    def test_rack_controllers_lists_node_type_rack_controller(self):
-        # Create nodes.
-        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
-        # Create devices.
-        [factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
-        # Create rack_controllers.
-        rack_controllers = [
-            factory.make_Node(
-                node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)]
-        self.assertItemsEqual(rack_controllers, Node.rack_controllers.all())
-
-    def test_objects_lists_all_nodes(self):
-        # Create nodes.
-        nodes = [factory.make_Node(node_type=NODE_TYPE.MACHINE)
-                 for _ in range(3)]
-        # Create devices.
-        devices = [
-            factory.make_Node(node_type=NODE_TYPE.DEVICE) for _ in range(3)]
-        # Create rack_controllers.
-        rack_controllers = [
-            factory.make_Node(
-                node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)]
-        self.assertItemsEqual(
-            nodes + devices + rack_controllers, Node.objects.all())
 
 
 class TestNodeTransitionMonitors(MAASServerTestCase):
@@ -3977,37 +3994,3 @@ class TestNode_Stop(MAASServerTestCase):
         self.patch_autospec(node_module, "power_off_node")
         with post_commit_hooks:
             self.assertThat(node.stop(user), IsInstance(defer.Deferred))
-
-
-class TestDevice(MAASServerTestCase):
-    def test_node_devices_returns_devices(self):
-        node = factory.make_Node()
-        node.save()
-        device = factory.make_Device()
-        device.save()
-
-        devices = Node.devices.all()
-        self.expectThat(devices, HasLength(1))
-        # XXX Technical debt: bug #1443410
-        # self.expectThat(devices[0], Equals(device))
-
-    def test_device_ojects_retrns_devices(self):
-        node = factory.make_Node()
-        node.save()
-        device = factory.make_Device()
-        device.save()
-
-        devices = Device.objects.all()
-        self.expectThat(devices, HasLength(1))
-        self.expectThat(devices[0], Equals(device))
-
-    def test_node_objects_returns_nodes_and_devices(self):
-        node = factory.make_Node()
-        node.save()
-        device = factory.make_Device()
-        device.save()
-
-        nodes_and_devices = Node.objects.all()
-        self.expectThat(nodes_and_devices, HasLength(2))
-        # XXX Technical debt: bug #1443410
-        # self.assertItemsEqual([node, device], nodes_and_devices)

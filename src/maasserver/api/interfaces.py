@@ -30,13 +30,16 @@ from maasserver.forms_interface_link import (
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,
 )
+from maasserver.models import (
+    Machine,
+    Node,
+)
 from maasserver.models.interface import (
     BondInterface,
     Interface,
     PhysicalInterface,
     VLANInterface,
 )
-from maasserver.models.node import Node
 from piston3.utils import rc
 
 
@@ -80,7 +83,8 @@ class InterfacesHandler(OperationsHandler):
         return ('interfaces_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all interfaces belonging to a node or device.
+        """List all interfaces belonging to a machine, device, or
+        rack controller.
 
         Returns 404 if the node is not found.
         """
@@ -90,7 +94,8 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
-        """Create a physical interface on a node or device.
+        """Create a physical interface on a machine, device, or
+        rack controller.
 
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
@@ -107,7 +112,7 @@ class InterfacesHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)
-        # machine type nodes require the node needs to be in the correct state.
+        # Machine type nodes require the node needs to be in the correct state.
         if node.node_type == NODE_TYPE.MACHINE:
             raise_error_for_invalid_state_on_allocated_operations(
                 node, request.user, "create")
@@ -131,7 +136,7 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_bond(self, request, system_id):
-        """Create a bond interface on node.
+        """Create a bond interface on a machine.
 
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
@@ -193,11 +198,11 @@ class InterfacesHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "create bond")
-        form = BondInterfaceForm(node=node, data=request.data)
+            machine, request.user, "create bond")
+        form = BondInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:
@@ -205,7 +210,7 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_vlan(self, request, system_id):
-        """Create a VLAN interface on node.
+        """Create a VLAN interface on a machine.
 
         :param tags: Tags for the interface.
         :param vlan: Tagged VLAN the interface is connected to.
@@ -219,14 +224,14 @@ class InterfacesHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
         # Cast parent to parents to make it easier on the user and to make it
         # work with the form.
         request.data = request.data.copy()
         if 'parent' in request.data:
             request.data['parents'] = request.data['parent']
-        form = VLANInterfaceForm(node=node, data=request.data)
+        form = VLANInterfaceForm(node=machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:

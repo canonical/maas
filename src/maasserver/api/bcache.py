@@ -18,7 +18,7 @@ from maasserver.forms import (
 )
 from maasserver.models import (
     Bcache,
-    Node,
+    Machine,
 )
 from maasserver.utils.converters import human_readable_bytes
 from piston3.utils import rc
@@ -51,11 +51,11 @@ class BcachesHandler(OperationsHandler):
     def read(self, request, system_id):
         """List all bcache devices belonging to node.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the machine is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return Bcache.objects.filter_by_node(node)
+        return Bcache.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
         """Creates a Bcache.
@@ -70,15 +70,15 @@ class BcachesHandler(OperationsHandler):
         Specifying both a device and a partition for a given role (cache or
         backing) is not allowed.
 
-        Returns 404 if the node is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine is not found.
+        Returns 409 if the machine is not Ready.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
-        if node.status != NODE_STATUS.READY:
+        if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create Bcache because node is not Ready.")
-        form = CreateBcacheForm(node, data=request.data)
+        form = CreateBcacheForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:

@@ -134,10 +134,10 @@ class CacheSetManager(Manager):
            #the-http404-exception
         """
         # Circular imports.
-        from maasserver.models.node import Node
-        node = Node.nodes.get_node_or_404(system_id, user, perm)
+        from maasserver.models.node import Machine
+        machine = Machine.objects.get_node_or_404(system_id, user, perm)
         try:
-            cache_set = self.get_cache_set_by_id_or_name(cache_set_id, node)
+            cache_set = self.get_cache_set_by_id_or_name(cache_set_id, machine)
         except self.model.DoesNotExist:
             raise Http404()
         node = cache_set.get_node()

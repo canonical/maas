@@ -22,7 +22,7 @@ from maasserver.forms import (
     UpdateVolumeGroupForm,
 )
 from maasserver.models import (
-    Node,
+    Machine,
     VirtualBlockDevice,
     VolumeGroup,
 )
@@ -57,31 +57,31 @@ class VolumeGroupsHandler(OperationsHandler):
         return ('volume_groups_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all volume groups belonging to node.
+        """List all volume groups belonging to a machine.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the machine is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return VolumeGroup.objects.filter_by_node(node)
+        return VolumeGroup.objects.filter_by_node(machine)
 
     def create(self, request, system_id):
-        """Create a volume group belonging to node.
+        """Create a volume group belonging to machine.
 
         :param name: Name of the volume group.
         :param uuid: (optional) UUID of the volume group.
         :param block_devices: Block devices to add to the volume group.
         :param partitions: Partitions to add to the volume group.
 
-        Returns 404 if the node is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine is not found.
+        Returns 409 if the machine is not Ready.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
-        if node.status != NODE_STATUS.READY:
+        if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot create volume group because the node is not Ready.")
-        form = CreateVolumeGroupForm(node, data=request.data)
+        form = CreateVolumeGroupForm(machine, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
         else:

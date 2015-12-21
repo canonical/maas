@@ -4,7 +4,9 @@
 """Node objects."""
 
 __all__ = [
+    "Device",
     "Node",
+    "RackController",
     "fqdn_is_duplicate",
     "nodegroup_fqdn",
     ]
@@ -343,28 +345,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         nodes = self._filter_visible_nodes(from_nodes, user, perm)
         return self.filter_by_ids(nodes, ids)
 
-    def get_allocated_visible_nodes(self, token, ids):
-        """Fetch Nodes that were allocated to the User_/oauth token.
-
-        :param user: The user whose nodes to fetch
-        :type user: User_
-        :param token: The OAuth token associated with the Nodes.
-        :type token: piston3.models.Token.
-        :param ids: Optional set of IDs to filter by. If given, nodes whose
-            system_ids are not in `ids` will be ignored.
-        :type param_ids: Sequence
-
-        .. _User: https://
-           docs.djangoproject.com/en/dev/topics/auth/
-           #django.contrib.auth.models.User
-        """
-        if ids is None:
-            nodes = self.filter(token=token)
-        else:
-            nodes = self.filter(token=token, system_id__in=ids)
-        return nodes
-
-    def get_node_or_404(self, system_id, user, perm):
+    def get_node_or_404(self, system_id, user, perm, **kwargs):
         """Fetch a `Node` by system_id.  Raise exceptions if no `Node` with
         this system_id exist or if the provided user has not the required
         permission on this `Node`.
@@ -382,33 +363,55 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
+        kwargs.update(self.extra_filters)
         node = get_object_or_404(
-            self.model, system_id=system_id, **self.extra_filters)
+            self.model, system_id=system_id, **kwargs)
         if user.has_perm(perm, node):
             return node
         else:
             raise PermissionDenied()
-
-    def get_available_nodes_for_acquisition(self, for_user):
-        """Find the nodes that can be acquired by the given user.
-
-        :param for_user: The user who is to acquire the node.
-        :type for_user: :class:`django.contrib.auth.models.User`
-        :return: Those nodes which can be acquired by the user.
-        :rtype: `django.db.models.query.QuerySet`
-        """
-        available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
-        return available_nodes.filter(status=NODE_STATUS.READY)
 
 
 class GeneralManager(BaseNodeManager):
     """All the node types:"""
 
 
-class NodeManager(BaseNodeManager):
-    """Nodes (i.e. deployable objects)."""
+class MachineManager(BaseNodeManager):
+    """Machines (i.e. deployable objects)."""
 
     extra_filters = {'node_type': NODE_TYPE.MACHINE}
+
+    def get_allocated_visible_machines(self, token, ids):
+        """Fetch Machines that were allocated to the User_/oauth token.
+
+        :param user: The user whose machines to fetch
+        :type user: User_
+        :param token: The OAuth token associated with the Machines.
+        :type token: piston3.models.Token.
+        :param ids: Optional set of IDs to filter by. If given, machines whose
+            system_ids are not in `ids` will be ignored.
+        :type param_ids: Sequence
+
+        .. _User: https://
+           docs.djangoproject.com/en/dev/topics/auth/
+           #django.contrib.auth.models.User
+        """
+        if ids is None:
+            machines = self.filter(token=token)
+        else:
+            machines = self.filter(token=token, system_id__in=ids)
+        return machines
+
+    def get_available_machines_for_acquisition(self, for_user):
+        """Find the machines that can be acquired by the given user.
+
+        :param for_user: The user who is to acquire the machine.
+        :type for_user: :class:`django.contrib.auth.models.User`
+        :return: Those machines which can be acquired by the user.
+        :rtype: `django.db.models.query.QuerySet`
+        """
+        available_machines = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
+        return available_machines.filter(status=NODE_STATUS.READY)
 
 
 class DeviceManager(BaseNodeManager):
@@ -519,7 +522,7 @@ class Node(CleanSave, TimestampedModel):
         name.
     :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
-    :ivar objects: The :class:`NodeManager`.
+    :ivar objects: The :class:`GeneralManager`.
     :ivar enable_ssh: An optional flag to indicate if this node can have
         ssh enabled during commissioning, allowing the user to ssh into the
         machine's commissioning environment using the user's SSH key.
@@ -694,15 +697,6 @@ class Node(CleanSave, TimestampedModel):
     # managers") for details.
     # 'objects' are all the nodes types
     objects = GeneralManager()
-
-    # 'nodes' are all of nodes of type node.
-    nodes = NodeManager()
-
-    # 'devices' are all of node of type device
-    devices = DeviceManager()
-
-    # 'rack controller' are all of node of type rack_controller
-    rack_controllers = RackControllerManager()
 
     def __str__(self):
         if self.hostname:
@@ -1048,9 +1042,7 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(error_text)
 
     def clean_architecture(self, prev):
-        if (self.architecture == '' and
-            (self.node_type == NODE_TYPE.MACHINE or
-             self.node_type == NODE_TYPE.RACK_CONTROLLER)):
+        if self.architecture == '':
             raise ValidationError(
                 {'architecture':
                     ["Architecture must be defined for installable nodes."]})
@@ -2677,6 +2669,32 @@ class Node(CleanSave, TimestampedModel):
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are
 # serialized on the API.
+class Machine(Node):
+    """An installable node."""
+
+    objects = MachineManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Machine, self).__init__(
+            node_type=NODE_TYPE.MACHINE, *args, **kwargs)
+
+
+class RackController(Node):
+    """A node which is running rackd."""
+
+    objects = RackControllerManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(RackController, self).__init__(
+            node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
+
+
 class Device(Node):
     """A non-installable node."""
 
@@ -2686,5 +2704,9 @@ class Device(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super(Device, self).__init__(node_type=NODE_TYPE.DEVICE,
-                                     *args, **kwargs)
+        super(Device, self).__init__(
+            node_type=NODE_TYPE.DEVICE, *args, **kwargs)
+
+    def clean_architecture(self, prev):
+        # Devices aren't required to have a defined architecture
+        pass

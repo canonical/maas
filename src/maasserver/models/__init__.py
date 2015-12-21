@@ -27,6 +27,7 @@ __all__ = [
     'LargeFile',
     'LicenseKey',
     'logger',
+    'Machine',
     'Node',
     'NodeGroup',
     'NodeGroupInterface',
@@ -35,6 +36,7 @@ __all__ = [
     'PhysicalBlockDevice',
     'PhysicalInterface',
     'RAID',
+    'RackController',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -94,7 +96,9 @@ from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.node import (
     Device,
+    Machine,
     Node,
+    RackController,
 )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface

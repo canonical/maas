@@ -19,7 +19,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
-    NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -50,7 +49,10 @@ from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.filesystemgroup import VolumeGroup
 from maasserver.models.interface import Interface
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Machine,
+    Node,
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.partition import Partition
@@ -107,17 +109,17 @@ class NodeHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Node.nodes.filter(node_type=NODE_TYPE.MACHINE)
-                .select_related('nodegroup', 'boot_interface', 'owner')
-                .prefetch_related(
-                    'interface_set__ip_addresses__subnet__vlan__fabric')
-                .prefetch_related('interface_set__ip_addresses__subnet__space')
-                .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
-                .prefetch_related('interface_set__vlan__fabric')
-                .prefetch_related('zone')
-                .prefetch_related('tags')
-                .prefetch_related('blockdevice_set__physicalblockdevice')
-                .prefetch_related('blockdevice_set__virtualblockdevice'))
+            Machine.objects.all()
+            .select_related('nodegroup', 'boot_interface', 'owner')
+            .prefetch_related(
+                'interface_set__ip_addresses__subnet__vlan__fabric')
+            .prefetch_related('interface_set__ip_addresses__subnet__space')
+            .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
+            .prefetch_related('interface_set__vlan__fabric')
+            .prefetch_related('zone')
+            .prefetch_related('tags')
+            .prefetch_related('blockdevice_set__physicalblockdevice')
+            .prefetch_related('blockdevice_set__virtualblockdevice'))
         pk = 'system_id'
         pk_type = str
         allowed_methods = [
@@ -181,7 +183,7 @@ class NodeHandler(TimestampedModelHandler):
     def get_queryset(self):
         """Return `QuerySet` for nodes only vewable by `user`."""
         nodes = super(NodeHandler, self).get_queryset()
-        return Node.nodes.get_nodes(
+        return Machine.objects.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=nodes)
 
     def dehydrate_owner(self, user):

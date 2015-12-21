@@ -28,7 +28,7 @@ from maasserver.forms import (
 )
 from maasserver.models import (
     BlockDevice,
-    Node,
+    Machine,
     PartitionTable,
     PhysicalBlockDevice,
     VirtualBlockDevice,
@@ -82,11 +82,11 @@ class BlockDevicesHandler(OperationsHandler):
     def read(self, request, system_id):
         """List all block devices belonging to node.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the machine is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.VIEW)
-        return node.blockdevice_set.all()
+        return machine.blockdevice_set.all()
 
     @admin_method
     def create(self, request, system_id):
@@ -103,9 +103,9 @@ class BlockDevicesHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        node = Node.nodes.get_node_or_404(
+        machine = Machine.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.ADMIN)
-        form = CreatePhysicalBlockDeviceForm(node, data=request.data)
+        form = CreatePhysicalBlockDeviceForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
         else:

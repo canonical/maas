@@ -22,7 +22,6 @@ from maasserver.models import (
     Device,
     Interface,
     interface as interface_module,
-    Node,
     NodeGroup,
     StaticIPAddress,
 )
@@ -61,7 +60,7 @@ class TestDevicesAPI(APITestCase):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         system_id = json_load_bytes(response.content)['system_id']
-        device = Node.devices.get(system_id=system_id)
+        device = Device.objects.get(system_id=system_id)
         self.assertEqual(hostname, device.hostname)
         self.assertIsNone(device.parent)
         self.assertEquals(device.node_type, NODE_TYPE.DEVICE)
@@ -89,7 +88,7 @@ class TestDevicesAPI(APITestCase):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         system_id = json_load_bytes(response.content)['system_id']
-        device = Node.devices.get(system_id=system_id)
+        device = Device.objects.get(system_id=system_id)
         self.assertEquals(hostname, device.hostname)
         self.assertEquals(parent, device.parent)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)

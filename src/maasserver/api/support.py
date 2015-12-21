@@ -165,6 +165,13 @@ class OperationsHandlerType(HandlerMetaClass):
 
         # Create the exports mapping.
         exports = {}
+        # Add parent classes exports to our exports in our namespace
+        if cls.exports is not None:
+            for key in cls.exports.keys():
+                if key[1] is not None:
+                    new_func = getattr(cls, key[1], None)
+                    if new_func is not None:
+                        exports[key] = new_func
         exports.update(crud)
         exports.update(operations)
 
