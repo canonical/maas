@@ -19,6 +19,7 @@ import os.path
 import random
 from random import randint
 import threading
+import time
 from urllib.parse import urlparse
 
 from crochet import wait_for
@@ -48,6 +49,7 @@ from maasserver.models.interface import PhysicalInterface
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     events as events_module,
+    leases as leases_module,
     regionservice,
 )
 from maasserver.rpc.regionservice import (
@@ -126,6 +128,7 @@ from provisioningserver.rpc.region import (
     RequestNodeInfoByMACAddress,
     SendEvent,
     SendEventMACAddress,
+    UpdateLease,
     UpdateLeases,
     UpdateNodePowerState,
 )
@@ -138,6 +141,7 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import events
 from simplejson import dumps
+from testtools import ExpectedException
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
@@ -438,11 +442,69 @@ class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
         self.expectThat(mac, Equals(mapping["mac"]))
 
     @wait_for_reactor
-    def test__raises_NoSuchCluster_if_cluster_not_found(self):
+    def test__raise_NoSuchCluster_if_cluster_not_found(self):
         uuid = factory.make_name("uuid")
         d = call_responder(
             Region(), UpdateLeases, {"uuid": uuid, "mappings": []})
         return assert_fails_with(d, NoSuchCluster)
+
+
+class TestRegionProtocol_UpdateLease(DjangoTransactionTestCase):
+
+    def setUp(self):
+        super(TestRegionProtocol_UpdateLease, self).setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks"))
+
+    def test_update_lease_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(UpdateLease.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__raises_NoSuchCluster_if_cluster_not_found(self):
+        uuid = factory.make_name("uuid")
+
+        yield eventloop.start()
+        try:
+            with ExpectedException(NoSuchCluster):
+                yield call_responder(
+                    Region(), UpdateLease, {
+                        "cluster_uuid": uuid,
+                        "action": "expiry",
+                        "mac": factory.make_mac_address(),
+                        "ip_family": "ipv4",
+                        "ip": factory.make_ipv4_address(),
+                        "timestamp": int(time.time()),
+                        })
+        finally:
+            yield eventloop.reset()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__doesnt_raises_other_errors(self):
+        uuid = factory.make_name("uuid")
+
+        # Cause a random exception
+        self.patch(leases_module, "update_lease").side_effect = (
+            factory.make_exception())
+
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), UpdateLease, {
+                    "cluster_uuid": uuid,
+                    "action": "expiry",
+                    "mac": factory.make_mac_address(),
+                    "ip_family": "ipv4",
+                    "ip": factory.make_ipv4_address(),
+                    "timestamp": int(time.time()),
+                    })
+        finally:
+            yield eventloop.reset()
+
+        # Test is that no exceptions are raised. If this test passes then all
+        # works as expected.
 
 
 class TestRegionProtocol_GetBootSources(DjangoTransactionTestCase):

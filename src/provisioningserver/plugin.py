@@ -104,13 +104,13 @@ class ProvisioningServiceMaker:
         image_download_service.setName("image_download")
         return image_download_service
 
-    def _makeLeaseUploadService(self, rpc_service, cluster_uuid):
-        from provisioningserver.pserv_services.lease_upload_service \
-            import LeaseUploadService
-        lease_upload_service = LeaseUploadService(
-            rpc_service, reactor, cluster_uuid)
-        lease_upload_service.setName("lease_upload")
-        return lease_upload_service
+    def _makeLeaseSocketService(self, rpc_service, cluster_uuid):
+        from provisioningserver.pserv_services.lease_socket_service import (
+            LeaseSocketService)
+        lease_socket_service = LeaseSocketService(
+            rpc_service, cluster_uuid, reactor)
+        lease_socket_service.setName("lease_socket_service")
+        return lease_socket_service
 
     def _makeNodePowerMonitorService(self, cluster_uuid):
         from provisioningserver.pserv_services.node_power_monitor_service \
@@ -146,7 +146,7 @@ class ProvisioningServiceMaker:
         yield rpc_service
         # Other services that make up the MAAS Region Controller.
         yield self._makeDHCPProbeService(rpc_service, config.cluster_uuid)
-        yield self._makeLeaseUploadService(rpc_service, config.cluster_uuid)
+        yield self._makeLeaseSocketService(rpc_service, config.cluster_uuid)
         yield self._makeNodePowerMonitorService(config.cluster_uuid)
         yield self._makeServiceMonitorService()
         yield self._makeImageDownloadService(

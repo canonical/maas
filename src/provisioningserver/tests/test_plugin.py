@@ -25,6 +25,9 @@ from provisioningserver.pserv_services.image import BootImageEndpointService
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
 )
+from provisioningserver.pserv_services.lease_socket_service import (
+    LeaseSocketService,
+)
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
 )
@@ -88,7 +91,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "dhcp_probe", "image_download", "lease_upload",
+            "dhcp_probe", "image_download", "lease_socket_service",
             "node_monitor", "rpc", "tftp", "image_service",
             "service_monitor",
             ]
@@ -178,3 +181,10 @@ class TestProvisioningServiceMaker(MAASTestCase):
             resource_root = FilePath(config.tftp_root)
 
         self.assertEqual(resource_root, root)
+
+    def test_lease_socket_service(self):
+        options = Options()
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        lease_socket_service = service.getServiceNamed("lease_socket_service")
+        self.assertIsInstance(lease_socket_service, LeaseSocketService)

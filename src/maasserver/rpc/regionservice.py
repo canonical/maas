@@ -61,6 +61,7 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.common import RPCProtocol
+from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.twisted.protocols import amp
@@ -154,6 +155,37 @@ class Region(RPCProtocol):
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
         """
         return deferToDatabase(leases.update_leases, uuid, mappings)
+
+    @region.UpdateLease.responder
+    def update_lease(
+            self, cluster_uuid, action, mac, ip_family, ip, timestamp,
+            lease_time=None, hostname=None):
+        """update_lease(
+            cluster_uuid, action, mac, ip_family, ip, timestamp,
+            lease_time, hostname)
+
+        Implementation of
+        :py:class`~provisioningserver.rpc.region.UpdateLease`.
+        """
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        d = dbtasks.deferTask(
+            leases.update_lease, cluster_uuid, action, mac, ip_family, ip,
+            timestamp, lease_time, hostname)
+
+        # Catch all errors except the NoSuchCluster failure. We want that to
+        # be sent back to the cluster.
+        def err_NoSuchCluster_passThrough(failure):
+            if failure.check(NoSuchCluster):
+                return failure
+            else:
+                log.err(failure, "Unhandled failure in updating lease.")
+                return {}
+        d.addErrback(err_NoSuchCluster_passThrough)
+
+        # Wait for the record to be handled. This will cause the cluster to
+        # send one at a time. So they are processed in order no matter which
+        # region recieves the message.
+        return d
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):
