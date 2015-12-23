@@ -9,6 +9,7 @@ __all__ = [
 ]
 
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -20,9 +21,9 @@ from django.db.models import (
     Manager,
     PROTECT,
     Q,
+    TextField,
 )
 from django.db.models.query import QuerySet
-from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUP_STATUS,
@@ -349,7 +350,7 @@ class Subnet(CleanSave, TimestampedModel):
     gateway_ip = MAASIPAddressField(blank=True, editable=True, null=True)
 
     dns_servers = ArrayField(
-        dbtype="text", blank=True, editable=True, null=True, default=[])
+        TextField(), blank=True, editable=True, null=True, default=list)
 
     def get_ipnetwork(self):
         return IPNetwork(self.cidr)

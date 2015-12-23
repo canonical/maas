@@ -12,10 +12,10 @@ __all__ = [
 
 from operator import attrgetter
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
-from djorm_pgarray.fields import ArrayField
 from maasserver import concurrency
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional

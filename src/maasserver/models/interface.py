@@ -14,6 +14,7 @@ __all__ = [
 
 from collections import defaultdict
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -27,9 +28,9 @@ from django.db.models import (
     ManyToManyField,
     PROTECT,
     Q,
+    TextField,
 )
 from django.db.models.query import QuerySet
-from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import (
     remove_host_maps,
@@ -313,7 +314,7 @@ class Interface(CleanSave, TimestampedModel):
     params = JSONObjectField(blank=True, default="")
 
     tags = ArrayField(
-        dbtype="text", blank=True, null=False, default=[])
+        TextField(), blank=True, null=True, default=list)
 
     enabled = BooleanField(default=True)
 

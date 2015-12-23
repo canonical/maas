@@ -9,6 +9,7 @@ __all__ = [
 
 from collections import Iterable
 
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -21,6 +22,7 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
+    TextField,
 )
 from django.db.models.signals import (
     post_delete,
@@ -28,7 +30,6 @@ from django.db.models.signals import (
 )
 from django.dispatch import receiver
 from django.shortcuts import get_object_or_404
-from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -141,7 +142,7 @@ class BlockDevice(CleanSave, TimestampedModel):
         help_text="Size of a block on the device in bytes.")
 
     tags = ArrayField(
-        dbtype="text", blank=True, null=False, default=[])
+        TextField(), blank=True, null=True, default=list)
 
     def get_name(self):
         """Return the name.

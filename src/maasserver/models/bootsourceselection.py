@@ -8,12 +8,13 @@ __all__ = [
     ]
 
 
+from django.contrib.postgres.fields import ArrayField
 from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
+    TextField,
 )
-import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -42,11 +43,11 @@ class BootSourceSelection(CleanSave, TimestampedModel):
         max_length=20, blank=True, default='',
         help_text="The OS release for which to import resources.")
 
-    arches = djorm_pgarray.fields.ArrayField(dbtype="text")
+    arches = ArrayField(TextField(), blank=True, null=True, default=list)
 
-    subarches = djorm_pgarray.fields.ArrayField(dbtype="text")
+    subarches = ArrayField(TextField(), blank=True, null=True, default=list)
 
-    labels = djorm_pgarray.fields.ArrayField(dbtype="text")
+    labels = ArrayField(TextField(), blank=True, null=True, default=list)
 
     def to_dict(self):
         """Return the current `BootSourceSelection` as a dict."""

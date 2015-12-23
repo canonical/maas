@@ -22,6 +22,7 @@ import re
 from uuid import uuid1
 
 from django.contrib.auth.models import User
+from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -45,7 +46,6 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
-import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import remove_host_maps
 from maasserver.clusterrpc.power import (
@@ -78,6 +78,7 @@ from maasserver.fields import (
     JSONObjectField,
     MAASIPAddressField,
     MAC,
+    MACAddressField,
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -426,32 +427,6 @@ class RackControllerManager(BaseNodeManager):
     extra_filters = {'node_type': NODE_TYPE.RACK_CONTROLLER}
 
 
-def patch_pgarray_types():
-    """Monkey-patch incompatibility with recent versions of `djorm_pgarray`.
-
-    An upstream commit in `djorm_pgarray` on 2013-07-21 effectively limits
-    arrays to a fixed set of types.  An attempt to create an `ArrayField` of
-    any other type results in the error "TypeError: invalid postgreSQL type."
-    We have been getting that error with python-djorm-ext-pgarray 0.8, the
-    first Ubuntu-packaged version, but not with 0.6.
-
-    This function monkey-patches the set of supported types, adding macaddr.
-
-    Upstream bug: https://github.com/niwibe/djorm-ext-pgarray/issues/19
-    """
-    # TYPES maps PostgreSQL type names to their Django casters.  The error
-    # happens when using a postgres type name that is not in this dict.
-    #
-    # Older versions did not have TYPES, and worked out of the box.
-    types_dict = getattr(djorm_pgarray.fields, 'TYPES', None)
-    if types_dict is not None and 'macaddr' not in types_dict:
-        djorm_pgarray.fields.TYPES['macaddr'] = MAC
-
-
-# Monkey-patch djorm_pgarray's types list to support MAC.
-patch_pgarray_types()
-
-
 def nodegroup_fqdn(hostname, nodegroup_name):
     """Build a FQDN from a hostname and a nodegroup name.
 
@@ -574,7 +549,8 @@ class Node(CleanSave, TimestampedModel):
         "Node", default=None, blank=True, null=True, editable=True,
         related_name="children", on_delete=CASCADE)
 
-    routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
+    routers = ArrayField(
+        MACAddressField(), blank=True, null=True, default=list)
 
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
 
