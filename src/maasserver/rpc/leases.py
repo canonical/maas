@@ -5,11 +5,24 @@
 
 __all__ = [
     "update_leases",
+    "update_lease",
 ]
 
+from datetime import datetime
+
+from maasserver.enum import (
+    IPADDRESS_FAMILY,
+    IPADDRESS_TYPE,
+)
+from maasserver.models.interface import (
+    Interface,
+    UnknownInterface,
+)
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.utils.orm import transactional
+from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
 
@@ -52,6 +65,10 @@ def update_leases(uuid, mappings):
         return {}
 
 
+class LeaseUpdateError(Exception):
+    """Raise when `update_lease` fails to update lease information."""
+
+
 @synchronous
 @transactional
 def update_lease(
@@ -71,8 +88,8 @@ def update_lease(
         :py:class`~provisioningserver.rpc.region.UpdateLease`.
     :param timestamp: Epoch time for the action taken on the cluster as found
         in :py:class`~provisioningserver.rpc.region.UpdateLease`.
-    :param lease_time: Legth of the lease on the cluster as found in
-        :py:class`~provisioningserver.rpc.region.UpdateLease`.
+    :param lease_time: Number of seconds the lease is active on the cluster
+        as found in :py:class`~provisioningserver.rpc.region.UpdateLease`.
     :param hostname: Hostname of the machine for the lease on the cluster as
         found in :py:class`~provisioningserver.rpc.region.UpdateLease`.
 
@@ -94,5 +111,83 @@ def update_lease(
     except NodeGroup.DoesNotExist:
         raise NoSuchCluster.from_uuid(cluster_uuid)
 
-    # TODO blake_r: Update the lease in StaticIPAddress table.
+    # Check for a valid action.
+    if action not in ["commit", "expiry", "release"]:
+        raise LeaseUpdateError("Unknown lease action: %s" % action)
+
+    # Get the subnet for this IP address. If no subnet exists then something
+    # is wrong as we should not be recieving message about unknown subnets.
+    subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+    if subnet is None:
+        raise LeaseUpdateError("No subnet exists for: %s" % ip)
+
+    # Check that the subnet family is the same.
+    subnet_family = subnet.get_ipnetwork().version
+    if ip_family == "ipv4" and subnet_family != IPADDRESS_FAMILY.IPv4:
+        raise LeaseUpdateError(
+            "Family for the subnet does not match. Expected: %s" % ip_family)
+    elif ip_family == "ipv6" and subnet_family != IPADDRESS_FAMILY.IPv6:
+        raise LeaseUpdateError(
+            "Family for the subnet does not match. Expected: %s" % ip_family)
+
+    # We will recieve actions on all addresses in the subnet. We only want
+    # to update the addresses in the dynamic range.
+    ngi = subnet.get_managed_cluster_interface()
+    if IPAddress(ip) not in ngi.get_dynamic_ip_range():
+        # Do nothing.
+        return {}
+
+    interfaces = list(Interface.objects.filter(mac_address=mac))
+    if len(interfaces) == 0 and action == "commit":
+        # A MAC address that is unknown to MAAS was given an IP address. Create
+        # an unknown interface for this lease.
+        unknown_interface = UnknownInterface(
+            name="eth0", mac_address=mac, vlan_id=subnet.vlan_id)
+        unknown_interface.save()
+        interfaces = [unknown_interface]
+    elif len(interfaces) == 0:
+        # No interfaces and not commit action so nothing needs to be done.
+        return {}
+
+    # Delete all discovered IP addresses attached to all interfaces of the same
+    # IP address family.
+    old_family_addresses = StaticIPAddress.objects.filter_by_ip_family(
+        subnet_family)
+    old_family_addresses = old_family_addresses.filter(
+        alloc_type=IPADDRESS_TYPE.DISCOVERED,
+        interface__in=interfaces)
+    old_family_addresses.delete()
+
+    # Create the new StaticIPAddress object based on the action.
+    if action == "commit":
+        # Interfaces received a new lease. Create the new object with the
+        # updated lease information.
+
+        # Hostname sent from the cluster is either blank or can be "(none)". In
+        # either of those cases we do not set the hostname.
+        sip_hostname = None
+        if (hostname is not None and
+                len(hostname) > 0 and
+                not hostname.isspace() and
+                hostname != "(none)"):
+            sip_hostname = hostname
+
+        # Use the timestamp from the lease to create the StaticIPAddress
+        # object. That will make sure that the lease_time is correct from
+        # the created time.
+        created = datetime.fromtimestamp(timestamp)
+        sip = StaticIPAddress.objects.create(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip, subnet=subnet,
+            lease_time=lease_time, hostname=sip_hostname,
+            created=created, updated=created)
+        for interface in interfaces:
+            interface.ip_addresses.add(sip)
+    elif action == "expiry" or action == "release":
+        # Interfaces no longer holds an active lease. Create the new object
+        # to show that it used to be connected to this subnet.
+        sip = StaticIPAddress.objects.create(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
+        for interface in interfaces:
+            interface.ip_addresses.add(sip)
+
     return {}

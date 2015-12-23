@@ -608,6 +608,11 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         User, default=None, blank=True, null=True, editable=False,
         on_delete=PROTECT)
 
+    # Used only by DISCOVERED address to set the lease_time for an active
+    # lease. Time is in seconds.
+    lease_time = IntegerField(
+        default=0, editable=False, null=False, blank=False)
+
     objects = StaticIPAddressManager()
 
     def __str__(self):
