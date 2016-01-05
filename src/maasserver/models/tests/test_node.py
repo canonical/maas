@@ -38,7 +38,6 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.exceptions import NodeStateViolation
-from maasserver.fields import MAC
 from maasserver.models import (
     Config,
     Device,
@@ -2592,34 +2591,6 @@ class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         self.assertFalse(node.is_boot_interface_on_managed_interface())
-
-
-class NodeRoutersTest(MAASServerTestCase):
-
-    def test_routers_stores_mac_address(self):
-        node = factory.make_Node()
-        macs = [MAC('aa:bb:cc:dd:ee:ff')]
-        node.routers = macs
-        node.save()
-        self.assertEqual(macs, reload_object(node).routers)
-
-    def test_routers_stores_multiple_mac_addresses(self):
-        node = factory.make_Node()
-        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        node.routers = macs
-        node.save()
-        self.assertEqual(macs, reload_object(node).routers)
-
-    def test_routers_can_append(self):
-        node = factory.make_Node()
-        mac1 = MAC('aa:bb:cc:dd:ee:ff')
-        mac2 = MAC('00:11:22:33:44:55')
-        node.routers = [mac1]
-        node.save()
-        node = reload_object(node)
-        node.routers.append(mac2)
-        node.save()
-        self.assertEqual([mac1, mac2], reload_object(node).routers)
 
 
 class NodeTransitionsTests(MAASServerTestCase):

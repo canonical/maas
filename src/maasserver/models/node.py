@@ -22,7 +22,6 @@ import re
 from uuid import uuid1
 
 from django.contrib.auth.models import User
-from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -78,7 +77,6 @@ from maasserver.fields import (
     JSONObjectField,
     MAASIPAddressField,
     MAC,
-    MACAddressField,
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -548,9 +546,6 @@ class Node(CleanSave, TimestampedModel):
     parent = ForeignKey(
         "Node", default=None, blank=True, null=True, editable=True,
         related_name="children", on_delete=CASCADE)
-
-    routers = ArrayField(
-        MACAddressField(), blank=True, null=True, default=list)
 
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
 

@@ -32,7 +32,6 @@ from maasserver.exceptions import (
     ClusterUnavailable,
     MAASAPIValidationError,
 )
-from maasserver.fields import MAC
 from maasserver.models import (
     Config,
     Node,
@@ -1332,42 +1331,6 @@ class TestNodesAPI(APITestCase):
         self.assertIn("No such tag(s):", response_dict['tags'][0])
         self.assertIn("'hairy'", response_dict['tags'][0])
         self.assertIn("'boo'", response_dict['tags'][0])
-
-    def test_POST_acquire_allocates_node_connected_to_routers(self):
-        macs = [factory.make_MAC() for counter in range(3)]
-        node = factory.make_Node(
-            routers=macs, status=NODE_STATUS.READY, with_boot_disk=True)
-        factory.make_Node(routers=[], with_boot_disk=True)
-
-        response = self.client.post(reverse('nodes_handler'), {
-            'op': 'acquire',
-            'connected_to': [macs[2].get_raw(), macs[0].get_raw()],
-        })
-
-        self.assertResponseCode(http.client.OK, response)
-        response_json = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(node.system_id, response_json['system_id'])
-
-    def test_POST_acquire_allocates_node_not_connected_to_routers(self):
-        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        factory.make_Node(
-            routers=macs, status=NODE_STATUS.READY, with_boot_disk=True)
-        factory.make_Node(
-            routers=[MAC('11:11:11:11:11:11')], status=NODE_STATUS.READY,
-            with_boot_disk=True)
-        node = factory.make_Node(
-            status=NODE_STATUS.READY, with_boot_disk=True)
-
-        response = self.client.post(reverse('nodes_handler'), {
-            'op': 'acquire',
-            'not_connected_to': ['aa:bb:cc:dd:ee:ff', '11:11:11:11:11:11'],
-        })
-
-        self.assertResponseCode(http.client.OK, response)
-        response_json = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_network(self):
         subnets = [

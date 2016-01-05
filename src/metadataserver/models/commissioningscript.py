@@ -33,7 +33,6 @@ from django.db.models import (
     Model,
 )
 from lxml import etree
-from maasserver.fields import MAC
 from maasserver.models import Fabric
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -393,25 +392,6 @@ def extract_router_mac_addresses(raw_content):
     return doc.xpath(_xpath_routers)
 
 
-def set_node_routers(node, output, exit_status):
-    """Process recently captured raw LLDP information.
-
-    The list of the routers' MAC Addresses is extracted from the raw LLDP
-    information and stored on the given node.
-
-    If `exit_status` is non-zero, this function returns without doing
-    anything.
-    """
-    assert isinstance(output, bytes)
-    if exit_status != 0:
-        return
-    routers = extract_router_mac_addresses(output)
-    if routers is None:
-        node.routers = None
-    else:
-        node.routers = [MAC(router) for router in routers]
-    node.save()
-
 LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases.out'
 LIST_MODALIASES_SCRIPT = \
     'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
@@ -696,7 +676,7 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     },
     LLDP_OUTPUT_NAME: {
         'content': make_function_call_script(lldpd_capture),
-        'hook': set_node_routers,
+        'hook': null_hook,
     },
     '99-maas-03-network-interfaces.out': {
         'content': IPADDR_SCRIPT.encode('ascii'),

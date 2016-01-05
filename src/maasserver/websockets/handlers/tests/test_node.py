@@ -97,7 +97,6 @@ from mock import (
     ANY,
     sentinel,
 )
-from netaddr import IPAddress
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -193,7 +192,6 @@ class TestNodeHandler(MAASServerTestCase):
                 "" if boot_interface is None else
                 "%s" % boot_interface.mac_address),
             "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
-            "routers": handler.dehydrate_routers(node.routers),
             "show_os_info": handler.dehydrate_show_os_info(node),
             "status": node.display_status(),
             "storage": "%3.1f" % (sum([
@@ -286,24 +284,6 @@ class TestNodeHandler(MAASServerTestCase):
             "name": node.nodegroup.name,
             "cluster_name": node.nodegroup.cluster_name,
             }, handler.dehydrate_nodegroup(node.nodegroup))
-
-    def test_dehydrate_routers_returns_empty_list_when_None(self):
-        owner = factory.make_User()
-        handler = NodeHandler(owner, {})
-        self.assertEqual([], handler.dehydrate_routers(None))
-
-    def test_dehydrate_routers_returns_list_of_strings(self):
-        owner = factory.make_User()
-        handler = NodeHandler(owner, {})
-        routers = [
-            IPAddress(factory.make_ipv4_address())
-            for _ in range(3)
-        ]
-        expected = [
-            "%s" % router
-            for router in routers
-        ]
-        self.assertEqual(expected, handler.dehydrate_routers(routers))
 
     def test_dehydrate_power_parameters_returns_None_when_empty(self):
         owner = factory.make_User()

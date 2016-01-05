@@ -67,7 +67,6 @@ from metadataserver.models.commissioningscript import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     make_function_call_script,
-    set_node_routers,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -418,32 +417,6 @@ class TestExtractRouters(MAASServerTestCase):
         lldp_output = make_lldp_output(macs)
         routers = extract_router_mac_addresses(lldp_output)
         self.assertItemsEqual(macs, routers)
-
-
-class TestSetNodeRouters(MAASServerTestCase):
-
-    def test_set_node_routers_updates_node(self):
-        node = factory.make_Node(routers=None)
-        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
-        lldp_output = make_lldp_output(macs)
-        set_node_routers(node, lldp_output, 0)
-        self.assertItemsEqual(
-            [MAC(mac) for mac in macs], reload_object(node).routers)
-
-    def test_set_node_routers_updates_node_if_no_routers(self):
-        node = factory.make_Node()
-        lldp_output = make_lldp_output([])
-        set_node_routers(node, lldp_output, 0)
-        self.assertItemsEqual([], reload_object(node).routers)
-
-    def test_set_node_routers_does_nothing_if_script_failed(self):
-        node = factory.make_Node()
-        routers_before = node.routers
-        macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
-        lldp_output = make_lldp_output(macs)
-        set_node_routers(node, lldp_output, exit_status=1)
-        routers_after = reload_object(node).routers
-        self.assertItemsEqual(routers_before, routers_after)
 
 
 class TestInjectResult(MAASServerTestCase):

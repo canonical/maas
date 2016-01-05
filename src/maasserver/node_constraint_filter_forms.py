@@ -31,10 +31,6 @@ from maasserver.models import (
 )
 from maasserver.models.zone import ZONE_NAME_VALIDATOR
 from maasserver.utils.forms import set_form_error
-from maasserver.utils.orm import (
-    macs_contain,
-    macs_do_not_contain,
-)
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,
@@ -775,24 +771,6 @@ class AcquireNodeForm(RenamableFieldsForm):
         if not_fabric_classes is not None and len(not_fabric_classes) > 0:
             filtered_nodes = filtered_nodes.exclude(
                 interface__vlan__fabric__class_type__in=not_fabric_classes)
-
-        # Filter by connected_to.
-        connected_to = self.cleaned_data.get(
-            self.get_field_name('connected_to'))
-        if connected_to:
-            where, params = macs_contain(
-                "routers", connected_to)
-            filtered_nodes = filtered_nodes.extra(
-                where=[where], params=params)
-
-        # Filter by not_connected_to.
-        not_connected_to = self.cleaned_data.get(
-            self.get_field_name('not_connected_to'))
-        if not_connected_to:
-            where, params = macs_do_not_contain(
-                "routers", not_connected_to)
-            filtered_nodes = filtered_nodes.extra(
-                where=[where], params=params)
 
         # Filter by storage.
         compatible_nodes = {}  # Maps node/storage to named storage constraints

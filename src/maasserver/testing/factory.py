@@ -275,7 +275,7 @@ class Factory(maastesting.factory.Factory):
             self, interface=False, hostname=None, status=None,
             architecture="i386/generic", min_hwe_kernel=None,
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
-            created=None, nodegroup=None, routers=None, zone=None,
+            created=None, nodegroup=None, zone=None,
             networks=None, boot_type=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, disable_ipv4=None,
@@ -297,8 +297,6 @@ class Factory(maastesting.factory.Factory):
             status = NODE_STATUS.DEFAULT
         if nodegroup is None:
             nodegroup = self.make_NodeGroup()
-        if routers is None:
-            routers = [self.make_MAC()]
         if zone is None:
             zone = self.make_Zone()
         if power_type is None:
@@ -317,7 +315,7 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
-            node_type=node_type, nodegroup=nodegroup, routers=routers,
+            node_type=node_type, nodegroup=nodegroup,
             zone=zone, boot_type=boot_type, power_type=power_type,
             power_parameters=power_parameters, power_state=power_state,
             power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,

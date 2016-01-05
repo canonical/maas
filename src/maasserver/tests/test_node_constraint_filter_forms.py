@@ -14,7 +14,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.fields import MAC
 from maasserver.models import (
     Machine,
     Node,
@@ -584,48 +583,6 @@ class TestAcquireNodeForm(MAASServerTestCase):
                     'vlan:%d' % subnet_by_vlan.vlan.vid,
                     ],
             })
-
-    def test_connected_to(self):
-        mac1 = MAC('aa:bb:cc:dd:ee:ff')
-        mac2 = MAC('00:11:22:33:44:55')
-        node1 = factory.make_Node(routers=[mac1, mac2])
-        node2 = factory.make_Node(routers=[mac1])
-        factory.make_Node()
-        self.assertConstrainedNodes(
-            [node1], {'connected_to': [
-                mac1.get_raw(), mac2.get_raw()]})
-        self.assertConstrainedNodes(
-            [node1, node2], {'connected_to': [mac1.get_raw()]})
-
-    def test_invalid_connected_to(self):
-        form = AcquireNodeForm(data={'connected_to': 'invalid'})
-        self.assertEqual(
-            (False, {
-                'connected_to':
-                ["Invalid parameter: list of MAC addresses required."]}),
-            (form.is_valid(), form.errors))
-
-    def test_not_connected_to(self):
-        mac1 = MAC('aa:bb:cc:dd:ee:ff')
-        mac2 = MAC('00:11:22:33:44:55')
-        node1 = factory.make_Node(routers=[mac1, mac2])
-        node2 = factory.make_Node(routers=[mac1])
-        node3 = factory.make_Node()
-        self.assertConstrainedNodes(
-            [node3], {'not_connected_to': [
-                mac1.get_raw(), mac2.get_raw()]})
-        self.assertConstrainedNodes(
-            [node2, node3], {'not_connected_to': [mac2.get_raw()]})
-        self.assertConstrainedNodes(
-            [node1, node2, node3], {'not_connected_to': ["b1:b1:b1:b1:b1:b1"]})
-
-    def test_invalid_not_connected_to(self):
-        form = AcquireNodeForm(data={'not_connected_to': 'invalid'})
-        self.assertEqual(
-            (False, {
-                'not_connected_to':
-                ["Invalid parameter: list of MAC addresses required."]}),
-            (form.is_valid(), form.errors))
 
     def test_zone(self):
         node1 = factory.make_Node()

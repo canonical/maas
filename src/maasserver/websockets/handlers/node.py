@@ -212,15 +212,6 @@ class NodeHandler(TimestampedModelHandler):
                 "cluster_name": nodegroup.cluster_name,
             }
 
-    def dehydrate_routers(self, routers):
-        """Return list of routers."""
-        if routers is None:
-            return []
-        return [
-            "%s" % router
-            for router in routers
-        ]
-
     def dehydrate_power_parameters(self, power_parameters):
         """Return power_parameters None if empty."""
         if power_parameters == '':

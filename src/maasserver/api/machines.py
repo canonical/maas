@@ -101,7 +101,6 @@ DISPLAYED_MACHINE_FIELDS = (
         'discovered',
         'effective_mtu',
         )),
-    'routers',
     'zone',
     'disable_ipv4',
     'constraint_map',
@@ -837,9 +836,6 @@ class MachinesHandler(NodesHandler):
         :type tags: list of unicodes
         :param not_tags: List of tags the acquired machine must not have.
         :type tags: List of unicodes.
-        :param connected_to: List of routers' MAC addresses the returned
-            machine must be connected to.
-        :type connected_to: unicode or list of unicodes
         :param networks: List of networks (defined in MAAS) to which the
             machine must be attached.  A network can be identified by the name
             assigned to it in MAAS; or by an `ip:` prefix followed by any IP
@@ -856,9 +852,6 @@ class MachinesHandler(NodesHandler):
             VLAN number 23. Valid VLAN tags must be in the range of 1 to 4095
             inclusive.
         :type not_networks: list of unicodes
-        :param not_connected_to: List of routers' MAC Addresses the returned
-            machine must not be connected to.
-        :type connected_to: list of unicodes
         :param zone: An optional name for a physical zone the acquired
             machine should be located in.
         :type zone: unicode

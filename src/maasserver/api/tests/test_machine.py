@@ -26,10 +26,7 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
 )
-from maasserver.fields import (
-    MAC,
-    MAC_ERROR_MSG,
-)
+from maasserver.fields import MAC_ERROR_MSG
 from maasserver.models import (
     Config,
     interface as interface_module,
@@ -181,17 +178,6 @@ class TestMachineAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         parsed_result = json_load_bytes(response.content)
         self.assertEqual([lease.ip], parsed_result['ip_addresses'])
-
-    def test_GET_returns_associated_routers(self):
-        macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        machine = factory.make_Node(routers=macs)
-        response = self.client.get(self.get_machine_uri(machine))
-
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [mac.get_raw() for mac in macs], parsed_result['routers'])
 
     def test_GET_returns_interface_set(self):
         machine = factory.make_Node()

@@ -14,8 +14,6 @@ __all__ = [
     'get_one',
     'in_transaction',
     'is_serialization_failure',
-    'macs_contain',
-    'macs_do_not_contain',
     'make_serialization_failure',
     'post_commit',
     'post_commit_do',
@@ -133,48 +131,6 @@ def psql_array(items, sql_type=None):
     if sql_type is not None:
         sql += "::%s[]" % sql_type
     return sql, items
-
-
-def macs_contain(key, macs):
-    """Get the "Django ORM predicate: 'key' contains all the given macs.
-
-    This method returns a tuple of the where clause (as a string) and the
-    parameters (as a list of strings) used to format the where clause.
-    This is typically used with Django's QuerySet's where() method::
-
-      >>> from maasserver.models.node import Node
-
-      >>> where, params = macs_contain('router', ["list", "of", "macs"])
-      >>> all_nodes = Node.objects.all()
-      >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
-
-    """
-    where_clause = (
-        "%s @> ARRAY[" % key +
-        ', '.join(["%s"] * len(macs)) +
-        "]::macaddr[]")
-    return where_clause, macs
-
-
-def macs_do_not_contain(key, macs):
-    """Get the Django ORM predicate: 'key' doesn't contain any macs.
-
-    This method returns a tuple of the where clause (as a string) and the
-    parameters (as a list of strings) used to format the where clause.
-    This is typically used with Django's QuerySet's where() method::
-
-      >>> from maasserver.models.node import Node
-
-      >>> where, params = macs_do_not_contain(
-      ...     'routers', ["list", "of", "macs"])
-      >>> all_nodes = Node.objects.all()
-      >>> filtered_nodes = all_nodes.extra(where=[where], params=params)
-
-    """
-    contains_any = " OR ".join([
-        "%s " % key + "@> ARRAY[%s]::macaddr[]"] * len(macs))
-    where_clause = "((%s IS NULL) OR NOT (%s))" % (key, contains_any)
-    return where_clause, macs
 
 
 def get_psycopg2_exception(exception):

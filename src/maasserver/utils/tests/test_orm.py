@@ -21,7 +21,6 @@ from django.db import (
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
-from maasserver.fields import MAC
 from maasserver.models import Node
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -41,8 +40,6 @@ from maasserver.utils.orm import (
     get_psycopg2_serialization_exception,
     in_transaction,
     is_serialization_failure,
-    macs_contain,
-    macs_do_not_contain,
     make_serialization_failure,
     post_commit,
     post_commit_do,
@@ -206,37 +203,6 @@ class TestGetFirst(MAASTestCase):
             raise SecondItemRetrieved()
 
         self.assertEqual("Item 1", get_first(multiple_items()))
-
-
-class TestGetPredicateUtilities(MAASTestCase):
-
-    def test_macs_contain_returns_predicate(self):
-        macs = ['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff']
-        where, params = macs_contain('key', macs)
-        self.assertEqual(
-            (where, params),
-            ('key @> ARRAY[%s, %s]::macaddr[]', macs))
-
-    def test_macs_contain_returns_predicate_using_MACs(self):
-        macs = [MAC('11:22:33:44:55:66')]
-        where, params = macs_contain('key', macs)
-        self.assertEqual(
-            (where, params),
-            ('key @> ARRAY[%s]::macaddr[]', macs))
-
-    def test_macs_do_not_contain_returns_predicate(self):
-        macs = ['11:22:33:44:55:66', 'aa:bb:cc:dd:ee:ff']
-        where, params = macs_do_not_contain('key', macs)
-        self.assertEqual(
-            (where, params),
-            (
-                (
-                    '((key IS NULL) OR NOT '
-                    '(key @> ARRAY[%s]::macaddr[] OR '
-                    'key @> ARRAY[%s]::macaddr[]))'
-                ),
-                macs,
-            ))
 
 
 class TestSerializationFailure(SerializationFailureTestCase):
