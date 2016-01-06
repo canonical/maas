@@ -6,7 +6,7 @@
 __all__ = [
     'DNSForwardZoneConfig',
     'DNSReverseZoneConfig',
-    'DNSZoneInfo',
+    'DomainInfo',
     ]
 
 from datetime import datetime
@@ -95,7 +95,7 @@ def get_details_for_ip_range(ip_range):
     return intersecting_subnets, prefix, rdns_suffix
 
 
-class DNSZoneInfo:
+class DomainInfo:
     """Information about a DNS zone"""
 
     def __init__(self, subnetwork, zone_name, target_path=None):
@@ -113,15 +113,16 @@ class DNSZoneInfo:
             self.target_path = target_path
 
 
-class DNSZoneConfigBase:
+class DomainConfigBase:
     """Base class for zone writers."""
 
     template_file_name = 'zone.template'
 
     def __init__(self, domain, zone_info, serial=None):
         """
-        :param domain: The domain name of the forward zone.
-        :param zone_info: list of DNSZoneInfo entries.
+        :param domain: An iterable list of domain names for the
+            forward zone.
+        :param zone_info: list of DomainInfo entries.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
         """
@@ -153,9 +154,10 @@ class DNSZoneConfigBase:
             content = render_dns_template(cls.template_file_name, *parameters)
             with report_missing_config_dir():
                 incremental_write(content.encode("utf-8"), outfile, mode=0o644)
+        pass
 
 
-class DNSForwardZoneConfig(DNSZoneConfigBase):
+class DNSForwardZoneConfig(DomainConfigBase):
     """Writes forward zone files.
 
     A forward zone config contains two kinds of mappings: "A" records map all
@@ -166,9 +168,9 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
     """
 
     def __init__(self, domain, **kwargs):
-        """See `DNSZoneConfigBase.__init__`.
+        """See `DomainConfigBase.__init__`.
 
-        :param domain: The domain name of the forward zone.
+        :param domain: The forward domain name.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
         :param dns_ip: The IP address of the DNS server authoritative for this
@@ -183,14 +185,15 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         self._dynamic_ranges = kwargs.pop('dynamic_ranges', [])
         self._srv_mapping = kwargs.pop('srv_mapping', [])
         super(DNSForwardZoneConfig, self).__init__(
-            domain, zone_info=[DNSZoneInfo(None, domain)], **kwargs)
+            domain,
+            zone_info=[DomainInfo(None, domain)],
+            **kwargs)
 
     @classmethod
     def get_mapping(cls, mapping, domain, dns_ip):
         """Return a generator mapping hostnames to IP addresses.
 
         This includes the record for the name server's IP.
-
         :param mapping: A dict mapping host names to lists of IP addresses.
         :param domain: Zone's domain name.
         :param dns_ip: IP address for the zone's authoritative DNS server.
@@ -215,6 +218,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :return: A generator of tuples: (host name, IP address).
         """
         mapping = cls.get_mapping(mapping, domain, dns_ip)
+        if mapping is None:
+            return ()
         return (item for item in mapping if IPAddress(item[1]).version == 4)
 
     @classmethod
@@ -231,6 +236,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :return: A generator of tuples: (host name, IP address).
         """
         mapping = cls.get_mapping(mapping, domain, dns_ip)
+        if mapping is None:
+            return ()
         return (item for item in mapping if IPAddress(item[1]).version == 6)
 
     @classmethod
@@ -241,6 +248,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :return: A generator of tuples:
             (service, 'priority weight port target').
         """
+        if mappings is None:
+            return
         for record in mappings:
             target = get_fqdn_or_ip_address(record.target)
             item = '%s %s %s %s' % (
@@ -311,7 +320,7 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
                 })
 
 
-class DNSReverseZoneConfig(DNSZoneConfigBase):
+class DNSReverseZoneConfig(DomainConfigBase):
     """Writes reverse zone files.
 
     A reverse zone mapping contains "PTR" records, each mapping
@@ -320,9 +329,9 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
     """
 
     def __init__(self, domain, **kwargs):
-        """See `DNSZoneConfigBase.__init__`.
+        """See `DomainConfigBase.__init__`.
 
-        :param domain: The domain name of the forward zone.
+        :param domain: Default zone name.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
         :param mapping: A hostname:ips mapping for all known hosts in
@@ -405,7 +414,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
                 new_zone = "%x-%d.%s" % (base, network.prefixlen, zone_rest)
             else:
                 new_zone = "%d-%d.%s" % (base, network.prefixlen, zone_rest)
-            info.append(DNSZoneInfo(
+            info.append(DomainInfo(
                 IPNetwork("%s/%d" % (first, subnet_prefix)),
                 new_zone))
             base += 1
@@ -422,22 +431,24 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         """Return reverse mapping: reverse IPs to hostnames.
 
         The reverse generated mapping is the mapping between the reverse
-        IP addresses and the hostnames for all the IP addresses in the given
-        `mapping`.
+        IP addresses and all the hostnames for all the IP addresses in the
+        given `mapping`.
 
         The returned mapping is meant to be used to generate PTR records in
         the reverse zone file.
 
         :param mapping: A hostname:ip-addresses mapping for all known hosts in
-            the reverse zone.
+            the reverse zone, to their FQDN (without trailing dot).
         :param domain: Zone's domain name.
         :param network: DNS Zone's network.
         :type network: :class:`netaddr.IPNetwork`
         """
+        if mapping is None:
+            return ()
         return (
             (
                 IPAddress(ip).reverse_dns,
-                '%s.%s.' % (hostname, domain),
+                '%s.' % (hostname),
             )
             for hostname, ip in enumerate_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.

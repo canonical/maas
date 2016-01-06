@@ -183,6 +183,8 @@ def filtered_nodes_list_from_request(request, model=None):
         specified multiple times to get events relating to more than one node.
     :param id: An optional list of system ids.  Only events relating to the
         nodes with matching system ids will be returned.
+    :param domain: An optional name for a dns domain. Only events relating to
+        the nodes in the domain will be returned.
     :param zone: An optional name for a physical zone. Only events relating to
         the nodes in the zone will be returned.
     :param agent_name: An optional agent name.  Only events relating to the
@@ -209,6 +211,9 @@ def filtered_nodes_list_from_request(request, model=None):
     match_hostnames = get_optional_list(request.GET, 'hostname')
     if match_hostnames is not None:
         nodes = nodes.filter(hostname__in=match_hostnames)
+    match_domains = get_optional_list(request.GET, 'domain')
+    if match_domains is not None:
+        nodes = nodes.filter(domain__name__in=match_domains)
     match_zone_name = request.GET.get('zone', None)
     if match_zone_name is not None:
         nodes = nodes.filter(zone__name=match_zone_name)
@@ -1370,6 +1375,7 @@ class NodesHandler(OperationsHandler):
         nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__nodegroupinterface_set')
         nodes = nodes.prefetch_related('zone')
+        nodes = nodes.prefetch_related('domain')
         return nodes.order_by('id')
 
     def read(self, request):

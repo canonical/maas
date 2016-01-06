@@ -448,58 +448,6 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             self.assertFalse(form.is_valid())
             self.assertThat(form.errors[field], Contains(message))
 
-    def test_identifies_duplicate_fqdns_in_nodegroup(self):
-        # Don't allow DNS management to be enabled when it would
-        # cause more than one node on the nodegroup to have the
-        # same FQDN.
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        base_hostname = factory.make_hostname("host")
-        full_hostnames = [
-            "%s.%s" % (base_hostname, factory.make_hostname("domain"))
-            for _ in range(0, 2)]
-        for hostname in full_hostnames:
-            factory.make_Node(hostname=hostname, nodegroup=nodegroup)
-        [interface] = nodegroup.get_managed_interfaces()
-        data = {"management": NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS}
-        form = NodeGroupInterfaceForm(data=data, instance=interface)
-        duplicates = form.get_duplicate_fqdns()
-        expected_duplicates = set(["%s.%s" % (base_hostname, nodegroup.name)])
-        self.assertEqual(expected_duplicates, duplicates)
-
-    def test_identifies_duplicate_fqdns_across_nodegroups(self):
-        # Don't allow DNS management to be enabled when it would
-        # cause a node in this nodegroup to have the same FQDN
-        # as a node in another nodegroup.
-
-        conflicting_domain = factory.make_hostname("conflicting-domain")
-        nodegroup_a = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            name=conflicting_domain)
-        conflicting_hostname = factory.make_hostname("conflicting-hostname")
-        factory.make_Node(
-            hostname="%s.%s" % (conflicting_hostname, conflicting_domain),
-            nodegroup=nodegroup_a)
-
-        nodegroup_b = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            name=conflicting_domain)
-        factory.make_Node(
-            hostname="%s.%s" % (
-                conflicting_hostname, factory.make_hostname("other-domain")),
-            nodegroup=nodegroup_b)
-
-        [interface] = nodegroup_b.get_managed_interfaces()
-        data = {"management": NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS}
-        form = NodeGroupInterfaceForm(data=data, instance=interface)
-        duplicates = form.get_duplicate_fqdns()
-        expected_duplicates = set(
-            ["%s.%s" % (conflicting_hostname, conflicting_domain)])
-        self.assertEqual(expected_duplicates, duplicates)
-
     def test_creates_subnet_for_interface(self):
         int_settings = factory.get_interface_fields()
         int_settings['interface'] = 'eth0:1'

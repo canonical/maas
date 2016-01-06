@@ -15,23 +15,24 @@ from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Config,
+    Domain,
     Node,
-    NodeGroup,
     NodeGroupInterface,
     Subnet,
 )
 from maasserver.utils.signals import connect_to_field_change
 
 
-@receiver(post_save, sender=NodeGroup)
-def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
-    """Create or update DNS zones related to the saved nodegroup."""
+@receiver(post_save, sender=Domain)
+def dns_post_save_Domain(sender, instance, created, **kwargs):
+    """Create or update DNS zones as needed for this domain."""
     from maasserver.dns.config import (
+        dns_add_domains,
         dns_update_all_zones,
-        dns_add_zones,
         )
+    # if we created the domain, then we can just add it.
     if created:
-        dns_add_zones(instance)
+        dns_add_domains([instance])
     else:
         dns_update_all_zones()
 
@@ -44,10 +45,10 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
         dns_update_all_zones,
-        dns_add_zones,
+        dns_add_subnets,
         )
     if created:
-        dns_add_zones(instance.nodegroup)
+        dns_add_subnets(instance.subnet)
     else:
         dns_update_all_zones()
 
@@ -57,9 +58,14 @@ def dns_post_save_Subnet(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
         dns_update_all_zones,
+        dns_add_subnets,
         )
-    if instance.get_cluster_interfaces().filter(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS).count() > 0:
+    # We don't know but what the admin moved a subnet, so we need to regenerate
+    # the world.
+    # if we created it, just add it.  Otherwise, rebuild the world.
+    if created:
+        dns_add_subnets([instance])
+    else:
         dns_update_all_zones()
 
 
@@ -82,23 +88,18 @@ connect_to_field_change(
 @receiver(post_delete, sender=Node)
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
-    try:
-        from maasserver.dns import config as dns_config
-        dns_config.dns_update_zones(instance.nodegroup)
-    except NodeGroup.DoesNotExist:
-        # If this Node is being deleted because the whole NodeGroup
-        # has been deleted, no need to update the zone file because
-        # this Node got removed.
-        pass
+    from maasserver.dns import config as dns_config
+    dns_config.dns_update_by_node(instance)
 
 
 def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
     from maasserver.dns import config as dns_config
-    dns_config.dns_update_zones(instance.nodegroup)
+    dns_config.dns_update_by_node(instance)
 
 
-connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
+connect_to_field_change(
+    dns_post_edit_hostname_Node, Node, ['hostname', 'domain_id'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):

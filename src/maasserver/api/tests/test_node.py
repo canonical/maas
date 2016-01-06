@@ -145,8 +145,8 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = node.domain.name
         self.assertEqual(
             "%s.%s" % (node.hostname, domain_name),
             parsed_result['hostname'])
@@ -873,8 +873,8 @@ class TestNodeAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = node.domain.name
         self.assertEqual(
             'francis.%s' % domain_name, parsed_result['hostname'])
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
@@ -970,7 +970,9 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'hostname': ["DNS name contains an empty label."]},
+            {'hostname': [
+                "DNS name contains an empty label.",
+                "Nonexistant domain."]},
             parsed_result)
 
     def test_PUT_refuses_to_update_nonexistent_node(self):

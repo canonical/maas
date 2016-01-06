@@ -117,6 +117,7 @@ class NodeHandler(TimestampedModelHandler):
             .prefetch_related('nodegroup__nodegroupinterface_set__subnet')
             .prefetch_related('interface_set__vlan__fabric')
             .prefetch_related('zone')
+            .prefetch_related('domain')
             .prefetch_related('tags')
             .prefetch_related('blockdevice_set__physicalblockdevice')
             .prefetch_related('blockdevice_set__virtualblockdevice'))
@@ -174,6 +175,7 @@ class NodeHandler(TimestampedModelHandler):
             "cpu_count",
             "memory",
             "power_state",
+            "domain",
             "zone",
         ]
         listen_channels = [
@@ -192,6 +194,13 @@ class NodeHandler(TimestampedModelHandler):
             return ""
         else:
             return user.username
+
+    def dehydrate_domain(self, domain):
+        """Return domain name."""
+        return {
+            "id": domain.id,
+            "name": domain.name,
+        }
 
     def dehydrate_zone(self, zone):
         """Return zone name."""
@@ -659,6 +668,8 @@ class NodeHandler(TimestampedModelHandler):
         new_params["power_type"] = params.get("power_type")
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
+        if "domain" in params:
+            new_params["domain"] = params["domain"]["name"]
         if "nodegroup" in params:
             new_params["nodegroup"] = params["nodegroup"]["uuid"]
         if "min_hwe_kernel" in params:

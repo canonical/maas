@@ -34,6 +34,7 @@ from maasserver.exceptions import (
 )
 from maasserver.models import (
     Config,
+    Domain,
     Node,
     NodeGroup,
 )
@@ -82,20 +83,19 @@ class NodeHostnameTest(MultipleUsersScenarios,
         ('admin', dict(userfactory=factory.make_admin)),
     ]
 
-    def test_GET_list_returns_fqdn_with_domain_name_from_cluster(self):
-        # If DNS management is enabled, the domain part of a hostname
-        # is replaced by the domain name defined on the cluster.
+    def test_GET_list_returns_fqdn_with_proper_domain_name(self):
+        # The FQDN for a host is properly constructed.
         hostname_without_domain = factory.make_name('hostname')
+        domain = factory.make_Domain(name=factory.make_name('domain'))
         hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.make_string())
-        domain = factory.make_name('domain')
+            hostname_without_domain, domain.name)
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED,
-            name=domain,
+            name=factory.make_name('nodegroup'),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         factory.make_Node(
             hostname=hostname_with_domain, nodegroup=nodegroup)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        expected_hostname = hostname_with_domain
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content)
@@ -879,7 +879,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        domain_name = desired_node.nodegroup.name
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             "%s.%s" % (desired_node.hostname, domain_name),
             parsed_result['hostname'])
@@ -921,8 +921,8 @@ class TestNodesAPI(APITestCase):
             'name': node.hostname,
         })
         self.assertEqual(http.client.OK, response.status_code)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             "%s.%s" % (node.hostname, domain_name),
             json.loads(

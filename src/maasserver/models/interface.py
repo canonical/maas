@@ -711,15 +711,20 @@ class Interface(CleanSave, TimestampedModel):
             # There's only ever one failure here.
             remove_host_maps_failures[0].raiseException()
 
-    def _update_dns_zones(self, other_nodegroups=[]):
+    def _update_dns_zones(self, subnets=[], ipaddresses=[]):
         """Updates DNS for the list of `other_nodegroups` and the `NodeGroup`
         for the node attached to this interface."""
         from maasserver.dns import config
-        nodegroups = set(other_nodegroups)
+        subnets = set(subnets)
         node = self.get_node()
-        if node is not None and node.nodegroup is not None:
-            nodegroups.add(node.nodegroup)
-        config.dns_update_zones(nodegroups)
+        if node is not None:
+            config.dns_update_by_node(node)
+        config.dns_update_subnets(subnets)
+        domains = set()
+        for ip in ipaddresses:
+            for domain in [rr.domain for rr in ip.dnsresource_set.all()]:
+                domains.add(domain)
+        config.dns_update_domains(domains)
 
     def _remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
@@ -841,10 +846,7 @@ class Interface(CleanSave, TimestampedModel):
         self._remove_link_up()
 
         # Update the DNS zones.
-        if ngi is not None:
-            self._update_dns_zones([ngi.nodegroup])
-        else:
-            self._update_dns_zones()
+        self._update_dns_zones()
         return static_ip
 
     def _link_subnet_link_up(self, subnet):
@@ -931,8 +933,9 @@ class Interface(CleanSave, TimestampedModel):
         """Unlink the STATIC IP address from the interface."""
         registered_on_cluster = False
         ngi = None
-        if static_ip.subnet is not None:
-            ngi = static_ip.subnet.get_managed_cluster_interface()
+        subnet = static_ip.subnet
+        if subnet is not None:
+            ngi = subnet.get_managed_cluster_interface()
             if ngi is not None:
                 registered_on_cluster = (
                     self._is_first_static_allocation_on_cluster(
@@ -963,10 +966,7 @@ class Interface(CleanSave, TimestampedModel):
                 self._update_host_maps(ngi.nodegroup, new_hostmap_ip)
 
         # Update the DNS zones.
-        if ngi is not None:
-            self._update_dns_zones([ngi.nodegroup])
-        else:
-            self._update_dns_zones()
+        self._update_dns_zones(subnets=[subnet])
         return static_ip
 
     def unlink_ip_address(
@@ -1022,7 +1022,8 @@ class Interface(CleanSave, TimestampedModel):
         # If the subnets are different then remove the hostmap from the old
         # subnet as well.
         if static_ip.subnet is not None and static_ip.subnet != subnet:
-            old_subnet_ngi = static_ip.subnet.get_managed_cluster_interface()
+            old_subnet = static_ip.subnet
+            old_subnet_ngi = old_subnet.get_managed_cluster_interface()
             registered_on_cluster = False
             if old_subnet_ngi is not None:
                 registered_on_cluster = (
@@ -1044,8 +1045,7 @@ class Interface(CleanSave, TimestampedModel):
                         old_subnet_ngi.nodegroup, new_hostmap_ip)
 
             # Update the DNS configuration for the old subnet if needed.
-            if old_subnet_ngi is not None:
-                self._update_dns_zones([old_subnet_ngi.nodegroup])
+            self._update_dns_zones(subnets=[old_subnet])
 
         # If the IP addresses are on the same subnet but the IP's are
         # different then we need to remove the hostmap.
@@ -1129,7 +1129,7 @@ class Interface(CleanSave, TimestampedModel):
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
-        self._update_dns_zones(affected_nodegroups)
+        self._update_dns_zones()
         return assigned_addresses
 
     def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
@@ -1218,24 +1218,25 @@ class Interface(CleanSave, TimestampedModel):
     def release_auto_ips(self):
         """Release all AUTO IP address for this interface that have an IP
         address assigned."""
-        affected_nodegroups = set()
+        affected_subnets = set()
         released_addresses = []
         for auto_ip in self.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.AUTO):
             if auto_ip.ip:
-                ngi, released_ip = self._release_auto_ip(auto_ip)
-                if ngi is not None:
-                    affected_nodegroups.add(ngi.nodegroup)
+                subnet, released_ip = self._release_auto_ip(auto_ip)
+                if subnet is not None:
+                    affected_subnets.add(subnet)
                 released_addresses.append(released_ip)
-        self._update_dns_zones(affected_nodegroups)
+        self._update_dns_zones(subnets=affected_subnets)
         return released_addresses
 
     def _release_auto_ip(self, auto_ip):
         """Release the IP address assigned to the `auto_ip`."""
         registered_on_cluster = False
         ngi = None
-        if auto_ip.subnet is not None:
-            ngi = auto_ip.subnet.get_managed_cluster_interface()
+        subnet = auto_ip.subnet
+        if subnet is not None:
+            ngi = subnet.get_managed_cluster_interface()
             if ngi is not None:
                 registered_on_cluster = (
                     self._is_first_static_allocation_on_cluster(
@@ -1257,7 +1258,7 @@ class Interface(CleanSave, TimestampedModel):
                 ngi.nodegroup, ip_family)
             if new_hostmap_ip is not None:
                 self._update_host_maps(ngi.nodegroup, new_hostmap_ip)
-        return ngi, auto_ip
+        return subnet, auto_ip
 
     def claim_static_ips(self, requested_address=None):
         """Assign static IP addresses to this Interface.

@@ -20,6 +20,7 @@ from maasserver.enum import (
 )
 from maasserver.fields import MAC
 from maasserver.models import (
+    Domain,
     Node,
     node as node_module,
     NodeGroup,
@@ -77,6 +78,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(NODE_BOOT.FASTPATH, diane.boot_type)
 
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
+        Domain.objects.get_or_create(name="domain")
         hostname = '192-168-5-19.domain'
         response = self.client.post(
             reverse('nodes_handler'),
@@ -372,10 +374,12 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 
-    def test_created_node_has_domain_from_cluster(self):
+    def test_created_node_does_not_have_domain_from_cluster(self):
+        domainname = factory.make_string()
+        Domain.objects.get_or_create(name=domainname)
         hostname_without_domain = factory.make_name('hostname')
         hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.make_string())
+            hostname_without_domain, domainname)
         domain = factory.make_name('domain')
         factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED,
@@ -394,11 +398,11 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_result = json_load_bytes(response.content)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        expected_hostname = '%s.%s' % (hostname_without_domain, domainname)
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
 
-    def test_created_node_gets_domain_from_cluster_appended(self):
+    def test_created_node_gets_default_domain_appended(self):
         hostname_without_domain = factory.make_name('hostname')
         domain = factory.make_name('domain')
         factory.make_NodeGroup(
@@ -418,7 +422,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_result = json_load_bytes(response.content)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+        expected_hostname = '%s.%s' % (
+            hostname_without_domain,
+            Domain.objects.get_default_domain().name)
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
 

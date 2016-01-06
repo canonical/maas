@@ -104,7 +104,7 @@ def bind_write_configuration(zones, trusted_networks):
     """Write BIND's configuration.
 
     :param zones: Those zones to include in main config.
-    :type zones: Sequence of :py:class:`DNSZoneData`.
+    :type zones: Sequence of :py:class:`DomainData`.
 
     :param trusted_networks: A sequence of CIDR network specifications that
         are permitted to use the DNS server as a forwarder.
@@ -137,7 +137,7 @@ def bind_write_zones(zones):
     """Write out DNS zones.
 
     :param zones: Those zones to write.
-    :type zones: Sequence of :py:class:`DNSZoneData`.
+    :type zones: Sequence of :py:class:`DomainData`.
     """
     for zone in zones:
         zone.write_config()

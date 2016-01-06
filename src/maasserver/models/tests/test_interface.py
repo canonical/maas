@@ -1412,11 +1412,11 @@ class TestLinkSubnet(MAASServerTestCase):
                     ip_address.ip: interface.mac_address.get_raw(),
                 }}))
 
-    def test__STATIC_calls_dns_update_zones(self):
+    def test__STATIC_calls_dns_update_by_node(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        mock_dns_update_zones = self.patch_autospec(
-            config, "dns_update_zones")
+        mock_dns_update_by_node = self.patch_autospec(
+            config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -1431,8 +1431,8 @@ class TestLinkSubnet(MAASServerTestCase):
                 alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
         self.assertIsNotNone(ip_address)
         self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith({nodegroup, interface.node.nodegroup}))
+            mock_dns_update_by_node,
+            MockCalledOnceWith(interface.node))
 
     def test__STATIC_doesnt_call_update_host_maps_when_allocations_exist(self):
         mock_update_host_maps = self.patch_autospec(
@@ -1636,12 +1636,14 @@ class TestUnlinkSubnet(MAASServerTestCase):
             nodegroup: {next_ip.ip: interface.mac_address.get_raw()},
             }))
 
-    def test__STATIC_calls_dns_update_zones(self):
+    def test__STATIC_calls_dns_update_subnets(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "remove_host_maps")
         self.patch_autospec(interface_module, "update_host_maps")
-        mock_dns_update_zones = self.patch_autospec(
-            config, "dns_update_zones")
+        mock_dns_update_subnets = self.patch_autospec(
+            config, "dns_update_subnets")
+        mock_dns_update_by_node = self.patch_autospec(
+            config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -1654,8 +1656,11 @@ class TestUnlinkSubnet(MAASServerTestCase):
             subnet=subnet, interface=interface)
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith({nodegroup, interface.node.nodegroup}))
+            mock_dns_update_subnets,
+            MockCalledOnceWith({subnet}))
+        self.assertThat(
+            mock_dns_update_by_node,
+            MockCalledOnceWith(interface.node))
 
     def test__LINK_UP_deletes_link(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1744,7 +1749,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_auto_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1808,7 +1813,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_link_up_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1872,7 +1877,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_static_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1900,7 +1905,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1928,7 +1933,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_link_up(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1956,7 +1961,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_same_subnet_does_nothing(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2049,7 +2054,7 @@ class TestUpdateIPAddress(MAASServerTestCase):
             mock_update_host_maps,
             MockCalledOnceWith(nodegroup, new_static_ip))
         self.assertThat(
-            mock_update_dns_zones, MockCalledOnceWith([nodegroup]))
+            mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_static_to_another_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2107,9 +2112,9 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_update_dns_zones,
             MockCallsMatch(
-                call([nodegroup_v4]),
-                call([nodegroup_v6]),
-            ))
+                call(subnets=[subnet]),
+                call(),
+                ))
 
     def test__switch_static_to_another_subnet_with_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2155,9 +2160,9 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertThat(
             mock_update_dns_zones,
             MockCallsMatch(
-                call([nodegroup_v4]),
-                call([nodegroup_v6]),
-            ))
+                call(subnets=[subnet]),
+                call(),
+                ))
 
 
 class TestUpdateLinkById(MAASServerTestCase):
@@ -2183,7 +2188,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_all_auto_ip_addresses(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2209,7 +2214,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_all_missing_assigned_auto_ip_addresses(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2233,7 +2238,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_ip_address_in_static_ip_range(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2259,7 +2264,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2295,7 +2300,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claim_fails_if_subnet_missing(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2317,7 +2322,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claim_fails_if_no_static_range(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2342,7 +2347,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
         from maasserver.dns import config
         mock_update_host_maps = self.patch_autospec(
             interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2362,7 +2367,7 @@ class TestClaimAutoIPs(MAASServerTestCase):
         from maasserver.dns import config
         mock_update_host_maps = self.patch_autospec(
             interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(
@@ -2397,11 +2402,11 @@ class TestClaimAutoIPs(MAASServerTestCase):
                     }
                 })))
 
-    def test__calls_dns_update_zones(self):
+    def test__calls_dns_update_by_node(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        mock_dns_update_zones = self.patch_autospec(
-            config, "dns_update_zones")
+        mock_dns_update_by_node = self.patch_autospec(
+            config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2413,8 +2418,8 @@ class TestClaimAutoIPs(MAASServerTestCase):
             subnet=subnet, interface=interface)
         interface.claim_auto_ips()
         self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith({nodegroup, interface.node.nodegroup}))
+            mock_dns_update_by_node,
+            MockCalledOnceWith(interface.node))
 
     def test__excludes_ip_addresses_in_exclude_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2451,7 +2456,8 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "remove_host_maps")
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
+        self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2479,7 +2485,8 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "remove_host_maps")
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
+        self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(2):
             subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -2503,7 +2510,8 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         mock_remove_host_maps = self.patch_autospec(
             interface_module, "remove_host_maps")
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
+        self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2526,7 +2534,8 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         self.patch_autospec(interface_module, "remove_host_maps")
         mock_update_host_maps = self.patch_autospec(
             interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
+        self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2546,12 +2555,14 @@ class TestReleaseAutoIPs(MAASServerTestCase):
                 nodegroup: {sip: interface.mac_address.get_raw()},
             }))
 
-    def test__calls_dns_update_zones(self):
+    def test__calls_dns_update_subnets(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "remove_host_maps")
         self.patch_autospec(interface_module, "update_host_maps")
-        mock_dns_update_zones = self.patch_autospec(
-            config, "dns_update_zones")
+        mock_dns_update_by_node = self.patch_autospec(
+            config, "dns_update_by_node")
+        mock_dns_update_subnets = self.patch_autospec(
+            config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -2564,8 +2575,11 @@ class TestReleaseAutoIPs(MAASServerTestCase):
             subnet=subnet, interface=interface)
         interface.release_auto_ips()
         self.assertThat(
-            mock_dns_update_zones,
-            MockCalledOnceWith({nodegroup, interface.node.nodegroup}))
+            mock_dns_update_subnets,
+            MockCalledOnceWith({subnet}))
+        self.assertThat(
+            mock_dns_update_by_node,
+            MockCalledOnceWith(interface.node))
 
 
 class TestClaimStaticIPs(MAASServerTestCase):
@@ -2807,7 +2821,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
     def test__claim_static_fails_if_parent_subnet_cannot_be_found(self):
         from maasserver.dns import config
         self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_zones")
+        self.patch_autospec(config, "dns_update_by_node")
+        self.patch_autospec(config, "dns_update_subnets")
         subnet = factory.make_Subnet()
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         factory.make_NodeGroupInterface(

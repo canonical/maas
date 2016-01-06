@@ -318,6 +318,7 @@ class DevicesHandler(OperationsHandler):
         devices = devices.select_related('nodegroup')
         devices = devices.prefetch_related('nodegroup__nodegroupinterface_set')
         devices = devices.prefetch_related('zone')
+        devices = devices.prefetch_related('domain')
         return devices.order_by('id')
 
     @classmethod

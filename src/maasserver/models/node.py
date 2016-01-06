@@ -80,6 +80,7 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
+from maasserver.models.domain import Domain
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
@@ -250,6 +251,22 @@ class NodeQueriesMixin(MAASQueriesMixin):
         """
         return self.exclude(
             interface__ip_addresses__subnet__cidr__in=subnet_cidrs)
+
+    def filter_by_domains(self, domain_names):
+        """Return the set of nodes with at least one interface configured in
+        one of the specified dns zone names.
+        """
+        return self.filter(
+            interface__ip_addresses__dnsresource_set__domain__name__in=
+            domain_names)
+
+    def exclude_domains(self, domain_names):
+        """Return the set of nodes without any interfaces configured in
+        one of the specified dns zone names.
+        """
+        return self.exclude(
+            interface__ip_addresses__dnsresource_set__domain__name__in=
+            domain_names)
 
 
 class NodeQuerySet(QuerySet, NodeQueriesMixin):
@@ -426,10 +443,11 @@ class RackControllerManager(BaseNodeManager):
 
 
 def nodegroup_fqdn(hostname, nodegroup_name):
-    """Build a FQDN from a hostname and a nodegroup name.
+    """Build a FQDN from a hostname and a given domain name.
 
-    If hostname includes a domain, it is replaced with nodegroup_name.
-    Otherwise, nodegroup name is append to hostname as a domain.
+    Strip any labels after the first from the hostname, and then append the
+    given domain name.  This used to be from the nodegroup, but is
+    transitioning to node.domain
     """
     stripped_hostname = strip_domain(hostname)
     return '%s.%s' % (stripped_hostname, nodegroup_name)
@@ -446,6 +464,11 @@ def fqdn_is_duplicate(node, fqdn):
             return True
 
     return False
+
+
+def get_default_domain():
+    """Get the default domain name."""
+    return Domain.objects.get_default_domain().id
 
 
 def get_default_zone():
@@ -607,6 +630,12 @@ class Node(CleanSave, TimestampedModel):
 
     tags = ManyToManyField(Tag)
 
+    # What Domain do we use for this host unless the StaticIPAddress record
+    # overrides it?
+    domain = ForeignKey(
+        Domain, default=get_default_domain, null=False,
+        editable=True, on_delete=PROTECT)
+
     # Disable IPv4 support on node once deployed, on operating systems that
     # support this choice.
     disable_ipv4 = BooleanField(
@@ -679,18 +708,9 @@ class Node(CleanSave, TimestampedModel):
     def fqdn(self):
         """Fully qualified domain name for this node.
 
-        If MAAS manages DNS for this node or if this node doesn't have a
-        domain name set, replace or add the domain name configured
-        on the cluster controller.  Otherwise simply return the node's
-        hostname.
+        Return the FQDN for this host.
         """
-        should_add_domain_name = (
-            self.nodegroup.manages_dns() or
-            self.hostname == strip_domain(self.hostname)
-        )
-        if should_add_domain_name:
-            return nodegroup_fqdn(self.hostname, self.nodegroup.name)
-        return self.hostname
+        return nodegroup_fqdn(self.hostname, self.domain.name)
 
     def get_deployment_time(self):
         """Return the deployment time of this node (in seconds).
@@ -1018,9 +1038,31 @@ class Node(CleanSave, TimestampedModel):
                 {'architecture':
                     ["Architecture must be defined for installable nodes."]})
 
+    def clean_hostname_domain(self, prev):
+        # Thru MAAS 1.9, if the node was on a nodegroupinterface that did not
+        # manage the DNS, then hostname was an FQDN. (Otherwise, we simply
+        # threw away any domain portion of the name, and used NodeGroup.name.
+        # The migration code took care of that logic, and here we assume that
+        # if you set the hostname to a name with dots, that you mean for that
+        # to be the FQDN of the host.
+        if self.hostname.find('.') > -1:
+            # They have specified an FQDN.  Split up the pieces, and throw
+            # an error if the domain does not exist.
+            name, domainname = self.hostname.split('.', 1)
+            domains = Domain.objects.filter(name=domainname)
+            if domains.count() == 1:
+                self.hostname = name
+                self.domain = domains[0]
+            else:
+                raise ValidationError(
+                    {'hostname': ["Nonexistant domain."]})
+        elif self.domain is None:
+            self.domain = Domain.objects.get_default_domain()
+
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
         prev = get_one(Node.objects.filter(pk=self.pk))
+        self.clean_hostname_domain(prev)
         self.clean_status(prev)
         self.clean_architecture(prev)
         self.clean_boot_disk(prev)

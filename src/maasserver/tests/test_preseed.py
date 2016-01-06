@@ -1314,7 +1314,7 @@ class TestPreseedURLs(
     def test_compose_enlistment_preseed_url_returns_abs_link_wth_nodegrp(self):
         maas_url = factory.make_simple_http_url(path='')
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        nodegroup = factory.make_NodeGroup(maas_url)
+        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
 
         self.assertThat(
             compose_enlistment_preseed_url(nodegroup=nodegroup),

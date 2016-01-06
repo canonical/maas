@@ -153,6 +153,7 @@ class TestNodeHandler(MAASServerTestCase):
                 for device in node.children.all().order_by('id')
             ], key=itemgetter('fqdn')),
             "disable_ipv4": node.disable_ipv4,
+            "domain": handler.dehydrate_domain(node.domain),
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,
             "storage_layout_issues": node.storage_layout_issues(),
@@ -861,7 +862,7 @@ class TestNodeHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 11,
+            query_10_count, 12,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

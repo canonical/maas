@@ -4,9 +4,12 @@
 """DNS management module."""
 
 __all__ = [
-    'dns_add_zones',
+    'dns_add_domains',
+    'dns_add_subnets',
     'dns_update_all_zones',
-    'dns_update_zones',
+    'dns_update_by_node',
+    'dns_update_domains',
+    'dns_update_subnets',
     ]
 
 from itertools import chain
@@ -20,6 +23,7 @@ from maasserver.dns.zonegenerator import (
 )
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
+from maasserver.models.domain import Domain
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.subnet import Subnet
@@ -80,80 +84,142 @@ def is_dns_enabled():
 DNS_DEFER_UPDATES = True
 
 
-def dns_add_zones_now(clusters):
-    """Add zone files for the given cluster(s), and serve them.
+def dns_add_zones_now(domains, subnets):
+    """Add zone files for the given domain(s) and subnet(s), and serve them.
 
     Serving these new zone files means updating BIND's configuration to
     include them, then asking it to load the new configuration.
 
-    :param clusters: The clusters(s) for which zones should be served.
-    :type clusters: :py:class:`NodeGroup`, or an iterable thereof.
+    :param domains: The domain(s) for which zones should be served.
+    :type domains: :py:class:`Domain`, or an iterable thereof.
+    :param subnets: The subnet(s) for which zones should be served.
+    :type subnets: :py:class:`Subnet`, or an iterable thereof.
     """
     if not (is_dns_enabled() and is_dns_in_use()):
         return
 
     zones_to_write = ZoneGenerator(
-        clusters, serial_generator=next_zone_serial).as_list()
+        domains, subnets, serial_generator=next_zone_serial).as_list()
     if len(zones_to_write) == 0:
         return None
     serial = next_zone_serial()
     # Compute non-None zones.
-    zones = ZoneGenerator(NodeGroup.objects.all(), serial).as_list()
+    zones = ZoneGenerator(
+        Domain.objects.all(), Subnet.objects.all(), serial).as_list()
     bind_write_zones(zones_to_write)
     bind_write_configuration(zones, trusted_networks=get_trusted_networks())
     bind_reconfigure()
 
 
-def dns_add_zones(clusters):
+def dns_add_subnets(subnets):
     """Arrange for `dns_add_zones_now` to be called post-commit.
 
     :return: The post-commit `Deferred`.
     """
     if is_dns_enabled():
         if DNS_DEFER_UPDATES:
-            return consolidator.add_zones(clusters)
+            return consolidator.add_subnets(subnets)
         else:
-            return dns_add_zones_now(clusters)
+            return dns_add_zones_now([], subnets)
     else:
         return None
 
 
-def dns_update_zones_now(clusters):
-    """Update the zone files for the given cluster(s).
+def dns_add_domains(domains):
+    """Arrange for `dns_add_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        auth_domains = [dom for dom in domains if dom.authoritative is True]
+        if DNS_DEFER_UPDATES:
+            return consolidator.add_domains(auth_domains)
+        else:
+            return dns_add_zones_now(auth_domains, [])
+    else:
+        return None
+
+
+def dns_update_zones_now(domains, subnets):
+    """Update the zone files for the given subnet(s).
 
     Once the new zone files have been written, BIND is asked to reload them.
     It's assumed that BIND already serves the zones that are being written.
 
-    :param clusters: Those cluster(s) for which the zone should be updated.
-    :type clusters: A :py:class:`NodeGroup`, or an iterable thereof.
+    :param subnets: Those subnet(s) for which the zone should be updated.
+    :type subnets: A :py:class:`Domain`, or an iterable thereof.
     """
     if not (is_dns_enabled() and is_dns_in_use()):
         return
 
     serial = next_zone_serial()
-    for zone in ZoneGenerator(clusters, serial):
+    bind_reconfigure()
+    for zone in ZoneGenerator(domains, subnets, serial):
         names = [zi.zone_name for zi in zone.zone_info]
         maaslog.info("Generating new DNS zone file for %s", " ".join(names))
         bind_write_zones([zone])
         bind_reload_zones(names)
 
 
-def dns_update_zones(clusters):
+def dns_update_subnets(subnets):
     """Arrange for `dns_update_zones_now` to be called post-commit.
 
     :return: The post-commit `Deferred`.
     """
     if is_dns_enabled():
         if DNS_DEFER_UPDATES:
-            return consolidator.update_zones(clusters)
+            return consolidator.update_subnets(subnets)
         else:
-            return dns_update_zones_now(clusters)
+            return dns_update_zones_now([], subnets)
+    else:
+        return None
+
+
+def dns_update_domains(domains):
+    """Arrange for `dns_update_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        auth_domains = [dom for dom in domains if dom.authoritative is True]
+        if DNS_DEFER_UPDATES:
+            return consolidator.update_domains(auth_domains)
+        else:
+            return dns_update_zones_now(auth_domains, [])
+    else:
+        return None
+
+
+def dns_update_by_node(node):
+    """Arrange for `dns_update_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        # optimization:
+        # If the nodegroup is being deleted, we don't actually need to
+        # do anything, since that will trigger dns_update_all_zones()
+        try:
+            if node.nodegroup:
+                pass
+        except NodeGroup.DoesNotExist:
+            return
+
+        auth_domains = []
+        if node.domain.authoritative is True:
+            auth_domains.append(node.domain)
+        # What subnets may be affected by this node being updated?
+        subnets = Subnet.objects.filter(staticipaddress__interface__node=node)
+        if DNS_DEFER_UPDATES:
+            return consolidator.update_zones(auth_domains, subnets)
+        else:
+            return dns_update_zones_now(auth_domains, subnets)
     else:
         return None
 
 
 def dns_update_all_zones_now(reload_retry=False, force=False):
-    """Update all zone files for all clusters.
+    """Update all zone files for all domains.
 
     Serving these zone files means updating BIND's configuration to include
     them, then asking it to load the new configuration.
@@ -165,13 +231,17 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
         to manage DNS. This makes sense when deconfiguring an interface.
     :type force: bool
     """
+
     write_conf = is_dns_enabled() and (force or is_dns_in_use())
     if not write_conf:
         return
 
-    clusters = NodeGroup.objects.all()
+    domains = Domain.objects.filter(authoritative=True)
+    subnets = Subnet.objects.filter(
+        nodegroupinterface__management=
+        NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
     zones = ZoneGenerator(
-        clusters, serial_generator=next_zone_serial).as_list()
+        domains, subnets, serial_generator=next_zone_serial).as_list()
     bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be
@@ -232,8 +302,10 @@ class Changes:
 
     def reset(self):
         self.hook = None
-        self.zones_to_add = []
-        self.zones_to_update = []
+        self.domains_to_add = []
+        self.domains_to_update = []
+        self.subnets_to_add = []
+        self.subnets_to_update = []
         self.update_all_zones = False
         self.update_all_zones_reload_retry = False
         self.update_all_zones_force = False
@@ -262,10 +334,11 @@ class Changes:
         individually requested for adding or updating, because both those
         things will happen as part of the process.
 
-        Assuming that's not the case, requests to *add* specific zones will be
-        acted on next, followed by requests to *update* specific zones. If
-        there's a request to add and update a zone, only the add will be done
-        because the update will be a wasteful no-op.
+        Assuming that's not the case, requests to *add* specific subnets and/or
+        domains will be acted on next, followed by requests to *update*
+        specific domains and/or subnets. If there's a request to add and update
+        a domain or subnet, only the add will be done because the update will
+        be a wasteful no-op.
         """
         if self.update_all_zones:
             # We've been asked to do the full-monty; just do it and get out.
@@ -273,26 +346,40 @@ class Changes:
                 reload_retry=self.update_all_zones_reload_retry,
                 force=self.update_all_zones_force)
         else:
-            # Call `dns_add_zones_now` for each zone to add. We consolidate
-            # changes into a dict, keyed by ID because Django's ORM does not
-            # guarantee the same instance for the same database row.
-            zones_to_add = {
-                cluster.id: cluster
-                for cluster in flatten(self.zones_to_add)
+            # Call `dns_add_zones_now` for each subnet/domain to add. We
+            # consolidate changes into a dict, keyed by ID because Django's ORM
+            # does not guarantee the same instance for the same database row.
+            domains_to_add = {
+                domain.id: domain
+                for domain in flatten(self.domains_to_add)
             }
-            if len(self.zones_to_add) != 0:
-                dns_add_zones_now(list(zones_to_add.values()))
+            subnets_to_add = {
+                subnet.id: subnet
+                for subnet in flatten(self.subnets_to_add)
+            }
+            if len(domains_to_add) > 0 or len(subnets_to_add) > 0:
+                dns_add_zones_now(
+                    list(domains_to_add.values()),
+                    list(subnets_to_add.values()))
 
-            # Call `dns_update_zones_now` for each zone to update, *excluding*
-            # those we've only just added; there's no point doing them again.
-            # We consolidate changes into a dict for the same reason as above.
-            zones_to_update = {
-                cluster.id: cluster
-                for cluster in flatten(self.zones_to_update)
-                if cluster.id not in zones_to_add
+            # Call `dns_update_zones_now` for each subnet/domain to update,
+            # *excluding* those we've only just added; there's no point doing
+            # them again.  We consolidate changes into a dict for the same
+            # reason as above.
+            domains_to_update = {
+                domain.id: domain
+                for domain in flatten(self.domains_to_update)
+                if domain.id not in domains_to_add
             }
-            if len(zones_to_update) != 0:
-                dns_update_zones_now(list(zones_to_update.values()))
+            subnets_to_update = {
+                subnet.id: subnet
+                for subnet in flatten(self.subnets_to_update)
+                if subnet.id not in subnets_to_add
+            }
+            if len(domains_to_update) > 0 or len(subnets_to_update) > 0:
+                dns_update_zones_now(
+                    list(domains_to_update.values()),
+                    list(subnets_to_update.values()))
 
 
 class ChangeConsolidator(threading.local):
@@ -311,18 +398,51 @@ class ChangeConsolidator(threading.local):
         super(ChangeConsolidator, self).__init__()
         self.changes = Changes()
 
-    def add_zones(self, clusters):
-        """Request that zones for `clusters` be added."""
-        self.changes.zones_to_add.append(clusters)
+    def add_domains(self, domains):
+        """Request that zones for `domains` be added."""
+        if isinstance(domains, Domain):
+            self.changes.domains_to_add.append(domains)
+        elif domains is not None:
+            self.changes.domains_to_add += domains
         return self.changes.activate()
 
-    def update_zones(self, clusters):
-        """Request that zones for `clusters` be updated."""
-        self.changes.zones_to_update.append(clusters)
+    def update_zones(self, domains, subnets):
+        if isinstance(domains, Domain):
+            self.changes.domains_to_update.append(domains)
+        else:
+            self.changes.domains_to_update += domains
+        if isinstance(subnets, Subnet):
+            self.changes.subnets_to_update.append(subnets)
+        else:
+            self.changes.subnets_to_update += subnets
+        return self.changes.activate()
+
+    def update_domains(self, domains):
+        """Request that zones for `domains` be updated."""
+        if isinstance(domains, Domain):
+            self.changes.domains_to_update.append(domains)
+        else:
+            self.changes.domains_to_update += domains
+        return self.changes.activate()
+
+    def add_subnets(self, subnets):
+        """Request that zones for `subnets` be added."""
+        if isinstance(subnets, Subnet):
+            self.changes.subnets_to_add.append(subnets)
+        elif subnets is not None:
+            self.changes.subnets_to_add += subnets
+        return self.changes.activate()
+
+    def update_subnets(self, subnets):
+        """Request that zones for `subnets` be updated."""
+        if isinstance(subnets, Subnet):
+            self.changes.subnets_to_update.append(subnets)
+        else:
+            self.changes.subnets_to_update += subnets
         return self.changes.activate()
 
     def update_all_zones(self, reload_retry=False, force=False):
-        """Request that zones for all clusters be updated."""
+        """Request that zones for all domains be updated."""
         self.changes.update_all_zones = True
         self.changes.update_all_zones_reload_retry |= reload_retry
         self.changes.update_all_zones_force |= force

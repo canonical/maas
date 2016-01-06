@@ -261,19 +261,22 @@ class TestIPAddressesAPI(APITestCase):
 
     def test_POST_reserve_with_hostname_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
-        dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
         interface = self.make_interface()
         net = interface.network
         hostname = factory.make_hostname()
         response = self.post_reservation_request(net=net, hostname=hostname)
         self.assertEqual(http.client.OK, response.status_code)
         [staticipaddress] = StaticIPAddress.objects.all()
-        self.expectThat(staticipaddress.hostname, Equals(hostname))
-        self.expectThat(dns_update_zones.call_count, Equals(1))
+        self.expectThat(
+            staticipaddress.dnsresource_set.first().name, Equals(hostname))
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
 
     def test_POST_reserve_with_hostname_and_ip_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
-        dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
         interface = self.make_interface()
         net = interface.network
         hostname = factory.make_hostname()
@@ -289,8 +292,9 @@ class TestIPAddressesAPI(APITestCase):
             Equals(IPADDRESS_TYPE.USER_RESERVED))
         self.expectThat(returned_address["ip"], Equals(ip_in_network))
         self.expectThat(staticipaddress.ip, Equals(ip_in_network))
-        self.expectThat(staticipaddress.hostname, Equals(hostname))
-        self.expectThat(dns_update_zones.call_count, Equals(1))
+        self.expectThat(
+            staticipaddress.dnsresource_set.first().name, Equals(hostname))
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
 
     def test_POST_reserve_with_no_parameters_fails_with_bad_request(self):
         response = self.post_reservation_request()

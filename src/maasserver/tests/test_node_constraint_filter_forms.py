@@ -15,6 +15,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
 )
 from maasserver.models import (
+    Domain,
     Machine,
     Node,
 )
@@ -245,16 +246,18 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([], {'name': 'unknown-name'})
 
     def test_hostname_with_domain_part(self):
-        nodes = [factory.make_Node() for _ in range(3)]
+        Domain.objects.get_or_create(name='mydomain', authoritative=True)
+        nodes = [
+            factory.make_Node(domain=factory.make_Domain()) for _ in range(3)]
         self.assertConstrainedNodes(
             [nodes[0]],
-            {'name': '%s.%s' % (nodes[0].hostname, nodes[0].nodegroup.name)})
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[0].domain.name)})
         self.assertConstrainedNodes(
             [],
             {'name': '%s.%s' % (nodes[0].hostname, 'unknown-domain')})
         self.assertConstrainedNodes(
             [],
-            {'name': '%s.%s' % (nodes[0].hostname, nodes[1].nodegroup.name)})
+            {'name': '%s.%s' % (nodes[0].hostname, nodes[1].domain.name)})
         node = factory.make_Node(hostname="host21.mydomain")
         self.assertConstrainedNodes(
             [node],
@@ -262,7 +265,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         self.assertConstrainedNodes(
             [node],
-            {'name': 'host21.%s' % node.nodegroup.name})
+            {'name': 'host21.%s' % node.domain.name})
 
     def test_cpu_count(self):
         node1 = factory.make_Node(cpu_count=1)

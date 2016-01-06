@@ -160,7 +160,6 @@ class TestUpdateLease(MAASServerTestCase):
             ip=ip,
             subnet=subnet,
             lease_time=kwargs["lease_time"],
-            hostname=kwargs["hostname"],
             created=datetime.fromtimestamp(kwargs["timestamp"]),
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))
@@ -182,7 +181,6 @@ class TestUpdateLease(MAASServerTestCase):
             ip=ip,
             subnet=subnet,
             lease_time=kwargs["lease_time"],
-            hostname=None,
             created=datetime.fromtimestamp(kwargs["timestamp"]),
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))
@@ -206,7 +204,6 @@ class TestUpdateLease(MAASServerTestCase):
             ip=ip,
             subnet=subnet,
             lease_time=kwargs["lease_time"],
-            hostname=kwargs["hostname"],
             created=datetime.fromtimestamp(kwargs["timestamp"]),
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))
@@ -274,7 +271,6 @@ class TestUpdateLease(MAASServerTestCase):
             ip=ip,
             subnet=subnet,
             lease_time=kwargs["lease_time"],
-            hostname=kwargs["hostname"],
             created=datetime.fromtimestamp(kwargs["timestamp"]),
             updated=datetime.fromtimestamp(kwargs["timestamp"]),
         ))

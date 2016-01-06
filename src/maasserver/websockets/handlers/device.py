@@ -93,6 +93,7 @@ class DeviceHandler(TimestampedModelHandler):
             .prefetch_related('interface_set__ip_addresses__subnet')
             .prefetch_related('nodegroup__nodegroupinterface_set')
             .prefetch_related('zone')
+            .prefetch_related('domain')
             .prefetch_related('tags'))
         pk = 'system_id'
         pk_type = str
@@ -135,6 +136,7 @@ class DeviceHandler(TimestampedModelHandler):
             "system_id",
             "hostname",
             "owner",
+            "domain",
             "zone",
             "parent",
             "pxe_mac",
@@ -155,6 +157,13 @@ class DeviceHandler(TimestampedModelHandler):
             return ""
         else:
             return user.username
+
+    def dehydrate_domain(self, domain):
+        """Return domain name."""
+        return {
+            "id": domain.id,
+            "name": domain.name,
+        }
 
     def dehydrate_zone(self, zone):
         """Return zone name."""

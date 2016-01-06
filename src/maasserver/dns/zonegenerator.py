@@ -19,10 +19,14 @@ from maasserver import logger
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
+from maasserver.models.dnsresource import DNSResource
+from maasserver.models.domain import Domain
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import (
     IPAddress,
+    IPNetwork,
     IPRange,
 )
 from provisioningserver.dns.zoneconfig import (
@@ -64,13 +68,15 @@ def sequence(thing):
         return [thing]
 
 
-def get_hostname_ip_mapping(nodegroup):
+def get_hostname_ip_mapping(domain_or_subnet):
     """Return a mapping {hostnames -> ips} for the allocated nodes in
-    `nodegroup`.
+    `domain` or `subnet`.
     """
     # Circular imports.
-    from maasserver.models.staticipaddress import StaticIPAddress
-    return StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
+    if isinstance(domain_or_subnet, NodeGroup):
+        raise DNSException(
+            "get_hostname_ip_mapping no longer takes NodeGroup")
+    return StaticIPAddress.objects.get_hostname_ip_mapping(domain_or_subnet)
 
 
 class DNSException(MAASException):
@@ -132,42 +138,22 @@ def get_dns_search_paths():
 
 
 class ZoneGenerator:
-    """Generate zones describing those relating to the given node groups."""
+    """Generate zones describing those relating to the given domains and
+    subnets.
 
-    def __init__(self, nodegroups, serial=None, serial_generator=None):
+    We generate zones for the domains (forward), and subnets (reverse) passed.
+    """
+
+    def __init__(self, domains, subnets, serial=None, serial_generator=None):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
         :param serial_generator: As an alternative to `serial`, a callback
             that returns a fresh serial number on every call.
         """
-        self.nodegroups = sequence(nodegroups)
+        self.domains = sequence(domains)
+        self.subnets = sequence(subnets)
         self.serial = serial
         self.serial_generator = serial_generator
-
-    @staticmethod
-    def _filter_dns_managed(nodegroups):
-        """Return the subset of `nodegroups` for which we manage DNS."""
-        return set(
-            nodegroup
-            for nodegroup in nodegroups
-            if nodegroup.manages_dns())
-
-    @staticmethod
-    def _get_forward_nodegroups(domains):
-        """Return the set of forward nodegroups for the given `domains`.
-
-        These are all nodegroups with any of the given domains.
-        """
-        return ZoneGenerator._filter_dns_managed(
-            NodeGroup.objects.filter(name__in=domains))
-
-    @staticmethod
-    def _get_reverse_nodegroups(nodegroups):
-        """Return the set of reverse nodegroups among `nodegroups`.
-
-        This is the subset of the given nodegroups that are managed.
-        """
-        return ZoneGenerator._filter_dns_managed(nodegroups)
 
     @staticmethod
     def _get_mappings():
@@ -199,6 +185,9 @@ class ZoneGenerator:
         # Avoid circular imports.
         from provisioningserver.dns.config import SRVRecord
 
+        # 2015-12-16 lamont This will eventually get replaced by creating a
+        # DNSResource record for the windows_kms_host, once we have more than A
+        # and AAAA records in that model.
         windows_kms_host = Config.objects.get_config("windows_kms_host")
         if windows_kms_host is None or windows_kms_host == '':
             return
@@ -207,44 +196,142 @@ class ZoneGenerator:
             priority=0, weight=0)
 
     @staticmethod
-    def _gen_forward_zones(nodegroups, serial, mappings, srv_mappings):
+    def _get_forward_domains(domains):
+        """Return the set of managed domains for the given `domains`."""
+        return set(
+            domain
+            for domain in Domain.objects.filter(
+                name__in=domains,
+                authoritative=True))
+
+    @staticmethod
+    def _gen_forward_zones(domains, serial, mappings, srv_mappings):
         """Generator of forward zones, collated by domain name."""
-        get_domain = lambda nodegroup: nodegroup.name
         dns_ip = get_dns_server_address()
-        forward_nodegroups = sorted(nodegroups, key=get_domain)
-        for domain, nodegroups in groupby(forward_nodegroups, get_domain):
-            nodegroups = list(nodegroups)
+        domains = set(domains)
+
+        # We need to collect the dynamic ranges for all nodegroups where
+        # nodegroup.name == domain.name, so that we can generate mappings for
+        # them.
+        get_domain = lambda nodegroup: nodegroup.name
+        nodegroups = set(
+            nodegroup
+            for nodegroup in NodeGroup.objects.filter(
+                name__in=[domain.name for domain in domains]))
+        forward_nodegroups = set(sorted(nodegroups, key=get_domain))
+        nodegroup_dict = {}
+        for domainname, nodegroups in groupby(forward_nodegroups, get_domain):
+            # dynamic ranges come from nodegroups (still)
+            # addresses come from Node and StaticIPAddress with no regard for
+            # nodegroup, since it could be any with the name overrides.
+            nodegroup_dict[domainname] = list(nodegroups)
+
+        # For each of the domains that we are generating, create the zone from:
+        # 1. nodegroup dynamic ranges
+        # 2. node: ip mapping(domain)
+        # 3. dnsresource records in this domain
+        for domain in domains:
+            nodegroups = nodegroup_dict.get(domain.name, [])
             dynamic_ranges = [
                 interface.get_dynamic_ip_range()
                 for nodegroup in nodegroups
                 for interface in nodegroup.get_managed_interfaces()
             ]
+            dnsresources = DNSResource.objects.filter(
+                ip_addresses__ip__isnull=False, domain=domain)
 
-            # A forward zone encompassing all nodes in the same domain.
+            # First, map all of the nodes in this domain
+            # strip off the domain, since we don't need it in the forward zone.
+            mapping = {
+                hostname.split('.')[0]: ip
+                for hostname, ip in mappings[domain].items()
+            }
+            # Then, go through and add all of the DNSResource records that are
+            # relevant.
+            mapping.update({
+                dnsrr.hostname: ipaddress.ip
+                for dnsrr in dnsresources
+                for ipaddress in dnsrr.ip_addresses.filter(ip_isnull=False)
+            })
+
             yield DNSForwardZoneConfig(
-                domain, serial=serial, dns_ip=dns_ip,
-                mapping={
-                    hostname: ip
-                    for nodegroup in nodegroups
-                    for hostname, ip in mappings[nodegroup].items()
-                    },
+                domain.name, serial=serial, dns_ip=dns_ip,
+                mapping=mapping,
                 srv_mapping=set(srv_mappings),
                 dynamic_ranges=dynamic_ranges,
-            )
+                )
 
     @staticmethod
-    def _gen_reverse_zones(nodegroups, serial, mappings, networks):
+    def _get_reverse_nodegroups(nodegroups):
+        """Return the set of reverse nodegroups among `nodegroups`.
+
+        This is the subset of the given nodegroups that are managed.
+        """
+        return set(
+            nodegroup
+            for nodegroup in nodegroups
+            if nodegroup.manages_dns())
+
+    @staticmethod
+    def _gen_reverse_zones(subnets, serial, mappings, networks):
         """Generator of reverse zones, sorted by network."""
-        get_domain = lambda nodegroup: nodegroup.name
-        get_network = lambda nodegroup: networks[nodegroup]
-        reverse_nodegroups = sorted(nodegroups, key=get_network)
-        for nodegroup in reverse_nodegroups:
-            for network, dynamic_range in networks[nodegroup]:
-                mapping = mappings[nodegroup]
-                yield DNSReverseZoneConfig(
-                    get_domain(nodegroup), serial=serial, mapping=mapping,
-                    network=network, dynamic_ranges=[IPRange(*dynamic_range)]
-                )
+
+        subnets = set(subnets)
+        # For each of the zones that we are generating (one or more per
+        # subnet), compile the zone from:
+        # 1. nodegroup dynamic ranges on this subnet
+        # 2. node: ip mapping(subnet)
+        # 3. dnsresource records for StaticIPAddresses in this subnet
+        # 4. interfaces on any node that have IP addresses in this subnet
+        for subnet in subnets:
+            network = IPNetwork(subnet.cidr)
+            nodegroups = set(
+                nodegroup
+                for nodegroup in NodeGroup.objects.filter(
+                    nodegroupinterface__subnet=subnet)
+                if len(nodegroup.get_managed_interfaces()) > 0)
+            dynamic_ranges = [
+                IPRange(iprange[1][0], iprange[1][1])
+                for nodegroup in nodegroups
+                for iprange in networks[nodegroup]
+            ]
+            dnsresources = DNSResource.objects.filter(
+                ip_addresses__ip__isnull=False, ip_addresses__subnet=subnet)
+            ipaddresses = StaticIPAddress.objects.filter(
+                ip__isnull=False, interface__isnull=False, subnet=subnet)
+
+            # First, map all of the nodes on this subnet
+            mapping = {
+                hostname: [ip]
+                for hostname, ips in mappings[subnet].items()
+                for ip in ips
+            }
+            # Next, go through and add all of the relevant DNSResource records.
+            mapping.update({
+                "%s.%s" % (dnsrr.hostname, dnsrr.domain.name): ipaddress.ip
+                for dnsrr in dnsresources
+                for ipaddress in dnsrr.ip_addresses.filter(
+                    ip_isnull=False, subnet=subnet)
+            })
+            # Finally, add all of the interface named records.
+            # 2015-12-18 lamont N.B., these are  not found in the forward zone,
+            # on purpose.  If someone eventually calls this a bug, we can
+            # revisit the size increase this would create in the forward zone.
+            mapping.update({
+                "%s.%s" % (
+                    interface.name, interface.node.fqdn): [ip.ip]
+                for ip in ipaddresses
+                for interface in ip.interface_set.filter(
+                    node__isnull=False, node__domain__isnull=False)
+            })
+
+            # Use the default_domain as the name for the NS host in the reverse
+            # zones.
+            yield DNSReverseZoneConfig(
+                Domain.objects.get_default_domain().name, serial=serial,
+                mapping=mapping, network=network,
+                dynamic_ranges=dynamic_ranges,
+            )
 
     def __iter__(self):
         """Iterate over zone configs.
@@ -256,18 +343,16 @@ class ZoneGenerator:
         assert not (self.serial is None and self.serial_generator is None), (
             "No serial number or serial number generator specified.")
 
-        forward_nodegroups = self._get_forward_nodegroups(
-            {nodegroup.name for nodegroup in self.nodegroups})
-        reverse_nodegroups = self._get_reverse_nodegroups(self.nodegroups)
         mappings = self._get_mappings()
         networks = self._get_networks()
         srv_mappings = self._get_srv_mappings()
         serial = self.serial or self.serial_generator()
         return chain(
             self._gen_forward_zones(
-                forward_nodegroups, serial, mappings, srv_mappings),
+                self.domains, serial, mappings,
+                srv_mappings),
             self._gen_reverse_zones(
-                reverse_nodegroups, serial, mappings, networks),
+                self.subnets, serial, mappings, networks),
             )
 
     def as_list(self):

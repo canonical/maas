@@ -35,6 +35,7 @@ from maasserver.enum import (
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import (
     Config,
+    Domain,
     Machine,
     Node,
     NodeGroup,
@@ -96,20 +97,20 @@ class MachineHostnameTest(
         ('admin', dict(userfactory=factory.make_admin)),
     ]
 
-    def test_GET_returns_fqdn_with_domain_name_from_cluster(self):
+    def test_GET_returns_fqdn_with_domain_name_from_node(self):
         # If DNS management is enabled, the domain part of a hostname
-        # is replaced by the domain name defined on the cluster.
-        hostname_without_domain = factory.make_name('hostname')
-        hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.make_string())
-        domain = factory.make_name('domain')
+        # still comes from the node.
+        hostname = factory.make_name('hostname')
+        domainname = factory.make_name('domain')
+        domain, _ = Domain.objects.get_or_create(
+            name=domainname, defaults={'authoritative': True})
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ENABLED,
-            name=domain,
+            name=factory.make_name('domain'),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         factory.make_Node(
-            hostname=hostname_with_domain, nodegroup=nodegroup)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
+            hostname=hostname, domain=domain, nodegroup=nodegroup)
+        expected_hostname = "%s.%s" % (hostname, domainname)
         response = self.client.get(reverse('machines_handler'))
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content)
@@ -694,7 +695,7 @@ class TestMachinesAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        domain_name = desired_machine.nodegroup.name
+        domain_name = desired_machine.domain.name
         self.assertEqual(
             "%s.%s" % (desired_machine.hostname, domain_name),
             parsed_result['hostname'])
@@ -730,14 +731,15 @@ class TestMachinesAPI(APITestCase):
         # If a name constraint is given, "acquire" attempts to allocate
         # a machine of that name.
         machine = factory.make_Node(
+            domain=factory.make_Domain(),
             status=NODE_STATUS.READY, owner=None, with_boot_disk=True)
         response = self.client.post(reverse('machines_handler'), {
             'op': 'acquire',
             'name': machine.hostname,
         })
         self.assertEqual(http.client.OK, response.status_code)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = machine.domain.name
         self.assertEqual(
             "%s.%s" % (machine.hostname, domain_name),
             json.loads(

@@ -272,9 +272,10 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def test_pxeconfig_splits_domain_from_node_hostname(self):
         host = factory.make_name('host')
-        domain = factory.make_name('domain')
-        full_hostname = '.'.join([host, domain])
-        node = factory.make_Node(hostname=full_hostname)
+        domainname = factory.make_name('domain')
+        domain = factory.make_Domain(name=domainname)
+        full_hostname = '.'.join([host, domainname])
+        node = factory.make_Node(hostname=full_hostname, domain=domain)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         params = self.get_default_params()
         params['mac'] = interface.mac_address

@@ -29,6 +29,7 @@ from maasserver.enum import (
 from maasserver.fields import MAC_ERROR_MSG
 from maasserver.models import (
     Config,
+    Domain,
     interface as interface_module,
     Machine,
     Node,
@@ -147,8 +148,8 @@ class TestMachineAPI(APITestCase):
 
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             "%s.%s" % (machine.hostname, domain_name),
             parsed_result['hostname'])
@@ -902,8 +903,8 @@ class TestMachineAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        NodeGroup.objects.ensure_master()
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'francis.%s' % domain_name, parsed_result['hostname'])
         self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
@@ -998,7 +999,8 @@ class TestMachineAPI(APITestCase):
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            {'hostname': ["DNS name contains an empty label."]},
+            {'hostname':
+                ["DNS name contains an empty label.", "Nonexistant domain."]},
             parsed_result)
 
     def test_PUT_refuses_to_update_nonexistent_machine(self):

@@ -16,6 +16,8 @@ __all__ = [
     'ComponentError',
     'Config',
     'Device',
+    'DNSResource',
+    'Domain',
     'DownloadProgress',
     'Event',
     'Fabric',
@@ -72,6 +74,8 @@ from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
+from maasserver.models.dnsresource import DNSResource
+from maasserver.models.domain import Domain
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
@@ -272,6 +276,17 @@ class MAASAuthorizationBackend(ModelBackend):
                 else:
                     return node.owner == user
             elif perm in NODE_PERMISSION.ADMIN:
+                # Admin permission is solely granted to superusers.
+                return user.is_superuser
+            else:
+                raise NotImplementedError(
+                    'Invalid permission check (invalid permission name: %s).' %
+                    perm)
+        elif isinstance(obj, (DNSResource, Domain)):
+            if perm == NODE_PERMISSION.VIEW:
+                # Any registered user can view a dns resource or zone.
+                return True
+            elif perm in [NODE_PERMISSION.EDIT, NODE_PERMISSION.ADMIN]:
                 # Admin permission is solely granted to superusers.
                 return user.is_superuser
             else:

@@ -674,18 +674,15 @@ class AcquireNodeForm(RenamableFieldsForm):
         # Filter by hostname.
         hostname = self.cleaned_data.get(self.get_field_name('name'))
         if hostname:
-            clause = Q(hostname=hostname)
             # If the given hostname has a domain part, try matching
-            # against the nodes' FQDNs as well (the FQDN is built using
-            # the nodegroup's name as the domain name).
+            # against the nodes' FQDN.
             if "." in hostname:
                 host, domain = hostname.split('.', 1)
-                hostname_clause = (
-                    Q(hostname__startswith="%s." % host) |
-                    Q(hostname=host)
-                )
-                domain_clause = Q(nodegroup__name=domain)
-                clause = clause | (hostname_clause & domain_clause)
+                hostname_clause = Q(hostname=host)
+                domain_clause = Q(domain__name=domain)
+                clause = (hostname_clause & domain_clause)
+            else:
+                clause = Q(hostname=hostname)
             filtered_nodes = filtered_nodes.filter(clause)
 
         # Filter by architecture.

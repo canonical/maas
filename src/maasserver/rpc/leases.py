@@ -14,6 +14,7 @@ from maasserver.enum import (
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
 )
+from maasserver.models.dnsresource import DNSResource
 from maasserver.models.interface import (
     Interface,
     UnknownInterface,
@@ -178,10 +179,13 @@ def update_lease(
         created = datetime.fromtimestamp(timestamp)
         sip = StaticIPAddress.objects.create(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip, subnet=subnet,
-            lease_time=lease_time, hostname=sip_hostname,
-            created=created, updated=created)
+            lease_time=lease_time, created=created, updated=created)
         for interface in interfaces:
             interface.ip_addresses.add(sip)
+        if sip_hostname is not None:
+            dnsrr, created = DNSResource.objects.get_or_create(
+                name=sip_hostname)
+            dnsrr.ip_addresses.add(sip)
     elif action == "expiry" or action == "release":
         # Interfaces no longer holds an active lease. Create the new object
         # to show that it used to be connected to this subnet.

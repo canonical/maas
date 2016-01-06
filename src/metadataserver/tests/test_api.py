@@ -338,9 +338,9 @@ class TestMetadataCommon(DjangoTestCase):
             status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         hostname = factory.make_string()
-        domain = factory.make_string()
+        domain = factory.make_Domain()
         node = factory.make_Node(
-            hostname='%s.%s' % (hostname, domain), nodegroup=nodegroup)
+            hostname='%s.%s' % (hostname, domain.name), nodegroup=nodegroup)
         client = make_node_client(node)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'local-hostname'])

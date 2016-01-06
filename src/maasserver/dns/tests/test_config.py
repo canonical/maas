@@ -16,11 +16,14 @@ from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
     consolidator,
-    dns_add_zones,
+    dns_add_domains,
+    dns_add_subnets,
     dns_add_zones_now,
     dns_update_all_zones,
     dns_update_all_zones_now,
-    dns_update_zones,
+    dns_update_by_node,
+    dns_update_domains,
+    dns_update_subnets,
     dns_update_zones_now,
     get_trusted_networks,
     get_upstream_dns,
@@ -38,6 +41,7 @@ from maasserver.enum import (
 )
 from maasserver.models import (
     Config,
+    Domain,
     interface as interface_module,
 )
 from maasserver.testing.config import RegionConfigurationFixture
@@ -51,7 +55,6 @@ from maastesting.matchers import (
 )
 from mock import (
     ANY,
-    Mock,
     sentinel,
 )
 from netaddr import (
@@ -67,7 +70,7 @@ from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_rndc_port,
 )
-from provisioningserver.dns.zoneconfig import DNSZoneConfigBase
+from provisioningserver.dns.zoneconfig import DomainConfigBase
 from provisioningserver.testing.bindfixture import (
     allocate_ports,
     BINDServer,
@@ -83,6 +86,15 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import Deferred
+
+
+def get_expected_names(node, ip):
+    expected_names = [
+        "%s.%s." % (iface.name, node.fqdn)
+        for iface in node.interface_set.filter(ip_addresses__id=ip.id)
+    ]
+    expected_names.append("%s." % node.fqdn)
+    return expected_names
 
 
 class TestDNSUtilities(MAASServerTestCase):
@@ -105,6 +117,18 @@ class TestDNSUtilities(MAASServerTestCase):
             [next_zone_serial() for _ in range(initial, initial + 10)])
 
 
+class Thing:
+    def __init__(self, id, authoritative):
+        self.id = id
+        self.authoritative = authoritative
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __hash__(self):
+        return hash(self.id)
+
+
 class TestDeferringChangesPostCommit(MAASServerTestCase):
     """
     Tests for several functions that, by default, defer work until after a
@@ -112,22 +136,39 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
     """
 
     scenarios = (
-        ("dns_add_zones", {
+        ("dns_add_domains", {
             "now_function": dns_add_zones_now,
-            "calling_function": dns_add_zones,
-            "args": [[Mock(id=random.randint(1, 1000))]],
+            "calling_function": dns_add_domains,
+            "args": [[Thing(555, True)]],
+            "now_args": [[Thing(555, True)], []],
             "kwargs": {},
         }),
-        ("dns_update_zones", {
+        ("dns_add_subnets", {
+            "now_function": dns_add_zones_now,
+            "calling_function": dns_add_subnets,
+            "args": [[Thing(555, True)]],
+            "now_args": [[], [Thing(555, True)]],
+            "kwargs": {},
+        }),
+        ("dns_update_domains", {
             "now_function": dns_update_zones_now,
-            "calling_function": dns_update_zones,
-            "args": [[Mock(id=random.randint(1, 1000))]],
+            "calling_function": dns_update_domains,
+            "args": [[Thing(555, True)]],
+            "now_args": [[Thing(555, True)], []],
+            "kwargs": {},
+        }),
+        ("dns_update_subnets", {
+            "now_function": dns_update_zones_now,
+            "calling_function": dns_update_subnets,
+            "args": [[Thing(555, True)]],
+            "now_args": [[], [Thing(555, True)]],
             "kwargs": {},
         }),
         ("dns_update_all_zones", {
             "now_function": dns_update_all_zones_now,
             "calling_function": dns_update_all_zones,
             "args": [],
+            "now_args": [],
             "kwargs": {
                 "reload_retry": factory.pick_bool(),
                 "force": factory.pick_bool(),
@@ -145,7 +186,8 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         self.assertThat(result, IsInstance(Deferred))
         self.assertThat(func, MockNotCalled())
         post_commit_hooks.fire()
-        self.assertThat(func, MockCalledOnceWith(*self.args, **self.kwargs))
+        self.assertThat(
+            func, MockCalledOnceWith(*self.now_args, **self.kwargs))
 
     def test__does_nothing_if_DNS_CONNECT_is_False(self):
         self.patch(settings, "DNS_CONNECT", False)
@@ -163,7 +205,95 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         func.return_value = sentinel.okay_now
         result = self.calling_function(*self.args, **self.kwargs)
         self.assertThat(result, Is(sentinel.okay_now))
-        self.assertThat(func, MockCalledOnceWith(*self.args, **self.kwargs))
+        self.assertThat(
+            func, MockCalledOnceWith(*self.now_args, **self.kwargs))
+        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+
+
+class TestDeferringChangesPostCommit_by_node(MAASServerTestCase):
+    """Tests for dns_update_by_node."""
+
+    def test__defers_by_default(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        subnet = factory.make_Subnet()
+        nodegroup = factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, nodegroup=nodegroup,
+            domain=Domain.objects.get_default_domain(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node.save()
+        node.hostname = factory.make_name('hostname')
+        # The above will have created all sorts of things: confirm that
+        # triggering causes dns_add_zones_now to be called.
+        self.assertThat(dns_add_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertEqual(1, dns_add_zones_now.call_count)
+
+        # Now trigger an update by node, and confirm that we defer.
+        dns_update_by_node(node)
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(
+            dns_update_zones_now, MockCalledOnceWith(
+                [node.domain], [subnet]))
+
+    def test__does_nothing_if_DNS_CONNECT_is_False(self):
+        self.patch(settings, "DNS_CONNECT", False)
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        subnet = factory.make_Subnet()
+        nodegroup = factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, nodegroup=nodegroup,
+            domain=Domain.objects.get_default_domain(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node.save()
+        node.hostname = factory.make_name('hostname')
+        self.assertThat(dns_add_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertEqual(0, dns_add_zones_now.call_count)
+
+        # Now trigger an update by node, and confirm that we do nothing.
+        dns_update_by_node(node)
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+
+    def test__calls_immediately_if_defer_is_False(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        self.patch(dns_config_module, "DNS_DEFER_UPDATES", False)
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        subnet = factory.make_Subnet()
+        nodegroup = factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            status=NODEGROUP_STATUS.ENABLED)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, nodegroup=nodegroup,
+            domain=Domain.objects.get_default_domain(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node.save()
+        node.hostname = factory.make_name('hostname')
+        # It turns out that all the above causes 5 calls to dns_add_zones_now.
+        self.assertEqual(5, dns_add_zones_now.call_count)
+        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+        # Now make sure that dns_update_zones_now gets called once and only
+        # once.
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+        dns_update_by_node(node)
+        self.assertEqual(1, dns_update_zones_now.call_count)
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
 
 
@@ -198,61 +328,63 @@ class TestConsolidatingChanges(MAASServerTestCase):
     def test__added_zones_applied_post_commit(self):
         dns_add_zones_now = self.patch_autospec(
             dns_config_module, "dns_add_zones_now")
-        cluster1 = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster1)
-        cluster2 = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster2)
+        domain1 = factory.make_Domain()
+        consolidator.add_domains(domain1)
+        domain2 = factory.make_Domain()
+        consolidator.add_domains(domain2)
         self.assertThat(dns_add_zones_now, MockNotCalled())
         post_commit_hooks.fire()
-        self.assertThat(dns_add_zones_now, MockCalledOnceWith(ANY))
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith(ANY, ANY))
         # There's no guaranteed ordering, so we must extract and compare.
-        [clusters], _ = dns_add_zones_now.call_args
-        self.assertItemsEqual([cluster1, cluster2], clusters)
+        domains = dns_add_zones_now.call_args[0]
+        self.assertItemsEqual([domain1, domain2], domains[0])
+        self.assertItemsEqual([], domains[1])
 
-    def test__added_zones_are_consolidated(self):
+    def test__added_domains_are_consolidated(self):
         dns_add_zones_now = self.patch_autospec(
             dns_config_module, "dns_add_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster)
-        consolidator.add_zones(cluster)
-        consolidator.add_zones([cluster, cluster])
+        domain = factory.make_Domain()
+        consolidator.add_domains(domain)
+        consolidator.add_domains(domain)
+        consolidator.add_domains([domain, domain])
         post_commit_hooks.fire()
-        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith([domain], []))
 
     def test__updated_zones_applied_post_commit(self):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
-        cluster1 = self.make_managed_nodegroup()
-        consolidator.update_zones(cluster1)
-        cluster2 = self.make_managed_nodegroup()
-        consolidator.update_zones(cluster2)
+        domain1 = factory.make_Domain()
+        consolidator.update_domains(domain1)
+        domain2 = factory.make_Domain()
+        consolidator.update_domains(domain2)
         self.assertThat(dns_update_zones_now, MockNotCalled())
         post_commit_hooks.fire()
-        self.assertThat(dns_update_zones_now, MockCalledOnceWith(ANY))
+        self.assertThat(dns_update_zones_now, MockCalledOnceWith(ANY, ANY))
         # There's no guaranteed ordering, so we must extract and compare.
-        [clusters], _ = dns_update_zones_now.call_args
-        self.assertItemsEqual([cluster1, cluster2], clusters)
+        domains = dns_update_zones_now.call_args[0]
+        self.assertItemsEqual([domain1, domain2], domains[0])
+        self.assertItemsEqual([], domains[1])
 
     def test__updated_zones_are_consolidated(self):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.update_zones(cluster)
-        consolidator.update_zones(cluster)
-        consolidator.update_zones([cluster, cluster])
+        domain = factory.make_Domain()
+        consolidator.update_domains(domain)
+        consolidator.update_domains(domain)
+        consolidator.update_domains([domain, domain])
         post_commit_hooks.fire()
-        self.assertThat(dns_update_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_update_zones_now, MockCalledOnceWith([domain], []))
 
     def test__added_zones_supersede_updated_zones(self):
         dns_add_zones_now = self.patch_autospec(
             dns_config_module, "dns_add_zones_now")
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster)
-        consolidator.update_zones(cluster)
+        domain = factory.make_Domain()
+        consolidator.add_domains(domain)
+        consolidator.update_domains(domain)
         post_commit_hooks.fire()
-        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith([domain], []))
         self.assertThat(dns_update_zones_now, MockNotCalled())
 
     def test__update_all_zones_does_just_that(self):
@@ -282,9 +414,9 @@ class TestConsolidatingChanges(MAASServerTestCase):
             dns_config_module, "dns_update_zones_now")
         dns_update_all_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_all_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster)
-        consolidator.update_zones(cluster)
+        domain = factory.make_Domain()
+        consolidator.add_domains(domain)
+        consolidator.update_domains(domain)
         consolidator.update_all_zones()
         post_commit_hooks.fire()
         self.assertThat(dns_add_zones_now, MockNotCalled())
@@ -295,7 +427,8 @@ class TestConsolidatingChanges(MAASServerTestCase):
 
     # A pair of matchers to check that a `Changes` object is empty, or not.
     changes_are_empty = MatchesStructure.byEquality(
-        hook=None, zones_to_add=[], zones_to_update=[],
+        hook=None, domains_to_add=[], domains_to_update=[],
+        subnets_to_add=[], subnets_to_update=[],
         update_all_zones=False, update_all_zones_reload_retry=False,
         update_all_zones_force=False)
     changes_are_not_empty = Not(changes_are_empty)
@@ -306,9 +439,12 @@ class TestConsolidatingChanges(MAASServerTestCase):
         # The changes start empty.
         self.assertThat(consolidator.changes, self.changes_are_empty)
 
-        cluster = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster)
-        consolidator.update_zones(cluster)
+        domain = factory.make_Domain()
+        subnet = factory.make_Subnet()
+        consolidator.add_domains(domain)
+        consolidator.update_domains(domain)
+        consolidator.add_subnets(subnet)
+        consolidator.update_subnets(subnet)
         consolidator.update_all_zones()
 
         # The changes are not empty now.
@@ -325,6 +461,12 @@ class TestConsolidatingChanges(MAASServerTestCase):
             dns_config_module, "dns_update_all_zones_now")
         dns_update_all_zones_now.side_effect = exception_type
 
+        domain = factory.make_Domain()
+        subnet = factory.make_Subnet()
+        consolidator.add_domains(domain)
+        consolidator.update_domains(domain)
+        consolidator.add_subnets(subnet)
+        consolidator.update_subnets(subnet)
         # This is going to crash.
         consolidator.update_all_zones()
 
@@ -368,19 +510,25 @@ class TestDNSServer(MAASServerTestCase):
         # Reload BIND.
         self.bind.runner.rndc('reload')
 
-    def create_managed_nodegroup(self, network=None):
+    def create_managed_nodegroup(self, network=None, name=None):
         if network is None:
             network = IPNetwork('192.168.0.1/24')
         return factory.make_NodeGroup(
-            network=network,
+            network=network, name=name,
             status=NODEGROUP_STATUS.ENABLED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
-    def create_nodegroup_with_static_ip(self, lease_number=1, nodegroup=None):
+    def create_nodegroup_with_static_ip(self, lease_number=1, nodegroup=None,
+                                        domain=None):
+        if domain is None:
+            domain = factory.make_Domain()
         if nodegroup is None:
-            nodegroup = self.create_managed_nodegroup()
+            nodegroup = self.create_managed_nodegroup(name=domain.name)
         [interface] = nodegroup.get_managed_interfaces()
-        node = factory.make_Node(nodegroup=nodegroup, disable_ipv4=False)
+        node = factory.make_Node(
+            nodegroup=nodegroup,
+            domain=domain,
+            disable_ipv4=False)
         nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
@@ -388,7 +536,7 @@ class TestDNSServer(MAASServerTestCase):
         staticaddress = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=static_ip,
             subnet=interface.subnet, interface=nic)
-        dns_update_zones_now(nodegroup)
+        dns_update_zones_now([node.domain], [interface.subnet])
         return nodegroup, node, staticaddress
 
     def dig_resolve(self, fqdn, version=4):
@@ -432,8 +580,8 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_dns_add_zones_now_loads_dns_zone(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_add_zones_now(nodegroup)
-        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
+        dns_add_zones_now([node.domain], [static.subnet])
+        self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_add_zones_now_preserves_trusted_networks(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
@@ -442,20 +590,23 @@ class TestDNSConfigModifications(TestDNSServer):
             dns_config_module, 'get_trusted_networks')
         get_trusted_networks_patch.return_value = [trusted_network]
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_add_zones_now(nodegroup)
+        dns_add_zones_now([node.domain], [static.subnet])
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
 
     def test_dns_update_zones_now_changes_dns_zone(self):
-        nodegroup, _, _ = self.create_nodegroup_with_static_ip()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
         nodegroup, new_node, new_static = (
             self.create_nodegroup_with_static_ip(
-                nodegroup=nodegroup, lease_number=2))
-        dns_update_zones_now(nodegroup)
-        self.assertDNSMatches(new_node.hostname, nodegroup.name, new_static.ip)
+                nodegroup=nodegroup, lease_number=2, domain=node.domain))
+        dns_update_zones_now(
+            [node.domain, new_node.domain],
+            [static.subnet, new_static.subnet])
+        self.assertDNSMatches(
+            new_node.hostname, new_node.domain.name, new_static.ip)
 
     def test_is_dns_enabled_return_false_if_DNS_CONNECT_False(self):
         self.patch(settings, 'DNS_CONNECT', False)
@@ -476,7 +627,7 @@ class TestDNSConfigModifications(TestDNSServer):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
-        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
+        self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_update_all_zones_now_passes_reload_retry_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -548,8 +699,9 @@ class TestDNSConfigModifications(TestDNSServer):
         [interface] = nodegroup.get_managed_interfaces()
         _, node, lease = self.create_nodegroup_with_static_ip(
             nodegroup=nodegroup)
-        self.assertEqual(
-            ["%s." % node.fqdn], self.dig_reverse_resolve(lease.ip))
+        self.assertItemsEqual(
+            get_expected_names(node, lease),
+            self.dig_reverse_resolve(lease.ip))
         # Edit nodegroup's network information to '192.168.44.1/24'
         interface.ip = '192.168.44.7'
         interface.subnet_mask = '255.255.255.0'
@@ -567,8 +719,9 @@ class TestDNSConfigModifications(TestDNSServer):
         self.assertTrue(
             IPAddress(lease.ip) in interface.network,
             "The lease IP Address is not in the new network")
-        self.assertEqual(
-            ["%s." % node.fqdn], self.dig_reverse_resolve(lease.ip))
+        self.assertItemsEqual(
+            get_expected_names(node, lease),
+            self.dig_reverse_resolve(lease.ip))
 
     def test_changing_interface_management_updates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -595,7 +748,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
-        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
+        self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -610,13 +763,13 @@ class TestDNSConfigModifications(TestDNSServer):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         node.hostname = factory.make_name('hostname')
         node.save()
-        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
+        self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_change_node_other_field_does_not_update_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         recorder = FakeMethod()
-        self.patch(DNSZoneConfigBase, 'write_config', recorder)
+        self.patch(DomainConfigBase, 'write_config', recorder)
         node.error = factory.make_string()
         node.save()
         self.assertEqual(0, recorder.call_count)
@@ -643,20 +796,20 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
         ip_obj = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
             subnet=interface.subnet, interface=nic)
-        dns_update_zones_now(nodegroup)
-        self.assertDNSMatches(node.hostname, nodegroup.name, ip_obj.ip)
+        dns_update_zones_now([node.domain], [interface.subnet])
+        self.assertDNSMatches(node.hostname, node.domain.name, ip_obj.ip)
 
 
 class TestIPv6DNS(TestDNSServer):
 
     def test_bind_configuration_includes_ipv6_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('fe80::/64')
+        network = IPNetwork('fe80::/16')
         nodegroup = self.create_managed_nodegroup(network=network)
         nodegroup, node, static = self.create_nodegroup_with_static_ip(
             nodegroup=nodegroup)
         self.assertDNSMatches(
-            node.hostname, nodegroup.name, static.ip, version=6)
+            node.hostname, node.domain.name, static.ip, version=6)
 
 
 class TestGetUpstreamDNS(MAASServerTestCase):

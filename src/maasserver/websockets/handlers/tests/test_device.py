@@ -82,6 +82,10 @@ class TestDeviceHandler(MAASServerTestCase):
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
             "created": dehydrate_datetime(node.created),
+            "domain": {
+                "id": node.domain.id,
+                "name": node.domain.name,
+                },
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
@@ -224,7 +228,7 @@ class TestDeviceHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 7,
+            query_10_count, 8,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

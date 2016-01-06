@@ -30,6 +30,7 @@ from maasserver.enum import (
 )
 from maasserver.fields import DomainNameField
 from maasserver.models.bootresource import BootResource
+from maasserver.models.domain import Domain
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
 from maasserver.rpc import getClientFor
@@ -78,6 +79,8 @@ class NodeGroupManager(Manager):
         from maasserver.models import Node
         from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 
+        # make sure we have a default dns domain
+        Domain.objects.get_default_domain()
         try:
             # Get the first created nodegroup if it exists.
             master = self.all().order_by('id')[0:1].get()
@@ -139,7 +142,10 @@ class NodeGroup(TimestampedModel):
     cluster_name = CharField(
         max_length=100, unique=True, editable=True, blank=True, null=False)
 
-    # A node group's name is also used for the group's DNS zone.
+    # XXX 2015-12-17 lamont TODO: remove name
+    # A node group's name was also used for the group's DNS zone.  That is
+    # moving to the node (and DNSResource linked to StaticIPAddress), but needs
+    # to remain here for ip ranges, which have not moved to Subnet yet.
     name = DomainNameField(
         max_length=80, unique=False, editable=True, blank=True, null=False)
 

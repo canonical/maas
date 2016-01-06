@@ -41,6 +41,7 @@ from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
     Config,
     Device,
+    Domain,
     Interface,
     LicenseKey,
     Machine,
@@ -1974,40 +1975,45 @@ class TestNode(MAASServerTestCase):
         node.nodegroup = None
         self.assertRaises(ValidationError, node.save)
 
-    def test_fqdn_if_dns_not_managed_and_has_domain_name(self):
+    def test_fqdn_validation_failure_if_nonexistant(self):
         nodegroup = factory.make_NodeGroup(
             name=factory.make_string(),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_with_domain = '%s.%s' % (
             factory.make_string(), factory.make_string())
-        node = factory.make_Node(
+        self.assertRaises(
+            ValidationError,
+            factory.make_Node,
             nodegroup=nodegroup, hostname=hostname_with_domain)
-        self.assertEqual(hostname_with_domain, node.fqdn)
 
-    def test_fqdn_if_dns_not_managed_and_no_domain_name(self):
-        domain = factory.make_name('domain')
+    def test_fqdn_default_domain_if_not_given(self):
+        domain = Domain.objects.get_default_domain()
+        domain.name = factory.make_name('domain')
+        domain.save()
         nodegroup = factory.make_NodeGroup(
-            name=domain,
+            name=domain.name,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_without_domain = factory.make_string()
+        hostname = "%s.%s" % (hostname_without_domain, domain.name)
         node = factory.make_Node(
-            nodegroup=nodegroup, hostname=hostname_without_domain)
-        self.assertEqual(
-            "%s.%s" % (hostname_without_domain, domain), node.fqdn)
+            nodegroup=nodegroup,
+            hostname=hostname_without_domain)
+        self.assertEqual(hostname, node.fqdn)
 
-    def test_fqdn_replaces_hostname_if_dns_is_managed(self):
-        hostname_without_domain = factory.make_name('hostname')
-        hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.make_string())
-        domain = factory.make_name('domain')
+    def test_fqdn_if_specified(self):
+        # instantiate the default domain name
+        Domain.objects.get_default_domain()
+        # one for us.
+        domain = factory.make_Domain()
         nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            name=domain,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            name=domain.name,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        hostname_without_domain = factory.make_string()
+        hostname = "%s.%s" % (hostname_without_domain, domain.name)
         node = factory.make_Node(
-            hostname=hostname_with_domain, nodegroup=nodegroup)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domain)
-        self.assertEqual(expected_hostname, node.fqdn)
+            nodegroup=nodegroup,
+            hostname=hostname)
+        self.assertEqual(hostname, node.fqdn)
 
     def test_boot_type_has_fastpath_set_by_default(self):
         node = Node()

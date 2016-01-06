@@ -23,7 +23,6 @@ from django.db import (
     IntegrityError,
 )
 from django.db.models import (
-    CharField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -47,13 +46,11 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import strip_domain
-from maasserver.utils.dns import (
-    get_ip_based_hostname,
-    validate_hostname,
-)
+from maasserver.utils.dns import get_ip_based_hostname
 from maasserver.utils.orm import (
     make_serialization_failure,
     transactional,
@@ -113,7 +110,7 @@ class StaticIPAddressManager(Manager):
 
     def _attempt_allocation(
             self, requested_address, alloc_type, user=None,
-            hostname=None, subnet=None):
+            subnet=None):
         """Attempt to allocate `requested_address`.
 
         All parameters must have been checked first.  This method relies on
@@ -133,7 +130,7 @@ class StaticIPAddressManager(Manager):
         """
         ipaddress = StaticIPAddress(
             ip=requested_address.format(), alloc_type=alloc_type,
-            hostname=hostname, subnet=subnet)
+            subnet=subnet)
         ipaddress.set_ip_address(requested_address.format())
         try:
             # Try to save this address to the database.
@@ -156,7 +153,7 @@ class StaticIPAddressManager(Manager):
             self, network, static_range_low, static_range_high,
             dynamic_range_low, dynamic_range_high,
             alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-            requested_address=None, hostname=None, subnet=None,
+            requested_address=None, subnet=None,
             exclude_addresses=[], in_use_ipset=set()):
         """Return a new StaticIPAddress.
 
@@ -198,15 +195,19 @@ class StaticIPAddressManager(Manager):
         # If the user didn't specify a Subnet, look for the best possible
         # match. First start with any explicitly-requested address. Then
         # fall back to looking at the ranges (if specified).
-        if subnet is None and requested_address:
-            subnet = Subnet.objects.get_best_subnet_for_ip(
-                requested_address)
-        elif subnet is None and static_range_low:
-            subnet = Subnet.objects.get_best_subnet_for_ip(
-                static_range_low)
-        elif subnet is None and dynamic_range_low:
-            subnet = Subnet.objects.get_best_subnet_for_ip(
-                dynamic_range_low)
+        if subnet is None:
+            if requested_address:
+                subnet = Subnet.objects.get_best_subnet_for_ip(
+                    requested_address)
+            elif static_range_low:
+                subnet = Subnet.objects.get_best_subnet_for_ip(
+                    static_range_low)
+            elif dynamic_range_low:
+                subnet = Subnet.objects.get_best_subnet_for_ip(
+                    dynamic_range_low)
+            else:
+                raise StaticIPAddressOutOfRange(
+                    "Could not find an appropriate subnet.")
 
         if requested_address is None:
             static_range_low = IPAddress(static_range_low)
@@ -222,7 +223,7 @@ class StaticIPAddressManager(Manager):
                 try:
                     return self._attempt_allocation(
                         requested_address, alloc_type, user,
-                        hostname=hostname, subnet=subnet)
+                        subnet=subnet)
                 except StaticIPAddressUnavailable:
                     # This is phantom read: another transaction has
                     # taken this IP.  Raise a serialization failure to
@@ -245,16 +246,27 @@ class StaticIPAddressManager(Manager):
                         dynamic_range_high.format()))
             return self._attempt_allocation(
                 requested_address, alloc_type,
-                user=user, hostname=hostname, subnet=subnet)
+                user=user, subnet=subnet)
 
     def _get_user_reserved_mappings(self):
         mappings = []
         for mapping in self.filter(alloc_type=IPADDRESS_TYPE.USER_RESERVED):
-            hostname = mapping.hostname
-            ip = mapping.ip
-            if hostname is None or hostname == '':
-                hostname = get_ip_based_hostname(ip)
-            mappings.append((hostname, ip))
+            for dnsrr in mapping.dnsresource_set.all():
+                hostname = dnsrr.hostname
+                ip = mapping.ip
+                if hostname is None or hostname == '':
+                    hostname = get_ip_based_hostname(ip)
+                    hostname = "%s.%s" % (
+                        get_ip_based_hostname(ip),
+                        Domain.objects.get_default_domain().name)
+                else:
+                    hostname = '%s.%s' % (hostname, dnsrr.domain.name)
+                mappings.append((hostname, ip))
+            else:
+                hostname = "%s.%s" % (
+                    get_ip_based_hostname(mapping.ip),
+                    Domain.objects.get_default_domain().name)
+                mappings.append((hostname, mapping.ip))
         return mappings
 
     @asynchronous
@@ -297,16 +309,16 @@ class StaticIPAddressManager(Manager):
                 "No more IPs available in range %s-%s" % (
                     range_low.format(), range_high.format()))
 
-    def get_hostname_ip_mapping(self, nodegroup):
+    def get_hostname_ip_mapping(self, domain_or_subnet):
         """Return hostname mappings for `StaticIPAddress` entries.
 
         Returns a mapping `{hostnames -> [ips]}` corresponding to current
-        `StaticIPAddress` objects for the nodes in `nodegroup`.
+        `StaticIPAddress` objects for the nodes in `domain`, or `subnet`.
 
         At most one IPv4 address and one IPv6 address will be returned per
         node, each the one for whichever `Interface` was created first.
 
-        Any domain will be stripped from the hostnames.
+        The returned name is an FQDN (no trailing dot.)
         """
         cursor = connection.cursor()
 
@@ -315,9 +327,16 @@ class StaticIPAddressManager(Manager):
         # return the IP for the oldest Interface address.
         #
         # For nodes that have disable_ipv4 set, leave out any IPv4 address.
-        cursor.execute("""
+        if isinstance(domain_or_subnet, Subnet):
+            search_term = "staticip.subnet_id"
+        elif isinstance(domain_or_subnet, Domain):
+            search_term = "node.domain_id"
+        else:
+            raise ValueError('bad object passed to get_hostname_ip_mapping')
+
+        sql_query = """
             SELECT DISTINCT ON (node.hostname, family(staticip.ip))
-                node.hostname, staticip.ip
+                node.hostname, domain.name, staticip.ip
             FROM maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
                 interface.id = rel.child_id
@@ -325,6 +344,8 @@ class StaticIPAddressManager(Manager):
                 rel.parent_id = parent.id
             JOIN maasserver_node AS node ON
                 node.id = interface.node_id
+            JOIN maasserver_domain as domain ON
+                domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
                 link.interface_id = interface.id
             JOIN maasserver_staticipaddress AS staticip ON
@@ -332,7 +353,7 @@ class StaticIPAddressManager(Manager):
             WHERE
                 staticip.ip IS NOT NULL AND
                 host(staticip.ip) != '' AND
-                node.nodegroup_id = %s AND
+                """ + search_term + """ = %s AND
                 (
                     node.disable_ipv4 IS FALSE OR
                     family(staticip.ip) <> 4
@@ -370,13 +391,13 @@ class StaticIPAddressManager(Manager):
                     ELSE staticip.alloc_type
                 END,
                 interface.id
-            """, (nodegroup.id,))
+            """
+        cursor.execute(sql_query, (domain_or_subnet.id,))
         mapping = defaultdict(list)
-        for hostname, ip in cursor.fetchall():
-            hostname = strip_domain(hostname)
+        for hostname, domain, ip in cursor.fetchall():
+            hostname = "%s.%s" % (strip_domain(hostname), domain)
             mapping[hostname].append(ip)
         for hostname, ip in self._get_user_reserved_mappings():
-            hostname = strip_domain(hostname)
             mapping[hostname].append(ip)
         return mapping
 
@@ -384,10 +405,10 @@ class StaticIPAddressManager(Manager):
             self, interface, subnet_family, dont_delete=[]):
         # Clean the current DISCOVERED IP addresses linked to this interface.
         old_discovered = StaticIPAddress.objects.filter_by_subnet_cidr_family(
-            subnet_family)
-        old_discovered = old_discovered.filter(
-            interface=interface, alloc_type=IPADDRESS_TYPE.DISCOVERED)
-        old_discovered = old_discovered.prefetch_related('interface_set')
+            subnet_family).filter(
+            interface=interface,
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).prefetch_related(
+            'interface_set')
         old_discovered = list(old_discovered)
         dont_delete_ids = [ip.id for ip in dont_delete]
         for old_ip in old_discovered:
@@ -597,13 +618,6 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     # model.
     subnet = ForeignKey('Subnet', editable=True, blank=True, null=True)
 
-    # XXX: removing the null=True here causes dozens of tests to fail with
-    # NOT NULL constraint violations. (an empty string an NULL should mean
-    # the same thing here.)
-    hostname = CharField(
-        max_length=255, default='', blank=True, unique=False, null=True,
-        validators=[validate_hostname])
-
     user = ForeignKey(
         User, default=None, blank=True, null=True, editable=False,
         on_delete=PROTECT)
@@ -789,15 +803,12 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             "ip": self.ip,
             "alloc_type": self.alloc_type,
         }
-        if self.hostname:
-            data["hostname"] = self.hostname
         if with_username and self.user is not None:
             data["user"] = self.user.username
         if with_node_summary:
             node = self.get_node()
             if node is not None:
                 data["node_summary"] = {
-                    "hostname": node.hostname,
                     "system_id": node.system_id,
                     "node_type": node.node_type,
                 }

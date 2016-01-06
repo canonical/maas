@@ -29,7 +29,7 @@ from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    DNSZoneInfo,
+    DomainInfo,
 )
 from testtools.matchers import (
     Contains,
@@ -318,21 +318,21 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             # /22 ==> 4 /24 reverse zones
             (
                 IPNetwork('192.168.0.1/22'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('192.168.%d.0/24' % i),
                     '%d.168.192.in-addr.arpa' % i) for i in range(4)]
             ),
             # /24 ==> 1 reverse zone
             (
                 IPNetwork('192.168.0.1/24'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('192.168.0.0/24'),
                     '0.168.192.in-addr.arpa')]
             ),
             # /29 ==> 1 reverse zones, per RFC2317
             (
                 IPNetwork('192.168.0.241/29'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('192.168.0.240/29'),
                     '240-29.0.168.192.in-addr.arpa')]
             ),
@@ -340,24 +340,24 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             # /32, 48, 56, 64 ==> 1 reverse zones
             (
                 IPNetwork('3ffe:801::/32'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('3ffe:801::32'),
                     '1.0.8.0.e.f.f.3.ip6.arpa')]),
             (
                 IPNetwork('2001:db8:0::/48'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('2001:db8:0::/48'),
                     '0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa')]
             ),
             (
                 IPNetwork('2001:ba8:1f1:400::/56'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('2001:ba8:1f1:400::/56'),
                     '4.0.1.f.1.0.8.a.b.0.1.0.0.2.ip6.arpa')],
             ),
             (
                 IPNetwork('2610:8:6800:1::/64'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('2610:8:6800:1::/64'),
                     '1.0.0.0.0.0.8.6.8.0.0.0.0.1.6.2.ip6.arpa')],
             ),
@@ -365,23 +365,23 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             (
                 IPNetwork('8000::/2'),
                 [
-                    DNSZoneInfo(IPNetwork('8000::/4'), '8.ip6.arpa'),
-                    DNSZoneInfo(IPNetwork('9000::/4'), '9.ip6.arpa'),
-                    DNSZoneInfo(IPNetwork('a000::/4'), 'a.ip6.arpa'),
-                    DNSZoneInfo(IPNetwork('b000::/4'), 'b.ip6.arpa'),
+                    DomainInfo(IPNetwork('8000::/4'), '8.ip6.arpa'),
+                    DomainInfo(IPNetwork('9000::/4'), '9.ip6.arpa'),
+                    DomainInfo(IPNetwork('a000::/4'), 'a.ip6.arpa'),
+                    DomainInfo(IPNetwork('b000::/4'), 'b.ip6.arpa'),
                 ],
             ),
             # /103 ==> 2 /104 reverse zones
             (
                 IPNetwork('2001:ba8:1f1:400::/103'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('2001:ba8:1f1:400:0:0:%d00:0000/104' % i),
                     zn % i) for i in range(2)],
             ),
             # /125 ==> 1 reverse zone, based on RFC2317
             (
                 IPNetwork('2001:ba8:1f1:400::/125'),
-                [DNSZoneInfo(
+                [DomainInfo(
                     IPNetwork('2001:ba8:1f1:400::/125'),
                     "0-125.%s" % (
                         IPAddress('2001:ba8:1f1:400::').reverse_dns[2:-1]))],
@@ -415,7 +415,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             for hostname, ip in hosts.items()
         ]
         mapping = {
-            hostname: [ip]
+            "%s.%s" % (hostname, name): [ip]
             for hostname, ip in hosts.items()
             }
         self.assertItemsEqual(
@@ -434,7 +434,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             for hostname, ip in in_network_mapping.items()
         ]
         mapping = {
-            hostname: [ip]
+            "%s.%s" % (hostname, name): [ip]
             for hostname, ip in in_network_mapping.items()
             }
         extra_mapping = {
@@ -474,7 +474,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             reverse_file_name = 'zone.%d.168.192.in-addr.arpa' % sub
             expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
                 dynamic_network, domain,
-                DNSZoneInfo(
+                DomainInfo(
                     IPNetwork('192.168.%d.0/24' % sub),
                     "%d.168.192.in-addr.arpa" % sub))
             expected = ContainsAll(
@@ -504,7 +504,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         reverse_zone_name = '0-26.0.168.192.in-addr.arpa'
         reverse_file_name = 'zone.0-26.0.168.192.in-addr.arpa'
         expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
-            dynamic_network, domain, DNSZoneInfo(network, reverse_zone_name))
+            dynamic_network, domain, DomainInfo(network, reverse_zone_name))
         expected = ContainsAll(
             [
                 'IN  NS  %s' % domain
@@ -562,7 +562,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             DNSReverseZoneConfig.get_GENERATE_directives(
                 ip_range,
                 domain="domain",
-                zone_info=DNSZoneInfo(
+                zone_info=DomainInfo(
                     IPNetwork('192.168.0.0/16'),
                     "168.192.in-addr.arpa")))
 
@@ -615,7 +615,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_generate_directives = self.get_expected_generate_directives(
             network, domain)
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
-            network, domain, DNSZoneInfo(network, reverse))
+            network, domain, DomainInfo(network, reverse))
         self.expectThat(directives, HasLength(1))
         self.assertItemsEqual(expected_generate_directives, directives)
 
@@ -628,7 +628,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_generate_directives = self.get_expected_generate_directives(
             network, domain)
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
-            network, domain, DNSZoneInfo(network, reverse))
+            network, domain, DomainInfo(network, reverse))
         self.expectThat(directives, HasLength(1))
         self.assertItemsEqual(expected_generate_directives, directives)
 
@@ -637,7 +637,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         domain = factory.make_string()
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
             ip_range, domain,
-            DNSZoneInfo(IPNetwork('10.0.0.0/24'), '0.0.10.in-addr.arpa'))
+            DomainInfo(IPNetwork('10.0.0.0/24'), '0.0.10.in-addr.arpa'))
         self.expectThat(directives, HasLength(1))
 
     # generate 2 zones, rather than 1 zone with 2 GENERATEs.
@@ -650,7 +650,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_generate_directives = self.get_expected_generate_directives(
             network, domain)
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
-            network, domain, DNSZoneInfo(network, reverse))
+            network, domain, DomainInfo(network, reverse))
         self.expectThat(directives, HasLength(256))
         self.assertItemsEqual(expected_generate_directives, directives)
 
@@ -660,7 +660,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             [],
             DNSReverseZoneConfig.get_GENERATE_directives(
                 network, factory.make_string(),
-                DNSZoneInfo(network, "do not care")))
+                DomainInfo(network, "do not care")))
 
     def test_ignores_networks_that_span_slash_16s(self):
         # If the upper and lower bounds of a range span two /16 networks
@@ -669,7 +669,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         ip_range = IPRange('10.0.0.55', '10.1.0.54')
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
             ip_range, factory.make_string(),
-            DNSZoneInfo(IPNetwork('10.0.0.0/15'), "do not care"))
+            DomainInfo(IPNetwork('10.0.0.0/15'), "do not care"))
         self.assertEqual([], directives)
 
     def test_sorts_output_by_hostname(self):
@@ -681,7 +681,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
 
         directives = list(DNSReverseZoneConfig.get_GENERATE_directives(
             network, domain,
-            DNSZoneInfo(IPNetwork('10.0.0.0/24'), '0.0.10.in-addr.arpa')))
+            DomainInfo(IPNetwork('10.0.0.0/24'), '0.0.10.in-addr.arpa')))
         self.expectThat(
             directives[0], Equals(
                 ("0-255", expected_rdns % "0", expected_hostname % "0")))
@@ -690,7 +690,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_rdns = "$.%s.0.10.in-addr.arpa."
         directives = list(DNSReverseZoneConfig.get_GENERATE_directives(
             network, domain,
-            DNSZoneInfo(IPNetwork('10.0.1.0/24'), '1.0.10.in-addr.arpa')))
+            DomainInfo(IPNetwork('10.0.1.0/24'), '1.0.10.in-addr.arpa')))
         self.expectThat(
             directives[0], Equals(
                 ("0-255", expected_rdns % "1", expected_hostname % "1")))

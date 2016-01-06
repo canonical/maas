@@ -53,6 +53,8 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Device,
+    DNSResource,
+    Domain,
     DownloadProgress,
     Event,
     EventType,
@@ -256,6 +258,7 @@ class Factory(maastesting.factory.Factory):
             NODE_TRANSITIONS[None] = valid_initial_states
 
     def make_Device(self, hostname=None, nodegroup=None, interface=False,
+                    domain=None,
                     disable_ipv4=None, vlan=None, fabric=None, **kwargs):
         if hostname is None:
             hostname = self.make_string(20)
@@ -263,8 +266,10 @@ class Factory(maastesting.factory.Factory):
             nodegroup = self.make_NodeGroup()
         if disable_ipv4 is None:
             disable_ipv4 = self.pick_bool()
+        if domain is None:
+            domain = Domain.objects.get_default_domain()
         device = Device(hostname=hostname, nodegroup=nodegroup,
-                        disable_ipv4=disable_ipv4, **kwargs)
+                        disable_ipv4=disable_ipv4, domain=domain, **kwargs)
         device.save()
         if interface:
             self.make_Interface(
@@ -272,7 +277,7 @@ class Factory(maastesting.factory.Factory):
         return reload_object(device)
 
     def make_Node(
-            self, interface=False, hostname=None, status=None,
+            self, interface=False, hostname=None, domain=None, status=None,
             architecture="i386/generic", min_hwe_kernel=None,
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
             created=None, nodegroup=None, zone=None,
@@ -291,6 +296,8 @@ class Factory(maastesting.factory.Factory):
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is None:
             hostname = self.make_string(20)
+        if domain is None:
+            domain = Domain.objects.get_default_domain()
         if sortable_name:
             hostname = hostname.lower()
         if status is None:
@@ -319,6 +326,7 @@ class Factory(maastesting.factory.Factory):
             zone=zone, boot_type=boot_type, power_type=power_type,
             power_parameters=power_parameters, power_state=power_state,
             power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,
+            domain=domain,
             **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
@@ -482,6 +490,32 @@ class Factory(maastesting.factory.Factory):
         node = self.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
+
+    def make_Domain(self, name=None, authoritative=True):
+        if name is None:
+            name = self.make_name('domain')
+        domain = Domain(
+            name=name,
+            authoritative=authoritative)
+        domain.save()
+        return domain
+
+    def make_DNSResource(self, domain=None, ip_addresses=None, name=None,
+                         ttl=None, **kwargs):
+        if domain is None:
+            domain = self.make_Domain()
+        if name is None:
+            name = self.make_name('label')
+        if ip_addresses is None:
+            ip_addresses = [self.make_StaticIPAddress(**kwargs)]
+        dnsrr = DNSResource(
+            name=name,
+            ttl=ttl,
+            domain=domain)
+        dnsrr.save()
+        dnsrr.ip_addresses = ip_addresses
+        dnsrr.save()
+        return dnsrr
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
                                 router_ip=None, network=None,
@@ -651,6 +685,7 @@ class Factory(maastesting.factory.Factory):
             subnet = Subnet.objects.first()
         if subnet is None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
             subnet = self.make_Subnet()
+        hostname = kwargs.pop('hostname', None)
 
         if ip is self.UNDEFINED:
             if not subnet and alloc_type == IPADDRESS_TYPE.USER_RESERVED:
@@ -668,6 +703,12 @@ class Factory(maastesting.factory.Factory):
         if interface is not None:
             interface.ip_addresses.add(ipaddress)
             interface.save()
+        if hostname is not None:
+            if not isinstance(hostname, (tuple, list)):
+                hostname = (hostname)
+            for name in hostname:
+                ipaddress.dnsresource_set.add(
+                    DNSResource.objects.create(name=name))
         return reload_object(ipaddress)
 
     def make_email(self):

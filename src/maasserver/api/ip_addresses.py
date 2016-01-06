@@ -31,6 +31,8 @@ from maasserver.forms import (
     ReleaseIPForm,
 )
 from maasserver.models import (
+    DNSResource,
+    Domain,
     Interface,
     StaticIPAddress,
 )
@@ -61,12 +63,14 @@ class IPAddressesHandler(OperationsHandler):
     @transactional
     def claim_ip(
             self, user, interface, requested_address, mac=None,
-            hostname=None):
+            hostname=None, domain=None):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
         `interface`.
 
         :raises StaticIPAddressExhaustion: If no IPs available.
         """
+        if domain is None:
+            domain = Domain.objects.get_default_domain()
         if mac is None:
             sip = StaticIPAddress.objects.allocate_new(
                 network=interface.network,
@@ -76,9 +80,14 @@ class IPAddressesHandler(OperationsHandler):
                 dynamic_range_high=interface.ip_range_high,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=requested_address,
-                user=user, hostname=hostname)
+                user=user)
             from maasserver.dns import config as dns_config
-            dns_config.dns_update_zones([interface.nodegroup])
+            if hostname is not None and hostname != '':
+                dnsrr, _ = DNSResource.objects.get_or_create(
+                    name=hostname, domain=domain)
+                dnsrr.ip_addresses.add(sip)
+                dns_config.dns_update_domains([domain])
+            dns_config.dns_update_subnets([interface.subnet])
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
             # The user has requested a static IP linked to a MAC
@@ -116,6 +125,13 @@ class IPAddressesHandler(OperationsHandler):
                 ip_address=requested_address,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 user=user)
+            from maasserver.dns import config as dns_config
+            if hostname is not None and hostname != '':
+                dnsrr = DNSResource.objects.get_or_create(
+                    name=hostname, domain=domain)
+                dnsrr.ip_addresses.add(sip)
+                dns_config.dns_update_domains([domain])
+            dns_config.dns_update_subnets([interface.subnet])
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
                 user.username, sip.ip, nic.mac_address)
