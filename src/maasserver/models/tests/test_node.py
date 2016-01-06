@@ -27,7 +27,6 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -74,7 +73,6 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     post_commit,
@@ -2015,10 +2013,6 @@ class TestNode(MAASServerTestCase):
             hostname=hostname)
         self.assertEqual(hostname, node.fqdn)
 
-    def test_boot_type_has_fastpath_set_by_default(self):
-        node = Node()
-        self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
-
     def test_split_arch_returns_arch_as_tuple(self):
         main_arch = factory.make_name('arch')
         sub_arch = factory.make_name('subarch')
@@ -2278,35 +2272,20 @@ class TestNode(MAASServerTestCase):
             ("poweroff", {"status": NODE_STATUS.MISSING}),
             ("poweroff", {"status": NODE_STATUS.READY}),
             ("poweroff", {"status": NODE_STATUS.RESERVED}),
-            ("install", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
             ("xinstall", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
             ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
             ("local", {"status": NODE_STATUS.DEPLOYED}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
         ]
-        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node()
         mock_get_boot_images_for = self.patch(
             preseed_module, 'get_boot_images_for')
         for purpose, parameters in options:
             boot_image = make_rpc_boot_image(purpose=purpose)
             mock_get_boot_images_for.return_value = [boot_image]
-            if purpose == "xinstall":
-                node.boot_type = NODE_BOOT.FASTPATH
             for name, value in parameters.items():
                 setattr(node, name, value)
             self.assertEqual(purpose, node.get_boot_purpose())
-
-    def test_get_boot_purpose_osystem_no_xinstall_support(self):
-        osystem = make_usable_osystem(self)
-        release = osystem['default_release']
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, netboot=True,
-            osystem=osystem['name'], distro_series=release,
-            boot_type=NODE_BOOT.FASTPATH)
-        boot_image = make_rpc_boot_image(purpose='install')
-        self.patch(
-            preseed_module, 'get_boot_images_for').return_value = [boot_image]
-        self.assertEqual('install', node.get_boot_purpose())
 
     def test_boot_interface_default_is_none(self):
         node = factory.make_Node()

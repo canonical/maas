@@ -31,7 +31,6 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_BOOT,
     NODE_STATUS,
     NODE_TYPE,
     NODEGROUP_STATUS,
@@ -281,7 +280,7 @@ class Factory(maastesting.factory.Factory):
             architecture="i386/generic", min_hwe_kernel=None,
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
             created=None, nodegroup=None, zone=None,
-            networks=None, boot_type=None, sortable_name=False,
+            networks=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, disable_ipv4=None,
             with_boot_disk=True, vlan=None, fabric=None, **kwargs):
@@ -317,13 +316,11 @@ class Factory(maastesting.factory.Factory):
                 timezone.now() - timedelta(minutes=random.randint(0, 15)))
         if disable_ipv4 is None:
             disable_ipv4 = self.pick_bool()
-        if boot_type is None:
-            boot_type = self.pick_enum(NODE_BOOT)
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
             node_type=node_type, nodegroup=nodegroup,
-            zone=zone, boot_type=boot_type, power_type=power_type,
+            zone=zone, power_type=power_type,
             power_parameters=power_parameters, power_state=power_state,
             power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,
             domain=domain,

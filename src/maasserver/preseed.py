@@ -34,7 +34,6 @@ from maasserver.compose_preseed import (
     compose_preseed,
 )
 from maasserver.enum import (
-    NODE_BOOT,
     PRESEED_TYPE,
     USERDATA_TYPE,
 )
@@ -390,12 +389,8 @@ def get_available_purpose_for_node(purposes, node):
 def get_preseed_type_for(node):
     """Returns the preseed type for the node.
 
-    This is determined using the nodes boot_type and what supporting boot
-    images exist on the node's cluster. If the node is to boot using
-    fast-path installer, but there is no boot image that supports this
-    method then the default installer will be used. If the node is to boot
-    using the default installer but there is no boot image that supports
-    that method then it will boot using the fast-path installer.
+    If the node is in a commissioning like status then the commissioning
+    preseed will be used. Otherwise the node will use the curtin installer.
     """
     is_commissioning_preseed = (
         node.status in COMMISSIONING_LIKE_STATUSES or
@@ -404,26 +399,7 @@ def get_preseed_type_for(node):
     if is_commissioning_preseed:
         return PRESEED_TYPE.COMMISSIONING
     else:
-        return get_deploying_preseed_type_for(node)
-
-
-def get_deploying_preseed_type_for(node):
-    if node.boot_type == NODE_BOOT.FASTPATH:
-        purpose_order = ['xinstall', 'install']
-    elif node.boot_type == NODE_BOOT.DEBIAN:
-        purpose_order = ['install', 'xinstall']
-    else:
-        purpose_order = []
-
-    purpose = get_available_purpose_for_node(purpose_order, node)
-    if purpose == 'xinstall':
         return PRESEED_TYPE.CURTIN
-    elif purpose == 'install':
-        return PRESEED_TYPE.DEFAULT
-    logger.error(
-        "Unknown purpose '%s' for node: '%s'", purpose, node.fqdn)
-    raise PreseedError(
-        "Unknown purpose '%s' for node: '%s'", purpose, node.fqdn)
 
 
 @typed

@@ -10,7 +10,6 @@ from maasserver.compose_preseed import (
     get_apt_proxy_for_node,
 )
 from maasserver.enum import (
-    NODE_BOOT,
     NODE_STATUS,
     PRESEED_TYPE,
 )
@@ -110,16 +109,6 @@ class TestComposePreseed(MAASServerTestCase):
         preseed = compose_preseed(PRESEED_TYPE.COMMISSIONING, node)
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
 
-    def test_compose_preseed_includes_metadata_url(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        node.nodegroup.accept()
-        self.useFixture(RunningClusterRPCFixture())
-        preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
-        reverse = absolute_reverse('metadata')
-        self.assertIn(reverse, preseed)
-        status = absolute_reverse('metadata-status', args=[node.system_id])
-        self.assertIn(status, preseed)
-
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
             self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -154,16 +143,6 @@ class TestComposePreseed(MAASServerTestCase):
             'condition': 'test ! -e /tmp/block-poweroff',
         }, preseed['power_state'])
 
-    def test_compose_preseed_includes_node_oauth_token(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        node.nodegroup.accept()
-        self.useFixture(RunningClusterRPCFixture())
-        preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
-        token = NodeKey.objects.get_token_for_node(node)
-        self.assertIn('oauth_consumer_key=%s' % token.consumer.key, preseed)
-        self.assertIn('oauth_token_key=%s' % token.key, preseed)
-        self.assertIn('oauth_token_secret=%s' % token.secret, preseed)
-
     def test_compose_preseed_for_commissioning_includes_auth_tokens(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
@@ -178,47 +157,9 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(token.key, reporting_dict['token_key'])
         self.assertEqual(token.secret, reporting_dict['token_secret'])
 
-    def test_compose_preseed_valid_local_cloud_config(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        node.nodegroup.accept()
-        self.useFixture(RunningClusterRPCFixture())
-        apt_proxy = get_apt_proxy_for_node(node)
-        preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
-
-        keyname = "cloud-init/local-cloud-config"
-        self.assertIn(keyname, preseed)
-
-        # Expected input is 'cloud-init/local-cloud-config string VALUE'
-        # where one or more spaces in between tokens, and VALUE ending
-        # at newline.
-        config = preseed[preseed.find(keyname) + len(keyname):]
-        value = config.lstrip().split("string")[1].lstrip()
-
-        # Now debconf-unescape it.
-        value = value.replace("\\n", "\n").replace("\\\\", "\\")
-
-        # At this point it should be valid yaml.
-        data = yaml.safe_load(value)
-
-        self.assertIn("manage_etc_hosts", data)
-        self.assertFalse(data["manage_etc_hosts"])
-        self.assertIn("apt_preserve_sources_list", data)
-        self.assertTrue(data["apt_preserve_sources_list"])
-        self.assertEqual(apt_proxy, data["apt_proxy"])
-        self.assertTrue(data["manual_cache_clean"])
-        self.assertSystemInfo(data)
-
-    def test_compose_preseed_skips_apt_proxy(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        node.nodegroup.accept()
-        self.useFixture(RunningClusterRPCFixture())
-        Config.objects.set_config("enable_http_proxy", False)
-        preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
-        self.assertNotIn('apt_proxy', preseed)
-
     def test_compose_preseed_with_curtin_installer(self):
         node = factory.make_Node(
-            status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
+            status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         apt_proxy = get_apt_proxy_for_node(node)
@@ -239,7 +180,7 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
         node = factory.make_Node(
-            status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
+            status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         Config.objects.set_config("enable_http_proxy", False)

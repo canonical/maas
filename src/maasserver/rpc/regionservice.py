@@ -401,7 +401,7 @@ class Region(RPCProtocol):
                 'system_id': node.system_id,
                 'hostname': node.hostname,
                 'status': node.status,
-                'boot_type': node.boot_type,
+                'boot_type': "fastpath",
                 'osystem': node.osystem,
                 'distro_series': node.distro_series,
                 'architecture': node.architecture,

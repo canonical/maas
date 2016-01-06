@@ -1236,7 +1236,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 1
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:44.671744
     disable_ipv4: false
@@ -1278,7 +1277,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 3
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:45.193145
     disable_ipv4: false
@@ -1320,7 +1318,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 5
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:45.784235
     disable_ipv4: false
@@ -1362,7 +1359,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 6
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:46.352407
     disable_ipv4: false
@@ -1404,7 +1400,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 7
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:46.926070
     disable_ipv4: false
@@ -1446,7 +1441,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 8
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:47.542484
     disable_ipv4: false
@@ -1488,7 +1482,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 9
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:48.133143
     disable_ipv4: false
@@ -1530,7 +1523,6 @@
     boot_cluster_ip: 192.168.122.2
     boot_disk: null
     boot_interface: 10
-    boot_type: fastpath
     cpu_count: 1
     created: 2015-09-18 15:22:48.753151
     disable_ipv4: false
@@ -1572,7 +1564,6 @@
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null
-    boot_type: fastpath
     cpu_count: 0
     created: 2015-09-18 15:31:45.016083
     disable_ipv4: false
@@ -1614,7 +1605,6 @@
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null
-    boot_type: fastpath
     cpu_count: 0
     created: 2015-09-18 15:32:14.855907
     disable_ipv4: false
@@ -1654,7 +1644,6 @@
     boot_cluster_ip: null
     boot_disk: null
     boot_interface: null
-    boot_type: fastpath
     cpu_count: 0
     created: 2015-09-18 15:32:34.180288
     disable_ipv4: false

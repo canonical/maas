@@ -16,7 +16,6 @@ from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
-    NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
@@ -89,7 +88,6 @@ from testtools.matchers import (
     Not,
     StartsWith,
 )
-from twisted.internet import defer
 import yaml
 
 
@@ -581,46 +579,6 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             ))
 
 
-class TestRenderPreseedWindows(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
-    """Tests for `render_preseed`.
-
-    These tests check that the templates render (i.e. that no variable is
-    missing).
-    """
-
-    # Create a scenario for each possible windows release.
-    scenarios = [
-        (release, {'release': release})
-        for release in ['win2012', 'win2012hv', 'win2012hvr2', 'win2012r2']
-    ]
-
-    def return_windows_specific_preseed_data(self):
-        rpc_get_preseed_data = self.rpc_cluster.GetPreseedData
-        rpc_get_preseed_data.side_effect = None
-        rpc_get_preseed_data.return_value = defer.succeed({"data": {
-            'maas_metadata_url': factory.make_name("metadata-url"),
-            'maas_oauth_consumer_secret': factory.make_name("consumer-secret"),
-            'maas_oauth_consumer_key': factory.make_name("consumer-key"),
-            'maas_oauth_token_key': factory.make_name("token-key"),
-            'maas_oauth_token_secret': factory.make_name("token-secret"),
-            'hostname': factory.make_name("hostname"),
-        }})
-
-    def test_render_preseed(self):
-        self.return_windows_specific_preseed_data()
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem='windows',
-            architecture='amd64/generic', distro_series=self.release,
-            status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, 'install')
-        preseed = render_preseed(
-            node, '', osystem='windows', release=self.release)
-        # The test really is that the preseed is rendered without an
-        # error.
-        self.assertIsInstance(preseed, bytes)
-
-
 class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
     def load_reporter(self, preseeds):
@@ -775,8 +733,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            interface=True)
+            nodegroup=self.rpc_nodegroup, interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -795,8 +752,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_doesnt_call_compose_config_on_otheros(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            interface=True)
+            nodegroup=self.rpc_nodegroup, interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -815,8 +771,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            interface=True)
+            nodegroup=self.rpc_nodegroup, interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -843,7 +798,7 @@ class TestGetCurtinUserDataOS(
     def test_get_curtin_userdata(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=self.os_name,
-            boot_type=NODE_BOOT.FASTPATH, interface=True)
+            interface=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -860,7 +815,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
+            nodegroup=self.rpc_nodegroup)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         self.assertThat(
@@ -882,8 +837,7 @@ class TestCurtinUtilities(
             main_arch = factory.make_name('arch')
         arch = '%s/%s' % (main_arch, factory.make_name('subarch'))
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, architecture=arch,
-            boot_type=NODE_BOOT.FASTPATH)
+            nodegroup=self.rpc_nodegroup, architecture=arch)
         return node
 
     def extract_archive_setting(self, userdata):
@@ -932,7 +886,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_context(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
+            nodegroup=self.rpc_nodegroup)
         context = get_curtin_context(node)
         self.assertItemsEqual(
             ['curtin_preseed'], context)
@@ -1137,30 +1091,8 @@ class TestCurtinUtilities(
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
-    def test_get_preseed_type_for_default(self):
-        node = factory.make_Node(
-            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, 'install')
-        self.assertEqual(
-            PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
-
     def test_get_preseed_type_for_curtin(self):
-        node = factory.make_Node(
-            boot_type=NODE_BOOT.FASTPATH, status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, 'xinstall')
-        self.assertEqual(
-            PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
-
-    def test_get_preseed_type_for_default_when_curtin_not_supported(self):
-        node = factory.make_Node(
-            boot_type=NODE_BOOT.FASTPATH, status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, 'install')
-        self.assertEqual(
-            PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
-
-    def test_get_preseed_type_for_curtin_when_default_not_supported(self):
-        node = factory.make_Node(
-            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
@@ -1169,88 +1101,9 @@ class TestCurtinUtilities(
         # A 'ready' node isn't supposed to be powered on and thus
         # will get a 'commissioning' preseed in order to be powered
         # down.
-        node = factory.make_Node(
-            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
-
-
-class TestRenderPreseedArchives(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
-    """Test that the default preseed contains the default mirrors."""
-
-    def test_render_preseed_uses_default_archives_intel(self):
-        nodes = [
-            factory.make_Node(
-                nodegroup=self.rpc_nodegroup,
-                status=NODE_STATUS.DEPLOYING,
-                architecture=make_usable_architecture(
-                    self, arch_name="i386", subarch_name="generic")),
-            factory.make_Node(
-                nodegroup=self.rpc_nodegroup,
-                status=NODE_STATUS.DEPLOYING,
-                architecture=make_usable_architecture(
-                    self, arch_name="amd64", subarch_name="generic")),
-            ]
-        boot_images = [
-            self.make_rpc_boot_image_for(node, 'install')
-            for node in nodes
-            ]
-        self.patch(
-            preseed_module, 'get_boot_images_for').return_value = boot_images
-        default_snippets = [
-            b"d-i     mirror/http/hostname string archive.ubuntu.com",
-            b"d-i     mirror/http/directory string /ubuntu",
-            ]
-        for node in nodes:
-            preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
-            self.assertThat(preseed, ContainsAll(default_snippets))
-
-    def test_render_preseed_uses_default_archives_arm(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup,
-            architecture=make_usable_architecture(
-                self, arch_name="armhf", subarch_name="generic"))
-        self.configure_get_boot_images_for_node(node, 'install')
-        default_snippets = [
-            b"d-i     mirror/http/hostname string ports.ubuntu.com",
-            b"d-i     mirror/http/directory string /ubuntu-ports",
-            ]
-        preseed = render_preseed(node, PRESEED_TYPE.DEFAULT, "precise")
-        self.assertThat(preseed, ContainsAll(default_snippets))
-
-
-class TestPreseedProxy(
-        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
-
-    def test_preseed_uses_default_proxy(self):
-        server_host = "%s.example.com" % factory.make_hostname()
-        url = factory.make_simple_http_url(netloc=server_host)
-        self.useFixture(RegionConfigurationFixture(maas_url=url))
-
-        expected_proxy_statement = (
-            "mirror/http/proxy string http://%s:8000" % server_host)
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
-        self.configure_get_boot_images_for_node(node, 'install')
-        preseed = render_preseed(
-            node,
-            PRESEED_TYPE.DEFAULT, "precise")
-        self.assertIn(
-            expected_proxy_statement.encode("utf-8"), preseed)
-
-    def test_preseed_uses_configured_proxy(self):
-        http_proxy = 'http://%s:%d/%s' % (
-            factory.make_string(), factory.pick_port(), factory.make_string())
-        Config.objects.set_config('http_proxy', http_proxy)
-        expected_proxy_statement = (
-            "mirror/http/proxy string %s" % http_proxy)
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
-        self.configure_get_boot_images_for_node(node, 'install')
-        preseed = render_preseed(
-            node,
-            PRESEED_TYPE.DEFAULT, "precise")
-        self.assertIn(
-            expected_proxy_statement.encode("utf-8"), preseed)
 
 
 class TestPreseedMethods(
@@ -1260,18 +1113,9 @@ class TestPreseedMethods(
     These tests check that the preseed templates render and 'look right'.
     """
 
-    def test_get_preseed_returns_default_preseed(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.DEBIAN,
-            status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, 'install')
-        preseed = get_preseed(node)
-        self.assertIn(b'preseed/late_command', preseed)
-
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
-            status=NODE_STATUS.DEPLOYING)
+            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')

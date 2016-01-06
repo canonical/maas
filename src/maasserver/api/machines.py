@@ -80,7 +80,6 @@ DISPLAYED_MACHINE_FIELDS = (
     'status',
     'osystem',
     'distro_series',
-    'boot_type',
     'netboot',
     'power_type',
     'power_state',
@@ -602,11 +601,6 @@ class AnonMachinesHandler(AnonNodesHandler):
             comes from an IP range within a known nodegroup, that nodegroup
             will be used.)
         :param nodegroup: The id of the nodegroup this machine belongs to.
-        :param boot_type: The installation type of the machine. 'fastpath': use
-            the default installer. 'di' use the debian installer.
-            Note that using 'di' is now deprecated and will be removed in favor
-            of the default installer in MAAS 1.9.
-        :type boot_type: unicode
         """
         return create_machine(request)
 

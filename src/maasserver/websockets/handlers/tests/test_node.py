@@ -134,7 +134,6 @@ class TestNodeHandler(MAASServerTestCase):
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
             "architecture": node.architecture,
-            "boot_type": node.boot_type,
             "boot_disk": node.boot_disk,
             "bios_boot_method": node.bios_boot_method,
             "commissioning_results": handler.dehydrate_node_results(

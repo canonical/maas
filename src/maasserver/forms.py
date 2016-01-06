@@ -83,8 +83,6 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
-    NODE_BOOT,
-    NODE_BOOT_CHOICES,
     NODE_STATUS,
     NODE_TYPE,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -584,13 +582,6 @@ class NodeForm(MAASModelForm):
         except ValueError:
             raise ValidationError('Invalid size for swap: %s' % swap_size)
 
-    def clean_boot_type(self):
-        boot_type = self.cleaned_data.get('boot_type')
-        if not boot_type:
-            return NODE_BOOT.FASTPATH
-        else:
-            return boot_type
-
     def clean_min_hwe_kernel(self):
         min_hwe_kernel = self.cleaned_data.get('min_hwe_kernel')
         if self.new_node and not min_hwe_kernel:
@@ -720,9 +711,6 @@ class NodeForm(MAASModelForm):
             "The size of the swap file in bytes. The field also accepts K, M, "
             "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
 
-    boot_type = forms.ChoiceField(
-        choices=NODE_BOOT_CHOICES, initial=NODE_BOOT.FASTPATH, required=False)
-
     class Meta:
         model = Node
 
@@ -738,7 +726,6 @@ class NodeForm(MAASModelForm):
             'license_key',
             'disable_ipv4',
             'swap_size',
-            'boot_type',
             'min_hwe_kernel',
             'hwe_kernel'
             )

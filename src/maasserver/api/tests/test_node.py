@@ -19,7 +19,6 @@ from maasserver.api import nodes as nodes_module
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_BOOT,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -194,14 +193,6 @@ class TestNodeAPI(APITestCase):
             [
                 parsed_result['zone']['name'],
                 parsed_result['zone']['description']])
-
-    def test_GET_returns_boot_type(self):
-        node = factory.make_Node()
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(
-            node.boot_type, parsed_result['boot_type'])
 
     def test_GET_returns_pxe_mac(self):
         node = factory.make_Node(interface=True)
@@ -1270,22 +1261,6 @@ class TestNodeAPI(APITestCase):
 
         node = reload_object(node)
         self.assertEqual(original_setting, node.disable_ipv4)
-
-    def test_PUT_updates_boot_type(self):
-        self.become_admin()
-        node = factory.make_Node(
-            owner=self.logged_in_user,
-            architecture=make_usable_architecture(self),
-            boot_type=NODE_BOOT.FASTPATH,
-            )
-        response = self.client.put(
-            reverse('node_handler', args=[node.system_id]),
-            {'boot_type': NODE_BOOT.DEBIAN})
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(node.boot_type, parsed_result['boot_type'])
-        self.assertEqual(node.boot_type, NODE_BOOT.DEBIAN)
 
     def test_PUT_updates_swap_size(self):
         self.become_admin()

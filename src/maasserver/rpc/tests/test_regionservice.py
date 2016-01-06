@@ -2553,7 +2553,12 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
             MockCalledOnceWith(params['mac_address']))
         response_purpose = response.pop('purpose')
         self.assertEqual(purpose, response_purpose)
-        self.assertAttributes(node, response)
+        # Remove the boot_type from the response as node no longer has that
+        # attribute.
+        copy_response = dict(response)
+        del copy_response["boot_type"]
+        self.assertAttributes(node, copy_response)
+        self.assertEquals("fastpath", response["boot_type"])
 
     @wait_for_reactor
     def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):

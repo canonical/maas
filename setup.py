@@ -71,23 +71,13 @@ setup(
         ('/etc/maas/preseeds',
             ['contrib/preseeds_v2/commissioning',
              'contrib/preseeds_v2/enlist',
-             'contrib/preseeds_v2/generic',
              'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/curtin',
              'contrib/preseeds_v2/curtin_userdata',
              'contrib/preseeds_v2/curtin_userdata_centos',
              'contrib/preseeds_v2/curtin_userdata_custom',
              'contrib/preseeds_v2/curtin_userdata_suse',
-             'contrib/preseeds_v2/curtin_userdata_windows',
-             'contrib/preseeds_v2/preseed_master',
-             'contrib/preseeds_v2/'
-             'preseed_master_windows_amd64_generic_win2012',
-             'contrib/preseeds_v2/'
-             'preseed_master_windows_amd64_generic_win2012hv',
-             'contrib/preseeds_v2/'
-             'preseed_master_windows_amd64_generic_win2012hvr2',
-             'contrib/preseeds_v2/'
-             'preseed_master_windows_amd64_generic_win2012r2']),
+             'contrib/preseeds_v2/curtin_userdata_windows']),
         ('/usr/bin',
             ['scripts/maas-generate-winrm-cert',
              'scripts/uec2roottar']),

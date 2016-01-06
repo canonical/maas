@@ -262,6 +262,16 @@ class NodeHandler(OperationsHandler):
             return node.status
 
     @classmethod
+    def boot_type(handler, node):
+        """Backward-compatibility layer: boot_type.
+
+        Always will be "fastpath".
+
+        This is deprecated as of MAAS 2.0.
+        """
+        return "fastpath"
+
+    @classmethod
     def substatus(handler, node):
         """Return the substatus of the node.
 
@@ -1121,11 +1131,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
             comes from an IP range within a known nodegroup, that nodegroup
             will be used.)
         :param nodegroup: The id of the nodegroup this node belongs to.
-        :param boot_type: The installation type of the node. 'fastpath': use
-            the default installer. 'di' use the debian installer.
-            Note that using 'di' is now deprecated and will be removed in favor
-            of the default installer in MAAS 1.9.
-        :type boot_type: unicode
         """
         return create_node(request)
 

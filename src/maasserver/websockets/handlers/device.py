@@ -112,7 +112,6 @@ class DeviceHandler(TimestampedModelHandler):
             "power_state",
             "routers",
             "architecture",
-            "boot_type",
             "bios_boot_method",
             "status",
             "power_parameters",

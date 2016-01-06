@@ -13,7 +13,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_TYPE,
-    NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -75,7 +74,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Node.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
-        self.assertEqual(NODE_BOOT.FASTPATH, diane.boot_type)
 
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
         Domain.objects.get_or_create(name="domain")
@@ -553,7 +551,6 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'node_type',
-                'boot_type',
                 'power_type',
                 'power_state',
                 'tag_names',

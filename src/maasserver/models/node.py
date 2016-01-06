@@ -60,8 +60,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
-    NODE_BOOT,
-    NODE_BOOT_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -70,7 +68,6 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
     POWER_STATE_CHOICES,
-    PRESEED_TYPE,
 )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import (
@@ -507,8 +504,6 @@ class Node(CleanSave, TimestampedModel):
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
     :ivar bios_boot_method: The boot method used by the cluster to allow
         this node to boot. E.g. "pxe".
-    :ivar boot_type: This `Node`'s booting method. See the vocabulary
-        :class:`NODE_BOOT`.
     :ivar osystem: This `Node`'s booting operating system, if it's blank then
         the default_osystem will be used.
     :ivar distro_series: This `Node`'s booting distro series, if
@@ -547,9 +542,6 @@ class Node(CleanSave, TimestampedModel):
         on_delete=PROTECT)
 
     bios_boot_method = CharField(max_length=31, blank=True, null=True)
-
-    boot_type = CharField(
-        max_length=20, choices=NODE_BOOT_CHOICES, default=NODE_BOOT.FASTPATH)
 
     osystem = CharField(
         max_length=20, blank=True, default='')
@@ -2446,13 +2438,7 @@ class Node(CleanSave, TimestampedModel):
             # Install the node if netboot is enabled,
             # otherwise boot locally.
             if self.netboot:
-                # Avoid circular imports.
-                from maasserver.preseed import get_deploying_preseed_type_for
-                preseed_type = get_deploying_preseed_type_for(self)
-                if preseed_type == PRESEED_TYPE.CURTIN:
-                    return "xinstall"
-                else:
-                    return "install"
+                return "xinstall"
             else:
                 return "local"
         elif self.status == NODE_STATUS.DEPLOYED:
