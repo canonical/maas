@@ -540,6 +540,12 @@ class Node(CleanSave, TimestampedModel):
         max_length=255, default='', blank=True, unique=True,
         validators=[validate_hostname])
 
+    # What Domain do we use for this host unless the individual StaticIPAddress
+    # record overrides it?
+    domain = ForeignKey(
+        Domain, default=get_default_domain, null=False,
+        editable=True, on_delete=PROTECT)
+
     status = IntegerField(
         choices=NODE_STATUS_CHOICES, editable=False,
         default=NODE_STATUS.DEFAULT)
@@ -622,12 +628,6 @@ class Node(CleanSave, TimestampedModel):
         'maasserver.NodeGroup', editable=True, null=True, blank=True)
 
     tags = ManyToManyField(Tag)
-
-    # What Domain do we use for this host unless the StaticIPAddress record
-    # overrides it?
-    domain = ForeignKey(
-        Domain, default=get_default_domain, null=False,
-        editable=True, on_delete=PROTECT)
 
     # Disable IPv4 support on node once deployed, on operating systems that
     # support this choice.

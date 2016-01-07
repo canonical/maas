@@ -113,6 +113,16 @@ class DNSResourceTest(MAASServerTestCase):
         self.assertThat(dnsresource_from_db, MatchesStructure.byEquality(
             name=name))
 
+    def test_rejects_multiple_dnsresource_with_same_name(self):
+        name = factory.make_name('name')
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        dnsresource2 = DNSResource(name=name, domain=domain)
+        self.assertRaises(
+            ValidationError,
+            dnsresource2.save)
+
     def test_invalid_name_raises_exception(self):
         self.assertRaises(
             ValidationError,

@@ -67,6 +67,16 @@ class IPAddressesHandler(OperationsHandler):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
         `interface`.
 
+        :param interface: NodeGroupInterface to use
+        :param requested_address: Any requested address
+        :param mac: MAC address to use
+        :param hostname: The hostname
+        :param domain: The domain to use
+        :type interface: NodeGroupInterface
+        :type requested_address: str
+        :type mac: str
+        :type hostname: str
+        :type domain: Domain
         :raises StaticIPAddressExhaustion: If no IPs available.
         """
         if domain is None:

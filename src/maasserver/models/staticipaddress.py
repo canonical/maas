@@ -251,9 +251,9 @@ class StaticIPAddressManager(Manager):
     def _get_user_reserved_mappings(self):
         mappings = []
         for mapping in self.filter(alloc_type=IPADDRESS_TYPE.USER_RESERVED):
+            ip = mapping.ip
             for dnsrr in mapping.dnsresource_set.all():
-                hostname = dnsrr.hostname
-                ip = mapping.ip
+                hostname = dnsrr.name
                 if hostname is None or hostname == '':
                     hostname = get_ip_based_hostname(ip)
                     hostname = "%s.%s" % (
@@ -264,9 +264,9 @@ class StaticIPAddressManager(Manager):
                 mappings.append((hostname, ip))
             else:
                 hostname = "%s.%s" % (
-                    get_ip_based_hostname(mapping.ip),
+                    get_ip_based_hostname(ip),
                     Domain.objects.get_default_domain().name)
-                mappings.append((hostname, mapping.ip))
+                mappings.append((hostname, ip))
         return mappings
 
     @asynchronous
@@ -405,10 +405,10 @@ class StaticIPAddressManager(Manager):
             self, interface, subnet_family, dont_delete=[]):
         # Clean the current DISCOVERED IP addresses linked to this interface.
         old_discovered = StaticIPAddress.objects.filter_by_subnet_cidr_family(
-            subnet_family).filter(
-            interface=interface,
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).prefetch_related(
-            'interface_set')
+            subnet_family)
+        old_discovered = old_discovered.filter(
+            interface=interface, alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        old_discovered = old_discovered.prefetch_related('interface_set')
         old_discovered = list(old_discovered)
         dont_delete_ids = [ip.id for ip in dont_delete]
         for old_ip in old_discovered:

@@ -800,6 +800,31 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
         self.assertDNSMatches(node.hostname, node.domain.name, ip_obj.ip)
 
 
+class TestDNSResource(TestDNSServer):
+    """Tests for DNSResource records."""
+
+    def test_dnsresources_are_in_the_dns(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        network = IPNetwork('192.168.7.1/24')
+        nodegroup = self.create_managed_nodegroup(network=network)
+        [interface] = nodegroup.get_managed_interfaces()
+        node = factory.make_Node(
+            nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
+            disable_ipv4=False)
+        # Get an IP in the dynamic range.
+        ip_range = IPRange(
+            interface.ip_range_low, interface.ip_range_high)
+        ip = "%s" % random.choice(ip_range)
+        ip_obj = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip,
+            subnet=interface.subnet)
+        rrname = factory.make_name('label')
+        dnsrr = factory.make_DNSResource(
+            name=rrname, domain=node.domain,
+            ip_addresses=[ip_obj])
+        self.assertDNSMatches(dnsrr.name, node.domain.name, ip_obj.ip)
+
+
 class TestIPv6DNS(TestDNSServer):
 
     def test_bind_configuration_includes_ipv6_zone(self):

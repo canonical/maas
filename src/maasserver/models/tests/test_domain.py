@@ -117,6 +117,14 @@ class DomainTest(MAASServerTestCase):
         self.assertThat(domain_from_db, MatchesStructure.byEquality(
             name=name))
 
+    def test_create_strips_trailing_dot(self):
+        name = factory.make_name('name')
+        domain = Domain(name=name + ".")
+        domain.save()
+        domain_from_db = Domain.objects.get(name=name)
+        self.assertThat(domain_from_db, MatchesStructure.byEquality(
+            name=name))
+
     def test_get_default_domain_creates_default_domain(self):
         default_domain = Domain.objects.get_default_domain()
         self.assertEqual(0, default_domain.id)

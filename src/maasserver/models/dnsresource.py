@@ -139,6 +139,8 @@ class DNSResource(CleanSave, TimestampedModel):
     # If name is blank or None, then we'll use $IFACE.$NODENAME.$DOMAIN (and
     # $NODENAME.$DOMAIN if this is the pxeboot interface), otherwise we'll use
     # only NAME.$DOMAIN.
+    # There can be more than one name=None entry, so unique needs to be False.
+    # We detect and reject duplicates in clean()
     name = CharField(
         max_length=63, editable=True, null=True, blank=True, unique=False,
         validators=[validate_dnsresource_name])

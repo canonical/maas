@@ -259,6 +259,20 @@ class TestIPAddressesAPI(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
+    def test_POST_reserve_without_hostname_creates_ip_without_hostname(self):
+        from maasserver.dns import config as dns_config_module
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
+        interface = self.make_interface()
+        net = interface.network
+        response = self.post_reservation_request(net=net)
+        self.assertEqual(http.client.OK, response.status_code)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            staticipaddress.dnsresource_set.all().count(), Equals(0))
+        # We expect 1 call from the Subnet creation.
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
+
     def test_POST_reserve_with_hostname_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
         dns_update_subnets = self.patch(
@@ -271,7 +285,8 @@ class TestIPAddressesAPI(APITestCase):
         [staticipaddress] = StaticIPAddress.objects.all()
         self.expectThat(
             staticipaddress.dnsresource_set.first().name, Equals(hostname))
-        self.expectThat(dns_update_subnets.call_count, Equals(1))
+        # We expect one from the Subnet, and one from the DNSResource creation.
+        self.expectThat(dns_update_subnets.call_count, Equals(2))
 
     def test_POST_reserve_with_hostname_and_ip_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
@@ -294,7 +309,8 @@ class TestIPAddressesAPI(APITestCase):
         self.expectThat(staticipaddress.ip, Equals(ip_in_network))
         self.expectThat(
             staticipaddress.dnsresource_set.first().name, Equals(hostname))
-        self.expectThat(dns_update_subnets.call_count, Equals(1))
+        # We expect one from the Subnet, and one from the DNSResource creation.
+        self.expectThat(dns_update_subnets.call_count, Equals(2))
 
     def test_POST_reserve_with_no_parameters_fails_with_bad_request(self):
         response = self.post_reservation_request()

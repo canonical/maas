@@ -40,7 +40,7 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
-NAMESPEC = r'^(%s\.)*%s$' % (LABEL, LABEL)
+NAMESPEC = r'^(%s\.)*%s\.?$' % (LABEL, LABEL)
 
 
 def validate_domain_name(value):
@@ -163,7 +163,7 @@ class Domain(CleanSave, TimestampedModel):
         """Return the name of the domain."""
         return self.name
 
-    def count(self):
+    def resource_count(self):
         """How many nodes are attached to this zone."""
         from maasserver.models.dnsresource import DNSResource
         return DNSResource.objects.filter(domain=self).count()
@@ -177,5 +177,11 @@ class Domain(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         super(Domain, self).save(*args, **kwargs)
 
-#    def clean(self, *args, **kwargs):
-#        super(Domain, self).clean(*args, **kwargs)
+    def clean_name(self):
+        # Automatically strip any trailing dot from the domain name.
+        if self.name.endswith('.'):
+            self.name = self.name[:-1]
+
+    def clean(self, *args, **kwargs):
+        super(Domain, self).clean(*args, **kwargs)
+        self.clean_name()

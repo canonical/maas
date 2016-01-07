@@ -15,6 +15,7 @@ from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Config,
+    DNSResource,
     Domain,
     Node,
     NodeGroupInterface,
@@ -33,6 +34,25 @@ def dns_post_save_Domain(sender, instance, created, **kwargs):
     # if we created the domain, then we can just add it.
     if created:
         dns_add_domains([instance])
+    else:
+        dns_update_all_zones()
+
+
+@receiver(post_save, sender=DNSResource)
+def dns_post_save_DNSResource(sender, instance, created, **kwargs):
+    """Create or update DNS zones as needed for this domain."""
+    from maasserver.dns.config import (
+        dns_update_domains,
+        dns_update_subnets,
+        dns_update_all_zones,
+        )
+    # if we created the DNSResource, then we can just update the domain.
+    if created:
+        dns_update_domains([instance.domain])
+        dns_update_subnets([
+            ip.subnet
+            for ip in instance.ip_addresses.all()
+            if ip.subnet])
     else:
         dns_update_all_zones()
 
