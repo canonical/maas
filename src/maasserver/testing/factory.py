@@ -70,6 +70,7 @@ from maasserver.models import (
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    RegionController,
     Space,
     SSHKey,
     SSLKey,
@@ -274,6 +275,13 @@ class Factory(maastesting.factory.Factory):
             self.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
         return reload_object(device)
+
+    def make_RegionController(self, hostname=None):
+        if hostname is None:
+            hostname = self.make_string(20)
+        region = RegionController(hostname=hostname)
+        region.save()
+        return region
 
     def make_Node(
             self, interface=False, hostname=None, domain=None, status=None,

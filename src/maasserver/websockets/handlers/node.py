@@ -167,6 +167,7 @@ class NodeHandler(TimestampedModelHandler):
             "enable_ssh",
             "skip_networking",
             "skip_storage",
+            "dns_process",
         ]
         list_fields = [
             "system_id",

@@ -1968,11 +1968,6 @@ class TestNode(MAASServerTestCase):
         node = Node()
         self.assertTrue(node.netboot)
 
-    def test_nodegroup_cannot_be_null(self):
-        node = factory.make_Node()
-        node.nodegroup = None
-        self.assertRaises(ValidationError, node.save)
-
     def test_fqdn_validation_failure_if_nonexistant(self):
         nodegroup = factory.make_NodeGroup(
             name=factory.make_string(),

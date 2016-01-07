@@ -39,6 +39,9 @@ __all__ = [
     'PhysicalInterface',
     'RAID',
     'RackController',
+    'RegionController',
+    'RegionControllerProcess',
+    'RegionControllerProcessEndpoint',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -103,12 +106,17 @@ from maasserver.models.node import (
     Machine,
     Node,
     RackController,
+    RegionController,
 )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.regioncontrollerprocess import RegionControllerProcess
+from maasserver.models.regioncontrollerprocessendpoint import (
+    RegionControllerProcessEndpoint,
+)
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -150,6 +158,10 @@ ignore_unused(
     Partition,
     PartitionTable,
     RAID,
+    RackController,
+    RegionController,
+    RegionControllerProcess,
+    RegionControllerProcessEndpoint,
     SSHKey,
     StaticIPAddress,
     Tag,

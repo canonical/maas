@@ -37,6 +37,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
+    OneToOneField,
     PROTECT,
     Q,
     SET_DEFAULT,
@@ -439,6 +440,12 @@ class RackControllerManager(BaseNodeManager):
     extra_filters = {'node_type': NODE_TYPE.RACK_CONTROLLER}
 
 
+class RegionControllerManager(BaseNodeManager):
+    """Region controllers are the API, UI, and Coordinators of MAAS."""
+
+    extra_filters = {'node_type': NODE_TYPE.REGION_CONTROLLER}
+
+
 def nodegroup_fqdn(hostname, nodegroup_name):
     """Build a FQDN from a hostname and a given domain name.
 
@@ -608,17 +615,11 @@ class Node(CleanSave, TimestampedModel):
 
     license_key = CharField(max_length=30, null=True, blank=True)
 
-    # This field can't be null, but we can't enforce that in the
-    # database schema because we can only create the default value from
-    # a complete schema, after schema migration.  We can't use custom
-    # model validation either, because the node forms need to set their
-    # default values *after* saving the form (with commit=False), which
-    # incurs validation before the default values are set.
-    # So all we can do is set blank=False, and make the field editable
-    # to cajole Django out of skipping it during "model" (actually model
-    # form) validation.
+    # XXX 2016-01-06 blake_r: This field can now be blank because of
+    # RackController and RegionController are now based on Node. This field
+    # will be removed soon once all the new RackController work is completed.
     nodegroup = ForeignKey(
-        'maasserver.NodeGroup', editable=True, null=True, blank=False)
+        'maasserver.NodeGroup', editable=True, null=True, blank=True)
 
     tags = ManyToManyField(Tag)
 
@@ -675,13 +676,19 @@ class Node(CleanSave, TimestampedModel):
         editable=False, related_name='+', on_delete=SET_NULL)
 
     # Used to determine whether to:
-    #  1. Import the SSH Key during commissioning.
-    #  2. Block the automatic power off during commissioning.
-    #  3. Skip reconfiguring networking when a node is commissioned.
-    #  4. Skip reconfiguring storage when a node is commissioned.
+    #  1. Import the SSH Key during commissioning and keep power on.
+    #  2. Skip reconfiguring networking when a node is commissioned.
+    #  3. Skip reconfiguring storage when a node is commissioned.
     enable_ssh = BooleanField(default=False)
     skip_networking = BooleanField(default=False)
     skip_storage = BooleanField(default=False)
+
+    # Used only by a RegionController to determine which
+    # RegionControllerProcess is currently controlling DNS on this node.
+    # Used only by `REGION_CONTROLLER` all other types this should be NULL.
+    dns_process = OneToOneField(
+        "RegionControllerProcess", null=True, editable=False, unique=True,
+        related_name="+")
 
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
@@ -2692,6 +2699,19 @@ class RackController(Node):
     def __init__(self, *args, **kwargs):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
+
+
+class RegionController(Node):
+    """A node which is running multiple regiond's."""
+
+    objects = RegionControllerManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(RegionController, self).__init__(
+            node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs)
 
 
 class Device(Node):
