@@ -127,17 +127,34 @@ def discover_networks():
     return [network.as_dict() for network in networks]
 
 
-def get_ip_addr_json():
-    """Returns this system's local IP address information, in JSON format.
+def get_ip_addr():
+    """Returns this system's local IP address information as a dictionary.
 
     :raises:ExternalProcessError: if IP address information could not be
         gathered.
     """
     ip_addr_output = call_and_check(["/sbin/ip", "addr"])
     ifaces = parse_ip_addr(ip_addr_output)
-    ifaces = annotate_with_driver_information(ifaces)
-    ip_addr_json = json.dumps(ifaces)
-    return ip_addr_json
+    return annotate_with_driver_information(ifaces)
+
+
+def get_ip_addr_json():
+    """Returns this system's local IP address information, in JSON format.
+
+    :raises:ExternalProcessError: if IP address information could not be
+        gathered.
+    """
+    return json.dumps(get_ip_addr())
+
+
+def get_mac_addresses():
+    """Returns a list of this system's MAC addresses.
+
+    :raises:ExternalProcessError: if IP address information could not be
+        gathered.
+    """
+    ip_addr = get_ip_addr()
+    return [iface['mac'] for iface in ip_addr.values() if 'mac' in iface]
 
 
 def _filter_managed_networks_by_ifname(networks):
