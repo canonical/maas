@@ -48,7 +48,8 @@ from maasserver.models.nodeprobeddetails import get_probed_details
 from maasserver.utils.orm import post_commit_do
 
 
-DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
+DISPLAYED_NODEGROUP_FIELDS = (
+    'uuid', 'status', 'name', 'cluster_name', 'state')
 
 
 class AnonNodeGroupsHandler(AnonymousOperationsHandler):

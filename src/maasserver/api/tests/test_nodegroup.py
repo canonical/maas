@@ -85,6 +85,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
                 'uuid': nodegroup.uuid,
                 'status': nodegroup.status,
                 'name': nodegroup.name,
+                'state': nodegroup.state,
                 'cluster_name': nodegroup.cluster_name,
             }],
             json_load_bytes(response.content))

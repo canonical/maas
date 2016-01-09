@@ -181,6 +181,11 @@ class NodeGroup(TimestampedModel):
             "operating systems where this is supported."))
 
     @property
+    def state(self):
+        """Return the state of the nodegroup."""
+        return self.get_state()
+
+    @property
     def api_credentials(self):
         """Return a string containing credentials for this nodegroup."""
         return convert_tuple_to_string(get_creds_tuple(self.api_token))
