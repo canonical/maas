@@ -7,6 +7,7 @@ __all__ = []
 
 
 from random import randint
+from unittest import skip
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -182,6 +183,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         self.assertIsNone(extra_ip.ip)
         self.assertEqual(subnet, lease_ip.subnet)
 
+    @skip("XXX LaMontJones 2016-01-08 fails sporadically.  Bug#1532359")
     def test_update_leases_handles_multiple_empty_ips(self):
         cidr = str(factory.make_ipv4_network().cidr)
         node = factory.make_Node_with_Interface_on_Subnet(cidr=cidr)
