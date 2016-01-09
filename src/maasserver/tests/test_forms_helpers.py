@@ -19,7 +19,7 @@ from maasserver.forms import (
     list_all_usable_architectures,
     MAASModelForm,
     NodeForm,
-    NodeWithMACAddressesForm,
+    NodeWithPowerAndMACAddressesForm,
     pick_default_architecture,
     remove_None_values,
 )
@@ -138,7 +138,7 @@ class TestHelpers(MAASServerTestCase):
     def test_get_node_create_form_if_non_admin(self):
         user = factory.make_User()
         self.assertEqual(
-            NodeWithMACAddressesForm, get_node_create_form(user))
+            NodeWithPowerAndMACAddressesForm, get_node_create_form(user))
 
     def test_get_node_create_form_if_admin(self):
         admin = factory.make_admin()

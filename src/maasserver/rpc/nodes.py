@@ -72,14 +72,14 @@ def _gen_cluster_nodes_power_parameters(nodes):
     nodes_unchecked = (
         nodes
         .filter(power_state_updated=None)
-        .filter(power_type__in=QUERY_POWER_TYPES)
+        .filter(bmc__power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
     )
     nodes_checked = (
         nodes
         .exclude(power_state_updated=None)
         .exclude(power_state_updated__gt=five_minutes_ago)
-        .filter(power_type__in=QUERY_POWER_TYPES)
+        .filter(bmc__power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
         .order_by("power_state_updated", "system_id")
     )

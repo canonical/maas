@@ -193,6 +193,7 @@ class TestMakeJSONField(MAASServerTestCase):
             'field_type': 'string',
             'choices': [],
             'default': '',
+            'scope': 'bmc',
         }
         self.assertEqual(expected_field, json_field)
 
@@ -207,6 +208,7 @@ class TestMakeJSONField(MAASServerTestCase):
                 ['eggs', 'Eggs'],
             ],
             'default': 'spam',
+            'scope': 'bmc',
         }
         json_field = make_json_field(**expected_field)
         self.assertEqual(expected_field, json_field)
@@ -226,6 +228,7 @@ class TestMakeJSONField(MAASServerTestCase):
             'field_type': 'password',
             'choices': [],
             'default': '',
+            'scope': 'bmc',
         }
         self.assertEqual(expected_field, json_field)
 

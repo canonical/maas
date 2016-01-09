@@ -88,9 +88,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
+        self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
 
-        self.assertEqual(http.client.OK, response.status_code)
         system_id = parsed_result.get('system_id')
         node = Node.objects.get(system_id=system_id)
         self.assertNotEqual(hostname, node.hostname)
@@ -706,10 +706,11 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'power_type': 'ether_wake',
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
+        self.assertEqual(http.client.OK, response.status_code)
         node = Node.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual('ether_wake', node.power_type)
-        self.assertEqual('', node.power_parameters)
+        self.assertEqual({}, node.power_parameters)
 
     def test_POST_new_sets_power_parameters_field(self):
         # The api allows the setting of a Node's power_parameters field.

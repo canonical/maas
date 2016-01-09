@@ -388,8 +388,14 @@ class NodeHandler(OperationsHandler):
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT,
             node_type=NODE_TYPE.MACHINE)
 
+        altered_query_data = request.data.copy()
+        # Allow power_parameters to be set if power_type is not provided by
+        # adding the model's power_type value to the query data.
+        if 'power_type' not in request.data:
+            altered_query_data['power_type'] = node.power_type
+
         Form = get_node_edit_form(request.user)
-        form = Form(data=request.data, instance=node)
+        form = Form(data=altered_query_data, instance=node)
 
         if form.is_valid():
             return form.save()

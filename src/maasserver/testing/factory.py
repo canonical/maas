@@ -83,6 +83,7 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.bmc import BMC
 from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
     INSTALL_SET,
@@ -316,7 +317,7 @@ class Factory(maastesting.factory.Factory):
         if power_type is None:
             power_type = 'ether_wake'
         if power_parameters is None:
-            power_parameters = ""
+            power_parameters = {}
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
         if power_state_updated is undefined:
@@ -327,12 +328,12 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
-            node_type=node_type, nodegroup=nodegroup,
-            zone=zone, power_type=power_type,
-            power_parameters=power_parameters, power_state=power_state,
-            power_state_updated=power_state_updated, disable_ipv4=disable_ipv4,
-            domain=domain,
+            node_type=node_type, nodegroup=nodegroup, zone=zone,
+            power_state=power_state, power_state_updated=power_state_updated,
+            disable_ipv4=disable_ipv4, domain=domain,
             **kwargs)
+        node.power_type = power_type
+        node.power_parameters = power_parameters
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to
@@ -355,6 +356,20 @@ class Factory(maastesting.factory.Factory):
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
+
+    def make_BMC(
+            self, power_type=None, power_parameters=None, ip_address=None,
+            **kwargs):
+        """Make a :class:`BMC`. """
+        if power_type is None:
+            power_type = 'ether_wake'
+        if power_parameters is None:
+            power_parameters = {}
+        bmc = BMC(
+            power_type=power_type, power_parameters=power_parameters,
+            ip_address=ip_address, **kwargs)
+        bmc.save()
+        return bmc
 
     def get_interface_fields(self, name=None, ip=None, router_ip=None,
                              network=None, subnet=None, subnet_mask=None,

@@ -114,11 +114,9 @@ class DeviceHandler(TimestampedModelHandler):
             "architecture",
             "bios_boot_method",
             "status",
-            "power_parameters",
             "power_state_updated",
             "disable_ipv4",
             "osystem",
-            "power_type",
             "error_description",
             "error",
             "license_key",
@@ -130,6 +128,7 @@ class DeviceHandler(TimestampedModelHandler):
             "enable_ssh",
             "skip_networking",
             "skip_storage",
+            "instance_power_parameters",
             "dns_process",
             ]
         list_fields = [

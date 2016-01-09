@@ -50,6 +50,7 @@ from maasserver.models import (
     RackController,
     UnknownInterface,
 )
+from maasserver.models.bmc import BMC
 from maasserver.models.event import Event
 from maasserver.models.node import PowerInfo
 from maasserver.models.signals import power as node_query
@@ -485,18 +486,6 @@ class TestNode(MAASServerTestCase):
             for power_type in power_types]
         self.assertEqual(
             power_types, [node.get_effective_power_type() for node in nodes])
-
-    def test_power_parameters_are_stored(self):
-        node = factory.make_Node(power_type='')
-        parameters = dict(user="tarquin", address="10.1.2.3")
-        node.power_parameters = parameters
-        node.save()
-        node = reload_object(node)
-        self.assertEqual(parameters, node.power_parameters)
-
-    def test_power_parameters_default(self):
-        node = factory.make_Node(power_type='')
-        self.assertEqual('', node.power_parameters)
 
     def test_get_effective_power_parameters_returns_power_parameters(self):
         params = {'test_parameter': factory.make_string()}
@@ -2548,6 +2537,118 @@ class TestNode(MAASServerTestCase):
     def test__substatus_message_returns_none_for_new_node(self):
         node = factory.make_Node()
         self.assertIsNone(node.substatus_message())
+
+
+class TestNodePowerParameters(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestNodePowerParameters, self).setUp()
+        self.patch_autospec(node_module, 'power_driver_check')
+
+    def test_power_parameters_are_stored(self):
+        node = factory.make_Node(power_type='')
+        parameters = dict(user="tarquin", address="10.1.2.3")
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(parameters, node.power_parameters)
+
+    def test_power_parameters_default(self):
+        node = factory.make_Node(power_type='')
+        self.assertEqual({}, node.power_parameters)
+
+    def test_power_type_and_bmc_power_parameters_stored_in_bmc(self):
+        node = factory.make_Node(power_type='hmc')
+        bmc_parameters = dict(power_address=factory.make_string())
+        node_parameters = dict(server_name=factory.make_string())
+        parameters = {**bmc_parameters, **node_parameters}
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(node_parameters, node.instance_power_parameters)
+        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+        self.assertEqual('hmc', node.bmc.power_type)
+        self.assertEqual(node.power_type, node.bmc.power_type)
+
+    def test_power_parameters_are_stored_in_proper_scopes(self):
+        node = factory.make_Node(power_type='virsh')
+        bmc_parameters = dict(
+            power_address="qemu+ssh://trapnine@10.0.2.1/system",
+            power_pass=factory.make_string(),
+            )
+        node_parameters = dict(
+            power_id="maas-x",
+            )
+        parameters = {**bmc_parameters, **node_parameters}
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(node_parameters, node.instance_power_parameters)
+        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+
+    def test_unknown_power_parameter_stored_on_node(self):
+        node = factory.make_Node(power_type='hmc')
+        bmc_parameters = dict(power_address=factory.make_string())
+        node_parameters = dict(server_name=factory.make_string())
+        # This random parameters will be stored on the node instance.
+        node_parameters[factory.make_string()] = factory.make_string()
+        parameters = {**bmc_parameters, **node_parameters}
+        node.power_parameters = parameters
+        node.save()
+        node = reload_object(node)
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(node_parameters, node.instance_power_parameters)
+        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+
+    def test_bmc_consolidation(self):
+        nodes = []
+        for _ in range(3):
+            bmc_parameters = dict(power_user=factory.make_string())
+            node_parameters = dict(power_id=factory.make_string())
+            parameters = {**bmc_parameters, **node_parameters}
+            node = factory.make_Node(power_type='fence_cdu')
+            node.power_parameters = parameters
+            node.save()
+            node = reload_object(node)
+            self.assertEqual(parameters, node.power_parameters)
+            self.assertEqual(node_parameters, node.instance_power_parameters)
+            self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+            self.assertEqual('fence_cdu', node.bmc.power_type)
+            nodes.append(node)
+
+        # Make sure there are now 3 different BMC's.
+        self.assertEqual(3, BMC.objects.count())
+        self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertNotEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+        # Set equivalent bmc power_parameters, and confirm BMC count decrease,
+        # even when the Node's instance_power_parameter varies.
+        parameters['power_id'] = factory.make_string()
+        nodes[0].power_parameters = parameters
+        nodes[0].save()
+        # 0 now shares a BMC with 2.
+        self.assertEqual(2, BMC.objects.count())
+        self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+        parameters['power_id'] = factory.make_string()
+        nodes[1].power_parameters = parameters
+        nodes[1].save()
+        # All 3 share the same BMC, and only one exists.
+        self.assertEqual(1, BMC.objects.count())
+        self.assertEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+        # Now change one and watch the count increase, even when the
+        # instance_power_parameter matches (it's stored on the Node).
+        parameters['power_user'] = factory.make_string()
+        nodes[1].power_parameters = parameters
+        nodes[1].save()
+        self.assertEqual(2, BMC.objects.count())
+        self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
 
 
 class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):

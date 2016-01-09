@@ -133,11 +133,11 @@ class TestHandler(MAASServerTestCase):
             type("MockNode", (object,), kwargs))
 
     def test_full_dehydrate_only_includes_allowed_fields(self):
-        handler = self.make_nodes_handler(fields=["hostname", "power_type"])
+        handler = self.make_nodes_handler(fields=["hostname", "cpu_count"])
         node = factory.make_Node()
         self.assertEqual({
             "hostname": node.hostname,
-            "power_type": node.power_type,
+            "cpu_count": node.cpu_count,
             }, handler.full_dehydrate(node))
 
     def test_full_dehydrate_excludes_fields(self):
@@ -150,17 +150,17 @@ class TestHandler(MAASServerTestCase):
 
     def test_full_dehydrate_only_includes_list_fields_when_for_list(self):
         handler = self.make_nodes_handler(
-            list_fields=["power_type", "power_state"])
+            list_fields=["cpu_count", "power_state"])
         node = factory.make_Node()
         self.assertEqual({
-            "power_type": node.power_type,
+            "cpu_count": node.cpu_count,
             "power_state": node.power_state,
             }, handler.full_dehydrate(node, for_list=True))
 
     def test_full_dehydrate_excludes_list_fields_when_for_list(self):
         handler = self.make_nodes_handler(
-            list_fields=["power_type", "power_state"],
-            list_exclude=["power_type"])
+            list_fields=["cpu_count", "power_state"],
+            list_exclude=["cpu_count"])
         node = factory.make_Node()
         self.assertEqual({
             "power_state": node.power_state,

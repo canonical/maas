@@ -509,11 +509,11 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'swap_size',
                 'min_hwe_kernel',
                 'hwe_kernel',
-                'power_type',
-                'power_parameters',
                 'cpu_count',
                 'memory',
                 'zone',
+                'power_type',
+                'power_parameters',
             ],
             list(form.fields))
 

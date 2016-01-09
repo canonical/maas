@@ -1767,7 +1767,9 @@ class TestNodesAPI(APITestCase):
         self.become_admin()
         nodes = [
             factory.make_Node(
-                power_parameters=factory.make_name("power_parameters"))
+                power_parameters={
+                    factory.make_name("power_parameter_key"):
+                    factory.make_name("power_parameter_value")})
             for _ in range(0, 3)
         ]
         response = self.client.get(
@@ -1788,7 +1790,9 @@ class TestNodesAPI(APITestCase):
         self.become_admin()
         nodes = [
             factory.make_Node(
-                power_parameters=factory.make_name("power_parameters"))
+                power_parameters={
+                    factory.make_name("power_parameter_key"):
+                    factory.make_name("power_parameter_value")})
             for _ in range(0, 6)
         ]
         expected_nodes = random.sample(nodes, 3)

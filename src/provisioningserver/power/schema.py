@@ -19,6 +19,11 @@ from jsonschema import validate
 UNKNOWN_POWER_TYPE = ''
 
 
+class POWER_PARAMETER_SCOPE:
+    BMC = "bmc"
+    NODE = "node"
+
+
 class IPMI_DRIVER:
     DEFAULT = ''
     LAN = 'LAN'
@@ -63,6 +68,10 @@ POWER_TYPE_PARAMETER_FIELD_SCHEMA = {
         },
         'required': {
             'type': 'boolean',
+        },
+        # 'bmc' or 'node': Whether value lives on bmc (global) or node/device.
+        'scope': {
+            'type': 'string',
         },
         'choices': CHOICE_FIELD_SCHEMA,
         'default': {
@@ -113,7 +122,7 @@ SM15K_POWER_CONTROL_CHOICES = [
 
 def make_json_field(
         name, label, field_type=None, choices=None, default=None,
-        required=False):
+        required=False, scope=POWER_PARAMETER_SCOPE.BMC):
     """Helper function for building a JSON power type parameters field.
 
     :param name: The name of the field.
@@ -131,6 +140,9 @@ def make_json_field(
     :type default: string
     :param required: Whether or not a value for the field is required.
     :type required: boolean
+    :param scope: 'bmc' or 'node' - Whether value is bmc or node specific.
+        Defaults to 'bmc'.
+    :type scope: string
     """
     if field_type not in ('string', 'mac_address', 'choice', 'password'):
         field_type = 'string'
@@ -139,6 +151,8 @@ def make_json_field(
     validate(choices, CHOICE_FIELD_SCHEMA)
     if default is None:
         default = ""
+    if scope not in (POWER_PARAMETER_SCOPE.BMC, POWER_PARAMETER_SCOPE.NODE):
+        scope = POWER_PARAMETER_SCOPE.BMC
     field = {
         'name': name,
         'label': label,
@@ -146,6 +160,7 @@ def make_json_field(
         'field_type': field_type,
         'choices': choices,
         'default': default,
+        'scope': scope,
     }
     return field
 
@@ -156,7 +171,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Wake-on-LAN',
         'fields': [
             make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address'),
+                'mac_address', "MAC Address", field_type='mac_address',
+                scope=POWER_PARAMETER_SCOPE.NODE),
         ],
     },
     {
@@ -164,7 +180,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Virsh (virtual systems)',
         'fields': [
             make_json_field('power_address', "Power address"),
-            make_json_field('power_id', "Power ID"),
+            make_json_field(
+                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field(
                 'power_pass', "Power password (optional)",
                 required=False, field_type='password'),
@@ -175,9 +192,11 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'VMWare',
         'fields': [
             make_json_field(
-                'power_vm_name', "VM Name (if UUID unknown)", required=False),
+                'power_vm_name', "VM Name (if UUID unknown)", required=False,
+                scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field(
-                'power_uuid', "VM UUID (if known)", required=False),
+                'power_uuid', "VM UUID (if known)", required=False,
+                scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field('power_address', "VMware hostname"),
             make_json_field('power_user', "VMware username"),
             make_json_field(
@@ -194,7 +213,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Sentry Switch CDU',
         'fields': [
             make_json_field('power_address', "Power address"),
-            make_json_field('power_id', "Power ID"),
+            make_json_field(
+                'power_id', "Power ID", scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
@@ -211,7 +231,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
-            make_json_field('mac_address', "Power MAC")
+            make_json_field(
+                'mac_address', "Power MAC", scope=POWER_PARAMETER_SCOPE.NODE)
         ],
     },
     {
@@ -222,14 +243,17 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
-            make_json_field('power_hwaddress', "Power hardware address"),
+            make_json_field(
+                'power_hwaddress', "Power hardware address",
+                scope=POWER_PARAMETER_SCOPE.NODE),
         ],
     },
     {
         'name': 'sm15k',
         'description': 'SeaMicro 15000',
         'fields': [
-            make_json_field('system_id', "System ID"),
+            make_json_field(
+                'system_id', "System ID", scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
             make_json_field(
@@ -244,7 +268,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Intel AMT',
         'fields': [
             make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address'),
+                'mac_address', "MAC Address", field_type='mac_address',
+                scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
             make_json_field('power_address', "Power address")
@@ -254,7 +279,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'dli',
         'description': 'Digital Loggers, Inc. PDU',
         'fields': [
-            make_json_field('outlet_id', "Outlet ID"),
+            make_json_field(
+                'outlet_id', "Outlet ID", scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
             make_json_field(
@@ -265,7 +291,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'name': 'ucsm',
         'description': "Cisco UCS Manager",
         'fields': [
-            make_json_field('uuid', "Server UUID"),
+            make_json_field(
+                'uuid', "Server UUID", scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field('power_address', "URL for XML API"),
             make_json_field('power_user', "API user"),
             make_json_field(
@@ -283,7 +310,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'node_id',
                 "Node ID - Must adhere to cXnY format "
-                "(X=cartridge number, Y=node number)."),
+                "(X=cartridge number, Y=node number).",
+                scope=POWER_PARAMETER_SCOPE.NODE),
         ],
     },
     {
@@ -295,7 +323,9 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_user', "Power user"),
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
-            make_json_field('blade_id', "Blade ID (Typically 1-24)"),
+            make_json_field(
+                'blade_id', "Blade ID (Typically 1-24)",
+                scope=POWER_PARAMETER_SCOPE.NODE),
         ],
     },
     {
@@ -304,7 +334,8 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [
             make_json_field('power_address', "IP for APC PDU"),
             make_json_field(
-                'node_outlet', "APC PDU node outlet number (1-16)"),
+                'node_outlet', "APC PDU node outlet number (1-16)",
+                scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field(
                 'power_on_delay', "Power ON outlet delay (seconds)",
                 default='5'),
@@ -319,9 +350,18 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'power_pass', "HMC password", field_type='password'),
             make_json_field(
-                'server_name', "HMC Managed System server name"),
+                'server_name', "HMC Managed System server name",
+                scope=POWER_PARAMETER_SCOPE.NODE),
             make_json_field(
-                'lpar', "HMC logical partition"),
+                'lpar', "HMC logical partition",
+                scope=POWER_PARAMETER_SCOPE.NODE),
         ],
     },
 ]
+
+POWER_FIELDS_BY_TYPE = {}
+for power_type in JSON_POWER_TYPE_PARAMETERS:
+    power_fields = {}
+    for field in power_type.get('fields'):
+        power_fields[field['name']] = field
+    POWER_FIELDS_BY_TYPE[power_type['name']] = power_fields

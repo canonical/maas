@@ -76,6 +76,7 @@ from maasserver.fields import (
     MAASIPAddressField,
     MAC,
 )
+from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
@@ -515,9 +516,7 @@ class Node(CleanSave, TimestampedModel):
         the default_osystem will be used.
     :ivar distro_series: This `Node`'s booting distro series, if
         it's blank then the default_distro_series will be used.
-    :ivar power_type: The power type that determines how this
-        node will be powered on. Its value must match a power driver template
-        name.
+    :ivar bmc: The BMC / power controller for this node.
     :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`GeneralManager`.
@@ -591,17 +590,12 @@ class Node(CleanSave, TimestampedModel):
 
     swap_size = BigIntegerField(null=True, blank=True, default=None)
 
-    # For strings, Django insists on abusing the empty string ("blank")
-    # to mean "none."
-    # The possible choices for this field depend on the power types
-    # advertised by the clusters.  This needs to be populated on the fly,
-    # in forms.py, each time the form to edit a node is instantiated.
-    power_type = CharField(
-        max_length=10, null=False, blank=True, default='')
+    bmc = ForeignKey(
+        BMC, db_index=True, null=True, editable=False, unique=False)
 
-    # JSON-encoded set of parameters for power control, limited to 32kiB when
-    # encoded as JSON.
-    power_parameters = JSONObjectField(
+    # Power parameters specific to this node instance. Global power parameters
+    # are stored in this node's BMC.
+    instance_power_parameters = JSONObjectField(
         max_length=(2 ** 15), blank=True, default="")
 
     power_state = CharField(
@@ -702,6 +696,47 @@ class Node(CleanSave, TimestampedModel):
             return "%s (%s)" % (self.system_id, self.fqdn)
         else:
             return self.system_id
+
+    def update_power_type_and_parameters(self, power_type, power_params):
+        if power_type is None:
+            power_type = self.power_type
+        if power_params is None:
+            power_params = self.power_parameters
+
+        bmc_params, node_params = BMC.scope_power_parameters(
+            power_type, power_params)
+        self.instance_power_parameters = node_params
+
+        (bmc, _) = BMC.objects.get_or_create(
+            power_type=power_type, power_parameters=bmc_params)
+        self.bmc = bmc
+
+    @property
+    def power_type(self):
+        return '' if self.bmc is None else self.bmc.power_type
+
+    @power_type.setter
+    def power_type(self, power_type):
+        if not power_type:
+            power_type = ''
+        self.update_power_type_and_parameters(power_type, None)
+
+    @property
+    def power_parameters(self):
+        # Overlay instance power parameters over bmc power parameters.
+        instance_parameters = self.instance_power_parameters
+        if not instance_parameters:
+            instance_parameters = {}
+        bmc_parameters = {}
+        if self.bmc and self.bmc.power_parameters:
+            bmc_parameters = self.bmc.power_parameters
+        return {**bmc_parameters, **instance_parameters}
+
+    @power_parameters.setter
+    def power_parameters(self, power_params):
+        if not power_params:
+            power_params = {}
+        self.update_power_type_and_parameters(None, power_params)
 
     @property
     def fqdn(self):
@@ -1061,11 +1096,28 @@ class Node(CleanSave, TimestampedModel):
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
         prev = get_one(Node.objects.filter(pk=self.pk))
+        self.prev_bmc_id = prev.bmc_id if prev else None
         self.clean_hostname_domain(prev)
         self.clean_status(prev)
         self.clean_architecture(prev)
         self.clean_boot_disk(prev)
         self.clean_boot_interface(prev)
+
+    def clean_orphaned_bmcs(self):
+        # If bmc has changed post-save, clean up any potentially orphaned BMC.
+        if self.prev_bmc_id is not None and self.prev_bmc_id != self.bmc_id:
+            try:
+                used_bmcs = Node.objects.values_list(
+                    'bmc_id', flat=True).distinct()
+                BMC.objects.exclude(id__in=used_bmcs).delete()
+            except Exception as error:
+                maaslog.info(
+                    "%s: Failure cleaning orphaned BMC's: %s",
+                    self.hostname, error)
+
+    def save(self, *args, **kwargs):
+        super(Node, self).save(*args, **kwargs)
+        self.clean_orphaned_bmcs()
 
     def display_status(self):
         """Return status text as displayed to the user."""
@@ -1532,9 +1584,9 @@ class Node(CleanSave, TimestampedModel):
         If no power type has been set for the node, raise
         UnknownPowerType.
         """
-        if self.power_type == '':
+        if self.bmc is None or self.bmc.power_type == '':
             raise UnknownPowerType("Node power type is unconfigured")
-        return self.power_type
+        return self.bmc.power_type
 
     def get_effective_kernel_options(self):
         """Determine any special kernel parameters for this node.
@@ -1610,11 +1662,7 @@ class Node(CleanSave, TimestampedModel):
 
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""
-        if self.power_parameters:
-            power_params = self.power_parameters.copy()
-        else:
-            # An empty power_parameters comes out as an empty unicode string!
-            power_params = {}
+        power_params = self.power_parameters.copy()
 
         power_params.setdefault('system_id', self.system_id)
         # TODO: We should not be sending these paths to the templates;
@@ -1627,7 +1675,7 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('ipmi_config', 'ipmi.conf')
         # TODO: /end of paths that templates should know.
         # TODO: This default ought to be in the virsh template.
-        if self.power_type == "virsh":
+        if self.bmc is not None and self.bmc.power_type == "virsh":
             power_params.setdefault(
                 'power_address', 'qemu://localhost/system')
         else:

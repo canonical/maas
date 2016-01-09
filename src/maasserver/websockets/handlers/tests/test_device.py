@@ -81,6 +81,7 @@ class TestDeviceHandler(MAASServerTestCase):
         boot_interface = node.get_boot_interface()
         data = {
             "actions": list(compile_node_actions(node, user).keys()),
+            "bmc": node.bmc_id,
             "created": dehydrate_datetime(node.created),
             "domain": {
                 "id": node.domain.id,

@@ -167,6 +167,7 @@ class NodeHandler(TimestampedModelHandler):
             "enable_ssh",
             "skip_networking",
             "skip_storage",
+            "instance_power_parameters",
             "dns_process",
         ]
         list_fields = [
@@ -224,10 +225,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def dehydrate_power_parameters(self, power_parameters):
         """Return power_parameters None if empty."""
-        if power_parameters == '':
-            return None
-        else:
-            return power_parameters
+        return None if power_parameters == '' else power_parameters
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -274,6 +272,10 @@ class NodeHandler(TimestampedModelHandler):
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
             data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
+
+            data["power_type"] = obj.power_type
+            data["power_parameters"] = self.dehydrate_power_parameters(
+                obj.power_parameters)
 
             # Network
             data["interfaces"] = [
@@ -695,6 +697,7 @@ class NodeHandler(TimestampedModelHandler):
         # form will not save this information.
         data = super(NodeHandler, self).create(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
+        node_obj.power_type = params.get("power_type", '')
         node_obj.power_parameters = params.get("power_parameters", {})
         node_obj.save()
 
@@ -711,14 +714,13 @@ class NodeHandler(TimestampedModelHandler):
             raise HandlerPermissionError()
 
         # Update the node with the form. The form will not update the
-        # nodegroup or power_parameters, so we perform that logic here.
+        # nodegroup, power_type, or power_parameters, so we perform that here.
         data = super(NodeHandler, self).update(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
         node_obj.nodegroup = NodeGroup.objects.get(
             uuid=params['nodegroup']['uuid'])
-        node_obj.power_parameters = params.get("power_parameters")
-        if node_obj.power_parameters is None:
-            node_obj.power_parameters = {}
+        node_obj.power_type = params.get("power_type", '')
+        node_obj.power_parameters = params.get("power_parameters", {})
 
         # Update the tags for the node and disks.
         self.update_tags(node_obj, params['tags'])

@@ -1057,7 +1057,7 @@ class TestMachineAPI(APITestCase):
 
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
-        power_parameters = factory.make_string()
+        power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -1080,7 +1080,7 @@ class TestMachineAPI(APITestCase):
         # If one sets power_type to empty, power_parameter gets
         # reset by default (if skip_check is not set).
         self.become_admin()
-        power_parameters = factory.make_string()
+        power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -1093,12 +1093,12 @@ class TestMachineAPI(APITestCase):
         machine = reload_object(machine)
         self.assertEqual(
             (http.client.OK, machine.power_type, machine.power_parameters),
-            (response.status_code, '', ''))
+            (response.status_code, '', {}))
 
     def test_PUT_updates_power_type_empty_rejects_params(self):
         # If one sets power_type to empty, one cannot set power_parameters.
         self.become_admin()
-        power_parameters = factory.make_string()
+        power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -1127,7 +1127,7 @@ class TestMachineAPI(APITestCase):
         # power_parameter_skip_check='true' to force power_parameters.
         # XXX bigjools 2014-01-21 Why is this necessary?
         self.become_admin()
-        power_parameters = factory.make_string()
+        power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -1169,10 +1169,11 @@ class TestMachineAPI(APITestCase):
 
     def test_PUT_updates_power_parameters_empty_string(self):
         self.become_admin()
+        power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=factory.make_string(),
+            power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_machine_uri(machine),
@@ -1955,8 +1956,8 @@ class TestPowerParameters(APITestCase):
 
     def test_get_power_parameters(self):
         self.become_admin()
-        machine = factory.make_Node(
-            power_parameters=factory.make_name("power_parameters"))
+        power_parameters = {factory.make_string(): factory.make_string()}
+        machine = factory.make_Node(power_parameters=power_parameters)
         response = self.client.get(
             self.get_machine_uri(machine), {'op': 'power_parameters'})
         self.assertEqual(
@@ -1972,7 +1973,7 @@ class TestPowerParameters(APITestCase):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual("", parsed_params)
+        self.assertEqual({}, parsed_params)
 
     def test_power_parameters_requires_admin(self):
         machine = factory.make_Node()

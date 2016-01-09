@@ -417,7 +417,7 @@ class NodeForm(MAASModelForm):
         super(NodeForm, self).__init__(*args, **kwargs)
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
-        # with NodeAdminForm which actually uses this parameter.
+        # with AdminNodeForm which actually uses this parameter.
 
         instance = kwargs.get('instance')
         if instance is None or instance.owner is None:
@@ -803,8 +803,6 @@ class AdminNodeForm(NodeForm):
         # Fields that the form should generate automatically from the
         # model:
         fields = NodeForm.Meta.fields + (
-            'power_type',
-            'power_parameters',
             'cpu_count',
             'memory',
         )
@@ -814,7 +812,7 @@ class AdminNodeForm(NodeForm):
             data=data, instance=instance, **kwargs)
         self.request = request
         self.set_up_initial_zone(instance)
-        self.set_up_power_type(data, instance)
+        AdminNodeForm.set_up_power_type(self, data, instance)
         # The zone field is not required because we want to be able
         # to omit it when using that form in the API.
         # We don't want the UI to show an entry for the 'empty' zone,
@@ -833,21 +831,18 @@ class AdminNodeForm(NodeForm):
         if instance is not None:
             self.initial['zone'] = instance.zone.name
 
-    def get_power_type(self, data, node):
+    @staticmethod
+    def _get_power_type(form, data, node):
         if data is None:
             data = {}
 
-        power_type = data.get('power_type', self.initial.get('power_type'))
+        power_type = data.get('power_type', form.initial.get('power_type'))
 
         # If power_type is None (this is a node creation form or this
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the node's current 'power_type'
         # value or the default value if this form is not linked to a node.
-
-        if node is not None:
-            nodegroups = [node.nodegroup]
-        else:
-            nodegroups = None
+        nodegroups = None if node is None else [node.nodegroup]
 
         try:
             power_types = get_power_types(nodegroups)
@@ -855,32 +850,31 @@ class AdminNodeForm(NodeForm):
             # If there's no request then this is an API call, so
             # there's no need to add a UI message, a suitable
             # ValidationError is raised elsewhere.
-            if self.request is not None:
+            if form.request is not None:
                 messages.error(
-                    self.request, CLUSTER_NOT_AVAILABLE + e.args[0])
+                    form.request, CLUSTER_NOT_AVAILABLE + e.args[0])
             return ''
 
         if power_type not in power_types:
-            if node is not None:
-                power_type = node.power_type
-            else:
-                power_type = ''
+            return '' if node is None else node.power_type
         return power_type
 
-    def set_up_power_type(self, data, node):
+    @staticmethod
+    def set_up_power_type(form, data, node=None):
         """Set up the 'power_type' and 'power_parameters' fields.
 
         This can't be done at the model level because the choices need to
         be generated on the fly by get_power_type_choices().
         """
-        power_type = self.get_power_type(data, node)
+        power_type = AdminNodeForm._get_power_type(form, data, node)
         choices = [BLANK_CHOICE] + get_power_type_choices()
-        self.fields['power_type'] = forms.ChoiceField(
+        form.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
-        self.fields['power_parameters'] = get_power_type_parameters()[
+        form.fields['power_parameters'] = get_power_type_parameters()[
             power_type]
 
-    def _get_nodegroup(self):
+    @staticmethod
+    def _get_nodegroup(form):
         # This form is used for adding and editing nodes, and the
         # nodegroup field is the cleaned_data for the former and on the
         # instance for the latter.
@@ -888,33 +882,46 @@ class AdminNodeForm(NodeForm):
         # decided that we should not let users move nodes between
         # nodegroups.  It is probably better to change that behaviour to
         # have a read-only field on the form.
-        if self.instance.nodegroup is not None:
-            return self.instance.nodegroup
-        return self.cleaned_data['nodegroup']
+        if form.instance.nodegroup is not None:
+            return form.instance.nodegroup
+        return form.cleaned_data['nodegroup']
 
-    def clean(self):
-        cleaned_data = super(AdminNodeForm, self).clean()
+    @staticmethod
+    def check_power_type(form, cleaned_data):
         # skip_check tells us to allow power_parameters to be saved
         # without any validation.  Nobody can remember why this was
         # added at this stage but it might have been a request from
         # smoser, we think.
         skip_check = (
-            self.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
+            form.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
         # Try to contact the cluster controller; if it's down then we
         # prevent saving the form as we can't validate the power
         # parameters and type.
         if not skip_check:
             try:
-                get_power_types([self._get_nodegroup()])
+                get_power_types([AdminNodeForm._get_nodegroup(form)])
             except ClusterUnavailable as e:
                 set_form_error(
-                    self, "power_type", CLUSTER_NOT_AVAILABLE + e.args[0])
-        # If power_type is not set and power_parameters_skip_check is not
-        # on, reset power_parameters (set it to the empty string).
-        no_power_type = cleaned_data.get('power_type', '') == ''
-        if no_power_type and not skip_check:
-            cleaned_data['power_parameters'] = ''
+                    form, "power_type", CLUSTER_NOT_AVAILABLE + e.args[0])
+            # If power_type is not set and power_parameters_skip_check is not
+            # on, reset power_parameters (set it to the empty string).
+            if cleaned_data.get('power_type', '') == '':
+                cleaned_data['power_parameters'] = ''
         return cleaned_data
+
+    def clean(self):
+        cleaned_data = super(AdminNodeForm, self).clean()
+        return AdminNodeForm.check_power_type(self, cleaned_data)
+
+    @staticmethod
+    def set_power_type(form, node):
+        """Persist the node into the database."""
+        power_type = form.cleaned_data.get('power_type')
+        if power_type is not None:
+            node.power_type = power_type
+        power_parameters = form.cleaned_data.get('power_parameters')
+        if power_parameters is not None:
+            node.power_parameters = power_parameters
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
@@ -922,6 +929,7 @@ class AdminNodeForm(NodeForm):
         zone = self.cleaned_data.get('zone')
         if zone:
             node.zone = zone
+        AdminNodeForm.set_power_type(self, node)
         if kwargs.get('commit', True):
             node.save(*args, **kwargs)
             self.save_m2m()  # Save many to many relations.
@@ -1147,6 +1155,30 @@ class WithMACAddressesMixin:
         return node
 
 
+class WithPowerMixin:
+    """A form mixin which dynamically adds power_type and power_parameters to
+    the list of fields.  This mixin also overrides the 'save' method to persist
+    these fields and is intended to be used with a class inheriting from
+    NodeForm.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(WithPowerMixin, self).__init__(*args, **kwargs)
+        self.data = self.data.copy()
+        AdminNodeForm.set_up_power_type(self, self.data)
+
+    def clean(self):
+        cleaned_data = super(WithPowerMixin, self).clean()
+        return AdminNodeForm.check_power_type(self, cleaned_data)
+
+    def save(self, *args, **kwargs):
+        """Persist the node into the database."""
+        node = super(WithPowerMixin, self).save()
+        AdminNodeForm.set_power_type(self, node)
+        node.save()
+        return node
+
+
 class AdminNodeWithMACAddressesForm(WithMACAddressesMixin, AdminNodeForm):
     """A version of the AdminNodeForm which includes the multi-MAC address
     field.
@@ -1155,6 +1187,12 @@ class AdminNodeWithMACAddressesForm(WithMACAddressesMixin, AdminNodeForm):
 
 class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
     """A version of the NodeForm which includes the multi-MAC address field.
+    """
+
+
+class NodeWithPowerAndMACAddressesForm(
+        WithPowerMixin, NodeWithMACAddressesForm):
+    """A version of the NodeForm which includes the power fields.
     """
 
 
@@ -1167,7 +1205,7 @@ def get_node_create_form(user):
     if user.is_superuser:
         return AdminNodeWithMACAddressesForm
     else:
-        return NodeWithMACAddressesForm
+        return NodeWithPowerAndMACAddressesForm
 
 
 class ProfileForm(MAASModelForm):

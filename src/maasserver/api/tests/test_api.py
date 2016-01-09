@@ -91,7 +91,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
         self.node.power_type = ''
         store_node_power_parameters(self.node, self.request)
         self.assertEqual('', self.node.power_type)
-        self.assertEqual('', self.node.power_parameters)
+        self.assertEqual({}, self.node.power_parameters)
         self.save.assert_has_calls([])
 
     def test_power_type_set_but_no_parameters(self):
@@ -102,7 +102,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
         self.request.POST = {"power_type": power_type}
         store_node_power_parameters(self.node, self.request)
         self.assertEqual(power_type, self.node.power_type)
-        self.assertEqual("", self.node.power_parameters)
+        self.assertEqual({}, self.node.power_parameters)
         self.save.assert_called_once_with()
 
     def test_power_type_set_with_parameters(self):
