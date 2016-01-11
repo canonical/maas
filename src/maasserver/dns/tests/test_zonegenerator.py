@@ -416,6 +416,58 @@ class TestZoneGenerator(MAASServerTestCase):
                 forward_zone("henry"),
                 reverse_zone(default_domain, "10/29")))
 
+    def test_with_one_nodegroup_with_node_yields_fwd_and_rev_zone(self):
+        self.useFixture(RegionConfigurationFixture())
+        factory.make_Domain(name='henry')
+        nodegroup = self.make_node_group(
+            name="henry", network=IPNetwork("10/29"))
+        domain = Domain.objects.get(name="henry")
+        default_domain = Domain.objects.get_default_domain().name
+        subnet = Subnet.objects.get(
+            nodegroupinterface__nodegroup=nodegroup)
+        factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=nodegroup, subnet=subnet, vlan=subnet.vlan,
+            fabric=subnet.vlan.fabric)
+        zones = ZoneGenerator(domain, subnet, Mock()).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone("henry"),
+                reverse_zone(default_domain, "10/29")))
+
+    def test_returns_interface_ips_but_no_nulls(self):
+        self.useFixture(RegionConfigurationFixture())
+        default_domain = Domain.objects.get_default_domain().name
+        domain = factory.make_Domain(name='henry')
+        nodegroup = self.make_node_group(
+            name=domain.name, network=IPNetwork("10/29"))
+        subnet = Subnet.objects.get(
+            nodegroupinterface__nodegroup=nodegroup)
+        subnet.gateway_ip = IPNetwork(subnet.cidr).ip + 1
+        # Create a node with two interfaces, with NULL ips
+        node = factory.make_Node_with_Interface_on_Subnet(
+            nodegroup=nodegroup, subnet=subnet, vlan=subnet.vlan,
+            fabric=subnet.vlan.fabric, domain=domain, interface_count=3,
+            disable_ipv4=False)
+        boot_iface = node.boot_interface
+        interfaces = node.interface_set.all().exclude(id=boot_iface.id)
+        # Now go add IP addresses to the boot interface, and one other
+        boot_ip = factory.make_StaticIPAddress(
+            interface=boot_iface, subnet=subnet)
+        sip = factory.make_StaticIPAddress(
+            interface=interfaces[0], subnet=subnet)
+        zones = ZoneGenerator(domain, subnet, Mock()).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone("henry"),
+                reverse_zone(default_domain, "10/29")))
+        self.assertEqual(
+            {node.hostname: ['%s' % boot_ip.ip]}, zones[0]._mapping)
+        self.assertEqual({
+            node.fqdn: ['%s' % boot_ip.ip],
+            '%s.%s' % (interfaces[0].name, node.fqdn): ['%s' % sip.ip],
+            '%s.%s' % (boot_iface.name, node.fqdn): ['%s' % boot_ip.ip]},
+            zones[1]._mapping)
+
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         self.useFixture(RegionConfigurationFixture())
         nodegroup = self.make_node_group()

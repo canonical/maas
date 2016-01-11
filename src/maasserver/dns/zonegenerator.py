@@ -238,14 +238,12 @@ class ZoneGenerator:
                 for interface in nodegroup.get_managed_interfaces()
             ]
             dnsresources = DNSResource.objects.filter(
-                domain=domain).exclude(
-                ip_addresses__ip__isnull=False, ip_addresses__ip='')
-
+                domain=domain, ip_addresses__ip__isnull=False)
             # First, map all of the nodes in this domain
             # strip off the domain, since we don't need it in the forward zone.
             mapping = {
-                hostname.split('.')[0]: ip
-                for hostname, ip in mappings[domain].items()
+                hostname.split('.')[0]: ips
+                for hostname, ips in mappings[domain].items()
             }
             # Then, go through and add all of the DNSResource records that are
             # relevant.
@@ -253,7 +251,7 @@ class ZoneGenerator:
                 dnsrr.name: [ipaddress.ip]
                 for dnsrr in dnsresources
                 for ipaddress in dnsrr.ip_addresses.exclude(
-                    ip__isnull=True, ip='')
+                    ip__isnull=True)
             })
 
             yield DNSForwardZoneConfig(
@@ -299,10 +297,9 @@ class ZoneGenerator:
             ]
             dnsresources = DNSResource.objects.filter(
                 ip_addresses__subnet=subnet).exclude(
-                ip_addresses__ip__isnull=True, ip_addresses__ip='')
+                ip_addresses__ip__isnull=True)
             ipaddresses = StaticIPAddress.objects.filter(
-                subnet=subnet).exclude(
-                ip__isnull=True, ip='', interface__isnull=True)
+                subnet=subnet).exclude(ip__isnull=True)
 
             # First, map all of the nodes on this subnet
             mapping = {
@@ -315,11 +312,10 @@ class ZoneGenerator:
                 "%s.%s" % (dnsrr.name, dnsrr.domain.name): [ipaddress.ip]
                 for dnsrr in dnsresources
                 for ipaddress in dnsrr.ip_addresses.filter(
-                    subnet=subnet).exclude(
-                    ip__isnull=True, ip='')
+                    subnet=subnet).exclude(ip__isnull=True)
             })
             # Finally, add all of the interface named records.
-            # 2015-12-18 lamont N.B., these are  not found in the forward zone,
+            # 2015-12-18 lamont N.B., these are not found in the forward zone,
             # on purpose.  If someone eventually calls this a bug, we can
             # revisit the size increase this would create in the forward zone.
             mapping.update({
