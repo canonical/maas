@@ -33,6 +33,14 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             Domain.objects.get_domain_or_404(
                 domain.id, user, NODE_PERMISSION.VIEW))
 
+    def test__user_view_returns_domain_by_name(self):
+        user = factory.make_User()
+        domain = factory.make_Domain()
+        self.assertEqual(
+            domain,
+            Domain.objects.get_domain_or_404(
+                'name:%s' % domain.name, user, NODE_PERMISSION.VIEW))
+
     def test__user_edit_raises_PermissionError(self):
         user = factory.make_User()
         domain = factory.make_Domain()
@@ -56,6 +64,14 @@ class TestDomainManagerGetDomainOr404(MAASServerTestCase):
             domain,
             Domain.objects.get_domain_or_404(
                 domain.id, admin, NODE_PERMISSION.VIEW))
+
+    def test__admin_view_returns_domain_by_name(self):
+        admin = factory.make_admin()
+        domain = factory.make_Domain()
+        self.assertEqual(
+            domain,
+            Domain.objects.get_domain_or_404(
+                'name:%s' % domain.name, admin, NODE_PERMISSION.VIEW))
 
     def test__admin_edit_returns_domain(self):
         admin = factory.make_admin()

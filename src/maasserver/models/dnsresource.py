@@ -163,6 +163,14 @@ class DNSResource(CleanSave, TimestampedModel):
     def __str__(self):
         return "name=%s" % self.get_name()
 
+    @property
+    def fqdn(self):
+        """Fully qualified domain name for this DNSResource.
+
+        Return the FQDN for this DNSResource.
+        """
+        return "%s.%s" % (self.name, self.domain.name)
+
     def get_name(self):
         """Return the name of the dnsresource."""
         return self.name

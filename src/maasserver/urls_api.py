@@ -49,9 +49,17 @@ from maasserver.api.devices import (
     DeviceHandler,
     DevicesHandler,
 )
+from maasserver.api.dnsresources import (
+    DNSResourceHandler,
+    DNSResourcesHandler,
+)
 from maasserver.api.doc_handler import (
     api_doc,
     describe,
+)
+from maasserver.api.domains import (
+    DomainHandler,
+    DomainsHandler,
 )
 from maasserver.api.events import EventsHandler
 from maasserver.api.fabrics import (
@@ -172,6 +180,12 @@ machine_handler = RestrictedResource(MachineHandler, authentication=api_auth)
 machines_handler = RestrictedResource(MachinesHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
+dnsresource_handler = RestrictedResource(
+    DNSResourceHandler, authentication=api_auth)
+dnsresources_handler = RestrictedResource(
+    DNSResourcesHandler, authentication=api_auth)
+domain_handler = RestrictedResource(DomainHandler, authentication=api_auth)
+domains_handler = RestrictedResource(DomainsHandler, authentication=api_auth)
 blockdevices_handler = RestrictedResource(
     BlockDevicesHandler, authentication=api_auth)
 blockdevice_handler = RestrictedResource(
@@ -408,6 +422,14 @@ urlpatterns += patterns(
         r'^subnets/(?P<subnet_id>[.: \w-]+(?:/\d\d\d?)?)/$',
         subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
+    url(r'^dnsresources/$', dnsresources_handler, name='dnsresources_handler'),
+    url(
+        r'^dnsresources/(?P<dnsresource_id>[^/]+)/$',
+        dnsresource_handler, name='dnsresource_handler'),
+    url(r'^domains/$', domains_handler, name='domains_handler'),
+    url(
+        r'^domains/(?P<domain_id>[^/]+)/$',
+        domain_handler, name='domain_handler'),
     url(
         r'^boot-resources/$',
         boot_resources_handler, name='boot_resources_handler'),

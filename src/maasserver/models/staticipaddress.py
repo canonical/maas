@@ -526,7 +526,7 @@ class StaticIPAddressManager(Manager):
                     Interface.objects.filter(mac_address=mac))
                 if len(interfaces) > 0:
                     for interface in interfaces:
-                        # XXX 09-04-2015 blake_r: We assume that an interface
+                        # XXX 2015-09-04 blake_r: We assume that an interface
                         # is on the same VLAN as the subnet. It would be nice
                         # to figure out which one to fix but it is currently
                         # not possible based on the lease information received.

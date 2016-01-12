@@ -179,7 +179,7 @@ class Domain(CleanSave, TimestampedModel):
 
     def clean_name(self):
         # Automatically strip any trailing dot from the domain name.
-        if self.name.endswith('.'):
+        if self.name is not None and self.name.endswith('.'):
             self.name = self.name[:-1]
 
     def clean(self, *args, **kwargs):

@@ -2204,11 +2204,10 @@ class NodeGroupDefineForm(MAASModelForm):
 class NodeGroupEdit(MAASModelForm):
 
     name = forms.CharField(
-        label="DNS zone name",
+        label="Historical DNS domain name",
         help_text=(
-            "Name of the related DNS zone.  Note that this will only "
-            "be used if MAAS is managing a DNS zone for one of the interfaces "
-            "of this cluster.  See the 'status' of the interfaces below."),
+            "Previously, this was  the name of the related DNS zone.  It"
+            "remains only for historical purposes."),
         required=False)
 
     class Meta:
