@@ -449,7 +449,7 @@ class TestZoneGenerator(MAASServerTestCase):
             fabric=subnet.vlan.fabric, domain=domain, interface_count=3,
             disable_ipv4=False)
         boot_iface = node.boot_interface
-        interfaces = node.interface_set.all().exclude(id=boot_iface.id)
+        interfaces = list(node.interface_set.all().exclude(id=boot_iface.id))
         # Now go add IP addresses to the boot interface, and one other
         boot_ip = factory.make_StaticIPAddress(
             interface=boot_iface, subnet=subnet)
