@@ -8,7 +8,7 @@ $TTL    300
               600 ; Refresh
               1800 ; Retry
               604800 ; Expire
-              300 ; TTL
+              30 ; TTL
               )
 
     IN  NS  {{domain}}.

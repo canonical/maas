@@ -17,6 +17,8 @@ __all__ = [
     "DNSResource",
     "DEFAULT_DNS_TTL",
     "NAME_VALIDATOR",
+    "separate_fqdn",
+    "validate_dnsresource_name",
     ]
 
 import re
@@ -36,6 +38,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
+from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.domain import Domain
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -43,8 +46,13 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
-# only one label allowed
-NAMESPEC = r'^%s$' % (LABEL)
+SRV_LABEL = r'_[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
+# SRV RRdata gets name=_SERVICE._PROTO.LABEL, otherwise, only one label
+# allowed.
+SRV_LHS = '%s.%s.%s' % (SRV_LABEL, SRV_LABEL, LABEL)
+NAMESPEC = r'%s' % (LABEL)
+NAME_VALIDATOR = RegexValidator(NAMESPEC)
+DEFAULT_DNS_TTL = 30
 
 
 def get_default_domain():
@@ -52,15 +60,40 @@ def get_default_domain():
     return Domain.objects.get_default_domain().id
 
 
-def validate_dnsresource_name(value):
+def validate_dnsresource_name(value, resource_type):
     """Django validator: `value` must be a valid DNS Zone name."""
-    if value is not None and value != '':
-        namespec = re.compile(NAMESPEC)
+    if value is not None and value != '' and value != '@':
+        if resource_type == "SRV":
+            namespec = re.compile("^%s$" % SRV_LHS)
+        else:
+            namespec = re.compile("^%s$" % NAMESPEC)
         if not namespec.search(value):
             raise ValidationError("Invalid dnsresource name: %s." % value)
 
-NAME_VALIDATOR = RegexValidator(NAMESPEC)
-DEFAULT_DNS_TTL = 30
+
+def separate_fqdn(fqdn, resource_type):
+    """Separate an fqdn based on resource type.
+
+    :param fqdn: Fully qualified domain name, blank, or "@".
+    :param resource_type: resource record type.
+
+    Returns (name, domain) where name is appropriate for the resource record in
+    the domain.
+    """
+    if fqdn is None or fqdn == '' or fqdn == '@':
+        return (fqdn, None)
+    elif resource_type == 'SRV':
+        spec = SRV_LHS
+    else:
+        spec = LABEL
+    regexp = r'^(?P<name>%s).(?P<domain>%s)$' % (spec, domain.NAMESPEC)
+    regex = re.compile(regexp)
+    result = regex.search(fqdn)
+    if result is not None:
+        answer = result.groupdict()
+        return (answer['name'], answer['domain'])
+    else:
+        return None
 
 
 class DNSResourceQueriesMixin(MAASQueriesMixin):
@@ -99,7 +132,7 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
         this id exists or if the provided user has not the required permission
         to access this `Space`.
 
-        :param specifiers: The space specifiers.
+        :param specifiers: The dnsresource specifiers.
         :type specifiers: string
         :param user: The user that should be used in the permission check.
         :type user: django.contrib.auth.models.User
@@ -112,9 +145,9 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        space = self.get_object_by_specifiers_or_raise(specifiers)
-        if user.has_perm(perm, space):
-            return space
+        dnsresource = self.get_object_by_specifiers_or_raise(specifiers)
+        if user.has_perm(perm, dnsresource):
+            return dnsresource
         else:
             raise PermissionDenied()
 
@@ -142,11 +175,10 @@ class DNSResource(CleanSave, TimestampedModel):
     # There can be more than one name=None entry, so unique needs to be False.
     # We detect and reject duplicates in clean()
     name = CharField(
-        max_length=63, editable=True, null=True, blank=True, unique=False,
-        validators=[validate_dnsresource_name])
+        max_length=63, editable=True, null=True, blank=True, unique=False)
 
     ttl = IntegerField(
-        editable=True, null=True, blank=True, default=DEFAULT_DNS_TTL)
+        editable=True, null=True, blank=True, default=None)
 
     domain = ForeignKey(
         Domain, default=get_default_domain, editable=True,
@@ -155,7 +187,7 @@ class DNSResource(CleanSave, TimestampedModel):
     ip_addresses = ManyToManyField(
         'StaticIPAddress', editable=True, blank=True)
 
-    # FUTURE: add RRtype and RHS columns for MX, TXT, abitrary SRV, etc.
+    # DNSData model has non-ipaddress entries.
 
     def __unicode__(self):
         return "name=%s" % self.get_name()
@@ -176,15 +208,25 @@ class DNSResource(CleanSave, TimestampedModel):
         return self.name
 
     def clean(self, *args, **kwargs):
+        # Avoid recursive imports.
+        from maasserver.models.dnsdata import DNSData
         # make sure that we have a domain
         if self.domain is None or self.domain == '':
             self.domain = Domain.objects.get_default_domain()
         # if we have a name, make sure that it is unique in our dns zone.
-        if self.name is not None and self.name != '':
+        if self.id is None and self.name is not None and self.name != '':
             rrset = DNSResource.objects.filter(
                 name=self.name,
                 domain=self.domain)
-            if rrset.count() > 0 and rrset[0].id != self.id:
+            if rrset.count() > 0:
                 raise ValidationError(
-                    "labels must be unique within their zone.")
+                    'Labels must be unique within their zone.')
+        # If we have ip addresses, then we need to have a valid name.
+        # TXT records don't require that we have much at all.
+        if self.id is not None and self.ip_addresses.count() > 0:
+            validate_dnsresource_name(self.name, "A")
+            num_cname = DNSData.objects.filter(
+                dnsresource_id=self.id, resource_type='CNAME').count()
+            if num_cname > 0:
+                raise ValidationError("Cannot add address: CNAME present.")
         super(DNSResource, self).clean(*args, **kwargs)

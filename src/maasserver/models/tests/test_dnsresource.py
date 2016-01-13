@@ -1,5 +1,4 @@
-
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the DNSResource model."""
@@ -7,14 +6,20 @@
 __all__ = []
 
 
+import re
+
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
 from maasserver.enum import NODE_PERMISSION
-from maasserver.models.dnsresource import DNSResource
+from maasserver.models.dnsresource import (
+    DNSResource,
+    separate_fqdn,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 
 
@@ -83,7 +88,7 @@ class TestDNSResourceManager(MAASServerTestCase):
 
     def test__default_specifier_matches_name(self):
         factory.make_DNSResource()
-        name = factory.make_name('dnsresource-')
+        name = factory.make_name('dnsresource')
         dnsresource = factory.make_DNSResource(name=name)
         factory.make_DNSResource()
         self.assertItemsEqual(
@@ -93,7 +98,7 @@ class TestDNSResourceManager(MAASServerTestCase):
 
     def test__name_specifier_matches_name(self):
         factory.make_DNSResource()
-        name = factory.make_name('dnsresource-')
+        name = factory.make_name('dnsresource')
         dnsresource = factory.make_DNSResource(name=name)
         factory.make_DNSResource()
         self.assertItemsEqual(
@@ -104,6 +109,16 @@ class TestDNSResourceManager(MAASServerTestCase):
 
 class DNSResourceTest(MAASServerTestCase):
 
+    def test_separate_fqdn_splits_srv(self):
+        self.assertEqual(
+            ("_sip._tcp.voip", "example.com"),
+            separate_fqdn("_sip._tcp.voip.example.com", 'SRV'))
+
+    def test_separate_fqdn_splits_nonsrv(self):
+        self.assertEqual(
+            ("foo", "test.example.com"),
+            separate_fqdn("foo.test.example.com", 'A'))
+
     def test_creates_dnsresource(self):
         name = factory.make_name('name')
         domain = factory.make_Domain()
@@ -113,18 +128,71 @@ class DNSResourceTest(MAASServerTestCase):
         self.assertThat(dnsresource_from_db, MatchesStructure.byEquality(
             name=name))
 
+    def test_allows_atsign(self):
+        name = '@'
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        dnsresource_from_db = DNSResource.objects.get(name=name)
+        self.assertThat(dnsresource_from_db, MatchesStructure.byEquality(
+            name=name))
+
+    def test_allows_underscores_without_addresses(self):
+        name = factory.make_name('n_me')
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        dnsresource_from_db = DNSResource.objects.get(name=name)
+        self.assertThat(dnsresource_from_db, MatchesStructure.byEquality(
+            name=name))
+
+    def test_rejects_addresses_if_underscore_in_name(self):
+        name = factory.make_name('n_me')
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        sip = factory.make_StaticIPAddress()
+        dnsresource.ip_addresses.add(sip)
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': ['Invalid dnsresource name: %s." % (
+                        name,
+                    ))):
+            dnsresource.save()
+
     def test_rejects_multiple_dnsresource_with_same_name(self):
         name = factory.make_name('name')
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
         dnsresource.save()
         dnsresource2 = DNSResource(name=name, domain=domain)
-        self.assertRaises(
-            ValidationError,
-            dnsresource2.save)
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': "
+                    "['Labels must be unique within their zone.']")):
+            dnsresource2.save()
 
     def test_invalid_name_raises_exception(self):
-        self.assertRaises(
-            ValidationError,
-            factory.make_DNSResource,
-            name='invalid*name')
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': "
+                    "['Invalid dnsresource name: invalid*name.']")):
+            factory.make_DNSResource(name='invalid*name')
+
+    def test_rejects_address_with_cname(self):
+        name = factory.make_name('name')
+        domain = factory.make_Domain()
+        dnsdata = factory.make_DNSData(
+            resource_type='CNAME', name=name, domain=domain)
+        ipaddress = factory.make_StaticIPAddress()
+        dnsrr = dnsdata.dnsresource
+        dnsrr.ip_addresses.add(ipaddress)
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': "
+                    "['Cannot add address: CNAME present.']")):
+            dnsrr.save()

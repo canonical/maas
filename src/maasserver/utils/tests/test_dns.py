@@ -113,8 +113,8 @@ class TestHostnameValidator(MAASTestCase):
         self.assertRejects('a+b')
         self.assertRejects('a=b')
 
-    def test_accepts_underscore_in_domain(self):
-        self.assertAccepts('host.local_domain')
+    def test_rejects_underscore_in_domain(self):
+        self.assertRejects('host.local_domain')
 
     def test_rejects_underscore_in_host(self):
         self.assertRejects('host_name.local')
@@ -145,10 +145,10 @@ class TestHostnameValidator(MAASTestCase):
         # ASCII.
         self.assertRejects('\u03be')
 
-    def test_accepts_domain_underscores(self):
-        self.assertDomainValidatorAccepts('_foo')
-        self.assertDomainValidatorAccepts('_foo._bar')
-        self.assertDomainValidatorAccepts('_.o_O._')
+    def test_rejects_domain_underscores(self):
+        self.assertDomainValidatorRejects('_foo')
+        self.assertDomainValidatorRejects('_foo._bar')
+        self.assertDomainValidatorRejects('_.o_O._')
 
 
 class TestIpBasedHostnameGenerator(MAASTestCase):

@@ -16,6 +16,7 @@ __all__ = [
     "DEFAULT_DOMAIN_NAME",
     "Domain",
     "NAME_VALIDATOR",
+    "NAMESPEC",
     "validate_domain_name",
     ]
 
@@ -40,16 +41,16 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
-NAMESPEC = r'^(%s\.)*%s\.?$' % (LABEL, LABEL)
+NAMESPEC = r'(%s.)*%s.?' % (LABEL, LABEL)
 
 
 def validate_domain_name(value):
     """Django validator: `value` must be a valid DNS Zone name."""
-    namespec = re.compile(NAMESPEC)
+    namespec = re.compile("^%s$" % NAMESPEC)
     if not namespec.search(value) or len(value) > 255:
         raise ValidationError("Invalid domain name: %s." % value)
 
-NAME_VALIDATOR = RegexValidator(NAMESPEC)
+NAME_VALIDATOR = RegexValidator("^%s$" % NAMESPEC)
 
 # Name of the special, default domain.  This domain cannot be deleted.
 DEFAULT_DOMAIN_NAME = 'maas'

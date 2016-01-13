@@ -52,6 +52,7 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Device,
+    DNSData,
     DNSResource,
     Domain,
     DownloadProgress,
@@ -520,21 +521,66 @@ class Factory(maastesting.factory.Factory):
         domain.save()
         return domain
 
+    def make_DNSData(self, dnsresource=None, resource_type=None,
+                     resource_data=None, **kwargs):
+        # If they didn't pass in an ip_addresses, suppress them.
+        if 'ip_addresses' not in kwargs:
+            kwargs['no_ip_addresses'] = True
+        if resource_type is None:
+            resource_type = self.pick_choice((
+                ('CNAME', "Canonical name"),
+                ('MX', "Mail Exchanger"),
+                ('NS', "Name Server"),
+                # We don't autogenerate SRV, because of NAME
+                #('SRV', "Service"),
+                ('TXT', "Text"),
+            ))
+            # We need to generate something useful for this RR type
+            resource_data = None
+        if resource_data is None:
+            if resource_type == 'CNAME' or resource_type == 'NS':
+                resource_data = "%s" % self.make_name(resource_type.lower())
+            elif resource_type.upper() == 'MX':
+                resource_data = "%d %s" % (
+                    random.randint(0, 65535),
+                    self.make_name('mx'))
+            elif resource_type.upper() == 'SRV':
+                raise ValueError("No automatic generation of SRV DNSData")
+            elif resource_type.upper() == 'TXT':
+                resource_data = self.make_name(size=random.randint(100, 65535))
+            else:
+                resource_data = self.make_name("dnsdata")
+        if dnsresource is None:
+            dnsresource = self.make_DNSResource(**kwargs)
+        dnsdata = DNSData(
+            dnsresource=dnsresource,
+            resource_type=resource_type,
+            resource_data=resource_data)
+        dnsdata.save()
+        return dnsdata
+
     def make_DNSResource(self, domain=None, ip_addresses=None, name=None,
-                         ttl=None, **kwargs):
+                         ttl=None, no_ip_addresses=False, **kwargs):
+        if 'name' in kwargs:
+            name = kwargs['name']
+            del kwargs['name']
+        if 'domain' in kwargs:
+            domain = kwargs['domain']
+            del kwargs['domain']
         if domain is None:
             domain = self.make_Domain()
         if name is None:
             name = self.make_name('label')
-        if ip_addresses is None:
+        if ip_addresses is None and not no_ip_addresses:
             ip_addresses = [self.make_StaticIPAddress(**kwargs)]
         dnsrr = DNSResource(
             name=name,
             ttl=ttl,
             domain=domain)
         dnsrr.save()
-        dnsrr.ip_addresses = ip_addresses
-        dnsrr.save()
+        if ip_addresses:
+            dnsrr.ip_addresses = ip_addresses
+            dnsrr.save()
         return dnsrr
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,

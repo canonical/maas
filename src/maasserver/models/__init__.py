@@ -16,6 +16,7 @@ __all__ = [
     'ComponentError',
     'Config',
     'Device',
+    'DNSData',
     'DNSResource',
     'Domain',
     'DownloadProgress',
@@ -77,6 +78,7 @@ from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
+from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.downloadprogress import DownloadProgress
@@ -294,7 +296,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (DNSResource, Domain)):
+        elif isinstance(obj, (DNSData, DNSResource, Domain)):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a dns resource or zone.
                 return True

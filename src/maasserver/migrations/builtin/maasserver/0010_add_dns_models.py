@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('name', models.CharField(blank=True, null=True, max_length=63, validators=[maasserver.models.dnsresource.validate_dnsresource_name])),
-                ('ttl', models.IntegerField(default=30, null=True, blank=True)),
+                ('ttl', models.IntegerField(default=None, null=True, blank=True)),
             ],
             options={
                 'verbose_name': 'DNSResource',

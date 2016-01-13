@@ -25,10 +25,10 @@ def validate_domain_name(name):
     RFCs 952 and 1123.
     """
     # Valid characters within a hostname label: ASCII letters, ASCII digits,
-    # hyphens, and underscores.  Not all are always valid.
+    # hyphens.
     # Technically we could write all of this as a single regex, but it's not
     # very good for code maintenance.
-    label_chars = re.compile('[a-zA-Z0-9_-]*$')
+    label_chars = re.compile('[a-zA-Z0-9-]*$')
 
     if len(name) > 255:
         raise ValidationError(
