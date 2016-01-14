@@ -28,6 +28,7 @@ python-yaml
 python3-apt
 python3-bson
 python3-convoy
+python3-coverage
 python3-crochet
 python3-cssselect
 python3-curtin

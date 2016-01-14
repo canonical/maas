@@ -204,14 +204,14 @@ coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
 
 coverage.xml: coverage.data
-	python-coverage xml --include 'src/*' -o $@
+	python3-coverage xml --include 'src/*' -o $@
 
 coverage/index.html: coverage.data
 	@$(RM) -r $(@D)
-	python-coverage html --include 'src/*' -d $(@D)
+	python3-coverage html --include 'src/*' -d $(@D)
 
 coverage.data:
-	@$(error Use `$(MAKE) test` to generate coverage data, or invoke a \
+	@$(error Use `$(MAKE) test+coverage` to generate coverage data, or invoke a \
             test script using the `--with-coverage` flag)
 
 lint: lint-py lint-js lint-doc lint-rst
