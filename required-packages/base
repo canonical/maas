@@ -52,6 +52,7 @@ python3-pexpect
 python3-psycopg2
 python3-pyinotify
 python3-pyparsing
+python3-pyvmomi
 python3-seamicroclient
 python3-simplejson
 python3-simplestreams

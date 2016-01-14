@@ -854,7 +854,7 @@ Major new features
  whose name matches a specified prefix), set them up to PXE boot, and
  configure them for power management.
 
- This feature requires the ``python-pyvmomi`` package to be installed.
+ This feature requires the ``python3-pyvmomi`` package to be installed.
  (This is a suggested package, so be sure to use ``--install-suggests`` on
  your ``apt-get`` command line when installing the MAAS cluster, or install
  it manually.)
