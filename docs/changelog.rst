@@ -3,6 +3,18 @@ Changelog
 =========
 
 
+1.9.1
+=====
+
+See https://launchpad.net/maas/+milestone/1.9.1 for full details.
+
+Bug Fix Update
+--------------
+
+#1484696    Fix bug in apache2 maas config where it will reuse websocket connections
+            to work around a bug in apache2 itself.
+
+
 1.9.0
 =====
 
