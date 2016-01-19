@@ -13,14 +13,16 @@ from django.db.models import (
 )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.node import RegionController
+from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
 class RegionControllerProcess(CleanSave, TimestampedModel):
-    """A `RegionControllerProcess` that is running on a `RegionController`.
+    """A `RegionControllerProcess` that is running on a `RegionController` or
+    `RegionRackController`.
 
-    :ivar region: `RegionController` the process is running on.
+    :ivar region: `RegionController` or `RegionRackController` the process is
+        running on.
     :ivar pid: Process ID for the process.
     """
 
@@ -29,6 +31,9 @@ class RegionControllerProcess(CleanSave, TimestampedModel):
         unique_together = ("region", "pid")
         ordering = ["pid"]
 
+    # It links to `Node` but it will be either
+    # `RegionController` or `RegionRackController`.
     region = ForeignKey(
-        RegionController, null=False, blank=False, related_name="processes")
+        Node, null=False, blank=False, related_name="processes")
+
     pid = IntegerField()

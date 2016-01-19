@@ -7,6 +7,8 @@ __all__ = [
     "Device",
     "Node",
     "RackController",
+    "RegionController",
+    "RegionRackController",
     "fqdn_is_duplicate",
     "nodegroup_fqdn",
     ]
@@ -445,6 +447,28 @@ class RegionControllerManager(BaseNodeManager):
     """Region controllers are the API, UI, and Coordinators of MAAS."""
 
     extra_filters = {'node_type': NODE_TYPE.REGION_CONTROLLER}
+
+
+class RegionRackControllerManager(
+        RegionControllerManager, RackControllerManager):
+    """Controllers that run both region and cluster on same machine."""
+
+    extra_filters = {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER}
+
+
+class RegionControllerAndRegionRackControllerManager(
+        RegionControllerManager, RackControllerManager):
+    """Controllers that run both region and cluster on same machine.
+
+    This manager returns both `RegionController` and `RegionRackController`.
+    """
+
+    extra_filters = {
+        'node_type__in': [
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ]
+    }
 
 
 def nodegroup_fqdn(hostname, nodegroup_name):
@@ -2749,7 +2773,20 @@ class RackController(Node):
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
 
-class RegionController(Node):
+class RegionControllerMixin:
+    """All the class methods for both `RegionController` and
+    `RegionRackController` should be placed in this mixin. This mixin is
+    included in both classes to provide the methods on the class.
+
+    This is work around Django where it does not allow a class to have a more
+    than one non-abstract class.
+
+    Preventing:
+    class RegionRackController(RegionController, RackController)
+    """
+
+
+class RegionController(Node, RegionControllerMixin):
     """A node which is running multiple regiond's."""
 
     objects = RegionControllerManager()
@@ -2760,6 +2797,26 @@ class RegionController(Node):
     def __init__(self, *args, **kwargs):
         super(RegionController, self).__init__(
             node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs)
+
+
+class RegionRackController(RackController, RegionControllerMixin):
+    """A node which is running multiple regiond's and rackd."""
+
+    objects = RegionRackControllerManager()
+
+    # Provides a manager that will return `RegionController` and
+    # `RegionRackController`.
+    region_objects = RegionControllerAndRegionRackControllerManager()
+
+    class Meta:
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        # Skip __init__ for RackController as Django will complain about
+        # multiple values for node_type.
+        Node.__init__(
+            self, node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            *args, **kwargs)
 
 
 class Device(Node):

@@ -9,23 +9,39 @@ __all__ = [
 ]
 
 from collections import defaultdict
-from contextlib import closing
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta,
+)
+from functools import partial
+import os
 from os import urandom
 import random
-from socket import AF_INET
-from textwrap import dedent
+from socket import (
+    AF_INET,
+    gethostname,
+)
 import threading
 
 from django.core.exceptions import ValidationError
-from django.db import connection
 from maasserver import (
     eventloop,
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dhcp import configure_dhcp_now
+from maasserver.enum import NODE_TYPE
+from maasserver.models.node import (
+    Node,
+    RegionController,
+    RegionRackController,
+)
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.regioncontrollerprocess import RegionControllerProcess
+from maasserver.models.regioncontrollerprocessendpoint import (
+    RegionControllerProcessEndpoint,
+)
+from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     clusters,
     configuration,
@@ -49,11 +65,14 @@ from maasserver.utils import (
     synchronised,
 )
 from maasserver.utils.orm import (
+    get_one,
     transactional,
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
+from provisioningserver.network import get_mac_addresses
+from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -66,6 +85,7 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.events import EventGroup
+from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -91,6 +111,7 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
+from twisted.internet.threads import deferToThread
 from twisted.python import log
 from zope.interface import implementer
 
@@ -737,9 +758,8 @@ class RegionService(service.Service, object):
 
 
 class RegionAdvertisingService(TimerService, object):
-    """Advertise the local event-loop to all other event-loops.
-
-    This implementation uses an unlogged table in PostgreSQL.
+    """Advertise the `RegionControllerProcess` and all of its
+    `RegionControllerProcessEndpoints` into the database.
 
     :cvar lock: A lock to help coordinate - and prevent - concurrent
         database access from this service across the whole interpreter.
@@ -768,8 +788,8 @@ class RegionAdvertisingService(TimerService, object):
 
     def try_update(self):
         return deferToDatabase(self.update).addErrback(
-            log.err, "Failed to update this event-loop's advertisement; "
-            "%s's record may be out of date" % (eventloop.loop.name,))
+            log.err, "Failed to update this region's process and endpoints; "
+            "%s record's may be out of date" % (eventloop.loop.name,))
 
     @asynchronous
     def startService(self):
@@ -811,11 +831,12 @@ class RegionAdvertisingService(TimerService, object):
 
         Each failure will be logged, and there will be a pause of 5 seconds
         between each attempt.
-
         """
         while True:
             try:
-                yield deferToDatabase(self.prepare)
+                d = deferToThread(get_mac_addresses)
+                d.addCallback(partial(deferToDatabase, self.prepare))
+                yield d
             except defer.CancelledError:
                 raise
             except Exception as e:
@@ -831,37 +852,83 @@ class RegionAdvertisingService(TimerService, object):
     @with_connection  # Needed by the following lock.
     @synchronised(locks.eventloop)
     @transactional
-    def prepare(self):
-        """Ensure that the ``eventloops`` table exists.
+    def prepare(self, mac_addresses):
+        """Ensure that the RegionController` exists.
 
-        If not, create it. It is not managed by Django's ORM - though
-        this borrows Django's database connection code - because using
-        database-specific features like unlogged tables is hard work
-        with Django (and South).
-
-        The ``eventloops`` table contains an address and port where each
-        event-loop in a region is listening. Each record also contains a
-        timestamp so that old records can be erased.
+        If not, create it. On first creation the `system_id` of the
+        `RegionController` is written to /var/lib/maas/region_id. That file
+        is used by the other `RegionControllerProcess` on this region to use
+        the same `RegionController`.
         """
-        with closing(connection.cursor()) as cursor:
-            self._do_create(cursor)
+        self.region_id = self._get_region_id()
+        if self.region_id is None:
+            # See if any other nodes is this node, by checkin interfaces on
+            # this node.
+            region_obj = get_one(Node.objects.filter(
+                interface__mac_address__in=mac_addresses))
+            if region_obj is not None:
+                # Already a node with a MAC address that matches this machine.
+                # Convert that into a region.
+                region_obj = self._fix_node_for_region(region_obj)
+            else:
+                # This is the first time MAAS has ran on this node. Create a
+                # new `RegionController` and save the region_id.
+                region_obj = RegionController.objects.create(
+                    hostname=gethostname())
+            self.region_id = region_obj.system_id
+            self._write_region_id(self.region_id)
+        else:
+            # Region already exists load it from the database.
+            region_obj = Node.objects.get(system_id=self.region_id)
+            self._fix_node_for_region(region_obj)
 
     @synchronous
     @synchronised(lock)
     @transactional
     def update(self):
-        """Repopulate the ``eventloops`` with this process's information.
+        """Repopulate the `RegionControllerProcess` with this process's
+        information.
 
-        It updates all the records in ``eventloops`` related to the
-        event-loop running in the same process, and deletes - garbage
-        collects - old records related to any event-loop.
+        It updates all the records in `RegionControllerProcess` related to the
+        `RegionController`. Old `RegionControllerProcess` and
+        `RegionControllerProcessEndpoints` are garbage collected.
         """
+        # Get the region controller and update its hostname and last
+        # updated time.
+        region_obj = Node.objects.get(system_id=self.region_id)
+        update_fields = ["updated"]
+        hostname = gethostname()
+        if region_obj.hostname != hostname:
+            region_obj.hostname = hostname
+            update_fields.append("hostname")
+        region_obj.save(update_fields=update_fields)
+
+        # Get or create the process for this region and update its last updated
+        # time.
+        process, created = RegionControllerProcess.objects.get_or_create(
+            region=region_obj, pid=os.getpid())
+        if not created:
+            # Update its latest updated time.
+            process.save(update_fields=["updated"])
+
+        # Remove any old processes that are older than 90 seconds.
+        remove_before_time = now() - timedelta(seconds=90)
+        RegionControllerProcess.objects.filter(
+            updated__lte=remove_before_time).delete()
+
+        # Update all endpoints for this process.
+        previous_endpoint_ids = set(
+            RegionControllerProcessEndpoint.objects.filter(
+                process=process).values_list("id", flat=True))
         addresses = frozenset(self._get_addresses())
-        with closing(connection.cursor()) as cursor:
-            self._do_delete(cursor)
-            self._do_delete_overlap(cursor, addresses)
-            self._do_insert(cursor, addresses)
-            self._do_collect(cursor)
+        for addr, port in addresses:
+            endpoint, created = (
+                RegionControllerProcessEndpoint.objects.get_or_create(
+                    process=process, address=addr, port=port))
+            if not created:
+                previous_endpoint_ids.remove(endpoint.id)
+        RegionControllerProcessEndpoint.objects.filter(
+            id__in=previous_endpoint_ids).delete()
 
     @synchronous
     @synchronised(lock)
@@ -872,22 +939,31 @@ class RegionAdvertisingService(TimerService, object):
         Each tuple corresponds to somewhere an event-loop is listening
         within the whole region. The `name` is the event-loop name.
         """
-        with closing(connection.cursor()) as cursor:
-            self._do_select(cursor)
-            return list(cursor)
+        regions = RegionRackController.region_objects.all()
+        regions = regions.prefetch_related("processes", "processes__endpoints")
+        all_endpoints = []
+        for region_obj in regions:
+            for process in region_obj.processes.all():
+                for endpoint in process.endpoints.all():
+                    all_endpoints.append((
+                        "%s:pid=%d" % (region_obj.hostname, process.pid),
+                        endpoint.address,
+                        endpoint.port))
+        return all_endpoints
 
     @synchronous
     @synchronised(lock)
     @transactional
     def remove(self):
-        """Removes all records related to this event-loop.
+        """Removes all records related to this process.
 
         A subsequent call to `update()` will restore these records,
         hence calling this while this service is started won't be
         terribly efficacious.
         """
-        with closing(connection.cursor()) as cursor:
-            self._do_delete(cursor)
+        region_obj = Node.objects.get(system_id=self.region_id)
+        RegionControllerProcess.objects.get(
+            region=region_obj, pid=os.getpid()).delete()
 
     def _get_addresses(self):
         """Generate the addresses on which to advertise region availablilty.
@@ -914,81 +990,48 @@ class RegionAdvertisingService(TimerService, object):
                         continue  # Only advertise IPv4 for now.
                     yield addr, port
 
-    _create_statement = dedent("""\
-      CREATE UNLOGGED TABLE IF NOT EXISTS eventloops (
-        name          TEXT NOT NULL,
-        address       INET NOT NULL,
-        port          INTEGER NOT NULL,
-        updated       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-        CHECK (port > 0 AND port <= 65535),
-        UNIQUE (name, address, port),
-        UNIQUE (address, port)
-      )
-    """)
+    @classmethod
+    def _get_path_to_region_id(cls):
+        """Return the path to '/var/lib/maas/region_id'.
 
-    _create_lock_statement = dedent("""\
-      LOCK TABLE eventloops IN EXCLUSIVE MODE
-    """)
+        Help's with testing as this method is mocked.
+        """
+        return get_path('/var/lib/maas/region_id')
 
-    _create_index_check_statement = dedent("""\
-      SELECT 1 FROM pg_catalog.pg_indexes
-       WHERE schemaname = CURRENT_SCHEMA()
-         AND tablename = 'eventloops'
-         AND indexname = 'eventloops_name_idx'
-    """)
+    def _get_region_id(self):
+        """Return the `RegionController` system_id from
+        '/var/lib/maas/region_id'."""
+        region_id_path = RegionAdvertisingService._get_path_to_region_id()
+        if os.path.exists(region_id_path):
+            with open(region_id_path, "r", encoding="ascii") as fp:
+                return fp.read().strip()
+        else:
+            return None
 
-    _create_index_statement = dedent("""\
-      CREATE INDEX eventloops_name_idx ON eventloops (name)
-    """)
+    def _write_region_id(self, system_id):
+        """Return the `RegionController` system_id from
+        '/var/lib/maas/region_id'."""
+        region_id_path = RegionAdvertisingService._get_path_to_region_id()
+        atomic_write(system_id.encode("ascii"), region_id_path)
 
-    def _do_create(self, cursor):
-        cursor.execute(self._create_statement)
-        # Lock the table exclusine to prevent a race when checking for
-        # the presence of the eventloops_name_idx index.
-        cursor.execute(self._create_lock_statement)
-        cursor.execute(self._create_index_check_statement)
-        if list(cursor) == []:
-            cursor.execute(self._create_index_statement)
+    def _fix_node_for_region(self, region_obj):
+        """Fix the `node_type` and `hostname` on `region_obj`.
 
-    _delete_statement = "DELETE FROM eventloops WHERE name = %s"
-
-    def _do_delete(self, cursor):
-        cursor.execute(self._delete_statement, [eventloop.loop.name])
-
-    _delete_overlap_statement = "DELETE FROM eventloops WHERE "
-    _delete_overlap_values_statement = "(address = %s AND port = %s)"
-
-    def _do_delete_overlap(self, cursor, addresses):
-        statement, values = [], []
-        for addr, port in addresses:
-            statement.append(self._delete_overlap_values_statement)
-            values.extend([addr, port])
-        if len(statement) != 0:
-            statement = self._delete_overlap_statement + " OR ".join(statement)
-            cursor.execute(statement, values)
-
-    _insert_statement = "INSERT INTO eventloops (name, address, port) VALUES "
-    _insert_values_statement = "(%s, %s, %s)"
-
-    def _do_insert(self, cursor, addresses):
-        name = eventloop.loop.name
-        statement, values = [], []
-        for addr, port in addresses:
-            statement.append(self._insert_values_statement)
-            values.extend([name, addr, port])
-        if len(statement) != 0:
-            statement = self._insert_statement + ", ".join(statement)
-            cursor.execute(statement, values)
-
-    _collect_statement = dedent("""\
-      DELETE FROM eventloops WHERE
-        updated < (NOW() - INTERVAL '5 minutes')
-    """)
-
-    def _do_collect(self, cursor):
-        cursor.execute(self._collect_statement)
-
-    _select_statement = "SELECT name, address, port FROM eventloops"
-
-    def _do_select(self, cursor):
-        cursor.execute(self._select_statement)
+        This method only updates the database if it has changed.
+        """
+        update_fields = []
+        if region_obj.node_type not in [
+                NODE_TYPE.REGION_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
+            if region_obj.node_type == NODE_TYPE.RACK_CONTROLLER:
+                region_obj.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+            else:
+                region_obj.node_type = NODE_TYPE.REGION_CONTROLLER
+            update_fields.append("node_type")
+        hostname = gethostname()
+        if region_obj.hostname != hostname:
+            region_obj.hostname = hostname
+            update_fields.append("hostname")
+        if len(update_fields) > 0:
+            region_obj.save(update_fields=update_fields)
+        return region_obj

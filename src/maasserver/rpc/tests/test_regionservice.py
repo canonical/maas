@@ -6,7 +6,6 @@
 __all__ = []
 
 from collections import defaultdict
-from contextlib import closing
 from datetime import (
     datetime,
     timedelta,
@@ -18,13 +17,12 @@ from operator import attrgetter
 import os.path
 import random
 from random import randint
+from socket import gethostname
 import threading
 import time
 from urllib.parse import urlparse
 
 from crochet import wait_for
-from django.db import connection
-from django.db.utils import ProgrammingError
 from maasserver import (
     dhcp,
     eventloop,
@@ -35,6 +33,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.models import (
@@ -42,11 +41,16 @@ from maasserver.models import (
     Event,
     EventType,
     Node,
+    RegionController,
+    RegionControllerProcess,
+    RegionControllerProcessEndpoint,
     signals,
     StaticIPAddress,
+    timestampedmodel,
 )
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     events as events_module,
     leases as leases_module,
@@ -1922,12 +1926,16 @@ class TestRegionService(MAASTestCase):
 
 class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
-    def tearDown(self):
-        super(TestRegionAdvertisingService, self).tearDown()
-        # Django doesn't notice that the database needs to be reset.
-        with closing(connection):
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("DROP TABLE IF EXISTS eventloops")
+    def setUp(self):
+        super(TestRegionAdvertisingService, self).setUp()
+        self.region_id_path = os.path.join(self.make_dir(), "region_id")
+        self.patch(
+            RegionAdvertisingService,
+            "_get_path_to_region_id").return_value = self.region_id_path
+
+    def get_region_id_contents(self):
+        with open(self.region_id_path, "r", encoding="ascii") as fp:
+            return fp.read().strip()
 
     def test_init(self):
         ras = RegionAdvertisingService()
@@ -1944,8 +1952,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             yield ras.try_update()
         self.assertDocTestMatches(
             """
-            Failed to update this event-loop's advertisement;
-              %s's record may be out of date
+            Failed to update this region's process and endpoints;
+              %s record's may be out of date
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...
@@ -1959,15 +1967,15 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
 
-        def check_query_eventloops():
-            with closing(connection):
-                with closing(connection.cursor()) as cursor:
-                    cursor.execute("SELECT * FROM eventloops")
+        def check_query_regions():
+            self.assertEquals(
+                1, RegionController.objects.count(),
+                "RegionController was not created.")
 
         service.starting.addCallback(
             lambda ignore: self.assertTrue(service.running))
         service.starting.addCallback(
-            lambda ignore: deferToDatabase(check_query_eventloops))
+            lambda ignore: deferToDatabase(check_query_regions))
         service.starting.addCallback(
             lambda ignore: service.stopService())
 
@@ -2057,26 +2065,59 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # The test is that stopService() succeeds.
         return service.stopService()
 
-    def test_prepare(self):
+    def test_prepare_new_region(self):
         service = RegionAdvertisingService()
 
-        with closing(connection):
-            # Before service.prepare is called, there's not eventloops
-            # table, and selecting from it elicits an error.
-            with closing(connection.cursor()) as cursor:
-                self.assertRaises(
-                    ProgrammingError, cursor.execute,
-                    "SELECT * FROM eventloops")
+        # Before service.prepare is called, there's no RegionController's.
+        self.assertEquals(
+            0, RegionController.objects.count(),
+            "No RegionControllers should exist.")
 
-        service.prepare()
+        service.prepare([])
 
-        with closing(connection):
-            # After service.prepare is called, the eventloops table
-            # exists, and selecting from it works fine, though it is
-            # empty.
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("SELECT * FROM eventloops")
-                self.assertEqual([], list(cursor))
+        # RegionController exists for with hostname and region_id written to.
+        region = RegionController.objects.get(hostname=gethostname())
+        self.assertEquals(region.system_id, self.get_region_id_contents())
+
+    def test_prepare_new_region_converts_from_node(self):
+        service = RegionAdvertisingService()
+
+        node = factory.make_Node(interface=True)
+        interface = node.get_boot_interface()
+
+        service.prepare([str(interface.mac_address)])
+
+        # Node should have been converted to a RegionController.
+        node = reload_object(node)
+        self.assertEquals(NODE_TYPE.REGION_CONTROLLER, node.node_type)
+        self.assertEquals(gethostname(), node.hostname)
+
+    def test_prepare_new_region_converts_from_rack(self):
+        service = RegionAdvertisingService()
+
+        node = factory.make_Node(
+            interface=True, node_type=NODE_TYPE.RACK_CONTROLLER)
+        interface = node.get_boot_interface()
+
+        service.prepare([str(interface.mac_address)])
+
+        # Node should have been converted to a RegionRackController.
+        node = reload_object(node)
+        self.assertEquals(NODE_TYPE.REGION_AND_RACK_CONTROLLER, node.node_type)
+        self.assertEquals(gethostname(), node.hostname)
+
+    def test_prepare_region_id_exists(self):
+        service = RegionAdvertisingService()
+
+        node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
+        with open(self.region_id_path, "wb") as fp:
+            fp.write(node.system_id.encode("ascii"))
+
+        service.prepare([])
+
+        # RegionController should have hostname updated.
+        node = reload_object(node)
+        self.assertEquals(gethostname(), node.hostname)
 
     def test_prepare_holds_startup_lock(self):
         # Creating tables in PostgreSQL is a transactional operation
@@ -2086,77 +2127,166 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # example. However, PostgreSQL provides advisory locking
         # functions, and that's what RegionAdvertisingService.prepare
         # takes advantage of to prevent concurrent creation of the
-        # eventloops table.
+        # region controllers.
 
         # A record of the lock's status, populated when a custom
         # patched-in _do_create() is called.
         locked = []
 
-        def _do_create(cursor):
+        def _get_region_id():
             locked.append(locks.eventloop.is_locked())
+            return None
 
         service = RegionAdvertisingService()
-        service._do_create = _do_create
+        self.patch(service, "_get_region_id").side_effect = _get_region_id
 
         # The lock is not held before and after prepare() is called.
         self.assertFalse(locks.eventloop.is_locked())
-        service.prepare()
+        service.prepare([])
         self.assertFalse(locks.eventloop.is_locked())
 
-        # The lock was held when _do_create() was called.
+        # The lock was held when _get_region_id() was called.
         self.assertEqual([True], locked)
 
-    def test_update(self):
-        example_addresses = [
-            (factory.make_ipv4_address(), factory.pick_port()),
-            (factory.make_ipv4_address(), factory.pick_port()),
+    def test_update_updates_region_hostname(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepare([])
+
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        region.hostname = factory.make_name("host")
+        region.save()
+
+        service.update()
+
+        # RegionController should have hostname updated.
+        region = reload_object(region)
+        self.assertEquals(gethostname(), region.hostname)
+
+    def test_update_creates_process(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepare([])
+        service.update()
+
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        [process] = region.processes.all()
+        self.assertEquals(process.pid, os.getpid())
+
+    def test_update_removes_old_processes(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepare([])
+
+        old_time = now() - timedelta(seconds=90)
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        other_region = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
+        old_region_process = RegionControllerProcess.objects.create(
+            region=region, pid=randint(1, 1000),
+            created=old_time, updated=old_time)
+        old_other_region_process = RegionControllerProcess.objects.create(
+            region=other_region, pid=randint(1000, 2000),
+            created=old_time, updated=old_time)
+
+        service.update()
+
+        self.assertIsNone(reload_object(old_region_process))
+        self.assertIsNone(reload_object(old_other_region_process))
+
+    def test_update_updates_updated_time_on_region_and_process(self):
+        current_time = now()
+        self.patch(timestampedmodel, "now").return_value = current_time
+
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepare([])
+
+        old_time = current_time - timedelta(seconds=90)
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        region.created = old_time
+        region.updated = old_time
+        region.save()
+        region_process = RegionControllerProcess.objects.create(
+            region=region, pid=os.getpid(),
+            created=old_time, updated=old_time)
+
+        service.update()
+
+        region = reload_object(region)
+        region_process = reload_object(region_process)
+        self.assertEquals(current_time, region.updated)
+        self.assertEquals(current_time, region_process.updated)
+
+    def test_update_creates_endpoints_on_process(self):
+        addresses = [
+            (factory.make_ip_address(), factory.pick_port()),
+            (factory.make_ip_address(), factory.pick_port()),
         ]
 
         service = RegionAdvertisingService()
-        service._get_addresses = lambda: example_addresses
-        service.prepare()
+        service._get_addresses = lambda: addresses
+        service.prepare([])
+
         service.update()
 
-        with closing(connection):
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("SELECT address, port FROM eventloops")
-                self.assertItemsEqual(example_addresses, list(cursor))
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        [process] = region.processes.all()
+        saved_endpoints = [
+            (endpoint.address, endpoint.port)
+            for endpoint in process.endpoints.all()
+        ]
 
-    def test_update_does_not_insert_when_nothings_listening(self):
+        self.assertItemsEqual(addresses, saved_endpoints)
+
+    def test_update_does_not_insert_endpoints_when_nothings_listening(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare()
+        service.prepare([])
+
         service.update()
 
-        with closing(connection):
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("SELECT address, port FROM eventloops")
-                self.assertItemsEqual([], list(cursor))
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        [process] = region.processes.all()
+        saved_endpoints = [
+            (endpoint.address, endpoint.port)
+            for endpoint in process.endpoints.all()
+        ]
 
-    def test_update_deletes_old_records(self):
+        self.assertEquals([], saved_endpoints)
+
+    def test_update_deletes_old_endpoints(self):
         service = RegionAdvertisingService()
-        service.prepare()
-        # Populate the eventloops table by hand with two records, one
-        # fresh ("vic") and one old ("bob").
-        with closing(connection):
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("""\
-                  INSERT INTO eventloops
-                    (name, address, port, updated)
-                  VALUES
-                    ('vic', '192.168.1.1', 1111, DEFAULT),
-                    ('bob', '192.168.1.2', 2222, NOW() - INTERVAL '6 mins')
-                """)
-        # Both event-loops, vic and bob, are visible.
-        self.assertItemsEqual(
-            [("vic", "192.168.1.1", 1111),
-             ("bob", "192.168.1.2", 2222)],
-            service.dump())
-        # Updating also garbage-collects old event-loop records.
+        service.prepare([])
+
+        region = RegionController.objects.get(
+            system_id=self.get_region_id_contents())
+        process = RegionControllerProcess.objects.create(
+            region=region, pid=os.getpid())
+        for _ in range(3):
+            RegionControllerProcessEndpoint.objects.create(
+                process=process, address=factory.make_ip_address(),
+                port=factory.pick_port())
+
+        addresses = [
+            (factory.make_ip_address(), factory.pick_port()),
+            (factory.make_ip_address(), factory.pick_port()),
+        ]
+        service._get_addresses = lambda: addresses
+
         service.update()
-        self.assertItemsEqual(
-            [("vic", "192.168.1.1", 1111)],
-            service.dump())
+
+        process = reload_object(process)
+        saved_endpoints = [
+            (endpoint.address, endpoint.port)
+            for endpoint in process.endpoints.all()
+        ]
+        self.assertItemsEqual(addresses, saved_endpoints)
 
     def patch_port(self, port):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
@@ -2168,60 +2298,6 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             regionservice, "get_all_interface_addresses")
         get_all_interface_addresses.return_value = addresses
 
-    def test_update_deletes_overlapping_records(self):
-        service = RegionAdvertisingService()
-        service.prepare()
-
-        # The name of a fictional old event-loop.
-        example_name = factory.make_name("loop")
-        # Port and addresses on which the old and current loops are listening.
-        example_port = factory.pick_port()
-        example_addrs = {
-            factory.make_ipv4_address(),
-            factory.make_ipv4_address(),
-        }
-        self.patch_port(example_port)
-        self.patch_addresses(example_addrs)
-
-        # A non-overlapping host and port for the old event-loop.
-        for example_addr in iter(factory.make_ipv4_address, None):
-            if example_addr not in example_addrs:
-                example_non_overlapping_record = (
-                    example_name, example_addr, example_port)
-                break
-
-        # Populate the eventloops table with records for the old event-loop.
-        with closing(connection):
-            with closing(connection.cursor()) as cursor:
-                # Create the non-overlapping record.
-                cursor.execute("""\
-                  INSERT INTO eventloops (name, address, port, updated)
-                  VALUES (%s, %s, %s, DEFAULT)
-                """, example_non_overlapping_record)
-                # Create the overlapping records.
-                for example_addr in example_addrs:
-                    cursor.execute("""\
-                      INSERT INTO eventloops (name, address, port, updated)
-                      VALUES (%s, %s, %s, DEFAULT)
-                    """, [example_name, example_addr, example_port])
-
-        # All records for the old event-loop are present.
-        self.assertItemsEqual(
-            [example_non_overlapping_record] + [
-                (example_name, example_addr, example_port)
-                for example_addr in example_addrs
-            ],
-            service.dump())
-        # Updating replaces overlapping records with records for the current
-        # event-loop. The non-overlapping record remains.
-        service.update()
-        self.assertItemsEqual(
-            [example_non_overlapping_record] + [
-                (eventloop.loop.name, example_addr, example_port)
-                for example_addr in example_addrs
-            ],
-            service.dump())
-
     def test_dump(self):
         example_addresses = [
             (factory.make_ipv4_address(), factory.pick_port()),
@@ -2230,11 +2306,12 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service = RegionAdvertisingService()
         service._get_addresses = lambda: example_addresses
-        service.prepare()
+        service.prepare([])
+
         service.update()
 
         expected = [
-            (eventloop.loop.name, addr, port)
+            ("%s:pid=%d" % (gethostname(), os.getpid()), addr, port)
             for (addr, port) in example_addresses
         ]
 
@@ -2243,7 +2320,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_remove(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: [("192.168.0.1", 9876)]
-        service.prepare()
+        service.prepare([])
         service.update()
         service.remove()
 

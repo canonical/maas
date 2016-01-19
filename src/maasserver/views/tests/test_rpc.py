@@ -6,10 +6,12 @@
 __all__ = []
 
 import json
+import os
 
 from crochet import wait_for
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
+from maasserver.rpc.regionservice import RegionAdvertisingService
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.utils.threads import deferToDatabase
 from maastesting.djangotestcase import DjangoTransactionTestCase
@@ -34,6 +36,13 @@ is_valid_port = MatchesAll(
 
 
 class RPCViewTest(DjangoTransactionTestCase):
+
+    def setUp(self):
+        super(RPCViewTest, self).setUp()
+        self.region_id_path = os.path.join(self.make_dir(), "region_id")
+        self.patch(
+            RegionAdvertisingService,
+            "_get_path_to_region_id").return_value = self.region_id_path
 
     def test_rpc_info_when_rpc_advertise_not_present(self):
         getServiceNamed = self.patch_autospec(

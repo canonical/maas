@@ -43,6 +43,7 @@ __all__ = [
     'RegionController',
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
+    'RegionRackController',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -109,6 +110,7 @@ from maasserver.models.node import (
     Node,
     RackController,
     RegionController,
+    RegionRackController,
 )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
@@ -164,6 +166,7 @@ ignore_unused(
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
+    RegionRackController,
     SSHKey,
     StaticIPAddress,
     Tag,

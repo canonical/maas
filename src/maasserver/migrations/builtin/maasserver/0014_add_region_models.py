@@ -8,6 +8,7 @@ from django.db import (
 )
 import maasserver.fields
 import maasserver.models.cleansave
+import maasserver.models.node
 
 
 class Migration(migrations.Migration):
@@ -20,7 +21,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RegionControllerProcess',
             fields=[
-                ('id', models.AutoField(primary_key=True, auto_created=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('pid', models.IntegerField()),
@@ -33,12 +34,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RegionControllerProcessEndpoint',
             fields=[
-                ('id', models.AutoField(primary_key=True, auto_created=True, serialize=False, verbose_name='ID')),
+                ('id', models.AutoField(verbose_name='ID', primary_key=True, serialize=False, auto_created=True)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('address', maasserver.fields.MAASIPAddressField(editable=False)),
-                ('port', models.IntegerField(validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(65535)], default=0)),
-                ('process', models.ForeignKey(related_name='endpoints', to='maasserver.RegionControllerProcess')),
+                ('port', models.IntegerField(default=0, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(65535)])),
+                ('process', models.ForeignKey(to='maasserver.RegionControllerProcess', related_name='endpoints')),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
@@ -49,27 +50,36 @@ class Migration(migrations.Migration):
             options={
                 'proxy': True,
             },
-            bases=('maasserver.node',),
+            bases=('maasserver.node', maasserver.models.node.RegionControllerMixin),
+        ),
+        migrations.CreateModel(
+            name='RegionRackController',
+            fields=[
+            ],
+            options={
+                'proxy': True,
+            },
+            bases=('maasserver.rackcontroller', maasserver.models.node.RegionControllerMixin),
         ),
         migrations.AlterField(
             model_name='node',
             name='node_type',
-            field=models.IntegerField(editable=False, choices=[(0, 'Machine'), (1, 'Device'), (2, 'Rack controller'), (3, 'Region controller')], default=0),
+            field=models.IntegerField(editable=False, choices=[(0, 'Machine'), (1, 'Device'), (2, 'Rack controller'), (3, 'Region controller'), (4, 'Region and rack controller')], default=0),
         ),
         migrations.AlterField(
             model_name='node',
             name='nodegroup',
-            field=models.ForeignKey(to='maasserver.NodeGroup', null=True, blank=True),
+            field=models.ForeignKey(blank=True, null=True, to='maasserver.NodeGroup'),
         ),
         migrations.AddField(
             model_name='regioncontrollerprocess',
             name='region',
-            field=models.ForeignKey(related_name='processes', to='maasserver.RegionController'),
+            field=models.ForeignKey(to='maasserver.Node', related_name='processes'),
         ),
         migrations.AddField(
             model_name='node',
             name='dns_process',
-            field=models.OneToOneField(to='maasserver.RegionControllerProcess', null=True, related_name='+', editable=False),
+            field=models.OneToOneField(editable=False, to='maasserver.RegionControllerProcess', null=True, related_name='+'),
         ),
         migrations.AlterUniqueTogether(
             name='regioncontrollerprocessendpoint',

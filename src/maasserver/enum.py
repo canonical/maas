@@ -133,6 +133,7 @@ class NODE_TYPE:
     DEVICE = 1
     RACK_CONTROLLER = 2
     REGION_CONTROLLER = 3
+    REGION_AND_RACK_CONTROLLER = 4
 
 
 NODE_TYPE_CHOICES = (
@@ -140,6 +141,7 @@ NODE_TYPE_CHOICES = (
     (NODE_TYPE.DEVICE, "Device"),
     (NODE_TYPE.RACK_CONTROLLER, "Rack controller"),
     (NODE_TYPE.REGION_CONTROLLER, "Region controller"),
+    (NODE_TYPE.REGION_AND_RACK_CONTROLLER, "Region and rack controller"),
 )
 
 
