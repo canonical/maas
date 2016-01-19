@@ -44,7 +44,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
-        self.assertEqual(
+        self.assertItemsEqual(
             new_sip_ids, [
                 ip.id for ip in
                 reload_object(dnsresource).ip_addresses.all()])
@@ -61,7 +61,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
-        self.assertEqual(
+        self.assertItemsEqual(
             new_sip_ids, [
                 ip.id for ip in
                 reload_object(dnsresource).ip_addresses.all()])
