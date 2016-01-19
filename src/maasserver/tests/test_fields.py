@@ -391,10 +391,6 @@ class TestXMLField(MAASServerTestCase):
             "SELECT * FROM docs WHERE xpath_exists(%s, value)", ["//miss"])
         self.assertEqual([], list(result))
 
-    def test_save_empty_rejected(self):
-        self.assertRaises(
-            DatabaseError, XMLFieldModel.objects.create, value="")
-
     def test_save_non_wellformed_rejected(self):
         self.assertRaises(
             DatabaseError, XMLFieldModel.objects.create, value="<bad>")

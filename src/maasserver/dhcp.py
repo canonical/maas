@@ -10,12 +10,20 @@ __all__ = [
 
 from collections import defaultdict
 import logging
+from operator import itemgetter
 import threading
 
 from django.conf import settings
-from maasserver.enum import NODEGROUP_STATUS
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODEGROUP_STATUS,
+)
 from maasserver.exceptions import UnresolvableHost
-from maasserver.models import Config
+from maasserver.models import (
+    Config,
+    StaticIPAddress,
+)
 from maasserver.rpc import getClientFor
 from maasserver.utils.orm import (
     post_commit,
@@ -52,6 +60,66 @@ def split_ipv4_ipv6_interfaces(interfaces):
     return split[4], split[6]
 
 
+def make_interface_hostname(interface):
+    """Return the host decleration name for DHCPD for this `interface`."""
+    interface_name = interface.name.replace(".", "-")
+    if interface.type == INTERFACE_TYPE.UNKNOWN and interface.node is None:
+        return "unknown-%d-%s" % (interface.id, interface_name)
+    else:
+        return "%s-%s" % (interface.node.hostname, interface_name)
+
+
+def make_hosts_for_subnet(subnet):
+    """Return list of host entries to create in the DHCP configuration."""
+    sips = StaticIPAddress.objects.filter(
+        alloc_type__in=[
+            IPADDRESS_TYPE.AUTO,
+            IPADDRESS_TYPE.STICKY,
+            IPADDRESS_TYPE.USER_RESERVED,
+            ],
+        subnet=subnet, ip__isnull=False).order_by('id')
+    hosts = []
+    interface_ids = set()
+    for sip in sips:
+        # Skip blank IP addresses.
+        if sip.ip == '':
+            continue
+
+        # Add all interfaces attached to this IP address.
+        for interface in sip.interface_set.order_by('id'):
+            # Only allow an interface to be in hosts once.
+            if interface.id in interface_ids:
+                continue
+            else:
+                interface_ids.add(interface.id)
+
+            # Bond interfaces get all its parent interfaces created as
+            # hosts as well.
+            if interface.type == INTERFACE_TYPE.BOND:
+                for parent in interface.parents.all():
+                    # Only add parents that MAC address is different from
+                    # from the bond.
+                    if parent.mac_address != interface.mac_address:
+                        interface_ids.add(parent.id)
+                        hosts.append({
+                            'host': make_interface_hostname(parent),
+                            'mac': str(parent.mac_address),
+                            'ip': str(sip.ip),
+                        })
+                hosts.append({
+                    'host': make_interface_hostname(interface),
+                    'mac': str(interface.mac_address),
+                    'ip': str(sip.ip),
+                })
+            else:
+                hosts.append({
+                    'host': make_interface_hostname(interface),
+                    'mac': str(interface.mac_address),
+                    'ip': str(sip.ip),
+                })
+    return sorted(hosts, key=itemgetter('host'))
+
+
 def make_subnet_config(interface, dns_servers, ntp_server):
     """Return DHCP subnet configuration dict for a cluster interface."""
     ip_network = interface.subnet.get_ipnetwork()
@@ -72,6 +140,7 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         'domain_name': interface.nodegroup.name,
         'ip_range_low': interface.ip_range_low,
         'ip_range_high': interface.ip_range_high,
+        'hosts': make_hosts_for_subnet(interface.subnet),
         }
 
 

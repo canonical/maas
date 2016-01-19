@@ -16,10 +16,16 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
-from provisioningserver.dhcp.testing.config import make_subnet_config
+from provisioningserver.dhcp.testing.config import (
+    make_subnet_config,
+    make_subnet_host,
+)
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
-from testtools.matchers import Contains
+from testtools.matchers import (
+    Contains,
+    ContainsAll,
+)
 
 # Simple test version of the DHCP template.  Contains parameter
 # substitutions, but none that aren't also in the real template.
@@ -39,15 +45,16 @@ sample_template = dedent("""\
 """)
 
 
-def make_sample_params():
+def make_sample_params(network=None, hosts=None):
     """Return a dict of arbitrary DHCP configuration parameters."""
-    if factory.pick_bool():
-        network = factory.make_ipv4_network()
-    else:
-        network = factory.make_ipv6_network()
+    if network is None:
+        if factory.pick_bool():
+            network = factory.make_ipv4_network()
+        else:
+            network = factory.make_ipv6_network()
     return {
         'omapi_key': factory.make_name('key'),
-        'dhcp_subnets': [make_subnet_config(network)],
+        'dhcp_subnets': [make_subnet_config(network, hosts=hosts)],
         }
 
 
@@ -160,6 +167,33 @@ class TestGetConfig(PservTestCase):
             rendered,
             config.get_config('dhcpd.conf.template', **params))
         self.assertNotIn("routers", rendered)
+
+    def test__renders_with_hosts(self):
+        network = factory.make_ipv4_network()
+        hosts = [
+            make_subnet_host(network)
+            for _ in range(3)
+        ]
+        params = make_sample_params(network, hosts)
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        self.assertThat(
+            config_output,
+            ContainsAll([
+                host['host']
+                for host in hosts
+            ]))
+        self.assertThat(
+            config_output,
+            ContainsAll([
+                host['mac']
+                for host in hosts
+            ]))
+        self.assertThat(
+            config_output,
+            ContainsAll([
+                host['ip']
+                for host in hosts
+            ]))
 
 
 class TestComposeConditionalBootloader(PservTestCase):

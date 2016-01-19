@@ -734,10 +734,14 @@ class Factory(maastesting.factory.Factory):
     UNDEFINED = float('NaN')
 
     def _get_exclude_list(self, subnet):
-        return ([IPAddress(subnet.gateway_ip)] +
-                [IPAddress(ip) for ip in StaticIPAddress.objects.filter(
-                    subnet=subnet).values_list('ip', flat=True)
-                 if ip is not None])
+        ip_addresses = [
+            IPAddress(ip) for ip in StaticIPAddress.objects.filter(
+                subnet=subnet).values_list('ip', flat=True)
+            if ip is not None
+        ]
+        if subnet.gateway_ip is not None:
+            ip_addresses.append(IPAddress(subnet.gateway_ip))
+        return ip_addresses
 
     def make_StaticIPAddress(self, ip=UNDEFINED,
                              alloc_type=IPADDRESS_TYPE.AUTO, interface=None,

@@ -60,6 +60,15 @@ subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
               "--action", "release", "--mac", clhw,
               "--ip-family", "ipv4", "--ip", clip);
        }
+
+       {{if dhcp_subnet.get('hosts')}}
+       {{for host in dhcp_subnet['hosts']}}
+       host {{host['host']}} {
+          hardware ethernet {{host['mac']}};
+          fixed-address {{host['ip']}};
+       }
+       {{endfor}}
+       {{endif}}
 }
 {{endfor}}
 

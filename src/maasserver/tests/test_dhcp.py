@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from operator import itemgetter
 import random
 
 from django.conf import settings
@@ -19,6 +20,8 @@ from maasserver.dhcp import (
     split_ipv4_ipv6_interfaces,
 )
 from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
@@ -128,6 +131,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'domain_name',
                 'ip_range_low',
                 'ip_range_high',
+                'hosts',
                 ]))
 
     def test__sets_dns_and_ntp_from_arguments(self):
@@ -215,6 +219,154 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
         self.assertEqual('', config['router_ip'])
+
+    def tests__passes_defined_hosts(self):
+        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
+        subnet = interface.subnet
+        node = factory.make_Node(interface=False)
+
+        # Make AUTO IP without an IP. Should not be in output.
+        auto_no_ip_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip='', subnet=subnet,
+            interface=auto_no_ip_interface)
+
+        # Make AUTO IP with an IP. Should be in the output.
+        auto_with_ip_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=auto_with_ip_interface)
+
+        # Make STICKY IP. Should be in the output.
+        sticky_ip_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        sticky_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=sticky_ip_interface)
+
+        # Make DISCOVERED IP. Should not be in the output.
+        discovered_ip_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
+            interface=discovered_ip_interface)
+
+        # Make USER_RESERVED IP on Device. Should be in the output.
+        device = factory.make_Device(interface=False)
+        device_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=device, vlan=subnet.vlan)
+        device_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet,
+            interface=device_interface)
+
+        # Make USER_RESERVED IP on Unknown interface. Should be in the output.
+        unknown_interface = factory.make_Interface(
+            INTERFACE_TYPE.UNKNOWN, vlan=subnet.vlan)
+        unknown_reserved_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet,
+            interface=unknown_interface)
+
+        expected_hosts = sorted([
+            {
+                'host': '%s-%s' % (node.hostname, auto_with_ip_interface.name),
+                'mac': str(auto_with_ip_interface.mac_address),
+                'ip': str(auto_ip.ip),
+            },
+            {
+                'host': '%s-%s' % (node.hostname, sticky_ip_interface.name),
+                'mac': str(sticky_ip_interface.mac_address),
+                'ip': str(sticky_ip.ip),
+            },
+            {
+                'host': '%s-%s' % (device.hostname, device_interface.name),
+                'mac': str(device_interface.mac_address),
+                'ip': str(device_ip.ip),
+            },
+            {
+                'host': 'unknown-%s-%s' % (
+                    unknown_interface.id, unknown_interface.name),
+                'mac': str(unknown_interface.mac_address),
+                'ip': str(unknown_reserved_ip.ip),
+            }
+        ], key=itemgetter('host'))
+
+        post_commit_hooks.fire()
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.assertEqual(expected_hosts, config['hosts'])
+
+    def tests__passes_defined_hosts_for_bond(self):
+        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
+        subnet = interface.subnet
+        node = factory.make_Node(interface=False)
+
+        # Create a bond with an IP address, to make sure all MAC address in
+        # that bond get the same address.
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+        eth2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth2")
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, name="bond0",
+            mac_address=eth2.mac_address, parents=[eth0, eth1, eth2])
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=bond0)
+
+        expected_hosts = [
+            {
+                'host': '%s-bond0' % node.hostname,
+                'mac': str(bond0.mac_address),
+                'ip': str(auto_ip.ip),
+            },
+            {
+                'host': '%s-eth0' % node.hostname,
+                'mac': str(eth0.mac_address),
+                'ip': str(auto_ip.ip),
+            },
+            {
+                'host': '%s-eth1' % node.hostname,
+                'mac': str(eth1.mac_address),
+                'ip': str(auto_ip.ip),
+            },
+        ]
+
+        post_commit_hooks.fire()
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.assertEqual(expected_hosts, config['hosts'])
+
+    def tests__passes_defined_hosts_first_created_ip_address(self):
+        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
+        subnet = interface.subnet
+        node = factory.make_Node(interface=False)
+
+        # Add two IP address to interface. Only the first should be added.
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        auto_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=eth0)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=eth0)
+
+        expected_hosts = [
+            {
+                'host': '%s-%s' % (node.hostname, eth0.name),
+                'mac': str(eth0.mac_address),
+                'ip': str(auto_ip.ip),
+            },
+        ]
+
+        post_commit_hooks.fire()
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.assertEqual(expected_hosts, config['hosts'])
 
 
 class TestDoConfigureDHCP(MAASServerTestCase):

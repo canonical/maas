@@ -297,6 +297,11 @@ class _ConfigureDHCP(amp.Command):
             (b"domain_name", amp.Unicode()),
             (b"ip_range_low", amp.Unicode()),
             (b"ip_range_high", amp.Unicode()),
+            (b"hosts", CompressedAmpList([
+                ("host", amp.Unicode()),
+                ("mac", amp.Unicode()),
+                ("ip", amp.Unicode()),
+                ], optional=True))
             ])),
         ]
     response = []
