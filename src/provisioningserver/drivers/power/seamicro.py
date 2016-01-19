@@ -91,10 +91,10 @@ class SeaMicroPowerDriver(PowerDriver):
         """Power query SeaMicro node."""
         # Query the state.
         # Only supported by REST v2.
-        ip, username, password, _, power_control = (
+        ip, username, password, server_id, power_control = (
             extract_seamicro_parameters(context))
         if power_control == 'restapi2':
             return power_query_seamicro15k_v2(
-                ip, username, password, system_id)
+                ip, username, password, server_id)
         else:
             return 'unknown'
