@@ -86,7 +86,7 @@ Add a login shell for the maas user::
 Become the maas user and generate a SSH keypair::
 
     $ sudo su - maas
-    $ ssh-keygen
+    $ ssh-keygen -f ~/.ssh/id_rsa -N ''
 
 Then add the public key to ``/ubuntu/.ssh/authorized_keys`` on the vm server
 so virsh can use ssh without a password::
