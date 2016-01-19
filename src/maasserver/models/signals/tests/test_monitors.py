@@ -31,8 +31,7 @@ class TestCancelMonitor(MAASServerTestCase):
 
     def setUp(self):
         super(TestCancelMonitor, self).setUp()
-        # Circular imports.
-        from maasserver.models import signals
+        from maasserver.models import signals  # Circular import.
         self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', True)
 
     def prepare_rpc(self):

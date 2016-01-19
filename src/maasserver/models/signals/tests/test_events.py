@@ -30,8 +30,8 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', True)
 
     def test_changing_status_of_node_emits_event(self):
-        self.addCleanup(node_query.enable)
-        node_query.disable()
+        self.addCleanup(node_query.signals.enable)
+        node_query.signals.disable()
 
         old_status = NODE_STATUS.COMMISSIONING
         node = factory.make_Node(status=old_status)

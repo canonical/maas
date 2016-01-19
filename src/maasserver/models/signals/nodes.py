@@ -3,11 +3,16 @@
 
 """Respond to node changes."""
 
-__all__ = []
+__all__ = [
+    "signals",
+]
 
 from maasserver.models import Node
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
+
+
+signals = SignalsManager()
 
 
 def clear_nodekey_when_owner_changes(node, old_values, deleted=False):
@@ -23,6 +28,10 @@ def clear_nodekey_when_owner_changes(node, old_values, deleted=False):
         NodeKey.objects.clear_token_for_node(node)
 
 
-connect_to_field_change(
+signals.watch_fields(
     clear_nodekey_when_owner_changes,
     Node, ['owner_id'], delete=False)
+
+
+# Enable all signals by default.
+signals.enable()

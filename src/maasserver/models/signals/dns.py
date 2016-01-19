@@ -4,27 +4,27 @@
 """DNS management module: connect DNS tasks with signals."""
 
 __all__ = [
-    ]
-
+    "signals",
+]
 
 from django.db.models.signals import (
     post_delete,
     post_save,
 )
-from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
-    Config,
     DNSResource,
     Domain,
     Node,
     NodeGroupInterface,
     Subnet,
 )
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
 
 
-@receiver(post_save, sender=Domain)
+signals = SignalsManager()
+
+
 def dns_post_save_Domain(sender, instance, created, **kwargs):
     """Create or update DNS zones as needed for this domain."""
     from maasserver.dns.config import (
@@ -37,8 +37,11 @@ def dns_post_save_Domain(sender, instance, created, **kwargs):
     else:
         dns_update_all_zones()
 
+signals.watch(
+    post_save, dns_post_save_Domain,
+    sender=Domain)
 
-@receiver(post_save, sender=DNSResource)
+
 def dns_post_save_DNSResource(sender, instance, created, **kwargs):
     """Create or update DNS zones as needed for this domain."""
     from maasserver.dns.config import (
@@ -56,11 +59,14 @@ def dns_post_save_DNSResource(sender, instance, created, **kwargs):
     else:
         dns_update_all_zones()
 
+signals.watch(
+    post_save, dns_post_save_DNSResource,
+    sender=DNSResource)
+
 
 # XXX rvb 2012-09-12: This is only needed because we use that
 # information to pre-populate the zone file.  Once we stop doing that,
 # this can be removed.
-@receiver(post_save, sender=NodeGroupInterface)
 def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
@@ -72,8 +78,11 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     else:
         dns_update_all_zones()
 
+signals.watch(
+    post_save, dns_post_save_NodeGroupInterface,
+    sender=NodeGroupInterface)
 
-@receiver(post_save, sender=Subnet)
+
 def dns_post_save_Subnet(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
@@ -88,6 +97,10 @@ def dns_post_save_Subnet(sender, instance, created, **kwargs):
     else:
         dns_update_all_zones()
 
+signals.watch(
+    post_save, dns_post_save_Subnet,
+    sender=Subnet)
+
 
 def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
     """Delete DNS zones related to the interface."""
@@ -99,17 +112,19 @@ def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
         # or switched off (i.e. management set to DHCP or UNMANAGED).
         dns_update_all_zones(force=True)
 
-
-connect_to_field_change(
+signals.watch_fields(
     dns_post_edit_management_NodeGroupInterface,
     NodeGroupInterface, ['management'], delete=True)
 
 
-@receiver(post_delete, sender=Node)
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
     from maasserver.dns import config as dns_config
     dns_config.dns_update_by_node(instance)
+
+signals.watch(
+    post_delete, dns_post_delete_Node,
+    sender=Node)
 
 
 def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
@@ -117,16 +132,20 @@ def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     from maasserver.dns import config as dns_config
     dns_config.dns_update_by_node(instance)
 
-
-connect_to_field_change(
+signals.watch_fields(
     dns_post_edit_hostname_Node, Node, ['hostname', 'domain_id'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
-    from maasserver.dns import config as dns_config
-    dns_config.dns_update_all_zones()
+    from maasserver.dns.config import dns_update_all_zones
+    dns_update_all_zones()
+
+# Changes to upstream_dns.
+signals.watch_config(dns_setting_changed, "upstream_dns")
+
+# Changes to windows_kms_host.
+signals.watch_config(dns_setting_changed, "windows_kms_host")
 
 
-Config.objects.config_changed_connect("upstream_dns", dns_setting_changed)
-Config.objects.config_changed_connect(
-    "windows_kms_host", dns_setting_changed)
+# Enable all signals by default.
+signals.enable()

@@ -3,8 +3,9 @@
 
 """Emit node state transition event."""
 
-__all__ = []
-
+__all__ = [
+    "signals",
+]
 
 from maasserver.enum import NODE_STATUS_CHOICES_DICT
 from maasserver.models import (
@@ -12,13 +13,16 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.node import NODE_STATUS
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
 )
 
-# Useful to disconnect this in testing.
+
+signals = SignalsManager()
+
+# Useful to disconnect this in testing. TODO: Use the signals manager instead.
 STATE_TRANSITION_EVENT_CONNECT = True
 
 
@@ -46,7 +50,10 @@ def emit_state_transition_event(instance, old_values, **kwargs):
         type_description=event_details.description,
         event_description=description)
 
-
-connect_to_field_change(
+signals.watch_fields(
     emit_state_transition_event,
     Node, ['status'], delete=False)
+
+
+# Enable all signals by default.
+signals.enable()

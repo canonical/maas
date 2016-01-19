@@ -21,9 +21,10 @@ import_settings(development)
 
 MEDIA_ROOT = abspath("media/demo")
 
-# Connect to the DNS server.
+# Connect to the DNS server. TODO: Use the signals manager instead.
 DNS_CONNECT = True
 
+# Connect to the DHCP server. TODO: Use the signals manager instead.
 DHCP_CONNECT = True
 
 MAAS_CLI = abspath("bin/maas-region-admin")

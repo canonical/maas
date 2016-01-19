@@ -70,12 +70,12 @@ LOGIN_URL = 'login'
 
 # Should the DNS features be enabled?  Having this config option is a
 # debugging/testing feature to be able to quickly disconnect the DNS
-# machinery.
+# machinery. TODO: Use the signals manager instead.
 DNS_CONNECT = True
 
 # Should the DHCP features be enabled?  Having this config option is a
 # debugging/testing feature to be able to quickly disconnect the DNS
-# machinery.
+# machinery. TODO: Use the signals manager instead.
 DHCP_CONNECT = True
 
 # The MAAS CLI.

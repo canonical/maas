@@ -61,8 +61,8 @@ class TestHandleMonitorExpired(MAASServerTestCase):
         return protocol
 
     def test_handle_monitor_expired(self):
-        self.addCleanup(node_query.enable)
-        node_query.disable()
+        self.addCleanup(node_query.signals.enable)
+        node_query.signals.disable()
 
         status = random.choice(list(NODE_FAILURE_STATUS_TRANSITIONS.keys()))
         node = factory.make_Node(status=status)

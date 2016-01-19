@@ -26,11 +26,11 @@ import_settings(settings)
 TEST_RUNNER = 'maastesting.djangoloader.MAASDjangoTestRunner'
 
 # Don't connect to the DNS server in tests, this will be enabled on a case per
-# case basis.
+# case basis. TODO: Use the signals manager instead.
 DNS_CONNECT = False
 
 # Don't setup DHCP servers in tests, this will be enabled on a case per case
-# basis.
+# basis. TODO: Use the signals manager instead.
 DHCP_CONNECT = False
 
 # Invalid strings should be visible.

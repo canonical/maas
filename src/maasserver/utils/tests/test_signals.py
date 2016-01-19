@@ -5,18 +5,54 @@
 
 __all__ = []
 
+import random
+
+from maasserver.models import Config
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.tests.models import FieldChangeTestModel
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils import signals as signals_module
+from maasserver.utils.signals import (
+    connect_to_field_change,
+    Signal,
+    SignalsManager,
+)
 from maastesting.matchers import (
     IsCallable,
+    MatchesPartialCall,
+    MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
 )
 from mock import (
     call,
     Mock,
+    sentinel,
 )
+from testtools.matchers import (
+    AfterPreprocessing,
+    AllMatch,
+    Equals,
+    HasLength,
+    Is,
+    MatchesAll,
+)
+from twisted.python.reflect import namedObject
+
+
+django_signal_names = [
+    "pre_init", "post_init", "pre_save", "post_save",
+    "pre_delete", "post_delete", "m2m_changed",
+]
+
+
+def pick_django_signal():
+    return namedObject(
+        "django.db.models.signals." +
+        random.choice(django_signal_names))
 
 
 class ConnectToFieldChangeTest(MAASTransactionServerTestCase):
@@ -28,6 +64,7 @@ class ConnectToFieldChangeTest(MAASTransactionServerTestCase):
         connect, disconnect = connect_to_field_change(
             callback, FieldChangeTestModel, fields, delete=delete)
         self.addCleanup(disconnect)
+        connect()  # No longer done by default.
         return connect, disconnect
 
     def test_connect_to_field_change_calls_callback(self):
@@ -175,3 +212,133 @@ class ConnectToFieldChangeTest(MAASTransactionServerTestCase):
         self.assertEqual(
             [call(obj, (old_name1_value, old_name2_value), deleted=False)],
             callback.mock_calls)
+
+
+class TestSignalsManager(MAASServerTestCase):
+
+    def test__can_watch_fields(self):
+        connect_to_field_change = self.patch_autospec(
+            signals_module, "connect_to_field_change")
+        connect_to_field_change.return_value = (
+            sentinel.connect, sentinel.disconnect)
+
+        manager = SignalsManager()
+        manager.watch_fields(
+            sentinel.callback, sentinel.model, sentinel.fields,
+            sentinel.delete)
+
+        self.assertThat(
+            manager._signals, Equals({
+                Signal(sentinel.connect, sentinel.disconnect),
+            }))
+        self.assertThat(
+            connect_to_field_change, MockCalledOnceWith(
+                sentinel.callback, sentinel.model, sentinel.fields,
+                sentinel.delete))
+
+    def test__can_watch_config(self):
+        callback = lambda: None
+        config_name = factory.make_name("config")
+
+        manager = SignalsManager()
+        manager.watch_config(callback, config_name)
+
+        self.assertThat(manager._signals, HasLength(1))
+        [signal] = manager._signals
+        self.assertThat(
+            signal.connect, MatchesPartialCall(
+                Config.objects.config_changed_connect,
+                config_name, callback))
+        self.assertThat(
+            signal.disconnect, MatchesPartialCall(
+                Config.objects.config_changed_disconnect,
+                config_name, callback))
+
+    def test__can_watch_any_signal(self):
+        django_signal = pick_django_signal()
+
+        manager = SignalsManager()
+        manager.watch(
+            django_signal, sentinel.callback, sender=sentinel.sender,
+            weak=sentinel.weak, dispatch_uid=sentinel.dispatch_uid)
+
+        self.assertThat(manager._signals, HasLength(1))
+        [signal] = manager._signals
+        self.assertThat(
+            signal.connect, MatchesPartialCall(
+                django_signal.connect, sentinel.callback,
+                sender=sentinel.sender, weak=sentinel.weak,
+                dispatch_uid=sentinel.dispatch_uid))
+        self.assertThat(
+            signal.disconnect, MatchesPartialCall(
+                django_signal.disconnect, sentinel.callback,
+                sender=sentinel.sender, weak=sentinel.weak,
+                dispatch_uid=sentinel.dispatch_uid))
+
+    def make_Signal(self):
+        return Signal(Mock(name="connect"), Mock(name="disconnect"))
+
+    def test__add_adds_the_signal(self):
+        manager = SignalsManager()
+        signal = self.make_Signal()
+        self.assertThat(manager.add(signal), Is(signal))
+        self.assertThat(manager._signals, Equals({signal}))
+        # The manager is in its "new" state, neither enabled nor disabled, so
+        # the signal is not asked to connect or disconnect yet.
+        self.assertThat(signal.connect, MockNotCalled())
+        self.assertThat(signal.disconnect, MockNotCalled())
+
+    def test__add_connects_signal_if_manager_is_enabled(self):
+        manager = SignalsManager()
+        manager.enable()
+        signal = self.make_Signal()
+        manager.add(signal)
+        self.assertThat(signal.connect, MockCalledOnceWith())
+        self.assertThat(signal.disconnect, MockNotCalled())
+
+    def test__add_disconnects_signal_if_manager_is_disabled(self):
+        manager = SignalsManager()
+        manager.disable()
+        signal = self.make_Signal()
+        manager.add(signal)
+        self.assertThat(signal.connect, MockNotCalled())
+        self.assertThat(signal.disconnect, MockCalledOnceWith())
+
+    def test__remove_removes_the_signal(self):
+        manager = SignalsManager()
+        signal = self.make_Signal()
+        manager.add(signal)
+        manager.remove(signal)
+        self.assertThat(manager._signals, HasLength(0))
+        self.assertThat(signal.connect, MockNotCalled())
+        self.assertThat(signal.disconnect, MockNotCalled())
+
+    def test__enable_enables_all_signals(self):
+        manager = SignalsManager()
+        signals = [self.make_Signal(), self.make_Signal()]
+        for signal in signals:
+            manager.add(signal)
+        manager.enable()
+        self.assertThat(signals, AllMatch(MatchesAll(
+            AfterPreprocessing(
+                (lambda signal: signal.connect),
+                MockCalledOnceWith()),
+            AfterPreprocessing(
+                (lambda signal: signal.disconnect),
+                MockNotCalled()),
+        )))
+
+    def test__disable_disables_all_signals(self):
+        manager = SignalsManager()
+        signals = [self.make_Signal(), self.make_Signal()]
+        for signal in signals:
+            manager.add(signal)
+        manager.disable()
+        self.assertThat(signals, AllMatch(MatchesAll(
+            AfterPreprocessing(
+                (lambda signal: signal.connect),
+                MockNotCalled()),
+            AfterPreprocessing(
+                (lambda signal: signal.disconnect),
+                MockCalledOnceWith()),
+        )))

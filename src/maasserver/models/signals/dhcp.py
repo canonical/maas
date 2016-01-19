@@ -4,8 +4,8 @@
 """DHCP management module: connect DHCP tasks with signals."""
 
 __all__ = [
-    ]
-
+    "signals",
+]
 
 from django.db.models.signals import post_delete
 from maasserver.enum import (
@@ -13,12 +13,14 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
-    Config,
     NodeGroup,
     NodeGroupInterface,
     Subnet,
 )
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
+
+
+signals = SignalsManager()
 
 
 def dhcp_post_change_NodeGroupInterface(instance, old_values, **kwargs):
@@ -27,8 +29,7 @@ def dhcp_post_change_NodeGroupInterface(instance, old_values, **kwargs):
     from maasserver.dhcp import configure_dhcp
     configure_dhcp(instance.nodegroup)
 
-
-connect_to_field_change(
+signals.watch_fields(
     dhcp_post_change_NodeGroupInterface, NodeGroupInterface,
     [
         'ip',
@@ -47,7 +48,7 @@ def dhcp_post_change_Subnet(instance, old_values, **kwargs):
         from maasserver.dhcp import configure_dhcp
         configure_dhcp(ngi.nodegroup)
 
-connect_to_field_change(
+signals.watch_fields(
     dhcp_post_change_Subnet, Subnet,
     [
         'cidr',
@@ -64,8 +65,8 @@ def dhcp_post_edit_status_NodeGroup(instance, old_values, **kwargs):
     from maasserver.dhcp import configure_dhcp
     configure_dhcp(instance)
 
-
-connect_to_field_change(dhcp_post_edit_status_NodeGroup, NodeGroup, ['status'])
+signals.watch_fields(
+    dhcp_post_edit_status_NodeGroup, NodeGroup, ['status'])
 
 
 def dhcp_post_edit_name_NodeGroup(instance, old_values, **kwargs):
@@ -74,8 +75,8 @@ def dhcp_post_edit_name_NodeGroup(instance, old_values, **kwargs):
     from maasserver.dhcp import configure_dhcp
     configure_dhcp(instance)
 
-
-connect_to_field_change(dhcp_post_edit_name_NodeGroup, NodeGroup, ['name'])
+signals.watch_fields(
+    dhcp_post_edit_name_NodeGroup, NodeGroup, ['name'])
 
 
 def ntp_server_changed(sender, instance, created, **kwargs):
@@ -84,8 +85,7 @@ def ntp_server_changed(sender, instance, created, **kwargs):
     for nodegroup in NodeGroup.objects.all():
         configure_dhcp(nodegroup)
 
-
-Config.objects.config_changed_connect("ntp_server", ntp_server_changed)
+signals.watch_config(ntp_server_changed, "ntp_server")
 
 
 def dhcp_post_delete_NodeGroupInterface(sender, instance, using, **kwargs):
@@ -99,6 +99,10 @@ def dhcp_post_delete_NodeGroupInterface(sender, instance, using, **kwargs):
         return
     configure_dhcp(instance.nodegroup)
 
+signals.watch(
+    post_delete, dhcp_post_delete_NodeGroupInterface,
+    sender=NodeGroupInterface)
 
-post_delete.connect(
-    dhcp_post_delete_NodeGroupInterface, sender=NodeGroupInterface)
+
+# Enable all signals by default.
+signals.enable()

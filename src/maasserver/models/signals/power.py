@@ -3,7 +3,9 @@
 
 """Query power status on node state changes."""
 
-__all__ = []
+__all__ = [
+    "signals",
+]
 
 from datetime import timedelta
 
@@ -15,7 +17,7 @@ from maasserver.utils.orm import (
     post_commit,
     transactional,
 )
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
@@ -41,6 +43,8 @@ from twisted.internet.defer import (
 
 
 maaslog = get_maas_logger('node_query')
+
+signals = SignalsManager()
 
 # Amount of time to wait after a node status has been updated to
 # perform a power query.
@@ -195,8 +199,9 @@ def signal_update_power_state_of_node(instance, old_values, **kwargs):
             post_commit().addCallback(
                 callOut, update_power_state_of_node_soon, node.system_id)
 
+signals.watch_fields(
+    signal_update_power_state_of_node, Node, ['status'])
 
-# The `enable` and `disable` functions should be used by tests only. They are
-# not generally useful, and can cause failures if used mid-transaction.
-enable, disable = connect_to_field_change(
-    signal_update_power_state_of_node, Node, ['status'], delete=False)
+
+# Enable all signals by default.
+signals.enable()

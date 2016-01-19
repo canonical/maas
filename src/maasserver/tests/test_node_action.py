@@ -831,8 +831,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
         return action_class(node, admin)
 
     def test_Commission_handles_rpc_errors(self):
-        self.addCleanup(signals.power.enable)
-        signals.power.disable()
+        self.addCleanup(signals.power.signals.enable)
+        signals.power.signals.disable()
 
         action = self.make_action(
             Commission, NODE_STATUS.READY, POWER_STATE.OFF)

@@ -4,14 +4,17 @@
 """Connect monitor utilities with signals."""
 
 __all__ = [
-    ]
-
+    "signals",
+]
 
 from maasserver.models import Node
 from maasserver.node_status import get_failed_status
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
 
-# Useful to disconnect this in testing.
+
+signals = SignalsManager()
+
+# Useful to disconnect this in testing. TODO: Use the signals manager instead.
 MONITOR_CANCEL_CONNECT = True
 
 
@@ -24,7 +27,10 @@ def stop_transition_monitor_handler(instance, old_values, **kwargs):
     if get_failed_status(old_status) is not None:
         node.stop_transition_monitor()
 
-
-connect_to_field_change(
+signals.watch_fields(
     stop_transition_monitor_handler,
     Node, ['status'], delete=True)
+
+
+# Enable all signals by default.
+signals.enable()

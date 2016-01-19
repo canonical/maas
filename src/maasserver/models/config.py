@@ -133,6 +133,16 @@ class ConfigManager(Manager):
         """
         self._config_changed_connections[config_name].add(method)
 
+    def config_changed_disconnect(self, config_name, method):
+        """Disconnect from Django's 'update' signal for given config name.
+
+        :param config_name: The name of the config item.
+        :type config_name: unicode
+        :param method: The method to be removed.
+        :type method: callable
+        """
+        self._config_changed_connections[config_name].discard(method)
+
     def _config_changed(self, sender, instance, created, **kwargs):
         for connection in self._config_changed_connections[instance.name]:
             connection(sender, instance, created, **kwargs)

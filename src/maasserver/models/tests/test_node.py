@@ -242,8 +242,8 @@ class TestNode(MAASServerTestCase):
         self.patch_autospec(node_module, 'power_driver_check')
 
     def disable_node_query(self):
-        self.addCleanup(node_query.enable)
-        node_query.disable()
+        self.addCleanup(node_query.signals.enable)
+        node_query.signals.disable()
 
     def test_system_id(self):
         # The generated system_id looks good.

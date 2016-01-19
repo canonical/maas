@@ -328,7 +328,10 @@ class MatchesPartialCall(Matcher):
 
     def __init__(self, func, *args, **keywords):
         super(MatchesPartialCall, self).__init__()
-        self.expected = partial(func, *args, **keywords)
+        if len(keywords) > 0:
+            self.expected = partial(func, *args, **keywords)
+        else:
+            self.expected = partial(func, *args)
 
     def match(self, observed):
         matcher = MatchesAll(

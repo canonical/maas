@@ -3,7 +3,9 @@
 
 """Respond to interface changes."""
 
-__all__ = []
+__all__ = [
+    "signals",
+]
 
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -15,7 +17,10 @@ from maasserver.models import (
     PhysicalInterface,
     VLANInterface,
 )
-from maasserver.utils.signals import connect_to_field_change
+from maasserver.utils.signals import SignalsManager
+
+
+signals = SignalsManager()
 
 
 def interface_enabled_or_disabled(instance, old_values, **kwargs):
@@ -43,10 +48,10 @@ def interface_enabled_or_disabled(instance, old_values, **kwargs):
                         ip_address, clearing_config=True)
 
 
-connect_to_field_change(
+signals.watch_fields(
     interface_enabled_or_disabled,
     Interface, ['enabled'], delete=False)
-connect_to_field_change(
+signals.watch_fields(
     interface_enabled_or_disabled,
     PhysicalInterface, ['enabled'], delete=False)
 
@@ -109,15 +114,19 @@ def interface_mtu_params_update(instance, old_values, **kwargs):
             parent.save()
 
 
-connect_to_field_change(
+signals.watch_fields(
     interface_mtu_params_update,
     Interface, ['params'], delete=False)
-connect_to_field_change(
+signals.watch_fields(
     interface_mtu_params_update,
     PhysicalInterface, ['params'], delete=False)
-connect_to_field_change(
+signals.watch_fields(
     interface_mtu_params_update,
     BondInterface, ['params'], delete=False)
-connect_to_field_change(
+signals.watch_fields(
     interface_mtu_params_update,
     VLANInterface, ['params'], delete=False)
+
+
+# Enable all signals by default.
+signals.enable()

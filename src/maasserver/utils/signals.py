@@ -4,8 +4,12 @@
 """Signal utilities."""
 
 __all__ = [
-    'connect_to_field_change',
-    ]
+    'Signal',
+    'SignalsManager',
+]
+
+from collections import namedtuple
+from functools import partial
 
 from django.db.models.signals import (
     post_delete,
@@ -14,6 +18,7 @@ from django.db.models.signals import (
     pre_delete,
     pre_save,
 )
+from maasserver.models import Config
 
 
 def connect_to_field_change(callback, model, fields, delete=False):
@@ -47,8 +52,7 @@ def connect_to_field_change(callback, model, fields, delete=False):
 
     :return: A ``(connect, disconnect)`` tuple, where ``connect`` and
         ``disconnect`` are no-argument functions that connect and disconnect
-        fields changes respectively. ``connect`` has already been called when
-        this function returns.
+        fields changes respectively.
     """
     # Capture the fields in case an iterator was passed.
     fields = tuple(fields)
@@ -114,7 +118,129 @@ def connect_to_field_change(callback, model, fields, delete=False):
     disconnect.__doc__ = "Disconnect from %s for changes in (%s)." % (
         model.__name__, " or ".join(fields))
 
-    # The caller expects to be connected initially.
-    connect()
-
     return connect, disconnect
+
+
+Signal = namedtuple("Signal", ("connect", "disconnect"))
+
+
+class SignalsManager:
+    """A convenience, to help manage signals connections within MAAS.
+
+    It's a convenient way to wire up signals, but it's also useful to help
+    with testing, because you can disable and re-enable multiple signals in
+    one go.
+    """
+
+    def __init__(self):
+        super(SignalsManager, self).__init__()
+        self._signals = set()
+        self._signals_connected = set()
+        self._signals_disconnected = set()
+        self._enabled = None
+
+    def watch_fields(self, cb, model, fields, delete=False):
+        """Watch the given model fields for changes.
+
+        See `connect_to_field_change` for details.
+
+        :param cb: The function to call when a field changes.
+        :type cb: callable
+        :param model: The Django model object whose fields are of interest.
+        :type model: Model class
+        :param fields: Names of the fields to monitor.
+        :type fields: Iterable of attribute names.
+        :param delete: If true, call `cb` when an instance of `model` is
+            deleted too. By default this is false.
+        :type delete: bool
+        """
+        return self.add(
+            Signal(
+                *connect_to_field_change(
+                    cb, model, fields, delete)
+            )
+        )
+
+    def watch_config(self, cb, name):
+        """Watch a configuration item for changes.
+
+        :param cb: The function to call when a configuration item changes.
+        :type cb: callable
+        :param name: The name of the configuration item to watch.
+        :type name: unicode
+        """
+        return self.add(
+            Signal(
+                partial(Config.objects.config_changed_connect, name, cb),
+                partial(Config.objects.config_changed_disconnect, name, cb),
+            )
+        )
+
+    def watch(self, sig, cb, sender=None, weak=True, dispatch_uid=None):
+        """Watch the given model for changes.
+
+        This is a thin shim around Django's signal management code. See
+        Django's documentation on signals at https://docs.djangoproject.com/.
+        """
+        return self.add(
+            Signal(
+                partial(
+                    sig.connect, cb, sender=sender, weak=weak,
+                    dispatch_uid=dispatch_uid),
+                partial(
+                    sig.disconnect, cb, sender=sender, weak=weak,
+                    dispatch_uid=dispatch_uid),
+            )
+        )
+
+    def add(self, signal):
+        """Manage the given signal.
+
+        If this manager is enabled, enable the signal, and vice-versa. This is
+        used by the ``watch_*`` methods.
+
+        :type signal: `Signal`.
+        """
+        self._signals.add(signal)
+        if self._enabled is True:
+            self.enable()
+        elif self._enabled is False:
+            self.disable()
+        else:
+            pass  # Do nothing.
+        return signal
+
+    def remove(self, signal):
+        """Stop managing the given signal.
+
+        No attempt to disable the signal is made before it is released from
+        management.
+
+        :type signal: `Signal`.
+        """
+        self._signals.discard(signal)
+        self._signals_connected.discard(signal)
+        self._signals_disconnected.discard(signal)
+
+    def enable(self):
+        """Enable/connect all the signals under management."""
+        self._enabled = True
+        for signal in self._signals:
+            if signal not in self._signals_connected:
+                signal.connect()
+                self._signals_connected.add(signal)
+            self._signals_disconnected.discard(signal)
+
+    def disable(self):
+        """Disable/disconnect all the signals under management."""
+        self._enabled = False
+        for signal in self._signals:
+            if signal not in self._signals_disconnected:
+                signal.disconnect()
+                self._signals_disconnected.add(signal)
+            self._signals_connected.discard(signal)
+
+    @property
+    def enabled(self):
+        """Are the managed signals enabled/connected?"""
+        return bool(self._enabled)

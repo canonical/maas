@@ -276,8 +276,8 @@ class TestMarkNodeFailed(MAASServerTestCase):
 
     def test__marks_node_as_failed(self):
         from maasserver.models import signals  # Circular import.
-        self.addCleanup(signals.power.enable)
-        signals.power.disable()
+        self.addCleanup(signals.power.signals.enable)
+        signals.power.signals.disable()
 
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         mark_node_failed(node.system_id, factory.make_name('error'))

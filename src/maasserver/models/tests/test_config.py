@@ -145,3 +145,13 @@ class ConfigTest(MAASServerTestCase):
         Config.objects.set_config(another_name, value)
 
         self.assertEqual(0, len(recorder.calls))
+
+    def test_manager_config_changed_disconnect_disconnects(self):
+        recorder = CallRecorder()
+        name = factory.make_string()
+        value = factory.make_string()
+        Config.objects.config_changed_connect(name, recorder)
+        Config.objects.config_changed_disconnect(name, recorder)
+        Config.objects.set_config(name, value)
+
+        self.assertEqual([], recorder.calls)
