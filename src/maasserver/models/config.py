@@ -42,6 +42,7 @@ def get_default_config():
         'commissioning_osystem': DEFAULT_OS.name,
         'commissioning_distro_series':
         DEFAULT_OS.get_default_commissioning_release(),
+        'default_dns_ttl': 30,
         'default_min_hwe_kernel': '',
         'default_storage_layout': 'flat',
         # Network section configuration.

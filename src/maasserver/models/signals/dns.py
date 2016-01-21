@@ -140,11 +140,18 @@ def dns_setting_changed(sender, instance, created, **kwargs):
     from maasserver.dns.config import dns_update_all_zones
     dns_update_all_zones()
 
+
+def dns_kms_setting_changed(sender, instance, created, **kwargs):
+    from maasserver.models.domain import dns_kms_setting_changed
+    dns_kms_setting_changed()
+
+
 # Changes to upstream_dns.
 signals.watch_config(dns_setting_changed, "upstream_dns")
+signals.watch_config(dns_setting_changed, "default_dns_ttl")
 
 # Changes to windows_kms_host.
-signals.watch_config(dns_setting_changed, "windows_kms_host")
+signals.watch_config(dns_kms_setting_changed, "windows_kms_host")
 
 
 # Enable all signals by default.

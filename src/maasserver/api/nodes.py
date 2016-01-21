@@ -113,6 +113,7 @@ DISPLAYED_NODE_FIELDS = (
     'power_type',
     'power_state',
     'tag_names',
+    'address_ttl',
     'ip_addresses',
     ('interface_set', (
         'id',

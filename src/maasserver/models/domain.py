@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "DEFAULT_DOMAIN_NAME",
+    "dns_kms_setting_changed",
     "Domain",
     "NAME_VALIDATOR",
     "NAMESPEC",
@@ -31,11 +32,14 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     Manager,
     NullBooleanField,
+    PositiveIntegerField,
+    Q,
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 
@@ -54,6 +58,17 @@ NAME_VALIDATOR = RegexValidator("^%s$" % NAMESPEC)
 
 # Name of the special, default domain.  This domain cannot be deleted.
 DEFAULT_DOMAIN_NAME = 'maas'
+
+
+def dns_kms_setting_changed():
+    """Config.windows_kms_host has changed.
+
+    Update any 'SRV 0 0 1688 ' DNSResource records for _vlmcs._tcp in
+    ALL domains.
+    """
+    kms_host = Config.objects.get_config('windows_kms_host')
+    for domain in Domain.objects.filter(authoritative=True):
+        domain.update_kms_srv(kms_host)
 
 
 class DomainQueriesMixin(MAASQueriesMixin):
@@ -96,6 +111,7 @@ class DomainManager(Manager, DomainQueriesMixin):
                 'id': 0,
                 'name': DEFAULT_DOMAIN_NAME,
                 'authoritative': True,
+                'ttl': None,
                 'created': now,
                 'updated': now,
             }
@@ -150,6 +166,60 @@ class Domain(CleanSave, TimestampedModel):
     authoritative = NullBooleanField(
         default=True, db_index=True, editable=True)
 
+    # Default TTL for this Domain.
+    # If None and not overridden lower, then we will use the global default.
+    ttl = PositiveIntegerField(default=None, null=True, blank=True)
+
+    def update_kms_srv(self, kms_host=-1):
+        # avoid recursive imports
+        from maasserver.models import (
+            DNSData,
+            DNSResource,
+        )
+        # Since None and '' are both valid values, we use -1 as the "I want the
+        # default value" indicator, and fetch the Config value accordingly.
+        if kms_host == -1:
+            kms_host = Config.objects.get_config('windows_kms_host')
+        if kms_host is None or kms_host == '':
+            # No more Config.windows_kms_host, so we need to delete the kms
+            # host entries that we may have created.  The for loop is over 0 or
+            # 1 DNSResource records
+            for dnsrr in self.dnsresource_set.filter(name='_vlmcs._tcp'):
+                dnsrr.dnsdata_set.filter(
+                    resource_type='SRV',
+                    resource_data__startswith='0 0 1688 '
+                    ).delete()
+        else:
+            # force kms_host to be an FQDN (with trailing dot.)
+            validate_domain_name(kms_host)
+            if not kms_host.endswith('.'):
+                kms_host += '.'
+            # The windows_kms_host config parameter only manages priority 0,
+            # weight 0, port 1688.  To do something different, use the
+            # dnsresources api.
+            srv_data = "0 0 1688 %s" % (kms_host)
+            dnsrr, _ = DNSResource.objects.get_or_create(
+                domain_id=self.id, name='_vlmcs._tcp', defaults={})
+            srv, created = DNSData.objects.update_or_create(
+                dnsresource_id=dnsrr.id, resource_type='SRV',
+                resource_data__startswith="0 0 1688 ",
+                defaults=dict(resource_data=srv_data))
+
+    def get_base_ttl(self, resource_type, default_ttl):
+        # If there is a Resource Record set, which has a non-None TTL, then it
+        # wins.  Otherwise our ttl if we have one, or the passed-in default.
+        from maasserver.models import DNSData
+        rrset = DNSData.objects.filter(
+            resource_type=resource_type, ttl__isnull=False).filter(
+            Q(dnsresource__name='@') | Q(dnsresource__name='')).filter(
+            dnsresource__domain_id=self.id)
+        if rrset.count() > 0:
+            return rrset.first().ttl
+        elif self.ttl is not None:
+            return self.ttl
+        else:
+            return default_ttl
+
     def __str__(self):
         return "name=%s" % self.get_name()
 
@@ -176,7 +246,10 @@ class Domain(CleanSave, TimestampedModel):
         super(Domain, self).delete()
 
     def save(self, *args, **kwargs):
+        created = self.id is None
         super(Domain, self).save(*args, **kwargs)
+        if created:
+            self.update_kms_srv()
 
     def clean_name(self):
         # Automatically strip any trailing dot from the domain name.

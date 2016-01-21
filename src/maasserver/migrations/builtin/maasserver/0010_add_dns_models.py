@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('name', models.CharField(blank=True, null=True, max_length=63, validators=[maasserver.models.dnsresource.validate_dnsresource_name])),
-                ('ttl', models.IntegerField(default=None, null=True, blank=True)),
+                ('ttl', models.PositiveIntegerField(default=None, null=True, blank=True)),
             ],
             options={
                 'verbose_name': 'DNSResource',
@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='dnsresource',
             name='domain',
-            field=models.ForeignKey(default=maasserver.models.dnsresource.get_default_domain, null=True, to='maasserver.Domain', on_delete=django.db.models.deletion.PROTECT),
+            field=models.ForeignKey(default=0, null=True, to='maasserver.Domain', on_delete=django.db.models.deletion.PROTECT),
         ),
         migrations.AddField(
             model_name='dnsresource',

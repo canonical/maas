@@ -98,14 +98,17 @@ def dns_add_zones_now(domains, subnets):
     if not (is_dns_enabled() and is_dns_in_use()):
         return
 
+    default_ttl = Config.objects.get_config('default_dns_ttl')
     zones_to_write = ZoneGenerator(
-        domains, subnets, serial_generator=next_zone_serial).as_list()
+        domains, subnets, default_ttl,
+        serial_generator=next_zone_serial).as_list()
     if len(zones_to_write) == 0:
         return None
     serial = next_zone_serial()
     # Compute non-None zones.
     zones = ZoneGenerator(
-        Domain.objects.all(), Subnet.objects.all(), serial).as_list()
+        Domain.objects.all(), Subnet.objects.all(),
+        default_ttl, serial).as_list()
     bind_write_zones(zones_to_write)
     bind_write_configuration(zones, trusted_networks=get_trusted_networks())
     bind_reconfigure()
@@ -154,7 +157,8 @@ def dns_update_zones_now(domains, subnets):
 
     serial = next_zone_serial()
     bind_reconfigure()
-    for zone in ZoneGenerator(domains, subnets, serial):
+    default_ttl = Config.objects.get_config('default_dns_ttl')
+    for zone in ZoneGenerator(domains, subnets, default_ttl, serial):
         names = [zi.zone_name for zi in zone.zone_info]
         maaslog.info("Generating new DNS zone file for %s", " ".join(names))
         bind_write_zones([zone])
@@ -240,8 +244,10 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
     subnets = Subnet.objects.filter(
         nodegroupinterface__management=
         NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+    default_ttl = Config.objects.get_config('default_dns_ttl')
     zones = ZoneGenerator(
-        domains, subnets, serial_generator=next_zone_serial).as_list()
+        domains, subnets, default_ttl,
+        serial_generator=next_zone_serial).as_list()
     bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be

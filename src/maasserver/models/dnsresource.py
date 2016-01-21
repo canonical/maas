@@ -1,5 +1,4 @@
-
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DNSResource objects."""
@@ -31,9 +30,9 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     ForeignKey,
-    IntegerField,
     Manager,
     ManyToManyField,
+    PositiveIntegerField,
     PROTECT,
 )
 from django.db.models.query import QuerySet
@@ -49,7 +48,7 @@ LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
 SRV_LABEL = r'_[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
 # SRV RRdata gets name=_SERVICE._PROTO.LABEL, otherwise, only one label
 # allowed.
-SRV_LHS = '%s.%s.%s' % (SRV_LABEL, SRV_LABEL, LABEL)
+SRV_LHS = '%s.%s(.%s)?' % (SRV_LABEL, SRV_LABEL, LABEL)
 NAMESPEC = r'%s' % (LABEL)
 NAME_VALIDATOR = RegexValidator(NAMESPEC)
 DEFAULT_DNS_TTL = 30
@@ -156,7 +155,6 @@ class DNSResource(CleanSave, TimestampedModel):
     """A `DNSResource`.
 
     :ivar name: The leftmost label for the resource. (No dots.)
-    :ivar ttl: Individual TTL for this resource record.
     :ivar domain: Which (forward) DNS zone does this resource go in.
     :ivar ip_addresses: many-to-many linkage to StaticIPAddress
     :ivar objects: An instance of the class :class:`DNSResourceManager`.
@@ -174,11 +172,20 @@ class DNSResource(CleanSave, TimestampedModel):
     # only NAME.$DOMAIN.
     # There can be more than one name=None entry, so unique needs to be False.
     # We detect and reject duplicates in clean()
+    # This could be as many as 3 dot-separated labels, because of SRV records.
     name = CharField(
-        max_length=63, editable=True, null=True, blank=True, unique=False)
+        max_length=191, editable=True, null=True, blank=True, unique=False)
 
-    ttl = IntegerField(
-        editable=True, null=True, blank=True, default=None)
+    # Different resource types can have different TTL values, though all of the
+    # records of a given RRType for a given FQDN "must" have the same TTL.
+    # If the DNS zone file has different TTLs for the same RRType on a label,
+    # then BIND uses the first one in the file, and logs something similar to:
+    #   /etc/bind/maas/zone.maas:25: TTL set to prior TTL (10)
+    # We allow this condition to happen so that the user has a hope of changing
+    # TTLs for a multi-entry RRset.
+
+    # TTL for any ip_addresses:  non-address TTLs come from DNSData
+    address_ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
     domain = ForeignKey(
         Domain, default=get_default_domain, editable=True,
@@ -221,10 +228,14 @@ class DNSResource(CleanSave, TimestampedModel):
             if rrset.count() > 0:
                 raise ValidationError(
                     'Labels must be unique within their zone.')
-        # If we have ip addresses, then we need to have a valid name.
+        # If we have an ip addresses, then we need to have a valid name.
         # TXT records don't require that we have much at all.
         if self.id is not None and self.ip_addresses.count() > 0:
             validate_dnsresource_name(self.name, "A")
+            # This path could be followed if the user is adding a USER_RESERVED
+            # ip address, where the FQDN already has a CNAME assigned to it.
+            # Node.fqdn takes a different path, and should win when it comes to
+            # DNS generation.
             num_cname = DNSData.objects.filter(
                 dnsresource_id=self.id, resource_type='CNAME').count()
             if num_cname > 0:

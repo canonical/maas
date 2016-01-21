@@ -5,10 +5,6 @@
 
 __all__ = []
 
-from collections import (
-    Iterable,
-    Sequence,
-)
 from itertools import chain
 import os.path
 import random
@@ -21,10 +17,7 @@ from netaddr import (
     IPNetwork,
     IPRange,
 )
-from provisioningserver.dns.config import (
-    get_dns_config_dir,
-    SRVRecord,
-)
+from provisioningserver.dns.config import get_dns_config_dir
 from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -37,10 +30,7 @@ from testtools.matchers import (
     Equals,
     FileContains,
     HasLength,
-    IsInstance,
-    MatchesAll,
     MatchesStructure,
-    Not,
 )
 from twisted.python.filepath import FilePath
 
@@ -48,45 +38,23 @@ from twisted.python.filepath import FilePath
 class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
-    def make_srv_record(self, service=None, port=None, target=None,
-                        priority=None, weight=None):
-        if service is None:
-            service = '.'.join(factory.make_name('_') for _ in range(2))
-        if port is None:
-            port = factory.pick_port()
-        if target is None:
-            target = factory.make_hostname()
-        if priority is None:
-            priority = factory.pick_port()
-        if weight is None:
-            weight = factory.pick_port()
-        return SRVRecord(
-            service=service, port=port, target=target,
-            priority=priority, weight=weight)
-
-    def get_srv_item_output(self, srv_record):
-        return '%s %s %s %s.' % (
-            srv_record.priority,
-            srv_record.weight,
-            srv_record.port,
-            srv_record.target,
-            )
-
     def test_fields(self):
         domain = factory.make_string()
         serial = random.randint(1, 200)
         hostname = factory.make_string()
         network = factory.make_ipv4_network()
         ip = factory.pick_ip_in_network(network)
+        default_ttl = random.randint(10, 300)
         mapping = {hostname: [ip]}
         dns_zone_config = DNSForwardZoneConfig(
-            domain, serial=serial, mapping=mapping)
+            domain, serial=serial, default_ttl=default_ttl, mapping=mapping)
         self.assertThat(
             dns_zone_config,
             MatchesStructure.byEquality(
                 domain=domain,
                 serial=serial,
                 _mapping=mapping,
+                default_ttl=default_ttl,
                 )
             )
 
@@ -98,78 +66,54 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             dns_zone_config.zone_info[0].target_path)
 
     def test_get_a_mapping_returns_ipv4_mapping(self):
-        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.pick_ip_in_network(network)
+        ttl = random.randint(10, 300)
+        ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
-            factory.make_name('host'): factory.make_ipv4_address(),
-            factory.make_name('host'): factory.make_ipv4_address(),
+            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
+            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
         }
         ipv6_mapping = {
-            factory.make_name('host'): factory.make_ipv6_address(),
-            factory.make_name('host'): factory.make_ipv6_address(),
+            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
+            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
         }
         combined_mapping = {
-            hostname: [ip] for hostname, ip in chain(
-                ipv4_mapping.items(), ipv6_mapping.items())
+            hostname: (ttl, [ip]) for hostname, (ttl, ips) in chain(
+                ipv4_mapping.items(), ipv6_mapping.items()) for ip in ips
         }
-        expected = [('%s.' % name, dns_ip)] + list(ipv4_mapping.items())
-        self.assertItemsEqual(
-            expected,
-            DNSForwardZoneConfig.get_A_mapping(combined_mapping, name, dns_ip))
+        expected = [('@', ns_ttl, dns_ip)] + [
+            (n, t, ip) for n, (t, ips) in ipv4_mapping.items() for ip in ips]
+        expect = [
+            (n, t, ip)
+            for n, t, ip in expected]
+        actual = DNSForwardZoneConfig.get_A_mapping(
+            combined_mapping, ns_ttl, dns_ip)
+        self.assertItemsEqual(expect, actual)
 
     def test_get_aaaa_mapping_returns_ipv6_mapping(self):
-        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.pick_ip_in_network(network)
+        ttl = random.randint(10, 300)
+        ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
-            factory.make_name('host'): factory.make_ipv4_address(),
-            factory.make_name('host'): factory.make_ipv4_address(),
+            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
+            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
         }
         ipv6_mapping = {
-            factory.make_name('host'): factory.make_ipv6_address(),
-            factory.make_name('host'): factory.make_ipv6_address(),
+            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
+            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
         }
         combined_mapping = {
-            hostname: [ip] for hostname, ip in chain(
+            hostname: (ttl, ip) for hostname, (ttl, ip) in chain(
                 ipv4_mapping.items(), ipv6_mapping.items())
         }
-        self.assertItemsEqual(
-            ipv6_mapping.items(),
+        self.assertItemsEqual([
+            (n, t, ip)
+            for n, (t, ips) in ipv6_mapping.items()
+            for ip in ips],
             DNSForwardZoneConfig.get_AAAA_mapping(
-                combined_mapping, name, dns_ip))
-
-    def test_get_srv_mapping_returns_iterator(self):
-        srv = self.make_srv_record()
-        self.assertThat(
-            DNSForwardZoneConfig.get_srv_mapping([srv]),
-            MatchesAll(
-                IsInstance(Iterable), Not(IsInstance(Sequence))))
-
-    def test_get_srv_mapping_returns_correct_format(self):
-        srv = self.make_srv_record()
-        self.assertItemsEqual([
-            (srv.service, self.get_srv_item_output(srv)),
-            ],
-            DNSForwardZoneConfig.get_srv_mapping([srv]))
-
-    def test_get_srv_mapping_handles_ip_address_target(self):
-        target = factory.make_ipv4_address()
-        srv = self.make_srv_record(target=target)
-        item = self.get_srv_item_output(srv)
-        item = item.rstrip('.')
-        self.assertItemsEqual([
-            (srv.service, item),
-            ],
-            DNSForwardZoneConfig.get_srv_mapping([srv]))
-
-    def test_get_srv_mapping_returns_multiple(self):
-        srvs = [self.make_srv_record() for _ in range(3)]
-        entries = []
-        for srv in srvs:
-            entries.append((srv.service, self.get_srv_item_output(srv)))
-        self.assertItemsEqual(
-            entries, DNSForwardZoneConfig.get_srv_mapping(srvs))
+                combined_mapping, ns_ttl, dns_ip))
 
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
@@ -180,16 +124,18 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ipv4_ip = factory.pick_ip_in_network(network)
         ipv6_hostname = factory.make_name('host')
         ipv6_ip = factory.make_ipv6_address()
+        ttl = random.randint(10, 300)
         mapping = {
-            ipv4_hostname: [ipv4_ip],
-            ipv6_hostname: [ipv6_ip],
+            ipv4_hostname: (ttl, [ipv4_ip]),
+            ipv6_hostname: (ttl, [ipv6_ip]),
         }
         expected_generate_directives = (
             DNSForwardZoneConfig.get_GENERATE_directives(network))
-        srv = self.make_srv_record()
+        other_mapping = {ipv4_hostname: (ttl, ['MX 10 bar'])}
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv],
+            other_mapping=other_mapping, default_ttl=ttl,
+            mapping=mapping, dns_ip=dns_ip,
             dynamic_ranges=[IPRange(network.first, network.last)])
         dns_zone_config.write_config()
         self.assertThat(
@@ -197,10 +143,10 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             FileContains(
                 matcher=ContainsAll(
                     [
-                        '%s IN SRV %s' % (
-                            srv.service, self.get_srv_item_output(srv)),
-                        '%s IN A %s' % (ipv4_hostname, ipv4_ip),
-                        '%s IN AAAA %s' % (ipv6_hostname, ipv6_ip),
+                        '$TTL %d' % ttl,
+                        '%s %d IN A %s' % (ipv4_hostname, ttl, ipv4_ip),
+                        '%s %d IN AAAA %s' % (ipv6_hostname, ttl, ipv6_ip),
+                        '%s %d IN MX 10 bar' % (ipv4_hostname, ttl),
                     ] +
                     [
                         '$GENERATE %s %s IN A %s' % (
@@ -215,8 +161,10 @@ class TestDNSForwardZoneConfig(MAASTestCase):
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
         dns_ip = factory.make_ipv4_address()
+        addr_ttl = random.randint(10, 100)
         dns_zone_config = DNSForwardZoneConfig(
             factory.make_string(), serial=random.randint(1, 100),
+            ipv4_ttl=addr_ttl, ipv6_ttl=addr_ttl,
             dns_ip=dns_ip)
         dns_zone_config.write_config()
         self.assertThat(
@@ -224,8 +172,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             FileContains(
                 matcher=ContainsAll(
                     [
-                        'IN  NS  %s.' % dns_zone_config.domain,
-                        '%s. IN A %s' % (dns_zone_config.domain, dns_ip),
+                        '30 IN NS %s.' % dns_zone_config.domain,
+                        '@ %d IN A %s' % (addr_ttl, dns_ip),
                     ])))
 
     def test_ignores_generate_directives_for_v6_dynamic_ranges(self):
@@ -239,14 +187,14 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ipv6_ip = factory.make_ipv6_address()
         ipv6_network = factory.make_ipv6_network()
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
+        ttl = random.randint(10, 300)
         mapping = {
-            ipv4_hostname: [ipv4_ip],
-            ipv6_hostname: [ipv6_ip],
+            ipv4_hostname: (ttl, [ipv4_ip]),
+            ipv6_hostname: (ttl, [ipv6_ip]),
         }
-        srv = self.make_srv_record()
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv],
+            mapping=mapping, dns_ip=dns_ip, default_ttl=ttl,
             dynamic_ranges=[dynamic_range])
         get_generate_directives = self.patch(
             dns_zone_config, 'get_GENERATE_directives')
@@ -411,16 +359,16 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
-            (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
+            (IPAddress(ip).reverse_dns, 30, '%s.%s.' % (hostname, name))
             for hostname, ip in hosts.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): [ip]
+            "%s.%s" % (hostname, name): (30, [ip])
             for hostname, ip in hosts.items()
             }
         self.assertItemsEqual(
             expected,
-            DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
+            DNSReverseZoneConfig.get_PTR_mapping(mapping, network))
 
     def test_get_ptr_mapping_drops_IPs_not_in_network(self):
         name = factory.make_string()
@@ -430,21 +378,21 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
-            (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
+            (IPAddress(ip).reverse_dns, 30, '%s.%s.' % (hostname, name))
             for hostname, ip in in_network_mapping.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): [ip]
+            "%s.%s" % (hostname, name): (30, [ip])
             for hostname, ip in in_network_mapping.items()
             }
         extra_mapping = {
-            factory.make_string(): ['192.50.0.2'],
-            factory.make_string(): ['192.70.0.2'],
+            factory.make_string(): (30, ['192.50.0.2']),
+            factory.make_string(): (30, ['192.70.0.2']),
         }
         mapping.update(extra_mapping)
         self.assertItemsEqual(
             expected,
-            DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
+            DNSReverseZoneConfig.get_PTR_mapping(mapping, network))
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
@@ -458,7 +406,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 os.path.join(
                     target_dir, 'zone.%s' % zone_name),
                 FileContains(
-                    matcher=Contains('IN  NS  %s.' % dns_zone_config.domain)))
+                    matcher=Contains('30 IN NS %s.' % dns_zone_config.domain)))
 
     def test_writes_reverse_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
@@ -479,7 +427,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                     "%d.168.192.in-addr.arpa" % sub))
             expected = ContainsAll(
                 [
-                    'IN  NS  %s' % domain
+                    '30 IN NS %s' % domain
                 ] +
                 [
                     '$GENERATE %s %s IN PTR %s' % (
@@ -507,7 +455,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             dynamic_network, domain, DomainInfo(network, reverse_zone_name))
         expected = ContainsAll(
             [
-                'IN  NS  %s' % domain
+                '30 IN NS %s' % domain
             ] +
             [
                 '$GENERATE %s %s IN PTR %s' % (

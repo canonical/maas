@@ -40,6 +40,7 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     OneToOneField,
+    PositiveIntegerField,
     PROTECT,
     Q,
     SET_DEFAULT,
@@ -568,6 +569,12 @@ class Node(CleanSave, TimestampedModel):
     domain = ForeignKey(
         Domain, default=get_default_domain, null=False,
         editable=True, on_delete=PROTECT)
+
+    # TTL for this Node's IP addresses.  Since this must be the same for all
+    # records of the same time on any given name, we need to coordinate the TTL
+    # with any addresses that come from DNSResource.
+    # If None, then we inherit from the parent Domain, or the global default.
+    address_ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
     status = IntegerField(
         choices=NODE_STATUS_CHOICES, editable=False,

@@ -21,6 +21,7 @@ from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
+from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.server_address import get_maas_facing_server_address
@@ -69,7 +70,7 @@ def sequence(thing):
 
 
 def get_hostname_ip_mapping(domain_or_subnet):
-    """Return a mapping {hostnames -> ips} for the allocated nodes in
+    """Return a mapping {hostnames -> (ttl, ips)} for the allocated nodes in
     `domain` or `subnet`.
     """
     # Circular imports.
@@ -144,7 +145,8 @@ class ZoneGenerator:
     We generate zones for the domains (forward), and subnets (reverse) passed.
     """
 
-    def __init__(self, domains, subnets, serial=None, serial_generator=None):
+    def __init__(self, domains, subnets, default_ttl=None,
+                 serial=None, serial_generator=None):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
         :param serial_generator: As an alternative to `serial`, a callback
@@ -152,6 +154,10 @@ class ZoneGenerator:
         """
         self.domains = sequence(domains)
         self.subnets = sequence(subnets)
+        if default_ttl is None:
+            self.default_ttl = Config.objects.get_config('default_dns_ttl')
+        else:
+            self.default_ttl = default_ttl
         self.serial = serial
         self.serial_generator = serial_generator
 
@@ -176,26 +182,6 @@ class ZoneGenerator:
         return lazydict(get_network)
 
     @staticmethod
-    def _get_srv_mappings():
-        """Return list of srv records.
-
-        Each srv record is a dictionary with the following required keys
-        srv, port, target. Optional keys are priority and weight.
-        """
-        # Avoid circular imports.
-        from provisioningserver.dns.config import SRVRecord
-
-        # 2015-12-16 lamont This will eventually get replaced by creating a
-        # DNSResource record for the windows_kms_host, once we have more than A
-        # and AAAA records in that model.
-        windows_kms_host = Config.objects.get_config("windows_kms_host")
-        if windows_kms_host is None or windows_kms_host == '':
-            return
-        yield SRVRecord(
-            service='_vlmcs._tcp', port=1688, target=windows_kms_host,
-            priority=0, weight=0)
-
-    @staticmethod
     def _get_forward_domains(domains):
         """Return the set of managed domains for the given `domains`."""
         return set(
@@ -205,7 +191,7 @@ class ZoneGenerator:
                 authoritative=True))
 
     @staticmethod
-    def _gen_forward_zones(domains, serial, mappings, srv_mappings):
+    def _gen_forward_zones(domains, serial, mappings, default_ttl):
         """Generator of forward zones, collated by domain name."""
         dns_ip = get_dns_server_address()
         domains = set(domains)
@@ -228,36 +214,54 @@ class ZoneGenerator:
 
         # For each of the domains that we are generating, create the zone from:
         # 1. nodegroup dynamic ranges
-        # 2. node: ip mapping(domain)
-        # 3. dnsresource records in this domain
+        # 2. node: ip mapping(domain) (which includes dnsresource addresses)
+        # 4. dnsresource non-address records in this domain
         for domain in domains:
+            # 1. nodegroup dynamic ranges
             nodegroups = nodegroup_dict.get(domain.name, [])
             dynamic_ranges = [
                 interface.get_dynamic_ip_range()
                 for nodegroup in nodegroups
                 for interface in nodegroup.get_managed_interfaces()
             ]
-            dnsresources = DNSResource.objects.filter(
-                domain=domain, ip_addresses__ip__isnull=False)
-            # First, map all of the nodes in this domain
-            # strip off the domain, since we don't need it in the forward zone.
+            dnsresources = DNSResource.objects.filter(domain=domain)
+            # 2. node: ip mapping(domain)
+            # Map all of the nodes in this domain, including the user-reserved
+            # ip addresses.
             mapping = {
-                hostname.split('.')[0]: ips
-                for hostname, ips in mappings[domain].items()
+                hostname.split('.')[0]: (ttl, ips)
+                for hostname, (ttl, ips) in mappings[domain].items()
             }
-            # Then, go through and add all of the DNSResource records that are
-            # relevant.
-            mapping.update({
-                dnsrr.name: [ipaddress.ip]
-                for dnsrr in dnsresources
-                for ipaddress in dnsrr.ip_addresses.exclude(
-                    ip__isnull=True)
-            })
+            # 3. Create non-address records.  Specifically ignore any CNAME
+            # records that collide with addresses in mapping.
+            other_mapping = {}
+            for dnsrr in dnsresources:
+                dataset = dnsrr.dnsdata_set.all()
+                for rrtype in set(data.resource_type for data in dataset):
+                    # Start at 2^31-1, and then select the minimum ttl found in
+                    # the RRset.
+                    ttl = (1 << 31) - 1
+                    if rrtype != 'CNAME' or dnsrr.name not in mapping:
+                        values = [
+                            str(data)
+                            for data in dataset
+                            if data.resource_type == rrtype]
+                        if dataset.first().ttl is not None:
+                            ttl = min(ttl, dataset.first().ttl)
+                        elif dnsrr.domain.ttl is not None:
+                            ttl = min(ttl, dnsrr.domain.ttl)
+                        else:
+                            ttl = min(ttl, default_ttl)
+                        other_mapping[dnsrr.name] = (ttl, values)
 
             yield DNSForwardZoneConfig(
                 domain.name, serial=serial, dns_ip=dns_ip,
+                default_ttl=default_ttl,
+                ns_ttl=domain.get_base_ttl('NS', default_ttl),
+                ipv4_ttl=domain.get_base_ttl('A', default_ttl),
+                ipv6_ttl=domain.get_base_ttl('AAAA', default_ttl),
                 mapping=mapping,
-                srv_mapping=set(srv_mappings),
+                other_mapping=other_mapping,
                 dynamic_ranges=dynamic_ranges,
                 )
 
@@ -273,16 +277,16 @@ class ZoneGenerator:
             if nodegroup.manages_dns())
 
     @staticmethod
-    def _gen_reverse_zones(subnets, serial, mappings, networks):
+    def _gen_reverse_zones(subnets, serial, mappings, networks, default_ttl):
         """Generator of reverse zones, sorted by network."""
 
         subnets = set(subnets)
         # For each of the zones that we are generating (one or more per
         # subnet), compile the zone from:
         # 1. nodegroup dynamic ranges on this subnet
-        # 2. node: ip mapping(subnet)
-        # 3. dnsresource records for StaticIPAddresses in this subnet
-        # 4. interfaces on any node that have IP addresses in this subnet
+        # 2. node: ip mapping(subnet), including DNSResource records for
+        #    StaticIPAddresses in this subnet
+        # 3. interfaces on any node that have IP addresses in this subnet
         for subnet in subnets:
             network = IPNetwork(subnet.cidr)
             nodegroups = set(
@@ -290,46 +294,49 @@ class ZoneGenerator:
                 for nodegroup in NodeGroup.objects.filter(
                     nodegroupinterface__subnet=subnet)
                 if len(nodegroup.get_managed_interfaces()) > 0)
+            # 1. Figure out the dynamic ranges.
             dynamic_ranges = [
                 IPRange(iprange[1][0], iprange[1][1])
                 for nodegroup in nodegroups
                 for iprange in networks[nodegroup]
             ]
-            dnsresources = DNSResource.objects.filter(
-                ip_addresses__subnet=subnet).exclude(
-                ip_addresses__ip__isnull=True)
-            ipaddresses = StaticIPAddress.objects.filter(
-                subnet=subnet).exclude(ip__isnull=True)
 
-            # First, map all of the nodes on this subnet
-            mapping = {
-                hostname: [ip]
-                for hostname, ips in mappings[subnet].items()
-                for ip in ips
-            }
-            # Next, go through and add all of the relevant DNSResource records.
-            mapping.update({
-                "%s.%s" % (dnsrr.name, dnsrr.domain.name): [ipaddress.ip]
-                for dnsrr in dnsresources
-                for ipaddress in dnsrr.ip_addresses.filter(
-                    subnet=subnet).exclude(ip__isnull=True)
-            })
-            # Finally, add all of the interface named records.
+            # 2. Start with the map of all of the nodes on this subnet,
+            # including all DNSResource-associated addresses.
+            mapping = mappings[subnet]
+
+            # 3. Add all of the interface named records.
             # 2015-12-18 lamont N.B., these are not found in the forward zone,
             # on purpose.  If someone eventually calls this a bug, we can
             # revisit the size increase this would create in the forward zone.
-            mapping.update({
-                "%s.%s" % (
-                    interface.name, interface.node.fqdn): [ip.ip]
-                for ip in ipaddresses
-                for interface in ip.interface_set.filter(
-                    node__isnull=False, node__domain__isnull=False)
-            })
+            # This will also include any discovered addresses on such
+            # interfaces.
+            nodes = Node.objects.filter(
+                interface__ip_addresses__subnet=subnet,
+                interface__ip_addresses__ip__isnull=False)
+            for node in nodes:
+                if node.address_ttl is not None:
+                    ttl = node.address_ttl
+                elif node.domain.ttl is not None:
+                    ttl = node.domain.ttl
+                else:
+                    ttl = default_ttl
+                interfaces = node.interface_set.filter(
+                    ip_addresses__subnet=subnet,
+                    ip_addresses__ip__isnull=False)
+                mapping.update({
+                    "%s.%s" % (
+                        interface.name, interface.node.fqdn): (ttl, [
+                        ip.ip for ip in interface.ip_addresses.exclude(
+                            ip__isnull=True)])
+                    for interface in interfaces
+                })
 
             # Use the default_domain as the name for the NS host in the reverse
             # zones.
             yield DNSReverseZoneConfig(
                 Domain.objects.get_default_domain().name, serial=serial,
+                default_ttl=default_ttl,
                 mapping=mapping, network=network,
                 dynamic_ranges=dynamic_ranges,
             )
@@ -346,14 +353,13 @@ class ZoneGenerator:
 
         mappings = self._get_mappings()
         networks = self._get_networks()
-        srv_mappings = self._get_srv_mappings()
         serial = self.serial or self.serial_generator()
+        default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(
-                self.domains, serial, mappings,
-                srv_mappings),
+                self.domains, serial, mappings, default_ttl),
             self._gen_reverse_zones(
-                self.subnets, serial, mappings, networks),
+                self.subnets, serial, mappings, networks, default_ttl),
             )
 
     def as_list(self):

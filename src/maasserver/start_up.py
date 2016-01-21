@@ -32,6 +32,7 @@ from maasserver.models import (
     BootSourceSelection,
     NodeGroup,
 )
+from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.triggers import register_all_triggers
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -194,6 +195,9 @@ def inner_start_up():
 
     # Register all of the triggers.
     register_all_triggers()
+
+    # Freshen the kms SRV records
+    dns_kms_setting_changed()
 
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     dns_update_all_zones(reload_retry=True)

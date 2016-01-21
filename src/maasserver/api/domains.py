@@ -17,6 +17,7 @@ from piston3.utils import rc
 DISPLAYED_DOMAIN_FIELDS = (
     'id',
     'name',
+    'ttl',
     'authoritative',
     'resources',
 )
@@ -89,6 +90,7 @@ class DomainHandler(OperationsHandler):
 
         :param name: Name of the domain.
         :param authoritative: True if we are authoritative for this domain.
+        :param ttl: The default TTL for this domain.
 
         Returns 403 if the user does not have permission to update the
         dnsresource.

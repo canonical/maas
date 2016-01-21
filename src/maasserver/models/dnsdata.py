@@ -27,6 +27,7 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
+    PositiveIntegerField,
     TextField,
 )
 from maasserver import DefaultMeta
@@ -34,6 +35,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
+from provisioningserver.logger import get_maas_logger
 
 
 CNAME_LABEL = r'[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}'
@@ -49,6 +51,9 @@ INVALID_SRV_MSG = (
 CNAME_AND_OTHER_MSG = (
     "CNAME records for a name cannot coexist with non-CNAME records.")
 MULTI_CNAME_MSG = "Only one CNAME can be associated with a name."
+DIFFERENT_TTL_MSG = "TTL of %d differs from other resource records TTL of %d."
+
+maaslog = get_maas_logger("node")
 
 
 def validate_rrtype(value):
@@ -105,6 +110,12 @@ class DNSData(CleanSave, TimestampedModel):
         DNSResource, editable=True, blank=False, null=False,
         help_text="DNSResource which is the left-hand side.",
         on_delete=CASCADE)
+
+    # TTL for this resource.  Should be the same for all records of the same
+    # RRType on a given label. (BIND will complain and pick one if they are not
+    # all the same.)  If None, then we inherit from the parent Domain, or the
+    # global default.
+    ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
     resource_type = CharField(
         editable=True, max_length=8, blank=False, null=False, unique=False,
@@ -178,7 +189,7 @@ class DNSData(CleanSave, TimestampedModel):
         # items that saving this would create, and reject things if needed.
         if self.id is None:
             num_cname = DNSData.objects.filter(
-                dnsresource__id=self.dnsresource_id,
+                dnsresource_id=self.dnsresource_id,
                 resource_type="CNAME").count()
             if self.resource_type == "CNAME":
                 num_other = DNSData.objects.filter(
@@ -193,4 +204,11 @@ class DNSData(CleanSave, TimestampedModel):
             else:
                 if num_cname > 0:
                     raise ValidationError(CNAME_AND_OTHER_MSG)
+            rrset = DNSData.objects.filter(
+                resource_type=self.resource_type,
+                dnsresource_id=self.dnsresource.id).exclude(
+                ttl=self.ttl)
+            if rrset.count() > 0:
+                maaslog.warning(
+                    DIFFERENT_TTL_MSG % (self.ttl, rrset.first().ttl))
         super().clean(*args, **kwargs)

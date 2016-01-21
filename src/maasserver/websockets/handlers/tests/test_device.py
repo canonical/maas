@@ -87,6 +87,7 @@ class TestDeviceHandler(MAASServerTestCase):
                 "id": node.domain.id,
                 "name": node.domain.name,
                 },
+            "address_ttl": node.address_ttl,
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()

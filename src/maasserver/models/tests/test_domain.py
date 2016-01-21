@@ -6,12 +6,16 @@
 __all__ = []
 
 
+import random
+
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
 from django.db.models import ProtectedError
 from maasserver.enum import NODE_PERMISSION
+from maasserver.models.config import Config
+from maasserver.models.dnsdata import DNSData
 from maasserver.models.domain import (
     DEFAULT_DOMAIN_NAME,
     Domain,
@@ -176,3 +180,33 @@ class DomainTest(MAASServerTestCase):
         factory.make_DNSResource(domain=domain)
         with ExpectedException(ProtectedError):
             domain.delete()
+
+    def test_update_kms_srv_deletes_srv_records(self):
+        domain = factory.make_Domain()
+        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        factory.make_DNSData(
+            domain=domain, name='_vlmcs._tcp', resource_type='SRV',
+            resource_data='0 0 1688 %s.' % target)
+        domain.update_kms_srv('')
+        # We would restrict it more, but we just deleted it...
+        rrset = DNSData.objects.filter(resource_type='SRV')
+        self.assertEqual(0, rrset.count())
+
+    def test_update_kms_srv_creates_srv_records(self):
+        domain = factory.make_Domain()
+        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        domain.update_kms_srv(target)
+        srvrr = DNSData.objects.get(
+            resource_type='SRV', dnsresource__name="_vlmcs._tcp",
+            dnsresource__domain_id=domain.id)
+        self.assertEqual("0 0 1688 %s." % target, srvrr.resource_data)
+
+    def test_update_kms_srv_creates_srv_records_on_all_domains(self):
+        domains = [factory.make_Domain() for _ in range(random.randint(1, 10))]
+        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        Config.objects.set_config('windows_kms_host', target)
+        for domain in domains:
+            srvrr = DNSData.objects.get(
+                resource_type='SRV', dnsresource__name="_vlmcs._tcp",
+                dnsresource__domain_id=domain.id)
+            self.assertEqual("0 0 1688 %s." % target, srvrr.resource_data)

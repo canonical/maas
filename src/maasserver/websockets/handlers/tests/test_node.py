@@ -133,6 +133,7 @@ class TestNodeHandler(MAASServerTestCase):
         subnets = handler.get_all_subnets(node)
         data = {
             "actions": list(compile_node_actions(node, handler.user).keys()),
+            "address_ttl": node.address_ttl,
             "architecture": node.architecture,
             "bmc": node.bmc_id,
             "boot_disk": node.boot_disk,

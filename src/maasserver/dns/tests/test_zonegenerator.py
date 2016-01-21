@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import random
 import socket
 from urllib.parse import urlparse
 
@@ -23,6 +24,7 @@ from maasserver.dns.zonegenerator import (
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
@@ -52,7 +54,6 @@ from netaddr import (
     IPNetwork,
     IPRange,
 )
-from provisioningserver.dns.config import SRVRecord
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -226,10 +227,12 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         dynamic_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=str(dynamic_ips[0]),
             subnet=static_ip.subnet, interface=node2_nic)
+        ttl = random.randint(10, 300)
+        Config.objects.set_config('default_dns_ttl', ttl)
 
         expected_mapping = {
-            "%s.maas" % node1.hostname: [static_ip.ip],
-            "%s.maas" % node2.hostname: [dynamic_ip.ip],
+            "%s.maas" % node1.hostname: (ttl, [static_ip.ip]),
+            "%s.maas" % node2.hostname: (ttl, [dynamic_ip.ip]),
         }
         self.assertEqual(
             expected_mapping,
@@ -261,7 +264,7 @@ def reverse_zone(domain, network):
 
 
 class TestZoneGenerator(MAASServerTestCase):
-    """Tests for :class:x`ZoneGenerator`."""
+    """Tests for :class:`ZoneGenerator`."""
 
     def make_node_group(self, **kwargs):
         """Create an accepted nodegroup with a managed interface."""
@@ -385,21 +388,26 @@ class TestZoneGenerator(MAASServerTestCase):
             },
             networks_dict)
 
-    def test_get_srv_mappings_returns_empty_list_when_no_windows_kms(self):
-        Config.objects.set_config("windows_kms_host", None)
-        self.assertItemsEqual([], ZoneGenerator._get_srv_mappings())
-
-    def test_get_srv_mappings_returns_kms_srv_record(self):
-        hostname = factory.make_name('hostname')
-        Config.objects.set_config("windows_kms_host", hostname)
-        srv = SRVRecord(
-            service='_vlmcs._tcp', port=1688, target=hostname,
-            priority=0, weight=0)
-        self.assertItemsEqual([srv], ZoneGenerator._get_srv_mappings())
-
     def test_with_no_nodegroups_yields_nothing(self):
         self.useFixture(RegionConfigurationFixture())
-        self.assertEqual([], ZoneGenerator((), (), Mock()).as_list())
+        self.assertEqual(
+            [],
+            ZoneGenerator((), (), serial_generator=Mock()).as_list())
+
+    def test_defaults_ttl(self):
+        self.useFixture(RegionConfigurationFixture())
+        zonegen = ZoneGenerator((), (), serial_generator=Mock())
+        self.assertEqual(
+            Config.objects.get_config('default_dns_ttl'),
+            zonegen.default_ttl)
+        self.assertEqual([], zonegen.as_list())
+
+    def test_accepts_default_ttl(self):
+        self.useFixture(RegionConfigurationFixture())
+        default_ttl = random.randint(10, 1000)
+        zonegen = ZoneGenerator(
+            (), (), default_ttl=default_ttl, serial_generator=Mock())
+        self.assertEqual(default_ttl, zonegen.default_ttl)
 
     def test_with_one_nodegroup_yields_forward_and_reverse_zone(self):
         self.useFixture(RegionConfigurationFixture())
@@ -410,7 +418,8 @@ class TestZoneGenerator(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain().name
         subnet = Subnet.objects.get(
             nodegroupinterface__nodegroup=nodegroup)
-        zones = ZoneGenerator(domain, subnet, Mock()).as_list()
+        zones = ZoneGenerator(
+            domain, subnet, serial_generator=Mock()).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
@@ -428,7 +437,8 @@ class TestZoneGenerator(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             nodegroup=nodegroup, subnet=subnet, vlan=subnet.vlan,
             fabric=subnet.vlan.fabric)
-        zones = ZoneGenerator(domain, subnet, Mock()).as_list()
+        zones = ZoneGenerator(
+            domain, subnet, serial_generator=Mock()).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
@@ -448,6 +458,7 @@ class TestZoneGenerator(MAASServerTestCase):
             nodegroup=nodegroup, subnet=subnet, vlan=subnet.vlan,
             fabric=subnet.vlan.fabric, domain=domain, interface_count=3,
             disable_ipv4=False)
+        dnsdata = factory.make_DNSData(domain=domain)
         boot_iface = node.boot_interface
         interfaces = list(node.interface_set.all().exclude(id=boot_iface.id))
         # Now go add IP addresses to the boot interface, and one other
@@ -455,17 +466,26 @@ class TestZoneGenerator(MAASServerTestCase):
             interface=boot_iface, subnet=subnet)
         sip = factory.make_StaticIPAddress(
             interface=interfaces[0], subnet=subnet)
-        zones = ZoneGenerator(domain, subnet, Mock()).as_list()
+        default_ttl = random.randint(10, 300)
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=default_ttl,
+            serial_generator=Mock()).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
                 reverse_zone(default_domain, "10/29")))
         self.assertEqual(
-            {node.hostname: ['%s' % boot_ip.ip]}, zones[0]._mapping)
-        self.assertEqual({
-            node.fqdn: ['%s' % boot_ip.ip],
-            '%s.%s' % (interfaces[0].name, node.fqdn): ['%s' % sip.ip],
-            '%s.%s' % (boot_iface.name, node.fqdn): ['%s' % boot_ip.ip]},
+            {node.hostname: (30, ['%s' % boot_ip.ip])}, zones[0]._mapping)
+        self.assertEqual(
+            {dnsdata.dnsresource.name: (default_ttl, [
+                "%s %s" % (dnsdata.resource_type, dnsdata.resource_data)])},
+            zones[0]._other_mapping)
+        self.assertItemsEqual({
+            node.fqdn: (30, ['%s' % boot_ip.ip]),
+            '%s.%s' % (interfaces[0].name, node.fqdn): (
+                default_ttl, ['%s' % sip.ip]),
+            '%s.%s' % (boot_iface.name, node.fqdn): (
+                default_ttl, ['%s' % boot_ip.ip])},
             zones[1]._mapping)
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
@@ -487,7 +507,8 @@ class TestZoneGenerator(MAASServerTestCase):
         subnet = Subnet.objects.filter(
             nodegroupinterface__nodegroup=nodegroup)
         self.assertThat(
-            ZoneGenerator(domain, subnet, Mock()).as_list(),
+            ZoneGenerator(
+                domain, subnet, serial_generator=Mock()).as_list(),
             MatchesSetwise(*expected_zones))
 
     def test_with_many_nodegroups_yields_many_zones(self):
@@ -522,5 +543,200 @@ class TestZoneGenerator(MAASServerTestCase):
             reverse_zone(default_domain.name, "21/29"),
             )
         self.assertThat(
-            ZoneGenerator(domains, subnets, Mock()).as_list(),
+            ZoneGenerator(domains, subnets, serial_generator=Mock()).as_list(),
             MatchesSetwise(*expected_zones))
+
+
+class TestZoneGeneratorTTL(MAASServerTestCase):
+    """Tests for TTL in :class:ZoneGenerator`."""
+
+    def test_domain_ttl_overrides_global(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            disable_ipv4=False,
+            nodegroup=nodegroup, status=NODE_STATUS.READY, subnet=subnet,
+            domain=domain)
+        boot_iface = node.get_boot_interface()
+        [boot_ip] = boot_iface.claim_static_ips()
+        expected_forward = {node.hostname: (domain.ttl, [boot_ip.ip])}
+        expected_reverse = {
+            node.fqdn: (domain.ttl, [boot_ip.ip]),
+            "%s.%s" % (boot_iface.name, node.fqdn): (domain.ttl, [boot_ip.ip])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._mapping.items())
+        self.assertItemsEqual(
+            expected_reverse.items(), zones[1]._mapping.items())
+
+    def test_node_ttl_overrides_domain(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            disable_ipv4=False,
+            nodegroup=nodegroup, status=NODE_STATUS.READY, subnet=subnet,
+            domain=domain, address_ttl=random.randint(300, 399))
+        boot_iface = node.get_boot_interface()
+        [boot_ip] = boot_iface.claim_static_ips()
+        expected_forward = {node.hostname: (node.address_ttl, [boot_ip.ip])}
+        expected_reverse = {
+            node.fqdn: (node.address_ttl, [boot_ip.ip]),
+            "%s.%s" % (boot_iface.name, node.fqdn):
+            (node.address_ttl, [boot_ip.ip])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._mapping.items())
+        self.assertItemsEqual(
+            expected_reverse.items(), zones[1]._mapping.items())
+
+    def test_dnsresource_address_does_not_affect_addresses_when_node_set(self):
+        # If a node has the same FQDN as a DNSResource, then we use whatever
+        # address_ttl there is on the Node (whether None, or not) rather than
+        # that on any DNSResource addresses with the same FQDN.
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            disable_ipv4=False,
+            nodegroup=nodegroup, status=NODE_STATUS.READY, subnet=subnet,
+            domain=domain, address_ttl=random.randint(300, 399))
+        boot_iface = node.get_boot_interface()
+        [boot_ip] = boot_iface.claim_static_ips()
+        dnsrr = factory.make_DNSResource(
+            name=node.hostname, domain=domain,
+            address_ttl=random.randint(400, 499))
+        ips = [boot_ip.ip] + [
+            ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None]
+        expected_forward = {node.hostname: (node.address_ttl, ips)}
+        expected_reverse = {
+            node.fqdn: (node.address_ttl, ips),
+            "%s.%s" % (boot_iface.name, node.fqdn):
+            (node.address_ttl, [boot_ip.ip])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._mapping.items())
+        self.assertItemsEqual(
+            expected_reverse.items(), zones[1]._mapping.items())
+
+    def test_dnsresource_address_overrides_domain(self):
+        # DNSResource.address_ttl _does_, however, override Domain.ttl for
+        # addresses that do not have nodes associated with them.
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            disable_ipv4=False,
+            nodegroup=nodegroup, status=NODE_STATUS.READY, subnet=subnet,
+            domain=domain, address_ttl=random.randint(300, 399))
+        boot_iface = node.get_boot_interface()
+        [boot_ip] = boot_iface.claim_static_ips()
+        dnsrr = factory.make_DNSResource(
+            domain=domain, address_ttl=random.randint(400, 499))
+        node_ips = [boot_ip.ip]
+        dnsrr_ips = [
+            ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None]
+        expected_forward = {
+            node.hostname: (node.address_ttl, node_ips),
+            dnsrr.name: (dnsrr.address_ttl, dnsrr_ips),
+            }
+        expected_reverse = {
+            node.fqdn: (node.address_ttl, node_ips),
+            dnsrr.fqdn: (dnsrr.address_ttl, dnsrr_ips),
+            "%s.%s" % (boot_iface.name, node.fqdn):
+            (node.address_ttl, [boot_ip.ip])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._mapping.items())
+        self.assertItemsEqual(
+            expected_reverse.items(), zones[1]._mapping.items())
+
+    def test_dnsdata_inherits_global(self):
+        # If there is no ttl on the DNSData or Domain, then we get the global
+        # value.
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain()
+        dnsrr = factory.make_DNSResource(
+            no_ip_addresses=True,
+            domain=domain, address_ttl=random.randint(400, 499))
+        dnsdata = factory.make_DNSData(dnsresource=dnsrr)
+        expected_forward = {dnsrr.name: (global_ttl, [str(dnsdata)])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._other_mapping.items())
+        self.assertItemsEqual([], zones[0]._mapping.items())
+        self.assertItemsEqual([], zones[1]._mapping.items())
+        self.assertEqual(None, dnsdata.ttl)
+
+    def test_dnsdata_inherits_domain(self):
+        # If there is no ttl on the DNSData, but is on Domain, then we get the
+        # domain value.
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        dnsrr = factory.make_DNSResource(
+            no_ip_addresses=True,
+            domain=domain, address_ttl=random.randint(400, 499))
+        dnsdata = factory.make_DNSData(dnsresource=dnsrr)
+        expected_forward = {dnsrr.name: (domain.ttl, [str(dnsdata)])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._other_mapping.items())
+        self.assertItemsEqual([], zones[0]._mapping.items())
+        self.assertItemsEqual([], zones[1]._mapping.items())
+        self.assertEqual(None, dnsdata.ttl)
+
+    def test_dnsdata_overrides_domain(self):
+        # If DNSData has a ttl, we use that in preference to anything else.
+        self.patch_autospec(interface_module, "update_host_maps")
+        global_ttl = random.randint(100, 199)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        subnet = factory.make_Subnet(cidr="10.0.0.0/23")
+        domain = factory.make_Domain(ttl=random.randint(200, 299))
+        dnsrr = factory.make_DNSResource(
+            no_ip_addresses=True,
+            domain=domain, address_ttl=random.randint(400, 499))
+        dnsdata = factory.make_DNSData(
+            dnsresource=dnsrr, ttl=random.randint(500, 599))
+        expected_forward = {dnsrr.name: (dnsdata.ttl, [str(dnsdata)])}
+        zones = ZoneGenerator(
+            domain, subnet, default_ttl=global_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertItemsEqual(
+            expected_forward.items(), zones[0]._other_mapping.items())
+        self.assertItemsEqual([], zones[0]._mapping.items())
+        self.assertItemsEqual([], zones[1]._mapping.items())

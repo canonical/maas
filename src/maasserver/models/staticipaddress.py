@@ -27,6 +27,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     PROTECT,
+    Q,
 )
 from maasserver import (
     DefaultMeta,
@@ -46,6 +47,7 @@ from maasserver.exceptions import (
 )
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -248,25 +250,57 @@ class StaticIPAddressManager(Manager):
                 requested_address, alloc_type,
                 user=user, subnet=subnet)
 
-    def _get_user_reserved_mappings(self):
+    def _get_user_reserved_mappings(self, node_map):
+        # A poorly named routine these days, since it actually returns
+        # addresses for anything with any DNSResource records as well.
+        default_ttl = Config.objects.get_config('default_dns_ttl')
         mappings = []
-        for mapping in self.filter(alloc_type=IPADDRESS_TYPE.USER_RESERVED):
+        qs = self.filter(
+            Q(alloc_type=IPADDRESS_TYPE.USER_RESERVED) |
+            Q(dnsresource__isnull=False))
+        ip_mapping = defaultdict(list)
+        ttl_mapping = {}
+        for mapping in qs:
             ip = mapping.ip
-            for dnsrr in mapping.dnsresource_set.all():
-                hostname = dnsrr.name
-                if hostname is None or hostname == '':
-                    hostname = get_ip_based_hostname(ip)
-                    hostname = "%s.%s" % (
-                        get_ip_based_hostname(ip),
-                        Domain.objects.get_default_domain().name)
-                else:
-                    hostname = '%s.%s' % (hostname, dnsrr.domain.name)
-                mappings.append((hostname, ip))
+            rrset = mapping.dnsresource_set.all()
+            # 2016-01-20 LaMontJones N.B.:
+            # Empirically, for dnsrr in mapping.dnsresource_set.all(): ...
+            # else: with a non-empty rrset yields both the for loop AND the
+            # else clause.  Wrapping it all in a if/else: avoids that issue.
+            if rrset.count() > 0:
+                for dnsrr in rrset:
+                    hostname = dnsrr.name
+                    if hostname is None or hostname == '':
+                        hostname = get_ip_based_hostname(ip)
+                        hostname = "%s.%s" % (
+                            get_ip_based_hostname(ip),
+                            Domain.objects.get_default_domain().name)
+                    else:
+                        hostname = '%s.%s' % (hostname, dnsrr.domain.name)
+                    if hostname in node_map:
+                        ttl = node_map[hostname][0]
+                    elif dnsrr.address_ttl is not None:
+                        ttl = dnsrr.address_ttl
+                    elif dnsrr.domain.ttl is not None:
+                        ttl = dnsrr.domain.ttl
+                    else:
+                        ttl = default_ttl
+                    ttl_mapping[hostname] = ttl
+                    ip_mapping[hostname].append(ip)
             else:
-                hostname = "%s.%s" % (
-                    get_ip_based_hostname(ip),
-                    Domain.objects.get_default_domain().name)
-                mappings.append((hostname, ip))
+                # No DNSResource, but it's USER_RESERVED.
+                domain = Domain.objects.get_default_domain()
+                hostname = "%s.%s" % (get_ip_based_hostname(ip), domain.name)
+                if hostname in node_map:
+                    ttl = node_map[hostname][0]
+                elif domain.ttl is not None:
+                    ttl = domain.ttl
+                else:
+                    ttl = default_ttl
+                ip_mapping[hostname].append(ip)
+                ttl_mapping[hostname] = ttl
+        for name, ips in ip_mapping.items():
+            mappings.append((name, (ttl_mapping[name], ips)))
         return mappings
 
     @asynchronous
@@ -312,8 +346,9 @@ class StaticIPAddressManager(Manager):
     def get_hostname_ip_mapping(self, domain_or_subnet):
         """Return hostname mappings for `StaticIPAddress` entries.
 
-        Returns a mapping `{hostnames -> [ips]}` corresponding to current
-        `StaticIPAddress` objects for the nodes in `domain`, or `subnet`.
+        Returns a mapping `{hostnames -> (ttl, [ips])}` corresponding to
+        current `StaticIPAddress` objects for the nodes in `domain`, or
+        `subnet`.
 
         At most one IPv4 address and one IPv6 address will be returned per
         node, each the one for whichever `Interface` was created first.
@@ -334,10 +369,15 @@ class StaticIPAddressManager(Manager):
         else:
             raise ValueError('bad object passed to get_hostname_ip_mapping')
 
+        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
         sql_query = """
             SELECT DISTINCT ON (node.hostname, family(staticip.ip))
-                node.hostname, domain.name, staticip.ip
-            FROM maasserver_interface AS interface
+                node.hostname,
+                COALESCE(node.address_ttl,
+                         COALESCE(domain.ttl, """ + default_ttl + """)) AS ttl,
+                domain.name, staticip.ip
+            FROM
+                maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
                 interface.id = rel.child_id
             LEFT OUTER JOIN maasserver_interface AS parent ON
@@ -393,12 +433,21 @@ class StaticIPAddressManager(Manager):
                 interface.id
             """
         cursor.execute(sql_query, (domain_or_subnet.id,))
-        mapping = defaultdict(list)
-        for hostname, domain, ip in cursor.fetchall():
-            hostname = "%s.%s" % (strip_domain(hostname), domain)
-            mapping[hostname].append(ip)
-        for hostname, ip in self._get_user_reserved_mappings():
-            mapping[hostname].append(ip)
+        ip_mapping = defaultdict(list)
+        ttl_mapping = {}
+        for (node_name, ttl, domain_name, ip) in cursor.fetchall():
+            hostname = "%s.%s" % (strip_domain(node_name), domain_name)
+            ip_mapping[hostname].append(ip)
+            ttl_mapping[hostname] = ttl
+        mapping = {
+            name: (ttl_mapping[name], ips)
+            for name, ips in ip_mapping.items()}
+        for hostname, (ttl, ips) in self._get_user_reserved_mappings(mapping):
+            if hostname in mapping:
+                (old_ttl, old_ips) = mapping[hostname]
+                mapping[hostname] = (old_ttl, old_ips + ips)
+            else:
+                mapping[hostname] = (ttl, ips)
         return mapping
 
     def _clean_discovered_ip_addresses_on_interface(

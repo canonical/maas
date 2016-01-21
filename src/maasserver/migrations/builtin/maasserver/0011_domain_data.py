@@ -78,7 +78,7 @@ def migrate_staticipaddress_hostname(apps, schema_editor):
         domains = set(
             interface.node.domain
             for interface in
-            ip.interface_set.filter(node__domain__isnull=False))
+            ip.interface_set.filter(node__isnull=False))
         if len(domains):
             domain_id = domains.pop().id
         else:

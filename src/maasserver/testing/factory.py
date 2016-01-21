@@ -512,17 +512,17 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
 
-    def make_Domain(self, name=None, authoritative=True):
+    def make_Domain(self, name=None, ttl=None, authoritative=True):
         if name is None:
             name = self.make_name('domain')
         domain = Domain(
-            name=name,
+            name=name, ttl=ttl,
             authoritative=authoritative)
         domain.save()
         return domain
 
     def make_DNSData(self, dnsresource=None, resource_type=None,
-                     resource_data=None, **kwargs):
+                     resource_data=None, ttl=None, **kwargs):
         # If they didn't pass in an ip_addresses, suppress them.
         if 'ip_addresses' not in kwargs:
             kwargs['no_ip_addresses'] = True
@@ -554,19 +554,23 @@ class Factory(maastesting.factory.Factory):
             dnsresource = self.make_DNSResource(**kwargs)
         dnsdata = DNSData(
             dnsresource=dnsresource,
+            ttl=ttl,
             resource_type=resource_type,
             resource_data=resource_data)
         dnsdata.save()
         return dnsdata
 
     def make_DNSResource(self, domain=None, ip_addresses=None, name=None,
-                         ttl=None, no_ip_addresses=False, **kwargs):
+                         address_ttl=None, no_ip_addresses=False, **kwargs):
         if 'name' in kwargs:
             name = kwargs['name']
             del kwargs['name']
         if 'domain' in kwargs:
             domain = kwargs['domain']
             del kwargs['domain']
+        if 'address_ttl' in kwargs:
+            address_ttl = kwargs['address_ttl']
+            del kwargs['address_ttl']
         if domain is None:
             domain = self.make_Domain()
         if name is None:
@@ -574,8 +578,7 @@ class Factory(maastesting.factory.Factory):
         if ip_addresses is None and not no_ip_addresses:
             ip_addresses = [self.make_StaticIPAddress(**kwargs)]
         dnsrr = DNSResource(
-            name=name,
-            ttl=ttl,
+            name=name, address_ttl=address_ttl,
             domain=domain)
         dnsrr.save()
         if ip_addresses:

@@ -20,6 +20,7 @@ from piston3.utils import rc
 DISPLAYED_DNSRESOURCE_FIELDS = (
     'id',
     'fqdn',
+    'address_ttl',
     'ip_addresses'
 )
 
@@ -48,6 +49,7 @@ class DNSResourcesHandler(OperationsHandler):
             name or domain is given.
         :param name: Hostname (without domain)
         :param domain: Domain (name or id)
+        :param address_ttl: Default ttl for entries in this zone.
         :param ip_addresses: Address (ip or id) to assign to the dnsresource.
         """
         data = request.data
