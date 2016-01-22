@@ -594,7 +594,7 @@ class TestPowerOffAction(MAASServerTestCase):
     def test__stops_deployed_node(self):
         user = factory.make_User()
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
@@ -611,7 +611,7 @@ class TestPowerOffAction(MAASServerTestCase):
     def test__stops_Ready_node(self):
         admin = factory.make_admin()
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
@@ -683,7 +683,7 @@ class TestReleaseAction(MAASServerTestCase):
     def test_Release_stops_and_releases_node(self):
         user = factory.make_User()
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(

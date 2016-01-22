@@ -42,3 +42,51 @@ class TestBMC(MAASServerTestCase):
         result = BMC.scope_power_parameters('hmc', parameters)
         self.assertEqual(bmc_parameters, result[0])
         self.assertEqual(node_parameters, result[1])
+
+    def test_bmc_extract_ip_address_whole_value(self):
+        power_parameters = {'power_address': "192.168.1.1"}
+        self.assertEqual(
+            "192.168.1.1", BMC.extract_ip_address("hmc", power_parameters))
+
+    def test_bmc_extract_ip_address_empty_power_type_gives_none(self):
+        power_parameters = {'power_address': "192.168.1.1"}
+        self.assertEqual(
+            None, BMC.extract_ip_address("", power_parameters))
+        self.assertEqual(
+            None, BMC.extract_ip_address(None, power_parameters))
+
+    def test_bmc_extract_ip_address_blank_gives_none(self):
+        self.assertEqual(None, BMC.extract_ip_address("hmc", None))
+        self.assertEqual(None, BMC.extract_ip_address("hmc", {}))
+
+        power_parameters = {'power_address': ""}
+        self.assertEqual(None, BMC.extract_ip_address("hmc", power_parameters))
+
+        power_parameters = {'power_address': None}
+        self.assertEqual(None, BMC.extract_ip_address("hmc", power_parameters))
+
+    def test_bmc_extract_ip_address_from_url(self):
+        power_parameters = {
+            'power_address': "protocol://somehost:8080/path/to/thing#tag",
+        }
+        self.assertEqual(
+            "somehost", BMC.extract_ip_address("virsh", power_parameters))
+
+    def test_bmc_extract_ip_address_from_url_blank_gives_none(self):
+        self.assertEqual(None, BMC.extract_ip_address("virsh", None))
+        self.assertEqual(None, BMC.extract_ip_address("virsh", {}))
+
+        power_parameters = {'power_address': ""}
+        self.assertEqual(
+            None, BMC.extract_ip_address("virsh", power_parameters))
+
+        power_parameters = {'power_address': None}
+        self.assertEqual(
+            None, BMC.extract_ip_address("virsh", power_parameters))
+
+    def test_bmc_extract_ip_address_from_url_empty_host(self):
+        power_parameters = {
+            'power_address': "http://:8080/foo/#baz",
+        }
+        self.assertEqual(
+            "", BMC.extract_ip_address("virsh", power_parameters))

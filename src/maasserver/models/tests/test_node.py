@@ -2559,7 +2559,8 @@ class TestNodePowerParameters(MAASServerTestCase):
 
     def test_power_type_and_bmc_power_parameters_stored_in_bmc(self):
         node = factory.make_Node(power_type='hmc')
-        bmc_parameters = dict(power_address=factory.make_string())
+        ip_address = factory.make_ipv4_address()
+        bmc_parameters = dict(power_address=ip_address)
         node_parameters = dict(server_name=factory.make_string())
         parameters = {**bmc_parameters, **node_parameters}
         node.power_parameters = parameters
@@ -2570,6 +2571,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(bmc_parameters, node.bmc.power_parameters)
         self.assertEqual('hmc', node.bmc.power_type)
         self.assertEqual(node.power_type, node.bmc.power_type)
+        self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
     def test_power_parameters_are_stored_in_proper_scopes(self):
         node = factory.make_Node(power_type='virsh')
@@ -2587,10 +2589,11 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(parameters, node.power_parameters)
         self.assertEqual(node_parameters, node.instance_power_parameters)
         self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+        self.assertEqual("10.0.2.1", node.bmc.ip_address.ip)
 
     def test_unknown_power_parameter_stored_on_node(self):
         node = factory.make_Node(power_type='hmc')
-        bmc_parameters = dict(power_address=factory.make_string())
+        bmc_parameters = dict(power_address=factory.make_ipv4_address())
         node_parameters = dict(server_name=factory.make_string())
         # This random parameters will be stored on the node instance.
         node_parameters[factory.make_string()] = factory.make_string()
@@ -2649,6 +2652,72 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(2, BMC.objects.count())
         self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
         self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+    def test_power_parameters_ip_address_extracted(self):
+        node = factory.make_Node(power_type='hmc')
+        ip_address = factory.make_ipv4_address()
+        parameters = dict(power_address=ip_address)
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(ip_address, node.bmc.ip_address.ip)
+
+    def test_power_parameters_unexpected_values_tolerated(self):
+        node = factory.make_Node(power_type='virsh')
+        parameters = {factory.make_string(): factory.make_string()}
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(None, node.bmc.ip_address)
+
+    def test_power_parameters_blank_ip_address_tolerated(self):
+        node = factory.make_Node(power_type='hmc')
+        parameters = dict(power_address='')
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(None, node.bmc.ip_address)
+
+    def test_power_parameters_non_ip_address_tolerated(self):
+        node = factory.make_Node(power_type='hmc')
+        parameters = dict(power_address=factory.make_string())
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(None, node.bmc.ip_address)
+
+    def test_power_parameters_ip_address_reset(self):
+        node = factory.make_Node(power_type='hmc')
+        ip_address = factory.make_ipv4_address()
+        parameters = dict(power_address=ip_address)
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(ip_address, node.bmc.ip_address.ip)
+
+        # StaticIPAddress can be changed after being set.
+        ip_address = factory.make_ipv4_address()
+        parameters = dict(power_address=ip_address)
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(ip_address, node.bmc.ip_address.ip)
+
+        # StaticIPAddress can be made None after being set.
+        ip_address = factory.make_ipv4_address()
+        parameters = dict(power_address='')
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(None, node.bmc.ip_address)
+
+        # StaticIPAddress can be changed after being made None.
+        ip_address = factory.make_ipv4_address()
+        parameters = dict(power_address=ip_address)
+        node.power_parameters = parameters
+        node.save()
+        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
 
 class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):

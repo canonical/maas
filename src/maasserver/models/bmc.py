@@ -16,21 +16,27 @@ __all__ = [
     "BMC",
     ]
 
+import re
 
 from django.db.models import (
     CharField,
     ForeignKey,
     PROTECT,
 )
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from maasserver import DefaultMeta
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.schema import (
     POWER_FIELDS_BY_TYPE,
     POWER_PARAMETER_SCOPE,
+    POWER_TYPE_PARAMETERS_BY_NAME,
 )
 
 
@@ -79,14 +85,42 @@ class BMC(CleanSave, TimestampedModel):
         else:
             return self.id
 
-    def delete(self):
-        """Delete this BMC."""
-        maaslog.info("%s: Deleting BMC", self.id)
-        ip_address = self.ip_address
-        super(BMC, self).delete()
-        # Delete the related interfaces.
-        if ip_address:
-            ip_address.delete()
+    def extract_ip_from_power_parameters(self):
+        """ If an IP address can be extracted from our power parameters, create
+        or update our ip_address field and its subnet. """
+        new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
+        old_ip = self.ip_address.ip if self.ip_address else None
+        if new_ip != old_ip:
+            if new_ip is None:
+                # Set ip to None, save, then delete the old ip.
+                old_ip_address = self.ip_address
+                self.ip_address = None
+                self.save()
+                if old_ip_address is not None:
+                    old_ip_address.delete()
+            else:
+                try:
+                    # Update or create StaticIPAddress.
+                    if self.ip_address:
+                        self.ip_address.ip = new_ip
+                        self.ip_address.save()
+                        ip_address = self.ip_address
+                    else:
+                        ip_address = StaticIPAddress(
+                            ip=new_ip, alloc_type=IPADDRESS_TYPE.STICKY)
+                        ip_address.save()
+                        self.ip_address = ip_address
+                        self.save()
+                except Exception as error:
+                    maaslog.info(
+                        "BMC %d: Could not save extracted IP "
+                        "address '%s': '%s'", self.id, new_ip, error)
+                else:
+                    # StaticIPAddress saved successfully - update the Subnet.
+                    subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
+                    if subnet is not None:
+                        ip_address.subnet = subnet
+                        ip_address.save()
 
     @staticmethod
     def scope_power_parameters(power_type, power_params):
@@ -109,3 +143,47 @@ class BMC(CleanSave, TimestampedModel):
             else:
                 node_params[param_name] = power_params[param_name]
         return (bmc_params, node_params)
+
+    @staticmethod
+    def extract_ip_address(power_type, power_parameters):
+        """ Extract the ip_address from the power_parameters. If there is no
+        power_type, no power_parameters, or no valid value provided in the
+        power_address field, returns None. """
+        if not power_type or not power_parameters:
+            # Nothing to extract.
+            return None
+        power_type_parameters = POWER_TYPE_PARAMETERS_BY_NAME.get(power_type)
+        if not power_type_parameters:
+            maaslog.warning(
+                "No POWER_TYPE_PARAMETERS for power type %s" % power_type)
+            return None
+        ip_extractor = power_type_parameters.get('ip_extractor')
+        if not ip_extractor:
+            maaslog.info(
+                "No IP extractor configured for power type %s. "
+                "IP will not be extracted." % power_type)
+            return None
+        field_value = power_parameters.get(ip_extractor.get('field_name'))
+        if not field_value:
+            maaslog.warning(
+                "IP extractor field_value missing for %s" % power_type)
+            return None
+        extraction_pattern = ip_extractor.get('pattern')
+        if not extraction_pattern:
+            maaslog.warning(
+                "IP extractor extraction_pattern missing for %s" % power_type)
+            return None
+        match = re.match(extraction_pattern, field_value)
+        if match:
+            return match.group('address')
+        # no match found - return None
+        return None
+
+
+@receiver(post_delete)
+def delete_bmc(sender, instance, **kwargs):
+    """Clean up related ip_address when a BMC is deleted."""
+    if sender == BMC:
+        # Delete the related interfaces.
+        if instance.ip_address is not None:
+            instance.ip_address.delete()

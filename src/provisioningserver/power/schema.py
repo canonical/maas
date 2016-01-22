@@ -24,6 +24,24 @@ class POWER_PARAMETER_SCOPE:
     NODE = "node"
 
 
+# Some commonly used patterns here for convenience and re-use.
+class IP_EXTRACTOR_PATTERNS:
+
+    # Use the entire string as the value.
+    IDENTITY = '^(?P<address>.+?)$'
+
+    # The typical URL pattern. Extracts address field as the value.
+    URL = (r'^'
+           r'((?P<schema>.+?)://)?'
+           r'((?P<user>.+?)(:(?P<password>.*?))?@)?'
+           r'(?P<address>.*?)'
+           r'(:(?P<port>\d+?))?'
+           r'(?P<path>/.*?)?'
+           r'(?P<query>[?].*?)?'
+           r'$'
+           )
+
+
 class IPMI_DRIVER:
     DEFAULT = ''
     LAN = 'LAN'
@@ -52,6 +70,27 @@ CHOICE_FIELD_SCHEMA = {
     },
 }
 
+
+# Python REGEX pattern for extracting IP address from parameter field.
+# The field_name tells the extractor which power_parameter field to use.
+# Name the address field 'address' in your Python regex pattern.
+# The pattern will be used as in 're.match(pattern, field_value)'.
+IP_EXTRACTOR_SCHEMA = {
+    'title': "IP Extractor Configuration",
+    'type': 'object',
+    'properties': {
+        'field_name': {
+            'type': 'string',
+        },
+        'pattern': {
+            'type': 'string',
+        },
+    },
+    "dependencies": {
+        "field_name": ["pattern"],
+        "pattern": ["field_name"]
+    },
+}
 
 POWER_TYPE_PARAMETER_FIELD_SCHEMA = {
     'title': "Power type parameter field",
@@ -106,6 +145,7 @@ JSON_POWER_TYPE_SCHEMA = {
                 'type': 'array',
                 'items': POWER_TYPE_PARAMETER_FIELD_SCHEMA,
             },
+            'ip_extractor': IP_EXTRACTOR_SCHEMA,
         },
         'required': ['name', 'description', 'fields'],
     },
@@ -118,6 +158,13 @@ SM15K_POWER_CONTROL_CHOICES = [
     ["restapi", "REST API v0.9"],
     ["restapi2", "REST API v2.0"],
     ]
+
+
+def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
+    return {
+        'field_name': field_name,
+        'pattern': pattern,
+    }
 
 
 def make_json_field(
@@ -186,6 +233,8 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_pass', "Power password (optional)",
                 required=False, field_type='password'),
         ],
+        'ip_extractor': make_ip_extractor(
+            'power_address', IP_EXTRACTOR_PATTERNS.URL),
     },
     {
         'name': 'vmware',
@@ -219,6 +268,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'ipmi',
@@ -234,6 +284,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'mac_address', "Power MAC", scope=POWER_PARAMETER_SCOPE.NODE)
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'moonshot',
@@ -247,6 +298,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_hwaddress', "Power hardware address",
                 scope=POWER_PARAMETER_SCOPE.NODE),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'sm15k',
@@ -262,6 +314,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_control', "Power control type", field_type='choice',
                 choices=SM15K_POWER_CONTROL_CHOICES, default='ipmi'),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'amt',
@@ -274,6 +327,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_pass', "Power password", field_type='password'),
             make_json_field('power_address', "Power address")
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'dli',
@@ -286,6 +340,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'power_pass', "Power password", field_type='password'),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'ucsm',
@@ -298,6 +353,8 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'power_pass', "API password", field_type='password'),
         ],
+        'ip_extractor': make_ip_extractor(
+            'power_address', IP_EXTRACTOR_PATTERNS.URL),
     },
     {
         'name': 'mscm',
@@ -313,6 +370,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 "(X=cartridge number, Y=node number).",
                 scope=POWER_PARAMETER_SCOPE.NODE),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'msftocs',
@@ -327,6 +385,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'blade_id', "Blade ID (Typically 1-24)",
                 scope=POWER_PARAMETER_SCOPE.NODE),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'apc',
@@ -340,6 +399,7 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'power_on_delay', "Power ON outlet delay (seconds)",
                 default='5'),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
     {
         'name': 'hmc',
@@ -356,8 +416,12 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'lpar', "HMC logical partition",
                 scope=POWER_PARAMETER_SCOPE.NODE),
         ],
+        'ip_extractor': make_ip_extractor('power_address'),
     },
 ]
+
+POWER_TYPE_PARAMETERS_BY_NAME = {
+    param['name']: param for param in JSON_POWER_TYPE_PARAMETERS}
 
 POWER_FIELDS_BY_TYPE = {}
 for power_type in JSON_POWER_TYPE_PARAMETERS:

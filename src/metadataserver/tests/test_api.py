@@ -929,7 +929,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             power_type="mscm", status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         response = call_signal(
@@ -955,7 +955,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         response = call_signal(
@@ -970,7 +970,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
-            power_address=factory.make_string(),
+            power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         response = call_signal(

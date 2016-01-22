@@ -741,6 +741,7 @@ class Node(CleanSave, TimestampedModel):
         (bmc, _) = BMC.objects.get_or_create(
             power_type=power_type, power_parameters=bmc_params)
         self.bmc = bmc
+        bmc.extract_ip_from_power_parameters()
 
     @property
     def power_type(self):
@@ -1134,7 +1135,7 @@ class Node(CleanSave, TimestampedModel):
         self.clean_boot_disk(prev)
         self.clean_boot_interface(prev)
 
-    def clean_orphaned_bmcs(self):
+    def remove_orphaned_bmcs(self):
         # If bmc has changed post-save, clean up any potentially orphaned BMC.
         if self.prev_bmc_id is not None and self.prev_bmc_id != self.bmc_id:
             try:
@@ -1148,7 +1149,7 @@ class Node(CleanSave, TimestampedModel):
 
     def save(self, *args, **kwargs):
         super(Node, self).save(*args, **kwargs)
-        self.clean_orphaned_bmcs()
+        self.remove_orphaned_bmcs()
 
     def display_status(self):
         """Return status text as displayed to the user."""
