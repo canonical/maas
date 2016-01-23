@@ -81,7 +81,7 @@ DHCP_CONNECT = True
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas-region-admin'
 
-API_URL_REGEXP = '^/api/1[.]0/'
+API_URL_REGEXP = '^/api/2[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
 
 # We handle exceptions ourselves (in

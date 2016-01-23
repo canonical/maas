@@ -5,7 +5,7 @@
 Version
 =======
 
-MAAS publishes a special view at ``.../api/1.0/version/`` that returns the
+MAAS publishes a special view at ``.../api/2.0/version/`` that returns the
 version of the MAAS server and the list of the server's capabilities.
 When programmatically probing a MAAS installation, use only the
 ``capabilities`` list. Avoid using ``version`` and ``subversion`` for anything

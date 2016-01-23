@@ -68,7 +68,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/', reverse('nodegroups_handler'))
+            '/api/2.0/nodegroups/', reverse('nodegroups_handler'))
 
     def test_reverse_points_to_nodegroups_api(self):
         self.assertEqual(
@@ -95,7 +95,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/name/',
+            '/api/2.0/nodegroups/name/',
             reverse('nodegroup_handler', args=['name']))
 
     def test_GET_returns_node_group(self):

@@ -158,7 +158,7 @@ class AccountAPITest(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/account/', reverse('account_handler'))
+            '/api/2.0/account/', reverse('account_handler'))
 
     def test_create_authorisation_token(self):
         # The api operation create_authorisation_token returns a json dict
@@ -197,11 +197,11 @@ class TestSSHKeyHandlers(APITestCase):
 
     def test_sshkeys_handler_path(self):
         self.assertEqual(
-            '/api/1.0/account/prefs/sshkeys/', reverse('sshkeys_handler'))
+            '/api/2.0/account/prefs/sshkeys/', reverse('sshkeys_handler'))
 
     def test_sshkey_handler_path(self):
         self.assertEqual(
-            '/api/1.0/account/prefs/sshkeys/key/',
+            '/api/2.0/account/prefs/sshkeys/key/',
             reverse('sshkey_handler', args=['key']))
 
     def test_list_works(self):
@@ -311,7 +311,7 @@ class MAASAPITest(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/maas/', reverse('maas_handler'))
+            '/api/2.0/maas/', reverse('maas_handler'))
 
     def test_simple_user_get_config_forbidden(self):
         response = self.client.get(

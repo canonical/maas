@@ -90,9 +90,9 @@ class TestFunctions(MAASTestCase):
         response["content-type"] = "application/json"
         request.return_value = response, bytes(json.dumps(content), "utf-8")
         self.assertEqual(
-            content, api.fetch_api_description("http://example.com/api/1.0/"))
+            content, api.fetch_api_description("http://example.com/api/2.0/"))
         self.assertThat(request, MockCalledOnceWith(
-            "http://example.com/api/1.0/describe/", "GET", body=None,
+            "http://example.com/api/2.0/describe/", "GET", body=None,
             headers=None))
 
     def test_fetch_api_description_not_okay(self):
@@ -105,7 +105,7 @@ class TestFunctions(MAASTestCase):
         request.return_value = response, json.dumps(content)
         error = self.assertRaises(
             CommandError, api.fetch_api_description,
-            "http://example.com/api/1.0/")
+            "http://example.com/api/2.0/")
         error_expected = "%d %s:\n%s" % (
             http.client.BAD_REQUEST,
             http.client.responses[http.client.BAD_REQUEST],
@@ -123,7 +123,7 @@ class TestFunctions(MAASTestCase):
         request.return_value = response, json.dumps(content)
         error = self.assertRaises(
             CommandError, api.fetch_api_description,
-            "http://example.com/api/1.0/")
+            "http://example.com/api/2.0/")
         self.assertEqual(
             "Expected application/json, got: text/css",
             "%s" % error)
@@ -479,7 +479,7 @@ class TestActionHelp(MAASTestCase):
 class TestPayloadPreparation(MAASTestCase):
     """Tests for `maascli.api.Action.prepare_payload`."""
 
-    uri_base = "http://example.com/MAAS/api/1.0/"
+    uri_base = "http://example.com/MAAS/api/2.0/"
 
     # Scenarios for ReSTful operations; i.e. without an "op" parameter.
     scenarios_without_op = (

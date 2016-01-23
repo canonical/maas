@@ -35,7 +35,7 @@ def make_credentials():
 
 def make_options():
     credentials = ':'.join(make_credentials())
-    url = 'http://example.com/api/1.0/'
+    url = 'http://example.com/api/2.0/'
     options = Namespace(
         credentials=credentials, execute=None, insecure=False,
         profile_name='test', url=url)

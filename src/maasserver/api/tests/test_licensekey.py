@@ -42,7 +42,7 @@ class TestLicenseKey(APITestCase):
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('series')
         self.assertEqual(
-            '/api/1.0/license-key/%s/%s' % (osystem, distro_series),
+            '/api/2.0/license-key/%s/%s' % (osystem, distro_series),
             self.get_url(osystem, distro_series))
 
     def test_POST_is_prohibited(self):
@@ -148,7 +148,7 @@ class TestLicenseKeysAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/license-keys/', reverse('license_keys_handler'))
+            '/api/2.0/license-keys/', reverse('license_keys_handler'))
 
     def test_GET_returns_license_keys(self):
         self.become_admin()

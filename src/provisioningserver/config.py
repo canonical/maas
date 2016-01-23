@@ -770,7 +770,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     @property
     def tftp_generator_url(self):
         """The URL at which to obtain the TFTP options for a node."""
-        return "%s/api/1.0/pxeconfig/" % self.maas_url.rstrip("/")
+        return "%s/api/2.0/pxeconfig/" % self.maas_url.rstrip("/")
 
     # GRUB options.
 

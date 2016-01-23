@@ -28,7 +28,7 @@ class TestUsers(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/users/', reverse('users_handler'))
+            '/api/2.0/users/', reverse('users_handler'))
 
     def test_POST_creates_user(self):
         self.become_admin()
@@ -130,7 +130,7 @@ class TestUser(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/users/username/',
+            '/api/2.0/users/username/',
             reverse('user_handler', args=['username']))
 
     def test_GET_finds_user(self):

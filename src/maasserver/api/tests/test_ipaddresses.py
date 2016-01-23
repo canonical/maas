@@ -80,7 +80,7 @@ class TestIPAddressesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/ipaddresses/', reverse('ipaddresses_handler'))
+            '/api/2.0/ipaddresses/', reverse('ipaddresses_handler'))
 
     def test_POST_reserve_creates_ipaddress(self):
         interface = self.make_interface()

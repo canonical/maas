@@ -19,7 +19,7 @@ class TestZonesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/zones/', reverse('zones_handler'))
+            '/api/2.0/zones/', reverse('zones_handler'))
 
     def test_new_creates_zone(self):
         self.become_admin()

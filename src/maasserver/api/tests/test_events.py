@@ -56,7 +56,7 @@ def make_events_with_log_levels(log_levels_dict, events_per_level=2):
 
 
 class TestEventsAPI(APITestCase):
-    """Tests for /api/1.0/events/."""
+    """Tests for /api/2.0/events/."""
     log_levels = (('CRITICAL', logging.CRITICAL),
                   ('ERROR', logging.ERROR),
                   ('WARNING', logging.WARNING),
@@ -66,7 +66,7 @@ class TestEventsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/events/', reverse('events_handler'))
+            '/api/2.0/events/', reverse('events_handler'))
 
     def create_nodes_in_group_with_events(
             self, nodegroup, number_nodes=2, number_events=2):

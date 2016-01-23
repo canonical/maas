@@ -42,7 +42,7 @@ class TestBootSourceAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/boot-sources/3/',
+            '/api/2.0/boot-sources/3/',
             reverse('boot_source_handler', args=['3']))
 
     def test_GET_returns_boot_source(self):
@@ -119,7 +119,7 @@ class TestBootSourceBackwardAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/',
+            '/api/2.0/nodegroups/uuid/boot-sources/3/',
             reverse('boot_source_backward_handler', args=['uuid', '3']))
 
     def test_GET_returns_boot_source(self):
@@ -216,7 +216,7 @@ class TestBootSourcesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/boot-sources/',
+            '/api/2.0/boot-sources/',
             reverse('boot_sources_handler'))
 
     def test_GET_returns_boot_source_list(self):
@@ -315,7 +315,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/',
+            '/api/2.0/nodegroups/uuid/boot-sources/',
             reverse('boot_sources_backward_handler', args=['uuid']))
 
     def test_GET_returns_boot_source_list(self):

@@ -140,7 +140,7 @@ Use the ``node-interfaces create-bond`` API to create a bond. For example::
         "tags": [],
         "vlan": {
             "id": 0,
-            "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/0/",
+            "resource_uri": "/MAAS/api/2.0/fabrics/0/vlans/0/",
             "name": "Default VLAN",
             "vid": 0,
             "fabric": "fabric-0"
@@ -154,7 +154,7 @@ Use the ``node-interfaces create-bond`` API to create a bond. For example::
         "mac_address": "00:50:56:2b:60:53",
         "type": "bond",
         "children": [],
-        "resource_uri": "/MAAS/api/1.0/nodes/node-d83ce230-4b50-11e5-a267-00163eb185eb/interfaces/41/"
+        "resource_uri": "/MAAS/api/2.0/nodes/node-d83ce230-4b50-11e5-a267-00163eb185eb/interfaces/41/"
     }
 
 Note that in the example above, the bond contains two interfaces because
@@ -175,7 +175,7 @@ associate it with the interface. For example::
     Machine-readable output follows:
     {
         "id": 1,
-        "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/1/",
+        "resource_uri": "/MAAS/api/2.0/fabrics/0/vlans/1/",
         "name": "Storage network",
         "vid": 100,
         "fabric": "fabric-0"
@@ -196,7 +196,7 @@ Now that a VLAN is created, it may be associated with a new interface::
         "tags": [],
         "vlan": {
             "id": 1,
-            "resource_uri": "/MAAS/api/1.0/fabrics/0/vlans/1/",
+            "resource_uri": "/MAAS/api/2.0/fabrics/0/vlans/1/",
             "name": "Storage network",
             "vid": 100,
             "fabric": "fabric-0"
@@ -209,7 +209,7 @@ Now that a VLAN is created, it may be associated with a new interface::
         "mac_address": "00:50:56:2b:60:53",
         "type": "vlan",
         "children": [],
-        "resource_uri": "/MAAS/api/1.0/nodes/node-d83ce230-4b50-11e5-a267-00163eb185eb/interfaces/44/"
+        "resource_uri": "/MAAS/api/2.0/nodes/node-d83ce230-4b50-11e5-a267-00163eb185eb/interfaces/44/"
     }
 
 

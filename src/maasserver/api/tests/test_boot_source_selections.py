@@ -56,7 +56,7 @@ class TestBootSourceSelectionAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/boot-sources/3/selections/4/',
+            '/api/2.0/boot-sources/3/selections/4/',
             reverse(
                 'boot_source_selection_handler',
                 args=['3', '4']))
@@ -149,7 +149,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/selections/4/',
+            '/api/2.0/nodegroups/uuid/boot-sources/3/selections/4/',
             reverse(
                 'boot_source_selection_backward_handler',
                 args=['uuid', '3', '4']))
@@ -257,7 +257,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/boot-sources/3/selections/',
+            '/api/2.0/boot-sources/3/selections/',
             reverse('boot_source_selections_handler', args=['3']))
 
     def test_GET_returns_boot_source_selection_list(self):
@@ -345,7 +345,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/selections/',
+            '/api/2.0/nodegroups/uuid/boot-sources/3/selections/',
             reverse(
                 'boot_source_selections_backward_handler',
                 args=['uuid', '3']))

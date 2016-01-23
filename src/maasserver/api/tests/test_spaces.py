@@ -36,7 +36,7 @@ class TestSpacesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/spaces/', get_spaces_uri())
+            '/api/2.0/spaces/', get_spaces_uri())
 
     def test_read(self):
         for _ in range(3):
@@ -95,7 +95,7 @@ class TestSpaceAPI(APITestCase):
     def test_handler_path(self):
         space = factory.make_Space()
         self.assertEqual(
-            '/api/1.0/spaces/%s/' % space.id,
+            '/api/2.0/spaces/%s/' % space.id,
             get_space_uri(space))
 
     def test_read(self):

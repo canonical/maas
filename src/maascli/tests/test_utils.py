@@ -156,9 +156,9 @@ class TestFunctions(MAASTestCase):
 
     def test_api_url(self):
         transformations = list({
-            "http://example.com/": "http://example.com/api/1.0/",
-            "http://example.com/foo": "http://example.com/foo/api/1.0/",
-            "http://example.com/foo/": "http://example.com/foo/api/1.0/",
+            "http://example.com/": "http://example.com/api/2.0/",
+            "http://example.com/foo": "http://example.com/foo/api/2.0/",
+            "http://example.com/foo/": "http://example.com/foo/api/2.0/",
             "http://example.com/api/7.9": "http://example.com/api/7.9/",
             "http://example.com/api/7.9/": "http://example.com/api/7.9/",
             }.items())

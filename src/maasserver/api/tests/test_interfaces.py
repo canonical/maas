@@ -71,7 +71,7 @@ class TestInterfacesAPI(APITestCase):
     def test_handler_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/1.0/nodes/%s/interfaces/' % (node.system_id),
+            '/api/2.0/nodes/%s/interfaces/' % (node.system_id),
             get_interfaces_uri(node))
 
     def test_read(self):
@@ -496,7 +496,7 @@ class TestNodeInterfaceAPI(APITestCase):
         node = factory.make_Node(interface=True)
         interface = node.get_boot_interface()
         self.assertEqual(
-            '/api/1.0/nodes/%s/interfaces/%s/' % (
+            '/api/2.0/nodes/%s/interfaces/%s/' % (
                 node.system_id, interface.id),
             get_interface_uri(interface, node=node))
 

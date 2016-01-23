@@ -122,7 +122,7 @@ class MachinesAPILoggedInTest(MAASServerTestCase):
 
 
 class TestMachineAPI(APITestCase):
-    """Tests for /api/1.0/machines/<machine>/."""
+    """Tests for /api/2.0/machines/<machine>/."""
 
     def setUp(self):
         super(TestMachineAPI, self).setUp()
@@ -132,7 +132,7 @@ class TestMachineAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/machines/machine-name/',
+            '/api/2.0/machines/machine-name/',
             reverse('machine_handler', args=['machine-name']))
 
     @staticmethod
@@ -1404,7 +1404,7 @@ class TestMachineAPI(APITestCase):
 
 
 class TestClaimStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/machines/<machine>/?op=claim_sticky_ip_address"""
+    """Tests for /api/2.0/machines/<machine>/?op=claim_sticky_ip_address"""
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
@@ -1650,7 +1650,7 @@ class TestMachineAPITransactional(APITransactionTestCase):
 
 
 class TestMachineReleaseStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/machines/?op=release_sticky_ip_address."""
+    """Tests for /api/2.0/machines/?op=release_sticky_ip_address."""
 
     @staticmethod
     def get_machine_uri(machine):
@@ -1768,7 +1768,7 @@ class TestMachineReleaseStickyIpAddressAPITransactional(
 
 
 class TestGetDetails(APITestCase):
-    """Tests for /api/1.0/machines/<machine>/?op=details."""
+    """Tests for /api/2.0/machines/<machine>/?op=details."""
 
     def make_lshw_result(self, machine, script_result=0):
         return factory.make_NodeResult_for_commissioning(
@@ -1817,7 +1817,7 @@ class TestGetDetails(APITestCase):
 
 
 class TestMarkBroken(APITestCase):
-    """Tests for /api/1.0/machines/<machine>/?op=mark_broken"""
+    """Tests for /api/2.0/machines/<machine>/?op=mark_broken"""
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
@@ -1906,7 +1906,7 @@ class TestMarkBroken(APITestCase):
 
 
 class TestMarkFixed(APITestCase):
-    """Tests for /api/1.0/machines/<machine>/?op=mark_fixed"""
+    """Tests for /api/2.0/machines/<machine>/?op=mark_fixed"""
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
@@ -1984,7 +1984,7 @@ class TestPowerParameters(APITestCase):
 
 
 class TestAbortOperation(APITransactionTestCase):
-    """Tests for /api/1.0/machines/<machine>/?op=abort_operation"""
+    """Tests for /api/2.0/machines/<machine>/?op=abort_operation"""
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""

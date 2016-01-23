@@ -51,7 +51,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
         action_bases = (BootResourcesCreateAction,)
         action_ns = {
             "action": {'method': 'POST'},
-            "handler": {'uri': b'/api/1.0/boot-resources/', 'params': []},
+            "handler": {'uri': b'/api/2.0/boot-resources/', 'params': []},
             "profile": {'credentials': make_api_credentials()}
             }
         action_class = type("create", action_bases, action_ns)

@@ -191,7 +191,7 @@ physical and virtual block devices.::
   [
       {
           "size": 21474836480,
-          "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/",
+          "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/",
           "uuid": null,
           "tags": [
               "ssd",
@@ -217,7 +217,7 @@ physical and virtual block devices.::
                       "fstype": "lvm-pv"
                   },
                   "path": "/dev/disk/by-dname/sda-part1",
-                  "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
+                  "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
                   "type": "partition",
                   "id": 1,
                   "size": 21471690752
@@ -225,7 +225,7 @@ physical and virtual block devices.::
           ]
       },
       {
-          "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+          "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
           "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
           "tags": [],
           "partitions": [],
@@ -258,7 +258,7 @@ the `read` operation on the `block-device` endpoint provides that information.
   $ maas my-maas-session block-device read node-f4e2281c-d19a-11e4-a5ac-00163edde41f 12
   {
       "size": 21474836480,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
       "uuid": null,
       "tags": [],
       "name": "sdb",
@@ -278,7 +278,7 @@ It is also possible to use the name of the block device instead of its ID.::
   $ maas my-maas-session block-device read node-f4e2281c-d19a-11e4-a5ac-00163edde41f sdb
   {
       "size": 21474836480,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
       "uuid": null,
       "tags": [],
       "name": "sdb",
@@ -312,7 +312,7 @@ fallback.::
   $ maas my-maas-session block-devices create node-f4e2281c-d19a-11e4-a5ac-00163edde41f name=sdb model="QEMU HARDDISK" serial="QM00001" size=21474836480 block_size=4096
   {
       "size": 21474836480,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/12/",
       "uuid": null,
       "tags": [],
       "name": "sdb",
@@ -346,7 +346,7 @@ block device.::
   $ maas my-maas-session block-device update node-f4e2281c-d19a-11e4-a5ac-00163edde41f 11 name=newroot
   {
       "size": 21470642176,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
       "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
       "tags": [],
       "name": "vgroot-newroot",
@@ -382,7 +382,7 @@ Format the entire block device with a file system.::
   $ maas my-maas-session block-device format node-f4e2281c-d19a-11e4-a5ac-00163edde41f 11 fstype=ext4
   {
       "size": 21470642176,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
       "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
       "tags": [],
       "name": "vgroot-newroot",
@@ -415,7 +415,7 @@ Remove the file system from the block device.::
   $ maas my-maas-session block-device unformat node-f4e2281c-d19a-11e4-a5ac-00163edde41f 11
   {
       "size": 21470642176,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
       "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
       "tags": [],
       "name": "vgroot-newroot",
@@ -438,7 +438,7 @@ have a filesystem.::
   $ maas my-maas-session block-device mount node-f4e2281c-d19a-11e4-a5ac-00163edde41f 11 mount_point=/srv
   {
       "size": 21470642176,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
       "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
       "tags": [],
       "name": "vgroot-newroot",
@@ -466,7 +466,7 @@ Remove the mount point from the block device.::
   $ maas my-maas-session block-device unmount node-f4e2281c-d19a-11e4-a5ac-00163edde41f 11
   {
       "size": 21470642176,
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/11/",
       "uuid": "f58b8fb2-dcf2-4ba9-a01c-60409829a64e",
       "tags": [],
       "name": "vgroot-newroot",
@@ -524,7 +524,7 @@ View all the partitions on a block device.::
               "fstype": "lvm-pv"
           },
           "path": "/dev/disk/by-dname/sda-part1",
-          "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
+          "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
           "type": "partition",
           "id": 1,
           "size": 21471690752
@@ -550,7 +550,7 @@ information.
           "fstype": "lvm-pv"
       },
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/1",
       "type": "partition",
       "id": 1,
       "size": 21471690752
@@ -566,7 +566,7 @@ Creates a partition on a block device.::
       "uuid": "fc06be78-1665-4fd2-95d3-f588aaad3575",
       "bootable": false,
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/2",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/2",
       "type": "partition",
       "id": 2,
       "size": 2000003072
@@ -595,7 +595,7 @@ Format the partition with a file system.::
           "fstype": "ext4"
       },
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
       "type": "partition",
       "id": 3,
       "size": 2000003072
@@ -616,7 +616,7 @@ Remove the file system from the partition.::
       "uuid": "fb468be6-64bd-434a-b95b-b8c932610960",
       "bootable": false,
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
       "type": "partition",
       "id": 3,
       "size": 2000003072
@@ -639,7 +639,7 @@ have a filesystem.::
           "fstype": "ext4"
       },
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
       "type": "partition",
       "id": 3,
       "size": 2000003072
@@ -661,7 +661,7 @@ Remove the mount point from the partition.::
           "fstype": "ext4"
       },
       "path": "/dev/disk/by-dname/sda-part1",
-      "resource_uri": "/MAAS/api/1.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
+      "resource_uri": "/MAAS/api/2.0/nodes/node-f4e2281c-d19a-11e4-a5ac-00163edde41f/blockdevices/6/partition/3",
       "type": "partition",
       "id": 3,
       "size": 2000003072

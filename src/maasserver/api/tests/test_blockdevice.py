@@ -841,7 +841,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_update_physical_block_device_as_admin(self):
         """Check update block device with a physical one.
 
-        PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
+        PUT /api/2.0/nodes/{system_id}/blockdevice/{id}
         """
         self.become_admin()
         node = factory.make_Node(
@@ -867,7 +867,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_update_virtual_block_device_as_admin(self):
         """Check update block device with a virtual one.
 
-        PUT /api/1.0/nodes/{system_id}/blockdevice/{id}
+        PUT /api/2.0/nodes/{system_id}/blockdevice/{id}
         """
         self.become_admin()
         node = factory.make_Node(

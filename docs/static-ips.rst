@@ -30,7 +30,7 @@ summarised here:
 Sticky IPs
 ----------
 Synopsis:
-  ``POST /api/1.0/nodes/{system_id}/`` ``op=claim_sticky_ip_address``
+  ``POST /api/2.0/nodes/{system_id}/`` ``op=claim_sticky_ip_address``
 
 Normally, IPs are released back into the pool of available IPs once a node
 is released by a user.  A "Sticky" IP is one which is allocated to an interface
@@ -40,11 +40,11 @@ more predictable IPs at the cost of wasting IPs when the node is not in use.
 Unmanaged User-allocated IPs
 ----------------------------
 Synopsis:
-  ``GET /api/1.0/ipaddresses/``
+  ``GET /api/2.0/ipaddresses/``
 
-  ``POST /api/1.0/ipaddresses/`` ``op=release``
+  ``POST /api/2.0/ipaddresses/`` ``op=release``
 
-  ``POST /api/1.0/ipaddresses/`` ``op=reserve``
+  ``POST /api/2.0/ipaddresses/`` ``op=reserve``
 
 This API allows users to request an ad-hoc IP address for use in any way they
 see fit.  The IP is not tied to any node in MAAS and is guaranteed not to be

@@ -87,7 +87,7 @@ BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
     # See http://maas.ubuntu.com/docs/api.html#boot-source
     #
     # To do this, first POST to the nodegroup's boot-sources endpoint (e.g.
-    # http://<server>/api/1.0/nodegroups/<uuid>/boot-sources), and then POST
+    # http://<server>/api/2.0/nodegroups/<uuid>/boot-sources), and then POST
     # to the resulting boot source to define selections. Each cluster can have
     # any number of boot sources, and each boot source can have any number of
     # selections, as in the old configuration.

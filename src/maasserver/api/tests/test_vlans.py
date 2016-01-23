@@ -41,7 +41,7 @@ class TestVlansAPI(APITestCase):
     def test_handler_path(self):
         fabric = factory.make_Fabric()
         self.assertEqual(
-            '/api/1.0/fabrics/%s/vlans/' % (fabric.id),
+            '/api/2.0/fabrics/%s/vlans/' % (fabric.id),
             get_vlans_uri(fabric))
 
     def test_read(self):
@@ -115,7 +115,7 @@ class TestVlanAPI(APITestCase):
     def test_handler_path(self):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric)
-        self.assertEqual('/api/1.0/vlans/%s/' % vlan.id, get_vlan_uri(vlan))
+        self.assertEqual('/api/2.0/vlans/%s/' % vlan.id, get_vlan_uri(vlan))
 
     def test_read(self):
         fabric = factory.make_Fabric()

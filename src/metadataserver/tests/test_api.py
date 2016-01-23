@@ -112,7 +112,7 @@ class TestHelpers(DjangoTestCase):
         pass
 
     def test_check_version_reports_unknown_version(self):
-        self.assertRaises(UnknownMetadataVersion, check_version, '1.0')
+        self.assertRaises(UnknownMetadataVersion, check_version, '2.0')
 
     def test_get_node_for_request_finds_node(self):
         node = factory.make_Node()

@@ -197,7 +197,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
-        api_request = factory.make_fake_request("/api/1.0/hello")
+        api_request = factory.make_fake_request("/api/2.0/hello")
         error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
         response = middleware.process_exception(api_request, exception)
@@ -217,7 +217,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
     def test_503_response_includes_retry_after_header(self):
         middleware = APIErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         error = ExternalProcessError(returncode=-1, cmd="foo-bar")
         response = middleware.process_exception(request, error)
 
@@ -233,7 +233,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_request_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = factory.make_fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/2.0/nodes/")
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(
             logger.output,
@@ -241,7 +241,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_response_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = factory.make_fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/2.0/nodes/")
         response = HttpResponse(
             content="test content",
             content_type=b"text/plain; charset=utf-8")
@@ -251,7 +251,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_logs_request(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
-        request = factory.make_fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/2.0/nodes/")
         request.content = "test content"
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(logger.output, Contains(build_request_repr(request)))
@@ -338,7 +338,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_ignores_error_on_API(self):
         middleware = RPCErrorsMiddleware()
-        non_api_request = factory.make_fake_request("/api/1.0/ohai")
+        non_api_request = factory.make_fake_request("/api/2.0/ohai")
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
         exception = exception_class(factory.make_string())
@@ -369,7 +369,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIRPCErrorsMiddleware()
-        api_request = factory.make_fake_request("/api/1.0/hello")
+        api_request = factory.make_fake_request("/api/2.0/hello")
         error_message = factory.make_string()
         exception_class = random.choice(
             (NoConnectionsAvailable, PowerActionAlreadyInProgress))
@@ -392,7 +392,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
     def test_no_connections_available_returned_as_503(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to connect to cluster '%s'; no connections available" %
             factory.make_name('cluster'))
@@ -407,7 +407,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
     def test_503_response_includes_retry_after_header_by_default(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         error = NoConnectionsAvailable(factory.make_name())
         response = middleware.process_exception(request, error)
 
@@ -421,7 +421,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
     def test_power_action_already_in_progress_returned_as_503(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         error_message = (
             "Unable to execute power action: another action is already in "
             "progress for node %s" % factory.make_name('node'))
@@ -436,7 +436,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
     def test_handles_TimeoutError(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         error_message = "No thanks, I'm trying to give them up."
         error = TimeoutError(error_message)
         response = middleware.process_exception(request, error)
@@ -449,7 +449,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
     def test_ignores_non_rpc_errors(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
-            "/api/1.0/" + factory.make_string(), 'POST')
+            "/api/2.0/" + factory.make_string(), 'POST')
         exception = ZeroDivisionError(
             "You may think it's a long walk down the street to the chemist "
             "but that's just peanuts to space!")

@@ -58,7 +58,7 @@ refer to the profile by this name.
 
 For example, you might log in with a command line like::
 
- $ maas login my-maas http://10.98.0.13/MAAS/api/1.0
+ $ maas login my-maas http://10.98.0.13/MAAS/api/2.0
  AWSCRMzqMNy:jjk...5e1FenoP82Qm5te2
 
 This creates the profile 'my-maas' and registers it with the given key

@@ -12,9 +12,9 @@ API versions
 ------------
 
 At any given time, MAAS may support multiple versions of its API.  The version
-number is included in the API's URL, e.g. /api/1.0/
+number is included in the API's URL, e.g. /api/2.0/
 
-For now, 1.0 is the only supported version.
+For now, 2.0 is the only supported version.
 
 
 HTTP methods and parameter-passing
@@ -43,7 +43,7 @@ Most resources offer a choice of GET or POST operations.  In those cases these
 methods will take one special parameter, called `op`, to indicate what it is
 you want to do.
 
-For example, to list all nodes, you might GET "/api/1.0/nodes/?op=list".
+For example, to list all nodes, you might GET "/api/2.0/nodes/?op=list".
 """
 
 __all__ = [

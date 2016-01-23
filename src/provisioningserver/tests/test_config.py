@@ -675,7 +675,7 @@ class TestClusterConfigurationTFTPGeneratorURL(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture(maas_url=random_url))
         with ClusterConfiguration.open() as configuration:
             self.assertEqual(
-                random_url + "/api/1.0/pxeconfig/",
+                random_url + "/api/2.0/pxeconfig/",
                 configuration.tftp_generator_url)
 
     def test__strips_trailing_slashes_from_maas_url(self):
@@ -683,7 +683,7 @@ class TestClusterConfigurationTFTPGeneratorURL(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture(maas_url=random_url))
         with ClusterConfiguration.open() as configuration:
             self.assertEqual(
-                random_url.rstrip("/") + "/api/1.0/pxeconfig/",
+                random_url.rstrip("/") + "/api/2.0/pxeconfig/",
                 configuration.tftp_generator_url)
 
 

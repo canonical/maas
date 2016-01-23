@@ -52,7 +52,7 @@ class TestSubnetsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/subnets/', get_subnets_uri())
+            '/api/2.0/subnets/', get_subnets_uri())
 
     def test_read(self):
         subnets = [
@@ -133,7 +133,7 @@ class TestSubnetAPI(APITestCase):
     def test_handler_path(self):
         subnet = factory.make_Subnet()
         self.assertEqual(
-            '/api/1.0/subnets/%s/' % subnet.id,
+            '/api/2.0/subnets/%s/' % subnet.id,
             get_subnet_uri(subnet))
 
     def test_read(self):

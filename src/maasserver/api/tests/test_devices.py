@@ -42,7 +42,7 @@ class TestDevicesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/devices/', reverse('devices_handler'))
+            '/api/2.0/devices/', reverse('devices_handler'))
 
     def test_new_creates_device(self):
         hostname = factory.make_name('host')
@@ -207,7 +207,7 @@ class TestDeviceAPI(APITestCase):
     def test_handler_path(self):
         system_id = factory.make_name('system-id')
         self.assertEqual(
-            '/api/1.0/devices/%s/' % system_id,
+            '/api/2.0/devices/%s/' % system_id,
             reverse('device_handler', args=[system_id]))
 
     def test_POST_method_doesnt_exist(self):
@@ -284,7 +284,7 @@ class TestDeviceAPI(APITestCase):
 
 
 class TestClaimStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/devices/?op=claim_sticky_ip_address."""
+    """Tests for /api/2.0/devices/?op=claim_sticky_ip_address."""
 
     def test__claims_ip_address_from_cluster_interface_static_range(self):
         ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
@@ -552,7 +552,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
 
 
 class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/devices/?op=release_sticky_ip_address."""
+    """Tests for /api/2.0/devices/?op=release_sticky_ip_address."""
 
     def test__releases_ip_address(self):
         parent = factory.make_Node_with_Interface_on_Subnet()

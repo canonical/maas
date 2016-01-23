@@ -55,7 +55,7 @@ class TestVolumeGroups(APITestCase):
     def test_handler_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/1.0/nodes/%s/volume-groups/' % (node.system_id),
+            '/api/2.0/nodes/%s/volume-groups/' % (node.system_id),
             get_volume_groups_uri(node))
 
     def test_read(self):
@@ -178,7 +178,7 @@ class TestVolumeGroupAPI(APITestCase):
         volume_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
         self.assertEqual(
-            '/api/1.0/nodes/%s/volume-group/%s/' % (
+            '/api/2.0/nodes/%s/volume-group/%s/' % (
                 node.system_id, volume_group.id),
             get_volume_group_uri(volume_group, node=node))
 

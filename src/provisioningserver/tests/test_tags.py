@@ -502,7 +502,7 @@ class TestTagUpdating(PservTestCase):
         self.patch(client, 'get', mock)
         result = tags.get_nodes_for_node_group(client, uuid)
         self.assertEqual(['system-id1', 'system-id2'], result)
-        url = '/api/1.0/nodegroups/%s/' % (uuid,)
+        url = '/api/2.0/nodegroups/%s/' % (uuid,)
         mock.assert_called_once_with(url, op='list_nodes')
 
     def test_get_details_calls_correct_api_and_parses_result(self):
@@ -528,7 +528,7 @@ class TestTagUpdating(PservTestCase):
         result = tags.get_details_for_nodes(
             client, uuid, ['system-1', 'system-2'])
         self.assertEqual(data, result)
-        url = '/api/1.0/nodegroups/%s/' % (uuid,)
+        url = '/api/2.0/nodegroups/%s/' % (uuid,)
         post.assert_called_once_with(
             url, op='details', system_ids=["system-1", "system-2"])
 
@@ -548,7 +548,7 @@ class TestTagUpdating(PservTestCase):
             client, name, tag_definition, uuid,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = '/api/1.0/tags/%s/' % (name,)
+        url = '/api/2.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True, nodegroup=uuid,
             definition=tag_definition,
@@ -573,7 +573,7 @@ class TestTagUpdating(PservTestCase):
             client, name, wrong_tag_definition,
             uuid, ['add-system-id'], ['remove-1', 'remove-2'])
         # self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = '/api/1.0/tags/%s/' % (name,)
+        url = '/api/2.0/tags/%s/' % (name,)
         self.assertEqual({}, result)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True, nodegroup=uuid,
@@ -628,8 +628,8 @@ class TestTagUpdating(PservTestCase):
         tags.process_node_tags(
             tag_name, tag_definition, tag_nsmap,
             self.fake_client(), nodegroup_uuid)
-        nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
-        tag_url = '/api/1.0/tags/%s/' % (tag_name,)
+        nodegroup_url = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid,)
+        tag_url = '/api/2.0/tags/%s/' % (tag_name,)
         self.assertEqual(
             [((nodegroup_url,), {'op': 'list_nodes'})],
             get_nodes.calls)

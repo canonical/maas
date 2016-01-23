@@ -56,7 +56,7 @@ class TestCommands(DjangoTestCase):
         call_command('generate_api_doc', stdout=stdout)
         result = stdout.getvalue()
         # Just check that the documentation looks all right.
-        self.assertIn("POST /api/1.0/account/", result)
+        self.assertIn("POST /api/2.0/account/", result)
         self.assertIn("MAAS API", result)
         # The documentation starts with a link target: "region-controller-api".
         self.assertThat(result[:100], StartsWith('.. _region-controller-api:'))

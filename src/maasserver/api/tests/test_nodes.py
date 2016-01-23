@@ -352,11 +352,11 @@ class TestFilteredNodesListFromRequest(APITestCase):
 
 
 class TestNodesAPI(APITestCase):
-    """Tests for /api/1.0/nodes/."""
+    """Tests for /api/2.0/nodes/."""
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodes/', reverse('nodes_handler'))
+            '/api/2.0/nodes/', reverse('nodes_handler'))
 
     def test_POST_new_creates_node(self):
         # The API allows a non-admin logged-in user to create a Node.
@@ -985,7 +985,7 @@ class TestNodesAPI(APITestCase):
             status=NODE_STATUS.READY, cpu_count=1, with_boot_disk=True)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            'cpu_count': '1.0',
+            'cpu_count': '1',
         })
         self.assertResponseCode(http.client.OK, response)
         response_json = json.loads(
@@ -1696,7 +1696,7 @@ class TestNodesAPI(APITestCase):
         # by default anyway.
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            '/api/1.0/nodes/MAAS/api/1.0/nodes/',
+            '/api/2.0/nodes/MAAS/api/2.0/nodes/',
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
@@ -1813,7 +1813,7 @@ class TestNodesAPI(APITestCase):
 
 
 class TestDeploymentStatus(APITestCase):
-    """Tests for /api/1.0/nodes/?op=deployment_status."""
+    """Tests for /api/2.0/nodes/?op=deployment_status."""
 
     endpoint = reverse('nodes_handler')
 
@@ -1893,7 +1893,7 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
 
     Before adding the 'Deploying', 'Deployed' and 'Failed deployment' states
     all of this different states were folded into the state 'Allocated'.
-    In the 1.0 API, we continue exposing these statuses as one status to
+    In the 2.0 API, we continue exposing these statuses as one status to
     be backward compatible.
 
     All the API methods returning a node or list of nodes should obey this

@@ -243,7 +243,7 @@ def determine_cluster_interfaces(knowledge):
         doesn't exist.
     """
     api_path = (
-        'api/1.0/nodegroups/%s/interfaces/' % knowledge['nodegroup_uuid'])
+        'api/2.0/nodegroups/%s/interfaces/' % knowledge['nodegroup_uuid'])
     oauth = MAASOAuth(*knowledge['api_credentials'])
     client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])
     interfaces = process_request(client.get, api_path, 'list')
@@ -300,7 +300,7 @@ def update_region_controller(knowledge, interface, server):
     :param interface: name of interface, e.g. eth0
     :param server: IP address of detected DHCP server, or None
     """
-    api_path = 'api/1.0/nodegroups/%s/interfaces/%s/' % (
+    api_path = 'api/2.0/nodegroups/%s/interfaces/%s/' % (
         knowledge['nodegroup_uuid'], interface)
     oauth = MAASOAuth(*knowledge['api_credentials'])
     client = MAASClient(oauth, MAASDispatcher(), knowledge['maas_url'])

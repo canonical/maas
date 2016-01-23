@@ -461,7 +461,7 @@ class TestPeriodicTask(PservTestCase):
         update_region_controller(self.knowledge, "eth0", detected_server)
         uuid = self.knowledge['nodegroup_uuid']
         self.assertThat(mocked_post, MockCalledOnceWith(
-            'api/1.0/nodegroups/%s/interfaces/eth0/' % uuid,
+            'api/2.0/nodegroups/%s/interfaces/eth0/' % uuid,
             'report_foreign_dhcp', foreign_dhcp_ip=detected_server))
 
     def test_update_region_controller_clears_detected_dhcp(self):
@@ -471,7 +471,7 @@ class TestPeriodicTask(PservTestCase):
         update_region_controller(self.knowledge, "eth0", detected_server)
         uuid = self.knowledge['nodegroup_uuid']
         self.assertThat(mocked_post, MockCalledOnceWith(
-            'api/1.0/nodegroups/%s/interfaces/eth0/' % uuid,
+            'api/2.0/nodegroups/%s/interfaces/eth0/' % uuid,
             'report_foreign_dhcp', foreign_dhcp_ip=''))
 
     def test_update_region_controller_catches_HTTPError_in_MAASClient(self):

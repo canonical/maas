@@ -28,7 +28,7 @@ class TestNetwork(APITestCase):
     def test_handler_path(self):
         subnet = factory.make_Subnet()
         self.assertEqual(
-            '/api/1.0/networks/subnet-%d/' % subnet.id, self.get_url(subnet))
+            '/api/2.0/networks/subnet-%d/' % subnet.id, self.get_url(subnet))
 
     def test_POST_is_prohibited(self):
         self.become_admin()
@@ -109,7 +109,7 @@ class TestNetwork(APITestCase):
 
 
 class TestListConnectedMACs(APITestCase):
-    """Tests for /api/1.0/network/s<network>/?op=list_connected_macs."""
+    """Tests for /api/2.0/network/s<network>/?op=list_connected_macs."""
 
     def make_interface(self, subnets=None, owner=None, node=None):
         """Create a Interface.

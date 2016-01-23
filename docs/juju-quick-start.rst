@@ -123,7 +123,7 @@ come up with something a bit more interesting::
       agent-state: started
       agent-version: 1.13.3.1
       dns-name: kmhwd.master
-      instance-id: /MAAS/api/1.0/nodes/node-5c5b713a-1afc-11e3-9904-525400123456/
+      instance-id: /MAAS/api/2.0/nodes/node-5c5b713a-1afc-11e3-9904-525400123456/
       series: precise
   services: {}
 

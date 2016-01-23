@@ -38,11 +38,11 @@ def patch_populate_tags(test):
 
 
 class TestTagAPI(APITestCase):
-    """Tests for /api/1.0/tags/<tagname>/."""
+    """Tests for /api/2.0/tags/<tagname>/."""
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/tags/tag-name/',
+            '/api/2.0/tags/tag-name/',
             reverse('tag_handler', args=['tag-name']))
 
     def get_tag_uri(self, tag):
@@ -386,7 +386,7 @@ class TestTagsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/tags/', reverse('tags_handler'))
+            '/api/2.0/tags/', reverse('tags_handler'))
 
     def test_GET_list_without_tags_returns_empty_list(self):
         response = self.client.get(reverse('tags_handler'), {'op': 'list'})

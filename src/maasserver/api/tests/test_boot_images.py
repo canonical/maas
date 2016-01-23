@@ -22,7 +22,7 @@ class TestBootImagesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-images/',
+            '/api/2.0/nodegroups/uuid/boot-images/',
             reverse('boot_images_handler', args=['uuid']))
 
     def make_boot_image(self):

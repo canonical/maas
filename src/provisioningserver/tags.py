@@ -75,7 +75,7 @@ def get_nodes_for_node_group(client, nodegroup_uuid):
     :param nodegroup_uuid: Node group for which to retrieve nodes
     :return: List of UUIDs for nodes in nodegroup
     """
-    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid)
+    path = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid)
     return process_response(client.get(path, op='list_nodes'))
 
 
@@ -86,7 +86,7 @@ def get_details_for_nodes(client, nodegroup_uuid, system_ids):
     :param system_ids: List of UUIDs of systems for which to fetch LLDP data
     :return: Dictionary mapping node UUIDs to details, e.g. LLDP output
     """
-    path = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
+    path = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid,)
     return process_response(client.post(
         path, op='details', system_ids=system_ids))
 
@@ -104,7 +104,7 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
-    path = '/api/1.0/tags/%s/' % (tag_name,)
+    path = '/api/2.0/tags/%s/' % (tag_name,)
     maaslog.debug(
         "Updating nodes for %s %s, adding %s removing %s"
         % (tag_name, uuid, len(added), len(removed)))

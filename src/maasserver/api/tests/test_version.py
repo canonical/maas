@@ -21,7 +21,7 @@ class TestFindingResources(MAASServerTestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/version/', reverse('version_handler'))
+            '/api/2.0/version/', reverse('version_handler'))
 
     def test_GET_returns_details(self):
         mock_apt = self.patch(version_module, "get_version_from_apt")

@@ -66,7 +66,7 @@ class TestFindingResources(MAASServerTestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/doc/', reverse('api-doc'))
+            '/api/2.0/doc/', reverse('api-doc'))
 
     @staticmethod
     def make_module():
@@ -324,7 +324,7 @@ class TestDescribingAPI(MAASServerTestCase):
         # The path is a URI Template <http://tools.ietf.org/html/rfc6570>, the
         # components of which correspond to the parameters declared.
         self.assertEqual(
-            "/api/1.0/nodes/{system_id}/",
+            "/api/2.0/nodes/{system_id}/",
             description["path"])
 
     def test_describe_resource_anonymous_resource(self):

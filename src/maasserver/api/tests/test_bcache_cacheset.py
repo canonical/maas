@@ -42,7 +42,7 @@ class TestBcacheCacheSetsAPI(APITestCase):
     def test_handler_path(self):
         node = factory.make_Node()
         self.assertEqual(
-            '/api/1.0/nodes/%s/bcache-cache-sets/' % (node.system_id),
+            '/api/2.0/nodes/%s/bcache-cache-sets/' % (node.system_id),
             get_bcache_cache_sets_uri(node))
 
     def test_read(self):
@@ -128,7 +128,7 @@ class TestBcacheCacheSetAPI(APITestCase):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
         self.assertEqual(
-            '/api/1.0/nodes/%s/bcache-cache-set/%s/' % (
+            '/api/2.0/nodes/%s/bcache-cache-set/%s/' % (
                 node.system_id, cache_set.id),
             get_bcache_cache_set_uri(cache_set, node=node))
 

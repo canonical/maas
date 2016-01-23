@@ -119,7 +119,7 @@ class NodesAPILoggedInTest(MAASServerTestCase):
 
 
 class TestNodeAPI(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/."""
+    """Tests for /api/2.0/nodes/<node>/."""
 
     def setUp(self):
         super(TestNodeAPI, self).setUp()
@@ -129,7 +129,7 @@ class TestNodeAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodes/node-name/',
+            '/api/2.0/nodes/node-name/',
             reverse('node_handler', args=['node-name']))
 
     @staticmethod
@@ -1364,7 +1364,7 @@ class TestNodeAPI(APITestCase):
 
 
 class TestClaimStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=claim_sticky_ip_address"""
+    """Tests for /api/2.0/nodes/<node>/?op=claim_sticky_ip_address"""
 
     def get_node_uri(self, node):
         """Get the API URI for `node`."""
@@ -1601,7 +1601,7 @@ class TestNodeAPITransactional(APITransactionTestCase):
 
 
 class TestNodeReleaseStickyIpAddressAPI(APITestCase):
-    """Tests for /api/1.0/nodes/?op=release_sticky_ip_address."""
+    """Tests for /api/2.0/nodes/?op=release_sticky_ip_address."""
 
     @staticmethod
     def get_node_uri(node):
@@ -1717,7 +1717,7 @@ class TestNodeReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
 
 
 class TestGetDetails(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=details."""
+    """Tests for /api/2.0/nodes/<node>/?op=details."""
 
     def make_lshw_result(self, node, script_result=0):
         return factory.make_NodeResult_for_commissioning(
@@ -1766,7 +1766,7 @@ class TestGetDetails(APITestCase):
 
 
 class TestMarkBroken(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=mark_broken"""
+    """Tests for /api/2.0/nodes/<node>/?op=mark_broken"""
 
     def get_node_uri(self, node):
         """Get the API URI for `node`."""
@@ -1854,7 +1854,7 @@ class TestMarkBroken(APITestCase):
 
 
 class TestMarkFixed(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=mark_fixed"""
+    """Tests for /api/2.0/nodes/<node>/?op=mark_fixed"""
 
     def get_node_uri(self, node):
         """Get the API URI for `node`."""
@@ -1934,7 +1934,7 @@ class TestPowerParameters(APITestCase):
 
 
 class TestAbortOperation(APITransactionTestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=abort_operation"""
+    """Tests for /api/2.0/nodes/<node>/?op=abort_operation"""
 
     def get_node_uri(self, node):
         """Get the API URI for `node`."""

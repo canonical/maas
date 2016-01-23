@@ -229,7 +229,7 @@ urlpatterns += patterns(
 # API URLs.
 urlpatterns += patterns(
     '',
-    (r'^api/1\.0/', include('maasserver.urls_api'))
+    (r'^api/2\.0/', include('maasserver.urls_api'))
     )
 
 # RPC URLs.

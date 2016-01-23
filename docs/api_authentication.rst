@@ -52,7 +52,7 @@ Python
 
     # API key = '<consumer_key>:<key>:<secret>'
     response = perform_API_request(
-        'http://server/MAAS/api/1.0', '/nodes/?op=list', 'GET', '<key>', '<secret>',
+        'http://server/MAAS/api/2.0', '/nodes/?op=list', 'GET', '<key>', '<secret>',
         '<consumer_key>')
 
 Ruby
@@ -66,7 +66,7 @@ Ruby
     def perform_API_request(site, uri, key, secret, consumer_key)
         consumer = OAuth::Consumer.new(
             consumer_key, "",
-            { :site => "http://localhost/MAAS/api/1.0",
+            { :site => "http://localhost/MAAS/api/2.0",
               :scheme => :header, :signature_method => "PLAINTEXT"})
         access_token = OAuth::AccessToken.new(consumer, key, secret)
         return access_token.request(:get, "/nodes/?op=list")
@@ -74,5 +74,5 @@ Ruby
 
     # API key = "<consumer_key>:<key>:<secret>"
     response = perform_API_request(
-         "http://server/MAAS/api/1.0", "/nodes/?op=list", "<key>", "<secret>",
+         "http://server/MAAS/api/2.0", "/nodes/?op=list", "<key>", "<secret>",
          "consumer_key>")

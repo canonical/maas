@@ -126,11 +126,11 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_files_handler_path(self):
         self.assertEqual(
-            '/api/1.0/files/', reverse('files_handler'))
+            '/api/2.0/files/', reverse('files_handler'))
 
     def test_file_handler_path(self):
         self.assertEqual(
-            '/api/1.0/files/filename/',
+            '/api/2.0/files/filename/',
             reverse('file_handler', args=['filename']))
 
     def test_add_file_succeeds(self):

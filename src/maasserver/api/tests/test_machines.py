@@ -179,11 +179,11 @@ class RequestFixture:
 
 
 class TestMachinesAPI(APITestCase):
-    """Tests for /api/1.0/machines/."""
+    """Tests for /api/2.0/machines/."""
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/machines/', reverse('machines_handler'))
+            '/api/2.0/machines/', reverse('machines_handler'))
 
     def test_POST_new_creates_machine(self):
         # The API allows a non-admin logged-in user to create a Machine.
@@ -1607,7 +1607,7 @@ class TestMachinesAPI(APITestCase):
 
 
 class TestDeploymentStatus(APITestCase):
-    """Tests for /api/1.0/machines/?op=deployment_status."""
+    """Tests for /api/2.0/machines/?op=deployment_status."""
 
     endpoint = reverse('machines_handler')
 

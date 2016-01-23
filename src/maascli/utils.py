@@ -95,7 +95,7 @@ def api_url(string):
     """Ensure that `string` looks like a URL to the API.
 
     This ensures that the API version is specified explicitly (i.e. the path
-    ends with /api/{version}). If not, version 1.0 is selected. It also
+    ends with /api/{version}). If not, version 2.0 is selected. It also
     ensures that the path ends with a forward-slash.
 
     This is suitable for use as an argument type with argparse.
@@ -103,7 +103,7 @@ def api_url(string):
     url = urlparse(string)
     url = url._replace(path=ensure_trailing_slash(url.path))
     if re.search("/api/[0-9.]+/?$", url.path) is None:
-        url = url._replace(path=url.path + "api/1.0/")
+        url = url._replace(path=url.path + "api/2.0/")
     return url.geturl()
 
 
