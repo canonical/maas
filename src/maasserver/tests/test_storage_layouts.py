@@ -1185,7 +1185,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             tags=['ssd'])
         cache_size = round_size_to_nearest_block(
             random.randint(
-                3 * 1024 * 1024 * 1024, 5 * 1024 * 1024 * 1024),
+                3 * 1024 * 1024 * 1024, 4.5 * 1024 * 1024 * 1024),
             4096)
         layout = BcacheStorageLayoutBase(node)
         layout.cleaned_data = {
