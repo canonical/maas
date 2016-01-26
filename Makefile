@@ -132,7 +132,8 @@ bin/maas-probe-dhcp bin/maas-provision bin/twistd.cluster: \
 	$(buildout) install cluster
 	@touch --no-create $@
 
-bin/test.cluster: bin/buildout buildout.cfg versions.cfg setup.py
+bin/test.cluster: \
+	  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-provision
 	$(buildout) install cluster-test
 	@touch --no-create $@
 
