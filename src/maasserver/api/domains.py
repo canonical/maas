@@ -19,7 +19,7 @@ DISPLAYED_DOMAIN_FIELDS = (
     'name',
     'ttl',
     'authoritative',
-    'resources',
+    'resource_record_count',
 )
 
 

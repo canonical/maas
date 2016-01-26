@@ -59,10 +59,10 @@ def get_default_domain():
     return Domain.objects.get_default_domain().id
 
 
-def validate_dnsresource_name(value, resource_type):
+def validate_dnsresource_name(value, rrtype):
     """Django validator: `value` must be a valid DNS Zone name."""
     if value is not None and value != '' and value != '@':
-        if resource_type == "SRV":
+        if rrtype == "SRV":
             namespec = re.compile("^%s$" % SRV_LHS)
         else:
             namespec = re.compile("^%s$" % NAMESPEC)
@@ -70,18 +70,18 @@ def validate_dnsresource_name(value, resource_type):
             raise ValidationError("Invalid dnsresource name: %s." % value)
 
 
-def separate_fqdn(fqdn, resource_type):
+def separate_fqdn(fqdn, rrtype):
     """Separate an fqdn based on resource type.
 
     :param fqdn: Fully qualified domain name, blank, or "@".
-    :param resource_type: resource record type.
+    :param rrtype: resource record type. (May be None.)
 
     Returns (name, domain) where name is appropriate for the resource record in
     the domain.
     """
     if fqdn is None or fqdn == '' or fqdn == '@':
         return (fqdn, None)
-    elif resource_type == 'SRV':
+    elif rrtype == 'SRV':
         spec = SRV_LHS
     else:
         spec = LABEL
@@ -237,7 +237,7 @@ class DNSResource(CleanSave, TimestampedModel):
             # Node.fqdn takes a different path, and should win when it comes to
             # DNS generation.
             num_cname = DNSData.objects.filter(
-                dnsresource_id=self.id, resource_type='CNAME').count()
+                dnsresource_id=self.id, rrtype='CNAME').count()
             if num_cname > 0:
                 raise ValidationError("Cannot add address: CNAME present.")
         super(DNSResource, self).clean(*args, **kwargs)

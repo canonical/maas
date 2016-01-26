@@ -25,8 +25,12 @@ class DNSResourceForm(MAASModelForm):
     domain = forms.ModelChoiceField(
         label="Domain",
         queryset=Domain.objects.all())
+    address_ttl = forms.IntegerField(
+        required=False, min_value=0, max_value=(1 << 31) - 1,
+        label="Time To Live (seconds)",
+        help_text="For how long is the answer valid?")
     ip_addresses = forms.CharField(
-        label="IP Addresseses",
+        required=False, label="IP Addresseses",
         help_text="The IP (or list of IPs), either as IDs or as addresses")
 
     class Meta:
@@ -34,6 +38,7 @@ class DNSResourceForm(MAASModelForm):
         fields = (
             'name',
             'domain',
+            'address_ttl',
             'ip_addresses',
             )
 
@@ -44,7 +49,7 @@ class DNSResourceForm(MAASModelForm):
         # Otherwise, just return the input, which is likely to result in an
         # error later.
         if isinstance(ipaddr, int) or ipaddr.isdigit():
-            return ipaddr
+            return int(ipaddr)
         try:
             IPAddress(ipaddr)
         except (AddrFormatError, ValueError):
@@ -57,7 +62,7 @@ class DNSResourceForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if 'ip_addresses' in self.data and self.data['ip_addresses'] != '':
+        if self.data.get('ip_addresses', '') != '':
             ip_addresses = self.data.get('ip_addresses')
             if isinstance(ip_addresses, str):
                 ip_addresses = ip_addresses.split()

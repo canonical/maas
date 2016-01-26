@@ -30,11 +30,13 @@ from django.db.models import (
     PositiveIntegerField,
     TextField,
 )
+from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 
 
@@ -64,10 +66,33 @@ def validate_rrtype(value):
             (value.upper(), " ".join(SUPPORTED_RRTYPES)))
 
 
-class DNSDataManager(Manager):
+class DNSDataQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'name': "__name",
+        }
+        return super().get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class DNSDataQuerySet(QuerySet, DNSDataQueriesMixin):
+    """Custom QuerySet which mixes in some additional queries specific to
+    this object. This needs to be a mixin because an identical method is needed
+    on both the Manager and all QuerySets which result from calling the
+    manager.
+    """
+
+
+class DNSDataManager(Manager, DNSDataQueriesMixin):
     """Manager for :class:`DNSData` model."""
 
-    def get_dnsdata_or_404(self, id, user, perm):
+    def get_dnsdata_or_404(self, specifiers, user, perm):
         """Fetch `DNSData` by its id.  Raise exceptions if no `DNSData` with
         this id exists or if the provided user has not the required permission
         to access this `DNSData`.
@@ -85,7 +110,7 @@ class DNSDataManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        dnsdata = DNSData.objects.get(id=id)
+        dnsdata = self.get_object_by_specifiers_or_raise(specifiers)
         if user.has_perm(perm, dnsdata):
             return dnsdata
         else:
@@ -95,8 +120,8 @@ class DNSDataManager(Manager):
 class DNSData(CleanSave, TimestampedModel):
     """A `DNSData`.
 
-    :ivar resource_type: Type of resource record
-    :ivar resource_data: right-hand side of the DNS Resource Record.
+    :ivar rrtype: Type of resource record
+    :ivar rrdata: right-hand side of the DNS Resource Record.
     """
 
     class Meta(DefaultMeta):
@@ -117,36 +142,40 @@ class DNSData(CleanSave, TimestampedModel):
     # global default.
     ttl = PositiveIntegerField(default=None, null=True, blank=True)
 
-    resource_type = CharField(
+    rrtype = CharField(
         editable=True, max_length=8, blank=False, null=False, unique=False,
         validators=[validate_rrtype], help_text="Resource record type")
 
-    resource_data = TextField(
+    rrdata = TextField(
         editable=True, blank=False, null=False,
         help_text="Entire right-hand side of the resource record.")
 
     def __unicode__(self):
-        return "%s %s" % (self.resource_type, self.resource_data)
+        return "%s %s" % (self.rrtype, self.rrdata)
 
     def __str__(self):
-        return "%s %s" % (self.resource_type, self.resource_data)
+        return "%s %s" % (self.rrtype, self.rrdata)
 
-    def clean_resource_data(self, *args, **kwargs):
-        """verify that the resource_data matches the spec for the resource
+    @property
+    def fqdn(self):
+        return self.dnsresource.fqdn
+
+    def clean_rrdata(self, *args, **kwargs):
+        """verify that the rrdata matches the spec for the resource
         type.
         """
-        self.resource_type = self.resource_type.upper()
-        if self.resource_type == "CNAME":
+        self.rrtype = self.rrtype.upper()
+        if self.rrtype == "CNAME":
             # Depending on the query, this can be quite a few different
             # things...  Make sure it meets the more general case.
-            if re.compile(CNAME_SPEC).search(self.resource_data) is None:
+            if re.compile(CNAME_SPEC).search(self.rrdata) is None:
                 raise ValidationError(INVALID_CNAME_MSG)
-        elif self.resource_type == "TXT":
+        elif self.rrtype == "TXT":
             # TXT is freeform, we simply pass it through
             pass
-        elif self.resource_type == "MX":
+        elif self.rrtype == "MX":
             spec = re.compile(r"^(?P<pref>[0-9])+\s+(?P<mxhost>.+)$")
-            res = spec.search(self.resource_data)
+            res = spec.search(self.rrdata)
             if res is None:
                 raise ValidationError(INVALID_MX_MSG)
             pref = int(res.groupdict()['pref'])
@@ -154,13 +183,13 @@ class DNSData(CleanSave, TimestampedModel):
             if pref < 0 or pref > 65535:
                 raise ValidationError(INVALID_MX_MSG)
             validate_domain_name(mxhost)
-        elif self.resource_type == "NS":
-            validate_domain_name(self.resource_data)
-        elif self.resource_type == "SRV":
+        elif self.rrtype == "NS":
+            validate_domain_name(self.rrdata)
+        elif self.rrtype == "SRV":
             spec = re.compile(
                 r"^(?P<pri>[0-9]+)\s+(?P<weight>[0-9]+)\s+(?P<port>[0-9]+)\s+"
                 r"(?P<target>.*)")
-            res = spec.search(self.resource_data)
+            res = spec.search(self.rrdata)
             srv_host = res.groupdict()['target']
             if res is None:
                 raise ValidationError(INVALID_SRV_MSG)
@@ -180,9 +209,9 @@ class DNSData(CleanSave, TimestampedModel):
                 validate_domain_name(srv_host)
 
     def clean(self, *args, **kwargs):
-        self.clean_resource_data(*args, **kwargs)
+        self.clean_rrdata(*args, **kwargs)
         # Force uppercase for the RR Type names.
-        self.resource_type = self.resource_type.upper()
+        self.rrtype = self.rrtype.upper()
         # make sure that we don't create things that we shouldn't.
         # CNAMEs can only exist as a single resource, and only if there are no
         # other resource records on the name.  See how many CNAME and other
@@ -190,11 +219,11 @@ class DNSData(CleanSave, TimestampedModel):
         if self.id is None:
             num_cname = DNSData.objects.filter(
                 dnsresource_id=self.dnsresource_id,
-                resource_type="CNAME").count()
-            if self.resource_type == "CNAME":
+                rrtype="CNAME").count()
+            if self.rrtype == "CNAME":
                 num_other = DNSData.objects.filter(
                     dnsresource__id=self.dnsresource_id).exclude(
-                    resource_type="CNAME").count()
+                    rrtype="CNAME").count()
                 # account for ipaddresses
                 num_other += self.dnsresource.ip_addresses.count()
                 if num_other > 0:
@@ -205,7 +234,7 @@ class DNSData(CleanSave, TimestampedModel):
                 if num_cname > 0:
                     raise ValidationError(CNAME_AND_OTHER_MSG)
             rrset = DNSData.objects.filter(
-                resource_type=self.resource_type,
+                rrtype=self.rrtype,
                 dnsresource_id=self.dnsresource.id).exclude(
                 ttl=self.ttl)
             if rrset.count() > 0:

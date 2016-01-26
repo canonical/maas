@@ -22,8 +22,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, primary_key=True, auto_created=True)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('resource_type', models.CharField(validators=[maasserver.models.dnsdata.validate_rrtype], max_length=8, help_text='Resource record type')),
-                ('resource_data', models.TextField(help_text='Entire right-hand side of the resource record.')),
+                ('rrtype', models.CharField(validators=[maasserver.models.dnsdata.validate_rrtype], max_length=8, help_text='Resource record type')),
+                ('rrdata', models.TextField(help_text='Entire right-hand side of the resource record.')),
             ],
             options={
                 'verbose_name': 'DNSData',

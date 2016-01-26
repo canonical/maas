@@ -1,16 +1,21 @@
 # Copyright 2015,2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""API handlers: `DNSResource`."""
+"""API handlers: `DNSData`."""
 
 from maasserver.api.support import (
     admin_method,
     OperationsHandler,
 )
 from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIValidationError,
+)
+from maasserver.forms_dnsdata import DNSDataForm
 from maasserver.forms_dnsresource import DNSResourceForm
 from maasserver.models import (
+    DNSData,
     DNSResource,
     Domain,
 )
@@ -18,27 +23,27 @@ from maasserver.models.dnsresource import separate_fqdn
 from piston3.utils import rc
 
 
-DISPLAYED_DNSRESOURCE_FIELDS = (
+DISPLAYED_DNSDATA_FIELDS = (
     'id',
     'fqdn',
-    'address_ttl',
-    'ip_addresses',
-    'resource_records'
+    'ttl',
+    'rrtype',
+    'rrdata'
 )
 
 
-class DNSResourcesHandler(OperationsHandler):
-    """Manage dnsresources."""
-    api_doc_section_name = "DNSResources"
+class DNSResourceRecordsHandler(OperationsHandler):
+    """Manage dnsresourcerecords."""
+    api_doc_section_name = "DNSResourceRecords"
     update = delete = None
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
-        return ('dnsresources_handler', [])
+        return ('dnsresourcerecords_handler', [])
 
     def read(self, request):
-        """List all resources for the specified criteria.
+        """List all dnsresourcerecords.
 
         :param domain: restrict the listing to entries for the domain.
         :param name: restrict the listing to entries of the given name.
@@ -63,38 +68,48 @@ class DNSResourcesHandler(OperationsHandler):
                 domain = Domain.objects.get_domain_or_404(
                     "name:%s" % domainname, user=request.user,
                     perm=NODE_PERMISSION.VIEW)
-            query = domain.dnsresource_set.all().order_by('name')
+            query = DNSData.objects.filter(
+                dnsresource__domain_id=domain.id).order_by(
+                'dnsresource__name')
         else:
-            query = DNSResource.objects.all().order_by('domain_id', 'name')
+            query = DNSData.objects.all().order_by(
+                'dnsresource__domain_id', 'dnsresource__name')
         if name is not None:
-            query = query.filter(name=name)
+            query = query.filter(dnsresource__name=name)
         if rrtype is not None:
-            query = query.filter(dnsdata__rrtype=rrtype)
+            query = query.filter(rrtype=rrtype)
         return query
 
     @admin_method
     def create(self, request):
-        """Create a dnsresource.
+        """Create a dnsresourcerecord.
 
         :param fqdn: Hostname (with domain) for the dnsresource.  Either fqdn
             or (name, domain) must be specified.  Fqdn is ignored if either
             name or domain is given.
         :param name: Hostname (without domain)
         :param domain: Domain (name or id)
-        :param address_ttl: Default ttl for entries in this zone.
-        :param ip_addresses: (optional) Address (ip or id) to assign to the
-            dnsresource.
+        :param rrtype: resource type to create
+        :param rrdata: resource data (everything to the right of
+            resource type.)
         """
         data = request.data
         fqdn = data.get('fqdn', None)
         name = data.get('name', None)
         domainname = data.get('domain', None)
+        rrtype = data.get('rrtype', None)
+        rrdata = data.get('rrdata', None)
+        if rrtype is None:
+            raise MAASAPIBadRequest("rrtype must be provided.")
+        if rrdata is None:
+            raise MAASAPIBadRequest("rrdata must be provided.")
         # If the user gave us fqdn and did not give us name/domain, expand
         # fqdn.
         if domainname is None and name is None and fqdn is not None:
-            # Assume that we're working with an address, since we ignore
-            # rrtype and rrdata.
-            (name, domainname) = separate_fqdn(fqdn, 'A')
+            # We need a type for resource separation.  If the user didn't give
+            # us a rrtype, then assume it's an address of some sort.
+            rrtype = data.get('rrtype', None)
+            (name, domainname) = separate_fqdn(fqdn, rrtype)
             data['domain'] = domainname
             data['name'] = name
         # If the domain is a name, make it an id.
@@ -109,75 +124,74 @@ class DNSResourcesHandler(OperationsHandler):
             data['domain'] = domain.id
         form = DNSResourceForm(data=request.data)
         if form.is_valid():
-            return form.save()
+            form.save()
         else:
             raise MAASAPIValidationError(form.errors)
-
-
-class DNSResourceHandler(OperationsHandler):
-    """Manage dnsresource."""
-    api_doc_section_name = "DNSResource"
-    create = None
-    model = DNSResource
-    fields = DISPLAYED_DNSRESOURCE_FIELDS
-
-    @classmethod
-    def resource_uri(cls, dnsresource=None):
-        # See the comment in NodeHandler.resource_uri.
-        dnsresource_id = "dnsresource_id"
-        if dnsresource is not None:
-            dnsresource_id = dnsresource.id
-        return ('dnsresource_handler', (dnsresource_id,))
-
-    @classmethod
-    def name(cls, dnsresource):
-        """Return the name of the dnsresource."""
-        return dnsresource.get_name()
-
-    @classmethod
-    def ip_addresses(cls, dnsresource):
-        """Return IPAddresses within the specified dnsresource."""
-        return dnsresource.ip_addresses.all()
-
-    @classmethod
-    def resource_records(cls, dnsresource):
-        """Other data for this dnsresource."""
-        return dnsresource.dnsdata_set.all().order_by('rrtype')
-
-    def read(self, request, dnsresource_id):
-        """Read dnsresource.
-
-        Returns 404 if the dnsresource is not found.
-        """
-        return DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.VIEW)
-
-    def update(self, request, dnsresource_id):
-        """Update dnsresource.
-
-        :param fqdn: Hostname (with domain) for the dnsresource.
-        :param ip_address: Address to assign to the dnsresource.
-
-        Returns 403 if the user does not have permission to update the
-        dnsresource.
-        Returns 404 if the dnsresource is not found.
-        """
-        dnsresource = DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.ADMIN)
-        form = DNSResourceForm(instance=dnsresource, data=request.data)
+        # Fetch the (possibly just created) dnsresource.
+        dnsrr = DNSResource.objects.get(name=name, domain__id=domain.id).id
+        data['dnsresource'] = dnsrr
+        form = DNSDataForm(data=request.data)
         if form.is_valid():
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
 
-    def delete(self, request, dnsresource_id):
-        """Delete dnsresource.
+
+class DNSResourceRecordHandler(OperationsHandler):
+    """Manage dnsresourcerecord."""
+    api_doc_section_name = "DNSResourceRecord"
+    create = None
+    model = DNSData
+    fields = DISPLAYED_DNSDATA_FIELDS
+
+    @classmethod
+    def resource_uri(cls, dnsresourcerecord=None):
+        # See the comment in NodeHandler.resource_uri.
+        dnsresourcerecord_id = "dnsresourcerecord_id"
+        if dnsresourcerecord is not None:
+            dnsresourcerecord_id = dnsresourcerecord.id
+        return ('dnsresourcerecord_handler', (dnsresourcerecord_id,))
+
+    @classmethod
+    def name(cls, dnsresourcerecord):
+        """Return the name of the dnsresourcerecord."""
+        return dnsresourcerecord.fqdn()
+
+    def read(self, request, dnsresourcerecord_id):
+        """Read dnsresourcerecord.
+
+        Returns 404 if the dnsresourcerecord is not found.
+        """
+        return DNSData.objects.get_dnsdata_or_404(
+            dnsresourcerecord_id, request.user, NODE_PERMISSION.VIEW)
+
+    def update(self, request, dnsresourcerecord_id):
+        """Update dnsresourcerecord.
+
+        :param rrtype: Resource Type
+        :param rrdata: Resource Data (everything to the right of Type.)
+
+        Returns 403 if the user does not have permission to update the
+        dnsresourcerecord.
+        Returns 404 if the dnsresourcerecord is not found.
+        """
+        dnsdata = DNSData.objects.get_dnsdata_or_404(
+            dnsresourcerecord_id, request.user, NODE_PERMISSION.ADMIN)
+        request.data['dnsresource'] = dnsdata.dnsresource.id
+        form = DNSDataForm(instance=dnsdata, data=request.data)
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    def delete(self, request, dnsresourcerecord_id):
+        """Delete dnsresourcerecord.
 
         Returns 403 if the user does not have permission to delete the
-        dnsresource.
-        Returns 404 if the dnsresource is not found.
+        dnsresourcerecord.
+        Returns 404 if the dnsresourcerecord is not found.
         """
-        dnsresource = DNSResource.objects.get_dnsresource_or_404(
-            dnsresource_id, request.user, NODE_PERMISSION.ADMIN)
-        dnsresource.delete()
+        dnsdata = DNSData.objects.get_dnsdata_or_404(
+            dnsresourcerecord_id, request.user, NODE_PERMISSION.ADMIN)
+        dnsdata.delete()
         return rc.DELETED

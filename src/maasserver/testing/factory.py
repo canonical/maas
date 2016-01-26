@@ -521,42 +521,50 @@ class Factory(maastesting.factory.Factory):
         domain.save()
         return domain
 
-    def make_DNSData(self, dnsresource=None, resource_type=None,
-                     resource_data=None, ttl=None, **kwargs):
-        # If they didn't pass in an ip_addresses, suppress them.
-        if 'ip_addresses' not in kwargs:
-            kwargs['no_ip_addresses'] = True
-        if resource_type is None:
-            resource_type = self.pick_choice((
+    def pick_rrset(self, rrtype=None, rrdata=None, exclude=[]):
+        while rrtype is None:
+            rrtype = self.pick_choice((
                 ('CNAME', "Canonical name"),
                 ('MX', "Mail Exchanger"),
                 ('NS', "Name Server"),
-                # We don't autogenerate SRV, because of NAME
+                # We don't autogenerate SRV, because of NAME.
                 #('SRV', "Service"),
                 ('TXT', "Text"),
             ))
-            # We need to generate something useful for this RR type
-            resource_data = None
-        if resource_data is None:
-            if resource_type == 'CNAME' or resource_type == 'NS':
-                resource_data = "%s" % self.make_name(resource_type.lower())
-            elif resource_type.upper() == 'MX':
-                resource_data = "%d %s" % (
-                    random.randint(0, 65535),
-                    self.make_name('mx'))
-            elif resource_type.upper() == 'SRV':
+            if rrtype in exclude:
+                rrtype = None
+            # Force data appropriate to the (random) RRType.
+            rrdata = None
+        rrtype = rrtype.upper()
+        if rrdata is None:
+            if rrtype == 'CNAME' or rrtype == 'NS':
+                rrdata = "%s" % self.make_name(rrtype.lower())
+            elif rrtype == 'MX':
+                rrdata = "%d %s" % (
+                    random.randint(0, 65535), self.make_name('mx'))
+            elif rrtype == 'SRV':
                 raise ValueError("No automatic generation of SRV DNSData")
-            elif resource_type.upper() == 'TXT':
-                resource_data = self.make_name(size=random.randint(100, 65535))
+            elif rrtype == 'TXT':
+                rrdata = self.make_name(size=random.randint(100, 65535))
             else:
-                resource_data = self.make_name("dnsdata")
+                rrdata = self.make_name("dnsdata")
+        return (rrtype, rrdata)
+
+    def make_DNSData(self, dnsresource=None, rrtype=None,
+                     rrdata=None, ttl=None, **kwargs):
+        # If they didn't pass in an ip_addresses, suppress them.
+        if 'ip_addresses' not in kwargs:
+            kwargs['no_ip_addresses'] = True
+        if rrtype is None or rrdata is None:
+            (rrtype, rrdata) = self.pick_rrset(
+                rrtype, rrdata)
         if dnsresource is None:
             dnsresource = self.make_DNSResource(**kwargs)
         dnsdata = DNSData(
             dnsresource=dnsresource,
             ttl=ttl,
-            resource_type=resource_type,
-            resource_data=resource_data)
+            rrtype=rrtype,
+            rrdata=rrdata)
         dnsdata.save()
         return dnsdata
 

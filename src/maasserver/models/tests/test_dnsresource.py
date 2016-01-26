@@ -186,7 +186,7 @@ class DNSResourceTest(MAASServerTestCase):
         name = factory.make_name('name')
         domain = factory.make_Domain()
         dnsdata = factory.make_DNSData(
-            resource_type='CNAME', name=name, domain=domain)
+            rrtype='CNAME', name=name, domain=domain)
         ipaddress = factory.make_StaticIPAddress()
         dnsrr = dnsdata.dnsresource
         dnsrr.ip_addresses.add(ipaddress)

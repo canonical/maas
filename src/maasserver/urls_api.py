@@ -49,6 +49,10 @@ from maasserver.api.devices import (
     DeviceHandler,
     DevicesHandler,
 )
+from maasserver.api.dnsresourcerecords import (
+    DNSResourceRecordHandler,
+    DNSResourceRecordsHandler,
+)
 from maasserver.api.dnsresources import (
     DNSResourceHandler,
     DNSResourcesHandler,
@@ -180,6 +184,10 @@ machine_handler = RestrictedResource(MachineHandler, authentication=api_auth)
 machines_handler = RestrictedResource(MachinesHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
+dnsresourcerecord_handler = RestrictedResource(
+    DNSResourceRecordHandler, authentication=api_auth)
+dnsresourcerecords_handler = RestrictedResource(
+    DNSResourceRecordsHandler, authentication=api_auth)
 dnsresource_handler = RestrictedResource(
     DNSResourceHandler, authentication=api_auth)
 dnsresources_handler = RestrictedResource(
@@ -422,6 +430,12 @@ urlpatterns += patterns(
         r'^subnets/(?P<subnet_id>[.: \w-]+(?:/\d\d\d?)?)/$',
         subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
+    url(
+        r'^dnsresourcerecords/$', dnsresourcerecords_handler,
+        name='dnsresourcerecords_handler'),
+    url(
+        r'^dnsresourcerecords/(?P<dnsresourcerecord_id>[^/]+)/$',
+        dnsresourcerecord_handler, name='dnsresourcerecord_handler'),
     url(r'^dnsresources/$', dnsresources_handler, name='dnsresources_handler'),
     url(
         r'^dnsresources/(?P<dnsresource_id>[^/]+)/$',

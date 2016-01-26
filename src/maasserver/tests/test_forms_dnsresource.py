@@ -1,9 +1,11 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015,2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DNSResource forms."""
 
 __all__ = []
+
+import random
 
 from maasserver.forms_dnsresource import DNSResourceForm
 from maasserver.testing.factory import factory
@@ -28,6 +30,33 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(sip.id, dnsresource.ip_addresses.first().id)
 
+    def test_does_not_require_ip_addresses(self):
+        name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        form = DNSResourceForm({
+            "name": name,
+            "domain": domain.id,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        self.assertEqual(name, dnsresource.name)
+        self.assertEqual(domain.id, dnsresource.domain.id)
+
+    def test_accepts_address_ttl(self):
+        name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        ttl = random.randint(1, 1000)
+        form = DNSResourceForm({
+            "name": name,
+            "domain": domain.id,
+            "address_ttl": ttl,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        self.assertEqual(name, dnsresource.name)
+        self.assertEqual(domain.id, dnsresource.domain.id)
+        self.assertEqual(ttl, dnsresource.address_ttl)
+
     def test__doesnt_require_name_on_update(self):
         dnsresource = factory.make_DNSResource()
         form = DNSResourceForm(instance=dnsresource, data={})
@@ -37,13 +66,16 @@ class TestDNSResourceForm(MAASServerTestCase):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("new")
         new_sip_ids = [factory.make_StaticIPAddress().id]
+        new_ttl = random.randint(1, 1000)
         form = DNSResourceForm(instance=dnsresource, data={
             "name": new_name,
             "ip_addresses": new_sip_ids,
+            "address_ttl": new_ttl,
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
+        self.assertEqual(new_ttl, reload_object(dnsresource).address_ttl)
         self.assertItemsEqual(
             new_sip_ids, [
                 ip.id for ip in

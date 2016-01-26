@@ -98,13 +98,10 @@ class TestDomainAPI(APITestCase):
 
     def test_read(self):
         domain = factory.make_Domain()
-        dnsrr_ids = [
-            factory.make_DNSResource(domain=domain).id
-            for _ in range(3)
-        ]
+        for _ in range(3):
+            factory.make_DNSData(domain=domain)
         uri = get_domain_uri(domain)
         response = self.client.get(uri)
-
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_domain = json.loads(
@@ -112,12 +109,8 @@ class TestDomainAPI(APITestCase):
         self.assertThat(parsed_domain, ContainsDict({
             "id": Equals(domain.id),
             "name": Equals(domain.get_name()),
+            "resource_record_count": Equals(3),
             }))
-        parsed_dnsrrs = [
-            dnsrr["id"]
-            for dnsrr in parsed_domain["resources"]
-        ]
-        self.assertItemsEqual(dnsrr_ids, parsed_dnsrrs)
 
     def test_read_404_when_bad_id(self):
         uri = reverse(

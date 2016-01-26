@@ -478,7 +478,7 @@ class TestZoneGenerator(MAASServerTestCase):
             {node.hostname: (30, ['%s' % boot_ip.ip])}, zones[0]._mapping)
         self.assertEqual(
             {dnsdata.dnsresource.name: (default_ttl, [
-                "%s %s" % (dnsdata.resource_type, dnsdata.resource_data)])},
+                "%s %s" % (dnsdata.rrtype, dnsdata.rrdata)])},
             zones[0]._other_mapping)
         self.assertItemsEqual({
             node.fqdn: (30, ['%s' % boot_ip.ip]),

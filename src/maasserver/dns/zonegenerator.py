@@ -237,7 +237,7 @@ class ZoneGenerator:
             other_mapping = {}
             for dnsrr in dnsresources:
                 dataset = dnsrr.dnsdata_set.all()
-                for rrtype in set(data.resource_type for data in dataset):
+                for rrtype in set(data.rrtype for data in dataset):
                     # Start at 2^31-1, and then select the minimum ttl found in
                     # the RRset.
                     ttl = (1 << 31) - 1
@@ -245,7 +245,7 @@ class ZoneGenerator:
                         values = [
                             str(data)
                             for data in dataset
-                            if data.resource_type == rrtype]
+                            if data.rrtype == rrtype]
                         if dataset.first().ttl is not None:
                             ttl = min(ttl, dataset.first().ttl)
                         elif dnsrr.domain.ttl is not None:

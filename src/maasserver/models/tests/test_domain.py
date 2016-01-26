@@ -185,11 +185,11 @@ class DomainTest(MAASServerTestCase):
         domain = factory.make_Domain()
         target = "%s.%s" % (factory.make_name(), factory.make_name())
         factory.make_DNSData(
-            domain=domain, name='_vlmcs._tcp', resource_type='SRV',
-            resource_data='0 0 1688 %s.' % target)
+            domain=domain, name='_vlmcs._tcp', rrtype='SRV',
+            rrdata='0 0 1688 %s.' % target)
         domain.update_kms_srv('')
         # We would restrict it more, but we just deleted it...
-        rrset = DNSData.objects.filter(resource_type='SRV')
+        rrset = DNSData.objects.filter(rrtype='SRV')
         self.assertEqual(0, rrset.count())
 
     def test_update_kms_srv_creates_srv_records(self):
@@ -197,9 +197,9 @@ class DomainTest(MAASServerTestCase):
         target = "%s.%s" % (factory.make_name(), factory.make_name())
         domain.update_kms_srv(target)
         srvrr = DNSData.objects.get(
-            resource_type='SRV', dnsresource__name="_vlmcs._tcp",
+            rrtype='SRV', dnsresource__name="_vlmcs._tcp",
             dnsresource__domain_id=domain.id)
-        self.assertEqual("0 0 1688 %s." % target, srvrr.resource_data)
+        self.assertEqual("0 0 1688 %s." % target, srvrr.rrdata)
 
     def test_update_kms_srv_creates_srv_records_on_all_domains(self):
         domains = [factory.make_Domain() for _ in range(random.randint(1, 10))]
@@ -207,6 +207,6 @@ class DomainTest(MAASServerTestCase):
         Config.objects.set_config('windows_kms_host', target)
         for domain in domains:
             srvrr = DNSData.objects.get(
-                resource_type='SRV', dnsresource__name="_vlmcs._tcp",
+                rrtype='SRV', dnsresource__name="_vlmcs._tcp",
                 dnsresource__domain_id=domain.id)
-            self.assertEqual("0 0 1688 %s." % target, srvrr.resource_data)
+            self.assertEqual("0 0 1688 %s." % target, srvrr.rrdata)

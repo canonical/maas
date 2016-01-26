@@ -1,7 +1,7 @@
 # Copyright 2015,2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for DNSResource API."""
+"""Tests for DNSResourceRecord API."""
 
 __all__ = []
 
@@ -12,7 +12,6 @@ import random
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.models.dnsdata import DNSData
-from maasserver.models.dnsresource import DNSResource
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -22,93 +21,91 @@ from testtools.matchers import (
 )
 
 
-def get_dnsresources_uri():
-    """Return a DNSResource's URI on the API."""
-    return reverse('dnsresources_handler', args=[])
+def get_dnsresourcerecords_uri():
+    """Return a DNSResourceRecord's URI on the API."""
+    return reverse('dnsresourcerecords_handler', args=[])
 
 
-def get_dnsresource_uri(dnsresource):
-    """Return a DNSResource URI on the API."""
+def get_dnsresourcerecord_uri(dnsresourcerecord):
+    """Return a DNSResourceRecord URI on the API."""
     return reverse(
-        'dnsresource_handler', args=[dnsresource.id])
+        'dnsresourcerecord_handler', args=[dnsresourcerecord.id])
 
 
-class TestDNSResourcesAPI(APITestCase):
+class TestDNSResourceRecordsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/2.0/dnsresources/', get_dnsresources_uri())
+            '/api/2.0/dnsresourcerecords/', get_dnsresourcerecords_uri())
 
     def test_read(self):
         for _ in range(3):
-            factory.make_DNSResource()
-        uri = get_dnsresources_uri()
+            factory.make_DNSData()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.get(uri)
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         expected_ids = [
-            dnsresource.id
-            for dnsresource in DNSResource.objects.all()
+            dnsdata.id
+            for dnsdata in DNSData.objects.all()
             ]
         result_ids = [
-            dnsresource["id"]
-            for dnsresource in json.loads(
+            dnsrr["id"]
+            for dnsrr in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
     def test_read_with_domain(self):
         for _ in range(3):
-            factory.make_DNSResource()
-        dnsrr = DNSResource.objects.first()
-        uri = get_dnsresources_uri()
+            dnsdata = factory.make_DNSData()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.get(
             uri,
-            {'domain': [dnsrr.domain.name]})
+            {'domain': [dnsdata.dnsresource.domain.name]})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        expected_ids = [dnsrr.id]
+        expected_ids = [dnsdata.id]
         result_ids = [
-            dnsresource["id"]
-            for dnsresource in json.loads(
+            data["id"]
+            for data in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
     def test_read_with_name(self):
         for _ in range(3):
-            factory.make_DNSResource()
-        dnsrr = DNSResource.objects.first()
-        uri = get_dnsresources_uri()
+            dnsdata = factory.make_DNSData()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.get(
             uri,
-            {'name': [dnsrr.name]})
+            {'name': [dnsdata.dnsresource.name]})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        expected_ids = [dnsrr.id]
+        expected_ids = [dnsdata.id]
         result_ids = [
-            dnsresource["id"]
-            for dnsresource in json.loads(
+            data["id"]
+            for data in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
     def test_read_with_type(self):
-        for _ in range(10):
-            factory.make_DNSData()
-        rrtype = DNSData.objects.first().rrtype
-        uri = get_dnsresources_uri()
+        for _ in range(3):
+            dnsdata = factory.make_DNSData()
+        rrtype = dnsdata.rrtype
+        uri = get_dnsresourcerecords_uri()
         response = self.client.get(
             uri, {'rrtype': [rrtype]})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         expected_ids = [
-            dnsrr.id for dnsrr in DNSResource.objects.filter(
-                dnsdata__rrtype=rrtype)]
+            data.id for data in DNSData.objects.filter(
+                rrtype=rrtype)]
         result_ids = [
-            dnsresource["id"]
-            for dnsresource in json.loads(
+            data["id"]
+            for data in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))
             ]
         self.assertItemsEqual(expected_ids, result_ids)
@@ -118,12 +115,12 @@ class TestDNSResourcesAPI(APITestCase):
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         fqdn = "%s.%s" % (dnsresource_name, domain.name)
-        sip = factory.make_StaticIPAddress()
-        uri = get_dnsresources_uri()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.post(uri, {
             "name": dnsresource_name,
             "domain": domain.id,
-            "ip_addresses": str(sip.ip),
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -132,22 +129,27 @@ class TestDNSResourcesAPI(APITestCase):
             json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
         self.assertEqual(
-            sip.ip,
+            "TXT",
             json.loads(
                 response.content.decode(
-                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
+                    settings.DEFAULT_CHARSET))['rrtype'])
+        self.assertEqual(
+            "Sample Text.",
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['rrdata'])
 
     def test_create_by_name_domain__name(self):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         fqdn = "%s.%s" % (dnsresource_name, domain.name)
-        sip = factory.make_StaticIPAddress()
-        uri = get_dnsresources_uri()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.post(uri, {
             "name": dnsresource_name,
             "domain": domain.name,
-            "ip_addresses": str(sip.ip),
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -156,21 +158,26 @@ class TestDNSResourcesAPI(APITestCase):
             json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
         self.assertEqual(
-            sip.ip,
+            "TXT",
             json.loads(
                 response.content.decode(
-                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
+                    settings.DEFAULT_CHARSET))['rrtype'])
+        self.assertEqual(
+            "Sample Text.",
+            json.loads(
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['rrdata'])
 
     def test_create_by_fqdn(self):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
         fqdn = "%s.%s" % (dnsresource_name, domain.name)
-        sip = factory.make_StaticIPAddress()
-        uri = get_dnsresources_uri()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.post(uri, {
             "fqdn": fqdn,
-            "ip_addresses": str(sip.ip),
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -179,127 +186,114 @@ class TestDNSResourcesAPI(APITestCase):
             json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
         self.assertEqual(
-            sip.ip,
+            "TXT",
             json.loads(
                 response.content.decode(
-                    settings.DEFAULT_CHARSET))['ip_addresses'][0]['ip'])
-
-    def test_create_multiple_ips(self):
-        self.become_admin()
-        dnsresource_name = factory.make_name("dnsresource")
-        domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
-        ips = [factory.make_StaticIPAddress() for _ in range(2)]
-        uri = get_dnsresources_uri()
-        response = self.client.post(uri, {
-            "name": dnsresource_name,
-            "domain": domain.id,
-            "ip_addresses": " ".join([str(ip.ip) for ip in ips]),
-        })
+                    settings.DEFAULT_CHARSET))['rrtype'])
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertEqual(
-            fqdn,
+            "Sample Text.",
             json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
-        result = json.loads(response.content.decode(
-            settings.DEFAULT_CHARSET))['ip_addresses']
-        self.assertEqual([ip.ip for ip in ips], [ip['ip'] for ip in result])
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['rrdata'])
 
     def test_create_admin_only(self):
         dnsresource_name = factory.make_name("dnsresource")
-        uri = get_dnsresources_uri()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.post(uri, {
             "name": dnsresource_name,
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
         })
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_create_requires_name(self):
         self.become_admin()
-        uri = get_dnsresources_uri()
+        uri = get_dnsresourcerecords_uri()
         response = self.client.post(uri, {})
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
 
 
-class TestDNSResourceAPI(APITestCase):
+class TestDNSResourceRecordAPI(APITestCase):
 
     def test_handler_path(self):
-        dnsresource = factory.make_DNSResource()
+        dnsdata = factory.make_DNSData()
         self.assertEqual(
-            '/api/2.0/dnsresources/%s/' % dnsresource.id,
-            get_dnsresource_uri(dnsresource))
+            '/api/2.0/dnsresourcerecords/%s/' % dnsdata.id,
+            get_dnsresourcerecord_uri(dnsdata))
 
     def test_read(self):
-        dnsrr = factory.make_DNSResource()
+        dnsdata = factory.make_DNSData()
         for _ in range(3):
-            factory.make_DNSResource()
-        uri = get_dnsresource_uri(dnsrr)
+            factory.make_DNSData()
+        uri = get_dnsresourcerecord_uri(dnsdata)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_dnsresource = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(parsed_dnsresource, ContainsDict({
-            "id": Equals(dnsrr.id),
-            "fqdn": Equals(dnsrr.fqdn),
+            "id": Equals(dnsdata.id),
+            "fqdn": Equals(dnsdata.fqdn),
+            "rrtype": Equals(dnsdata.rrtype),
+            "rrdata": Equals(dnsdata.rrdata),
             }))
 
     def test_read_404_when_bad_id(self):
         uri = reverse(
-            'dnsresource_handler', args=[random.randint(100, 1000)])
+            'dnsresourcerecord_handler', args=[random.randint(100, 1000)])
         response = self.client.get(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update(self):
         self.become_admin()
-        dnsresource = factory.make_DNSResource()
-        new_name = factory.make_name("dnsresource")
-        uri = get_dnsresource_uri(dnsresource)
+        dnsdata = factory.make_DNSData(rrtype="TXT", rrdata="1")
+        new_data = factory.make_name("data")
+        uri = get_dnsresourcerecord_uri(dnsdata)
         response = self.client.put(uri, {
-            "name": new_name,
+            "rrdata": new_data,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertEqual(
-            "%s.%s" % (new_name, dnsresource.domain.name),
+            new_data,
             json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
-        self.assertEqual(new_name, reload_object(dnsresource).name)
+                response.content.decode(
+                    settings.DEFAULT_CHARSET))['rrdata'])
 
     def test_update_admin_only(self):
-        dnsresource = factory.make_DNSResource()
-        new_name = factory.make_name("dnsresource")
-        uri = get_dnsresource_uri(dnsresource)
+        dnsdata = factory.make_DNSData()
+        new_ttl = random.randint(10, 100)
+        uri = get_dnsresourcerecord_uri(dnsdata)
         response = self.client.put(uri, {
-            "name": new_name,
+            "ttl": new_ttl,
         })
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
     def test_delete_deletes_dnsresource(self):
         self.become_admin()
-        dnsresource = factory.make_DNSResource()
-        uri = get_dnsresource_uri(dnsresource)
+        dnsdata = factory.make_DNSData()
+        uri = get_dnsresourcerecord_uri(dnsdata)
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
-        self.assertIsNone(reload_object(dnsresource))
+        self.assertIsNone(reload_object(dnsdata))
 
     def test_delete_403_when_not_admin(self):
-        dnsresource = factory.make_DNSResource()
-        uri = get_dnsresource_uri(dnsresource)
+        dnsdata = factory.make_DNSData()
+        uri = get_dnsresourcerecord_uri(dnsdata)
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
-        self.assertIsNotNone(reload_object(dnsresource))
+        self.assertIsNotNone(reload_object(dnsdata))
 
     def test_delete_404_when_invalid_id(self):
         self.become_admin()
         uri = reverse(
-            'dnsresource_handler', args=[random.randint(100, 1000)])
+            'dnsresourcerecord_handler', args=[random.randint(100, 1000)])
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)

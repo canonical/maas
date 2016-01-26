@@ -94,22 +94,22 @@ class DNSDataTest(MAASServerTestCase):
             (from_db.dnsresource.name, from_db.id),
             (name, dnsdata.id))
 
-    # The following tests intentionally pass in a lowercase resource_type,
+    # The following tests intentionally pass in a lowercase rrtype,
     # which will be upshifted in the creation of the DNSData record.
     def test_creates_cname(self):
         name = factory.make_name('name')
-        dnsdata = factory.make_DNSData(resource_type='cname', name=name)
+        dnsdata = factory.make_DNSData(rrtype='cname', name=name)
         from_db = DNSData.objects.get(dnsresource__name=name)
         self.assertEqual(
-            (from_db.id, from_db.resource_type),
+            (from_db.id, from_db.rrtype),
             (dnsdata.id, 'CNAME'))
 
     def test_creates_cname_with_underscore(self):
         name = factory.make_name('na_me')
-        dnsdata = factory.make_DNSData(resource_type='cname', name=name)
+        dnsdata = factory.make_DNSData(rrtype='cname', name=name)
         from_db = DNSData.objects.get(dnsresource__name=name)
         self.assertEqual(
-            (from_db.id, from_db.resource_type),
+            (from_db.id, from_db.rrtype),
             (dnsdata.id, 'CNAME'))
 
     def test_rejects_bad_cname_target(self):
@@ -117,7 +117,7 @@ class DNSDataTest(MAASServerTestCase):
         dnsresource = factory.make_DNSResource(no_ip_addresses=True)
         dnsdata = DNSData(
             dnsresource=dnsresource,
-            resource_type='CNAME', resource_data=target)
+            rrtype='CNAME', rrdata=target)
         with ExpectedException(
                 ValidationError,
                 re.escape(
@@ -126,18 +126,18 @@ class DNSDataTest(MAASServerTestCase):
 
     def test_creates_mx(self):
         name = factory.make_name('name')
-        dnsdata = factory.make_DNSData(resource_type='mx', name=name)
+        dnsdata = factory.make_DNSData(rrtype='mx', name=name)
         from_db = DNSData.objects.get(dnsresource__name=name)
         self.assertEqual(
-            (from_db.id, from_db.resource_type),
+            (from_db.id, from_db.rrtype),
             (dnsdata.id, 'MX'))
 
     def test_creates_ns(self):
         name = factory.make_name('name')
-        dnsdata = factory.make_DNSData(resource_type='ns', name=name)
+        dnsdata = factory.make_DNSData(rrtype='ns', name=name)
         from_db = DNSData.objects.get(dnsresource__name=name)
         self.assertEqual(
-            (from_db.id, from_db.resource_type),
+            (from_db.id, from_db.rrtype),
             (dnsdata.id, 'NS'))
 
     def test_creates_srv(self):
@@ -152,19 +152,19 @@ class DNSDataTest(MAASServerTestCase):
             random.randint(1, 65535),
             target)
         dnsdata = factory.make_DNSData(
-            resource_type='srv', resource_data=data, name=srv_name)
+            rrtype='srv', rrdata=data, name=srv_name)
         from_db = DNSData.objects.get(dnsresource__name=srv_name)
         self.assertEqual((
             from_db.dnsresource.name, from_db.id,
-            from_db.resource_type, from_db.resource_data),
+            from_db.rrtype, from_db.rrdata),
             (srv_name, dnsdata.id, 'SRV', data))
 
     def test_creates_txt(self):
         name = factory.make_name('name')
-        dnsdata = factory.make_DNSData(resource_type='txt', name=name)
+        dnsdata = factory.make_DNSData(rrtype='txt', name=name)
         from_db = DNSData.objects.get(dnsresource__name=name)
         self.assertEqual(
-            (from_db.id, from_db.resource_type),
+            (from_db.id, from_db.rrtype),
             (dnsdata.id, 'TXT'))
 
     def test_rejects_cname_with_address(self):
@@ -175,8 +175,8 @@ class DNSDataTest(MAASServerTestCase):
         dnsrr.save()
         dnsdata = DNSData(
             dnsresource=dnsrr,
-            resource_type='CNAME',
-            resource_data=target)
+            rrtype='CNAME',
+            rrdata=target)
         with ExpectedException(
                 ValidationError,
                 re.escape(
@@ -190,9 +190,9 @@ class DNSDataTest(MAASServerTestCase):
         rrtype = random.choice(['MX', 'NS', 'TXT'])
         dnsrr = factory.make_DNSData(
             name=name, domain=domain,
-            no_ip_addresses=True, resource_type=rrtype).dnsresource
+            no_ip_addresses=True, rrtype=rrtype).dnsresource
         dnsdata = DNSData(
-            dnsresource=dnsrr, resource_type='CNAME', resource_data=target)
+            dnsresource=dnsrr, rrtype='CNAME', rrdata=target)
         with ExpectedException(
                 ValidationError,
                 re.escape(
@@ -201,17 +201,17 @@ class DNSDataTest(MAASServerTestCase):
 
     def test_allows_multiple_records_unless_cname(self):
         dnsdata = factory.make_DNSData(no_ip_addresses=True)
-        if dnsdata.resource_type == 'CNAME':
+        if dnsdata.rrtype == 'CNAME':
             with ExpectedException(
                     ValidationError,
                     re.escape(
                         "{'__all__': ['%s']}" % MULTI_CNAME_MSG)):
                 factory.make_DNSData(
                     dnsresource=dnsdata.dnsresource,
-                    resource_type='CNAME')
+                    rrtype='CNAME')
         else:
             factory.make_DNSData(
                 dnsresource=dnsdata.dnsresource,
-                resource_type=dnsdata.resource_type)
+                rrtype=dnsdata.rrtype)
             self.assertEqual(2, DNSData.objects.filter(
                 dnsresource=dnsdata.dnsresource).count())

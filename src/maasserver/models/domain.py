@@ -186,8 +186,8 @@ class Domain(CleanSave, TimestampedModel):
             # 1 DNSResource records
             for dnsrr in self.dnsresource_set.filter(name='_vlmcs._tcp'):
                 dnsrr.dnsdata_set.filter(
-                    resource_type='SRV',
-                    resource_data__startswith='0 0 1688 '
+                    rrtype='SRV',
+                    rrdata__startswith='0 0 1688 '
                     ).delete()
         else:
             # force kms_host to be an FQDN (with trailing dot.)
@@ -201,16 +201,16 @@ class Domain(CleanSave, TimestampedModel):
             dnsrr, _ = DNSResource.objects.get_or_create(
                 domain_id=self.id, name='_vlmcs._tcp', defaults={})
             srv, created = DNSData.objects.update_or_create(
-                dnsresource_id=dnsrr.id, resource_type='SRV',
-                resource_data__startswith="0 0 1688 ",
-                defaults=dict(resource_data=srv_data))
+                dnsresource_id=dnsrr.id, rrtype='SRV',
+                rrdata__startswith="0 0 1688 ",
+                defaults=dict(rrdata=srv_data))
 
-    def get_base_ttl(self, resource_type, default_ttl):
+    def get_base_ttl(self, rrtype, default_ttl):
         # If there is a Resource Record set, which has a non-None TTL, then it
         # wins.  Otherwise our ttl if we have one, or the passed-in default.
         from maasserver.models import DNSData
         rrset = DNSData.objects.filter(
-            resource_type=resource_type, ttl__isnull=False).filter(
+            rrtype=rrtype, ttl__isnull=False).filter(
             Q(dnsresource__name='@') | Q(dnsresource__name='')).filter(
             dnsresource__domain_id=self.id)
         if rrset.count() > 0:
@@ -219,6 +219,23 @@ class Domain(CleanSave, TimestampedModel):
             return self.ttl
         else:
             return default_ttl
+
+    @property
+    def resource_count(self):
+        """How many DNSResource names are attached to this domain."""
+        from maasserver.models.dnsresource import DNSResource
+        return DNSResource.objects.filter(domain_id=self.id).count()
+
+    @property
+    def resource_record_count(self):
+        """How many total Resource Records come from non-Nodes."""
+        from maasserver.models.dnsdata import DNSData
+        from maasserver.models.staticipaddress import StaticIPAddress
+        ip_count = StaticIPAddress.objects.filter(
+            dnsresource__domain_id=self.id).count()
+        rr_count = DNSData.objects.filter(
+            dnsresource__domain_id=self.id).count()
+        return ip_count + rr_count
 
     def __str__(self):
         return "name=%s" % self.get_name()
@@ -233,11 +250,6 @@ class Domain(CleanSave, TimestampedModel):
     def get_name(self):
         """Return the name of the domain."""
         return self.name
-
-    def resource_count(self):
-        """How many nodes are attached to this zone."""
-        from maasserver.models.dnsresource import DNSResource
-        return DNSResource.objects.filter(domain=self).count()
 
     def delete(self):
         if self.is_default():
