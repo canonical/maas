@@ -73,6 +73,7 @@ class ServiceMonitor:
     SYSTEMD_TO_STATE = {
         "active": SERVICE_STATE.ON,
         "inactive": SERVICE_STATE.OFF,
+        "failed": SERVICE_STATE.OFF,
     }
 
     # Used to log when the process state is not expected for the active state.
@@ -229,6 +230,14 @@ class ServiceMonitor:
         #    Active: inactive (dead)
         #    Docs: man:systemd-sysv-generator(8)
         #
+        # output for failed service looks like:
+        #   maas-dhcpd.service - MAAS instance of ISC DHCP server for IPv4
+        #    Loaded: loaded (/lib/systemd/system/maas-dhcpd.service; enabled;
+        # ... vendor preset: enabled)
+        #    Active: failed (Result: exit-code) since Wed 2016-01-20 10:35:43
+        # ... EST; 26min ago
+        #    Docs: man:dhcpd(8)
+        #
         # output for unknown service looks like:
         #   missing.service
         #    Loaded: not-found (Reason: No such file or directory)
@@ -241,9 +250,9 @@ class ServiceMonitor:
                     raise UnknownServiceError("'%s' is unknown to systemd." % (
                         service_name))
             if line.startswith("Active"):
-                active_split = line.split()
+                active_split = line.split(' ', 2)
                 active_state, process_state = (
-                    active_split[1], active_split[2].lstrip('(').rstrip(')'))
+                    active_split[1], active_split[2].lstrip('(').split(')')[0])
                 active_state_enum = self.SYSTEMD_TO_STATE.get(active_state)
                 if active_state_enum is None:
                     raise ServiceParsingError(

@@ -429,6 +429,22 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual(SERVICE_STATE.OFF, active_state)
         self.assertEqual("dead", process_state)
 
+    def test__get_systemd_service_status_returns_off_and_dead_for_failed(self):
+        systemd_status_output = dedent("""\
+            maas-dhcpd.service - MAAS instance of ISC DHCP server for IPv4
+                Loaded: loaded (/lib/systemd/system/maas-dhcpd.service; ...
+                Active: failed (Result: exit-code) since Wed 2016-01-20...
+                Docs: man:dhcpd(8)
+            """)
+
+        service_monitor = ServiceMonitor()
+        mock_exec_service_action = self.patch(
+            service_monitor, "_exec_service_action")
+        mock_exec_service_action.return_value = (3, systemd_status_output)
+        active_state, process_state = (
+            service_monitor._get_systemd_service_status("maas-dhcpd"))
+        self.assertEqual(SERVICE_STATE.OFF, active_state)
+
     def test__get_systemd_service_status_returns_on_and_running(self):
         systemd_status_output = dedent("""\
             tgt.service - LSB: iscsi target daemon
