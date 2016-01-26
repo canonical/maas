@@ -10,6 +10,7 @@ from django.db import (
 import django.db.models.deletion
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 import maasserver.models.dnsresource
+from maasserver.models.domain import DEFAULT_DOMAIN_NAME
 import maasserver.models.node
 
 
@@ -18,7 +19,20 @@ def migrate_nodegroup_name(apps, schema_editor):
     Node = apps.get_model("maasserver", "Node")
     Domain = apps.get_model("maasserver", "Domain")
 
-    # First, create all of the domains for which we are authoritative
+    # First, create the default domain.
+    now = datetime.datetime.now()
+    domain, _ = Domain.objects.get_or_create(
+        id=0,
+        defaults={
+            'id': 0,
+            'name': DEFAULT_DOMAIN_NAME,
+            'authoritative': True,
+            'created': now,
+            'updated': now,
+        }
+    )
+
+    # Then, create all of the domains for which we are authoritative
     for nodegroup in NodeGroup.objects.filter(name__isnull=False):
         # Create a Domain if needed, for this name.
         now = datetime.datetime.now()
