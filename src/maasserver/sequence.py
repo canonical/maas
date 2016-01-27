@@ -14,8 +14,14 @@ from textwrap import dedent
 from django.db import (
     connection,
     transaction,
+    utils,
 )
+from maasserver.utils.orm import get_psycopg2_exception
 from provisioningserver.utils import typed
+from psycopg2.errorcodes import (
+    DUPLICATE_TABLE,
+    UNDEFINED_TABLE,
+)
 
 
 BIGINT_MAX = (2 ** 63) - 1
@@ -59,22 +65,15 @@ class Sequence:
         self.owner = owner
 
     _sql_create = dedent("""\
-        DO
-        $$
-        BEGIN
-            CREATE SEQUENCE {name} INCREMENT BY {increment:d}
-            {minvalue} {maxvalue} {start} {cycle} OWNED BY {owner};
-        EXCEPTION WHEN duplicate_table THEN
-            -- Do nothing, it already exists.
-        END
-        $$ LANGUAGE plpgsql;
+        CREATE SEQUENCE {name} INCREMENT BY {increment:d}
+        {minvalue} {maxvalue} {start} {cycle} OWNED BY {owner};
     """)
     _sql_drop = (
         "DROP SEQUENCE {name}"
     )
 
     def create(self):
-        """Create this sequence in the database if it doesn't already exist."""
+        """Create this sequence in the database."""
         minv, maxv = self.minvalue, self.maxvalue
         statement = self._sql_create.format(
             name=self.name, increment=self.increment,
@@ -87,12 +86,38 @@ class Sequence:
             with connection.cursor() as cursor:
                 cursor.execute(statement)
 
+    def create_if_not_exists(self):
+        """Create this sequence in the database.
+
+        If it already exists, fine.
+        """
+        try:
+            self.create()
+        except utils.ProgrammingError as error:
+            if is_postgres_error(error, DUPLICATE_TABLE):
+                pass  # Sequence already exists.
+            else:
+                raise
+
     def drop(self):
         """Drop this sequence from the database."""
         statement = self._sql_drop.format(name=self.name)
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(statement)
+
+    def drop_if_exists(self):
+        """Drop this sequence from the database.
+
+        If it doesn't exist, fine.
+        """
+        try:
+            self.drop()
+        except utils.ProgrammingError as error:
+            if is_postgres_error(error, UNDEFINED_TABLE):
+                pass  # Sequence already dropped.
+            else:
+                raise
 
     def __iter__(self):
         """Return an iterator for this sequence."""
@@ -101,9 +126,43 @@ class Sequence:
     def __next__(self):
         """Return the next value of this sequence.
 
+        This will create the sequence if it does not exist. This is dirty and
+        nasty but it's a compromise. We can create sequences in migrations,
+        but running tests with migrations is mind-bendinly slow, so we want to
+        run tests outside of migrations... but Django without migrations does
+        not grok sequences. So, for the sake of tests and our collective
+        sanity we just create the wretched sequence.
+
         :return: The sequence value.
         :rtype: int
         """
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT nextval(%s)", [self.name])
-            return cursor.fetchone()[0]
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT nextval(%s)", [self.name])
+                    return cursor.fetchone()[0]
+        except utils.ProgrammingError as error:
+            if is_postgres_error(error, UNDEFINED_TABLE):
+                # The sequence does not exist. For the sake of tests we'll
+                # create it on the fly because: we can create sequences in
+                # migrations, running tests with migrations is mind-bendinly
+                # slow, but tests without migrations do not grok sequences.
+                # Suppress DUPLICATE_TABLE errors from races here.
+                self.create_if_not_exists()
+                return next(self)
+            else:
+                raise
+
+
+def is_postgres_error(error, *pgcodes):
+    # Unwrap Django's lowest-common-denominator exception.
+    error = get_psycopg2_exception(error)
+    if error is None:
+        # A Django error, not from the database.
+        return False
+    elif error.pgcode in pgcodes:
+        # A matching database-side error.
+        return True
+    else:
+        # Some other database-side error.
+        return False

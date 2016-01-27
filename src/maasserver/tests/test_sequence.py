@@ -8,7 +8,10 @@ __all__ = []
 from itertools import islice
 import random
 
-from django.db import connection
+from django.db import (
+    connection,
+    transaction,
+)
 from django.db.utils import (
     DatabaseError,
     OperationalError,
@@ -17,15 +20,15 @@ from django.db.utils import (
 from maasserver.sequence import Sequence
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools import ExpectedException
 
 
 class TestSequence(MAASServerTestCase):
 
     def query_seq(self, name):
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT nextval(%s)", [name])
-        return cursor.fetchone()[0]
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT nextval(%s)", [name])
+            return cursor.fetchone()[0]
 
     def test_create_sequence(self):
         name = factory.make_name('seq', sep='')
@@ -33,6 +36,19 @@ class TestSequence(MAASServerTestCase):
         seq.create()
         val = self.query_seq(seq.name)
         self.assertEqual(1, val)
+
+    def test_create_sequence_fails_if_sequence_exists(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        self.assertRaisesRegex(ProgrammingError, "already exists", seq.create)
+
+    def test_create_if_not_exists_does_not_fails_if_sequence_exists(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        seq.create_if_not_exists()
+        self.assertEqual(1, next(seq))
 
     def test_sequence_respects_minvalue(self):
         name = factory.make_name('seq', sep='')
@@ -90,7 +106,18 @@ class TestSequence(MAASServerTestCase):
             cursor.execute("DROP TABLE alice")
         self.assertRaisesRegex(
             ProgrammingError, 'relation "carol" does not exist',
-            next, seq)
+            self.query_seq, seq.name)
+
+    def test_sequence_will_be_created_automatically_on_first_access(self):
+        seq = Sequence("dave")
+        # Accessing the sequence directly in the database we find that it's
+        # not there.
+        with ExpectedException(ProgrammingError, ".* does not exist"):
+            with transaction.atomic():
+                self.query_seq(seq.name)
+        # Iterating via `Sequence` automatically vivifies it.
+        self.assertEqual(1, next(seq))
+        self.assertEqual(2, self.query_seq(seq.name))
 
     def test_drop_sequence(self):
         name = factory.make_name('seq', sep='')
@@ -100,6 +127,16 @@ class TestSequence(MAASServerTestCase):
         self.assertRaisesRegex(
             DatabaseError, "does not exist", self.query_seq,
             seq.name)
+
+    def test_drop_sequence_fails_if_sequence_does_not_exist(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        self.assertRaisesRegex(ProgrammingError, "does not exist", seq.drop)
+
+    def test_drop_if_exists_does_not_fail_if_sequence_does_not_exist(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.drop_if_exists()
 
     def test_next_returns_sequential_values(self):
         name = factory.make_name('seq', sep='')

@@ -21,7 +21,6 @@ from collections import (
 from datetime import timedelta
 from operator import attrgetter
 import re
-from uuid import uuid1
 
 from django.contrib.auth.models import User
 from django.core.exceptions import (
@@ -103,6 +102,7 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc.monitors import TransitionMonitor
+from maasserver.sequence import Sequence
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     StorageLayoutError,
@@ -137,6 +137,7 @@ from provisioningserver.power.poweraction import (
     UnknownPowerType,
 )
 from provisioningserver.rpc.exceptions import CannotRemoveHostMap
+from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -157,14 +158,29 @@ KNOWN_BIOS_BOOT_METHODS = ["pxe", "uefi"]
 # Default `bios_boot_method`. See `KNOWN_BIOS_BOOT_METHOD` above for usage.
 DEFAULT_BIOS_BOOT_METHOD = "pxe"
 
-
-def generate_node_system_id():
-    return 'node-%s' % uuid1()
-
 # Return type from `get_effective_power_info`.
 PowerInfo = namedtuple("PowerInfo", (
     "can_be_started", "can_be_stopped", "can_be_queried", "power_type",
     "power_parameters"))
+
+# The sequence from which the decimal form of node system IDs should be
+# pulled. At the time of writing this should match the definition in migration
+# 0021_create_node_system_id_sequence, and vice-versa.
+node_system_id = Sequence(
+    "maasserver_node_system_id_seq", cycle=False,
+    minvalue=(24 ** 5), maxvalue=((24 ** 6) - 1),
+    start=15600471, owner="maasserver_node.system_id",
+)
+
+
+def generate_node_system_ids():
+    """Return an iterable that yields short system IDs."""
+    return map(znums.from_int, node_system_id)
+
+
+def generate_node_system_id():
+    """Return the next short system ID."""
+    return next(generate_node_system_ids())
 
 
 class NodeQueriesMixin(MAASQueriesMixin):
@@ -259,16 +275,16 @@ class NodeQueriesMixin(MAASQueriesMixin):
         one of the specified dns zone names.
         """
         return self.filter(
-            interface__ip_addresses__dnsresource_set__domain__name__in=
-            domain_names)
+            interface__ip_addresses__dnsresource_set__domain__name__in=(
+                domain_names))
 
     def exclude_domains(self, domain_names):
         """Return the set of nodes without any interfaces configured in
         one of the specified dns zone names.
         """
         return self.exclude(
-            interface__ip_addresses__dnsresource_set__domain__name__in=
-            domain_names)
+            interface__ip_addresses__dnsresource_set__domain__name__in=(
+                domain_names))
 
 
 class NodeQuerySet(QuerySet, NodeQueriesMixin):

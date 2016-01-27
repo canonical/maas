@@ -113,12 +113,14 @@ from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.twisted.protocols import amp
+from provisioningserver.utils import znums
 from provisioningserver.utils.enum import (
     map_enum,
     map_enum_reverse,
 )
 from testtools import ExpectedException
 from testtools.matchers import (
+    AfterPreprocessing,
     Contains,
     Equals,
     HasLength,
@@ -245,11 +247,15 @@ class TestNode(MAASServerTestCase):
         self.addCleanup(node_query.signals.enable)
         node_query.signals.disable()
 
-    def test_system_id(self):
-        # The generated system_id looks good.
+    def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
-        self.assertThat(node.system_id, HasLength(41))
-        self.assertTrue(node.system_id.startswith('node-'))
+        self.assertThat(
+            node.system_id, AfterPreprocessing(
+                znums.to_int, IsInstance(int)))
+
+    def test_system_id_is_exactly_6_characters(self):
+        node = factory.make_Node()
+        self.assertThat(node.system_id, HasLength(6))
 
     def test_empty_architecture_rejected_for_type_node(self):
         self.assertRaises(

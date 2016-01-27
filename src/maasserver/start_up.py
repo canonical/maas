@@ -21,10 +21,7 @@ from maasserver.bootresources import (
     import_resources,
 )
 from maasserver.clusterrpc.boot_images import get_all_available_boot_images
-from maasserver.dns.config import (
-    dns_update_all_zones,
-    zone_serial,
-)
+from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import (
     BootResource,
@@ -189,9 +186,6 @@ def inner_start_up():
     post_commit_do(
         reactor.callLater, randrange(45, 90), reactor.callInDatabase,
         start_import_on_upgrade)
-
-    # Create the zone sequence.
-    zone_serial.create()
 
     # Register all of the triggers.
     register_all_triggers()
