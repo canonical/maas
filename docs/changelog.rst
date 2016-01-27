@@ -8,6 +8,11 @@ Changelog
 
 See https://launchpad.net/maas/+milestone/1.9.1 for full details.
 
+Minor bugs fixed in this release
+--------------------------------
+
+LP: #1536754    Upgrade from 1.8 to 1.9 lost connected macs in all but one network
+
 Bug Fix Update
 --------------
 
