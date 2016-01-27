@@ -53,9 +53,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     # For each piece of default data introduced via migrations we need
     # to also include a data fixture. This needs to be representative,
     # but can be a reduced set.
-    fixtures = [
-        "defaultzone.yaml",
-    ]
+    fixtures = []
 
     @classmethod
     def setUpClass(cls):
