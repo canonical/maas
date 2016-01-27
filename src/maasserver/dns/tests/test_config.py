@@ -105,7 +105,7 @@ class TestDNSUtilities(MAASServerTestCase):
             MatchesStructure.byEquality(
                 maxvalue=2 ** 32 - 1,
                 minvalue=1,
-                incr=1,
+                increment=1,
                 )
             )
 

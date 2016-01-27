@@ -58,11 +58,11 @@ maaslog = get_maas_logger("dns")
 # value 1 because 0 has special meaning for some DNS servers.  Even if
 # we control the DNS server we use, better safe than sorry.
 zone_serial = Sequence(
-    'maasserver_zone_serial_seq', incr=1, minvalue=1, maxvalue=INT_MAX)
+    'maasserver_zone_serial_seq', increment=1, minvalue=1, maxvalue=INT_MAX)
 
 
 def next_zone_serial():
-    return '%0.10d' % zone_serial.nextval()
+    return '%0.10d' % next(zone_serial)
 
 
 def is_dns_in_use():
@@ -242,8 +242,8 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
 
     domains = Domain.objects.filter(authoritative=True)
     subnets = Subnet.objects.filter(
-        nodegroupinterface__management=
-        NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        nodegroupinterface__management=(
+            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
     default_ttl = Config.objects.get_config('default_dns_ttl')
     zones = ZoneGenerator(
         domains, subnets, default_ttl,
