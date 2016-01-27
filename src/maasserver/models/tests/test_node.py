@@ -2614,7 +2614,7 @@ class TestNodePowerParameters(MAASServerTestCase):
     def test_bmc_consolidation(self):
         nodes = []
         for _ in range(3):
-            bmc_parameters = dict(power_user=factory.make_string())
+            bmc_parameters = dict(power_address=factory.make_ipv4_address())
             node_parameters = dict(power_id=factory.make_string())
             parameters = {**bmc_parameters, **node_parameters}
             node = factory.make_Node(power_type='fence_cdu')
@@ -2637,6 +2637,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters['power_id'] = factory.make_string()
         nodes[0].power_parameters = parameters
         nodes[0].save()
+        nodes[0] = reload_object(nodes[0])
         # 0 now shares a BMC with 2.
         self.assertEqual(2, BMC.objects.count())
         self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
@@ -2645,19 +2646,45 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters['power_id'] = factory.make_string()
         nodes[1].power_parameters = parameters
         nodes[1].save()
+        nodes[1] = reload_object(nodes[1])
         # All 3 share the same BMC, and only one exists.
         self.assertEqual(1, BMC.objects.count())
         self.assertEqual(nodes[0].bmc_id, nodes[1].bmc_id)
         self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
 
-        # Now change one and watch the count increase, even when the
-        # instance_power_parameter matches (it's stored on the Node).
-        parameters['power_user'] = factory.make_string()
+        # Now change parameters and confirm the count doesn't change,
+        # as changing the one linked BMC should affect all linked nodes.
+        parameters['power_address'] = factory.make_ipv4_address()
         nodes[1].power_parameters = parameters
         nodes[1].save()
+        nodes[1] = reload_object(nodes[1])
+        self.assertEqual(1, BMC.objects.count())
+        self.assertEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+        # Now change type and confirm the count goes up,
+        # as changing the type makes a new linked BMC.
+        parameters['power_address'] = factory.make_ipv4_address()
+        nodes[1].power_type = 'virsh'
+        nodes[1].power_parameters = parameters
+        nodes[1].save()
+        nodes[1] = reload_object(nodes[1])
         self.assertEqual(2, BMC.objects.count())
         self.assertNotEqual(nodes[0].bmc_id, nodes[1].bmc_id)
         self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+
+        # Set new BMC's values back to match original BMC, and make
+        # sure the BMC count decreases as they consolidate.
+        nodes[1].power_type = nodes[0].power_type
+        parameters = nodes[0].power_parameters
+        parameters['power_id'] = factory.make_string()
+        nodes[1].power_parameters = parameters
+        nodes[1].save()
+        nodes[1] = reload_object(nodes[1])
+        # 1 now shares a BMC with 0 and 2.
+        self.assertEqual(nodes[0].bmc_id, nodes[1].bmc_id)
+        self.assertEqual(nodes[0].bmc_id, nodes[2].bmc_id)
+        self.assertEqual(1, BMC.objects.count())
 
     def test_power_parameters_ip_address_extracted(self):
         node = factory.make_Node(power_type='hmc')

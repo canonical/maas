@@ -244,6 +244,7 @@ describe("NodeDetailsController", function() {
         expect($scope.power).toEqual({
             editing: false,
             type: null,
+            bmc_node_count: 0,
             parameters: {}
         });
     });

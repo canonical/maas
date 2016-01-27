@@ -18,6 +18,7 @@ __all__ = [
 
 import re
 
+from django.db import transaction
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -85,22 +86,20 @@ class BMC(CleanSave, TimestampedModel):
         else:
             return self.id
 
-    def extract_ip_from_power_parameters(self):
+    def clean_ip_from_power_parameters(self):
         """ If an IP address can be extracted from our power parameters, create
         or update our ip_address field and its subnet. """
         new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
         old_ip = self.ip_address.ip if self.ip_address else None
         if new_ip != old_ip:
             if new_ip is None:
-                # Set ip to None, save, then delete the old ip.
+                # Set ip to None, save, then return the old ip.
                 old_ip_address = self.ip_address
                 self.ip_address = None
-                self.save()
-                if old_ip_address is not None:
-                    old_ip_address.delete()
-            else:
-                try:
-                    # Update or create StaticIPAddress.
+                return old_ip_address
+            try:
+                # Update or create StaticIPAddress.
+                with transaction.atomic():
                     if self.ip_address:
                         self.ip_address.ip = new_ip
                         self.ip_address.save()
@@ -110,17 +109,26 @@ class BMC(CleanSave, TimestampedModel):
                             ip=new_ip, alloc_type=IPADDRESS_TYPE.STICKY)
                         ip_address.save()
                         self.ip_address = ip_address
-                        self.save()
-                except Exception as error:
-                    maaslog.info(
-                        "BMC %d: Could not save extracted IP "
-                        "address '%s': '%s'", self.id, new_ip, error)
-                else:
-                    # StaticIPAddress saved successfully - update the Subnet.
-                    subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
-                    if subnet is not None:
-                        ip_address.subnet = subnet
-                        ip_address.save()
+            except Exception as error:
+                maaslog.info(
+                    "BMC could not save extracted IP "
+                    "address '%s': '%s'", new_ip, error)
+            else:
+                # StaticIPAddress saved successfully - update the Subnet.
+                subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
+                if subnet is not None:
+                    ip_address.subnet = subnet
+                    ip_address.save()
+        return None
+
+    def clean(self, *args, **kwargs):
+        super(BMC, self).clean(*args, **kwargs)
+        self.old_ip_address = self.clean_ip_from_power_parameters()
+
+    def save(self, *args, **kwargs):
+        super(BMC, self).save(*args, **kwargs)
+        if self.old_ip_address is not None:
+            self.old_ip_address.delete()
 
     @staticmethod
     def scope_power_parameters(power_type, power_params):

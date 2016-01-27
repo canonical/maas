@@ -744,30 +744,18 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.system_id
 
-    def update_power_type_and_parameters(self, power_type, power_params):
-        if power_type is None:
-            power_type = self.power_type
-        if power_params is None:
-            power_params = self.power_parameters
-
-        bmc_params, node_params = BMC.scope_power_parameters(
-            power_type, power_params)
-        self.instance_power_parameters = node_params
-
-        (bmc, _) = BMC.objects.get_or_create(
-            power_type=power_type, power_parameters=bmc_params)
-        self.bmc = bmc
-        bmc.extract_ip_from_power_parameters()
-
     @property
     def power_type(self):
         return '' if self.bmc is None else self.bmc.power_type
 
     @power_type.setter
     def power_type(self, power_type):
-        if not power_type:
-            power_type = ''
-        self.update_power_type_and_parameters(power_type, None)
+        if not power_type and self.bmc is None:
+            return
+        if self.bmc is not None and self.bmc.power_type == power_type:
+            return
+        self.bmc, _ = BMC.objects.get_or_create(
+            power_type=power_type, power_parameters=self.power_parameters)
 
     @property
     def power_parameters(self):
@@ -784,7 +772,31 @@ class Node(CleanSave, TimestampedModel):
     def power_parameters(self, power_params):
         if not power_params:
             power_params = {}
-        self.update_power_type_and_parameters(None, power_params)
+        if self.bmc is None:
+            self.instance_power_parameters = power_params
+            return
+
+        bmc_params, node_params = BMC.scope_power_parameters(
+            self.bmc.power_type, power_params)
+        self.instance_power_parameters = node_params
+
+        if self.bmc.power_parameters == bmc_params:
+            return
+
+        conflicts = len(BMC.objects.filter(
+            power_type=self.bmc.power_type, power_parameters=bmc_params)) > 0
+        if not conflicts:
+            self.bmc.power_parameters = bmc_params
+            self.bmc.save()
+        else:
+            (bmc, _) = BMC.objects.get_or_create(
+                power_type=self.bmc.power_type, power_parameters=bmc_params)
+            # Point all nodes using old BMC at the new one.
+            if self.bmc is not None and self.bmc_id != bmc.id:
+                for node in self.bmc.node_set.exclude(id=self.id):
+                    node.bmc = bmc
+                    node.save()
+            self.bmc = bmc
 
     @property
     def fqdn(self):
@@ -1155,8 +1167,8 @@ class Node(CleanSave, TimestampedModel):
         # If bmc has changed post-save, clean up any potentially orphaned BMC.
         if self.prev_bmc_id is not None and self.prev_bmc_id != self.bmc_id:
             try:
-                used_bmcs = Node.objects.values_list(
-                    'bmc_id', flat=True).distinct()
+                used_bmcs = [id for id in Node.objects.values_list(
+                    'bmc_id', flat=True).distinct() if id is not None]
                 BMC.objects.exclude(id__in=used_bmcs).delete()
             except Exception as error:
                 maaslog.info(

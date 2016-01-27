@@ -188,6 +188,8 @@ class TestNodeHandler(MAASServerTestCase):
             "owner": handler.dehydrate_owner(node.owner),
             "power_parameters": handler.dehydrate_power_parameters(
                 node.power_parameters),
+            "power_bmc_node_count": node.bmc.node_set.count() if (
+                node.bmc is not None) else 0,
             "power_state": node.power_state,
             "power_type": node.power_type,
             "pxe_mac": (

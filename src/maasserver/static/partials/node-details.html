@@ -324,6 +324,16 @@
                         data-ng-class="{ secondary: invalidPowerType() }"
                         data-ng-click="saveEditPower()">Save changes</button>
                 </div>
+                <div class="twelve-col ng-hide info" data-ng-show="power.editing && node.power_bmc_node_count > 1">
+                    <ul class="flash-messages">
+                        <li class="flash-messages__item info">
+                            This power controller manages {$ node.power_bmc_node_count - 1 $} other
+                            {$ node.power_bmc_node_count > 3 ? "nodes" : "node" $}.
+                            Changing power parameters will affect these nodes. If this is not what you want,
+                            create a new power controller unique to this node by changing the power type.
+                        </li>
+                    </ul>
+                </div>
             </form>
         </div>
     </div>

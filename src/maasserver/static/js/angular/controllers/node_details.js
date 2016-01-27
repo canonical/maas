@@ -92,6 +92,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.power = {
             editing: false,
             type: null,
+            bmc_node_count: 0,
             parameters: {}
         };
 
@@ -238,6 +239,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     break;
                 }
             }
+
+            $scope.power.bmc_node_count = $scope.node.power_bmc_node_count;
 
             $scope.power.parameters = angular.copy(
                 $scope.node.power_parameters);

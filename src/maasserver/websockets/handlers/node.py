@@ -276,6 +276,8 @@ class NodeHandler(TimestampedModelHandler):
             data["power_type"] = obj.power_type
             data["power_parameters"] = self.dehydrate_power_parameters(
                 obj.power_parameters)
+            data["power_bmc_node_count"] = obj.bmc.node_set.count() if (
+                obj.bmc is not None) else 0
 
             # Network
             data["interfaces"] = [
