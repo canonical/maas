@@ -166,23 +166,6 @@ class TestPowerAction(MAASTestCase):
             pa.execute, power_change='off',
             mac=factory.make_mac_address())
 
-    def test_fence_cdu_checks_state(self):
-        # We can't test the fence_cdu template in detail (and it may be
-        # customized), but by making it use "echo" instead of a real
-        # fence_cdu we can make it get a bogus answer from its status check.
-        # The bogus answer is actually the rest of the fence_cdu command
-        # line.  It will complain about this and fail.
-        action = PowerAction("fence_cdu")
-        script = action.render_template(
-            action.get_template(),
-            action.update_context(dict(
-                power_change='on', power_address='mysystem',
-                power_id='system', power_user='me', power_pass='me',
-                fence_cdu='echo')),
-        )
-        output = action.run_shell(script)
-        self.assertIn("Got unknown power state from fence_cdu", output)
-
     def configure_power_config_dir(self, path):
         """Configure POWER_CONFIG_DIR to `path`."""
         self.patch(PowerAction, 'get_config_basedir').return_value = path
