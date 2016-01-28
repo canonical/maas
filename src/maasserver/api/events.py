@@ -5,7 +5,6 @@ __all__ = [
     "EventsHandler",
 ]
 
-import logging
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -50,6 +49,7 @@ class EventsHandler(OperationsHandler):
     A specific Node's events is identified by specifying one or more
     ids, hostnames, or mac addresses as a list.
     """
+
     api_doc_section_name = "Events"
 
     create = read = update = delete = None
@@ -90,46 +90,37 @@ class EventsHandler(OperationsHandler):
             this level of events and greater. Choose from: %(log_levels)s.
             The default is INFO.
         """
-
-        # Filter first by optional node id, hostname, or mac
+        # Filter first by optional node ID, hostname, MAC, etc.
         nodes = filtered_nodes_list_from_request(request)
-        # Event lists aren't supported on devices
+        # Event lists aren't supported on devices.
         nodes = nodes.exclude(node_type=NODE_TYPE.DEVICE)
+
+        # Extract & validate optional parameters from the request.
+        after = get_optional_param(request.GET, 'after', None, Int)
+        before = get_optional_param(request.GET, 'before', None, Int)
+        level = get_optional_param(request.GET, 'level', 'INFO')
         limit = get_optional_param(
             request.GET, "limit", DEFAULT_EVENT_LOG_LIMIT, Int)
 
-        start_event_id_param = get_optional_param(
-            request.GET, 'after', None, Int)
-
-        log_level = get_optional_param(request.GET, 'level', 'INFO')
-
+        # Limit what we'll return to avoid being swamped.
         if limit > MAX_EVENT_LOG_COUNT:
             raise MAASAPIBadRequest((
                 "Requested number of events %d is greater than"
                 " limit: %d") % (limit, MAX_EVENT_LOG_COUNT))
-
-        if start_event_id_param is not None:
-            node_events = Event.objects.filter(
-                id__gte=start_event_id_param,
-                node=nodes)
-            start_event_id = start_event_id_param
         else:
-            node_events = Event.objects.filter(node=nodes)
-            start_event_id = 0
+            # The limit should never be less than 1.
+            limit = 1 if limit < 1 else limit
 
-        # Filter next by log level >= to 'level', if specified
-        if log_level is None and log_level != 'NOTSET':
-            numeric_log_level = logging.NOTSET
-        elif log_level in LOGGING_LEVELS_BY_NAME:
-            numeric_log_level = LOGGING_LEVELS_BY_NAME[log_level]
-            assert isinstance(numeric_log_level, int)
-        else:
-            raise MAASAPIBadRequest(
-                "Unknown log level: %s" % log_level)
+        # Begin constructing the query.
+        node_events = Event.objects.filter(node=nodes)
 
-        if log_level is not None and log_level != 'NOTSET':
+        # Eliminate logs below the requested level.
+        if level in LOGGING_LEVELS_BY_NAME:
             node_events = node_events.exclude(
-                type__level__lt=numeric_log_level)
+                type__level__lt=LOGGING_LEVELS_BY_NAME[level])
+        elif level is not None:
+            raise MAASAPIBadRequest(
+                "Unrecognised log level: %s" % level)
 
         # Future feature:
         # This is where we would filter for events 'since last node deployment'
@@ -138,53 +129,78 @@ class EventsHandler(OperationsHandler):
         # deployment, and we don't have an event subtype for node status
         # changes to filter for the deploying status event.
 
-        base_path = reverse('events_handler')
-
-        prev_uri_params = get_overridden_query_dict(
-            request.GET,
-            {'after': max(0, start_event_id - limit)}, self.all_params)
-        prev_uri = '%s?%s' % (base_path,
-                              urllib.parse.urlencode(
-                                  prev_uri_params,
-                                  doseq=True))
-
-        next_uri_params = get_overridden_query_dict(
-            request.GET,
-            {'after': start_event_id + limit}, self.all_params)
-        next_uri = '%s?%s' % (base_path,
-                              urllib.parse.urlencode(
-                                  next_uri_params,
-                                  doseq=True))
-
         node_events = (
-            node_events.all().order_by('id')
+            node_events.all()
             .prefetch_related('type')
             .prefetch_related('node'))
 
-        # Lastly, order by id and return up to 'limit' events
-        if start_event_id_param is not None:
-            # If start_event_id is specified, limit to a window of
-            # 'limit' events with 'start_event_id' being the id
-            # of the oldest event
+        if after is None and before is None:
+            # Get `limit` events, newest first.
+            node_events = node_events.order_by('-id')
+            node_events = node_events[:limit]
+        elif after is None:
+            # Get `limit` events, newest first, all before `before`.
+            node_events = node_events.filter(id__lt=before)
+            node_events = node_events.order_by('-id')
+            node_events = node_events[:limit]
+        elif before is None:
+            # Get `limit` events, OLDEST first, all after `after`, then
+            # reverse the results.
+            node_events = node_events.filter(id__gt=after)
             node_events = node_events.order_by('id')
             node_events = reversed(node_events[:limit])
         else:
-            # If start_event_id is not specified, limit to most recent
-            # 'limit' events
-            node_events = node_events.order_by('-id')
-            node_events = node_events[:limit]
+            raise MAASAPIBadRequest(
+                "There is undetermined behaviour when both "
+                "`after` and `before` are specified.")
 
         # We need to load all of these events at some point, so save them
         # into a list now so that len() is cheap.
         node_events = list(node_events)
 
-        displayed_events_count = len(node_events)
-        events_dict = dict(
-            count=displayed_events_count,
-            events=[event_to_dict(event) for event in node_events],
-            next_uri=next_uri,
-            prev_uri=prev_uri,
-        )
-        return events_dict
+        # Helper for building prev_uri and next_uri.
+        def make_uri(params, base=reverse('events_handler')):
+            query = urllib.parse.urlencode(params, doseq=True)
+            url = urllib.parse.urlparse(base)._replace(query=query)
+            return url.geturl()
+
+        # Figure out a URI to obtain a set of newer events.
+        next_uri_params = get_overridden_query_dict(
+            request.GET, {"before": []}, self.all_params)
+        if len(node_events) == 0:
+            if before is None:
+                # There are no newer events NOW, but there may be later.
+                next_uri = make_uri(next_uri_params)
+            else:
+                # Without limiting to `before`, we might find some more events.
+                next_uri_params["after"] = before - 1
+                next_uri = make_uri(next_uri_params)
+        else:
+            # The first event is the newest.
+            next_uri_params["after"] = str(node_events[0].id)
+            next_uri = make_uri(next_uri_params)
+
+        # Figure out a URI to obtain a set of older events.
+        prev_uri_params = get_overridden_query_dict(
+            request.GET, {"after": []}, self.all_params)
+        if len(node_events) == 0:
+            if after is None:
+                # There are no older events and never will be.
+                prev_uri = None
+            else:
+                # Without limiting to `after`, we might find some more events.
+                prev_uri_params["before"] = after + 1
+                prev_uri = make_uri(prev_uri_params)
+        else:
+            # The last event is the oldest.
+            prev_uri_params["before"] = str(node_events[-1].id)
+            prev_uri = make_uri(prev_uri_params)
+
+        return {
+            "count": len(node_events),
+            "events": [event_to_dict(event) for event in node_events],
+            "next_uri": next_uri,
+            "prev_uri": prev_uri,
+        }
 
     query.__doc__ %= {"log_levels": ", ".join(LOGGING_LEVELS_BY_NAME)}
