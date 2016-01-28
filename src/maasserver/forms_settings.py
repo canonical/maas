@@ -231,6 +231,17 @@ CONFIG_ITEMS = {
                 "MAAS proxy will be used.")
         }
     },
+    'default_dns_ttl': {
+        'default': 30,
+        'form': forms.IntegerField,
+        'form_kwargs': {
+            'label': "Default Time-To-Live for the DNS.",
+            'required': False,
+            'help_text': (
+                "If no TTL value is specified at a more specific point "
+                "this is how long DNS responses are valid, in seconds.")
+        }
+    },
     'upstream_dns': {
         'default': None,
         'form': IPListFormField,

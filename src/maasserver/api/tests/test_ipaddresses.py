@@ -285,8 +285,8 @@ class TestIPAddressesAPI(APITestCase):
         [staticipaddress] = StaticIPAddress.objects.all()
         self.expectThat(
             staticipaddress.dnsresource_set.first().name, Equals(hostname))
-        # We expect one from the Subnet, and one from the DNSResource creation.
-        self.expectThat(dns_update_subnets.call_count, Equals(2))
+        # We expect one from the Subnet.
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
 
     def test_POST_reserve_with_hostname_and_ip_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
@@ -309,8 +309,8 @@ class TestIPAddressesAPI(APITestCase):
         self.expectThat(staticipaddress.ip, Equals(ip_in_network))
         self.expectThat(
             staticipaddress.dnsresource_set.first().name, Equals(hostname))
-        # We expect one from the Subnet, and one from the DNSResource creation.
-        self.expectThat(dns_update_subnets.call_count, Equals(2))
+        # We expect one from the Subnet.
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
 
     def test_POST_reserve_with_no_parameters_fails_with_bad_request(self):
         response = self.post_reservation_request()

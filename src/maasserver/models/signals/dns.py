@@ -13,6 +13,7 @@ from django.db.models.signals import (
 )
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
+    DNSData,
     DNSResource,
     Domain,
     Node,
@@ -46,22 +47,36 @@ def dns_post_save_DNSResource(sender, instance, created, **kwargs):
     """Create or update DNS zones as needed for this domain."""
     from maasserver.dns.config import (
         dns_update_domains,
-        dns_update_subnets,
         dns_update_all_zones,
         )
     # if we created the DNSResource, then we can just update the domain.
     if created:
         dns_update_domains([instance.domain])
-        dns_update_subnets([
-            ip.subnet
-            for ip in instance.ip_addresses.all()
-            if ip.subnet])
+        # if we just created the DNSResource, then there won't be any
+        # ip_addresses, because those have to be added after the save happens.
     else:
         dns_update_all_zones()
 
 signals.watch(
     post_save, dns_post_save_DNSResource,
     sender=DNSResource)
+
+
+def dns_post_save_DNSData(sender, instance, created, **kwargs):
+    """Create or update DNS zones as needed for this domain."""
+    from maasserver.dns.config import (
+        dns_update_domains,
+        dns_update_all_zones,
+        )
+    # if we created the DNSData, then we can just update the domain.
+    if created:
+        dns_update_domains([instance.dnsresource.domain])
+    else:
+        dns_update_all_zones()
+
+signals.watch(
+    post_save, dns_post_save_DNSData,
+    sender=DNSData)
 
 
 # XXX rvb 2012-09-12: This is only needed because we use that

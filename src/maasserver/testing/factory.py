@@ -555,9 +555,15 @@ class Factory(maastesting.factory.Factory):
         # If they didn't pass in an ip_addresses, suppress them.
         if 'ip_addresses' not in kwargs:
             kwargs['no_ip_addresses'] = True
+            exclude = []
+        else:
+            exclude = ['CNAME']
         if rrtype is None or rrdata is None:
+            if (dnsresource is not None and
+                    dnsresource.ip_addresses.count() > 0):
+                exclude = ['CNAME']
             (rrtype, rrdata) = self.pick_rrset(
-                rrtype, rrdata)
+                rrtype, rrdata, exclude=exclude)
         if dnsresource is None:
             dnsresource = self.make_DNSResource(**kwargs)
         dnsdata = DNSData(

@@ -8,8 +8,10 @@ __all__ = [
 ]
 
 from django import forms
-from django.core.exceptions import ValidationError
-from maasserver.forms import MAASModelForm
+from maasserver.forms import (
+    APIEditMixin,
+    MAASModelForm,
+)
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 
@@ -28,7 +30,7 @@ class DNSDataForm(MAASModelForm):
         label="Resource Type",
         help_text="Type of resource, if not an address")
     rrdata = forms.CharField(
-        required=False, label="Resource Data",
+        label="Resource Data",
         help_text="Resource Record data, if not an address")
 
     class Meta:
@@ -40,11 +42,11 @@ class DNSDataForm(MAASModelForm):
             'rrdata',
             )
 
-    def clean(self):
-        cleaned_data = super().clean()
-        rrtype = self.data.get('rrtype', '')
-        rrdata = self.data.get('rrdata', '')
-        if rrtype != '' and rrdata == '' or rrtype == '' and rrdata != '':
-            raise ValidationError(
-                "Specify both rrtype and rrdata.")
-        return cleaned_data
+    def _post_clean(self):
+        # ttl=None needs to make it through.  See also APIEditMixin
+        self.cleaned_data = {
+            key: value
+            for key, value in self.cleaned_data.items()
+            if value is not None or key == 'ttl'
+        }
+        super(APIEditMixin, self)._post_clean()

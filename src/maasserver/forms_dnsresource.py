@@ -10,7 +10,10 @@ __all__ = [
 from collections import Iterable
 
 from django import forms
-from maasserver.forms import MAASModelForm
+from maasserver.forms import (
+    APIEditMixin,
+    MAASModelForm,
+)
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -62,7 +65,7 @@ class DNSResourceForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if self.data.get('ip_addresses', '') != '':
+        if self.data.get('ip_addresses', None) is not None:
             ip_addresses = self.data.get('ip_addresses')
             if isinstance(ip_addresses, str):
                 ip_addresses = ip_addresses.split()
@@ -73,3 +76,12 @@ class DNSResourceForm(MAASModelForm):
             cleaned_data['ip_addresses'] = [
                 self.clean_ip(ipaddr) for ipaddr in ip_addresses]
         return cleaned_data
+
+    def _post_clean(self):
+        # address_ttl=None needs to make it through.  See also APIEditMixin
+        self.cleaned_data = {
+            key: value
+            for key, value in self.cleaned_data.items()
+            if value is not None or key == 'address_ttl'
+        }
+        super(APIEditMixin, self)._post_clean()

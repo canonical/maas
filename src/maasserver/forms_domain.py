@@ -7,7 +7,10 @@ __all__ = [
     "DomainForm",
 ]
 
-from maasserver.forms import MAASModelForm
+from maasserver.forms import (
+    APIEditMixin,
+    MAASModelForm,
+)
 from maasserver.models.domain import Domain
 
 
@@ -19,4 +22,14 @@ class DomainForm(MAASModelForm):
         fields = (
             'name',
             'authoritative',
+            'ttl',
             )
+
+    def _post_clean(self):
+        # ttl=None needs to make it through.  See also APIEditMixin
+        self.cleaned_data = {
+            key: value
+            for key, value in self.cleaned_data.items()
+            if value is not None or key == 'ttl'
+        }
+        super(APIEditMixin, self)._post_clean()

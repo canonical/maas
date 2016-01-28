@@ -121,19 +121,27 @@ class TestDomainAPI(APITestCase):
 
     def test_update(self):
         self.become_admin()
-        domain = factory.make_Domain()
+        authoritative = factory.pick_bool()
+        domain = factory.make_Domain(authoritative=authoritative)
         new_name = factory.make_name("domain")
+        new_ttl = random.randint(10, 1000)
+        new_auth = not authoritative
         uri = get_domain_uri(domain)
         response = self.client.put(uri, {
             "name": new_name,
+            "authoritative": new_auth,
+            "ttl": new_ttl,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertEqual(
-            new_name,
-            json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET))['name'])
-        self.assertEqual(new_name, reload_object(domain).name)
+        ret = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        domain = reload_object(domain)
+        self.assertEqual(new_name, ret['name'])
+        self.assertEqual(new_name, domain.name)
+        self.assertEqual(new_ttl, ret['ttl'])
+        self.assertEqual(new_ttl, domain.ttl)
+        self.assertEqual(new_auth, ret['authoritative'])
+        self.assertEqual(new_auth, domain.authoritative)
 
     def test_update_admin_only(self):
         domain = factory.make_Domain()

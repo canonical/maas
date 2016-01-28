@@ -50,6 +50,28 @@ class TestDNSDataForm(MAASServerTestCase):
         self.assertEqual(rrdata, dnsdata.rrdata)
         self.assertEqual(ttl, dnsdata.ttl)
 
+    def test_accepts_ttl_equal_none(self):
+        name = factory.make_name("dnsdata")
+        (rrtype, rrdata) = factory.pick_rrset()
+        dnsrr = factory.make_DNSResource(no_ip_addresses=True)
+        ttl = random.randint(1, 10000)
+        form = DNSDataForm({
+            "name": name,
+            "dnsresource": dnsrr.id,
+            "ttl": ttl,
+            "rrtype": rrtype,
+            "rrdata": rrdata,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsdata = form.save()
+        form = DNSDataForm(instance=dnsdata, data={"ttl": None})
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsdata = form.save()
+        self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
+        self.assertEqual(rrtype, dnsdata.rrtype)
+        self.assertEqual(rrdata, dnsdata.rrdata)
+        self.assertEqual(None, dnsdata.ttl)
+
     def test__doesnt_require_name_on_update(self):
         dnsdata = factory.make_DNSData()
         form = DNSDataForm(instance=dnsdata, data={})

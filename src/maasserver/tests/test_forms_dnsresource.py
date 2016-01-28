@@ -57,6 +57,26 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         self.assertEqual(ttl, dnsresource.address_ttl)
 
+    def test_accepts_address_ttl_equals_none(self):
+        name = factory.make_name("dnsresource")
+        domain = factory.make_Domain()
+        ttl = random.randint(1, 1000)
+        form = DNSResourceForm({
+            "name": name,
+            "domain": domain.id,
+            "address_ttl": ttl,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        form = DNSResourceForm(instance=dnsresource, data={
+            "address_ttl": None,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        self.assertEqual(name, dnsresource.name)
+        self.assertEqual(domain.id, dnsresource.domain.id)
+        self.assertEqual(None, dnsresource.address_ttl)
+
     def test__doesnt_require_name_on_update(self):
         dnsresource = factory.make_DNSResource()
         form = DNSResourceForm(instance=dnsresource, data={})
