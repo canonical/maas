@@ -8,6 +8,7 @@ __all__ = [
 ]
 
 from django import forms
+from maasserver.enum import RDNS_MODE_CHOICES
 from maasserver.fields import IPListFormField
 from maasserver.forms import MAASModelForm
 from maasserver.models.fabric import Fabric
@@ -33,6 +34,9 @@ class SubnetForm(MAASModelForm):
     space = forms.ModelChoiceField(
         queryset=Space.objects.all(), required=False)
 
+    rdns_mode = forms.ChoiceField(
+        choices=RDNS_MODE_CHOICES, required=False)
+
     class Meta:
         model = Subnet
         fields = (
@@ -42,6 +46,7 @@ class SubnetForm(MAASModelForm):
             'cidr',
             'gateway_ip',
             'dns_servers',
+            'rdns_mode',
             )
 
     def __init__(self, *args, **kwargs):

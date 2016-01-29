@@ -17,6 +17,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    RDNS_MODE_CHOICES,
 )
 from maasserver.models.subnet import (
     create_cidr,
@@ -417,14 +418,16 @@ class SubnetTest(MAASServerTestCase):
         dns_servers = [
             factory.make_ip_address()
             for _ in range(random.randint(1, 3))]
+        rdns_mode = factory.pick_choice(RDNS_MODE_CHOICES)
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers)
+            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode)
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
         self.assertThat(subnet_from_db, MatchesStructure.byEquality(
             name=name, vlan=vlan, cidr=cidr, space=space,
-            gateway_ip=gateway_ip, dns_servers=dns_servers))
+            gateway_ip=gateway_ip, dns_servers=dns_servers,
+            rdns_mode=rdns_mode))
 
     def test_validates_gateway_ip(self):
         error = self.assertRaises(

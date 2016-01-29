@@ -27,6 +27,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    RDNS_MODE,
 )
 from maasserver.models import (
     Config,
@@ -423,7 +424,8 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
-                reverse_zone(default_domain, "10/29")))
+                reverse_zone(default_domain, "10/29"),
+                reverse_zone(default_domain, "10/24")))
 
     def test_with_one_nodegroup_with_node_yields_fwd_and_rev_zone(self):
         self.useFixture(RegionConfigurationFixture())
@@ -442,7 +444,8 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
-                reverse_zone(default_domain, "10/29")))
+                reverse_zone(default_domain, "10/29"),
+                reverse_zone(default_domain, "10/24")))
 
     def test_returns_interface_ips_but_no_nulls(self):
         self.useFixture(RegionConfigurationFixture())
@@ -473,7 +476,8 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
-                reverse_zone(default_domain, "10/29")))
+                reverse_zone(default_domain, "10/29"),
+                reverse_zone(default_domain, "10/24")))
         self.assertEqual(
             {node.hostname: (30, ['%s' % boot_ip.ip])}, zones[0]._mapping)
         self.assertEqual(
@@ -488,21 +492,37 @@ class TestZoneGenerator(MAASServerTestCase):
                 default_ttl, ['%s' % boot_ip.ip])},
             zones[1]._mapping)
 
+    def rfc2317_network(self, network):
+        """Returns the network that rfc2317 glue goes in, if any."""
+        net = network
+        if net.version == 4 and net.prefixlen > 24:
+            net = IPNetwork("%s/24" % net.network)
+            net = IPNetwork("%s/24" % net.network)
+        if net.version == 6 and net.prefixlen > 124:
+            net = IPNetwork("%s/124" % net.network)
+            net = IPNetwork("%s/124" % net.network)
+        if net != network:
+            return net
+        return None
+
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         self.useFixture(RegionConfigurationFixture())
         nodegroup = self.make_node_group()
         factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        [interface1, interface2] = nodegroup.get_managed_interfaces()
+        interfaces = nodegroup.get_managed_interfaces()
         default_domain = Domain.objects.get_default_domain().name
 
         factory.make_Domain(name=nodegroup.name)
-        expected_zones = [
-            forward_zone(nodegroup.name),
-            reverse_zone(default_domain, interface1.network),
-            reverse_zone(default_domain, interface2.network),
-            ]
+        expected_zones = [forward_zone(nodegroup.name)] + [
+            reverse_zone(default_domain, iface.network)
+            for iface in interfaces
+        ] + [
+            reverse_zone(default_domain, self.rfc2317_network(iface.network))
+            for iface in interfaces
+            if self.rfc2317_network(iface.network) is not None
+        ]
         domain = Domain.objects.get(name=nodegroup.name)
         subnet = Subnet.objects.filter(
             nodegroupinterface__nodegroup=nodegroup)
@@ -541,6 +561,30 @@ class TestZoneGenerator(MAASServerTestCase):
             reverse_zone(default_domain.name, "11/29"),
             reverse_zone(default_domain.name, "20/29"),
             reverse_zone(default_domain.name, "21/29"),
+            reverse_zone(default_domain.name, "10/24"),
+            reverse_zone(default_domain.name, "11/24"),
+            reverse_zone(default_domain.name, "20/24"),
+            reverse_zone(default_domain.name, "21/24"),
+            )
+        self.assertThat(
+            ZoneGenerator(domains, subnets, serial_generator=Mock()).as_list(),
+            MatchesSetwise(*expected_zones))
+
+    def test_zone_generator_handles_rdns_mode_equal_enabled(self):
+        self.useFixture(RegionConfigurationFixture())
+        Domain.objects.get_or_create(name="one")
+        nodegroup = self.make_node_group(
+            name="one", network=IPNetwork("10/29"))
+        subnet = Subnet.objects.get(cidr="10.0.0.0/29")
+        subnet.rdns_mode = RDNS_MODE.ENABLED
+        subnet.save()
+        default_domain = Domain.objects.get_default_domain()
+        domains = Domain.objects.filter(name="one")
+        subnets = Subnet.objects.filter(
+            nodegroupinterface__nodegroup_id=nodegroup.id)
+        expected_zones = (
+            forward_zone("one"),
+            reverse_zone(default_domain.name, "10/29"),
             )
         self.assertThat(
             ZoneGenerator(domains, subnets, serial_generator=Mock()).as_list(),

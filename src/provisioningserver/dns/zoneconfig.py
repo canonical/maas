@@ -327,10 +327,13 @@ class DNSReverseZoneConfig(DomainConfigBase):
         :param default_ttl: The default TTL for the zone.
         :param network: The network that the mapping exists within.
         :type network: :class:`netaddr.IPNetwork`
+        :param rfc2317_ranges: List of ranges to generate RFC2317 CNAMEs for
+        :type rfc2317_ranges: [:class:`netaddr.IPNetwork`]
         """
         self._mapping = kwargs.pop('mapping', {})
         self._network = kwargs.pop("network", None)
         self._dynamic_ranges = kwargs.pop('dynamic_ranges', [])
+        self._rfc2317_ranges = kwargs.pop('rfc2317_ranges', [])
         zone_info = self.compose_zone_info(self._network)
         super(DNSReverseZoneConfig, self).__init__(
             domain, zone_info=zone_info, **kwargs)
@@ -428,13 +431,23 @@ class DNSReverseZoneConfig(DomainConfigBase):
         :param mapping: A hostname: (ttl, [ip-addresseses]) mapping for all
             known hosts in the reverse zone, to their FQDN (without trailing
             dot).
-        :param network: DNS Zone's network.
+        :param network: DNS Zone's network. (Not a supernet.)
         :type network: :class:`netaddr.IPNetwork`
         """
+        def short_name(ip, network):
+            long_name = IPAddress(ip).reverse_dns
+            if network.version == 4:
+                short_name = ".".join(long_name.split('.')[
+                    :(31 - network.prefixlen) // 8 + 1])
+            else:
+                short_name = ".".join(long_name.split('.')[
+                    :(127 - network.prefixlen) // 4 + 1])
+            return short_name
+
         if mapping is None:
             return ()
         return (
-            (IPAddress(ip).reverse_dns, ttl, '%s.' % (hostname))
+            (short_name(ip, network), ttl, '%s.' % (hostname))
             for hostname, ttl, ip in enumerate_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.
             if IPAddress(ip) in network
@@ -479,6 +492,32 @@ class DNSReverseZoneConfig(DomainConfigBase):
         return sorted(
             generate_directives, key=lambda directive: directive[2])
 
+    @classmethod
+    def get_rfc2317_GENERATE_directives(cls, network, rfc2317_ranges, domain):
+        """Return the GENERATE directives for any needed rfc2317 glue."""
+        # A non-empty rfc2317_ranges means that the network is the most
+        # specific that it can be (IPv4/24 or IPv6/124), so we can make some
+        # simplifications in the GENERATE directives.
+        generate_directives = set()
+        for subnet in rfc2317_ranges:
+            if network.version == 4:
+                iterator = "%d-%d" % (
+                    (subnet.first & 0x000000ff),
+                    (subnet.last & 0x000000ff))
+                hostname = "$.%d-%d" % (
+                    (subnet.first & 0x000000ff),
+                    subnet.prefixlen)
+                generate_directives.add((iterator, '$', hostname))
+            else:
+                iterator = "%x-%d" % (
+                    (subnet.first & 0x0000000f),
+                    (subnet.last & 0x0000000f))
+                hostname = "${0,1,x}.%x-%d" % (
+                    (subnet.first & 0x0000000f),
+                    subnet.prefixlen)
+                generate_directives.add((iterator, '${0,1,x}', hostname))
+        return sorted(generate_directives)
+
     def write_config(self):
         """Write the zone file."""
         # Create GENERATE directives for IPv4 ranges.
@@ -502,6 +541,10 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     'other_mapping': [],
                     'generate_directives': {
                         'PTR': generate_directives,
+                        'CNAME': self.get_rfc2317_GENERATE_directives(
+                            zi.subnetwork,
+                            self._rfc2317_ranges,
+                            self.domain),
                     }
                 }
             )

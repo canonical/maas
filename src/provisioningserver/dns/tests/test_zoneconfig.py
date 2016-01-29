@@ -359,7 +359,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
-            (IPAddress(ip).reverse_dns, 30, '%s.%s.' % (hostname, name))
+            (IPAddress(ip).reverse_dns.split('.')[0], 30,
+                '%s.%s.' % (hostname, name))
             for hostname, ip in hosts.items()
         ]
         mapping = {
@@ -378,7 +379,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
-            (IPAddress(ip).reverse_dns, 30, '%s.%s.' % (hostname, name))
+            (IPAddress(ip).reverse_dns.split('.')[0], 30,
+                '%s.%s.' % (hostname, name))
             for hostname, ip in in_network_mapping.items()
         ]
         mapping = {

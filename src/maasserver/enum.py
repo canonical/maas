@@ -27,6 +27,9 @@ __all__ = [
     'PARTITION_TABLE_TYPE',
     'PARTITION_TABLE_TYPE_CHOICES',
     'PRESEED_TYPE',
+    'RDNS_MODE',
+    'RDNS_MODE_CHOICES',
+    'RDNS_MODE_CHOICES_DICT',
     'USERDATA_TYPE',
     ]
 
@@ -219,6 +222,29 @@ NODEGROUPINTERFACE_MANAGEMENT_CHOICES = (
 
 NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
     OrderedDict(NODEGROUPINTERFACE_MANAGEMENT_CHOICES))
+
+
+class RDNS_MODE:
+    """The vocabulary of a `Subnet`'s possible reverse DNS modes."""
+    # By default, we do what we've always done: assume we rule the DNS world.
+    DEFAULT = 2
+    #: Do not generate reverse DNS for this Subnet.
+    DISABLED = 0
+    #: Generate reverse DNS only for the CIDR.
+    ENABLED = 1
+    #: Generate RFC2317 glue if needed (Subnet is too small for its own zone.)
+    RFC2317 = 2
+
+
+# Django choices for RDNS_MODE: sequence of tuples (key, UI representation.)
+RDNS_MODE_CHOICES = (
+    (RDNS_MODE.DISABLED, "Disabled"),
+    (RDNS_MODE.ENABLED, "Enabled"),
+    (RDNS_MODE.RFC2317, "Enabled, with rfc2317 glue zone."),
+)
+
+
+RDNS_MODE_CHOICES_DICT = OrderedDict(RDNS_MODE_CHOICES)
 
 
 class IPADDRESS_FAMILY:

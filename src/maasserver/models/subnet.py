@@ -18,6 +18,7 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     ForeignKey,
+    IntegerField,
     Manager,
     PROTECT,
     Q,
@@ -28,6 +29,8 @@ from maasserver import DefaultMeta
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    RDNS_MODE,
+    RDNS_MODE_CHOICES,
 )
 from maasserver.fields import (
     CIDRField,
@@ -346,6 +349,10 @@ class Subnet(CleanSave, TimestampedModel):
     # globally unique.
     cidr = CIDRField(
         blank=False, unique=True, editable=True, null=False)
+
+    rdns_mode = IntegerField(
+        choices=RDNS_MODE_CHOICES, editable=True,
+        default=RDNS_MODE.DEFAULT)
 
     gateway_ip = MAASIPAddressField(blank=True, editable=True, null=True)
 

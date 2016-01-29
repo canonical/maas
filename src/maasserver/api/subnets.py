@@ -26,6 +26,7 @@ DISPLAYED_SUBNET_FIELDS = (
     'cidr',
     'gateway_ip',
     'dns_servers',
+    'rdns_mode',
 )
 
 
@@ -60,7 +61,14 @@ class SubnetsHandler(OperationsHandler):
         :param space: Space this subnet is in. Defaults to the default space.
         :param cidr: The network CIDR for this subnet.
         :param gateway_ip: The gateway IP address for this subnet.
-        :param dns_servers: Comma-seperated list of DNS servers for this \
+        :param rdns_mode: How reverse DNS is handled for this subnet.
+            One of: 0 (Disabled), 1 (Enabled), or 2 (RFC2317).  Disabled means
+            no reverse zone is created; Enabled means generate the reverse
+            zone; RFC2317 extends Enabled to create the necessary parent zone
+            with the appropriate CNAME resource records for the network, if the
+            network is small enough to require the support described in
+            RFC2317.
+        :param dns_servers: Comma-seperated list of DNS servers for this
             subnet.
         """
         form = SubnetForm(data=request.data)
@@ -111,6 +119,7 @@ class SubnetHandler(OperationsHandler):
         :param space: Space this subnet is in.
         :param cidr: The network CIDR for this subnet.
         :param gateway_ip: The gateway IP address for this subnet.
+        :param rdns_mode: How reverse DNS is handled for this subnet.
         :param dns_servers: Comma-seperated list of DNS servers for this \
             subnet.
 

@@ -558,8 +558,10 @@ class TestDNSServer(MAASServerTestCase):
             commands=['-x', ip, '+short', '-%i' % version])
         return output.split('\n')
 
-    def assertDNSMatches(self, hostname, domain, ip, version=4):
+    def assertDNSMatches(self, hostname, domain, ip, version=-1):
         # A forward lookup on the hostname returns the IP address.
+        if version == -1:
+            version = IPAddress(ip).version
         fqdn = "%s.%s" % (hostname, domain)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.expectThat(
@@ -725,7 +727,8 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_changing_interface_management_updates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('192.168.7.1/24')
+        network = factory.make_ip4_or_6_network(
+            host_bits=random.randint(3, 10))
         ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_NodeGroup(
             network=network, status=NODEGROUP_STATUS.ENABLED,
@@ -737,7 +740,8 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_delete_nodegroup_disables_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('192.168.7.1/24')
+        network = factory.make_ip4_or_6_network(
+            host_bits=random.randint(3, 10))
         ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_NodeGroup(
             network=network, status=NODEGROUP_STATUS.ENABLED,
@@ -782,7 +786,8 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
 
     def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('192.168.7.1/24')
+        network = factory.make_ip4_or_6_network(
+            host_bits=random.randint(3, 10))
         nodegroup = self.create_managed_nodegroup(network=network)
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_Node(
@@ -805,7 +810,8 @@ class TestDNSResource(TestDNSServer):
 
     def test_dnsresources_are_in_the_dns(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('192.168.7.1/24')
+        network = factory.make_ip4_or_6_network(
+            host_bits=random.randint(3, 10))
         nodegroup = self.create_managed_nodegroup(network=network)
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_Node(
@@ -829,7 +835,7 @@ class TestIPv6DNS(TestDNSServer):
 
     def test_bind_configuration_includes_ipv6_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = IPNetwork('fe80::/16')
+        network = factory.make_ipv6_network(slash=random.randint(118, 125))
         nodegroup = self.create_managed_nodegroup(network=network)
         nodegroup, node, static = self.create_nodegroup_with_static_ip(
             nodegroup=nodegroup)

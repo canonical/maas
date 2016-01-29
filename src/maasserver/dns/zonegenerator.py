@@ -16,7 +16,10 @@ from itertools import (
 import socket
 
 from maasserver import logger
-from maasserver.enum import NODEGROUP_STATUS
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    RDNS_MODE,
+)
 from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
@@ -287,6 +290,24 @@ class ZoneGenerator:
         # 2. node: ip mapping(subnet), including DNSResource records for
         #    StaticIPAddresses in this subnet
         # 3. interfaces on any node that have IP addresses in this subnet
+        rfc2317_glue = {}
+        for subnet in subnets:
+            network = IPNetwork(subnet.cidr)
+            # If this is a small subnet and  we are doing RFC2317 glue for it,
+            # then we need to combine that with any other such subnets
+            # We need to know this before we start creating reverse DNS zones.
+            if subnet.rdns_mode == RDNS_MODE.RFC2317:
+                if network.version == 4 and network.prefixlen > 24:
+                    # Turn 192.168.99.32/29 into 192.168.99.0/24
+                    basenet = IPNetwork(
+                        "%s/24" %
+                        IPNetwork("%s/24" % network.network).network)
+                    rfc2317_glue.setdefault(basenet, set()).add(network)
+                elif network.version == 6 and network.prefixlen > 124:
+                    basenet = IPNetwork(
+                        "%s/124" %
+                        IPNetwork("%s/124" % network.network).network)
+                    rfc2317_glue.setdefault(basenet, set()).add(network)
         for subnet in subnets:
             network = IPNetwork(subnet.cidr)
             nodegroups = set(
@@ -333,12 +354,27 @@ class ZoneGenerator:
                 })
 
             # Use the default_domain as the name for the NS host in the reverse
-            # zones.
+            # zones.  If this network is actually a parent rfc2317 glue
+            # network, then we need to generate the glue records.
+            if network in rfc2317_glue:
+                glue = rfc2317_glue[network]
+                del(rfc2317_glue[network])
+            else:
+                glue = set()
             yield DNSReverseZoneConfig(
                 Domain.objects.get_default_domain().name, serial=serial,
                 default_ttl=default_ttl,
                 mapping=mapping, network=network,
                 dynamic_ranges=dynamic_ranges,
+                rfc2317_ranges=glue,
+            )
+        # Now provide any remaining rfc2317 glue networks.
+        for network, ranges in rfc2317_glue.items():
+            yield DNSReverseZoneConfig(
+                Domain.objects.get_default_domain().name, serial=serial,
+                default_ttl=default_ttl,
+                network=network,
+                rfc2317_ranges=ranges,
             )
 
     def __iter__(self):

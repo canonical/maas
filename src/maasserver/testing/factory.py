@@ -37,6 +37,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     PARTITION_TABLE_TYPE,
     POWER_STATE,
+    RDNS_MODE,
 )
 from maasserver.fields import (
     LargeObjectFile,
@@ -832,7 +833,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
                     gateway_ip=None, dns_servers=None, host_bits=None,
-                    fabric=None, vid=None):
+                    fabric=None, vid=None, rdns_mode=RDNS_MODE.DEFAULT):
         if name is None:
             name = factory.make_name('name')
         if vlan is None:
@@ -849,7 +850,7 @@ class Factory(maastesting.factory.Factory):
                 self.make_ip_address() for _ in range(random.randint(1, 3))]
         subnet = Subnet(
             name=name, vlan=vlan, cidr=cidr, gateway_ip=gateway_ip,
-            space=space, dns_servers=dns_servers)
+            space=space, dns_servers=dns_servers, rdns_mode=rdns_mode)
         subnet.save()
         return subnet
 
