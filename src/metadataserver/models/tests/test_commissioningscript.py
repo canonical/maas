@@ -777,6 +777,242 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "RPM": "5400",
             }], self.call_gather_physical_block_devices(byidroot))
 
+    def test__removes_duplicate_block_device_same_serial_and_model(self):
+        """Multipath disks get multiple IDs, but same serial/model is same
+        device and should only be enumerated once."""
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+
+        name2 = factory.make_name('name')
+
+        # Create simulated /dev tree.
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+
+        os.mknod(os.path.join(devroot, name))
+        os.symlink(os.path.join(devroot, name),
+                   os.path.join(byidroot, 'deviceid'))
+
+        os.mknod(os.path.join(devroot, name2))
+        os.symlink(os.path.join(devroot, name2),
+                   os.path.join(byidroot, 'deviceid2'))
+
+        check_output.side_effect = [
+            b"\n".join([
+                self.make_lsblk_output(name=name, model=model),
+                self.make_lsblk_output(name=name2, model=model)]),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            b'%d' % size,
+            b'%d' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
+        ]
+
+        self.assertEqual([{
+            "NAME": name,
+            "PATH": os.path.join(devroot, name),
+            "ID_PATH": os.path.join(byidroot, 'deviceid'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+            }], self.call_gather_physical_block_devices(byidroot))
+
+    def test__removes_duplicate_block_device_same_serial_blank_model(self):
+        """Multipath disks get multiple IDs, but same serial is same device."""
+        name = factory.make_name('name')
+        model = ""
+        serial = factory.make_name('serial')
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+
+        name2 = factory.make_name('name')
+
+        # Create simulated /dev tree.
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+
+        os.mknod(os.path.join(devroot, name))
+        os.symlink(os.path.join(devroot, name),
+                   os.path.join(byidroot, 'deviceid'))
+
+        os.mknod(os.path.join(devroot, name2))
+        os.symlink(os.path.join(devroot, name2),
+                   os.path.join(byidroot, 'deviceid2'))
+
+        check_output.side_effect = [
+            b"\n".join([
+                self.make_lsblk_output(name=name, model=model),
+                self.make_lsblk_output(name=name2, model=model)]),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            b'%d' % size,
+            b'%d' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
+        ]
+
+        self.assertEqual([{
+            "NAME": name,
+            "PATH": os.path.join(devroot, name),
+            "ID_PATH": os.path.join(byidroot, 'deviceid'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+            }], self.call_gather_physical_block_devices(byidroot))
+
+    def test__keeps_block_device_same_serial_different_model(self):
+        """Multipath disks get multiple IDs, but same serial is same device."""
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+
+        name2 = factory.make_name('name')
+        model2 = factory.make_name('model')
+
+        # Create simulated /dev tree.
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+
+        os.mknod(os.path.join(devroot, name))
+        os.symlink(os.path.join(devroot, name),
+                   os.path.join(byidroot, 'deviceid'))
+
+        os.mknod(os.path.join(devroot, name2))
+        os.symlink(os.path.join(devroot, name2),
+                   os.path.join(byidroot, 'deviceid2'))
+
+        check_output.side_effect = [
+            b"\n".join([
+                self.make_lsblk_output(name=name, model=model),
+                self.make_lsblk_output(name=name2, model=model2)]),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            b'%d' % size,
+            b'%d' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
+        ]
+
+        self.assertEqual([{
+            "NAME": name,
+            "PATH": os.path.join(devroot, name),
+            "ID_PATH": os.path.join(byidroot, 'deviceid'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+        }, {
+            "NAME": name2,
+            "PATH": os.path.join(devroot, name2),
+            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model2,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+        }], self.call_gather_physical_block_devices(byidroot))
+
+    def test__keeps_block_device_blank_serial_same_model(self):
+        """Multipath disks get multiple IDs, but same serial is same device."""
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = ''
+        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+
+        name2 = factory.make_name('name')
+
+        # Create simulated /dev tree.
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+
+        os.mknod(os.path.join(devroot, name))
+        os.symlink(os.path.join(devroot, name),
+                   os.path.join(byidroot, 'deviceid'))
+
+        os.mknod(os.path.join(devroot, name2))
+        os.symlink(os.path.join(devroot, name2),
+                   os.path.join(byidroot, 'deviceid2'))
+
+        check_output.side_effect = [
+            b"\n".join([
+                self.make_lsblk_output(name=name, model=model),
+                self.make_lsblk_output(name=name2, model=model)]),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            self.make_udevadm_output(name2, serial=serial, dev=devroot),
+            b'%d' % size,
+            b'%d' % block_size,
+            b'%d' % size,
+            b'%d' % block_size,
+        ]
+
+        self.assertEqual([{
+            "NAME": name,
+            "PATH": os.path.join(devroot, name),
+            "ID_PATH": os.path.join(byidroot, 'deviceid'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+        }, {
+            "NAME": name2,
+            "PATH": os.path.join(devroot, name2),
+            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
+        }], self.call_gather_physical_block_devices(byidroot))
+
     def test__returns_block_device_without_id_path(self):
         """Block devices without by-id links should not have ID_PATH key"""
         name = factory.make_name('name')

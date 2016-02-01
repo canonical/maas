@@ -448,7 +448,8 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         "ID_ATA_SATA": "SATA",
         "ID_ATA_ROTATION_RATE_RPM": "RPM"
         }
-    del_blocks = []
+    del_blocks = set()
+    seen_devices = set()
     for block_info in blockdevs:
         # Some RAID devices return the name of the device seperated with "!",
         # but udevadm expects it to be a "/".
@@ -469,7 +470,20 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
             if k == "ID_CDROM" and v == "1":
                 # Remove any type of CDROM from the blockdevs, as we
                 # cannot use this device for installation.
-                del_blocks.append(block_name)
+                del_blocks.add(block_name)
+                break
+
+        if block_name in del_blocks:
+            continue
+
+        # Skip duplicate (serial, model) for multipath.
+        serial = block_info.get("SERIAL")
+        if serial:
+            model = block_info.get("MODEL", "").strip()
+            if (serial, model) in seen_devices:
+                del_blocks.add(block_name)
+                continue
+            seen_devices.add((serial, model))
 
     # Remove any devices that need to be removed.
     blockdevs = [
