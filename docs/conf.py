@@ -11,17 +11,25 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-# Import maas' settings.
+from collections import OrderedDict
+from datetime import datetime
+import os
 from os import environ
+from subprocess import (
+    CalledProcessError,
+    check_output,
+)
+import sys
 
+from pytz import UTC
 
+# Configure MAAS's settings.
 environ.setdefault("DJANGO_SETTINGS_MODULE", "maas.settings")
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 
-import sys, os
 # Include '.' in the path so that our custom extension, 'versions', can
 # be found.
 sys.path.insert(0, os.path.abspath('.'))
@@ -50,7 +58,6 @@ versions_path = '_static/versions.js'
 # from the list published by the trunk documentation (i.e. in '/<doc_prefix>/').
 # This means the following list is meaningful only for trunk.   
 # The first item should be the development version.
-from collections import OrderedDict
 doc_versions = OrderedDict([
     ('dev', 'Development trunk'),
     ('1.8', 'MAAS 1.8'),
@@ -100,7 +107,7 @@ copyright = u'2012-2015, MAAS Developers'
 # built documents.
 #
 # The short X.Y version.
-version = doc_versions.items()[0][0]
+(version, _), *_ = doc_versions.items()
 # The full version, including alpha/beta/rc tags.
 release = version
 
@@ -283,16 +290,22 @@ man_pages = [
 intersphinx_mapping = {'http://docs.python.org/': None}
 
 # Gather information about the branch and the build date.
-from subprocess import check_output, CalledProcessError
 try:
     bzr_last_revision_number = check_output(['bzr', 'revno'])
     bzr_last_revision_date = check_output(['bzr', 'version-info', '--template={date}', '--custom'])
     bzr_build_date = check_output(['bzr', 'version-info', '--template={build_date}', '--custom'])
-except (CalledProcessError):
-    # not a bzr repository
+except CalledProcessError:
+    # This is not a Bazaar branch.
     bzr_last_revision_number = 'unknown'
-    bzr_last_revision_date = check_output(['date', '-u', '+%Y-%m-%d %H:%M:%S %z'])
+    bzr_last_revision_date = (
+        datetime.utcnow().replace(tzinfo=UTC)
+        .strftime('+%Y-%m-%d %H:%M:%S %z'))
     bzr_build_date = bzr_last_revision_date
+else:
+    # Output from check_output() is bytes; decode to str.
+    bzr_last_revision_number = bzr_last_revision_number.decode("ascii")
+    bzr_last_revision_date = bzr_last_revision_date.decode("ascii")
+    bzr_build_date = bzr_build_date.decode("ascii")
 
 
 # Populate html_context with the variables used in the templates.
