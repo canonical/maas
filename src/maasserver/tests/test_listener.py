@@ -301,6 +301,11 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.assertEqual(
             [sentinel.handler], listener.listeners[channel])
 
+    def test__convertChannel_doesnt_split_system_channel(self):
+        listener = PostgresListenerService()
+        channel = "sys_testing_channel"
+        self.assertEquals((channel, None), listener.convertChannel(channel))
+
     def test__convertChannel_raises_exception_if_not_valid_channel(self):
         listener = PostgresListenerService()
         self.assertRaises(

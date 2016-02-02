@@ -295,8 +295,14 @@ class PostgresListenerService(Service, object):
     def registerChannel(self, channel):
         """Register the channel."""
         with closing(self.connection.cursor()) as cursor:
-            for action in map_enum(ACTIONS).values():
-                cursor.execute("LISTEN %s_%s;" % (channel, action))
+            if channel.startswith("sys"):
+                # This is a system channel so register it only once not one
+                # for each action.
+                cursor.execute("LISTEN %s;" % channel)
+            else:
+                # Not a system channel so register one for each action.
+                for action in map_enum(ACTIONS).values():
+                    cursor.execute("LISTEN %s_%s;" % (channel, action))
 
     def registerChannels(self):
         """Register the all the channels."""
@@ -307,20 +313,24 @@ class PostgresListenerService(Service, object):
     def convertChannel(self, channel):
         """Convert the postgres channel to a registered channel and action.
 
-        The postgres channel is structured as {channel}_{action}. This is split
-        to match the correct handler and action for that handler.
+        When the channel starts with "sys" then it is a system channel, when
+        not a system channel its structured as {channel}_{action}. This is
+        split to match the correct handler and action for that handler.
 
         :raise PostgresListenerNotifyError: When {channel} is not registered or
             {action} is not in `ACTIONS`.
         """
-        channel, action = channel.split('_', 1)
-        if channel not in self.listeners:
-            raise PostgresListenerNotifyError(
-                "%s is not a registered channel." % channel)
-        if action not in map_enum(ACTIONS).values():
-            raise PostgresListenerNotifyError(
-                "%s action is not supported." % action)
-        return channel, action
+        if channel.startswith("sys"):
+            return channel, None
+        else:
+            channel, action = channel.split('_', 1)
+            if channel not in self.listeners:
+                raise PostgresListenerNotifyError(
+                    "%s is not a registered channel." % channel)
+            if action not in map_enum(ACTIONS).values():
+                raise PostgresListenerNotifyError(
+                    "%s action is not supported." % action)
+            return channel, action
 
     def runHandleNotify(self, delay=0, clock=reactor):
         """Defer later the `handleNotify`."""

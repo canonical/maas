@@ -20,7 +20,10 @@ from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Node,
+    RackController,
+)
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -475,3 +478,21 @@ class TransactionalHelpersMixin:
     def delete_sslkey(self, id):
         key = SSLKey.objects.get(id=id)
         key.delete()
+
+    @transactional
+    def create_rack_controller(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_RackController(**params)
+
+    @transactional
+    def update_rack_controller(self, id, params):
+        rack = RackController.objects.get(id=id)
+        for key, value in params.items():
+            setattr(rack, key, value)
+        return rack.save()
+
+    @transactional
+    def delete_rack_controller(self, id):
+        rack = RackController.objects.get(id=id)
+        rack.delete()

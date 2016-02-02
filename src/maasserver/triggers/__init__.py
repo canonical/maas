@@ -64,5 +64,7 @@ def register_trigger(table, procedure, event, params=None, when="after"):
 @transactional
 def register_all_triggers():
     """Register all triggers into the database."""
+    from maasserver.triggers.system import register_system_triggers
     from maasserver.triggers.websocket import register_websocket_triggers
+    register_system_triggers()
     register_websocket_triggers()
