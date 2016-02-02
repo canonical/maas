@@ -241,3 +241,14 @@ class DNSResource(CleanSave, TimestampedModel):
             if num_cname > 0:
                 raise ValidationError("Cannot add address: CNAME present.")
         super(DNSResource, self).clean(*args, **kwargs)
+
+    def render_json(self, system_id):
+        """Render json.  System_id is the system_id for the node, if one
+           exists.  Addresses are rendered in the calling function."""
+        return sorted([{
+            "hostname": self.name,
+            "ttl": data.ttl,
+            "rrtype": data.rrtype,
+            "rrdata": data.rrdata,
+            "system_id": system_id}
+            for data in self.dnsdata_set.all()])

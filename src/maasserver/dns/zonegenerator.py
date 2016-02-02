@@ -22,7 +22,10 @@ from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
-from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.staticipaddress import (
+    HostnameIPMapping,
+    StaticIPAddress,
+)
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import (
@@ -69,8 +72,8 @@ def sequence(thing):
 
 
 def get_hostname_ip_mapping(domain_or_subnet):
-    """Return a mapping {hostnames -> (ttl, ips)} for the allocated nodes in
-    `domain` or `subnet`.
+    """Return a mapping {hostnames -> info} for the allocated nodes in
+    `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
     return StaticIPAddress.objects.get_hostname_ip_mapping(domain_or_subnet)
 
@@ -178,8 +181,8 @@ class ZoneGenerator:
             # Map all of the nodes in this domain, including the user-reserved
             # ip addresses.
             mapping = {
-                hostname.split('.')[0]: (ttl, ips)
-                for hostname, (ttl, ips) in mappings[domain].items()
+                hostname.split('.')[0]: info
+                for hostname, info in mappings[domain].items()
             }
             # 2. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
@@ -289,9 +292,11 @@ class ZoneGenerator:
                     ip_addresses__ip__isnull=False)
                 mapping.update({
                     "%s.%s" % (
-                        interface.name, interface.node.fqdn): (ttl, [
-                        ip.ip for ip in interface.ip_addresses.exclude(
-                            ip__isnull=True)])
+                        interface.name, interface.node.fqdn):
+                    HostnameIPMapping(
+                        node.system_id, ttl, {
+                            ip.ip for ip in interface.ip_addresses.exclude(
+                                ip__isnull=True)})
                     for interface in interfaces
                 })
 

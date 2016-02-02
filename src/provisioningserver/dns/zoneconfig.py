@@ -39,14 +39,26 @@ def get_fqdn_or_ip_address(target):
         return target.rstrip('.') + '.'
 
 
-def enumerate_mapping(mapping):
+def enumerate_tuple_map(mapping):
     """Generate `(hostname, ttl, value)` tuples from `mapping`.
 
-    :param mapping: A dict mapping host names to lists of IP addresses.
+    :param mapping: A dict mapping host names to lists of (ttl, [values]).
+        Values may be ips or "RRTYPE RRDATA."
     """
     for hostname, (ttl, values) in mapping.items():
         for value in values:
             yield hostname, ttl, value
+
+
+def enumerate_mapping(mapping):
+    """Generate `(hostname, ttl, value)` tuples from `mapping`.
+
+    :param mapping: A dict mapping host names to info about the host:
+        .ttl: ttl for the RRset, .ips: list of ip addresses.
+    """
+    for hostname, info in mapping.items():
+        for value in info.ips:
+            yield hostname, info.ttl, value
 
 
 def get_details_for_ip_range(ip_range):
@@ -300,7 +312,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
                         'AAAA': self.get_AAAA_mapping(
                             self._mapping, self._ipv6_ttl, self._dns_ip),
                     },
-                    'other_mapping': enumerate_mapping(self._other_mapping),
+                    'other_mapping': enumerate_tuple_map(self._other_mapping),
                     'generate_directives': {
                         'A': generate_directives,
                     }
@@ -428,9 +440,9 @@ class DNSReverseZoneConfig(DomainConfigBase):
         The returned mapping is meant to be used to generate PTR records in
         the reverse zone file.
 
-        :param mapping: A hostname: (ttl, [ip-addresseses]) mapping for all
+        :param mapping: A hostname: info mapping for all
             known hosts in the reverse zone, to their FQDN (without trailing
-            dot).
+            dot). Info has ttl, and ips.
         :param network: DNS Zone's network. (Not a supernet.)
         :type network: :class:`netaddr.IPNetwork`
         """

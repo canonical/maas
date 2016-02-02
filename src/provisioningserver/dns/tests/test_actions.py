@@ -30,6 +30,7 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
 )
 from provisioningserver.dns.testing import patch_dns_config_path
+from provisioningserver.dns.tests.test_zoneconfig import HostnameIPMapping
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -216,7 +217,8 @@ class TestConfiguration(PservTestCase):
         ttl = random.randint(10, 1000)
         forward_zone = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping={factory.make_string(): (ttl, [ip])},
+            mapping={factory.make_string(): HostnameIPMapping(
+                None, ttl, {ip})},
             dns_ip=dns_ip)
         reverse_zone = DNSReverseZoneConfig(
             domain, serial=random.randint(1, 100), network=network)

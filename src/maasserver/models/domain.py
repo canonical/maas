@@ -42,6 +42,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
+from netaddr import IPAddress
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
@@ -271,3 +272,27 @@ class Domain(CleanSave, TimestampedModel):
     def clean(self, *args, **kwargs):
         super(Domain, self).clean(*args, **kwargs)
         self.clean_name()
+
+    def render_json_for_related_ips(self):
+        """Render a representation of this domain's related IP addresses,
+        suitable for converting to JSON. Optionally exclude user and node
+        information."""
+        from maasserver.models import StaticIPAddress
+        # Get all of the address mappings.
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(self)
+        domainname_len = len(self.name)
+        data = [
+            {
+                # strip off the domain name.
+                'hostname': hostname[:-domainname_len - 1],
+                'system_id': info.system_id,
+                'ttl': info.ttl,
+                'ips': info.ips,
+            }
+            for hostname, info in mapping.items()
+        ] + [
+            dnsrr.render_json(
+                system_id=mapping[dnsrr.fqdn].system_id)
+            for dnsrr in self.dnsresource_set.all()
+        ]
+        return sorted(data, key=lambda json: IPAddress(json['hostname']))

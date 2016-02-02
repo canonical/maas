@@ -35,6 +35,21 @@ from testtools.matchers import (
 from twisted.python.filepath import FilePath
 
 
+class HostnameIPMapping:
+    """This is used to return address information for a host in a way that
+       keeps life simple for the callers."""
+    def __init__(self, system_id=None, ttl=None, ips=set()):
+        self.system_id = system_id
+        self.ttl = ttl
+        self.ips = ips.copy()
+
+    def __repr__(self):
+        return "%s:%s:%s" % (self.system_id, self.ttl, self.ips)
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+
 class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
@@ -71,19 +86,25 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ttl = random.randint(10, 300)
         ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
-            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
-            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, [factory.make_ipv4_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, [factory.make_ipv4_address()]),
         }
         ipv6_mapping = {
-            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
-            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, [factory.make_ipv6_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, [factory.make_ipv6_address()]),
         }
         combined_mapping = {
-            hostname: (ttl, [ip]) for hostname, (ttl, ips) in chain(
-                ipv4_mapping.items(), ipv6_mapping.items()) for ip in ips
+            hostname: value for hostname, value in chain(
+                ipv4_mapping.items(), ipv6_mapping.items())
         }
         expected = [('@', ns_ttl, dns_ip)] + [
-            (n, t, ip) for n, (t, ips) in ipv4_mapping.items() for ip in ips]
+            (n, info.ttl, ip)
+            for n, info in ipv4_mapping.items()
+            for ip in info.ips]
         expect = [
             (n, t, ip)
             for n, t, ip in expected]
@@ -97,21 +118,25 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ttl = random.randint(10, 300)
         ns_ttl = random.randint(10, 300)
         ipv4_mapping = {
-            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
-            factory.make_name('host'): (ttl, [factory.make_ipv4_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, {factory.make_ipv4_address()}),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, {factory.make_ipv4_address()}),
         }
         ipv6_mapping = {
-            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
-            factory.make_name('host'): (ttl, [factory.make_ipv6_address()]),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, {factory.make_ipv6_address()}),
+            factory.make_name('host'): HostnameIPMapping(
+                None, ttl, {factory.make_ipv6_address()}),
         }
         combined_mapping = {
-            hostname: (ttl, ip) for hostname, (ttl, ip) in chain(
+            hostname: value for hostname, value in chain(
                 ipv4_mapping.items(), ipv6_mapping.items())
         }
         self.assertItemsEqual([
-            (n, t, ip)
-            for n, (t, ips) in ipv6_mapping.items()
-            for ip in ips],
+            (n, info.ttl, ip)
+            for n, info in ipv6_mapping.items()
+            for ip in info.ips],
             DNSForwardZoneConfig.get_AAAA_mapping(
                 combined_mapping, ns_ttl, dns_ip))
 
@@ -126,8 +151,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ipv6_ip = factory.make_ipv6_address()
         ttl = random.randint(10, 300)
         mapping = {
-            ipv4_hostname: (ttl, [ipv4_ip]),
-            ipv6_hostname: (ttl, [ipv6_ip]),
+            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
+            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
         }
         expected_generate_directives = (
             DNSForwardZoneConfig.get_GENERATE_directives(network))
@@ -189,8 +214,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
         ttl = random.randint(10, 300)
         mapping = {
-            ipv4_hostname: (ttl, [ipv4_ip]),
-            ipv6_hostname: (ttl, [ipv6_ip]),
+            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
+            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
         }
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
@@ -364,7 +389,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             for hostname, ip in hosts.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): (30, [ip])
+            "%s.%s" % (hostname, name): HostnameIPMapping(
+                None, 30, {ip})
             for hostname, ip in hosts.items()
             }
         self.assertItemsEqual(
@@ -384,12 +410,13 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             for hostname, ip in in_network_mapping.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): (30, [ip])
+            "%s.%s" % (hostname, name): HostnameIPMapping(
+                None, 30, [ip])
             for hostname, ip in in_network_mapping.items()
             }
         extra_mapping = {
-            factory.make_string(): (30, ['192.50.0.2']),
-            factory.make_string(): (30, ['192.70.0.2']),
+            factory.make_string(): HostnameIPMapping(None, 30, ['192.50.0.2']),
+            factory.make_string(): HostnameIPMapping(None, 30, ['192.70.0.2']),
         }
         mapping.update(extra_mapping)
         self.assertItemsEqual(
