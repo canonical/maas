@@ -20,6 +20,7 @@ from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
+from maasserver.models.iprange import IPRange
 from maasserver.models.node import (
     Node,
     RackController,
@@ -496,3 +497,21 @@ class TransactionalHelpersMixin:
     def delete_rack_controller(self, id):
         rack = RackController.objects.get(id=id)
         rack.delete()
+
+    @transactional
+    def create_iprange(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_IPRange(**params)
+
+    @transactional
+    def update_iprange(self, id, params):
+        ipr = IPRange.objects.get(id=id)
+        for key, value in params.items():
+            setattr(ipr, key, value)
+        return ipr.save()
+
+    @transactional
+    def delete_iprange(self, id):
+        ipr = IPRange.objects.get(id=id)
+        ipr.delete()

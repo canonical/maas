@@ -19,6 +19,11 @@ class TestTriggers(MAASServerTestCase):
         register_system_triggers()
         triggers = [
             "maasserver_vlan_sys_dhcp_vlan_update",
+            "maasserver_subnet_sys_dhcp_subnet_update",
+            "maasserver_subnet_sys_dhcp_subnet_delete",
+            "maasserver_iprange_sys_dhcp_iprange_insert",
+            "maasserver_iprange_sys_dhcp_iprange_update",
+            "maasserver_iprange_sys_dhcp_iprange_delete",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
