@@ -14,22 +14,47 @@ import http.client
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
-from maasserver.api.nodegroups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
-from maasserver.api.utils import get_list_from_dict_or_multidict
+from maasserver.api.utils import (
+    extract_oauth_key,
+    get_list_from_dict_or_multidict,
+)
 from maasserver.enum import NODE_PERMISSION
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    Unauthorized,
+)
 from maasserver.forms import TagForm
 from maasserver.models import (
     Node,
-    NodeGroup,
+    RackController,
     Tag,
 )
 from maasserver.utils.orm import get_one
+from metadataserver.models.nodekey import NodeKey
 from piston3.utils import rc
+
+
+def check_rack_controller_access(request, rack_controller):
+    """Validate API access by worker for `rack_controller`.
+
+    This supports a rack controller accessing the update_nodes API.  If the
+    request is done by anyone but the rack controller for this
+    particular rack controller, the function raises :class:`PermissionDenied`.
+    """
+    try:
+        key = extract_oauth_key(request)
+    except Unauthorized as e:
+        raise PermissionDenied(str(e))
+
+    token = NodeKey.objects.get_token_for_node(rack_controller)
+    if key != token.key:
+        raise PermissionDenied(
+            "Only allowed for the %r rack controller." % (
+                rack_controller.hostname))
 
 
 class TagHandler(OperationsHandler):
@@ -109,12 +134,10 @@ class TagHandler(OperationsHandler):
         return Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, from_nodes=tag.node_set.all())
 
-    def _get_nodes_for(self, request, param, nodegroup):
+    def _get_nodes_for(self, request, param):
         system_ids = get_list_from_dict_or_multidict(request.data, param)
         if system_ids:
             nodes = Node.objects.filter(system_id__in=system_ids)
-            if nodegroup is not None:
-                nodes = nodes.filter(nodegroup=nodegroup)
         else:
             nodes = Node.objects.none()
         return nodes
@@ -144,25 +167,25 @@ class TagHandler(OperationsHandler):
             validated against the current definition of the tag. If the value
             does not match, then the update will be dropped (assuming this was
             just a case of a worker being out-of-date)
-        :param nodegroup: A uuid of a nodegroup being processed. This value is
-            optional. If not supplied, the requester must be a superuser. If
-            supplied, then the requester must be the worker associated with
-            that nodegroup, and only nodes that are part of that nodegroup can
-            be updated.
+        :param rack_controller: A system ID of a rack controller that did the
+            processing. This value is optional. If not supplied, the requester
+            must be a superuser. If supplied, then the requester must be the
+            rack controller.
 
         Returns 404 if the tag is not found.
         Returns 401 if the user does not have permission to update the nodes.
         Returns 409 if 'definition' doesn't match the current definition.
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
-        nodegroup = None
+        rack_controller = None
         if not request.user.is_superuser:
-            uuid = request.data.get('nodegroup', None)
-            if uuid is None:
+            system_id = request.data.get('rack_controller', None)
+            if system_id is None:
                 raise PermissionDenied(
-                    'Must be a superuser or supply a nodegroup')
-            nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
-            check_nodegroup_access(request, nodegroup)
+                    'Must be a superuser or supply a rack_controller')
+            rack_controller = get_one(
+                RackController.objects.filter(system_id=system_id))
+            check_rack_controller_access(request, rack_controller)
         definition = request.data.get('definition', None)
         if definition is not None and tag.definition != definition:
             return HttpResponse(
@@ -170,9 +193,9 @@ class TagHandler(OperationsHandler):
                 "doesn't match current definition '%s'"
                 % (definition, tag.definition),
                 status=int(http.client.CONFLICT))
-        nodes_to_add = self._get_nodes_for(request, 'add', nodegroup)
+        nodes_to_add = self._get_nodes_for(request, 'add')
         tag.node_set.add(*nodes_to_add)
-        nodes_to_remove = self._get_nodes_for(request, 'remove', nodegroup)
+        nodes_to_remove = self._get_nodes_for(request, 'remove')
         tag.node_set.remove(*nodes_to_remove)
         return {
             'added': nodes_to_add.count(),

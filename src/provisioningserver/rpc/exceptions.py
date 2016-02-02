@@ -117,6 +117,10 @@ class CannotRegisterCluster(Exception):
         )
 
 
+class CannotRegisterRackController(Exception):
+    """The rack controller could not be registered."""
+
+
 class AuthenticationFailed(Exception):
     """One or both sides of the connection failed to authenticate."""
 

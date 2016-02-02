@@ -11,13 +11,11 @@ from django.db.models.signals import (
     post_delete,
     post_save,
 )
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     DNSData,
     DNSResource,
     Domain,
     Node,
-    NodeGroupInterface,
     Subnet,
 )
 from maasserver.utils.signals import SignalsManager
@@ -79,25 +77,6 @@ signals.watch(
     sender=DNSData)
 
 
-# XXX rvb 2012-09-12: This is only needed because we use that
-# information to pre-populate the zone file.  Once we stop doing that,
-# this can be removed.
-def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
-    """Create or update DNS zones related to the saved nodegroupinterface."""
-    from maasserver.dns.config import (
-        dns_update_all_zones,
-        dns_add_subnets,
-        )
-    if created:
-        dns_add_subnets(instance.subnet)
-    else:
-        dns_update_all_zones()
-
-signals.watch(
-    post_save, dns_post_save_NodeGroupInterface,
-    sender=NodeGroupInterface)
-
-
 def dns_post_save_Subnet(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
@@ -117,21 +96,6 @@ signals.watch(
     sender=Subnet)
 
 
-def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
-    """Delete DNS zones related to the interface."""
-    from maasserver.dns.config import dns_update_all_zones
-    [old_field] = old_values
-    if old_field == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
-        # Force the dns config to be written as this might have been
-        # triggered by the last DNS-enabled interface being deleted
-        # or switched off (i.e. management set to DHCP or UNMANAGED).
-        dns_update_all_zones(force=True)
-
-signals.watch_fields(
-    dns_post_edit_management_NodeGroupInterface,
-    NodeGroupInterface, ['management'], delete=True)
-
-
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
     from maasserver.dns import config as dns_config
@@ -142,13 +106,13 @@ signals.watch(
     sender=Node)
 
 
-def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
+def dns_post_edit_Node_hostname_and_domain(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
     from maasserver.dns import config as dns_config
     dns_config.dns_update_by_node(instance)
 
 signals.watch_fields(
-    dns_post_edit_hostname_Node, Node, ['hostname', 'domain_id'])
+    dns_post_edit_Node_hostname_and_domain, Node, ['hostname', 'domain_id'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):

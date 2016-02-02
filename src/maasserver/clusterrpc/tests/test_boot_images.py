@@ -19,10 +19,7 @@ from maasserver.clusterrpc.boot_images import (
     is_import_boot_images_running_for,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.enum import (
-    BOOT_RESOURCE_TYPE,
-    NODEGROUP_STATUS,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models.config import Config
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import (
@@ -102,9 +99,9 @@ class TestIsImportBootImagesRunning(MAASServerTestCase):
     """Tests for `is_import_boot_images_running`."""
 
     def test_returns_True_when_one_cluster_returns_True(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -120,9 +117,9 @@ class TestIsImportBootImagesRunning(MAASServerTestCase):
         self.assertTrue(is_import_boot_images_running())
 
     def test_returns_False_when_all_clusters_return_False(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -133,9 +130,9 @@ class TestIsImportBootImagesRunning(MAASServerTestCase):
         self.assertFalse(is_import_boot_images_running())
 
     def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -158,17 +155,17 @@ class TestIsImportBootImagesRunningFor(MAASServerTestCase):
         mock_is_running = self.patch(
             clusterservice, "is_import_boot_images_running")
         mock_is_running.return_value = True
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack_controller = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
-        self.assertTrue(is_import_boot_images_running_for(nodegroup))
+        self.assertTrue(is_import_boot_images_running_for(rack_controller))
 
     def test_returns_False(self):
         mock_is_running = self.patch(
             clusterservice, "is_import_boot_images_running")
         mock_is_running.return_value = False
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack_controller = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
-        self.assertFalse(is_import_boot_images_running_for(nodegroup))
+        self.assertFalse(is_import_boot_images_running_for(rack_controller))
 
 
 def prepare_tftp_root(test):
@@ -188,7 +185,7 @@ class TestGetBootImages(MAASServerTestCase):
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack_controller = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         purposes = ['install', 'commissioning', 'xinstall']
@@ -202,18 +199,18 @@ class TestGetBootImages(MAASServerTestCase):
                 for param in params
                 for purpose in purposes
             ],
-            get_boot_images(nodegroup))
+            get_boot_images(rack_controller))
 
     def test_calls_ListBootImagesV2_before_ListBootImages(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack_controller = factory.make_RackController()
         mock_client = MagicMock()
         self.patch_autospec(
             boot_images_module, "getClientFor").return_value = mock_client
-        get_boot_images(nodegroup)
+        get_boot_images(rack_controller)
         self.assertThat(mock_client, MockCalledOnceWith(ListBootImagesV2))
 
     def test_calls_ListBootImages_if_raised_UnhandledCommand(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack_controller = factory.make_RackController()
         mock_client = MagicMock()
         self.patch_autospec(
             boot_images_module, "getClientFor").return_value = mock_client
@@ -221,7 +218,7 @@ class TestGetBootImages(MAASServerTestCase):
             UnhandledCommand(),
             {"images": []},
             ]
-        get_boot_images(nodegroup)
+        get_boot_images(rack_controller)
         self.assertThat(mock_client, MockCallsMatch(
             call(ListBootImagesV2),
             call(ListBootImages)))
@@ -247,7 +244,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
     def test_returns_boot_images_for_one_cluster(self):
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         purposes = ['install', 'commissioning', 'xinstall']
@@ -264,9 +261,9 @@ class TestGetAvailableBootImages(MAASServerTestCase):
             self.get())
 
     def test_returns_boot_images_on_all_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         images = [make_rpc_boot_image() for _ in range(3)]
@@ -287,9 +284,9 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         self.assertItemsEqual(expected_images, self.get())
 
     def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         images = [make_rpc_boot_image() for _ in range(3)]
@@ -307,12 +304,9 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         self.assertItemsEqual(images, self.get())
 
     def test_fallback_to_ListBootImages_on_old_clusters(self):
-        nodegroup_1 = factory.make_NodeGroup()
-        nodegroup_1.accept()
-        nodegroup_2 = factory.make_NodeGroup()
-        nodegroup_2.accept()
-        nodegroup_3 = factory.make_NodeGroup()
-        nodegroup_3.accept()
+        rack_1 = factory.make_RackController()
+        rack_2 = factory.make_RackController()
+        rack_3 = factory.make_RackController()
 
         images = [make_rpc_boot_image() for _ in range(3)]
 
@@ -324,23 +318,23 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
 
         # This simulates an older cluster, one without ListBootImagesV2.
-        cluster_1 = rpc.makeCluster(nodegroup_1, ListBootImages)
-        cluster_1.ListBootImages.return_value = succeed({'images': images})
+        rack_1 = rpc.makeCluster(rack_1, ListBootImages)
+        rack_1.ListBootImages.return_value = succeed({'images': images})
 
         # This simulates a newer cluster, one with ListBootImagesV2.
-        cluster_2 = rpc.makeCluster(nodegroup_2, ListBootImagesV2)
-        cluster_2.ListBootImagesV2.return_value = succeed({'images': images})
+        rack_2 = rpc.makeCluster(rack_2, ListBootImagesV2)
+        rack_2.ListBootImagesV2.return_value = succeed({'images': images})
 
         # This simulates a broken cluster.
-        cluster_3 = rpc.makeCluster(nodegroup_3, ListBootImagesV2)
-        cluster_3.ListBootImagesV2.side_effect = ZeroDivisionError
+        rack_3 = rpc.makeCluster(rack_3, ListBootImagesV2)
+        rack_3.ListBootImagesV2.side_effect = ZeroDivisionError
 
         self.assertItemsEqual(images, self.get())
 
     def test_returns_empty_list_when_all_clusters_fail(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -374,7 +368,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
             ]
 
     def test_returns_boot_images_matching_subarchitecture(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()
@@ -382,14 +376,14 @@ class TestGetBootImagesFor(MAASServerTestCase):
         self.assertItemsEqual(
             self.make_rpc_boot_images(param),
             get_boot_images_for(
-                nodegroup,
+                rack,
                 param['osystem'],
                 param['architecture'],
                 param['subarchitecture'],
                 param['release']))
 
     def test_returns_boot_images_matching_subarches_in_boot_resources(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
+        rack = factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()
@@ -409,7 +403,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
         self.assertItemsEqual(
             self.make_rpc_boot_images(param),
             get_boot_images_for(
-                nodegroup,
+                rack,
                 param['osystem'],
                 param['architecture'],
                 subarch,
@@ -417,54 +411,56 @@ class TestGetBootImagesFor(MAASServerTestCase):
 
 
 from mock import sentinel
-from maasserver.clusterrpc.boot_images import ClustersImporter
+from maasserver.clusterrpc.boot_images import RackControllersImporter
 from testtools.matchers import MatchesStructure, Is, Equals
 from urllib.parse import urlparse
 
 
-class TestClustersImporter(MAASTestCase):
-    """Tests for `ClustersImporter`."""
+class TestRackControllersImporter(MAASTestCase):
+    """Tests for `RackControllersImporter`."""
 
-    def test__init_with_single_UUIDs(self):
-        uuid = factory.make_UUID()
+    def test__init_with_single_system_id(self):
+        system_id = factory.make_name("system_id")
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
 
-        importer = ClustersImporter(uuid, sources, proxy)
+        importer = RackControllersImporter(system_id, sources, proxy)
 
         self.assertThat(importer, MatchesStructure(
-            uuids=Equals((uuid, )), sources=Is(sources),
+            system_ids=Equals((system_id, )), sources=Is(sources),
             proxy=Equals(urlparse(proxy)),
         ))
 
-    def test__init_with_multiple_UUIDs(self):
-        uuids = [factory.make_UUID() for _ in range(3)]
+    def test__init_with_multiple_ssytem_ids(self):
+        system_ids = [factory.make_name("system_id") for _ in range(3)]
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
 
-        importer = ClustersImporter(uuids, sources, proxy)
+        importer = RackControllersImporter(system_ids, sources, proxy)
 
         self.assertThat(importer, MatchesStructure(
-            uuids=Equals(tuple(uuids)), sources=Is(sources),
+            system_ids=Equals(tuple(system_ids)), sources=Is(sources),
             proxy=Equals(urlparse(proxy)),
         ))
 
     def test__init_also_accepts_already_parsed_proxy(self):
         proxy = urlparse(factory.make_simple_http_url())
-        importer = ClustersImporter(sentinel.uuid, [sentinel.source], proxy)
+        importer = RackControllersImporter(
+            sentinel.system_id, [sentinel.source], proxy)
         self.assertThat(importer, MatchesStructure(proxy=Is(proxy)))
 
     def test__init_also_accepts_no_proxy(self):
-        importer = ClustersImporter(sentinel.uuid, [sentinel.source])
+        importer = RackControllersImporter(
+            sentinel.system_id, [sentinel.source])
         self.assertThat(importer, MatchesStructure(proxy=Is(None)))
 
     def test__schedule_arranges_for_later_run(self):
         # Avoid deferring to the database.
         self.patch(boot_images_module, "deferToDatabase", maybeDeferred)
         # Avoid actually initiating a run.
-        self.patch_autospec(ClustersImporter, "run")
+        self.patch_autospec(RackControllersImporter, "run")
 
-        uuids = [factory.make_UUID() for _ in range(3)]
+        system_ids = [factory.make_name("system_id") for _ in range(3)]
         sources = [sentinel.source]
         proxy = factory.make_simple_http_url()
 
@@ -472,29 +468,30 @@ class TestClustersImporter(MAASTestCase):
         delay = random.randint(1, 9)
 
         clock = Clock()
-        delayed_call = ClustersImporter.schedule(
-            uuids=uuids, sources=sources, proxy=proxy, delay=delay,
+        delayed_call = RackControllersImporter.schedule(
+            system_ids=system_ids, sources=sources, proxy=proxy, delay=delay,
             concurrency=conc, clock=clock)
 
         # The call is scheduled for `delay` seconds from now.
         self.assertThat(delayed_call, MatchesStructure(time=Equals(delay)))
-        self.assertThat(ClustersImporter.run, MockNotCalled())
+        self.assertThat(RackControllersImporter.run, MockNotCalled())
         clock.advance(delay)
-        self.assertThat(ClustersImporter.run, MockCalledOnceWith(ANY, conc))
+        self.assertThat(
+            RackControllersImporter.run, MockCalledOnceWith(ANY, conc))
 
-        # The UUIDs, sources, and proxy were all passed through.
-        [importer, _] = ClustersImporter.run.call_args[0]
+        # The system_ids, sources, and proxy were all passed through.
+        [importer, _] = RackControllersImporter.run.call_args[0]
         self.assertThat(importer, MatchesStructure(
-            uuids=Equals(tuple(uuids)), sources=Is(sources),
+            system_ids=Equals(tuple(system_ids)), sources=Is(sources),
             proxy=Equals(urlparse(proxy)),
         ))
 
     def test__run_will_not_error_instead_it_logs(self):
-        call = self.patch(ClustersImporter, "__call__")
+        call = self.patch(RackControllersImporter, "__call__")
         call.return_value = fail(ZeroDivisionError())
 
         with TwistedLoggerFixture() as logger:
-            ClustersImporter([], []).run().wait(5)
+            RackControllersImporter([], []).run().wait(5)
 
         self.assertThat(call, MockCalledOnceWith(ANY))
         self.assertDocTestMatches(
@@ -506,33 +503,30 @@ class TestClustersImporter(MAASTestCase):
             logger.output)
 
 
-class TestClustersImporterNew(MAASServerTestCase):
-    """Tests for the `ClustersImporter.new` function."""
+class TestRackControllersImporterNew(MAASServerTestCase):
+    """Tests for the `RackControllersImporter.new` function."""
 
-    def test__new_obtains_uuids_if_not_given(self):
-        importer = ClustersImporter.new(sources=[], proxy=None)
-        self.assertThat(importer, MatchesStructure(uuids=Equals(())))
+    def test__new_obtains_system_ids_if_not_given(self):
+        importer = RackControllersImporter.new(sources=[], proxy=None)
+        self.assertThat(importer, MatchesStructure(system_ids=Equals(())))
 
-    def test__new_obtains_uuids_for_accepted_clusters_if_not_given(self):
-        cluster_accepted = factory.make_NodeGroup()
-        cluster_accepted.accept()
-        cluster_rejected = factory.make_NodeGroup()
-        cluster_rejected.reject()
+    def test__new_obtains_system_ids_for_accepted_clusters_if_not_given(self):
+        rack = factory.make_RackController()
 
-        importer = ClustersImporter.new(sources=[], proxy=None)
+        importer = RackControllersImporter.new(sources=[], proxy=None)
 
         self.assertThat(importer, MatchesStructure(
-            uuids=Equals((cluster_accepted.uuid, ))))
+            system_ids=Equals((rack.system_id, ))))
 
     def test__new_obtains_sources_if_not_given(self):
-        importer = ClustersImporter.new(uuids=[], proxy=None)
+        importer = RackControllersImporter.new(system_ids=[], proxy=None)
         self.assertThat(importer, MatchesStructure(
             sources=Equals([get_simplestream_endpoint()])))
 
     def test__new_obtains_proxy_if_not_given(self):
         proxy = factory.make_simple_http_url()
         Config.objects.set_config("http_proxy", proxy)
-        importer = ClustersImporter.new(uuids=[], sources=[])
+        importer = RackControllersImporter.new(system_ids=[], sources=[])
         self.assertThat(importer, MatchesStructure(
             proxy=Equals(urlparse(proxy))))
 
@@ -540,16 +534,16 @@ class TestClustersImporterNew(MAASServerTestCase):
         proxy = factory.make_simple_http_url()
         Config.objects.set_config("http_proxy", proxy)
         Config.objects.set_config("enable_http_proxy", False)
-        importer = ClustersImporter.new(uuids=[], sources=[])
+        importer = RackControllersImporter.new(system_ids=[], sources=[])
         self.assertThat(importer, MatchesStructure(
             proxy=Equals(None)))
 
 
-class TestClustersImporterInAction(MAASServerTestCase):
-    """Live tests for `ClustersImporter`."""
+class TestRackControllersImporterInAction(MAASServerTestCase):
+    """Live tests for `RackControllersImporter`."""
 
     def setUp(self):
-        super(TestClustersImporterInAction, self).setUp()
+        super(TestRackControllersImporterInAction, self).setUp()
         # Limit the region's event loop to only the "rpc" service.
         self.useFixture(RegionEventLoopFixture("rpc"))
         # Now start the region's event loop.
@@ -559,24 +553,23 @@ class TestClustersImporterInAction(MAASServerTestCase):
 
     def test__calling_importer_issues_rpc_calls_to_clusters(self):
         # Some clusters that we'll ask to import resources.
-        nodegroup_1 = factory.make_NodeGroup()
-        nodegroup_1.accept()
-        nodegroup_2 = factory.make_NodeGroup()
-        nodegroup_2.accept()
+        rack_1 = factory.make_RackController()
+        rack_2 = factory.make_RackController()
 
         # Connect only cluster #1.
-        cluster_1 = self.rpc.makeCluster(nodegroup_1, ImportBootImages)
-        cluster_1.ImportBootImages.return_value = succeed({})
+        rack_1_conn = self.rpc.makeCluster(rack_1, ImportBootImages)
+        rack_1_conn.ImportBootImages.return_value = succeed({})
 
         # Do the import.
-        importer = ClustersImporter.new([nodegroup_1.uuid, nodegroup_2.uuid])
+        importer = RackControllersImporter.new(
+            [rack_1.system_id, rack_2.system_id])
         results = importer(lock=DeferredLock()).wait(5)
 
         # The results are a list (it's from a DeferredList).
         self.assertThat(results, MatchesListwise((
-            # Success when calling nodegroup_1.
+            # Success when calling rack_1.
             Equals((True, {})),
-            # Failure when calling nodegroup_2: no connection.
+            # Failure when calling rack_1: no connection.
             MatchesListwise((
                 Is(False), MatchesAll(
                     IsInstance(Failure), MatchesStructure(
@@ -587,26 +580,26 @@ class TestClustersImporterInAction(MAASServerTestCase):
 
     def test__run_calls_importer_and_reports_results(self):
         # Some clusters that we'll ask to import resources.
-        nodegroup_1 = factory.make_NodeGroup(uuid="cluster-1")
-        nodegroup_1.accept()
-        nodegroup_2 = factory.make_NodeGroup(uuid="cluster-2")
-        nodegroup_2.accept()
-        nodegroup_3 = factory.make_NodeGroup(uuid="cluster-3")
-        nodegroup_3.accept()
+        rack_1 = factory.make_RackController()
+        rack_2 = factory.make_RackController()
+        rack_3 = factory.make_RackController()
 
         # Cluster #1 will work fine.
-        cluster_1 = self.rpc.makeCluster(nodegroup_1, ImportBootImages)
+        cluster_1 = self.rpc.makeCluster(rack_1, ImportBootImages)
         cluster_1.ImportBootImages.return_value = succeed({})
 
         # Cluster #2 will break.
-        cluster_2 = self.rpc.makeCluster(nodegroup_2, ImportBootImages)
+        cluster_2 = self.rpc.makeCluster(rack_2, ImportBootImages)
         cluster_2.ImportBootImages.return_value = fail(ZeroDivisionError())
 
         # Cluster #3 is not connected.
 
         # Do the import with reporting.
-        importer = ClustersImporter.new(
-            [nodegroup_1.uuid, nodegroup_2.uuid, nodegroup_3.uuid])
+        importer = RackControllersImporter.new([
+            rack_1.system_id,
+            rack_2.system_id,
+            rack_3.system_id,
+        ])
 
         with TwistedLoggerFixture() as logger:
             importer.run().wait(5)
@@ -615,13 +608,13 @@ class TestClustersImporterInAction(MAASServerTestCase):
             """\
             ...
             ---
-            Cluster (cluster-1) has imported boot resources.
+            Rack controller (%s) has imported boot resources.
             ---
-            Cluster (cluster-2) failed to import boot resources.
+            Rack controller (%s) failed to import boot resources.
             Traceback (most recent call last):
             ...
             ---
-            Cluster (cluster-3) did not import boot resources; it is not
+            Rack controller (%s) did not import boot resources; it is not
             connected to the region at this time.
-            """,
+            """ % (rack_1.system_id, rack_2.system_id, rack_3.system_id),
             logger.output)

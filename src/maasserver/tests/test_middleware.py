@@ -26,10 +26,7 @@ from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
 )
-from maasserver.enum import (
-    COMPONENT,
-    NODEGROUP_STATUS,
-)
+from maasserver.enum import COMPONENT
 from maasserver.exceptions import (
     MAASAPIException,
     MAASAPINotFound,
@@ -42,15 +39,11 @@ from maasserver.middleware import (
     ExternalComponentsMiddleware,
     RPCErrorsMiddleware,
 )
-from maasserver.models import nodegroup as nodegroup_module
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import make_serialization_failure
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from mock import Mock
 from provisioningserver.rpc.exceptions import (
@@ -352,14 +345,15 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         # useful.
         middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
-        cluster = factory.make_NodeGroup()
+        rack_controller = factory.make_RackController()
         error = NoConnectionsAvailable(
-            factory.make_name('msg'), uuid=cluster.uuid)
+            factory.make_name('msg'), uuid=rack_controller.system_id)
         middleware.process_exception(request, error)
 
         expected_error_message = (
-            "Error: Unable to connect to cluster '%s' (%s); no connections "
-            "available." % (cluster.cluster_name, cluster.uuid))
+            "Error: Unable to connect to rack controller '%s' (%s); no "
+            "connections available." % (
+                rack_controller.hostname, rack_controller.system_id))
         self.assertEqual(
             [(constants.ERROR, expected_error_message, '')],
             request._messages.messages)
@@ -460,7 +454,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
 class ExternalComponentsMiddlewareTest(MAASServerTestCase):
     """Tests for the ExternalComponentsMiddleware."""
 
-    def test__checks_connectivity_of_accepted_clusters(self):
+    def test__checks_connectivity_of_rack_controllers(self):
         getAllClients = self.patch(middleware_module, 'getAllClients')
 
         request = factory.make_fake_request(factory.make_string(), 'GET')
@@ -469,82 +463,74 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 
         self.assertThat(getAllClients, MockCalledOnceWith())
 
-    def test__ignores_non_accepted_clusters(self):
-        factory.make_NodeGroup(status=factory.pick_enum(
-            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.ENABLED]))
+    def test__registers_error_if_all_rack_controllers_are_disconnected(self):
+        factory.make_RackController()
 
-        getAllClients = self.patch(nodegroup_module, 'getAllClients')
-
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
-
-        self.assertThat(getAllClients, MockNotCalled())
-
-    def test__registers_error_if_all_clusters_are_disconnected(self):
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-
-        getAllClients = self.patch(nodegroup_module, 'getAllClients')
+        getAllClients = self.patch(middleware_module, 'getAllClients')
         getAllClients.return_value = []
 
         request = factory.make_fake_request(factory.make_string(), 'GET')
         middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
-        error = get_persistent_error(COMPONENT.CLUSTERS)
+        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
-            "One cluster is not yet connected to the region. Visit the "
-            "<a href=\"%s\">clusters page</a> for more information." %
-            reverse('cluster-list'),
+            "One rack controller is not yet connected to the region. Visit "
+            "the <a href=\"%s\">rack controllers page</a> for more "
+            "information." % (
+                reverse('index')),
             error)
 
     def test__registers_error_if_any_clusters_are_disconnected(self):
-        clusters = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-        ]
-
-        getAllClients = self.patch(middleware_module, 'getAllClients')
-        getAllClients.return_value = [Mock(ident=clusters[0].uuid)]
-
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware = ExternalComponentsMiddleware()
-        middleware.process_request(request)
-
-        error = get_persistent_error(COMPONENT.CLUSTERS)
-        self.assertEqual(
-            "2 clusters are not yet connected to the region. Visit the "
-            "<a href=\"%s\">clusters page</a> for more information." %
-            reverse('cluster-list'),
-            error)
-
-    def test__removes_error_once_all_clusters_are_connected(self):
-        clusters = [
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
+        rack_controllers = [
+            factory.make_RackController(),
+            factory.make_RackController(),
+            factory.make_RackController(),
         ]
 
         getAllClients = self.patch(middleware_module, 'getAllClients')
         getAllClients.return_value = [
-            Mock(ident=cluster.uuid) for cluster in clusters
-        ]
-
-        register_persistent_error(
-            COMPONENT.CLUSTERS, "Who flung that batter pudding?")
+            Mock(ident=rack_controllers[0].system_id)]
 
         request = factory.make_fake_request(factory.make_string(), 'GET')
         middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
-        error = get_persistent_error(COMPONENT.CLUSTERS)
+        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
+        self.assertEqual(
+            "2 rack controllers are not yet connected to the region. Visit "
+            "the <a href=\"%s\">rack controllers page</a> for more "
+            "information." %
+            reverse('index'),
+            error)
+
+    def test__removes_error_once_all_clusters_are_connected(self):
+        rack_controllers = [
+            factory.make_RackController(),
+            factory.make_RackController(),
+        ]
+
+        getAllClients = self.patch(middleware_module, 'getAllClients')
+        getAllClients.return_value = [
+            Mock(ident=rack.system_id) for rack in rack_controllers
+        ]
+
+        register_persistent_error(
+            COMPONENT.RACK_CONTROLLERS, "Who flung that batter pudding?")
+
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
+        middleware.process_request(request)
+
+        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertIsNone(error)
 
     def test__does_not_suppress_exceptions_from_connectivity_checks(self):
         middleware = ExternalComponentsMiddleware()
         error_type = factory.make_exception_type()
-        check_cluster_connectivity = self.patch(
-            middleware, "_check_cluster_connectivity")
-        check_cluster_connectivity.side_effect = error_type
+        check_rack_controller_connectivity = self.patch(
+            middleware, "_check_rack_controller_connectivity")
+        check_rack_controller_connectivity.side_effect = error_type
         self.assertRaises(error_type, middleware.process_request, None)
-        self.assertThat(check_cluster_connectivity, MockCalledOnceWith())
+        self.assertThat(
+            check_rack_controller_connectivity, MockCalledOnceWith())

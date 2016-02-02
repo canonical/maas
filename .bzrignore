@@ -35,6 +35,7 @@
 ./media/demo/*
 ./media/development
 ./parts
+./provisioningserver.twisted.proto
 ./run/*
 ./run/etc/*
 ./run/etc/maas/*

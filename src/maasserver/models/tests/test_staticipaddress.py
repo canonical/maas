@@ -7,7 +7,6 @@ __all__ = []
 
 
 from random import randint
-from unittest import skip
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -17,21 +16,15 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
     StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.models import interface as interface_module
 from maasserver.models.domain import Domain
-from maasserver.models.interface import UnknownInterface
 from maasserver.models.staticipaddress import StaticIPAddress
-from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -58,283 +51,6 @@ from testtools.matchers import (
 
 
 class TestStaticIPAddressManager(MAASServerTestCase):
-
-    def test__clean_discovered_ip_addresses_on_interface_one_interface(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        ipaddr = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
-        StaticIPAddress.objects._clean_discovered_ip_addresses_on_interface(
-            interface, ipaddr.subnet.get_ipnetwork().version)
-        self.assertIsNone(reload_object(ipaddr))
-
-    def test__clean_discovered_ip_addresses_on_interface_dont_delete(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        ipaddr = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
-        StaticIPAddress.objects._clean_discovered_ip_addresses_on_interface(
-            interface, ipaddr.subnet.get_ipnetwork().version,
-            dont_delete=[ipaddr])
-        self.assertIsNotNone(reload_object(ipaddr))
-
-    def test__clean_discovered_ip_addresses_on_interface_subnet_family(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        ip_v4 = factory.pick_ip_in_network(network_v4)
-        ip_v4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip_v4,
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        ip_v6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip_v6,
-            subnet=subnet_v6, interface=interface)
-        StaticIPAddress.objects._clean_discovered_ip_addresses_on_interface(
-            interface, network_v4.version)
-        self.assertIsNone(reload_object(ip_v4))
-        self.assertIsNotNone(reload_object(ip_v6))
-
-    def test__clean_discovered_ip_addresses_on_interface_multi_interface(self):
-        nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        ipaddr = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=nic0)
-        nic1.ip_addresses.add(ipaddr)
-        StaticIPAddress.objects._clean_discovered_ip_addresses_on_interface(
-            nic0, ipaddr.subnet.get_ipnetwork().version)
-        ipaddr = reload_object(ipaddr)
-        self.assertIsNotNone(ipaddr)
-        self.assertItemsEqual(
-            [nic1.id], ipaddr.interface_set.values_list("id", flat=True))
-
-    def test_update_leases_new_ip_new_mac(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        discovered_ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        discovered_mac = factory.make_mac_address()
-
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup, [(discovered_ip, discovered_mac)])
-        new_ips = StaticIPAddress.objects.filter(ip=discovered_ip)
-        self.assertEqual(1, len(new_ips))
-        self.assertEqual(
-            IPADDRESS_TYPE.DISCOVERED, new_ips[0].alloc_type)
-        self.assertEqual(
-            INTERFACE_TYPE.UNKNOWN, new_ips[0].interface_set.first().type)
-
-    def test_update_leases_clears_lease(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        # Create DISCOVERED IP address that will be cleared.
-        discovered_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip=str(IPAddress(ngi.get_dynamic_ip_range()[0])),
-            subnet=subnet, interface=boot_interface)
-
-        StaticIPAddress.objects.update_leases(node.nodegroup, [])
-        discovered_ip = reload_object(discovered_ip)
-        self.assertIsNone(discovered_ip.ip)
-        self.assertEqual(subnet, discovered_ip.subnet)
-
-    def test_update_leases_adds_new_lease_keeps_old_subnet_link(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        # Create DISCOVERED IP address that will be cleared.
-        discovered_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip=str(IPAddress(ngi.get_dynamic_ip_range()[0])),
-            subnet=subnet, interface=boot_interface)
-
-        # Create another interface that is linked to the same IP address as
-        # the interface for this test.
-        other_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        other_interface.ip_addresses.add(discovered_ip)
-
-        # Update the leases.
-        leases = [(discovered_ip.ip, str(boot_interface.mac_address))]
-        StaticIPAddress.objects.update_leases(node.nodegroup, leases)
-
-        # New discovered IP address.
-        boot_interface = reload_object(boot_interface)
-        lease_ip = boot_interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
-        self.assertEqual(discovered_ip.ip, lease_ip.ip)
-        self.assertEqual(subnet, lease_ip.subnet)
-
-        # Old empty discovered IP address.
-        other_interface = reload_object(other_interface)
-        extra_ip = other_interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).first()
-        self.assertIsNone(extra_ip.ip)
-        self.assertEqual(subnet, lease_ip.subnet)
-
-    @skip("XXX LaMontJones 2016-01-08 fails sporadically.  Bug#1532359")
-    def test_update_leases_handles_multiple_empty_ips(self):
-        cidr = str(factory.make_ipv4_network().cidr)
-        node = factory.make_Node_with_Interface_on_Subnet(cidr=cidr)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        # Create a pre-1.9 condition in the StaticIPAddress table.
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None, subnet=subnet)
-        discovered_ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        macs = [factory.make_mac_address() for i in range(2)]
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup, [(discovered_ip, macs[0])])
-        # Now move to the new MAC, and ensure that the table is correctly
-        # updated, even when multiple empty IP addresses are in the table.
-        # (See also bug #1513485).
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup, [(discovered_ip, macs[1])])
-        new_ips = StaticIPAddress.objects.filter(ip=discovered_ip)
-        self.assertEqual(1, len(new_ips))
-        self.assertEqual(
-            IPADDRESS_TYPE.DISCOVERED, new_ips[0].alloc_type)
-        self.assertEqual(
-            INTERFACE_TYPE.UNKNOWN, new_ips[0].interface_set.first().type)
-        empty_ips = StaticIPAddress.objects.filter(
-            ip=None, alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet)
-        self.assertEqual(2, len(empty_ips))
-
-    def test_update_leases_only_keeps_one_DISCOVERED_address(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        # Create DISCOVERED IP address that will be cleared.
-        discovered_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip=str(IPAddress(ngi.get_dynamic_ip_range()[0])),
-            subnet=subnet, interface=boot_interface)
-
-        StaticIPAddress.objects.update_leases(node.nodegroup, [])
-        discovered_ip = reload_object(discovered_ip)
-        self.assertIsNone(discovered_ip.ip)
-
-    def test_update_leases_drop_lease_and_unknown_interface(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        # Create UnknownInterface and DISCOVERED IP address that both
-        # will be dropped.
-        unknown_interface = UnknownInterface.objects.create(
-            name="eth0", mac_address=factory.make_mac_address(),
-            vlan=subnet.vlan)
-        discovered_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            ip=str(IPAddress(ngi.get_dynamic_ip_range()[0])),
-            subnet=subnet, interface=unknown_interface)
-
-        StaticIPAddress.objects.update_leases(node.nodegroup, [])
-        self.assertIsNone(reload_object(discovered_ip))
-        self.assertIsNone(reload_object(unknown_interface))
-
-    def test_update_leases_new_ip_existing_mac(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        ipaddr2 = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup, [(ipaddr2, boot_interface.mac_address)])
-        new_ips = StaticIPAddress.objects.filter(ip=ipaddr2)
-        self.assertThat(new_ips, HasLength(1))
-        self.assertItemsEqual([boot_interface], new_ips[0].interface_set.all())
-
-    def test_update_leases_new_ip_existing_mac_different_nodegroup(self):
-        vlan = VLAN.objects.get_default_vlan()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        node2 = factory.make_Node_with_Interface_on_Subnet()
-        ipaddr2 = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        StaticIPAddress.objects.update_leases(
-            node2.nodegroup, [(ipaddr2, boot_interface.mac_address)])
-        new_ips = StaticIPAddress.objects.filter(ip=ipaddr2)
-        self.assertThat(new_ips, HasLength(1))
-        self.assertItemsEqual([boot_interface], new_ips[0].interface_set.all())
-
-    def test_update_leases_one_ip_two_mac(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        discovered_ip = factory.pick_ip_in_dynamic_range(ngi)
-        discovered_mac1 = factory.make_mac_address()
-        discovered_mac2 = factory.make_mac_address()
-
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup,
-            [(discovered_ip, discovered_mac1),
-             (discovered_ip, discovered_mac2)])
-        new_ips = StaticIPAddress.objects.filter(ip=discovered_ip)
-        self.assertEqual(1, len(new_ips), StaticIPAddress.objects.all())
-        self.assertEqual(IPADDRESS_TYPE.DISCOVERED, new_ips[0].alloc_type)
-        self.assertEqual(
-            [INTERFACE_TYPE.UNKNOWN, INTERFACE_TYPE.UNKNOWN],
-            [iface.type for iface in new_ips[0].interface_set.all()])
-
-    def test_update_leases_two_ip_one_mac(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-
-        discovered_ip1 = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        discovered_ip2 = str(IPAddress(ngi.get_dynamic_ip_range()[1]))
-        discovered_mac = factory.make_mac_address()
-
-        StaticIPAddress.objects.update_leases(
-            node.nodegroup,
-            [(discovered_ip1, discovered_mac),
-             (discovered_ip2, discovered_mac)])
-        new_ips = StaticIPAddress.objects.filter(ip=discovered_ip1)
-        self.assertEqual(1, len(new_ips))
-        self.assertEqual(
-            IPADDRESS_TYPE.DISCOVERED, new_ips[0].alloc_type)
-        self.assertEqual(
-            INTERFACE_TYPE.UNKNOWN, new_ips[0].interface_set.first().type)
-        new_ips2 = StaticIPAddress.objects.filter(ip=discovered_ip2)
-        self.assertEqual(
-            IPADDRESS_TYPE.DISCOVERED, new_ips2[0].alloc_type)
-        self.assertEqual(
-            INTERFACE_TYPE.UNKNOWN, new_ips2[0].interface_set.first().type)
-        self.assertEqual(
-            new_ips[0].interface_set.first(),
-            new_ips2[0].interface_set.first())
 
     def test_filter_by_ip_family_ipv4(self):
         network_v4 = factory.make_ipv4_network()
@@ -413,18 +129,18 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
         from the TestStaticIPAddressManager above.
     '''
 
-    def make_ip_ranges(self, network=None, nodegroup=None):
-        if not nodegroup:
-            nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            network=network)
+    def make_ip_ranges(self, network=None):
+        if network is None:
+            network = factory.make_ip4_or_6_network()
+        middle = network.size // 2
+        dynamic_range = IPRange(network.first, network[middle])
+        static_range = IPRange(network[middle + 1], network.last)
         return (
-            interface.network,
-            interface.static_ip_range_low,
-            interface.static_ip_range_high,
-            interface.ip_range_low,
-            interface.ip_range_high,
+            network,
+            str(IPAddress(static_range.first)),
+            str(IPAddress(static_range.last)),
+            str(IPAddress(dynamic_range.first)),
+            str(IPAddress(dynamic_range.last)),
         )
 
     @transactional
@@ -660,31 +376,35 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
     """Tests for get_hostname_ip_mapping()."""
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         domain = Domain.objects.get_default_domain()
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         expected_mapping = {}
         for _ in range(3):
-            node = factory.make_Node_with_Interface_on_Subnet(
-                nodegroup=nodegroup, disable_ipv4=False)
-            [staticip] = node.get_boot_interface().claim_static_ips()
+            node = factory.make_Node(interface=True, disable_ipv4=False)
+            boot_interface = node.get_boot_interface()
+            subnet = factory.make_Subnet()
+            staticip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip=factory.pick_ip_in_Subnet(subnet),
+                subnet=subnet, interface=boot_interface)
             full_hostname = "%s.%s" % (node.hostname, domain.name)
             expected_mapping[full_hostname] = (30, [staticip.ip])
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_returns_fqdn(self):
-        self.patch_autospec(interface_module, "update_host_maps")
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         hostname = factory.make_name('hostname')
         domainname = factory.make_name('domain')
         factory.make_Domain(name=domainname)
         full_hostname = "%s.%s" % (hostname, domainname)
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
-            nodegroup=nodegroup, hostname=full_hostname,
+            interface=True, hostname=full_hostname,
             subnet=subnet, disable_ipv4=False)
-        [staticip] = node.get_boot_interface().claim_static_ips()
+        boot_interface = node.get_boot_interface()
+        staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=boot_interface)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(subnet)
         self.assertEqual({full_hostname: (30, [staticip.ip])}, mapping)
 
@@ -703,22 +423,23 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_considers_given_domain(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_Node_with_Interface_on_Subnet(nodegroup=nodegroup)
         domain = factory.make_Domain()
-        another_nodegroup = factory.make_NodeGroup(name=domain.name)
+        factory.make_Node_with_Interface_on_Subnet(domain=domain)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
-            Domain.objects.get(name=another_nodegroup.name))
+            factory.make_Domain())
         self.assertEqual({}, mapping)
 
     def test_get_hostname_ip_mapping_picks_oldest_nic_with_sticky_ip(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
-        node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
+        node = factory.make_Node(
+            interface=True, hostname=factory.make_name('host'),
             disable_ipv4=False)
-        [staticip] = node.get_boot_interface().claim_static_ips()
+        boot_interface = node.get_boot_interface()
+        staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=boot_interface)
         newer_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, interface=newer_nic)
@@ -727,13 +448,16 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_picks_sticky_over_auto(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
-        node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=factory.make_name('host'), subnet=subnet,
+        node = factory.make_Node(
+            interface=True, hostname=factory.make_name('host'),
             disable_ipv4=False)
-        [staticip] = node.get_boot_interface().claim_static_ips()
+        boot_interface = node.get_boot_interface()
+        staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=boot_interface)
         nic = node.get_boot_interface()
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, interface=nic)
@@ -804,7 +528,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [ipv6_address.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_non_discovered_addresses(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -822,7 +545,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_bond_with_no_boot_interface(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -852,7 +574,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [bond_staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_bond_with_boot_interface(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -876,7 +597,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [bond_staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_ignores_bond_without_boot_interface(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -904,7 +624,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [boot_staticip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_boot_interface(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -927,7 +646,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [boot_sip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_boot_interface_to_alias(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -950,7 +668,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: (30, [boot_sip.ip])}, mapping)
 
     def test_get_hostname_ip_mapping_prefers_physical_interfaces_to_vlan(self):
-        self.patch_autospec(interface_module, "update_host_maps")
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1045,30 +762,27 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
 
     def test_user_reserved_addresses_included_in_get_hostname_ip_mapping(self):
         num_ips = randint(3, 5)
-        nodegroup = factory.make_NodeGroup(name=factory.make_Domain().name)
+        domain = factory.make_Domain()
         ips = [
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED)
             for _ in range(num_ips)
         ]
-        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(
-            Domain.objects.get(name=nodegroup.name))
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         self.expectThat(mappings, HasLength(len(ips)))
 
     def test_user_reserved_addresses_included_in_all_nodegroups(self):
         num_ips = randint(3, 5)
-        nodegroup1 = factory.make_NodeGroup(name=factory.make_Domain().name)
-        nodegroup2 = factory.make_NodeGroup(name=factory.make_Domain().name)
+        domain1 = factory.make_Domain()
+        domain2 = factory.make_Domain()
         ips = [
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED)
             for _ in range(num_ips)
         ]
-        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(
-            Domain.objects.get(name=nodegroup1.name))
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain1)
         self.expectThat(mappings, HasLength(len(ips)))
-        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(
-            Domain.objects.get(name=nodegroup2.name))
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain2)
         self.expectThat(mappings, HasLength(len(ips)))
 
 
@@ -1094,10 +808,11 @@ class TestRenderJSON(MAASServerTestCase):
 
     def test__includes_node_summary_if_requested(self):
         user = factory.make_User()
-        node = factory.make_Node_with_Interface_on_Subnet()
-        ngi = node.get_boot_interface().get_cluster_interface()
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            disable_ipv4=False, subnet=subnet)
         ip = factory.make_StaticIPAddress(
-            ip=factory.pick_ip_in_dynamic_range(ngi), user=user,
+            ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
         json = ip.render_json(with_node_summary=True)
         self.expectThat(json, Not(Contains("user")))
@@ -1106,11 +821,11 @@ class TestRenderJSON(MAASServerTestCase):
     def test__data_is_accurate(self):
         user = factory.make_User()
         hostname = factory.make_name('hostname')
+        subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
-            hostname=hostname)
-        ngi = node.get_boot_interface().get_cluster_interface()
+            disable_ipv4=False, subnet=subnet, hostname=hostname)
         ip = factory.make_StaticIPAddress(
-            ip=factory.pick_ip_in_dynamic_range(ngi), user=user,
+            ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
         json = ip.render_json(with_username=True, with_node_summary=True)
         self.expectThat(json["user"], Equals(user.username))

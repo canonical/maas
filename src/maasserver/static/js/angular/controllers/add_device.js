@@ -5,8 +5,8 @@
  */
 
 angular.module('MAAS').controller('AddDeviceController', [
-    '$scope', 'ClustersManager', 'DevicesManager', 'ManagerHelperService',
-    'ValidationService', function($scope, ClustersManager, DevicesManager,
+    '$scope', 'DevicesManager', 'SubnetsManager', 'ManagerHelperService',
+    'ValidationService', function($scope, DevicesManager, SubnetsManager,
         ManagerHelperService, ValidationService) {
 
         // Set the addDeviceScope in the parent, so it can call functions
@@ -15,8 +15,8 @@ angular.module('MAAS').controller('AddDeviceController', [
         parentScope.addDeviceScope = $scope;
 
         // Set initial values.
+        $scope.subnets = SubnetsManager.getItems();
         $scope.viewable = false;
-        $scope.clusters = ClustersManager.getItems();
         $scope.error = null;
 
         // Device ip assignment options.
@@ -40,7 +40,7 @@ angular.module('MAAS').controller('AddDeviceController', [
             return {
                 mac: "",
                 ipAssignment: null,
-                clusterInterfaceId: null,
+                subnetId: null,
                 ipAddress: ""
             };
         }
@@ -75,22 +75,10 @@ angular.module('MAAS').controller('AddDeviceController', [
                     mac: nic.mac,
                     ip_assignment: nic.ipAssignment.name,
                     ip_address: nic.ipAddress,
-                    "interface": nic.clusterInterfaceId
+                    "subnet": nic.subnetId
                 });
             });
             return convertedDevice;
-        }
-
-        // Gets the cluster interface by id from the managed cluster
-        // interfaces.
-        function getInterfaceById(id) {
-            var i, clusterInterfaces = $scope.getManagedInterfaces();
-            for(i = 0; i < clusterInterfaces.length; i++) {
-                if(clusterInterfaces[i].id === id) {
-                    return clusterInterfaces[i];
-                }
-            }
-            return null;
         }
 
         // Called by the parent scope when this controller is viewable.
@@ -109,32 +97,6 @@ angular.module('MAAS').controller('AddDeviceController', [
 
             // Emit the hidden event.
             $scope.$emit('addDeviceHidden');
-        };
-
-        // Return all of the managed interfaces from the clusters.
-        $scope.getManagedInterfaces = function() {
-            var nics = [];
-            angular.forEach($scope.clusters, function(cluster) {
-                angular.forEach(cluster.interfaces, function(cInterface) {
-                    if(cInterface.management > 0) {
-                        nics.push(cInterface);
-                    }
-                });
-            });
-            return nics;
-        };
-
-        // Return text to show an interfaces static range.
-        $scope.getInterfaceStaticRange = function(cInterfaceId) {
-            if(!angular.isNumber(cInterfaceId)) {
-                return "";
-            }
-            var clusterInterface = getInterfaceById(cInterfaceId);
-            if(!angular.isObject(clusterInterface)) {
-                return "";
-            }
-            return clusterInterface.static_range.low + " - " +
-                clusterInterface.static_range.high + " (Optional)";
         };
 
         // Returns true if the name is in error.
@@ -178,32 +140,26 @@ angular.module('MAAS').controller('AddDeviceController', [
             if(!ValidationService.validateIP(deviceInterface.ipAddress)) {
                 return true;
             }
-            var i, inNetwork, managedInterfaces = $scope.getManagedInterfaces();
+            var i, inNetwork;
             if(angular.isObject(deviceInterface.ipAssignment)){
                 if(deviceInterface.ipAssignment.name === "external") {
-                    // External IP address cannot be within a managed interface
-                    // on one of the clusters.
-                    for(i = 0; i < managedInterfaces.length; i++) {
+                    // External IP address cannot be within a known subnet.
+                    for(i = 0; i < $scope.subnets.length; i++) {
                         inNetwork = ValidationService.validateIPInNetwork(
                             deviceInterface.ipAddress,
-                            managedInterfaces[i].network);
+                            $scope.subnets[i].cidr);
                         if(inNetwork) {
                             return true;
                         }
                     }
                 } else if(deviceInterface.ipAssignment.name === "static" &&
-                    angular.isNumber(deviceInterface.clusterInterfaceId)) {
-                    // Static IP address must be within the static range
-                    // of the selected clusterInterface.
-                    var clusterInterface = getInterfaceById(
-                        deviceInterface.clusterInterfaceId);
+                    angular.isNumber(deviceInterface.subnetId)) {
+                    // Static IP address must be within a subnet.
+                    var subnet = SubnetsManager.getItemFromList(
+                        deviceInterface.subnetId);
                     inNetwork = ValidationService.validateIPInNetwork(
-                        deviceInterface.ipAddress, clusterInterface.network);
-                    var inDynamicRange = ValidationService.validateIPInRange(
-                        deviceInterface.ipAddress, clusterInterface.network,
-                        clusterInterface.dynamic_range.low,
-                        clusterInterface.dynamic_range.high);
-                    if(!inNetwork || inDynamicRange) {
+                        deviceInterface.ipAddress, subnet.cidr);
+                    if(!inNetwork) {
                         return true;
                     }
                 }
@@ -232,7 +188,7 @@ angular.module('MAAS').controller('AddDeviceController', [
                         $scope.ipHasError(deviceInterface)));
                 var staticIpError = (
                     deviceInterface.ipAssignment.name === "static" && (
-                        !angular.isNumber(deviceInterface.clusterInterfaceId) ||
+                        !angular.isNumber(deviceInterface.subnetId) ||
                         $scope.ipHasError(deviceInterface)));
                 if(externalIpError || staticIpError) {
                     return true;
@@ -315,6 +271,6 @@ angular.module('MAAS').controller('AddDeviceController', [
             });
         };
 
-        // Load clusters to get the managed interfaces.
-        ManagerHelperService.loadManager(ClustersManager);
+        // Load subnets to get the available subnets.
+        ManagerHelperService.loadManager(SubnetsManager);
     }]);

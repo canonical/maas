@@ -7,11 +7,10 @@ __all__ = [
     "DeviceHandler",
     ]
 
-from maasserver.clusterrpc import dhcp
 from maasserver.enum import (
+    INTERFACE_LINK_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
-    NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -19,7 +18,6 @@ from maasserver.forms import (
     DeviceWithMACsForm,
 )
 from maasserver.models.node import Device
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.node_action import compile_node_actions
@@ -27,8 +25,9 @@ from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
 )
-from maasserver.websockets.handlers.timestampedmodel import (
-    TimestampedModelHandler,
+from maasserver.websockets.handlers.node import (
+    node_prefetch,
+    NodeHandler,
 )
 from provisioningserver.logger import get_maas_logger
 
@@ -50,16 +49,6 @@ class DEVICE_IP_ASSIGNMENT:
     STATIC = "static"
 
 
-def update_host_maps(static_mappings, nodegroups):
-    """Helper to call update_host_maps will static mappings for all
-    `nodegroups`."""
-    static_mappings = {
-        nodegroup: dict(static_mappings)
-        for nodegroup in nodegroups
-        }
-    return list(dhcp.update_host_maps(static_mappings))
-
-
 def get_Interface_from_list(interfaces, mac):
     """Return the `Interface` object based on the mac value."""
     for obj in interfaces:
@@ -68,35 +57,11 @@ def get_Interface_from_list(interfaces, mac):
     return None
 
 
-def log_static_allocations(device, external_static_ips, assigned_sticky_ips):
-    """Log the allocation of the static ip address."""
-    all_ips = [
-        static_ip.ip
-        for static_ip, _ in external_static_ips
-        ]
-    all_ips.extend([
-        static_ip.ip
-        for static_ip, _ in assigned_sticky_ips
-        ])
-    if len(all_ips) > 0:
-        maaslog.info(
-            "%s: Sticky IP address(es) allocated: %s",
-            device.hostname, ', '.join(all_ips))
+class DeviceHandler(NodeHandler):
 
-
-class DeviceHandler(TimestampedModelHandler):
-
-    class Meta:
-        queryset = (
-            Device.objects.filter(node_type=NODE_TYPE.DEVICE, parent=None)
-            .select_related('nodegroup', 'owner')
-            .prefetch_related('interface_set__ip_addresses__subnet')
-            .prefetch_related('nodegroup__nodegroupinterface_set')
-            .prefetch_related('zone')
-            .prefetch_related('domain')
-            .prefetch_related('tags'))
-        pk = 'system_id'
-        pk_type = str
+    class Meta(NodeHandler.Meta):
+        abstract = False
+        queryset = node_prefetch(Device.objects.filter(parent=None))
         allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
         exclude = [
             "id",
@@ -114,6 +79,8 @@ class DeviceHandler(TimestampedModelHandler):
             "architecture",
             "bios_boot_method",
             "status",
+            "status_expires",
+            "power_state_queried",
             "power_state_updated",
             "disable_ipv4",
             "osystem",
@@ -130,6 +97,8 @@ class DeviceHandler(TimestampedModelHandler):
             "skip_storage",
             "instance_power_parameters",
             "dns_process",
+            "address_ttl",
+            "url",
             ]
         list_fields = [
             "system_id",
@@ -145,43 +114,10 @@ class DeviceHandler(TimestampedModelHandler):
             ]
 
     def get_queryset(self):
-        """Return `QuerySet` for devices only vewable by `user`."""
-        nodes = super(DeviceHandler, self).get_queryset()
+        """Return `QuerySet` for devices only viewable by `user`."""
+        devices = super(DeviceHandler, self).get_queryset()
         return Device.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=nodes)
-
-    def dehydrate_owner(self, user):
-        """Return owners username."""
-        if user is None:
-            return ""
-        else:
-            return user.username
-
-    def dehydrate_domain(self, domain):
-        """Return domain name."""
-        return {
-            "id": domain.id,
-            "name": domain.name,
-        }
-
-    def dehydrate_zone(self, zone):
-        """Return zone name."""
-        return {
-            "id": zone.id,
-            "name": zone.name,
-            }
-
-    def dehydrate_nodegroup(self, nodegroup):
-        """Return the nodegroup name."""
-        if nodegroup is None:
-            return None
-        else:
-            return {
-                "id": nodegroup.id,
-                "uuid": nodegroup.uuid,
-                "name": nodegroup.name,
-                "cluster_name": nodegroup.cluster_name,
-                }
+            self.user, NODE_PERMISSION.VIEW, from_nodes=devices)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -306,8 +242,6 @@ class DeviceHandler(TimestampedModelHandler):
         data = super(DeviceHandler, self).create(params)
         device_obj = Device.objects.get(system_id=data['system_id'])
         interfaces = list(device_obj.interface_set.all())
-        external_static_ips = []
-        assigned_sticky_ips = []
 
         # Acquire all of the needed ip address based on the user selection.
         for nic in params["interfaces"]:
@@ -320,36 +254,18 @@ class DeviceHandler(TimestampedModelHandler):
                     alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                     ip=nic["ip_address"], subnet=subnet, user=self.user)
                 interface.ip_addresses.add(sticky_ip)
-                external_static_ips.append(
-                    (sticky_ip, interface))
             elif ip_assignment == DEVICE_IP_ASSIGNMENT.DYNAMIC:
-                dhcp_ip = StaticIPAddress.objects.create(
-                    alloc_type=IPADDRESS_TYPE.DHCP, ip=None)
-                interface.ip_addresses.add(dhcp_ip)
+                interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, None)
             elif ip_assignment == DEVICE_IP_ASSIGNMENT.STATIC:
-                # Link the MAC address to the cluster interface.
-                cluster_interface = NodeGroupInterface.objects.get(
-                    id=nic["interface"])
-                ip = StaticIPAddress.objects.create(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                    ip=None, subnet=cluster_interface.subnet)
-                interface.ip_addresses.add(ip)
-
                 # Convert an empty string to None.
                 ip_address = nic.get("ip_address")
                 if not ip_address:
                     ip_address = None
 
-                # Claim the static ip.
-                sticky_ips = interface.claim_static_ips(
-                    requested_address=ip_address)
-                assigned_sticky_ips.extend([
-                    (static_ip, interface)
-                    for static_ip in sticky_ips
-                ])
-
-        log_static_allocations(
-            device_obj, external_static_ips, assigned_sticky_ips)
+                # Link to the subnet statically.
+                subnet = Subnet.objects.get(id=nic["subnet"])
+                interface.link_subnet(
+                    INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_address)
         return self.full_dehydrate(device_obj)
 
     def action(self, params):

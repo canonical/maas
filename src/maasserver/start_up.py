@@ -27,7 +27,6 @@ from maasserver.models import (
     BootResource,
     BootSource,
     BootSourceSelection,
-    NodeGroup,
 )
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.triggers import register_all_triggers
@@ -168,10 +167,6 @@ def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.
     register_mac_type(connection.cursor())
-
-    # Make sure that the master nodegroup is created.
-    # This must be serialized or we may initialize the master more than once.
-    NodeGroup.objects.ensure_master()
 
     # Make sure that maas user's GNUPG home directory exists. This is needed
     # for importing of boot resources, which occurs on the region as well as

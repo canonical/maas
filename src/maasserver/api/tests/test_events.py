@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the events API."""
@@ -539,10 +539,10 @@ class TestEventsAPI(APITestCase):
             default_result['events'], info_result['events'])
 
     def make_nodes_in_group_with_events(
-            self, nodegroup, number_nodes=2, number_events=2):
+            self, number_nodes=2, number_events=2):
         """Make `number_events` events for `number_nodes` nodes."""
         for _ in range(number_nodes):
-            node = factory.make_Node(nodegroup=nodegroup, interface=True)
+            node = factory.make_Node(interface=True)
             make_events(number_events, node=node)
 
     def test_query_num_queries_is_independent_of_num_nodes_and_events(self):
@@ -554,11 +554,8 @@ class TestEventsAPI(APITestCase):
         num_nodes_per_group = 5
         events_per_group = num_nodes_per_group * events_per_node
 
-        nodegroup_1 = factory.make_NodeGroup()
-        nodegroup_2 = factory.make_NodeGroup()
-
         self.make_nodes_in_group_with_events(
-            nodegroup_1, num_nodes_per_group, events_per_node)
+            num_nodes_per_group, events_per_node)
 
         handler = events_module.EventsHandler()
 
@@ -567,7 +564,7 @@ class TestEventsAPI(APITestCase):
                 {'op': 'query', 'level': 'DEBUG'}, ['op', 'level'])))
 
         self.make_nodes_in_group_with_events(
-            nodegroup_2, num_nodes_per_group, events_per_node)
+            num_nodes_per_group, events_per_node)
 
         query_2_count, query_2_result = (
             count_queries(handler.query, RequestFixture(

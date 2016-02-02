@@ -50,16 +50,7 @@ class Migration(migrations.Migration):
             options={
                 'proxy': True,
             },
-            bases=('maasserver.node', maasserver.models.node.RegionControllerMixin),
-        ),
-        migrations.CreateModel(
-            name='RegionRackController',
-            fields=[
-            ],
-            options={
-                'proxy': True,
-            },
-            bases=('maasserver.rackcontroller', maasserver.models.node.RegionControllerMixin),
+            bases=('maasserver.node',),
         ),
         migrations.AlterField(
             model_name='node',

@@ -5,7 +5,6 @@
 
 __all__ = []
 
-import http.client
 import threading
 from urllib.parse import (
     urlencode,
@@ -17,8 +16,6 @@ from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpRequest
 from django.test.client import RequestFactory
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
-from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -26,7 +23,7 @@ from maasserver.utils import (
     absolute_reverse,
     absolute_url_reverse,
     build_absolute_uri,
-    find_nodegroup,
+    find_rack_controller,
     get_local_cluster_UUID,
     make_validation_error_message,
     strip_domain,
@@ -34,7 +31,6 @@ from maasserver.utils import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from netaddr import IPAddress
 from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
@@ -75,24 +71,25 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_kwargs(self):
         maas_url = factory.make_simple_http_url()
-        nodegroup = factory.make_NodeGroup()
+        user = factory.make_User()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         absolute_url = absolute_reverse(
-            'cluster-edit', kwargs={'uuid': nodegroup.uuid})
-        reversed_url = reverse('cluster-edit', args=[nodegroup.uuid])
+            'accounts-edit', kwargs={'username': user.username})
+        reversed_url = reverse('accounts-edit', args=[user.username])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url,
             reversed_url)
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_args(self):
-        nodegroup = factory.make_NodeGroup()
         maas_url = factory.make_simple_http_url()
+        user = factory.make_User()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
 
-        observed_url = absolute_reverse('cluster-edit', args=[nodegroup.uuid])
+        observed_url = absolute_reverse(
+            'accounts-edit', kwargs={'username': user.username})
 
-        reversed_url = reverse('cluster-edit', args=[nodegroup.uuid])
+        reversed_url = reverse('accounts-edit', args=[user.username])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url,
             reversed_url)
@@ -221,137 +218,27 @@ def make_request(origin_ip):
     return RequestFactory().post('/', REMOTE_ADDR=str(origin_ip))
 
 
-class TestFindNodegroup(MAASServerTestCase):
+class TestFindRackController(MAASServerTestCase):
 
-    scenarios = [
-        ('ipv4', {'network_factory': factory.make_ipv4_network}),
-        ('ipv6', {'network_factory': factory.make_ipv6_network}),
-        ]
-
-    def make_cluster_interface(self, network, management=None):
-        """Create a cluster interface.
-
-        The interface is managed by default.
-        """
-        if management is None:
-            management = factory.pick_enum(
-                NODEGROUPINTERFACE_MANAGEMENT,
-                but_not=[NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED])
-        cluster = factory.make_NodeGroup()
-        return factory.make_NodeGroupInterface(
-            cluster, network=network, management=management)
-
-    def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(nodegroup)
-        self.assertEqual(
-            nodegroup,
-            find_nodegroup(make_request(interface.ip)))
-
-    def test_find_nodegroup_returns_None_if_not_found(self):
-        requesting_ip = factory.pick_ip_in_network(self.network_factory())
-        self.assertIsNone(find_nodegroup(make_request(requesting_ip)))
-
-    #
-    # Finding a node's nodegroup (aka cluster controller) in a nutshell:
-    #
-    #   when 1 managed interface on the network = choose this one
-    #   when >1 managed interfaces on the network = misconfiguration
-    #   when 1 unmanaged interface on a network = choose this one
-    #   when >1 unmanaged interfaces on a network = choose any
-    #
-
-    def test_1_managed_interface(self):
-        network = self.network_factory()
-        interface = self.make_cluster_interface(network)
-        self.assertEqual(
-            interface.nodegroup,
-            find_nodegroup(
-                make_request(factory.pick_ip_in_network(network))))
-
-    def test_1_managed_interface_and_1_unmanaged(self):
-        # The managed nodegroup is chosen in preference to the unmanaged
-        # nodegroup.
-        network = self.network_factory()
-        interface = self.make_cluster_interface(network)
-        self.make_cluster_interface(
-            network, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        self.assertEqual(
-            interface.nodegroup,
-            find_nodegroup(
-                make_request(factory.pick_ip_in_network(network))))
-
-    def test_more_than_1_managed_interface(self):
-        network = self.network_factory()
-        requesting_ip = factory.pick_ip_in_network(network)
-        self.make_cluster_interface(network=network)
-        self.make_cluster_interface(network=network)
-        exception = self.assertRaises(
-            NodeGroupMisconfiguration,
-            find_nodegroup, make_request(requesting_ip))
-        self.assertEqual(
-            (http.client.CONFLICT,
-             "Multiple clusters on the same network; only "
-             "one cluster may manage the network of which "
-             "%s is a member." % requesting_ip),
-            (exception.api_error,
-             "%s" % exception))
-
-    def test_1_unmanaged_interface(self):
-        network = self.network_factory()
-        interface = self.make_cluster_interface(network)
-        self.assertEqual(
-            interface.nodegroup,
-            find_nodegroup(
-                make_request(factory.pick_ip_in_network(network))))
-
-    def test_more_than_1_unmanaged_interface(self):
-        network = self.network_factory()
-        interfaces = [
-            self.make_cluster_interface(
-                network, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-            for _ in range(2)
-            ]
-        self.assertEqual(
-            interfaces[0].nodegroup,
-            find_nodegroup(
-                make_request(factory.pick_ip_in_network(network))))
-
-    def test_handles_mixed_IPv4_and_IPv6(self):
-        matching_network = self.network_factory()
-        requesting_ip = factory.pick_ip_in_network(matching_network)
-        self.make_cluster_interface(factory.make_ipv4_network())
-        self.make_cluster_interface(factory.make_ipv6_network())
-        matching_interface = self.make_cluster_interface(matching_network)
-        self.assertEqual(
-            matching_interface.nodegroup,
-            find_nodegroup(make_request(requesting_ip)))
-
-    def test_includes_lower_bound(self):
-        network = self.network_factory()
-        interface = self.make_cluster_interface(network)
-        self.assertEqual(
-            interface.nodegroup,
-            find_nodegroup(make_request(IPAddress(network.first))))
-
-    def test_includes_upper_bound(self):
-        network = self.network_factory()
-        interface = self.make_cluster_interface(network)
-        self.assertEqual(
-            interface.nodegroup,
-            find_nodegroup(make_request(IPAddress(network.last))))
-
-    def test_excludes_lower_bound_predecessor(self):
-        network = self.network_factory()
-        self.make_cluster_interface(network)
+    def test_returns_None_when_unknown_subnet(self):
         self.assertIsNone(
-            find_nodegroup(make_request(IPAddress(network.first - 1))))
+            find_rack_controller(make_request(factory.make_ip_address())))
 
-    def test_excludes_upper_bound_successor(self):
-        network = self.network_factory()
-        self.make_cluster_interface(network)
+    def test_returns_None_when_subnet_is_not_managed(self):
+        subnet = factory.make_Subnet()
         self.assertIsNone(
-            find_nodegroup(make_request(IPAddress(network.last + 1))))
+            find_rack_controller(
+                make_request(factory.pick_ip_in_Subnet(subnet))))
+
+    def test_returns_primary_rack_when_subnet_is_managed(self):
+        subnet = factory.make_Subnet()
+        rack_controller = factory.make_RackController()
+        subnet.vlan.dhcp_on = True
+        subnet.vlan.primary_rack = rack_controller
+        subnet.vlan.save()
+        self.assertEquals(
+            rack_controller.system_id, find_rack_controller(
+                make_request(factory.pick_ip_in_Subnet(subnet))).system_id)
 
 
 class TestSynchronised(MAASTestCase):

@@ -13,10 +13,12 @@ __all__ = [
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
     IntegerField,
     Manager,
+    PROTECT,
     Q,
 )
 from django.db.models.query import QuerySet
@@ -124,14 +126,6 @@ class VLANManager(Manager, VLANQueriesMixin):
         from maasserver.models.fabric import Fabric
         return Fabric.objects.get_default_fabric().get_default_vlan()
 
-    def filter_by_nodegroup_interface(self, nodegroup, ifname):
-        """Query fot the VLAN that matches the specified NodeGroup, whose
-        interface matches the specified name.
-        """
-        return self.filter(
-            subnet__nodegroupinterface__nodegroup=nodegroup,
-            subnet__nodegroupinterface__interface=ifname)
-
 
 class VLAN(CleanSave, TimestampedModel):
     """A `VLAN`.
@@ -160,6 +154,16 @@ class VLAN(CleanSave, TimestampedModel):
     fabric = ForeignKey('Fabric', blank=False, editable=True)
 
     mtu = IntegerField(default=DEFAULT_MTU)
+
+    dhcp_on = BooleanField(default=False, editable=True)
+
+    primary_rack = ForeignKey(
+        'Node', on_delete=PROTECT, null=True, blank=True, editable=True,
+        related_name='+')
+
+    secondary_rack = ForeignKey(
+        'Node', on_delete=PROTECT, null=True, blank=True, editable=True,
+        related_name='+')
 
     def __str__(self):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())
@@ -205,12 +209,6 @@ class VLAN(CleanSave, TimestampedModel):
                 interface.vlan = self.fabric.get_default_vlan()
                 interface.save()
 
-    def manage_connected_cluster_interfaces(self):
-        """Reconnect cluster interfaces to the default VLAN of the fabric."""
-        for ngi in self.nodegroupinterface_set.all():
-            ngi.vlan = self.fabric.get_default_vlan()
-            ngi.save()
-
     def manage_connected_subnets(self):
         """Reconnect subnets the default VLAN of the fabric."""
         for subnet in self.subnet_set.all():
@@ -223,6 +221,5 @@ class VLAN(CleanSave, TimestampedModel):
                 "This VLAN is the default VLAN in the fabric, "
                 "it cannot be deleted.")
         self.manage_connected_interfaces()
-        self.manage_connected_cluster_interfaces()
         self.manage_connected_subnets()
         super(VLAN, self).delete()

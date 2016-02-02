@@ -13,11 +13,11 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_STATUS,
 )
 from maasserver.models import (
     Domain,
     Machine,
-    Node,
 )
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
@@ -231,14 +231,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def assertConstrainedNodes(self, nodes, data):
         form = AcquireNodeForm(data=data)
         self.assertTrue(form.is_valid(), dict(form.errors))
-        filtered_nodes, _, _ = form.filter_nodes(Node.objects.all())
+        filtered_nodes, _, _ = form.filter_nodes(Machine.objects.all())
         self.assertItemsEqual(nodes, filtered_nodes)
 
     def test_no_constraints(self):
         nodes = [factory.make_Node() for _ in range(3)]
         form = AcquireNodeForm(data={})
         self.assertTrue(form.is_valid())
-        self.assertItemsEqual(nodes, Node.objects.all())
+        self.assertItemsEqual(nodes, Machine.objects.all())
 
     def test_hostname(self):
         nodes = [factory.make_Node() for _ in range(3)]
@@ -298,7 +298,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (False, {'mem': ["Invalid memory: number of MiB required."]}),
             (form.is_valid(), form.errors))
 
-    def test_legacy_networks_field_falls_back_to_subnets_query(self):
+    def test_subnets_filters_by_name(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(3)
@@ -312,9 +312,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
         pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
-            {'networks': [subnets[pick].name]})
+            {'subnets': [subnets[pick].name]})
 
-    def test_networks_filters_by_name(self):
+    def test_subnets_filters_by_space(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(3)
@@ -328,9 +328,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
         pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
-            {'networks': [subnets[pick].name]})
+            {'subnets': ["space:%s" % subnets[pick].space.name]})
 
-    def test_networks_filters_by_space(self):
+    def test_subnets_filters_by_ip(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(3)
@@ -344,34 +344,19 @@ class TestAcquireNodeForm(MAASServerTestCase):
         pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
-            {'networks': ["space:%s" % subnets[pick].space.name]})
-
-    def test_networks_filters_by_ip(self):
-        subnets = [
-            factory.make_Subnet()
-            for _ in range(3)
-            ]
-        nodes = [
-            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
-            for subnet in subnets
-            ]
-        # Filter for this subnet.  Take one in the middle to avoid
-        # coincidental success based on ordering.
-        pick = 1
-        self.assertConstrainedNodes(
-            {nodes[pick]},
-            {'networks': [
+            {'subnets': [
                 'ip:%s' % factory.pick_ip_in_network(
                     subnets[pick].get_ipnetwork())]})
 
-    def test_networks_filters_by_vlan_tag(self):
+    def test_subnets_filters_by_vlan_tag(self):
         vlan_tags = list(range(1, 6))
         subnets = [
             factory.make_Subnet(vlan=factory.make_VLAN(vid=tag))
             for tag in vlan_tags
             ]
         nodes = [
-            factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+            factory.make_Node_with_Interface_on_Subnet(
+                status=NODE_STATUS.READY, subnet=subnet)
             for subnet in subnets
             ]
         # Filter for this network.  Take one in the middle to avoid
@@ -379,15 +364,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
         pick = 1
         self.assertConstrainedNodes(
             {nodes[pick]},
-            {'networks': ['vlan:%d' % vlan_tags[pick]]})
+            {'subnets': ['vlan:%d' % vlan_tags[pick]]})
 
-    def test_networks_filter_ignores_macs_on_other_subnets(self):
+    def test_subnets_filter_ignores_macs_on_other_subnets(self):
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         factory.make_Node_with_Interface_on_Subnet()
-        self.assertConstrainedNodes({node}, {'networks': [subnet.name]})
+        self.assertConstrainedNodes({node}, {'subnets': [subnet.name]})
 
-    def test_networks_filter_ignores_other_subnets_on_mac(self):
+    def test_subnets_filter_ignores_other_subnets_on_mac(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(3)
@@ -400,15 +385,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 interface=nic, subnet=subnet)
         self.assertConstrainedNodes(
             {node},
-            {'networks': [subnets[1].name]})
+            {'subnets': [subnets[1].name]})
 
     def test_invalid_subnets(self):
-        form = AcquireNodeForm(data={'networks': 'ip:10.0.0.0'})
+        form = AcquireNodeForm(data={'subnets': 'ip:10.0.0.0'})
         self.assertEqual(
             (
                 False,
                 {
-                    'networks': [
+                    'subnets': [
                         "Invalid parameter: "
                         "list of subnet specifiers required.",
                         ],
@@ -418,13 +403,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         # The validator is unit-tested separately.  This just verifies that it
         # is being consulted.
-        form = AcquireNodeForm(data={'networks': ['vlan:-1']})
+        form = AcquireNodeForm(data={'subnets': ['vlan:-1']})
         self.assertEqual(
-            (False, {'networks': [
+            (False, {'subnets': [
                 "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
             (form.is_valid(), form.errors))
 
-    def test_networks_combines_filters(self):
+    def test_subnets_combines_filters(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(3)
@@ -445,7 +430,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             {node},
             {
-                'networks': [
+                'subnets': [
                     subnet_by_name.name,
                     'ip:%s' % factory.pick_ip_in_network(
                         subnet_by_ip.get_ipnetwork()),
@@ -453,7 +438,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
                     ],
             })
 
-    def test_networks_ignores_other_subnets(self):
+    def test_subnets_ignores_other_subnets(self):
         [this_subnet, other_subnet] = [
             factory.make_Subnet()
             for _ in range(2)
@@ -461,20 +446,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node = self.create_node_on_subnets([this_subnet, other_subnet])
         self.assertConstrainedNodes(
             [node],
-            {'networks': [this_subnet.name]})
+            {'subnets': [this_subnet.name]})
 
-    def test_legacy_not_networks_falls_back_to_not_networks_query(self):
-        [not_subnet, subnet] = [
-            factory.make_Subnet()
-            for _ in range(2)
-        ]
-        factory.make_Node_with_Interface_on_Subnet(subnet=not_subnet)
-        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
-        self.assertConstrainedNodes(
-            {node},
-            {'not_networks': [not_subnet.name]})
-
-    def test_not_networks_filters_by_name(self):
+    def test_not_subnets_filters_by_name(self):
         [subnet, not_subnet] = [
             factory.make_Subnet()
             for _ in range(2)
@@ -482,9 +456,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         self.assertConstrainedNodes(
             {node},
-            {'not_networks': [not_subnet.name]})
+            {'not_subnets': [not_subnet.name]})
 
-    def test_not_networks_filters_by_ip(self):
+    def test_not_subnets_filters_by_ip(self):
         [subnet, not_subnet] = [
             factory.make_Subnet()
             for _ in range(2)
@@ -492,10 +466,10 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         self.assertConstrainedNodes(
             {node},
-            {'not_networks': ['ip:%s' % factory.pick_ip_in_network(
+            {'not_subnets': ['ip:%s' % factory.pick_ip_in_network(
                 not_subnet.get_ipnetwork())]})
 
-    def test_not_networks_filters_by_vlan_tag(self):
+    def test_not_subnets_filters_by_vlan_tag(self):
         vlan_tags = list(range(1, 3))
         subnets = [
             factory.make_Subnet(vlan=factory.make_VLAN(vid=tag))
@@ -507,18 +481,18 @@ class TestAcquireNodeForm(MAASServerTestCase):
             ]
         self.assertConstrainedNodes(
             {nodes[0]},
-            {'not_networks': ['vlan:%d' % vlan_tags[1]]})
+            {'not_subnets': ['vlan:%d' % vlan_tags[1]]})
 
-    def test_not_networks_accepts_nodes_without_subnet_connections(self):
+    def test_not_subnets_accepts_nodes_without_subnet_connections(self):
         interfaceless_node = factory.make_Node()
         unconnected_node = factory.make_Node()
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=unconnected_node)
         self.assertConstrainedNodes(
             {interfaceless_node, unconnected_node},
-            {'not_networks': [factory.make_Subnet().name]})
+            {'not_subnets': [factory.make_Subnet().name]})
 
-    def test_not_networks_exclude_node_with_any_interface(self):
+    def test_not_subnets_exclude_node_with_any_interface(self):
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         other_subnet = factory.make_Subnet()
@@ -526,21 +500,21 @@ class TestAcquireNodeForm(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP, ip="",
             interface=other_nic, subnet=other_subnet)
-        self.assertConstrainedNodes([], {'not_networks': [subnet.name]})
+        self.assertConstrainedNodes([], {'not_subnets': [subnet.name]})
 
-    def test_not_networks_excludes_node_with_interface_on_any_not_subnet(self):
+    def test_not_subnets_excludes_node_with_interface_on_any_not_subnet(self):
         factory.make_Subnet()
         not_subnet = factory.make_Subnet()
         factory.make_Node_with_Interface_on_Subnet(subnet=not_subnet)
-        self.assertConstrainedNodes([], {'not_networks': [not_subnet.name]})
+        self.assertConstrainedNodes([], {'not_subnets': [not_subnet.name]})
 
-    def test_invalid_not_networks(self):
-        form = AcquireNodeForm(data={'not_networks': 'ip:10.0.0.0'})
+    def test_invalid_not_subnets(self):
+        form = AcquireNodeForm(data={'not_subnets': 'ip:10.0.0.0'})
         self.assertEqual(
             (
                 False,
                 {
-                    'not_networks': [
+                    'not_subnets': [
                         "Invalid parameter: "
                         "list of subnet specifiers required.",
                         ],
@@ -550,13 +524,13 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
         # The validator is unit-tested separately.  This just verifies that it
         # is being consulted.
-        form = AcquireNodeForm(data={'not_networks': ['vlan:-1']})
+        form = AcquireNodeForm(data={'not_subnets': ['vlan:-1']})
         self.assertEqual(
-            (False, {'not_networks': [
+            (False, {'not_subnets': [
                 "VLAN tag (VID) out of range (0-4094; 0 for untagged.)"]}),
             (form.is_valid(), form.errors))
 
-    def test_not_networks_combines_filters(self):
+    def test_not_subnets_combines_filters(self):
         subnets = [
             factory.make_Subnet()
             for _ in range(5)
@@ -579,7 +553,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             {node},
             {
-                'not_networks': [
+                'not_subnets': [
                     subnet_by_name.name,
                     'ip:%s' % factory.pick_ip_in_network(
                         subnet_by_ip.get_ipnetwork()),
@@ -862,7 +836,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         form = AcquireNodeForm({'storage':
                                 'root:10(ssd),data:5(rotary,5400rpm),20'})
         self.assertTrue(form.is_valid(), form.errors)
-        filtered_nodes, constraint_map = form.filter_nodes(Node.objects.all())
+        filtered_nodes, constraint_map = form.filter_nodes(
+            Machine.objects.all())
         node = filtered_nodes[0]
         constraints = list(constraint_map[node.id])
         disk0 = node.physicalblockdevice_set.get(
@@ -1072,7 +1047,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             interface=nic2, subnet=subnet)
         self.assertConstrainedNodes(
             {node},
-            {'networks': [subnet.name]})
+            {'subnets': [subnet.name]})
 
     def test_describe_constraints_returns_empty_if_no_constraints(self):
         form = AcquireNodeForm(data={})
@@ -1125,8 +1100,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'mem': randint(1024, 256 * 1024),
             'tags': [factory.make_Tag().name],
             'not_tags': [factory.make_Tag().name],
-            'networks': [factory.make_Subnet().name],
-            'not_networks': [factory.make_Subnet().name],
+            'subnets': [factory.make_Subnet().name],
+            'not_subnets': [factory.make_Subnet().name],
             'connected_to': [factory.make_mac_address()],
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
@@ -1169,7 +1144,7 @@ class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
         # in here is the ordering.
         form = AcquireNodeForm(data={'cpu_count': 4})
         self.assertTrue(form.is_valid(), form.errors)
-        filtered_nodes, _, _ = form.filter_nodes(Node.objects.all())
+        filtered_nodes, _, _ = form.filter_nodes(Machine.objects.all())
         self.assertEqual(
             sorted_nodes,
             list(filtered_nodes))

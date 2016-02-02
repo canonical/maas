@@ -8,15 +8,12 @@ __all__ = []
 from django.http import QueryDict
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import NodeWithMACAddressesForm
-from maasserver.models import NodeGroup
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPNetwork
 from testtools.matchers import Contains
 
 
@@ -31,8 +28,8 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
                 query_dict[k] = v
         return query_dict
 
-    def make_params(self, mac_addresses=None, architecture=None,
-                    hostname=None, nodegroup=None):
+    def make_params(
+            self, mac_addresses=None, architecture=None, hostname=None):
         if mac_addresses is None:
             mac_addresses = [factory.make_mac_address()]
         if architecture is None:
@@ -44,8 +41,6 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
             'architecture': architecture,
             'hostname': hostname,
         }
-        if nodegroup is not None:
-            params['nodegroup'] = nodegroup
         # Make sure that the architecture parameter is acceptable.
         patch_usable_architectures(self, [architecture])
         return self.get_QueryDict(params)
@@ -153,34 +148,6 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         self.assertItemsEqual(
             macs,
             [nic.mac_address for nic in node.interface_set.all()])
-
-    def test_includes_nodegroup_field_for_new_node(self):
-        self.assertIn(
-            'nodegroup',
-            NodeWithMACAddressesForm(data=self.make_params()).fields)
-
-    def test_does_not_include_nodegroup_field_for_existing_node(self):
-        params = self.make_params()
-        node = factory.make_Node()
-        self.assertNotIn(
-            'nodegroup',
-            NodeWithMACAddressesForm(data=params, instance=node).fields)
-
-    def test_sets_nodegroup_to_master_by_default(self):
-        self.assertEqual(
-            NodeGroup.objects.ensure_master(),
-            NodeWithMACAddressesForm(data=self.make_params()).save().nodegroup)
-
-    def test_leaves_nodegroup_alone_if_unset_on_existing_node(self):
-        # Selecting a node group for a node is only supported on new
-        # nodes.  You can't change it later.
-        original_nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=original_nodegroup)
-        factory.make_NodeGroup(network=IPNetwork("192.168.1.0/24"))
-        form = NodeWithMACAddressesForm(
-            data=self.make_params(nodegroup='192.168.1.0'), instance=node)
-        form.save()
-        self.assertEqual(original_nodegroup, reload_object(node).nodegroup)
 
     def test_form_without_hostname_generates_hostname(self):
         form = NodeWithMACAddressesForm(data=self.make_params(hostname=''))

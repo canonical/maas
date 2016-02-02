@@ -13,16 +13,12 @@ __all__ = [
     "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
-    "DownloadProgressForm",
     "get_node_edit_form",
     "get_node_create_form",
     "list_all_usable_architectures",
     "StorageSettingsForm",
     "MAASAndNetworkForm",
     "NetworksListingForm",
-    "NodeGroupEdit",
-    "NodeGroupInterfaceForm",
-    "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
     "CreatePhysicalBlockDeviceForm",
     "ReleaseIPForm",
@@ -34,16 +30,11 @@ __all__ = [
     "ZoneForm",
     ]
 
-import collections
 from collections import Counter
 from functools import partial
-import hashlib
-import json
-import os
 import pipes
 import re
 
-from crochet import TimeoutError
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.forms import (
@@ -56,7 +47,6 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
-from django.db import connection
 from django.forms import (
     CheckboxInput,
     Form,
@@ -65,10 +55,7 @@ from django.forms import (
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
-from maasserver.clusterrpc.osystems import (
-    validate_license_key,
-    validate_license_key_for,
-)
+from maasserver.clusterrpc.osystems import validate_license_key
 from maasserver.clusterrpc.power_parameters import (
     get_power_type_choices,
     get_power_type_parameters,
@@ -83,10 +70,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_RAID_TYPE_CHOICES,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
-    NODE_STATUS,
     NODE_TYPE,
-    NODEGROUPINTERFACE_MANAGEMENT,
-    NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
 )
 from maasserver.exceptions import (
     ClusterUnavailable,
@@ -95,7 +79,6 @@ from maasserver.exceptions import (
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
-    NodeGroupFormField,
     StrippedCharField,
 )
 from maasserver.forms_settings import (
@@ -116,39 +99,24 @@ from maasserver.models import (
     CacheSet,
     Config,
     Device,
-    DownloadProgress,
-    Fabric,
     Filesystem,
     Interface,
     LargeFile,
     LicenseKey,
     Node,
-    NodeGroup,
-    NodeGroupInterface,
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
     RAID,
-    Space,
     SSHKey,
     SSLKey,
     Tag,
     VirtualBlockDevice,
-    VLAN,
     VolumeGroup,
     Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.node import (
-    fqdn_is_duplicate,
-    nodegroup_fqdn,
-)
-from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.models.subnet import (
-    create_cidr,
-    Subnet,
-)
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
@@ -159,7 +127,6 @@ from maasserver.utils.forms import (
     compose_invalid_choice_text,
     set_form_error,
 )
-from maasserver.utils.interfaces import make_name_from_interface
 from maasserver.utils.orm import (
     get_one,
     transactional,
@@ -179,26 +146,11 @@ from maasserver.utils.threads import deferToDatabase
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import (
-    AddrFormatError,
-    IPAddress,
     IPNetwork,
-    IPRange,
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.network import (
-    filter_and_annotate_networks,
-    sort_networks_by_priority,
-)
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchOperatingSystem,
-)
-from provisioningserver.utils.ipaddr import get_vid_from_ifname
-from provisioningserver.utils.network import (
-    ip_range_within_network,
-    make_network,
-)
+from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -427,34 +379,13 @@ class NodeForm(MAASModelForm):
 
         # Are we creating a new node object?
         self.new_node = (instance is None)
-        if self.new_node:
-            # Offer choice of nodegroup.
-            self.fields['nodegroup'] = NodeGroupFormField(
-                required=False, empty_label="Default (master)")
-
-        if self.new_node:
-            # Permit disabling of IPv4 if at least one cluster supports IPv6.
-            allow_disable_ipv4 = contains_managed_ipv6_interface(
-                NodeGroupInterface.objects.all())
-        else:
-            # Permit disabling of IPv4 if at least one interface on the cluster
-            # supports IPv6.
-            allow_disable_ipv4 = contains_managed_ipv6_interface(
-                self.instance.nodegroup.nodegroupinterface_set.all())
 
         self.set_up_architecture_field()
         if self.has_owner:
             self.set_up_osystem_and_distro_series_fields(instance)
 
-        if not allow_disable_ipv4:
-            # Hide the disable_ipv4 field until support works properly.  The
-            # API will still support the field, but it won't be visible.
-            # This hidden field absolutely needs an empty label, because its
-            # input widget may be hidden but its label is not!
-            #
-            # To enable the field, just remove this clause.
-            self.fields['disable_ipv4'] = forms.BooleanField(
-                label="", required=False, widget=forms.HiddenInput())
+        self.fields['disable_ipv4'] = forms.BooleanField(
+            label="", required=False)
 
         # We only want the license key field to render in the UI if the `OS`
         # and `Release` fields are also present.
@@ -518,31 +449,6 @@ class NodeForm(MAASModelForm):
             if instance is not None:
                 self.initial['distro_series'] = initial_value
 
-    def clean_hostname(self):
-        # XXX 2014-08-14 jason-hobbs, bug=1356880; MAAS shouldn't allow
-        # a hostname to be changed on a "deployed" node, but it doesn't
-        # yet have the ability to distinguish between an "acquired" node
-        # and a "deployed" node.
-
-        new_hostname = self.cleaned_data.get('hostname')
-
-        # XXX 2014-07-30 jason-hobbs, bug=1350459: This check for no
-        # nodegroup shouldn't be necessary, but many tests don't provide
-        # a nodegroup to NodeForm.
-        if self.instance.nodegroup is None:
-            return new_hostname
-
-        if self.instance.nodegroup.manages_dns():
-            new_fqdn = nodegroup_fqdn(
-                new_hostname, self.instance.nodegroup.name)
-        else:
-            new_fqdn = new_hostname
-        if fqdn_is_duplicate(self.instance, new_fqdn):
-            raise ValidationError(
-                "Node with FQDN '%s' already exists." % (new_fqdn))
-
-        return new_hostname
-
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
 
@@ -591,11 +497,6 @@ class NodeForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
-        if self.new_node and self.data.get('disable_ipv4') is None:
-            # Creating a new node, without a value for disable_ipv4 given.
-            # Take the default value from the node's cluster.
-            nodegroup = cleaned_data['nodegroup']
-            cleaned_data['disable_ipv4'] = nodegroup.default_disable_ipv4
 
         if not self.instance.hwe_kernel:
             osystem = cleaned_data.get('osystem')
@@ -638,27 +539,7 @@ class NodeForm(MAASModelForm):
         if os_name == '':
             return ''
 
-        # Without a nodegroup then all nodegroups need to be used to validate
-        # the license key.
-        if self.instance.nodegroup is None:
-            if not validate_license_key(os_name, series, key):
-                raise ValidationError("Invalid license key.")
-            return key
-
-        # Validate the license key for the specific nodegroup.
-        try:
-            is_valid = validate_license_key_for(
-                self.instance.nodegroup, os_name, series, key)
-        except (NoConnectionsAvailable, TimeoutError):
-            raise ValidationError(
-                "Could not contact cluster '%s' to validate license key; "
-                "please try again later." %
-                self.instance.nodegroup.name)
-        except NoSuchOperatingSystem:
-            raise ValidationError(
-                "Cluster '%s' does not support the operating system '%s'" % (
-                    self.instance.nodegroup.name, os_name))
-        if not is_valid:
+        if not validate_license_key(os_name, series, key):
             raise ValidationError("Invalid license key.")
         return key
 
@@ -767,7 +648,6 @@ class DeviceForm(MAASModelForm):
         if self.new_device:
             # Set the owner: devices are owned by their creator.
             device.owner = self.request.user
-            device.nodegroup = NodeGroup.objects.ensure_master()
         device.save()
         return device
 
@@ -842,10 +722,8 @@ class AdminNodeForm(NodeForm):
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the node's current 'power_type'
         # value or the default value if this form is not linked to a node.
-        nodegroups = None if node is None else [node.nodegroup]
-
         try:
-            power_types = get_power_types(nodegroups)
+            power_types = get_power_types()
         except ClusterUnavailable as e:
             # If there's no request then this is an API call, so
             # there's no need to add a UI message, a suitable
@@ -874,19 +752,6 @@ class AdminNodeForm(NodeForm):
             power_type]
 
     @staticmethod
-    def _get_nodegroup(form):
-        # This form is used for adding and editing nodes, and the
-        # nodegroup field is the cleaned_data for the former and on the
-        # instance for the latter.
-        # The field is not present on the edit form because someone
-        # decided that we should not let users move nodes between
-        # nodegroups.  It is probably better to change that behaviour to
-        # have a read-only field on the form.
-        if form.instance.nodegroup is not None:
-            return form.instance.nodegroup
-        return form.cleaned_data['nodegroup']
-
-    @staticmethod
     def check_power_type(form, cleaned_data):
         # skip_check tells us to allow power_parameters to be saved
         # without any validation.  Nobody can remember why this was
@@ -899,7 +764,7 @@ class AdminNodeForm(NodeForm):
         # parameters and type.
         if not skip_check:
             try:
-                get_power_types([AdminNodeForm._get_nodegroup(form)])
+                get_power_types()
             except ClusterUnavailable as e:
                 set_form_error(
                     form, "power_type", CLUSTER_NOT_AVAILABLE + e.args[0])
@@ -1010,20 +875,6 @@ class MultipleMACAddressField(forms.MultiValueField):
         return []
 
 
-def initialize_node_group(node, form_value=None):
-    """If `node` is not in a node group yet, initialize it.
-
-    The initial value is `form_value` if given, or the master nodegroup
-    otherwise.
-    """
-    if node.nodegroup_id is not None:
-        return
-    if form_value is None:
-        node.nodegroup = NodeGroup.objects.ensure_master()
-    else:
-        node.nodegroup = form_value
-
-
 IP_BASED_HOSTNAME_REGEXP = re.compile('\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}')
 
 MAX_MESSAGES = 10
@@ -1122,16 +973,7 @@ class WithMACAddressesMixin:
 
         This implementation of `save` does not support the `commit` argument.
         """
-        node = super(WithMACAddressesMixin, self).save(commit=False)
-        # We have to save this node in order to attach MACAddress
-        # records to it.  But its nodegroup must be initialized before
-        # we can do that.
-        # As a side effect, this prevents editing of the node group on
-        # an existing node.  It's all horribly dependent on the order of
-        # calls in this class family, but Django doesn't seem to give us
-        # a good way around it.
-        initialize_node_group(node, self.cleaned_data.get('nodegroup'))
-        node.save()
+        node = super(WithMACAddressesMixin, self).save()
         for mac in self.cleaned_data['mac_addresses']:
             mac_addresses_errors = []
             try:
@@ -1526,740 +1368,6 @@ def is_set(string):
     return (string is not None and len(string) > 0 and not string.isspace())
 
 
-def validate_new_dynamic_range_size(instance, management,
-                                    ip_range_low, ip_range_high):
-    """Check that a ip address range is of a manageable size.
-
-    :raises ValidationError: If the ip range is larger than a /16
-        IPv4 network.
-    """
-    # Return early if the instance will not be managed, its dynamic
-    # IP range hasn't changed, or the new values are blank.
-    if management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
-        return True
-    if not is_set(ip_range_low) and not is_set(ip_range_high):
-        return True
-    # error if only one of the range endpoints is set
-    if not is_set(ip_range_low) or not is_set(ip_range_high):
-        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-    # if nothing relevant changed, we're done.
-    if (management == instance.management and
-       ip_range_low == instance.ip_range_low and
-       ip_range_high == instance.ip_range_high):
-        return True
-
-    try:
-        ip_range = IPRange(ip_range_low, ip_range_high)
-        if ip_range.size <= 1:
-            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-    except (AddrFormatError, ValueError):
-        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-
-    # Allow any size of dynamic range for v6 networks, but limit v4
-    # networks to /16s.
-    if ip_range.version == 6:
-        return True
-
-    slash_16_network = IPNetwork("%s/16" % IPAddress(ip_range.first))
-    if not ip_range_within_network(ip_range, slash_16_network):
-        raise ValidationError(ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S)
-
-
-def validate_new_static_ip_ranges(instance, management, static_ip_range_low,
-                                  static_ip_range_high):
-    """Check that new static IP ranges don't exclude allocated addresses.
-
-    If there are IP addresses allocated within a `NodeGroupInterface`'s
-    existing static IP range which would fall outside of the new range,
-    raise a ValidationError.
-    """
-    # Return early if the instance will be unmanaged, the range is invalid,
-    # or the static IP range hasn't changed.
-    if management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
-        return True
-    # error if only one of the range endpoints is set
-    if (not is_set(static_ip_range_low) and is_set(static_ip_range_high) or
-       is_set(static_ip_range_low) and not is_set(static_ip_range_high)):
-        raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-    # if nothing relevant changed, we're done.
-    if (management == instance.management and
-       static_ip_range_low == instance.static_ip_range_low and
-       static_ip_range_high == instance.static_ip_range_high):
-        return True
-
-    cursor = connection.cursor()
-
-    if is_set(static_ip_range_low):
-        # static_ip_range_high is also set, as checked above.
-        try:
-            ip_range = IPRange(static_ip_range_low, static_ip_range_high)
-            if ip_range.size <= 1:
-                raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-        except (AddrFormatError, ValueError):
-            raise ValidationError(ERROR_MESSAGE_INVALID_RANGE)
-
-        # Find any allocated addresses within the old static range which do
-        # not fall within the *new* static range. This means that we allow
-        # for range expansion and contraction *unless* that means dropping
-        # IP addresses that are already allocated.
-        cursor.execute("""
-            SELECT TRUE FROM maasserver_staticipaddress
-                WHERE  ip >= %s AND ip <= %s
-                    AND (ip < %s OR ip > %s)
-            """, (
-            instance.static_ip_range_low,
-            instance.static_ip_range_high,
-            static_ip_range_low,
-            static_ip_range_high))
-        results = cursor.fetchall()
-        if any(results):
-            raise forms.ValidationError(
-                ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE)
-    else:
-        # Check that there's no IP addresses allocated in the old range;
-        # if there are, we can't remove the range yet.
-        cursor.execute("""
-            SELECT TRUE FROM maasserver_staticipaddress
-                WHERE ip >= %s AND ip <= %s
-            """, (
-            instance.static_ip_range_low,
-            instance.static_ip_range_high))
-        results = cursor.fetchall()
-        if any(results):
-            raise forms.ValidationError(
-                ERROR_MESSAGE_STATIC_RANGE_IN_USE)
-    return True
-
-
-class NodeGroupInterfaceForm(MAASModelForm):
-
-    management = forms.TypedChoiceField(
-        choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, required=False,
-        coerce=int, empty_value=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
-        help_text=(
-            "If you enable DHCP management, you will need to install the "
-            "'maas-dhcp' package on this cluster controller.  Similarly, you "
-            "will need to install the 'maas-dns' package on this region "
-            "controller to be able to enable DNS management."
-            ))
-
-    router_ip = forms.CharField(required=False, label="Default Gateway IP")
-
-    # XXX mpontillo 2015-07-23: need a custom field for this, for IPv4/IPv6
-    # address or prefix length.
-    subnet_mask = forms.CharField(required=False)
-
-    class Meta:
-        model = NodeGroupInterface
-        fields = (
-            'name',
-            'interface',
-            'management',
-            'ip',
-            'router_ip',
-            'subnet_mask',
-            'ip_range_low',
-            'ip_range_high',
-            'static_ip_range_low',
-            'static_ip_range_high',
-            )
-
-    def __init__(self, *args, **kwargs):
-        super(NodeGroupInterfaceForm, self).__init__(*args, **kwargs)
-        if not self.initial.get('subnet_mask'):
-            self.initial['subnet_mask'] = self.get_subnet_mask()
-        if not self.initial.get('router_ip'):
-            self.initial['router_ip'] = self.get_router_ip()
-
-    def save(self, *args, **kwargs):
-        """Override `MAASModelForm`.save() so that the network data is copied
-        to a `Network` instance."""
-        # Note: full_clean() should not be needed here, but in some cases
-        # it isn't being called before reaching this point. (Another form
-        # also does this; the cause should be investigated.)
-        self.full_clean()
-        ip = self.cleaned_data.get('ip')
-        subnet_mask = self.cleaned_data.get('subnet_mask')
-        router_ip = self.cleaned_data.get('router_ip')
-
-        subnet = None
-        if self.instance and self.instance.subnet and ip and subnet_mask:
-            # Existing NodeGroupInterface, so just update the existing Subnet.
-            cidr = create_cidr(ip, subnet_mask)
-            subnet = self.instance.subnet
-            subnet.update_cidr(cidr)
-            if router_ip:
-                subnet.gateway_ip = router_ip
-            subnet.save()
-        elif subnet_mask:
-            # New NodeGroupInterface, so create the Subnet (if we have enough
-            # information).
-            cidr = create_cidr(ip, subnet_mask)
-            subnet, created = Subnet.objects.get_or_create(
-                cidr=cidr, defaults={
-                    'name': cidr,
-                    'cidr': cidr,
-                    'gateway_ip': router_ip,
-                    'space': Space.objects.get_default_space()
-                })
-            if created:
-                # Check if a Subnet was already created for a matching
-                # interface. (this could happen if multiple IP addresses
-                # are assigned to the same interface.)
-                vlan = None
-                ifname = self.cleaned_data.get('interface')
-                if self.instance:
-                    vlan = VLAN.objects.filter_by_nodegroup_interface(
-                        self.instance.nodegroup, ifname).order_by('id').first()
-                if vlan is not None:
-                    # Found an existing VLAN that matches this interface.
-                    # No need to create a new one; just assign that VLAN
-                    # to the subnet that was found.
-                    subnet.vlan = vlan
-                    subnet.save()
-                elif self.data.get('type') == 'ethernet.vlan':
-                    # If we're creating a VLAN, we must be intending to put
-                    # the VLAN on a Fabric that already exists.
-                    # Check the VLAN's parent interface to see if it is
-                    # already associated with a VLAN (and hence a Fabric).
-                    vid = self.data.get('vid', get_vid_from_ifname(ifname))
-                    parent = self.data.get('parent')
-                    fabric = Fabric.objects.filter_by_nodegroup_interface(
-                        self.instance.nodegroup, parent).first()
-                    if fabric is None:
-                        fabric = Fabric.objects.get_or_create_for_subnet(
-                            subnet)
-                    vlan = VLAN.objects.create(vid=vid, fabric=fabric)
-                    subnet.vlan = vlan
-                    subnet.save()
-                else:
-                    # If we created a new Subnet, and it's *not* a tagged VLAN
-                    # (and we didn't find an existing interface above), that
-                    # means we need to create a new Fabric and place the
-                    # subnet in its default VLAN.
-                    fabric = Fabric.objects.get_or_create_for_subnet(
-                        subnet)
-                    subnet.vlan = fabric.get_default_vlan()
-                    subnet.save()
-
-        interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
-        if interface.subnet != subnet:
-            interface.subnet = subnet
-            interface.save()
-        return interface
-
-    def _ensure_unique_cluster_interface_name(self, name, interface):
-        """
-        Ensures that the specified interface name is unique. Appends a portion
-        of a unique sha256 hex string (and the IP version) if not.
-
-        :param name: The tentative "friendly" name of this cluster interface.
-        :param interface: The name of the network interface.
-        :return:str
-        """
-        # Get the cluster to which this interface is attached.  There may not
-        # be one, since it may be a placeholder instance that is still being
-        # initialised by the same request that is also creating the interface.
-        # In that case, self.instance.nodegroup will not be None, but rather
-        # an ORM stub which crashes when accessed.
-        cluster = get_one(
-            NodeGroup.objects.filter(id=self.instance.nodegroup_id))
-        if cluster is not None and interface:
-            siblings = cluster.nodegroupinterface_set
-            while siblings.filter(name=name).exists():
-                # In case the interface name already exists, use a
-                # cryptographic hash based on the interface name and address
-                # (plus some random bytes for good measure).
-                ip_address = self.cleaned_data['ip']
-                ip_version = IPAddress(ip_address).version
-                sha = hashlib.sha256()
-                enc = lambda string: string.encode("utf-8")
-                sha.update(enc(name))
-                sha.update(enc(ip_address))
-                sha.update(enc(self.cleaned_data['subnet_mask']))
-                sha.update(os.urandom(32))
-                digest = sha.hexdigest()
-                for i in range(4, 65):
-                    # The upper bound of this range() will be 64, so that
-                    # we can get the full sha256 hex string if needed.
-                    suffix = digest[:i]
-                    new_name = '%s-ipv%d-%s' % (name, ip_version, suffix)
-                    if not siblings.filter(name=new_name).exists():
-                        return new_name
-        return name
-
-    def compute_name(self):
-        """Return the value the `name` field should have.
-
-        A cluster interface's name defaults to the name of its network
-        interface, unless that name is already taken, in which case it gets
-        a disambiguating suffix.
-        """
-        name = self.cleaned_data.get('name')
-        # Deliberately vague test: an unset name can be None or empty.
-        if name:
-            # Name is set.  Done.
-            return name
-        if self.instance.name:
-            # No name given, but instance already had one.  Keep it.
-            return self.instance.name
-
-        # No name yet.  Pick a default.  Use the interface name for
-        # compatibility with clients that expect the pre-1.6 behaviour, where
-        # the 'name' and 'interface' fields were the same thing.
-        interface = self.cleaned_data.get('interface')
-        name = make_name_from_interface(
-            interface, alias=self.data.get('alias'))
-        name = self._ensure_unique_cluster_interface_name(name, interface)
-        return name
-
-    def get_duplicate_fqdns(self):
-        """Get duplicate FQDNs created by using the new management setting."""
-        # We need to know if the new fqdn of any of the nodes in this
-        # cluster will conflict with the new FQDN of other nodes in this
-        # cluster.
-        cluster_nodes = Node.objects.filter(nodegroup=self.instance.nodegroup)
-        fqdns = [
-            nodegroup_fqdn(node.hostname, self.instance.nodegroup.name)
-            for node in cluster_nodes]
-        duplicates = [fqdn for fqdn in fqdns if fqdns.count(fqdn) > 1]
-
-        # We also don't want FQDN conflicts with nodes in other clusters.
-        nodes_and_fqdns = zip(cluster_nodes, fqdns)
-        other_cluster_duplicates = [
-            fqdn for node, fqdn in nodes_and_fqdns
-            if fqdn_is_duplicate(node, fqdn)]
-        duplicates.extend(other_cluster_duplicates)
-
-        return set(duplicates)
-
-    def clean_interface(self):
-        # Interface names must be consistent, so that if eth0 and eth0:1
-        # are added as cluster interfaces, they can be associated with the
-        # same VLANs. Save the alias so that we can use it in to
-        # disambiguate the interface name.
-        ifname = self.cleaned_data['interface']
-        if ':' in ifname:
-            alias = ifname.strip().split(':', 1)[1]
-            self.data['alias'] = alias
-            ifname = ifname.strip().split(':')[0]
-        return ifname
-
-    def clean_management(self):
-        management = self.cleaned_data['management']
-
-        # When the interface doesn't manage DNS, we don't need to worry
-        # about creating duplicate FQDNs, because we're covered by hostname
-        # uniqueness.
-        if management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
-            return management
-
-        # The NodeGroupInterface instance doesn't always have a
-        # nodegroup defined for it when we validate. For instance, when
-        # a NodeGroupDefineForm is used, NodeGroupInterfaceForms are
-        # validated prior to the NodeGroup being created.
-        if not hasattr(self.instance, "nodegroup"):
-            return management
-
-        duplicates = self.get_duplicate_fqdns()
-
-        if len(duplicates) > 0:
-            raise ValidationError(
-                "Enabling DNS management creates duplicate FQDN(s): %s." % (
-                    ", ".join(set(duplicates))))
-
-        return management
-
-    def clean(self):
-        cleaned_data = super(NodeGroupInterfaceForm, self).clean()
-        cleaned_data['name'] = self.compute_name()
-        self.clean_dependent_subnet_mask(cleaned_data)
-        self.clean_dependent_ip_ranges(cleaned_data)
-        self.clean_ip_range_bounds(cleaned_data)
-        self.clean_dependent_ips_in_network(cleaned_data)
-        return cleaned_data
-
-    def get_subnet_mask(self, cleaned_data=None):
-        # `subnet_mask` is not among the form's fields and thus its
-        # initial value isn't populated from the related ngi instance
-        # by BaseModelForm.__init__.
-        subnet_mask = None
-        if cleaned_data is not None:
-            subnet_mask = cleaned_data.get('subnet_mask')
-        if not subnet_mask:
-            subnet_mask = self.data.get('subnet_mask')
-        if not subnet_mask:
-            if self.instance is not None:
-                return self.instance.subnet_mask
-            else:
-                return ''
-        else:
-            return subnet_mask
-
-    def get_router_ip(self, cleaned_data=None):
-        # `router_ip` is not among the form's fields and thus its
-        # initial value isn't populated from the related ngi instance
-        # by BaseModelForm.__init__.
-        router_ip = None
-        if cleaned_data is not None:
-            router_ip = cleaned_data.get('router_ip')
-        if not router_ip:
-            router_ip = self.data.get('router_ip')
-        if not router_ip:
-            if self.instance is not None:
-                return self.instance.router_ip
-            else:
-                return ''
-        else:
-            return router_ip
-
-    def clean_dependent_subnet_mask(self, cleaned_data):
-        ip_addr = cleaned_data.get('ip')
-        if ip_addr and IPAddress(ip_addr).version == 6:
-            netmask = cleaned_data.get('subnet_mask')
-            if netmask in (None, ''):
-                netmask = 'ffff:ffff:ffff:ffff::'
-            cleaned_data['subnet_mask'] = str(netmask)
-        new_management = cleaned_data.get('management')
-        new_subnet_mask = self.get_subnet_mask(cleaned_data)
-        if new_management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
-            if not new_subnet_mask:
-                set_form_error(
-                    self, 'subnet_mask',
-                    "That field cannot be empty (unless that interface is "
-                    "'unmanaged')")
-            elif IPNetwork("%s/%s" % (ip_addr, new_subnet_mask)).size < 8:
-                set_form_error(
-                    self, 'subnet_mask',
-                    "Subnet is too small to manage.")
-
-    def get_network(self, cleaned_data):
-        subnet_mask = self.get_subnet_mask(cleaned_data)
-        ip = cleaned_data.get('ip')
-        if subnet_mask and ip:
-            return IPNetwork(str(ip) + '/' + str(subnet_mask))
-        else:
-            return None
-
-    def clean_dependent_ips_in_network(self, cleaned_data):
-        """Ensure that the network settings are all congruent.
-
-        Specifically, it ensures that the router address, the DHCP address
-        range, and the broadcast address if given, all fall within the network
-        defined by the interface's IP address and the subnet mask.
-
-        If no broadcast address is given, the network's default broadcast
-        address will be used.
-        """
-        network = self.get_network(cleaned_data)
-        if network is None:
-            return
-        fields_in_network = [
-            "router_ip",
-            "ip_range_low",
-            "ip_range_high",
-            "static_ip_range_low",
-            "static_ip_range_high",
-        ]
-        for field in fields_in_network:
-            ip = cleaned_data.get(field)
-            if is_set(ip):
-                try:
-                    ipaddr = IPAddress(ip)
-                except (AddrFormatError, ValueError):
-                    msg = "%s (%s) is not a valid address" % (field, ip)
-                    set_form_error(self, field, msg)
-                else:
-                    if ipaddr not in network:
-                        msg = "%s not in the %s network" % (
-                            ip, str(network.cidr))
-                        set_form_error(self, field, msg)
-
-    def clean_dependent_ip_ranges(self, cleaned_data):
-        dynamic_range_low = cleaned_data.get('ip_range_low')
-        dynamic_range_high = cleaned_data.get('ip_range_high')
-        management = cleaned_data.get('management')
-        try:
-            validate_new_dynamic_range_size(
-                self.instance, management,
-                dynamic_range_low, dynamic_range_high)
-        except forms.ValidationError as exception:
-            set_form_error(self, 'ip_range_low', exception.message)
-            set_form_error(self, 'ip_range_high', exception.message)
-
-        static_ip_range_low = cleaned_data.get('static_ip_range_low')
-        static_ip_range_high = cleaned_data.get('static_ip_range_high')
-        try:
-            validate_new_static_ip_ranges(
-                self.instance, management,
-                static_ip_range_low, static_ip_range_high)
-        except forms.ValidationError as exception:
-            set_form_error(self, 'static_ip_range_low', exception.message)
-            set_form_error(self, 'static_ip_range_high', exception.message)
-
-    def manages_static_range(self, cleaned_data):
-        """Is this a managed interface with a static IP range configured?"""
-        is_managed = cleaned_data.get('is_managed', False)
-        static_ip_range_low = cleaned_data.get('static_ip_range_low', None)
-        static_ip_range_high = cleaned_data.get('static_ip_range_high', None)
-        # Deliberately vague implicit conversion to bool: a blank IP address
-        # can show up internally as either None or an empty string.
-        return is_managed and static_ip_range_low and static_ip_range_high
-
-    def clean_ip_range_bounds(self, cleaned_data):
-        """Ensure that the static and dynamic ranges have sane bounds."""
-        if not self.manages_static_range(cleaned_data):
-            # Exit early with nothing to do.
-            return cleaned_data
-
-        ip_range_low = cleaned_data.get('ip_range_low', "")
-        ip_range_high = cleaned_data.get('ip_range_high', "")
-        static_ip_range_low = cleaned_data.get('static_ip_range_low', "")
-        static_ip_range_high = cleaned_data.get('static_ip_range_high', "")
-
-        ip_range_low = IPAddress(ip_range_low)
-        ip_range_high = IPAddress(ip_range_high)
-        static_ip_range_low = IPAddress(static_ip_range_low)
-        static_ip_range_high = IPAddress(static_ip_range_high)
-
-        message_base = (
-            "Lower bound %s is not lower than upper bound %s")
-        try:
-            message = (
-                message_base % (
-                    static_ip_range_low, static_ip_range_high))
-            range = IPRange(static_ip_range_low, static_ip_range_high)
-            if range.size <= 1:
-                set_form_error(self, 'static_ip_range_low', message)
-                set_form_error(self, 'static_ip_range_high', message)
-        except (AddrFormatError, ValueError):
-            set_form_error(self, 'static_ip_range_low', message)
-            set_form_error(self, 'static_ip_range_high', message)
-        try:
-            message = (
-                message_base % (self.ip_range_low, self.ip_range_high))
-            range = IPRange(ip_range_low, ip_range_high)
-            if range.size <= 1:
-                set_form_error(self, 'ip_range_low', message)
-                set_form_error(self, 'ip_range_high', message)
-        except (AddrFormatError, ValueError):
-            set_form_error(self, 'ip_range_low', message)
-            set_form_error(self, 'ip_range_high', message)
-
-        return cleaned_data
-
-INTERFACES_VALIDATION_ERROR_MESSAGE = (
-    "Invalid json value: should be a list of dictionaries, each containing "
-    "the information needed to initialize an interface.")
-
-
-# The DNS zone name used for nodegroups when none is explicitly provided.
-DEFAULT_DNS_ZONE_NAME = 'maas'
-
-
-def validate_nodegroupinterfaces_json(interfaces):
-    """Check `NodeGroupInterface` definitions as found in a request.
-
-    This validates that the `NodeGroupInterface` definitions found in a
-    request to `NodeGroupDefineForm` conforms to the expected basic structure:
-    a list of dicts.
-
-    :type interface: `dict` extracted from JSON request body.
-    :raises ValidationError: If the interfaces definition is not a list of
-        dicts as expected.
-    """
-    if not isinstance(interfaces, collections.Iterable):
-        raise forms.ValidationError(INTERFACES_VALIDATION_ERROR_MESSAGE)
-    for interface in interfaces:
-        if not isinstance(interface, dict):
-            raise forms.ValidationError(INTERFACES_VALIDATION_ERROR_MESSAGE)
-
-
-def validate_nodegroupinterface_definition(interface):
-    """Run a `NodeGroupInterface` definition through form validation.
-
-    :param interface: Definition of a `NodeGroupInterface` as found in HTTP
-        request data.
-    :type interface: `dict` extracted from JSON request body.
-    :raises ValidationError: If `NodeGroupInterfaceForm` finds the definition
-        invalid.
-    """
-    form = NodeGroupInterfaceForm(data=interface)
-    if not form.is_valid():
-        raise forms.ValidationError(
-            "Invalid interface: %r (%r)." % (interface, form._errors))
-
-
-def validate_nonoverlapping_networks(interfaces):
-    """Check against conflicting network ranges among interface definitions.
-
-    :param interfaces: Iterable of interface definitions as found in HTTP
-        request data.
-    :raise ValidationError: If any two networks for entries of `interfaces`
-        could potentially contain the same IP address.
-    """
-    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-    managed_interfaces = [
-        interface
-        for interface in interfaces
-        if interface.get('management', unmanaged) != unmanaged
-        ]
-
-    networks = [
-        {
-            'name': interface['interface'],
-            'network': make_network(interface['ip'], interface['subnet_mask']),
-        }
-        for interface in managed_interfaces
-        ]
-    networks = sorted(networks, key=lambda network: network['network'].first)
-    for index in range(1, len(networks)):
-        start_of_this_network = networks[index]['network'].first
-        end_of_last_network = networks[index - 1]['network'].last
-        if start_of_this_network <= end_of_last_network:
-            # IP ranges overlap.
-            raise ValidationError(
-                "Conflicting networks on %s and %s: address ranges overlap."
-                % (networks[index - 1]['name'], networks[index]['name']))
-
-
-class NodeGroupDefineForm(MAASModelForm):
-    """Define a `NodeGroup`, along with its interfaces.
-
-    This form can create a new `NodeGroup`, or in the case where a cluster
-    automatically becomes the master, updating an existing one.
-    """
-
-    interfaces = forms.CharField(required=False)
-    cluster_name = forms.CharField(required=False)
-
-    class Meta:
-        model = NodeGroup
-        fields = (
-            'cluster_name',
-            'name',
-            'uuid',
-            )
-
-    def __init__(self, status=None, *args, **kwargs):
-        super(NodeGroupDefineForm, self).__init__(*args, **kwargs)
-        self.status = status
-
-    def clean_name(self):
-        data = self.cleaned_data['name']
-        if data == '':
-            return DEFAULT_DNS_ZONE_NAME
-        else:
-            return data
-
-    def clean(self):
-        cleaned_data = super(NodeGroupDefineForm, self).clean()
-        cluster_name = cleaned_data.get("cluster_name")
-        uuid = cleaned_data.get("uuid")
-        if uuid and not cluster_name:
-            cleaned_data["cluster_name"] = (
-                NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid})
-        return cleaned_data
-
-    def clean_interfaces(self):
-        data = self.cleaned_data['interfaces']
-        # Stop here if the data is empty.
-        if data == '':
-            return data
-        try:
-            interfaces = json.loads(data)
-        except ValueError:
-            raise forms.ValidationError("Invalid json value.")
-
-        validate_nodegroupinterfaces_json(interfaces)
-
-        # Try to only manage physical Ethernet interfaces.
-        ip_addr_json = self.data.get('ip_addr_json', None)
-        interfaces = filter_and_annotate_networks(interfaces, ip_addr_json)
-
-        for interface in interfaces:
-            validate_nodegroupinterface_definition(interface)
-
-        validate_nonoverlapping_networks(interfaces)
-        return interfaces
-
-    def save(self, **kwargs):
-        nodegroup = super(NodeGroupDefineForm, self).save()
-        # Go through the interface definitions, but process the IPv4 ones
-        # first.  This way, if the NodeGroupInterfaceForm needs to make up
-        # unique names for cluster interfaces on the same network interface,
-        # the IPv4 one will get first stab at getting the exact same name as
-        # the network interface.
-        interfaces = sort_networks_by_priority(self.cleaned_data['interfaces'])
-        for interface in interfaces:
-            instance = NodeGroupInterface(nodegroup=nodegroup)
-            form = NodeGroupInterfaceForm(data=interface, instance=instance)
-            form.save()
-        if self.status is not None:
-            nodegroup.status = self.status
-            nodegroup.save()
-        return nodegroup
-
-
-class NodeGroupEdit(MAASModelForm):
-
-    name = forms.CharField(
-        label="Historical DNS domain name",
-        help_text=(
-            "Previously, this was  the name of the related DNS zone.  It"
-            "remains only for historical purposes."),
-        required=False)
-
-    class Meta:
-        model = NodeGroup
-        fields = (
-            'cluster_name',
-            'status',
-            'name',
-            'default_disable_ipv4',
-            )
-
-    def __init__(self, *args, **kwargs):
-        super(NodeGroupEdit, self).__init__(*args, **kwargs)
-        # Hide the default_disable_ipv4 field if the cluster is not
-        # configured for IPv6.
-        show_default_disable_ipv4 = contains_managed_ipv6_interface(
-            self.instance.nodegroupinterface_set.all())
-        if not show_default_disable_ipv4:
-            self.fields['default_disable_ipv4'] = forms.BooleanField(
-                label="", required=False, widget=forms.HiddenInput())
-
-    def clean_name(self):
-        old_name = self.instance.name
-        new_name = self.cleaned_data['name']
-        if new_name == old_name or not new_name:
-            # No change to the name.  Return old name.
-            return old_name
-
-        if not self.instance.manages_dns():
-            # Not managing DNS.  There won't be any DNS problems with this
-            # name change then.
-            return new_name
-
-        nodes_in_use = Node.objects.filter(
-            nodegroup=self.instance, status=NODE_STATUS.ALLOCATED)
-        if nodes_in_use.exists():
-            raise ValidationError(
-                "Can't rename DNS zone to %s; nodes are in use." % new_name)
-
-        return new_name
-
-    def clean_default_disable_ipv4(self):
-        data = self.submitted_data
-        if 'ui_submission' in data and 'default_disable_ipv4' not in data:
-            # In the UI, where all fields are submitted except checkboxes in
-            # the "off" state, a missing boolean field means False.
-            # (In the API, as enforced by MAASModelForm, a missing boolean
-            # field means "unchanged").
-            self.cleaned_data['default_disable_ipv4'] = False
-        return self.cleaned_data['default_disable_ipv4']
-
-
 class TagForm(MAASModelForm):
 
     class Meta:
@@ -2577,52 +1685,6 @@ class BulkNodeActionForm(forms.Form):
             return self.set_zone(system_ids)
         else:
             return self.perform_action(action_name, system_ids)
-
-
-class DownloadProgressForm(MAASModelForm):
-    """Form to update a `DownloadProgress`.
-
-    The `get_download` helper will find the right progress record to update,
-    or create one if needed.
-    """
-
-    class Meta:
-        model = DownloadProgress
-        fields = (
-            'size',
-            'bytes_downloaded',
-            'error',
-            )
-
-    @staticmethod
-    def get_download(nodegroup, filename, bytes_downloaded):
-        """Find or create a `DownloadProgress` to update.
-
-        Will create a new `DownloadProgress` if appropriate.  Use the form
-        to update its fields.
-
-        This returns `None` in exactly one situation: if `bytes_downloaded`
-        is not `None`, but there was no existing record of the download.
-        That is not something that will happen in proper usage.
-        """
-        if bytes_downloaded is None:
-            # This is a new download.  Create a new DownloadProgress.
-            return DownloadProgress.objects.create(
-                nodegroup=nodegroup, filename=filename)
-        else:
-            # This is an ongoing download.  Update the existing one.
-            return DownloadProgress.objects.get_latest_download(
-                nodegroup, filename)
-
-    def clean(self):
-        if self.instance.id is None:
-            # The form was left to create its own DownloadProgress.  This can
-            # only happen if get_download returned None, which in turn can only
-            # happen in this particular scenario.
-            raise ValidationError(
-                "bytes_downloaded was passed on a new download.")
-
-        return super(DownloadProgressForm, self).clean()
 
 
 class ZoneForm(MAASModelForm):
@@ -3085,7 +2147,7 @@ class BootResourceNoContentForm(BootResourceForm):
 
 class ClaimIPForm(Form):
     """Form used to claim an IP address."""
-    requested_address = forms.GenericIPAddressField(required=False)
+    ip_address = forms.GenericIPAddressField(required=False)
 
 
 class ClaimIPForMACForm(ClaimIPForm):

@@ -6,6 +6,7 @@
 __all__ = []
 
 from collections import namedtuple
+from datetime import datetime
 import http.client
 from io import BytesIO
 import json
@@ -18,11 +19,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.enum import (
-    NODE_STATUS,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
-)
+from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
@@ -334,13 +331,10 @@ class TestMetadataCommon(DjangoTestCase):
         self.assertNotIn(None, producers)
 
     def test_meta_data_local_hostname_returns_fqdn(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         hostname = factory.make_string()
         domain = factory.make_Domain()
         node = factory.make_Node(
-            hostname='%s.%s' % (hostname, domain.name), nodegroup=nodegroup)
+            hostname='%s.%s' % (hostname, domain.name))
         client = make_node_client(node)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'local-hostname'])
@@ -508,9 +502,11 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup, interface=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node(interface=True)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = self.rpc_rack_controller
+        nic.vlan.save()
         arch, subarch = node.architecture.split('/')
         boot_image = make_rpc_boot_image(purpose='xinstall')
         self.patch(
@@ -599,11 +595,6 @@ class TestInstallingAPI(MAASServerTestCase):
 
 
 class TestCommissioningAPI(MAASServerTestCase):
-
-    def setUp(self):
-        super(TestCommissioningAPI, self).setUp()
-        self.patch(Node, 'stop_transition_monitor')
-        self.patch(Node, 'release_leases')
 
     def test_commissioning_scripts(self):
         script = factory.make_CommissioningScript()
@@ -726,13 +717,14 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signalling_commissioning_success_cancels_monitor(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+    def test_signalling_commissioning_success_clears_status_expires(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now())
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+        self.assertIsNone(reload_object(node).status_expires)
 
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -768,13 +760,14 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
-    def test_signalling_commissioning_failure_cancels_monitor(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+    def test_signalling_commissioning_clears_status_expires(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, status_expires=datetime.now())
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+        self.assertIsNone(reload_object(node).status_expires)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -993,30 +986,6 @@ class TestCommissioningAPI(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET),
             Equals("Failed to parse JSON power_parameters"))
 
-    def test_signal_calls_release_leases_if_not_WORKING(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertThat(node.release_leases, MockCalledOnceWith())
-
-    def test_signal_does_not_call_release_leases_if_WORKING(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        client = make_node_client(node=node)
-        response = call_signal(client, status='WORKING')
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertThat(node.release_leases, MockNotCalled())
-
-    def test_signal_doesnt_call_release_leases_if_not_commissioning(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        client = make_node_client(node=node)
-        response = call_signal(client, status='OK')
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertThat(node.release_leases, MockNotCalled())
-
     def test_signal_sets_default_storage_layout_if_OK(self):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -1095,6 +1064,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
 
     def test_signaling_erasing_ok_releases_node(self):
+        self.patch(Node, "_stop")
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
         client = make_node_client(node=node)
@@ -1195,12 +1165,17 @@ class TestAnonymousAPI(DjangoTestCase):
             response)
 
     def test_anonymous_get_enlist_preseed_detects_request_origin(self):
-        ng_url = 'http://%s' % factory.make_name('host')
+        url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        factory.make_NodeGroup(
-            maas_url=ng_url, network=network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        rack = factory.make_RackController(interface=True, url=url)
+        nic = rack.get_boot_interface()
+        vlan = nic.vlan
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_StaticIPAddress(subnet=subnet, interface=nic)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack
+        vlan.save()
         anon_enlist_preseed_url = reverse(
             'metadata-enlist-preseed', args=['latest'])
         response = self.client.get(
@@ -1208,7 +1183,7 @@ class TestAnonymousAPI(DjangoTestCase):
             REMOTE_ADDR=ip)
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains(ng_url))
+            Contains(url))
 
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.
@@ -1309,19 +1284,24 @@ class TestEnlistViews(DjangoTestCase):
             response)
 
     def test_get_userdata_detects_request_origin(self):
-        nodegroup_url = 'http://%s' % factory.make_name('host')
+        rack_url = 'http://%s' % factory.make_name('host')
         maas_url = factory.make_simple_http_url()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        factory.make_NodeGroup(
-            maas_url=nodegroup_url, network=network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        rack = factory.make_RackController(interface=True, url=rack_url)
+        nic = rack.get_boot_interface()
+        vlan = nic.vlan
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_StaticIPAddress(subnet=subnet, interface=nic)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack
+        vlan.save()
         url = reverse('enlist-metadata-user-data', args=['latest'])
         response = self.client.get(url, REMOTE_ADDR=ip)
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            MatchesAll(Contains(nodegroup_url), Not(Contains(maas_url))))
+            MatchesAll(Contains(rack_url), Not(Contains(maas_url))))
 
     def test_metadata_list(self):
         # /enlist/latest/metadata request should list available keys

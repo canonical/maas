@@ -33,7 +33,7 @@ def get_apt_proxy_for_node(node):
             return http_proxy
         else:
             return "http://%s:8000/" % get_maas_facing_server_host(
-                node.nodegroup)
+                node.get_boot_primary_rack_controller())
     else:
         return None
 
@@ -224,7 +224,8 @@ def compose_preseed(preseed_type, node):
     from metadataserver.models import NodeKey
 
     token = NodeKey.objects.get_token_for_node(node)
-    base_url = node.nodegroup.maas_url
+    rack_controller = node.get_boot_primary_rack_controller()
+    base_url = rack_controller.url
 
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
         return compose_commissioning_preseed(node, token, base_url)

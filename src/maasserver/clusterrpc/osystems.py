@@ -7,7 +7,6 @@ __all__ = [
     "gen_all_known_operating_systems",
     "get_preseed_data",
     "validate_license_key",
-    "validate_license_key_for",
 ]
 
 from collections import defaultdict
@@ -116,7 +115,7 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
     :raises TimeoutError: If a response has not been received within 30
         seconds.
     """
-    client = getClientFor(node.nodegroup.uuid)
+    client = getClientFor(node.get_boot_primary_rack_controller().system_id)
     call = client(
         GetPreseedData, osystem=node.get_osystem(), preseed_type=preseed_type,
         node_system_id=node.system_id, node_hostname=node.hostname,
@@ -126,35 +125,11 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
 
 
 @synchronous
-def validate_license_key_for(nodegroup, osystem, release, key):
-    """Validate license key for the given nodegroup, OS, and release.
-
-    :param nodegroup: The nodegroup model instance.
-    :param osystem: The name of the operating system.
-    :param release: The release for the operating system.
-    :param key: The license key to validate.
-
-    :return: True if valid, False otherwise.
-
-    :raises NoConnectionsAvailable: When no connections to the node's
-        cluster are available for use.
-    :raises NoSuchOperatingSystem: When the node's declared operating
-        system is not known to its cluster.
-    :raises TimeoutError: If a response has not been received within 30
-        seconds.
-    """
-    client = getClientFor(nodegroup.uuid)
-    call = client(
-        ValidateLicenseKey, osystem=osystem, release=release, key=key)
-    return call.wait(30).get("is_valid")
-
-
-@synchronous
 def validate_license_key(osystem, release, key):
     """Validate license key for the given OS and release.
 
-    Checks all nodegroups to determine if the license key is valid. Only
-    one nodegroup has to say the license key is valid.
+    Checks all rack controllers to determine if the license key is valid. Only
+    one rack controller has to say the license key is valid.
 
     :param osystem: The name of the operating system.
     :param release: The release for the operating system.

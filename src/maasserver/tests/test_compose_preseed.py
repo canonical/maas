@@ -79,14 +79,26 @@ class TestComposePreseed(MAASServerTestCase):
             }))
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         Config.objects.set_config("enable_http_proxy", False)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertNotIn('apt_proxy', preseed)
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         apt_proxy = get_apt_proxy_for_node(node)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
@@ -105,13 +117,25 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertSystemInfo(preseed)
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         preseed = compose_preseed(PRESEED_TYPE.COMMISSIONING, node)
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
 
     def test_compose_preseed_for_commissioning_includes_metadata_status_url(
             self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertEqual(
@@ -122,7 +146,13 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['reporting']['maas']['endpoint'])
 
     def test_compose_preseed_for_commissioning_includes_poweroff(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertEquals({
@@ -133,7 +163,13 @@ class TestComposePreseed(MAASServerTestCase):
         }, preseed['power_state'])
 
     def test_compose_preseed_for_disk_erasing_includes_poweroff(self):
-        node = factory.make_Node(status=NODE_STATUS.DISK_ERASING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.DISK_ERASING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertEquals({
@@ -144,7 +180,13 @@ class TestComposePreseed(MAASServerTestCase):
         }, preseed['power_state'])
 
     def test_compose_preseed_for_commissioning_includes_auth_tokens(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, status=NODE_STATUS.COMMISSIONING)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         maas_dict = preseed['datasource']['MAAS']
@@ -158,9 +200,13 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(token.secret, reporting_dict['token_secret'])
 
     def test_compose_preseed_with_curtin_installer(self):
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            status=NODE_STATUS.READY)
-        node.nodegroup.accept()
+            interface=True, status=NODE_STATUS.READY)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         apt_proxy = get_apt_proxy_for_node(node)
         preseed = yaml.safe_load(
@@ -179,9 +225,13 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertSystemInfo(preseed)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            status=NODE_STATUS.READY)
-        node.nodegroup.accept()
+            interface=True, status=NODE_STATUS.READY)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         Config.objects.set_config("enable_http_proxy", False)
         preseed = yaml.safe_load(
@@ -197,9 +247,13 @@ class TestComposePreseed(MAASServerTestCase):
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = compose_preseed_orig
 
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            osystem=os_name, status=NODE_STATUS.READY)
-        node.nodegroup.accept()
+            interface=True, osystem=os_name, status=NODE_STATUS.READY)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
         url = absolute_reverse('curtin-metadata')
@@ -220,9 +274,14 @@ class TestComposePreseed(MAASServerTestCase):
         make_usable_osystem(self, os_name)
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = NoSuchOperatingSystem
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            osystem=os_name, status=NODE_STATUS.READY)
-        node.nodegroup.accept()
+            interface=True, osystem=os_name, status=NODE_STATUS.READY)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
+
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
             NoSuchOperatingSystem,
@@ -234,8 +293,13 @@ class TestComposePreseed(MAASServerTestCase):
         os_name = factory.make_name('os')
         make_osystem(self, os_name, [BOOT_IMAGE_PURPOSE.XINSTALL])
         make_usable_osystem(self, os_name)
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            osystem=os_name, status=NODE_STATUS.READY)
+            interface=True, osystem=os_name, status=NODE_STATUS.READY)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = rack_controller
+        nic.vlan.save()
         self.assertRaises(
             NoConnectionsAvailable,
             compose_preseed, PRESEED_TYPE.CURTIN, node)

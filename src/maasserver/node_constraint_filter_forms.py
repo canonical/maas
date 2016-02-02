@@ -477,7 +477,7 @@ class AcquireNodeForm(RenamableFieldsForm):
             "Invalid parameter: list of fabric classes required."
         })
 
-    networks = ValidatorMultipleChoiceField(
+    subnets = ValidatorMultipleChoiceField(
         validator=Subnet.objects.validate_filter_specifiers,
         label="Attached to subnets",
         required=False, error_messages={
@@ -485,7 +485,7 @@ class AcquireNodeForm(RenamableFieldsForm):
             "Invalid parameter: list of subnet specifiers required.",
             })
 
-    not_networks = ValidatorMultipleChoiceField(
+    not_subnets = ValidatorMultipleChoiceField(
         validator=Subnet.objects.validate_filter_specifiers,
         label="Not attached to subnets",
         required=False, error_messages={
@@ -601,12 +601,12 @@ class AcquireNodeForm(RenamableFieldsForm):
             raise ValidationError("No matching subnets found.")
         return subnets
 
-    def clean_networks(self):
-        value = self.cleaned_data[self.get_field_name('networks')]
+    def clean_subnets(self):
+        value = self.cleaned_data[self.get_field_name('subnets')]
         return self._clean_subnet_specifiers(value)
 
-    def clean_not_networks(self):
-        value = self.cleaned_data[self.get_field_name('not_networks')]
+    def clean_not_subnets(self):
+        value = self.cleaned_data[self.get_field_name('not_subnets')]
         return self._clean_subnet_specifiers(value)
 
     def __init__(self, *args, **kwargs):
@@ -725,7 +725,7 @@ class AcquireNodeForm(RenamableFieldsForm):
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
 
         # Filter by subnet.
-        subnets = self.cleaned_data.get(self.get_field_name('networks'))
+        subnets = self.cleaned_data.get(self.get_field_name('subnets'))
         if subnets is not None and len(subnets) > 0:
             for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
@@ -733,7 +733,7 @@ class AcquireNodeForm(RenamableFieldsForm):
 
         # Filter by not_subnets.
         not_subnets = self.cleaned_data.get(
-            self.get_field_name('not_networks'))
+            self.get_field_name('not_subnets'))
         if not_subnets is not None and len(not_subnets) > 0:
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(

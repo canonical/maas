@@ -1,4 +1,4 @@
-# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Machine API."""
@@ -23,17 +23,16 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
 )
 from maasserver.fields import MAC_ERROR_MSG
 from maasserver.models import (
     Config,
     Domain,
-    interface as interface_module,
     Machine,
     Node,
     node as node_module,
-    NodeGroup,
     StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
@@ -62,19 +61,19 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.models import (
-    commissioningscript,
     NodeKey,
     NodeUserData,
 )
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
-from netaddr import IPAddress
+from netaddr import IPNetwork
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+)
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import (
-    HasLength,
-    Not,
-)
+from twisted.internet import defer
 import yaml
 
 
@@ -82,9 +81,8 @@ class MachineAnonAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(MachineAnonAPITest, self).setUp()
-        self.patch(node_module, 'power_on_node')
-        self.patch(node_module, 'power_off_node')
-        self.patch(node_module, 'power_driver_check')
+        self.patch(node_module.Node, '_start')
+        self.patch(node_module.Node, '_stop')
 
     def test_anon_api_doc(self):
         # The documentation is accessible to anon users.
@@ -126,9 +124,9 @@ class TestMachineAPI(APITestCase):
 
     def setUp(self):
         super(TestMachineAPI, self).setUp()
-        self.patch(node_module, 'power_on_node')
-        self.patch(node_module, 'power_off_node')
+        self.patch(node_module.Node, '_power_control_node')
         self.patch(node_module, 'power_driver_check')
+        self.patch(node_module.Node, '_power_control_node')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -147,7 +145,6 @@ class TestMachineAPI(APITestCase):
 
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        NodeGroup.objects.ensure_master()
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             "%s.%s" % (machine.hostname, domain_name),
@@ -197,18 +194,16 @@ class TestMachineAPI(APITestCase):
                 parsed_result['zone']['name'],
                 parsed_result['zone']['description']])
 
-    def test_GET_returns_pxe_mac(self):
+    def test_GET_returns_boot_interface(self):
         machine = factory.make_Node(interface=True)
         machine.boot_interface = machine.interface_set.first()
         machine.save()
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        expected_result = {
-            'mac_address': machine.boot_interface.mac_address.get_raw(),
-        }
         self.assertEqual(
-            expected_result, parsed_result['pxe_mac'])
+            machine.boot_interface.mac_address.get_raw(),
+            parsed_result['boot_interface']['mac_address'])
 
     def test_GET_refuses_to_access_nonexistent_machine(self):
         # When fetching a Machine, the api returns a 'Not Found' (404) error
@@ -221,7 +216,7 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(
             "Not Found", response.content.decode(settings.DEFAULT_CHARSET))
 
-    def test_GET_returns_404_if_machineOA_name_contains_invld_characters(self):
+    def test_GET_returns_404_if_machine_name_contains_invld_characters(self):
         # When the requested name contains characters that are invalid for
         # a hostname, the result of the request is a 404 response.
         url = reverse('machine_handler', args=['invalid-uuid-#...'])
@@ -271,9 +266,13 @@ class TestMachineAPI(APITestCase):
         self.assertItemsEqual(
             [device.name for device in devices], parsed_devices)
 
-    def test_GET_rejects_device(self):
-        device = factory.make_Device(owner=self.logged_in_user)
-        response = self.client.get(self.get_machine_uri(device))
+    def test_GET_rejects_other_node_types(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
+        response = self.client.get(self.get_machine_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
@@ -316,22 +315,26 @@ class TestMachineAPI(APITestCase):
             self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
                              parsed_result['substatus_name'])
 
-    def test_POST_stop_checks_permission(self):
+    def test_POST_power_off_checks_permission(self):
         machine = factory.make_Node()
         machine_stop = self.patch(machine, 'stop')
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'stop'})
+            self.get_machine_uri(machine), {'op': 'power_off'})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertThat(machine_stop, MockNotCalled())
 
-    def test_POST_stop_rejects_device(self):
-        device = factory.make_Device(owner=self.logged_in_user)
+    def test_POST_power_off_rejects_other_node_types(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
         response = self.client.post(
-            self.get_machine_uri(device), {'op': 'stop'})
+            self.get_machine_uri(node), {'op': 'power_off'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
-    def test_POST_stop_returns_nothing_if_machine_was_not_stopped(self):
+    def test_POST_power_off_returns_nothing_if_machine_was_not_stopped(self):
         # The machine may not be stopped because, for example, its power type
         # does not support it. In this case the machine is not returned to the
         # caller.
@@ -339,85 +342,88 @@ class TestMachineAPI(APITestCase):
         machine_stop = self.patch(node_module.Machine, 'stop')
         machine_stop.return_value = False
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'stop'})
+            self.get_machine_uri(machine), {'op': 'power_off'})
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNone(json_load_bytes(response.content))
         self.assertThat(machine_stop, MockCalledOnceWith(
             ANY, stop_mode=ANY, comment=None))
 
-    def test_POST_stop_returns_machine(self):
+    def test_POST_power_off_returns_machine(self):
         machine = factory.make_Node(owner=self.logged_in_user)
         self.patch(node_module.Machine, 'stop').return_value = True
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'stop'})
+            self.get_machine_uri(machine), {'op': 'power_off'})
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
 
-    def test_POST_stop_may_be_repeated(self):
+    def test_POST_power_off_may_be_repeated(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake')
         self.patch(machine, 'stop')
-        self.client.post(self.get_machine_uri(machine), {'op': 'stop'})
+        self.client.post(self.get_machine_uri(machine), {'op': 'power_off'})
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'stop'})
+            self.get_machine_uri(machine), {'op': 'power_off'})
         self.assertEqual(http.client.OK, response.status_code)
 
-    def test_POST_stop_stops_machines(self):
+    def test_POST_power_off_power_offs_machines(self):
         machine = factory.make_Node(owner=self.logged_in_user)
         machine_stop = self.patch(node_module.Machine, 'stop')
         stop_mode = factory.make_name('stop_mode')
         comment = factory.make_name('comment')
         self.client.post(
             self.get_machine_uri(machine),
-            {'op': 'stop', 'stop_mode': stop_mode, 'comment': comment})
+            {'op': 'power_off', 'stop_mode': stop_mode, 'comment': comment})
         self.assertThat(
             machine_stop,
             MockCalledOnceWith(
                 self.logged_in_user, stop_mode=stop_mode, comment=comment))
 
-    def test_POST_stop_handles_missing_comment(self):
+    def test_POST_power_off_handles_missing_comment(self):
         machine = factory.make_Node(owner=self.logged_in_user)
-        machine_stop = self.patch(node_module.Node, 'stop')
+        machine_stop = self.patch(node_module.Machine, 'stop')
         stop_mode = factory.make_name('stop_mode')
         self.client.post(
             self.get_machine_uri(machine),
-            {'op': 'stop', 'stop_mode': stop_mode})
+            {'op': 'power_off', 'stop_mode': stop_mode})
         self.assertThat(
             machine_stop,
             MockCalledOnceWith(
                 self.logged_in_user, stop_mode=stop_mode, comment=None))
 
-    def test_POST_stop_returns_503_when_power_op_already_in_progress(self):
+    def test_POST_power_off_returns_503_when_power_already_in_progress(self):
         machine = factory.make_Node(owner=self.logged_in_user)
         exc_text = factory.make_name("exc_text")
         self.patch(
-            node_module.Node,
+            node_module.Machine,
             'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'stop'})
+            self.get_machine_uri(machine), {'op': 'power_off'})
         self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
         self.assertIn(
             exc_text, response.content.decode(settings.DEFAULT_CHARSET))
 
-    def test_POST_start_checks_permission(self):
-        machine = factory.make_Node(owner=factory.make_User())
+    def test_POST_power_on_checks_permission(self):
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            owner=factory.make_User())
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'start'})
+            self.get_machine_uri(machine), {'op': 'power_on'})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
-    def test_POST_start_checks_ownership(self):
+    def test_POST_power_on_checks_ownership(self):
         self.become_admin()
-        machine = factory.make_Node(status=NODE_STATUS.READY)
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY)
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'start'})
+            self.get_machine_uri(machine), {'op': 'power_on'})
         self.assertEqual(http.client.CONFLICT, response.status_code)
         self.assertEqual(
             "Can't start machine: it hasn't been allocated.",
             response.content.decode(settings.DEFAULT_CHARSET))
 
-    def test_POST_start_returns_machine(self):
+    def test_POST_power_on_returns_machine(self):
+        self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -427,21 +433,26 @@ class TestMachineAPI(APITestCase):
         response = self.client.post(
             self.get_machine_uri(machine),
             {
-                'op': 'start',
+                'op': 'power_on',
                 'distro_series': distro_series,
             })
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
 
-    def test_POST_start_rejects_device(self):
-        device = factory.make_Device(owner=self.logged_in_user)
+    def test_POST_power_on_rejects_other_node_types(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
         response = self.client.post(
-            self.get_machine_uri(device), {'op': 'start'})
+            self.get_machine_uri(node), {'op': 'power_on'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
-    def test_POST_start_sets_osystem_and_distro_series(self):
+    def test_POST_deploy_sets_osystem_and_distro_series(self):
+        self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -450,7 +461,7 @@ class TestMachineAPI(APITestCase):
         distro_series = osystem['default_release']
         response = self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'distro_series': distro_series
             })
         self.assertEqual(
@@ -462,15 +473,15 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(
             distro_series, reload_object(machine).distro_series)
 
-    def test_POST_start_validates_distro_series(self):
-        machine = factory.make_Node(
+    def test_POST_deploy_validates_distro_series(self):
+        machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         invalid_distro_series = factory.make_string()
         response = self.client.post(
             self.get_machine_uri(machine),
-            {'op': 'start', 'distro_series': invalid_distro_series})
+            {'op': 'deploy', 'distro_series': invalid_distro_series})
         self.assertEqual(
             (
                 http.client.BAD_REQUEST,
@@ -481,7 +492,8 @@ class TestMachineAPI(APITestCase):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
-    def test_POST_start_sets_license_key(self):
+    def test_POST_deploy_sets_license_key(self):
+        self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -489,10 +501,10 @@ class TestMachineAPI(APITestCase):
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         license_key = factory.make_string()
-        self.patch(forms, 'validate_license_key_for').return_value = True
+        self.patch(forms, 'validate_license_key').return_value = True
         response = self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
@@ -504,18 +516,18 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(
             license_key, reload_object(machine).license_key)
 
-    def test_POST_start_validates_license_key(self):
-        machine = factory.make_Node(
+    def test_POST_deploy_validates_license_key(self):
+        machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         license_key = factory.make_string()
-        self.patch(forms, 'validate_license_key_for').return_value = False
+        self.patch(forms, 'validate_license_key').return_value = False
         response = self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
@@ -528,7 +540,8 @@ class TestMachineAPI(APITestCase):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
-    def test_POST_start_sets_default_distro_series(self):
+    def test_POST_deploy_sets_default_distro_series(self):
+        self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -538,19 +551,19 @@ class TestMachineAPI(APITestCase):
         make_usable_osystem(
             self, osystem_name=osystem, releases=[distro_series])
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'start'})
+            self.get_machine_uri(machine), {'op': 'deploy'})
         response_info = json_load_bytes(response.content)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(response_info['osystem'], osystem)
         self.assertEqual(response_info['distro_series'], distro_series)
 
-    def test_POST_start_fails_with_no_boot_source(self):
+    def test_POST_deploy_fails_with_no_boot_source(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'start'})
+            self.get_machine_uri(machine), {'op': 'deploy'})
         self.assertEqual(
             (
                 http.client.BAD_REQUEST,
@@ -561,7 +574,7 @@ class TestMachineAPI(APITestCase):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
-    def test_POST_start_validates_hwe_kernel_with_default_distro_series(self):
+    def test_POST_deploy_validates_hwe_kernel_with_default_distro_series(self):
         architecture = make_usable_architecture(self, subarch_name="generic")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
@@ -575,7 +588,7 @@ class TestMachineAPI(APITestCase):
         response = self.client.post(
             self.get_machine_uri(machine),
             {
-                'op': 'start',
+                'op': 'deploy',
                 'hwe_kernel': bad_hwe_kernel,
             })
         self.assertEqual(
@@ -587,7 +600,8 @@ class TestMachineAPI(APITestCase):
             ),
             (response.status_code, json_load_bytes(response.content)))
 
-    def test_POST_start_may_be_repeated(self):
+    def test_POST_deploy_may_be_repeated(self):
+        self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -595,18 +609,20 @@ class TestMachineAPI(APITestCase):
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         request = {
-            'op': 'start',
+            'op': 'deploy',
             'distro_series': distro_series,
             }
         self.client.post(self.get_machine_uri(machine), request)
         response = self.client.post(self.get_machine_uri(machine), request)
         self.assertEqual(http.client.OK, response.status_code)
 
-    def test_POST_start_stores_user_data(self):
+    def test_POST_deploy_stores_user_data(self):
+        self.patch(node_module.Node, "_power_control_node")
+        rack_controller = factory.make_RackController()
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
-            architecture=make_usable_architecture(self))
+            power_type='virsh', architecture=make_usable_architecture(self),
+            bmc_connected_to=rack_controller)
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         user_data = (
@@ -614,7 +630,7 @@ class TestMachineAPI(APITestCase):
             factory.make_string().encode('ascii'))
         response = self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'user_data': b64encode(user_data).decode('ascii'),
                 'distro_series': distro_series,
             })
@@ -622,11 +638,14 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(
             user_data, NodeUserData.objects.get_user_data(machine))
 
-    def test_POST_start_passes_comment(self):
+    def test_POST_deploy_passes_comment(self):
+        self.patch(node_module.Node, "_start")
+        rack_controller = factory.make_RackController()
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
-            architecture=make_usable_architecture(self))
+            power_type='virsh',
+            architecture=make_usable_architecture(self),
+            bmc_connected_to=rack_controller)
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         comment = factory.make_name('comment')
@@ -634,7 +653,7 @@ class TestMachineAPI(APITestCase):
         machine_start.return_value = False
         self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'user_data': None,
                 'distro_series': distro_series,
                 'comment': comment,
@@ -642,7 +661,7 @@ class TestMachineAPI(APITestCase):
         self.assertThat(machine_start, MockCalledOnceWith(
             self.logged_in_user, user_data=ANY, comment=comment))
 
-    def test_POST_start_handles_missing_comment(self):
+    def test_POST_deploy_handles_missing_comment(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='ether_wake',
@@ -653,7 +672,7 @@ class TestMachineAPI(APITestCase):
         machine_start.return_value = False
         self.client.post(
             self.get_machine_uri(machine), {
-                'op': 'start',
+                'op': 'deploy',
                 'user_data': None,
                 'distro_series': distro_series,
             })
@@ -661,15 +680,14 @@ class TestMachineAPI(APITestCase):
             self.logged_in_user, user_data=ANY, comment=None))
 
     def test_POST_release_releases_owned_machine(self):
-        self.patch(node_module, 'power_off_node')
-        self.patch(node_module.Node, 'start_transition_monitor')
+        self.patch(node_module.Node, '_stop')
         owned_statuses = [
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
         ]
         owned_machines = [
             factory.make_Node(
-                owner=self.logged_in_user, status=status, power_type='ipmi',
+                owner=self.logged_in_user, status=status, power_type='virsh',
                 power_state=POWER_STATE.ON)
             for status in owned_statuses]
         responses = [
@@ -684,7 +702,7 @@ class TestMachineAPI(APITestCase):
              for machine in reload_objects(Node, owned_machines)])
 
     def test_POST_release_releases_failed_machine(self):
-        self.patch(node_module, 'power_off_node')
+        self.patch(node_module.Node, '_stop')
         self.patch(node_module.Machine, 'start_transition_monitor')
         owned_machine = factory.make_Node(
             owner=self.logged_in_user,
@@ -699,17 +717,21 @@ class TestMachineAPI(APITestCase):
         self.expectThat(owned_machine.owner, Equals(self.logged_in_user))
 
     def test_POST_release_does_nothing_for_unowned_machine(self):
-        machine = factory.make_Node(
+        machine = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.client.post(
             self.get_machine_uri(machine), {'op': 'release'})
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(machine).status)
 
-    def test_POST_release_rejects_device(self):
-        device = factory.make_Device(owner=self.logged_in_user)
+    def test_POST_release_rejects_other_node_types(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
         response = self.client.post(
-            self.get_machine_uri(device), {'op': 'release'})
+            self.get_machine_uri(node), {'op': 'release'})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
@@ -765,7 +787,7 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(machine).status)
 
     def test_POST_release_allows_admin_to_release_anyones_machine(self):
-        self.patch(node_module, 'power_off_node')
+        self.patch(node_module.Node, '_stop')
         self.patch(node_module.Machine, 'start_transition_monitor')
         machine = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
@@ -777,14 +799,14 @@ class TestMachineAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(machine).status)
 
-    def test_POST_release_combines_with_acquire(self):
-        self.patch(node_module, 'power_off_node')
+    def test_POST_release_combines_with_allocate(self):
+        self.patch(node_module.Node, '_stop')
         self.patch(node_module.Machine, 'start_transition_monitor')
         machine = factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
             power_state=POWER_STATE.ON, with_boot_disk=True)
         response = self.client.post(
-            reverse('machines_handler'), {'op': 'acquire'})
+            reverse('machines_handler'), {'op': 'allocate'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(machine).status)
         machine_uri = json_load_bytes(response.content)['resource_uri']
         response = self.client.post(machine_uri, {'op': 'release'})
@@ -792,7 +814,7 @@ class TestMachineAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(machine).status)
 
-    def test_POST_acquire_passes_comment(self):
+    def test_POST_allocate_passes_comment(self):
         factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
             power_state=POWER_STATE.ON, with_boot_disk=True)
@@ -800,24 +822,24 @@ class TestMachineAPI(APITestCase):
         comment = factory.make_name('comment')
         self.client.post(
             reverse('machines_handler'),
-            {'op': 'acquire', 'comment': comment})
+            {'op': 'allocate', 'comment': comment})
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY, comment=comment))
 
-    def test_POST_acquire_handles_missing_comment(self):
+    def test_POST_allocate_handles_missing_comment(self):
         factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
             power_state=POWER_STATE.ON, with_boot_disk=True)
         machine_method = self.patch(node_module.Machine, 'acquire')
         self.client.post(
-            reverse('machines_handler'), {'op': 'acquire'})
+            reverse('machines_handler'), {'op': 'allocate'})
         self.assertThat(
             machine_method, MockCalledOnceWith(
                 ANY, ANY, agent_name=ANY, comment=None))
 
     def test_POST_release_frees_hwe_kernel(self):
-        self.patch(node_module, 'power_off_node')
+        self.patch(node_module.Node, '_stop')
         self.patch(node_module.Machine, 'start_transition_monitor')
         machine = factory.make_Node(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
@@ -858,6 +880,8 @@ class TestMachineAPI(APITestCase):
             MockCalledOnceWith(self.logged_in_user, None))
 
     def test_POST_commission_commissions_machine(self):
+        self.patch(
+            node_module.Node, "_start").return_value = defer.succeed(None)
         machine = factory.make_Node(
             status=NODE_STATUS.READY, owner=factory.make_User(),
             power_state=POWER_STATE.OFF)
@@ -869,6 +893,8 @@ class TestMachineAPI(APITestCase):
             NODE_STATUS.COMMISSIONING, reload_object(machine).status)
 
     def test_POST_commission_commissions_machine_with_options(self):
+        self.patch(
+            node_module.Node, "_start").return_value = defer.succeed(None)
         machine = factory.make_Node(
             status=NODE_STATUS.READY, owner=factory.make_User(),
             power_state=POWER_STATE.OFF)
@@ -894,7 +920,6 @@ class TestMachineAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
-        NodeGroup.objects.ensure_master()
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'francis.%s' % domain_name, parsed_result['hostname'])
@@ -914,10 +939,14 @@ class TestMachineAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertTrue(Machine.objects.filter(hostname=hostname).exists())
 
-    def test_PUT_rejects_device(self):
+    def test_PUT_rejects_other_node_types(self):
         self.become_admin()
-        machine = factory.make_Device(owner=self.logged_in_user)
-        response = self.client.put(self.get_machine_uri(machine))
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
+        response = self.client.put(self.get_machine_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
@@ -1364,9 +1393,13 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Machine.objects.filter(system_id=system_id))
 
-    def test_DELETE_rejects_device(self):
-        device = factory.make_Device(owner=self.logged_in_user)
-        response = self.client.delete(self.get_machine_uri(device))
+    def test_DELETE_rejects_other_node_types(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=self.logged_in_user,
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]),
+            )
+        response = self.client.delete(self.get_machine_uri(node))
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content)
 
@@ -1403,219 +1436,6 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
 
-class TestClaimStickyIpAddressAPI(APITestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=claim_sticky_ip_address"""
-
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_claim_sticky_ip_address_disallows_when_allocated(self):
-        self.become_admin()
-        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            http.client.CONFLICT, response.status_code, response.content)
-        self.assertEqual(
-            "Sticky IP cannot be assigned to a node that is allocated",
-            response.content.decode(settings.DEFAULT_CHARSET))
-
-    def test_claim_sticky_ip_address_validates_ip_address(self):
-        self.become_admin()
-        machine = factory.make_Node()
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'claim_sticky_ip_address',
-             'requested_address': '192.168.1000.1'})
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            dict(requested_address=["Enter a valid IPv4 or IPv6 address."]),
-            json_load_bytes(response.content))
-
-    def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        # Silence 'update_host_maps'.
-        self.patch_autospec(interface_module, "update_host_maps")
-        [existing_ip] = machine.get_boot_interface().claim_static_ips()
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        [returned_ip] = parsed_machine["ip_addresses"]
-        self.assertEqual(
-            (existing_ip.ip, IPADDRESS_TYPE.STICKY),
-            (returned_ip, existing_ip.alloc_type)
-        )
-
-    def test_claim_sticky_ip_address_claims_sticky_ip_address_non_admin(self):
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            owner=self.logged_in_user, disable_ipv4=False)
-        # Silence 'update_host_maps'.
-        self.patch(interface_module, "update_host_maps")
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        [returned_ip] = parsed_machine["ip_addresses"]
-        [given_ip] = StaticIPAddress.objects.filter(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False)
-        self.assertEqual(
-            (given_ip.ip, IPADDRESS_TYPE.STICKY),
-            (returned_ip, given_ip.alloc_type),
-        )
-
-    def test_claim_sticky_ip_address_checks_edit_permission(self):
-        other_user = factory.make_User()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            owner=other_user, disable_ipv4=False)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        # Silence 'update_host_maps'.
-        self.patch(interface_module, "update_host_maps")
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        [returned_ip] = parsed_machine["ip_addresses"]
-        [given_ip] = StaticIPAddress.objects.filter(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False)
-        self.assertEqual(
-            (given_ip.ip, IPADDRESS_TYPE.STICKY),
-            (returned_ip, given_ip.alloc_type),
-        )
-
-    def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        boot_interface = machine.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        second_nic = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=machine)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            interface=second_nic, subnet=subnet)
-        # Silence 'update_host_maps'.
-        self.patch(interface_module, "update_host_maps")
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                'op': 'claim_sticky_ip_address',
-                'mac_address': second_nic.mac_address.get_raw(),
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        [observed_static_ip] = second_nic.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.STICKY)
-        self.assertEqual(IPADDRESS_TYPE.STICKY, observed_static_ip.alloc_type)
-
-    def test_claim_sticky_ip_address_catches_bad_mac_address_parameter(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        random_mac = factory.make_mac_address()
-
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                'op': 'claim_sticky_ip_address',
-                'mac_address': random_mac,
-            })
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content)
-        self.assertEqual(
-            "mac_address %s not found on the node" % random_mac,
-            response.content.decode(settings.DEFAULT_CHARSET))
-
-    def test_claim_sticky_ip_allows_requested_ip(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        boot_interface = machine.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        requested_address = ngi.static_ip_range_low
-
-        # Silence 'update_host_maps'.
-        self.patch(interface_module, "update_host_maps")
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                'op': 'claim_sticky_ip_address',
-                'requested_address': requested_address,
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertIsNotNone(
-            StaticIPAddress.objects.filter(
-                alloc_type=IPADDRESS_TYPE.STICKY, ip=requested_address,
-                subnet=subnet).first())
-
-    def test_claim_sticky_ip_address_detects_out_of_network_requested_ip(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        boot_interface = machine.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        other_network = factory.make_ipv4_network(but_not=ngi.network)
-        requested_address = factory.pick_ip_in_network(other_network)
-
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                'op': 'claim_sticky_ip_address',
-                'requested_address': requested_address.format(),
-            })
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_claim_sticky_ip_address_detects_unavailable_requested_ip(self):
-        self.become_admin()
-        # Create 2 machines on the same nodegroup and interface.
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        boot_interface = machine.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        other_machine = factory.make_Node(
-            interface=True, nodegroup=ngi.nodegroup, disable_ipv4=False)
-        other_mac = other_machine.get_boot_interface()
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            interface=other_mac, subnet=subnet)
-
-        # Allocate an IP to one of the machines.
-        self.patch_autospec(interface_module, "update_host_maps")
-        requested_address = IPAddress(ngi.static_ip_range_low) + 1
-        requested_address = requested_address.format()
-        other_machine.get_boot_interface().claim_static_ips(
-            requested_address=requested_address)
-
-        # Use the API to try to duplicate the same IP on the other machine.
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {
-                'op': 'claim_sticky_ip_address',
-                'requested_address': requested_address,
-            })
-        self.assertEqual(
-            http.client.NOT_FOUND, response.status_code, response.content)
-
-
 class TestMachineAPITransactional(APITransactionTestCase):
     '''The following TestMachineAPI tests require APITransactionTestCase,
         and thus, have been separated from the TestMachineAPI above.
@@ -1623,148 +1443,44 @@ class TestMachineAPITransactional(APITransactionTestCase):
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         self.patch(node_module, 'power_driver_check')
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
-            architecture=make_usable_architecture(self))
-        boot_interface = machine.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        ngi = subnet.nodegroupinterface_set.first()
+        network = IPNetwork("10.0.0.0/30")
+        rack_controller = factory.make_RackController()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        subnet.vlan.dhcp_on = True
+        subnet.vlan.primary_rack = rack_controller
+        subnet.vlan.save()
+        architecture = make_usable_architecture(self)
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture=architecture,
+            power_type='virsh', owner=self.logged_in_user,
+            power_state=POWER_STATE.OFF,
+            bmc_connected_to=rack_controller)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine, vlan=subnet.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", subnet=subnet,
+            interface=interface)
 
-        # Narrow the available IP range and pre-claim the only address.
-        ngi.static_ip_range_high = ngi.static_ip_range_low
-        ngi.save()
+        # Pre-claim the only addresses.
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                ngi.network, ngi.static_ip_range_low, ngi.static_ip_range_high,
-                ngi.ip_range_low, ngi.ip_range_high)
+                network, "10.0.0.1", "10.0.0.1", "", "")
+            StaticIPAddress.objects.allocate_new(
+                network, "10.0.0.2", "10.0.0.2", "", "")
+            StaticIPAddress.objects.allocate_new(
+                network, "10.0.0.3", "10.0.0.3", "", "")
 
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
         response = self.client.post(
             TestMachineAPI.get_machine_uri(machine),
             {
-                'op': 'start',
+                'op': 'power_on',
                 'distro_series': distro_series,
             })
-        self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
-
-
-class TestMachineReleaseStickyIpAddressAPI(APITestCase):
-    """Tests for /api/2.0/machines/?op=release_sticky_ip_address."""
-
-    @staticmethod
-    def get_machine_uri(machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test__releases_ip_address(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(interface_module, "update_host_maps")
-        self.patch(interface_module, "remove_host_maps")
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        self.expectThat(parsed_machine["ip_addresses"], Not(HasLength(0)))
-
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'release_sticky_ip_address'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        self.expectThat(parsed_machine["ip_addresses"], HasLength(0))
-
-    def test__validates_ip_address(self):
-        self.become_admin()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            disable_ipv4=False)
-        # Silence 'update_host_maps' and 'remove_host_maps'
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'release_sticky_ip_address',
-             'address': '192.168.1000.1'})
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertEqual(
-            dict(address=["Enter a valid IPv4 or IPv6 address."]),
-            json_load_bytes(response.content))
-
-
-class TestMachineReleaseStickyIpAddressAPITransactional(
-        APITransactionTestCase):
-    """The following TestMachineReleaseStickyIpAddressAPI tests require
-        APITransactionTestCase, and thus, have been separated
-        from the TestMachineReleaseStickyIpAddressAPI above.
-    """
-
-    def test__releases_all_ip_addresses(self):
-        network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=str(network.cidr))
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, node_type=NODE_TYPE.MACHINE,
-            subnet=subnet, disable_ipv4=False, owner=self.logged_in_user)
-        boot_interface = machine.get_boot_interface()
-        # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(interface_module, "update_host_maps")
-        self.patch(interface_module, "remove_host_maps")
-        for interface in machine.interface_set.all():
-            with transaction.atomic():
-                allocated = boot_interface.claim_static_ips()
-            self.expectThat(allocated, HasLength(1))
-        response = self.client.post(
-            TestMachineReleaseStickyIpAddressAPI.get_machine_uri(machine),
-            {'op': 'release_sticky_ip_address'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        self.expectThat(parsed_machine["ip_addresses"], HasLength(0))
-
-    def test__releases_specific_address(self):
-        network = factory._make_random_network(slash=24)
-        subnet = factory.make_Subnet(cidr=str(network.cidr))
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, node_type=NODE_TYPE.MACHINE,
-            subnet=subnet, disable_ipv4=False, owner=self.logged_in_user)
-        boot_interface = machine.get_boot_interface()
-        # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(interface_module, "update_host_maps")
-        self.patch(interface_module, "remove_host_maps")
-        ips = []
-        for interface in machine.interface_set.all():
-            with transaction.atomic():
-                allocated = boot_interface.claim_static_ips()
-            self.expectThat(allocated, HasLength(1))
-            # Note: 'allocated' is a list of (ip,mac) tuples
-            ips.append(allocated[0])
-        response = self.client.post(
-            TestMachineReleaseStickyIpAddressAPI.get_machine_uri(machine),
-            {
-                'op': 'release_sticky_ip_address',
-                'address': ips[0].ip
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_machine = json_load_bytes(response.content)
-        self.expectThat(parsed_machine["ip_addresses"], HasLength(0))
-
-    def test__rejected_if_not_permitted(self):
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, disable_ipv4=False,
-            owner=factory.make_User())
-        boot_interface = machine.get_boot_interface()
-        # Silence 'update_host_maps' and 'remove_host_maps'
-        self.patch(interface_module, "update_host_maps")
-        self.patch(interface_module, "remove_host_maps")
-        with transaction.atomic():
-            boot_interface.claim_static_ips()
-        response = self.client.post(
-            TestMachineReleaseStickyIpAddressAPI.get_machine_uri(machine),
-            {'op': 'release_sticky_ip_address'})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
+            http.client.SERVICE_UNAVAILABLE, response.status_code,
+            response.content)
 
 
 class TestGetDetails(APITestCase):
@@ -1772,13 +1488,12 @@ class TestGetDetails(APITestCase):
 
     def make_lshw_result(self, machine, script_result=0):
         return factory.make_NodeResult_for_commissioning(
-            node=machine, name=commissioningscript.LSHW_OUTPUT_NAME,
+            node=machine, name=LSHW_OUTPUT_NAME,
             script_result=script_result)
 
     def make_lldp_result(self, machine, script_result=0):
         return factory.make_NodeResult_for_commissioning(
-            node=machine, name=commissioningscript.LLDP_OUTPUT_NAME,
-            script_result=script_result)
+            node=machine, name=LLDP_OUTPUT_NAME, script_result=script_result)
 
     def get_details(self, machine):
         url = reverse('machine_handler', args=[machine.system_id])
@@ -1891,6 +1606,7 @@ class TestMarkBroken(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_mark_broken_allowed_from_any_other_state(self):
+        self.patch(node_module.Node, "_stop")
         for status, _ in NODE_STATUS_CHOICES:
             if status == NODE_STATUS.BROKEN:
                 continue
@@ -1983,33 +1699,33 @@ class TestPowerParameters(APITestCase):
             http.client.FORBIDDEN, response.status_code, response.content)
 
 
-class TestAbortOperation(APITransactionTestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=abort_operation"""
+class TestAbort(APITransactionTestCase):
+    """Tests for /api/2.0/machines/<machine>/?op=abort"""
 
     def get_machine_uri(self, machine):
         """Get the API URI for `machine`."""
         return reverse('machine_handler', args=[machine.system_id])
 
-    def test_abort_operation_changes_state(self):
+    def test_abort_changes_state(self):
         machine = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
-        machine_stop = self.patch(machine, "stop")
+        machine_stop = self.patch(node_module.Node, "_stop")
         machine_stop.side_effect = lambda user: post_commit()
 
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort_operation'})
+            self.get_machine_uri(machine), {'op': 'abort'})
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(machine).status)
 
-    def test_abort_operation_fails_for_unsupported_operation(self):
+    def test_abort_fails_for_unsupported_operation(self):
         machine = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort_operation'})
+            self.get_machine_uri(machine), {'op': 'abort'})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
-    def test_abort_operation_passes_comment(self):
+    def test_abort_passes_comment(self):
         self.become_admin()
         machine = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
@@ -2017,18 +1733,18 @@ class TestAbortOperation(APITransactionTestCase):
         comment = factory.make_name('comment')
         self.client.post(
             self.get_machine_uri(machine),
-            {'op': 'abort_operation', 'comment': comment})
+            {'op': 'abort', 'comment': comment})
         self.assertThat(
             machine_method,
             MockCalledOnceWith(self.logged_in_user, comment))
 
-    def test_abort_operation_handles_missing_comment(self):
+    def test_abort_handles_missing_comment(self):
         self.become_admin()
         machine = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
         machine_method = self.patch(node_module.Machine, 'abort_operation')
         self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort_operation'})
+            self.get_machine_uri(machine), {'op': 'abort'})
         self.assertThat(
             machine_method,
             MockCalledOnceWith(self.logged_in_user, None))

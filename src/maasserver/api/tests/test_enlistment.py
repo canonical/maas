@@ -1,4 +1,4 @@
-# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for enlistment-related portions of the API."""
@@ -14,16 +14,14 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.fields import MAC
 from maasserver.models import (
     Domain,
+    Machine,
     Node,
-    node as node_module,
-    NodeGroup,
 )
+from maasserver.models.node import PowerInfo
 from maasserver.testing.api import MultipleUsersScenarios
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -32,7 +30,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
-from netaddr import IPNetwork
 
 
 class EnlistmentAPITest(MultipleUsersScenarios,
@@ -45,19 +42,15 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         ]
 
     def setUp(self):
-        super(EnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
-        self.patch_autospec(Node, 'start_transition_monitor')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
-    def test_POST_new_creates_node(self):
+    def test_POST_create_creates_machine(self):
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
@@ -67,22 +60,19 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
-        [diane] = Node.objects.filter(hostname='diane')
+        [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
 
     def test_POST_new_generates_hostname_if_ip_based_hostname(self):
         Domain.objects.get_or_create(name="domain")
         hostname = '192-168-5-19.domain'
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
@@ -92,10 +82,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         parsed_result = json_load_bytes(response.content)
 
         system_id = parsed_result.get('system_id')
-        node = Node.objects.get(system_id=system_id)
-        self.assertNotEqual(hostname, node.hostname)
+        machine = Machine.objects.get(system_id=system_id)
+        self.assertNotEqual(hostname, machine.hostname)
 
-    def test_POST_new_creates_node_with_power_parameters(self):
+    def test_POST_create_creates_machine_with_power_parameters(self):
         # We're setting power parameters so we disable start_commissioning to
         # prevent anything from attempting to issue power instructions.
         self.patch(Node, "start_commissioning")
@@ -107,10 +97,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             "power_pass": factory.make_name("power-pass"),
             }
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': architecture,
                 'power_type': 'ether_wake',
@@ -119,17 +107,15 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'power_type': power_type,
             })
         self.assertEqual(http.client.OK, response.status_code)
-        [node] = Node.objects.filter(hostname=hostname)
-        self.assertEqual(power_parameters, node.power_parameters)
-        self.assertEqual(power_type, node.power_type)
+        [machine] = Machine.objects.filter(hostname=hostname)
+        self.assertEqual(power_parameters, machine.power_parameters)
+        self.assertEqual(power_type, machine.power_type)
 
-    def test_POST_new_creates_node_with_arch_only(self):
+    def test_POST_create_creates_machine_with_arch_only(self):
         architecture = make_usable_architecture(self, subarch_name="generic")
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'power_type': 'ether_wake',
@@ -139,22 +125,19 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
-        [diane] = Node.objects.filter(hostname='diane')
+        [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
 
-    def test_POST_new_creates_node_with_subarchitecture(self):
-        # The API allows a Node to be created.
+    def test_POST_create_creates_machine_with_subarchitecture(self):
+        # The API allows a Machine to be created.
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
@@ -165,21 +148,18 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn('application/json', response['Content-Type'])
-        nodegroup = NodeGroup.objects.ensure_master()
-        domain_name = nodegroup.name
+        domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             'diane.%s' % domain_name, parsed_result['hostname'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
-        [diane] = Node.objects.filter(hostname='diane')
+        [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
 
-    def test_POST_new_fails_node_with_double_subarchitecture(self):
+    def test_POST_create_fails_machine_with_double_subarchitecture(self):
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'subarchitecture': architecture.split('/')[1],
@@ -191,89 +171,34 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             b"Subarchitecture cannot be specified twice.",
             response.content)
 
-    def test_POST_new_associates_mac_addresses(self):
-        # The API allows a Node to be created and associated with MAC
+    def test_POST_create_associates_mac_addresses(self):
+        # The API allows a Machine to be created and associated with MAC
         # Addresses.
         architecture = make_usable_architecture(self)
         self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'architecture': architecture,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
-        diane = get_one(Node.objects.filter(hostname='diane'))
+        diane = get_one(Machine.objects.filter(hostname='diane'))
         self.assertItemsEqual(
             ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             [interface.mac_address for interface in diane.interface_set.all()])
 
-    def test_POST_new_initializes_nodegroup_to_master_by_default(self):
-        hostname = factory.make_name('host')
-        self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': hostname,
-                'architecture': make_usable_architecture(self),
-                'mac_addresses': [factory.make_mac_address()],
-            })
-        self.assertEqual(
-            NodeGroup.objects.ensure_master(),
-            Node.objects.get(hostname=hostname).nodegroup)
-
-    def test_POST_with_no_hostname_auto_populates_hostname(self):
+    def test_POST_create_with_no_hostname_auto_populates_hostname(self):
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
                 'mac_addresses': [factory.make_mac_address()],
             })
-        node = Node.objects.get(
+        machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
-        self.assertNotEqual("", strip_domain(node.hostname))
-
-    def test_POST_fails_without_operation(self):
-        # If there is no operation ('op=operation_name') specified in the
-        # request data, a 'Bad request' response is returned.
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
-            })
-
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIn('text/plain', response['Content-Type'])
-        self.assertEqual(
-            b"Unrecognised signature: method=POST op=None",
-            response.content)
-
-    def test_POST_new_fails_if_autodetect_nodegroup_required(self):
-        # If new() is called with no nodegroup, we require the client to
-        # explicitly also supply autodetect_nodegroup (with any value)
-        # to force the autodetection. If it's not supplied then an error
-        # is raised.
-        architecture = make_usable_architecture(self)
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'architecture': architecture,
-                'power_type': 'ether_wake',
-                'mac_addresses': [factory.make_mac_address()],
-            })
-        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIn('text/plain', response['Content-Type'])
-        self.assertEqual(
-            b"'autodetect_nodegroup' must be specified if 'nodegroup' "
-            b"parameter missing", response.content)
+        self.assertNotEqual("", strip_domain(machine.hostname))
 
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
@@ -281,10 +206,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, mac_address=MAC(mac))
         architecture = make_usable_architecture(self)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'architecture': architecture,
                 'hostname': factory.make_string(),
                 'mac_addresses': [mac],
@@ -301,10 +224,9 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         # If the operation ('op=operation_name') specified in the
         # request data is unknown, a 'Bad request' response is returned.
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
                 'op': 'invalid_operation',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
@@ -314,14 +236,12 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             b"Unrecognised signature: method=POST op=invalid_operation",
             response.content)
 
-    def test_POST_new_rejects_invalid_data(self):
-        # If the data provided to create a node with an invalid MAC
+    def test_POST_create_rejects_invalid_data(self):
+        # If the data provided to create a machine with an invalid MAC
         # Address, a 'Bad request' response is returned.
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', 'invalid'],
             })
@@ -337,13 +257,11 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             parsed_result['mac_addresses'])
 
     def test_POST_invalid_architecture_returns_bad_request(self):
-        # If the architecture name provided to create a node is not a valid
+        # If the architecture name provided to create a machine is not a valid
         # architecture name, a 'Bad request' response is returned.
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': 'diane',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
                 'architecture': 'invalid-architecture',
@@ -356,15 +274,13 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             ['architecture'], parsed_result, response.content)
 
 
-class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
-                                 MAASServerTestCase):
+class MachineHostnameEnlistmentTest(
+        MultipleUsersScenarios, MAASServerTestCase):
 
     def setUp(self):
-        super(NodeHostnameEnlistmentTest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
-        self.patch_autospec(Node, 'start_transition_monitor')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -372,46 +288,11 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 
-    def test_created_node_does_not_have_domain_from_cluster(self):
-        domainname = factory.make_string()
-        Domain.objects.get_or_create(name=domainname)
+    def test_created_machine_gets_default_domain_appended(self):
         hostname_without_domain = factory.make_name('hostname')
-        hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, domainname)
-        domain = factory.make_name('domain')
-        factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            name=domain,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': hostname_with_domain,
-                'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
-                'mac_addresses': [factory.make_mac_address()],
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_result = json_load_bytes(response.content)
-        expected_hostname = '%s.%s' % (hostname_without_domain, domainname)
-        self.assertEqual(
-            expected_hostname, parsed_result.get('hostname'))
-
-    def test_created_node_gets_default_domain_appended(self):
-        hostname_without_domain = factory.make_name('hostname')
-        domain = factory.make_name('domain')
-        factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            name=domain,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': hostname_without_domain,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
@@ -426,52 +307,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         self.assertEqual(
             expected_hostname, parsed_result.get('hostname'))
 
-    def test_created_node_nodegroup_is_inferred_from_origin_network(self):
-        network = IPNetwork('192.168.0.3/24')
-        origin_ip = factory.pick_ip_in_network(network)
-        NodeGroup.objects.ensure_master()
-        nodegroup = factory.make_NodeGroup(
-            network=network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        response = self.client.post(
-            reverse('nodes_handler'),
-            data={
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': factory.make_name('hostname'),
-                'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
-                'mac_addresses': [factory.make_mac_address()],
-            },
-            REMOTE_ADDR=origin_ip)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_result = json_load_bytes(response.content)
-        node = Node.objects.get(system_id=parsed_result.get('system_id'))
-        self.assertEqual(nodegroup, node.nodegroup)
 
-    def test_created_node_uses_default_nodegroup_if_origin_not_found(self):
-        unknown_host = factory.make_name('host')
-        response = self.client.post(
-            reverse('nodes_handler'),
-            data={
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': factory.make_name('hostname'),
-                'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
-                'mac_addresses': [factory.make_mac_address()],
-            },
-            HTTP_HOST=unknown_host)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_result = json_load_bytes(response.content)
-        node = Node.objects.get(system_id=parsed_result.get('system_id'))
-        self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
-
-
-class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
-                                MAASServerTestCase):
+class NonAdminEnlistmentAPITest(
+        MultipleUsersScenarios, MAASServerTestCase):
     # Enlistment tests for non-admin users.
 
     scenarios = [
@@ -480,20 +318,17 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
         ]
 
     def setUp(self):
-        super(NonAdminEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
-    def test_POST_non_admin_creates_node_in_declared_state(self):
-        # Upon non-admin enlistment, a node goes into the New
+    def test_POST_non_admin_creates_machine_in_declared_state(self):
+        # Upon non-admin enlistment, a machine goes into the New
         # state.  Deliberate approval is required before we start
         # reinstalling the system, wiping its disks etc.
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
@@ -503,36 +338,34 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
         system_id = json_load_bytes(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.NEW,
-            Node.objects.get(system_id=system_id).status)
+            Machine.objects.get(system_id=system_id).status)
 
 
 class AnonymousEnlistmentAPITest(MAASServerTestCase):
     # Enlistment tests specific to anonymous users.
 
     def setUp(self):
-        super(AnonymousEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
     def test_POST_accept_not_allowed(self):
         # An anonymous user is not allowed to accept an anonymously
-        # enlisted node.  That would defeat the whole purpose of holding
-        # those nodes for approval.
-        node_id = factory.make_Node(status=NODE_STATUS.NEW).system_id
+        # enlisted machine.  That would defeat the whole purpose of holding
+        # those machines for approval.
+        machine_id = factory.make_Node(status=NODE_STATUS.NEW).system_id
         response = self.client.post(
-            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
+            reverse('machines_handler'),
+            {'op': 'accept', 'machines': [machine_id]})
         self.assertEqual(
             (http.client.UNAUTHORIZED,
-             b"You must be logged in to accept nodes."),
+             b"You must be logged in to accept machines."),
             (response.status_code, response.content))
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'architecture': make_usable_architecture(self),
                 'hostname': factory.make_string(),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -565,6 +398,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'disable_ipv4',
                 'address_ttl',
                 'boot_disk',
+                'boot_interface',
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
@@ -579,47 +413,45 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
     """Enlistment tests from the perspective of regular, non-admin users."""
 
     def setUp(self):
-        super(SimpleUserLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
-        # enlisted node.  That would defeat the whole purpose of holding
-        # those nodes for approval.
+        # enlisted machine.  That would defeat the whole purpose of holding
+        # those machines for approval.
         self.client_log_in()
-        node_id = factory.make_Node(status=NODE_STATUS.NEW).system_id
+        machine_id = factory.make_Node(status=NODE_STATUS.NEW).system_id
         response = self.client.post(
-            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
+            reverse('machines_handler'),
+            {'op': 'accept', 'machines': [machine_id]})
         self.assertEqual(
             (http.client.FORBIDDEN, (
                 "You don't have the required permission to accept the "
-                "following node(s): %s." % node_id).encode(
+                "following machine(s): %s." % machine_id).encode(
                 settings.DEFAULT_CHARSET)),
             (response.status_code, response.content))
 
     def test_POST_accept_all_does_not_accept_anything(self):
         # It is not an error for a non-admin user to attempt to accept all
-        # anonymously enlisted nodes, but only those for which he/she has
+        # anonymously enlisted machines, but only those for which he/she has
         # admin privs will be accepted, which currently equates to none of
         # them.
         self.client_log_in()
         factory.make_Node(status=NODE_STATUS.NEW),
         factory.make_Node(status=NODE_STATUS.NEW),
         response = self.client.post(
-            reverse('nodes_handler'), {'op': 'accept_all'})
+            reverse('machines_handler'), {'op': 'accept_all'})
         self.assertEqual(http.client.OK, response.status_code)
-        nodes_returned = json_load_bytes(response.content)
-        self.assertEqual([], nodes_returned)
+        machines_returned = json_load_bytes(response.content)
+        self.assertEqual([], machines_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
         self.client_log_in()
         new_power_address = factory.make_string()
         response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
+            reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'power_parameters': json.dumps(
@@ -627,21 +459,19 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
-        node = Node.objects.get(
+        machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             (http.client.OK, {"power_address": new_power_address},
              'ether_wake'),
-            (response.status_code, node.power_parameters,
-             node.power_type))
+            (response.status_code, machine.power_parameters,
+             machine.power_type))
 
     def test_POST_returns_limited_fields(self):
         self.client_log_in()
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
@@ -652,18 +482,15 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname',
                 'owner',
                 'system_id',
-                'pxe_mac',
                 'macaddress_set',
                 'architecture',
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'status',
-                'substatus',
                 'osystem',
                 'distro_series',
                 'netboot',
                 'node_type',
-                'boot_type',
                 'power_type',
                 'power_state',
                 'resource_uri',
@@ -692,37 +519,31 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
     """Enlistment tests from the perspective of admin users."""
 
     def setUp(self):
-        super(AdminLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'power_on_node')
-        self.patch_autospec(node_module, 'power_off_node')
-        self.patch_autospec(node_module, 'power_driver_check')
-        self.patch_autospec(Node, 'start_transition_monitor')
+        super().setUp()
+        self.patch(Node, 'get_effective_power_info').return_value = (
+            PowerInfo(False, False, False, None, None))
 
-    def test_POST_new_sets_power_type_if_admin(self):
+    def test_POST_sets_power_type_if_admin(self):
         self.client_log_in(as_admin=True)
         response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
+            reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
         self.assertEqual(http.client.OK, response.status_code)
-        node = Node.objects.get(
+        machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
-        self.assertEqual('ether_wake', node.power_type)
-        self.assertEqual({}, node.power_parameters)
+        self.assertEqual('ether_wake', machine.power_type)
+        self.assertEqual({}, machine.power_parameters)
 
-    def test_POST_new_sets_power_parameters_field(self):
-        # The api allows the setting of a Node's power_parameters field.
+    def test_POST_sets_power_parameters_field(self):
+        # The api allows the setting of a Machine's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
         self.client_log_in(as_admin=True)
         new_mac_address = factory.make_mac_address()
         response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
+            reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'power_parameters_mac_address': new_mac_address,
@@ -731,19 +552,17 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        node = Node.objects.get(
+        machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             {'mac_address': new_mac_address},
-            reload_object(node).power_parameters)
+            reload_object(machine).power_parameters)
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
         self.client_log_in(as_admin=True)
         hostname = factory.make_string()
         response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
+            reverse('machines_handler'), {
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
@@ -757,7 +576,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 {'power_parameters': ["Unknown parameter(s): unknown_param."]}
             ),
             (response.status_code, json_load_bytes(response.content)))
-        self.assertFalse(Node.objects.filter(hostname=hostname).exists())
+        self.assertFalse(Machine.objects.filter(hostname=hostname).exists())
 
     def test_POST_new_sets_power_parameters_skip_check(self):
         # The api allows to skip the validation step and set arbitrary
@@ -765,9 +584,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         param = factory.make_string()
         response = self.client.post(
-            reverse('nodes_handler'), {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
+            reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'power_parameters_param': param,
@@ -777,21 +594,19 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        node = Node.objects.get(
+        machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             {'param': param},
-            reload_object(node).power_parameters)
+            reload_object(machine).power_parameters)
 
-    def test_POST_admin_creates_node_in_commissioning_state(self):
-        # When an admin user enlists a node, it goes into the
+    def test_POST_admin_creates_machine_in_commissioning_state(self):
+        # When an admin user enlists a machine, it goes into the
         # Commissioning state.
         self.client_log_in(as_admin=True)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
@@ -801,15 +616,13 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         system_id = json_load_bytes(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.COMMISSIONING,
-            Node.objects.get(system_id=system_id).status)
+            Machine.objects.get(system_id=system_id).status)
 
     def test_POST_returns_limited_fields(self):
         self.client_log_in(as_admin=True)
         response = self.client.post(
-            reverse('nodes_handler'),
+            reverse('machines_handler'),
             {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
@@ -821,18 +634,15 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname',
                 'owner',
                 'system_id',
-                'pxe_mac',
                 'macaddress_set',
                 'architecture',
                 'min_hwe_kernel',
                 'hwe_kernel',
                 'status',
-                'substatus',
                 'osystem',
                 'distro_series',
                 'netboot',
                 'node_type',
-                'boot_type',
                 'power_type',
                 'power_state',
                 'resource_uri',
@@ -857,16 +667,16 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             list(parsed_result))
 
     def test_POST_accept_all(self):
-        # An admin user can accept all anonymously enlisted nodes.
+        # An admin user can accept all anonymously enlisted machines.
         self.client_log_in(as_admin=True)
-        nodes = [
+        machines = [
             factory.make_Node(status=NODE_STATUS.NEW),
             factory.make_Node(status=NODE_STATUS.NEW),
             ]
         response = self.client.post(
-            reverse('nodes_handler'), {'op': 'accept_all'})
+            reverse('machines_handler'), {'op': 'accept_all'})
         self.assertEqual(http.client.OK, response.status_code)
-        nodes_returned = json_load_bytes(response.content)
+        machines_returned = json_load_bytes(response.content)
         self.assertSetEqual(
-            {node.system_id for node in nodes},
-            {node["system_id"] for node in nodes_returned})
+            {machine.system_id for machine in machines},
+            {machine["system_id"] for machine in machines_returned})

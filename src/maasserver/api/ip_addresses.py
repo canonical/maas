@@ -7,7 +7,7 @@ __all__ = [
     'IPAddressesHandler',
     ]
 
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -24,10 +24,9 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
-    StaticIPAlreadyExistsForMACAddress,
 )
 from maasserver.forms import (
-    ClaimIPForm,
+    ClaimIPForMACForm,
     ReleaseIPForm,
 )
 from maasserver.models import (
@@ -35,15 +34,13 @@ from maasserver.models import (
     Domain,
     Interface,
     StaticIPAddress,
+    Subnet,
 )
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.utils.orm import transactional
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-)
-from netaddr.core import AddrFormatError
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.ipaddr import (
+    get_first_and_last_usable_host_in_network,
+)
 
 
 maaslog = get_maas_logger("ip_addresses")
@@ -53,7 +50,7 @@ class IPAddressesHandler(OperationsHandler):
     """Manage IP addresses allocated by MAAS."""
     api_doc_section_name = "IP Addresses"
     model = StaticIPAddress
-    fields = ('alloc_type', 'created', 'ip')
+    fields = ('alloc_type', 'created', 'ip', 'subnet')
     create = update = delete = None
 
     @classmethod
@@ -61,19 +58,18 @@ class IPAddressesHandler(OperationsHandler):
         return ('ipaddresses_handler', [])
 
     @transactional
-    def claim_ip(
-            self, user, interface, requested_address, mac=None,
+    def _claim_ip(
+            self, user, subnet, ip_address, mac=None,
             hostname=None, domain=None):
-        """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
-        `interface`.
+        """Attempt to get a USER_RESERVED StaticIPAddress for `user`.
 
-        :param interface: NodeGroupInterface to use
-        :param requested_address: Any requested address
+        :param subnet: Subnet to use use for claiming the IP.
+        :param ip_address: Any requested address
         :param mac: MAC address to use
         :param hostname: The hostname
         :param domain: The domain to use
-        :type interface: NodeGroupInterface
-        :type requested_address: str
+        :type subnet: Subnet
+        :type ip_address: str
         :type mac: str
         :type hostname: str
         :type domain: Domain
@@ -82,14 +78,22 @@ class IPAddressesHandler(OperationsHandler):
         if domain is None:
             domain = Domain.objects.get_default_domain()
         if mac is None:
+            # XXX bug=1539248 2016-01-28 blake_r: We need to take into account
+            # all dynamic ranges inside the subnet. allocate_new needs to be
+            # fixed to just take a subnet instead of all the range information.
+            # For now ignoring even one dynamic range is skipped.
+            network = subnet.get_ipnetwork()
+            ip_range_low, ip_range_high = (
+                get_first_and_last_usable_host_in_network(network))
             sip = StaticIPAddress.objects.allocate_new(
-                network=interface.network,
-                static_range_low=interface.static_ip_range_low,
-                static_range_high=interface.static_ip_range_high,
-                dynamic_range_low=interface.ip_range_low,
-                dynamic_range_high=interface.ip_range_high,
+                network=network,
+                static_range_low=ip_range_low,
+                static_range_high=ip_range_high,
+                dynamic_range_low=None,
+                dynamic_range_high=None,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-                requested_address=requested_address,
+                requested_address=ip_address,
+                subnet=subnet,
                 user=user)
             from maasserver.dns import config as dns_config
             if hostname is not None and hostname != '':
@@ -97,11 +101,13 @@ class IPAddressesHandler(OperationsHandler):
                     name=hostname, domain=domain)
                 dnsrr.ip_addresses.add(sip)
                 dns_config.dns_update_domains([domain])
-            dns_config.dns_update_subnets([interface.subnet])
+            dns_config.dns_update_subnets([subnet])
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
-            # The user has requested a static IP linked to a MAC
-            # address, so we set that up via the Interface model.
+            # The user has requested a static IP linked to a MAC address, so we
+            # set that up via the Interface model. If the MAC address is part
+            # of a node, then this operation is not allowed. The 'link_subnet'
+            # API should be used on that interface.
             nic, created = (
                 Interface.objects.get_or_create(
                     mac_address=mac,
@@ -109,30 +115,18 @@ class IPAddressesHandler(OperationsHandler):
                         'type': INTERFACE_TYPE.UNKNOWN,
                         'name': 'eth0',
                     }))
-            ips_on_interface = [
-                addr.ip
-                for addr in nic.ip_addresses.filter(
-                    alloc_type__in=[
-                        IPADDRESS_TYPE.AUTO,
-                        IPADDRESS_TYPE.STICKY,
-                        IPADDRESS_TYPE.USER_RESERVED,
-                    ])
-                if addr.ip and IPAddress(addr.ip) in interface.network
-            ]
-            if any(ips_on_interface):
-                # If this inteface already has static IPs on the interface in
-                # question we raise an error, since we can't sanely
-                # allocate more addresses for the MAC here.
-                raise StaticIPAlreadyExistsForMACAddress(
-                    "MAC address %s already has the IP address(es) %s." %
-                    (mac, ', '.join(ips_on_interface)))
+            if nic.type != INTERFACE_TYPE.UNKNOWN:
+                raise MAASAPIBadRequest(
+                    "MAC address %s already belongs to %s. Use of the "
+                    "interface API is required, for an interface that belongs "
+                    "to a node." % (nic.mac_address, nic.node.hostname))
 
-            # Link the new interface on the same subnet as the passed
-            # nodegroup interface.
+            # Link the new interface on the same subnet as the
+            # ip_address.
             sip = nic.link_subnet(
                 INTERFACE_LINK_TYPE.STATIC,
-                interface.subnet,
-                ip_address=requested_address,
+                subnet,
+                ip_address=ip_address,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 user=user)
             from maasserver.dns import config as dns_config
@@ -141,7 +135,7 @@ class IPAddressesHandler(OperationsHandler):
                     name=hostname, domain=domain)
                 dnsrr.ip_addresses.add(sip)
                 dns_config.dns_update_domains([domain])
-            dns_config.dns_update_subnets([interface.subnet])
+            dns_config.dns_update_subnets([subnet])
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
                 user.username, sip.ip, nic.mac_address)
@@ -152,65 +146,52 @@ class IPAddressesHandler(OperationsHandler):
         """Reserve an IP address for use outside of MAAS.
 
         Returns an IP adddress, which MAAS will not allow any of its known
-        devices and Nodes to use; it is free for use by the requesting user
-        until released by the user.
+        nodes to use; it is free for use by the requesting user until released
+        by the user.
 
-        The user may supply either a range matching the subnet of an
-        existing cluster interface, or a specific IP address within the
-        static IP address range on a cluster interface.
+        The user may supply either a subnet or a specific IP address within a
+        subnet.
 
-        :param network: CIDR representation of the network on which the IP
+        :param subnet: CIDR representation of the subnet on which the IP
             reservation is required. e.g. 10.1.2.0/24
-        :param requested_address: the requested address, which must be within
-            a static IP address range managed by MAAS.
-        :param hostname: the hostname to use for the specified IP address
-        :type network: unicode
+        :param ip_address: The IP address, which must be within
+            a known subnet.
+        :param hostname: The hostname to use for the specified IP address
+        :param mac: The MAC address that should be linked to this reservation.
 
-        Returns 400 if there is no network in MAAS matching the provided one,
-        or a requested_address is supplied, but a corresponding network
+        Returns 400 if there is no subnet in MAAS matching the provided one,
+        or a ip_address is supplied, but a corresponding subnet
         could not be found.
         Returns 503 if there are no more IP addresses available.
         """
-        network = get_optional_param(request.POST, "network")
-        requested_address = get_optional_param(
-            request.POST, "requested_address")
+        subnet = get_optional_param(request.POST, "subnet")
+        ip_address = get_optional_param(
+            request.POST, "ip_address")
         hostname = get_optional_param(request.POST, "hostname")
         mac_address = get_optional_param(request.POST, "mac")
 
-        form = ClaimIPForm(request.POST)
+        form = ClaimIPForMACForm(request.POST)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        if requested_address is not None:
-            try:
-                # Validate the passed address.
-                valid_address = IPAddress(requested_address)
-                ngi = (NodeGroupInterface.objects
-                       .get_by_address_for_static_allocation(valid_address))
-            except AddrFormatError:
+        if ip_address is not None:
+            subnet = Subnet.objects.get_best_subnet_for_ip(ip_address)
+            if subnet is None:
                 raise MAASAPIBadRequest(
-                    "Invalid requested_address parameter: %s" %
-                    requested_address)
-        elif network is not None:
+                    "No known subnet for IP %s." % ip_address)
+        elif subnet is not None:
             try:
-                # Validate the passed network.
-                valid_network = IPNetwork(network)
-                ngi = (NodeGroupInterface.objects
-                       .get_by_network_for_static_allocation(valid_network))
-            except AddrFormatError:
+                subnet = Subnet.objects.get_object_by_specifiers_or_raise(
+                    subnet)
+            except Http404:
                 raise MAASAPIBadRequest(
-                    "Invalid network parameter: %s" % network)
+                    "Unable to identify subnet %s." % subnet) from None
         else:
             raise MAASAPIBadRequest(
-                "Must supply either a network or a requested_address.")
+                "Must supply either a subnet or a ip_address.")
 
-        if ngi is None:
-            raise MAASAPIBadRequest(
-                "No network found matching %s; you may be requesting an IP "
-                "on a network with no static IP range defined." % network)
-
-        return self.claim_ip(
-            request.user, ngi, requested_address, mac_address,
+        return self._claim_ip(
+            request.user, subnet, ip_address, mac_address,
             hostname=hostname)
 
     @operation(idempotent=False)
@@ -223,14 +204,20 @@ class IPAddressesHandler(OperationsHandler):
         Returns 404 if the provided IP address is not found.
         """
         ip = get_mandatory_param(request.POST, "ip")
-
         form = ReleaseIPForm(request.POST)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        ip_address = get_object_or_404(
-            StaticIPAddress, alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-            ip=ip, user=request.user)
+        # Get the reserved IP address, or raise bad request.
+        try:
+            ip_address = StaticIPAddress.objects.get(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip,
+                user=request.user)
+        except StaticIPAddress.DoesNotExist:
+            raise MAASAPIBadRequest(
+                "User reserved IP %s does not exist." % ip) from None
+
+        # Unlink the IP address from the interfaces it is connected.
         interfaces = list(ip_address.interface_set.all())
         if len(interfaces) > 0:
             for interface in interfaces:
@@ -251,4 +238,5 @@ class IPAddressesHandler(OperationsHandler):
 
         Get a listing of all IPAddresses allocated to the requesting user.
         """
-        return StaticIPAddress.objects.filter(user=request.user).order_by('id')
+        return StaticIPAddress.objects.filter(
+            user=request.user).order_by('id')

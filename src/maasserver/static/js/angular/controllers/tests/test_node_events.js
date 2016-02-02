@@ -20,10 +20,10 @@ describe("NodeEventsController", function() {
 
     // Load the required dependencies for the NodeEventsController and
     // mock the websocket connection.
-    var NodesManager, EventsManagerFactory, ManagerHelperService, ErrorService;
-    var RegionConnection, webSocket;
+    var MachinesManager, EventsManagerFactory, ManagerHelperService;
+    var ErrorService, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
-        NodesManager = $injector.get("NodesManager");
+        MachinesManager = $injector.get("MachinesManager");
         EventsManagerFactory = $injector.get("EventsManagerFactory");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -42,7 +42,7 @@ describe("NodeEventsController", function() {
             system_id: makeName("system_id"),
             fqdn: makeName("fqdn")
         };
-        NodesManager._items.push(node);
+        MachinesManager._items.push(node);
         return node;
     }
 
@@ -82,7 +82,7 @@ describe("NodeEventsController", function() {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
-            NodesManager: NodesManager,
+            MachinesManager: MachinesManager,
             EventsManagerFactory: EventsManagerFactory,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
@@ -104,31 +104,31 @@ describe("NodeEventsController", function() {
         expect($scope.days).toEqual(30);
     });
 
-    it("calls loadManager with NodesManager", function() {
+    it("calls loadManager with MachinesManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            NodesManager);
+            MachinesManager);
     });
 
     it("doesnt call setActiveItem if node already loaded", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
-        spyOn(NodesManager, "setActiveItem");
+        MachinesManager._activeItem = node;
+        spyOn(MachinesManager, "setActiveItem");
 
         defer.resolve();
         $rootScope.$digest();
 
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
-        expect(NodesManager.setActiveItem).not.toHaveBeenCalled();
+        expect(MachinesManager.setActiveItem).not.toHaveBeenCalled();
     });
 
     it("calls setActiveItem if node not loaded", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
 
         defer.resolve();
@@ -139,7 +139,7 @@ describe("NodeEventsController", function() {
 
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
-        expect(NodesManager.setActiveItem).toHaveBeenCalledWith(
+        expect(MachinesManager.setActiveItem).toHaveBeenCalledWith(
             node.system_id);
     });
 
@@ -147,7 +147,7 @@ describe("NodeEventsController", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         spyOn(ErrorService, "raiseError");
 
@@ -164,7 +164,7 @@ describe("NodeEventsController", function() {
     it("gets the events manager for the node", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
+        MachinesManager._activeItem = node;
         spyOn(EventsManagerFactory, "getManager").and.callThrough();
 
         defer.resolve();
@@ -178,7 +178,7 @@ describe("NodeEventsController", function() {
     it("calls loadItems on the events manager", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
+        MachinesManager._activeItem = node;
         var manager = EventsManagerFactory.getManager(node.id);
         spyOn(manager, "loadItems").and.returnValue($q.defer().promise);
 
@@ -190,7 +190,7 @@ describe("NodeEventsController", function() {
     it("sets eventsLoaded once events manager loadItems resolves", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
+        MachinesManager._activeItem = node;
         var manager = EventsManagerFactory.getManager(node.id);
         var loadDefer = $q.defer();
         spyOn(manager, "loadItems").and.returnValue(loadDefer.promise);
@@ -205,7 +205,7 @@ describe("NodeEventsController", function() {
     it("watches node.fqdn updates $rootScope.title", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
+        MachinesManager._activeItem = node;
 
         defer.resolve();
         $rootScope.$digest();
@@ -238,7 +238,7 @@ describe("NodeEventsController", function() {
         it("adds 30 days to $scope.days", function() {
             var defer = $q.defer();
             var controller = makeController(defer);
-            NodesManager._activeItem = node;
+            MachinesManager._activeItem = node;
 
             defer.resolve();
             $rootScope.$digest();
@@ -250,7 +250,7 @@ describe("NodeEventsController", function() {
         it("calls loadMaximumDays with $scope.days", function() {
             var defer = $q.defer();
             var controller = makeController(defer);
-            NodesManager._activeItem = node;
+            MachinesManager._activeItem = node;
             var manager = EventsManagerFactory.getManager(node.id);
             spyOn(manager, "loadMaximumDays");
 

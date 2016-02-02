@@ -20,9 +20,9 @@ from maasserver.third_party_drivers import (
 from maastesting import root
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
-from metadataserver.models import (
-    commissioningscript,
-    NodeResult,
+from metadataserver.models import NodeResult
+from provisioningserver.refresh.node_info_scripts import (
+    LIST_MODALIASES_OUTPUT_NAME,
 )
 
 
@@ -32,8 +32,8 @@ class TestNodeModaliases(MAASServerTestCase):
         test_data = b'hulla\nbaloo'
         node = factory.make_Node()
         NodeResult.objects.store_data(
-            node, commissioningscript.LIST_MODALIASES_OUTPUT_NAME,
-            0, RESULT_TYPE.COMMISSIONING, Bin(test_data))
+            node, LIST_MODALIASES_OUTPUT_NAME, 0,
+            RESULT_TYPE.COMMISSIONING, Bin(test_data))
 
         aliases = node_modaliases(node)
         self.assertEqual(['hulla', 'baloo'], aliases)

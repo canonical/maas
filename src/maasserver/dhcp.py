@@ -22,6 +22,7 @@ from maasserver.enum import (
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
     Config,
+    Domain,
     StaticIPAddress,
 )
 from maasserver.rpc import getClientFor
@@ -31,6 +32,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase
 from netaddr import IPAddress
+from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
@@ -45,10 +47,19 @@ from provisioningserver.utils.twisted import (
 logger = logging.getLogger(__name__)
 
 
+def get_omapi_key():
+    """Return the OMAPI key for all DHCP servers that are ran by MAAS."""
+    key = Config.objects.get_config("omapi_key")
+    if key is None or key == '':
+        key = generate_omapi_key()
+        Config.objects.set_config("omapi_key", key)
+    return key
+
+
 def split_ipv4_ipv6_interfaces(interfaces):
     """Divide `interfaces` into IPv4 ones and IPv6 ones.
 
-    :param interfaces: An iterable of cluster interfaces.
+    :param interfaces: An iterable of rack controller interfaces.
     :return: A tuple of two separate iterables: IPv4 cluster interfaces for
         `nodegroup`, and its IPv6 cluster interfaces.
     """
@@ -120,7 +131,7 @@ def make_hosts_for_subnet(subnet):
     return sorted(hosts, key=itemgetter('host'))
 
 
-def make_subnet_config(interface, dns_servers, ntp_server):
+def make_subnet_config(interface, dns_servers, ntp_server, default_domain):
     """Return DHCP subnet configuration dict for a cluster interface."""
     ip_network = interface.subnet.get_ipnetwork()
     return {
@@ -137,7 +148,7 @@ def make_subnet_config(interface, dns_servers, ntp_server):
             else str(interface.subnet.gateway_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,
-        'domain_name': interface.nodegroup.name,
+        'domain_name': default_domain.name,
         'ip_range_low': interface.ip_range_low,
         'ip_range_high': interface.ip_range_high,
         'hosts': make_hosts_for_subnet(interface.subnet),
@@ -145,10 +156,11 @@ def make_subnet_config(interface, dns_servers, ntp_server):
 
 
 @synchronous
-def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server, client):
+def do_configure_dhcp(
+        ip_version, rack_controller, interfaces, ntp_server, client):
     """Write DHCP configuration and restart the DHCP server.
 
-    Delegates the work to the cluster controller, and waits for it
+    Delegates the work to the rack controller, and waits for it
     to complete.
 
     :param ip_version: The IP version to configure for, either 4 or 6.
@@ -177,39 +189,41 @@ def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server, client):
 
     try:
         dns_servers = get_dns_server_address(
-            nodegroup, ipv4=(ip_version == 4), ipv6=(ip_version == 6))
+            rack_controller, ipv4=(ip_version == 4), ipv6=(ip_version == 6))
     except UnresolvableHost:
         # No IPv6 DNS server addresses found.  As a space-separated string,
         # that becomes the empty string.
         dns_servers = ''
 
-    omapi_key = nodegroup.dhcp_key
+    default_domain = Domain.objects.get_default_domain()
     subnets = [
-        make_subnet_config(interface, dns_servers, ntp_server)
+        make_subnet_config(interface, dns_servers, ntp_server, default_domain)
         for interface in interfaces
         ]
     # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
     # needs to be reported gracefully to the caller.
-    client(command, omapi_key=omapi_key, subnet_configs=subnets).wait(60)
+    client(command, omapi_key=get_omapi_key(), subnet_configs=subnets).wait(60)
 
 
-def configure_dhcpv4(nodegroup, interfaces, ntp_server, client):
+def configure_dhcpv4(rack_controller, interfaces, ntp_server, client):
     """Call `do_configure_dhcp` for IPv4.
 
     This serves mainly as a convenience for testing.
     """
-    return do_configure_dhcp(4, nodegroup, interfaces, ntp_server, client)
+    return do_configure_dhcp(
+        4, rack_controller, interfaces, ntp_server, client)
 
 
-def configure_dhcpv6(nodegroup, interfaces, ntp_server, client):
+def configure_dhcpv6(rack_controller, interfaces, ntp_server, client):
     """Call `do_configure_dhcp` for IPv6.
 
     This serves mainly as a convenience for testing.
     """
-    return do_configure_dhcp(6, nodegroup, interfaces, ntp_server, client)
+    return do_configure_dhcp(
+        6, rack_controller, interfaces, ntp_server, client)
 
 
-def configure_dhcp_now(nodegroup):
+def configure_dhcp_now(rack_controller):
     """Write the DHCP configuration files and restart the DHCP servers.
 
     :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
@@ -224,25 +238,25 @@ def configure_dhcp_now(nodegroup):
 
     # Get the client early; it's a cheap operation that may raise an
     # exception, meaning we can avoid some work if it fails.
-    client = getClientFor(nodegroup.uuid)
+    client = getClientFor(rack_controller.system_id)
 
-    if nodegroup.status == NODEGROUP_STATUS.ENABLED:
+    if rack_controller.status == NODEGROUP_STATUS.ENABLED:
         # Cluster is an accepted one.  Control DHCP for its managed interfaces.
-        interfaces = nodegroup.get_managed_interfaces()
+        interfaces = rack_controller.get_managed_interfaces()
     else:
         # Cluster isn't accepted.  Effectively, it manages no interfaces.
         interfaces = []
 
-    # Make sure this nodegroup has a key to communicate with the dhcp
+    # Make sure this rack_controller has a key to communicate with the dhcp
     # server.
-    nodegroup.ensure_dhcp_key()
+    rack_controller.ensure_dhcp_key()
 
     ntp_server = Config.objects.get_config("ntp_server")
 
     ipv4_interfaces, ipv6_interfaces = split_ipv4_ipv6_interfaces(interfaces)
 
-    configure_dhcpv4(nodegroup, ipv4_interfaces, ntp_server, client)
-    configure_dhcpv6(nodegroup, ipv6_interfaces, ntp_server, client)
+    configure_dhcpv4(rack_controller, ipv4_interfaces, ntp_server, client)
+    configure_dhcpv6(rack_controller, ipv6_interfaces, ntp_server, client)
 
 
 class Changes:

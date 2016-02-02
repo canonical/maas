@@ -53,8 +53,8 @@ def generate_user_data(node, userdata_dir,
         config_template_file, encoding=ENCODING)
     # The preseed context is a dict containing various configs that the
     # templates can use.
-    nodegroup = node.nodegroup
-    preseed_context = get_preseed_context(nodegroup=nodegroup)
+    preseed_context = get_preseed_context(
+        rack_controller=node.get_boot_primary_rack_controller())
     preseed_context['node'] = node
 
     # Render the snippets in the main template.

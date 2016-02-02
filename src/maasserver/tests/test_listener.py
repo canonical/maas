@@ -30,8 +30,6 @@ from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
 from maasserver.models.node import Node
-from maasserver.models.nodegroup import NodeGroup
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -100,10 +98,10 @@ class TestPostgresListenerService(MAASServerTestCase):
     def test__calls_handler_on_notification(self):
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.send_notification, "node_create", 1)
+            yield deferToDatabase(self.send_notification, "machine_create", 1)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '1'), dv.value)
         finally:
@@ -118,8 +116,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         try:
             # Register after the service has been started. The handler should
             # still be called.
-            listener.register("node", lambda *args: dv.set(args))
-            yield deferToDatabase(self.send_notification, "node_create", 1)
+            listener.register("machine", lambda *args: dv.set(args))
+            yield deferToDatabase(self.send_notification, "machine_create", 1)
             yield dv.get(timeout=2)
             self.assertEqual(('create', '1'), dv.value)
         finally:
@@ -474,53 +472,6 @@ class TransactionalHelpersMixin:
     def get_node_boot_interface(self, system_id):
         node = Node.objects.get(system_id=system_id)
         return node.get_boot_interface()
-
-    @transactional
-    def create_nodegroup(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_NodeGroup(**params)
-
-    @transactional
-    def update_nodegroup(self, id, params):
-        nodegroup = NodeGroup.objects.get(id=id)
-        for key, value in params.items():
-            setattr(nodegroup, key, value)
-        return nodegroup.save()
-
-    @transactional
-    def delete_nodegroup(self, id):
-        nodegroup = NodeGroup.objects.get(id=id)
-        nodegroup.delete()
-
-    @transactional
-    def create_nodegroupinterface(self, nodegroup, params=None):
-        if params is None:
-            params = {}
-        return factory.make_NodeGroupInterface(nodegroup, **params)
-
-    @transactional
-    def update_nodegroupinterface(self, id, params):
-        interface = NodeGroupInterface.objects.get(id=id)
-        for key, value in params.items():
-            setattr(interface, key, value)
-        return interface.save()
-
-    @transactional
-    def update_nodegroupinterface_subnet_mask(self, id, subnet_mask):
-        interface = NodeGroupInterface.objects.get(id=id)
-        # This is now a special case, since the subnet_mask no longer
-        # belongs to the NodeGroupInterface. We'll need to explicitly
-        # save *only* the Subnet, without saving the NodeGroupInterface.
-        # Otherwise, Django will ignorantly update the table, and our
-        # test case may pass with a false-positive.
-        interface.subnet_mask = subnet_mask
-        interface.subnet.save()
-
-    @transactional
-    def delete_nodegroupinterface(self, id):
-        interface = NodeGroupInterface.objects.get(id=id)
-        interface.delete()
 
     @transactional
     def create_fabric(self, params=None):
@@ -915,9 +866,9 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers code."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
@@ -986,7 +937,7 @@ class TestDeviceWithParentListener(
         yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         parent = yield deferToDatabase(self.create_node)
         yield listener.startService()
         try:
@@ -1006,7 +957,7 @@ class TestDeviceWithParentListener(
         yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         yield listener.startService()
         try:
@@ -1025,157 +976,13 @@ class TestDeviceWithParentListener(
         yield deferToDatabase(register_all_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, device.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', parent.system_id), dv.value)
-        finally:
-            yield listener.stopService()
-
-
-class TestClusterListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
-    """End-to-end test of both the listeners code and the cluster
-    triggers code."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            nodegroup = yield deferToDatabase(self.create_nodegroup)
-            yield dv.get(timeout=2)
-            self.assertEqual(('create', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_nodegroup,
-                nodegroup.id,
-                {'cluster_name': factory.make_name('cluster_name')})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_nodegroup, nodegroup.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('delete', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-
-class TestClusterInterfaceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
-    """End-to-end test of both the listeners code and the cluster interface
-    triggers code."""
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_nodegroup_update_handler_on_create_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.create_nodegroupinterface, nodegroup)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_nodegroup_update_handler_on_update_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-        interface = yield deferToDatabase(
-            self.create_nodegroupinterface, nodegroup)
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_nodegroupinterface,
-                interface.id,
-                {'name': factory.make_name('name')})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_nodegroup_update_handler_on_update_subnet_mask(self):
-        yield deferToDatabase(register_all_triggers)
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-        interface = yield deferToDatabase(
-            self.create_nodegroupinterface, nodegroup,
-            params=dict(ip='10.0.0.1', subnet_mask='255.255.255.0'))
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.update_nodegroupinterface_subnet_mask,
-                interface.id, '255.255.0.0')
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_nodegroup_update_handler_on_delete_notification(self):
-        yield deferToDatabase(register_all_triggers)
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
-        interface = yield deferToDatabase(
-            self.create_nodegroupinterface, nodegroup)
-
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register("nodegroup", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_nodegroupinterface, interface.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1298,9 +1105,9 @@ class TestNodeTagListener(
     maasserver_node_tags table."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
@@ -1379,7 +1186,7 @@ class TestDeviceWithParentTagListener(
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.add_node_to_tag, device, tag)
@@ -1397,7 +1204,7 @@ class TestDeviceWithParentTagListener(
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.remove_node_from_tag, device, tag)
@@ -1416,7 +1223,7 @@ class TestDeviceWithParentTagListener(
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             tag = yield deferToDatabase(
@@ -1545,9 +1352,9 @@ class TestNodeEventListener(
     maasserver_event table that notifies its node."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
@@ -1586,7 +1393,7 @@ class TestDeviceWithParentEventListener(
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_event, {"node": device})
@@ -1602,9 +1409,9 @@ class TestNodeStaticIPAddressListener(
     maasserver_interfacestaticipaddresslink table that notifies its node."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE, 'interface': True},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
@@ -1670,7 +1477,7 @@ class TestDeviceWithParentStaticIPAddressListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -1693,7 +1500,7 @@ class TestDeviceWithParentStaticIPAddressListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
@@ -1709,9 +1516,9 @@ class TestNodeNodeResultListener(
     metadataserver_noderesult table that notifies its node."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
@@ -1768,7 +1575,7 @@ class TestDeviceWithParentNodeResultListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_noderesult, {"node": device})
@@ -1787,7 +1594,7 @@ class TestDeviceWithParentNodeResultListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_noderesult, result.id)
@@ -1803,9 +1610,9 @@ class TestNodeInterfaceListener(
     maasserver_interface table that notifies its node."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
@@ -1916,7 +1723,7 @@ class TestDeviceWithParentInterfaceListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_interface, {"node": device})
@@ -1935,7 +1742,7 @@ class TestDeviceWithParentInterfaceListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_interface, interface.id)
@@ -1954,7 +1761,7 @@ class TestDeviceWithParentInterfaceListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
@@ -1984,7 +1791,7 @@ class TestDeviceWithParentInterfaceListener(
                     break
 
         listener = PostgresListenerService()
-        listener.register("node", set_defer_value)
+        listener.register("machine", set_defer_value)
         yield listener.startService()
         try:
             yield deferToDatabase(self.update_interface, interface.id, {
@@ -2238,9 +2045,9 @@ class TestNodeNetworkListener(
     maasserver_vlan tables that notifies affected nodes."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE, 'interface': True},
-            'listener': 'node',
+            'listener': 'machine',
             }),
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
@@ -2395,7 +2202,7 @@ class TestDeviceWithParentNetworkListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -2420,7 +2227,7 @@ class TestDeviceWithParentNetworkListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -2445,7 +2252,7 @@ class TestDeviceWithParentNetworkListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -2470,7 +2277,7 @@ class TestDeviceWithParentNetworkListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -2501,7 +2308,7 @@ class TestDeviceWithParentNetworkListener(
 
         listener = PostgresListenerService()
         dv = DeferredValue()
-        listener.register("node", lambda *args: dv.set(args))
+        listener.register("machine", lambda *args: dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(
@@ -2583,16 +2390,16 @@ class TestStaticIPAddressSubnetListener(
             yield listener.stopService()
 
 
-class TestNodeBlockDeviceListener(
+class TestMachineBlockDeviceListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_blockdevice, maasserver_physicalblockdevice, and
-    maasserver_virtualblockdevice tables that notifies its node."""
+    maasserver_virtualblockdevice tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 
@@ -2698,15 +2505,15 @@ class TestNodeBlockDeviceListener(
             yield listener.stopService()
 
 
-class TestNodePartitionTableListener(
+class TestMachinePartitionTableListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_partitiontable tables that notifies its node."""
+    maasserver_partitiontable tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 
@@ -2770,15 +2577,15 @@ class TestNodePartitionTableListener(
             yield listener.stopService()
 
 
-class TestNodePartitionListener(
+class TestMachinePartitionListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_partition tables that notifies its node."""
+    maasserver_partition tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 
@@ -2843,15 +2650,15 @@ class TestNodePartitionListener(
             yield listener.stopService()
 
 
-class TestNodeFilesystemListener(
+class TestMachineFilesystemListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_filesystem tables that notifies its node."""
+    maasserver_filesystem tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 
@@ -2920,15 +2727,15 @@ class TestNodeFilesystemListener(
             yield listener.stopService()
 
 
-class TestNodeFilesystemgroupListener(
+class TestMachineFilesystemgroupListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_filesystemgroup tables that notifies its node."""
+    maasserver_filesystemgroup tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE, 'with_boot_disk': True},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 
@@ -2997,15 +2804,15 @@ class TestNodeFilesystemgroupListener(
             yield listener.stopService()
 
 
-class TestNodeCachesetListener(
+class TestMachineCachesetListener(
         DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
-    maasserver_cacheset tables that notifies its node."""
+    maasserver_cacheset tables that notifies its machine."""
 
     scenarios = (
-        ('node', {
+        ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'node',
+            'listener': 'machine',
             }),
     )
 

@@ -6,19 +6,11 @@
 __all__ = []
 
 from crochet import TimeoutError
-from django.forms import (
-    CheckboxInput,
-    HiddenInput,
-)
 from maasserver import forms
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.clusterrpc.testing.osystems import (
     make_rpc_osystem,
     make_rpc_release,
-)
-from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.forms import (
     AdminNodeForm,
@@ -38,7 +30,6 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -61,7 +52,6 @@ class TestNodeForm(MAASServerTestCase):
                 'swap_size',
                 'min_hwe_kernel',
                 'hwe_kernel',
-                'nodegroup',
             ], list(form.fields))
 
     def test_changes_node(self):
@@ -271,28 +261,6 @@ class TestNodeForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
-    def test_calls_validate_license_key_for_with_nodegroup(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate_for = self.patch(forms, 'validate_license_key_for')
-        mock_validate_for.return_value = True
-        form = NodeForm(data={
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertTrue(form.is_valid())
-        self.assertThat(
-            mock_validate_for,
-            MockCalledOnceWith(
-                node.nodegroup, osystem['name'], release['name'], license_key))
-
     def test_rejects_when_validate_license_key_for_returns_False(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
@@ -369,50 +337,13 @@ class TestNodeForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
-    def test_rejects_duplicate_fqdn_with_unmanaged_dns_on_one_nodegroup(self):
-        # If a host with a given hostname exists on a managed nodegroup,
-        # new nodes on unmanaged nodegroups with hostnames that match
-        # that FQDN will be rejected.
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_Node(
-            hostname=factory.make_name("hostname"), nodegroup=nodegroup)
-        other_nodegroup = factory.make_NodeGroup()
-        form = NodeForm(data={
-            'nodegroup': other_nodegroup,
-            'hostname': node.fqdn,
-            'architecture': make_usable_architecture(self),
-        })
-        form.instance.nodegroup = other_nodegroup
-        self.assertFalse(form.is_valid())
-
-    def test_rejects_duplicate_fqdn_on_same_nodegroup(self):
-        # If a node with a given FQDN exists on a managed nodegroup, new
-        # nodes on that nodegroup with duplicate FQDNs will be rejected.
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_Node(
-            hostname=factory.make_name("hostname"), nodegroup=nodegroup)
-        form = NodeForm(data={
-            'nodegroup': nodegroup,
-            'hostname': node.fqdn,
-            'architecture': make_usable_architecture(self),
-        })
-        form.instance.nodegroup = nodegroup
-        self.assertFalse(form.is_valid())
-
     def test_obeys_disable_ipv4_if_given(self):
         setting = factory.pick_bool()
-        cluster = factory.make_NodeGroup(default_disable_ipv4=(not setting))
         form = NodeForm(
             data={
-                'nodegroup': cluster,
                 'architecture': make_usable_architecture(self),
                 'disable_ipv4': setting,
                 })
-        form.instance.nodegroup = cluster
         node = form.save()
         self.assertEqual(setting, node.disable_ipv4)
 
@@ -434,61 +365,6 @@ class TestNodeForm(MAASServerTestCase):
                 })
         node = form.save()
         self.assertTrue(node.disable_ipv4)
-
-    def test_takes_True_disable_ipv4_from_cluster_by_default(self):
-        setting = True
-        cluster = factory.make_NodeGroup(default_disable_ipv4=setting)
-        form = NodeForm(
-            data={
-                'nodegroup': cluster,
-                'architecture': make_usable_architecture(self),
-                })
-        form.instance.nodegroup = cluster
-        node = form.save()
-        self.assertEqual(setting, node.disable_ipv4)
-
-    def test_takes_False_disable_ipv4_from_cluster_by_default(self):
-        setting = False
-        cluster = factory.make_NodeGroup(default_disable_ipv4=setting)
-        form = NodeForm(
-            data={
-                'nodegroup': cluster,
-                'architecture': make_usable_architecture(self),
-                })
-        form.instance.nodegroup = cluster
-        node = form.save()
-        self.assertEqual(setting, node.disable_ipv4)
-
-    def test_shows_disable_ipv4_if_IPv6_configured(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            cidr=str(factory.make_ipv6_network().cidr))
-        form = NodeForm(
-            instance=node,
-            data={'architecture': make_usable_architecture(self)})
-        self.assertIsInstance(
-            form.fields['disable_ipv4'].widget, CheckboxInput)
-
-    def test_hides_disable_ipv4_if_IPv6_not_configured(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            cidr=str(factory.make_ipv4_network().cidr))
-        form = NodeForm(
-            instance=node,
-            data={'architecture': make_usable_architecture(self)})
-        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
-
-    def test_shows_disable_ipv4_on_new_node_if_any_cluster_supports_it(self):
-        factory.make_Node_with_Interface_on_Subnet(
-            cidr=str(factory.make_ipv6_network().cidr))
-        form = NodeForm(data={'architecture': make_usable_architecture(self)})
-        self.assertIsInstance(
-            form.fields['disable_ipv4'].widget, CheckboxInput)
-
-    def test_hides_disable_ipv4_on_new_node_if_no_cluster_supports_it(self):
-        factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(), network=factory.make_ipv6_network(),
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        form = NodeForm(data={'architecture': make_usable_architecture(self)})
-        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
 
 
 class TestAdminNodeForm(MAASServerTestCase):
@@ -583,16 +459,3 @@ class TestAdminNodeForm(MAASServerTestCase):
         self.assertEqual(
             (hostname, power_type, {'field': power_parameters_field}),
             (node.hostname, node.power_type, node.power_parameters))
-
-    def test_AdminForm_does_not_permit_nodegroup_change(self):
-        # We had to make Node.nodegroup editable to get Django to
-        # validate it as non-blankable, but that doesn't mean that we
-        # actually want to allow people to edit it through API or UI.
-        old_nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(
-            nodegroup=old_nodegroup,
-            architecture=make_usable_architecture(self))
-        new_nodegroup = factory.make_NodeGroup()
-        AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
-        # The form saved without error, but the nodegroup change was ignored.
-        self.assertEqual(old_nodegroup, node.nodegroup)

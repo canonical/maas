@@ -13,6 +13,7 @@ from maasserver import (
     bootresources,
     eventloop,
     nonces_cleanup,
+    status_monitor,
     webapp,
 )
 from maasserver.eventloop import DEFAULT_PORT
@@ -168,6 +169,15 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_NonceCleanupService,
             eventloop.loop.factories["nonce-cleanup"]["factory"])
+
+    def test_make_StatusMonitorService(self):
+        service = eventloop.make_StatusMonitorService()
+        self.assertThat(service, IsInstance(
+            status_monitor.StatusMonitorService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_StatusMonitorService,
+            eventloop.loop.factories["status-monitor"]["factory"])
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()

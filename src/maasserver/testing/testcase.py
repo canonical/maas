@@ -71,8 +71,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self.useFixture(power_parameters.StaticPowerTypesFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: These should not be here.
-        # Disconnect the monitor cancellation as it's triggered by a signal.
-        self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', False)
         # Disconnect the status transition event to speed up tests.
         self.patch(signals.events, 'STATE_TRANSITION_EVENT_CONNECT', False)
 

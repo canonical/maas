@@ -14,7 +14,6 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -166,19 +165,6 @@ class TestVLAN(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         with ExpectedException(ProtectedError):
             vlan.delete()
-
-    def test_cluster_interfaces_are_reconnected_when_vlan_is_deleted(self):
-        fabric = factory.make_Fabric()
-        vlan = factory.make_VLAN(fabric=fabric)
-        nodegroup = factory.make_NodeGroup()
-        ngi = factory.make_NodeGroupInterface(nodegroup=nodegroup, vlan=vlan)
-        vlan.delete()
-        reconnected_interfaces = NodeGroupInterface.objects.filter(
-            id=ngi.id)
-        self.assertItemsEqual([ngi], reconnected_interfaces)
-        reconnected_interface = reconnected_interfaces[0]
-        self.assertEqual(
-            reconnected_interface.vlan, fabric.get_default_vlan())
 
     def test_subnets_are_reconnected_when_vlan_is_deleted(self):
         fabric = factory.make_Fabric()

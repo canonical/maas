@@ -5,13 +5,13 @@
 
 __all__ = []
 
+from apiclient.creds import convert_tuple_to_string
 from fixtures import FakeLogger
 from maasserver import populate_tags as populate_tags_module
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Tag
+from maasserver.models.user import get_creds_tuple
 from maasserver.populate_tags import (
     _do_populate_tags,
-    _get_clients_for_populating_tags,
     populate_tags,
     populate_tags_for_single_node,
 )
@@ -30,23 +30,21 @@ from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
 )
-from metadataserver.models import commissioningscript
+from metadataserver.models.nodekey import NodeKey
 from mock import (
     ANY,
     call,
     create_autospec,
-    sentinel,
+)
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
 )
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
 from testtools.monkey import MonkeyPatcher
-from twisted.internet import defer
-
-
-def make_accepted_NodeGroup():
-    return factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
 
 
 def make_Tag_without_populating():
@@ -55,186 +53,131 @@ def make_Tag_without_populating():
     return dont_populate.run_with_patches(factory.make_Tag)
 
 
-class TestGetClientsForPopulatingTags(MAASServerTestCase):
-
-    def test__returns_no_clients_when_there_are_no_clusters(self):
-        tag_name = factory.make_name("tag")
-        clients = _get_clients_for_populating_tags([], tag_name)
-        self.assertEqual([], clients)
-
-    def patch_getClientFor(self):
-        return self.patch_autospec(populate_tags_module, "getClientFor")
-
-    def test__returns_no_clients_when_there_is_an_error(self):
-        nodegroup_with_connection = make_accepted_NodeGroup()
-        nodegroup_without_connection = make_accepted_NodeGroup()
-
-        def getClientFor(uuid, timeout):
-            if uuid == nodegroup_with_connection.uuid:
-                return defer.succeed(sentinel.client)
-            else:
-                return defer.fail(ZeroDivisionError())
-        self.patch_getClientFor().side_effect = getClientFor
-
-        tag_name = factory.make_name("tag")
-        clusters = [
-            (nodegroup_with_connection.uuid,
-             nodegroup_with_connection.cluster_name),
-            (nodegroup_without_connection.uuid,
-             nodegroup_without_connection.cluster_name),
-        ]
-        clients = _get_clients_for_populating_tags(clusters, tag_name)
-        self.assertEqual([sentinel.client], clients)
-
-    def test__logs_errors_obtaining_clients(self):
-        getClientFor = self.patch_getClientFor()
-        getClientFor.side_effect = always_fail_with(
-            ZeroDivisionError("an error message one would surmise"))
-        nodegroup = make_accepted_NodeGroup()
-        tag_name = factory.make_name("tag")
-        clusters = [(nodegroup.uuid, nodegroup.cluster_name)]
-        with FakeLogger("maas") as log:
-            _get_clients_for_populating_tags(clusters, tag_name)
-        self.assertDocTestMatches(
-            "Cannot evaluate tag ... on cluster ... (...): ... surmise",
-            log.output)
-
-    def test__waits_for_clients_for_30_seconds_by_default(self):
-        getClientFor = self.patch_getClientFor()
-        getClientFor.side_effect = always_succeed_with(sentinel.client)
-        nodegroup = make_accepted_NodeGroup()
-        tag_name = factory.make_name("tag")
-        clusters = [(nodegroup.uuid, nodegroup.cluster_name)]
-        clients = _get_clients_for_populating_tags(clusters, tag_name)
-        self.assertEqual([sentinel.client], clients)
-        self.assertThat(
-            getClientFor, MockCalledOnceWith(
-                nodegroup.uuid, timeout=30))
-
-    def test__obtains_multiple_clients(self):
-        getClientFor = self.patch_getClientFor()
-        # Return a 2-tuple as a stand-in for a real client.
-        getClientFor.side_effect = lambda uuid, timeout: (
-            defer.succeed((sentinel.client, uuid)))
-        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
-        tag_name = factory.make_name("tag")
-        clusters = [(ng.uuid, ng.cluster_name) for ng in nodegroups]
-        clients = _get_clients_for_populating_tags(clusters, tag_name)
-        self.assertItemsEqual(
-            [(sentinel.client, nodegroup.uuid) for nodegroup in nodegroups],
-            clients)
-
-
 class TestDoPopulateTags(MAASServerTestCase):
 
-    def patch_clients(self, nodegroups):
-        clients = [create_autospec(Client, instance=True) for _ in nodegroups]
-        for nodegroup, client in zip(nodegroups, clients):
+    def patch_clients(self, rack_controllers):
+        clients = [
+            create_autospec(Client, instance=True)
+            for _ in rack_controllers
+        ]
+        for rack, client in zip(rack_controllers, clients):
             client.side_effect = always_succeed_with(None)
-            client.ident = nodegroup.uuid
+            client.ident = rack.system_id
 
         _get_clients = self.patch_autospec(
-            populate_tags_module, "_get_clients_for_populating_tags")
-        _get_clients.return_value = defer.succeed(clients)
+            populate_tags_module, "getAllClients")
+        _get_clients.return_value = clients
 
         return clients
 
     def test__makes_calls_to_each_client_given(self):
-        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
-        clients = self.patch_clients(nodegroups)
+        rack_controllers = [factory.make_RackController() for _ in range(3)]
+        clients = self.patch_clients(rack_controllers)
 
         tag_name = factory.make_name("tag")
         tag_definition = factory.make_name("definition")
         tag_nsmap_prefix = factory.make_name("prefix")
         tag_nsmap_uri = factory.make_name("uri")
-        tag_nsmap = {tag_nsmap_prefix: tag_nsmap_uri}
+        tag_nsmap = [{"prefix": tag_nsmap_prefix, "uri": tag_nsmap_uri}]
 
-        clusters = list(
-            (ng.uuid, ng.cluster_name, ng.api_credentials)
-            for ng in nodegroups)
+        work = []
+        rack_creds = []
+        rack_nodes = []
+        for rack, client in zip(rack_controllers, clients):
+            creds = factory.make_name("creds")
+            rack_creds.append(creds)
+            nodes = [
+                {"system_id": factory.make_Node().system_id}
+                for _ in range(3)
+            ]
+            rack_nodes.append(nodes)
+            work.append({
+                "system_id": rack.system_id,
+                "hostname": rack.hostname,
+                "client": client,
+                "tag_name": tag_name,
+                "tag_definition": tag_definition,
+                "tag_nsmap": tag_nsmap,
+                "credentials": creds,
+                "nodes": nodes,
+            })
 
-        [d] = _do_populate_tags(
-            clusters, tag_name, tag_definition, tag_nsmap)
+        [d] = _do_populate_tags(work)
 
         self.assertIsNone(extract_result(d))
 
-        for nodegroup, client in zip(nodegroups, clients):
+        for rack, client, creds, nodes in zip(
+                rack_controllers, clients, rack_creds, rack_nodes):
             self.expectThat(client, MockCallsMatch(call(
                 EvaluateTag, tag_name=tag_name, tag_definition=tag_definition,
-                tag_nsmap=[{"prefix": tag_nsmap_prefix, "uri": tag_nsmap_uri}],
-                credentials=nodegroup.api_credentials)))
+                tag_nsmap=tag_nsmap, credentials=creds, nodes=nodes)))
 
     def test__logs_successes(self):
-        nodegroups = [make_accepted_NodeGroup()]
-        self.patch_clients(nodegroups)
+        rack_controllers = [factory.make_RackController()]
+        clients = self.patch_clients(rack_controllers)
 
         tag_name = factory.make_name("tag")
         tag_definition = factory.make_name("definition")
         tag_nsmap = {}
 
-        clusters = list(
-            (ng.uuid, ng.cluster_name, ng.api_credentials)
-            for ng in nodegroups)
+        work = []
+        for rack, client in zip(rack_controllers, clients):
+            work.append({
+                "system_id": rack.system_id,
+                "hostname": rack.hostname,
+                "client": client,
+                "tag_name": tag_name,
+                "tag_definition": tag_definition,
+                "tag_nsmap": tag_nsmap,
+                "credentials": factory.make_name("creds"),
+                "nodes": [
+                    {"system_id": factory.make_Node().system_id}
+                    for _ in range(3)
+                ],
+            })
 
         with FakeLogger("maas") as log:
-            [d] = _do_populate_tags(
-                clusters, tag_name, tag_definition, tag_nsmap)
+            [d] = _do_populate_tags(work)
             self.assertIsNone(extract_result(d))
 
         self.assertDocTestMatches(
-            "Tag tag-... (definition-...) evaluated on cluster ... (...)",
+            "Tag tag-... (definition-...) evaluated on rack "
+            "controller ... (...)",
             log.output)
 
     def test__logs_failures(self):
-        nodegroups = [make_accepted_NodeGroup()]
-        [client] = self.patch_clients(nodegroups)
-        client.side_effect = always_fail_with(
+        rack_controllers = [factory.make_RackController()]
+        clients = self.patch_clients(rack_controllers)
+        clients[0].side_effect = always_fail_with(
             ZeroDivisionError("splendid day for a spot of cricket"))
 
         tag_name = factory.make_name("tag")
         tag_definition = factory.make_name("definition")
         tag_nsmap = {}
 
-        clusters = list(
-            (ng.uuid, ng.cluster_name, ng.api_credentials)
-            for ng in nodegroups)
+        work = []
+        for rack, client in zip(rack_controllers, clients):
+            work.append({
+                "system_id": rack.system_id,
+                "hostname": rack.hostname,
+                "client": client,
+                "tag_name": tag_name,
+                "tag_definition": tag_definition,
+                "tag_nsmap": tag_nsmap,
+                "credentials": factory.make_name("creds"),
+                "nodes": [
+                    {"system_id": factory.make_Node().system_id}
+                    for _ in range(3)
+                ],
+            })
 
         with FakeLogger("maas") as log:
-            [d] = _do_populate_tags(
-                clusters, tag_name, tag_definition, tag_nsmap)
+            [d] = _do_populate_tags(work)
             self.assertIsNone(extract_result(d))
 
         self.assertDocTestMatches(
             "Tag tag-... (definition-...) could not be evaluated ... (...): "
             "splendid day for a spot of cricket", log.output)
-
-
-class TestPopulateTags(MAASServerTestCase):
-
-    def patch_do_populate_tags(self):
-        do_populate_tags = self.patch_autospec(
-            populate_tags_module, "_do_populate_tags")
-        do_populate_tags.return_value = [sentinel.d]
-        return do_populate_tags
-
-    def test__calls_do_populate_tags_with_no_clusters(self):
-        do_populate_tags = self.patch_do_populate_tags()
-        tag = make_Tag_without_populating()
-        populate_tags(tag)
-        self.assertThat(do_populate_tags, MockCalledOnceWith(
-            (), tag.name, tag.definition, populate_tags_module.tag_nsmap))
-
-    def test__calls_do_populate_tags_with_clusters(self):
-        do_populate_tags = self.patch_do_populate_tags()
-        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
-        tag = make_Tag_without_populating()
-        populate_tags(tag)
-        clusters_expected = tuple(
-            (ng.uuid, ng.cluster_name, ng.api_credentials)
-            for ng in nodegroups)
-        self.assertThat(do_populate_tags, MockCalledOnceWith(
-            clusters_expected, tag.name, tag.definition,
-            populate_tags_module.tag_nsmap))
 
 
 class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
@@ -246,10 +189,15 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
 
     def test__calls_are_made_to_all_clusters(self):
         rpc_fixture = self.prepare_live_rpc()
-        nodegroups = [make_accepted_NodeGroup() for _ in range(3)]
+        rack_controllers = [factory.make_RackController() for _ in range(3)]
         protocols = []
-        for nodegroup in nodegroups:
-            protocol = rpc_fixture.makeCluster(nodegroup, EvaluateTag)
+        rack_creds = []
+        for rack in rack_controllers:
+            token = NodeKey.objects.get_token_for_node(rack)
+            creds = convert_tuple_to_string(get_creds_tuple(token))
+            rack_creds.append(creds)
+
+            protocol = rpc_fixture.makeCluster(rack, EvaluateTag)
             protocol.EvaluateTag.side_effect = always_succeed_with({})
             protocols.append(protocol)
         tag = make_Tag_without_populating()
@@ -261,10 +209,11 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
         wait_for_populate = asynchronous(lambda: d)
         wait_for_populate().wait(10)
 
-        for nodegroup, protocol in zip(nodegroups, protocols):
+        for rack, protocol, creds in zip(
+                rack_controllers, protocols, rack_creds):
             self.expectThat(protocol.EvaluateTag, MockCalledOnceWith(
                 protocol, tag_name=tag.name, tag_definition=tag.definition,
-                tag_nsmap=ANY, credentials=nodegroup.api_credentials))
+                tag_nsmap=ANY, credentials=creds, nodes=ANY))
 
 
 class TestPopulateTagsForSingleNode(MAASServerTestCase):
@@ -272,9 +221,9 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
     def test_updates_node_with_all_applicable_tags(self):
         node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
-            node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
+            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
         factory.make_NodeResult_for_commissioning(
-            node, commissioningscript.LLDP_OUTPUT_NAME, 0, b"<bar/>")
+            node, LLDP_OUTPUT_NAME, 0, b"<bar/>")
         tags = [
             factory.make_Tag("foo", "/foo"),
             factory.make_Tag("bar", "//lldp:bar"),
@@ -287,7 +236,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
     def test_ignores_tags_with_unrecognised_namespaces(self):
         node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
-            node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
+            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
             factory.make_Tag("foo", "/foo"),
             factory.make_Tag("lou", "//nge:bar"),
@@ -299,7 +248,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
     def test_ignores_tags_without_definition(self):
         node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
-            node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
+            node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
             factory.make_Tag("foo", "/foo"),
             Tag(name="empty", definition=""),

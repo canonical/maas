@@ -9,12 +9,6 @@
     status: accepted, user: 1}
   model: piston3.consumer
   pk: 7
-- fields: {
-    created: 2012-01-24, cluster_name: master,
-    uuid: master, status: 1, api_token: 7,
-    updated: !!timestamp '2012-01-24 10:52:38.735954'}
-  model: maasserver.nodegroup
-  pk: 1
 - fields:
     date_joined: 2012-01-23 11:52:14
     email: admin@example.com

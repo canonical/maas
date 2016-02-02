@@ -11,7 +11,6 @@ __all__ = [
 from functools import partial
 import logging
 
-from maasserver.rpc import getClientFor
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
     PowerDriverCheck,
@@ -27,32 +26,23 @@ maaslog = get_maas_logger("power")
 
 
 @asynchronous(timeout=15)
-def power_node(command, system_id, hostname, cluster_uuid, power_info):
+def power_node(command, client, system_id, hostname, power_info):
     """Power-on/off the given nodes.
 
-    Nodes can be in any cluster; the power calls will be directed to their
-    owning cluster.
+    The power call will be directed to the provided `client`.
 
     :param command: The `amp.Command` to call.
-    :param system-id: The Node's system_id
+    :param client: The `rpc.common.Client` of the rack controller to perform
+        the power action.
+    :param system_id: The Node's system_id
     :param hostname: The Node's hostname
-    :param cluster-uuid: The UUID of the cluster to which the Node is
-        attached.
     :param power-info: A dict containing the power information for the
         node.
     :return: A :py:class:`twisted.internet.defer.Deferred` that will
         fire when the `command` call completes.
 
     """
-    def call_power_command(client, **kwargs):
-        return client(command, **kwargs)
-
-    maaslog.debug("%s: Asking cluster to power on/off node.", hostname)
-    d = getClientFor(cluster_uuid).addCallback(
-        call_power_command, system_id=system_id, hostname=hostname,
-        power_type=power_info.power_type,
-        context=power_info.power_parameters)
-
+    maaslog.debug("%s: Asking rack controller to power on/off node.", hostname)
     # We don't strictly care about the result _here_; the outcome of the
     # deferred gets reported elsewhere. However, PowerOn can return
     # UnknownPowerType and NotImplementedError which are worth knowing
@@ -63,7 +53,10 @@ def power_node(command, system_id, hostname, cluster_uuid, power_info):
     # they can choose to chain onto it, or to "cap it off", so that
     # result gets consumed (Twisted will complain if an error is not
     # consumed).
-    return d
+    return client(
+        command, system_id=system_id, hostname=hostname,
+        power_type=power_info.power_type,
+        context=power_info.power_parameters)
 
 
 power_off_node = partial(power_node, PowerOff)
@@ -71,27 +64,20 @@ power_on_node = partial(power_node, PowerOn)
 
 
 @asynchronous(timeout=30)
-def power_driver_check(cluster_uuid, power_type):
-    """Call PowerDriverCheck on the given cluster and wait for response.
+def power_driver_check(client, power_type):
+    """Call PowerDriverCheck on a `client` and wait for response.
 
-    :param cluster-uuid: The UUID of the cluster to check.
-    :param power_type: The power type to check.
+    :param cleint: The `rpc.common.Client` to use.
+    :param power_type: The power type to check on that rack controller.
     :return: A list of missing power drivers for the power_type, if any.
 
-    :raises NoConnectionsAvailable: When no connections to the node's
-        cluster are available for use.
     :raises UnknownPowerType: When the requested power type is not known
-        to the cluster.
+        to the RackController.
     :raises NotImplementedError: When the power driver hasn't implemented
         the missing packages check.
     :raises TimeoutError: If a response has not been received within 30
         seconds.
     """
-    def get_missing_packages(client):
-        d = client(PowerDriverCheck, power_type=power_type)
-        d.addCallbacks(extract_missing_packages, ignore_unhandled_command)
-        return d
-
     def extract_missing_packages(response):
         return response["missing_packages"]
 
@@ -105,4 +91,6 @@ def power_driver_check(cluster_uuid, power_type):
             "support the PowerDriverCheck RPC method. Returning OK.")
         return []
 
-    return getClientFor(cluster_uuid).addCallback(get_missing_packages)
+    d = client(PowerDriverCheck, power_type=power_type)
+    d.addCallbacks(extract_missing_packages, ignore_unhandled_command)
+    return d

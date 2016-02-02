@@ -186,12 +186,6 @@ class Fabric(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Can't delete fabric: interfaces are connected to VLANs from "
                 "this fabric.")
-        # Circular imports.
-        from maasserver.models.nodegroupinterface import NodeGroupInterface
-        if NodeGroupInterface.objects.filter(vlan__fabric=self).exists():
-            raise ValidationError(
-                "Can't delete fabric: cluster interfaces are connected to "
-                "VLANs from this fabric.")
         super(Fabric, self).delete()
 
     def _create_default_vlan(self):

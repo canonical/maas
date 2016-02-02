@@ -46,11 +46,6 @@
                     <li>
                         <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'index' %}#/nodes">Nodes</a>
                     </li>
-                    {% if user.is_superuser %}
-                    <li>
-                        <a class="{% block nav-active-cluster-list %}{% endblock %}" href="{% url 'cluster-list' %}">Clusters</a>
-                    </li>
-                    {% endif %}
                     <li>
                         <a class="{% block nav-active-images %}{% endblock %}" href="{% url 'images' %}">Images</a>
                     </li>

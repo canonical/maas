@@ -88,6 +88,11 @@ def make_NonceCleanupService():
     return nonces_cleanup.NonceCleanupService()
 
 
+def make_StatusMonitorService():
+    from maasserver import status_monitor
+    return status_monitor.StatusMonitorService()
+
+
 def make_ImportResourcesService():
     from maasserver import bootresources
     return bootresources.ImportResourcesService()
@@ -168,6 +173,10 @@ class RegionEventLoop:
         },
         "nonce-cleanup": {
             "factory": make_NonceCleanupService,
+            "requires": [],
+        },
+        "status-monitor": {
+            "factory": make_StatusMonitorService,
             "requires": [],
         },
         "import-resources": {

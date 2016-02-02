@@ -153,11 +153,11 @@ def get_power_type_choices():
         for power_type in get_all_power_types_from_clusters()]
 
 
-def get_power_types(nodegroups=None, ignore_errors=False):
+def get_power_types(controllers=None, ignore_errors=False):
     """Return the choice of mechanism to control a node's power.
 
-    :param nodegroups: Restrict to power types on the supplied
-        :class:`NodeGroup`s.
+    :param controllers: Restrict to power types on the supplied
+        :class:`RackController`s.
     :param ignore_errors: If comms errors are encountered talking to any
         clusters, ignore and carry on. This means partial data may be
         returned if other clusters are operational.
@@ -168,13 +168,13 @@ def get_power_types(nodegroups=None, ignore_errors=False):
     :return: Dictionary mapping power type to its description.
     """
     types = dict()
-    power_types = get_all_power_types_from_clusters(nodegroups, ignore_errors)
+    power_types = get_all_power_types_from_clusters(controllers, ignore_errors)
     for power_type in power_types:
         types[power_type['name']] = power_type['description']
     return types
 
 
-def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
+def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
     """Query every cluster controller and obtain all known power types.
 
     :return: a list of power types matching the schema
@@ -182,7 +182,7 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
     """
     merged_types = []
     responses = call_clusters(
-        cluster.DescribePowerTypes, nodegroups=nodegroups,
+        cluster.DescribePowerTypes, controllers=controllers,
         ignore_errors=ignore_errors)
     for response in responses:
         power_types = response['power_types']

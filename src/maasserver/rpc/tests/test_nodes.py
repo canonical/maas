@@ -16,6 +16,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
 )
+from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc.nodes import (
     commission_node,
@@ -36,11 +37,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maastesting.twisted import always_succeed_with
 from provisioningserver.drivers import gen_power_types
-from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.rpc.cluster import (
-    DescribePowerTypes,
-    StartMonitors,
-)
+from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
@@ -59,21 +56,20 @@ from testtools.matchers import (
 
 class TestCreateNode(MAASServerTestCase):
 
-    def prepare_cluster_rpc(self, cluster):
+    def prepare_rack_rpc(self):
+        rack_controller = factory.make_RackController()
         self.useFixture(RegionEventLoopFixture('rpc'))
         self.useFixture(RunningEventLoopFixture())
 
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(cluster, DescribePowerTypes)
+        protocol = fixture.makeCluster(rack_controller, DescribePowerTypes)
         self.power_types = list(gen_power_types())
         protocol.DescribePowerTypes.side_effect = always_succeed_with(
             {'power_types': self.power_types})
         return protocol
 
     def test__creates_node(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -82,18 +78,16 @@ class TestCreateNode(MAASServerTestCase):
         power_parameters = dumps({})
 
         node = create_node(
-            cluster.uuid, architecture, power_type, power_parameters,
+            architecture, power_type, power_parameters,
             mac_addresses)
 
         self.assertEqual(
             (
-                cluster,
                 architecture,
                 power_type,
                 {},
             ),
             (
-                node.nodegroup,
                 node.architecture,
                 node.power_type,
                 node.power_parameters
@@ -108,9 +102,7 @@ class TestCreateNode(MAASServerTestCase):
             [nic.mac_address for nic in node.interface_set.all()])
 
     def test__creates_node_with_explicit_hostname(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -120,19 +112,17 @@ class TestCreateNode(MAASServerTestCase):
         power_parameters = dumps({})
 
         node = create_node(
-            cluster.uuid, architecture, power_type, power_parameters,
+            architecture, power_type, power_parameters,
             mac_addresses, hostname=hostname)
 
         self.assertEqual(
             (
-                cluster,
                 architecture,
                 power_type,
                 {},
                 hostname
             ),
             (
-                node.nodegroup,
                 node.architecture,
                 node.power_type,
                 node.power_parameters,
@@ -144,9 +134,7 @@ class TestCreateNode(MAASServerTestCase):
             [nic.mac_address for nic in node.interface_set.all()])
 
     def test__create_node_fails_with_invalid_hostname(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -160,24 +148,20 @@ class TestCreateNode(MAASServerTestCase):
 
         with ExpectedException(ValidationError):
             create_node(
-                cluster.uuid, architecture, power_type, power_parameters,
+                architecture, power_type, power_parameters,
                 mac_addresses, hostname=hostname)
 
     def test__raises_validation_errors_for_invalid_data(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         self.assertRaises(
-            ValidationError, create_node, cluster.uuid,
+            ValidationError, create_node,
             architecture="spam/eggs", power_type="scrambled",
             power_parameters=dumps({}),
             mac_addresses=[factory.make_mac_address()])
 
     def test__raises_error_if_node_already_exists(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -186,16 +170,14 @@ class TestCreateNode(MAASServerTestCase):
         power_parameters = dumps({})
 
         create_node(
-            cluster.uuid, architecture, power_type, power_parameters,
+            architecture, power_type, power_parameters,
             mac_addresses)
         self.assertRaises(
-            NodeAlreadyExists, create_node, cluster.uuid, architecture,
+            NodeAlreadyExists, create_node, architecture,
             power_type, power_parameters, [mac_addresses[0]])
 
     def test__saves_power_parameters(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -207,7 +189,7 @@ class TestCreateNode(MAASServerTestCase):
         }
 
         node = create_node(
-            cluster.uuid, architecture, power_type, dumps(power_parameters),
+            architecture, power_type, dumps(power_parameters),
             mac_addresses)
 
         # Reload the object from the DB so that we're sure its power
@@ -216,9 +198,7 @@ class TestCreateNode(MAASServerTestCase):
         self.assertEqual(power_parameters, node.power_parameters)
 
     def test__forces_generic_subarchitecture_if_missing(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         mac_addresses = [
             factory.make_mac_address() for _ in range(3)]
@@ -228,7 +208,7 @@ class TestCreateNode(MAASServerTestCase):
 
         arch, subarch = architecture.split('/')
         node = create_node(
-            cluster.uuid, arch, power_type, power_parameters,
+            arch, power_type, power_parameters,
             mac_addresses)
 
         self.assertEqual(architecture, node.architecture)
@@ -236,22 +216,21 @@ class TestCreateNode(MAASServerTestCase):
 
 class TestCommissionNode(MAASServerTestCase):
 
-    def prepare_cluster_rpc(self, cluster):
+    def prepare_rack_rpc(self):
+        rack_controller = factory.make_RackController()
         self.useFixture(RegionEventLoopFixture('rpc'))
         self.useFixture(RunningEventLoopFixture())
 
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(cluster, StartMonitors)
-        protocol.StartMonitors.side_effect = always_succeed_with({})
+        protocol = fixture.makeCluster(rack_controller)
         return protocol
 
     def test__commissions_node(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         user = factory.make_User()
-        node = factory.make_Node(nodegroup=cluster, owner=user)
+        node = factory.make_Node(owner=user)
+        self.patch(Node, "_start").return_value = None
 
         with post_commit_hooks:
             commission_node(node.system_id, user)
@@ -260,13 +239,11 @@ class TestCommissionNode(MAASServerTestCase):
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test__raises_error_if_node_cannot_commission(self):
-        cluster = factory.make_NodeGroup()
-        cluster.accept()
-        self.prepare_cluster_rpc(cluster)
+        self.prepare_rack_rpc()
 
         user = factory.make_User()
         node = factory.make_Node(
-            nodegroup=cluster, owner=user, status=NODE_STATUS.RELEASING)
+            owner=user, status=NODE_STATUS.RELEASING)
 
         self.assertRaises(
             CommissionNodeFailed, commission_node, node.system_id, user)
@@ -320,120 +297,142 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
     # that the return values are being formatted correctly for RPC.
 
     def make_Node(
-            self, cluster, power_type=None, power_state_updated=None,
-            **kwargs):
-        if power_type is None:
-            # Ensure that this node's power status can be queried.
-            power_type = random.choice(QUERY_POWER_TYPES)
-        if power_state_updated is None:
+            self, power_type=None, power_state_queried=None, **kwargs):
+        if power_state_queried is None:
             # Ensure that this node was last queried at least 5 minutes ago.
-            power_state_updated = now() - timedelta(minutes=randint(6, 16))
-        return factory.make_Node(
-            nodegroup=cluster, power_type=power_type,
-            power_state_updated=power_state_updated, **kwargs)
+            power_state_queried = now() - timedelta(minutes=randint(6, 16))
+        node = factory.make_Node(
+            power_type=power_type,
+            power_state_queried=power_state_queried, **kwargs)
+        return node
+
+    def test__returns_only_accessible_nodes(self):
+        rack = factory.make_RackController(power_type='')
+        # Accessible nodes.
+        node_ids = [
+            self.make_Node(bmc_connected_to=rack).system_id
+            for _ in range(5)
+        ]
+        # Inaccessible nodes.
+        for _ in range(5):
+            node = self.make_Node(bmc_connected_to=rack)
+            node.bmc = None
+            node.save()
+
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
+        system_ids = [params["system_id"] for params in power_parameters]
+        self.assertEquals(sorted(node_ids), sorted(system_ids))
 
     def test__returns_unchecked_nodes_first(self):
-        cluster = factory.make_NodeGroup()
-        nodes = [self.make_Node(cluster) for _ in range(5)]
+        rack = factory.make_RackController(power_type='')
+        datetime_10_minutes_ago = now() - timedelta(minutes=10)
+        nodes = [
+            self.make_Node(
+                bmc_connected_to=rack,
+                power_state_queried=datetime_10_minutes_ago)
+            for _ in range(5)
+        ]
         node_unchecked = random.choice(nodes)
-        node_unchecked.power_state_updated = None
+        node_unchecked.power_state_queried = None
         node_unchecked.save()
 
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
         # The unchecked node is always the first out.
+        #import pdb
+        #pdb.set_trace()
         self.assertEqual(node_unchecked.system_id, system_ids[0])
 
     def test__excludes_recently_checked_nodes(self):
-        cluster = factory.make_NodeGroup()
+        rack = factory.make_RackController(power_type='')
 
-        node_unchecked = self.make_Node(cluster)
-        node_unchecked.power_state_updated = None
+        node_unchecked = self.make_Node(bmc_connected_to=rack)
+        node_unchecked.power_state_queried = None
         node_unchecked.save()
 
         datetime_now = now()
-        node_checked_recently = self.make_Node(cluster)
-        node_checked_recently.power_state_updated = datetime_now
+        node_checked_recently = self.make_Node(bmc_connected_to=rack)
+        node_checked_recently.power_state_queried = datetime_now
         node_checked_recently.save()
 
         datetime_10_minutes_ago = datetime_now - timedelta(minutes=10)
-        node_checked_long_ago = self.make_Node(cluster)
-        node_checked_long_ago.power_state_updated = datetime_10_minutes_ago
+        node_checked_long_ago = self.make_Node(bmc_connected_to=rack)
+        node_checked_long_ago.power_state_queried = datetime_10_minutes_ago
         node_checked_long_ago.save()
 
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
         self.assertItemsEqual(
             {node_unchecked.system_id, node_checked_long_ago.system_id},
             system_ids)
 
-    def test__excludes_unqueryable_power_types(self):
-        cluster = factory.make_NodeGroup()
-        node_queryable = self.make_Node(cluster)
-        self.make_Node(cluster, "foobar")  # Unqueryable power type.
-
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
-        system_ids = [params["system_id"] for params in power_parameters]
-
-        self.assertItemsEqual([node_queryable.system_id], system_ids)
-
     def test__excludes_broken_nodes(self):
-        cluster = factory.make_NodeGroup()
-        node_queryable = self.make_Node(cluster)
+        rack = factory.make_RackController(power_type='')
+        node_queryable = self.make_Node(bmc_connected_to=rack)
 
-        self.make_Node(cluster, status=NODE_STATUS.BROKEN)
+        self.make_Node(status=NODE_STATUS.BROKEN, bmc_connected_to=rack)
         self.make_Node(
-            cluster, status=NODE_STATUS.BROKEN, power_state_updated=(
-                now() - timedelta(minutes=10)))
+            status=NODE_STATUS.BROKEN, power_state_queried=(
+                now() - timedelta(minutes=10)), bmc_connected_to=rack)
 
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
     def test__excludes_no_power_type(self):
-        cluster = factory.make_NodeGroup()
-        node_queryable = self.make_Node(cluster)
+        rack = factory.make_RackController(power_type='')
+        node_queryable = self.make_Node(bmc_connected_to=rack)
 
-        factory.make_Device(nodegroup=cluster, power_type='')
-        factory.make_Device(nodegroup=cluster, power_type='')
+        factory.make_Device(power_type='')
+        factory.make_Device(power_type='')
         factory.make_Device(
-            nodegroup=cluster, power_type='', power_state_updated=(
+            power_type='', power_state_queried=(
                 now() - timedelta(minutes=10)))
 
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
     def test__returns_checked_nodes_in_last_checked_order(self):
-        cluster = factory.make_NodeGroup()
-        nodes = [self.make_Node(cluster) for _ in range(5)]
+        rack = factory.make_RackController(power_type='')
+        nodes = [self.make_Node(bmc_connected_to=rack) for _ in range(5)]
 
-        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
         # Checked nodes are always sorted from least recently checked to most.
-        node_sort_key = attrgetter("power_state_updated", "system_id")
+        node_sort_key = attrgetter("power_state_queried", "system_id")
         nodes_in_order = sorted(nodes, key=node_sort_key)
         self.assertEqual(
             [node.system_id for node in nodes_in_order],
             system_ids)
 
     def test__returns_at_most_60kiB_of_JSON(self):
-        cluster = factory.make_NodeGroup()
+        # Configure the rack controller subnt to be very large so it
+        # can hold that many BMC connected to the interface for the rack
+        # controller.
+        rack = factory.make_RackController(power_type='')
+        rack_interface = rack.get_boot_interface()
+        subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network(slash=8)))
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet), subnet=subnet,
+            interface=rack_interface)
 
         # Ensure that there are at least 64kiB of power parameters (when
         # converted to JSON) in the database.
         example_parameters = {"key%d" % i: "value%d" % i for i in range(100)}
         remaining = 2 ** 16
         while remaining > 0:
-            node = self.make_Node(cluster, power_parameters=example_parameters)
+            node = self.make_Node(
+                bmc_connected_to=rack, power_parameters=example_parameters)
             remaining -= len(json.dumps(node.get_effective_power_parameters()))
 
-        nodes = list_cluster_nodes_power_parameters(cluster.uuid)
+        nodes = list_cluster_nodes_power_parameters(rack.system_id)
 
         # The total size of the JSON is less than 60kiB, but only a bit.
         nodes_json = map(json.dumps, nodes)

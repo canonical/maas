@@ -23,7 +23,6 @@ from maasserver.api.blockdevices import (
     BlockDeviceHandler,
     BlockDevicesHandler,
 )
-from maasserver.api.boot_images import BootImagesHandler
 from maasserver.api.boot_resources import (
     BootResourceFileUploadHandler,
     BootResourceHandler,
@@ -98,14 +97,6 @@ from maasserver.api.networks import (
     NetworkHandler,
     NetworksHandler,
 )
-from maasserver.api.node_group_interfaces import (
-    NodeGroupInterfaceHandler,
-    NodeGroupInterfacesHandler,
-)
-from maasserver.api.nodegroups import (
-    NodeGroupHandler,
-    NodeGroupsHandler,
-)
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
@@ -116,6 +107,10 @@ from maasserver.api.partitions import (
     PartitionsHandler,
 )
 from maasserver.api.pxeconfig import pxeconfig
+from maasserver.api.rackcontrollers import (
+    RackControllerHandler,
+    RackControllersHandler,
+)
 from maasserver.api.raid import (
     RaidHandler,
     RaidsHandler,
@@ -139,6 +134,7 @@ from maasserver.api.subnets import (
 )
 from maasserver.api.support import (
     AdminRestrictedResource,
+    OperationsResource,
     RestrictedResource,
 )
 from maasserver.api.tags import (
@@ -182,6 +178,10 @@ node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
 machine_handler = RestrictedResource(MachineHandler, authentication=api_auth)
 machines_handler = RestrictedResource(MachinesHandler, authentication=api_auth)
+rackcontroller_handler = RestrictedResource(
+    RackControllerHandler, authentication=api_auth)
+rackcontrollers_handler = RestrictedResource(
+    RackControllersHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 dnsresourcerecord_handler = RestrictedResource(
@@ -226,17 +226,7 @@ node_interface_handler = RestrictedResource(
     NodeInterfaceHandler, authentication=api_auth)
 node_interfaces_handler = RestrictedResource(
     NodeInterfacesHandler, authentication=api_auth)
-nodegroup_handler = RestrictedResource(
-    NodeGroupHandler, authentication=api_auth)
-nodegroups_handler = RestrictedResource(
-    NodeGroupsHandler, authentication=api_auth)
-nodegroupinterface_handler = RestrictedResource(
-    NodeGroupInterfaceHandler, authentication=api_auth)
-nodegroupinterfaces_handler = RestrictedResource(
-    NodeGroupInterfacesHandler, authentication=api_auth)
-boot_images_handler = RestrictedResource(
-    BootImagesHandler, authentication=api_auth)
-tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
+tag_handler = OperationsResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 version_handler = RestrictedResource(VersionHandler)
 node_results_handler = RestrictedResource(
@@ -345,28 +335,21 @@ urlpatterns += patterns(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),
     url(r'^nodes/$', nodes_handler, name='nodes_handler'),
-    # For backward compatibility, handle obviously repeated paths as if they
-    # were not repeated. See https://bugs.launchpad.net/maas/+bug/1131323.
-    url(r'^nodes/.*/nodes/$', nodes_handler),
     url(
         r'^machines/(?P<system_id>[^/]+)/$', machine_handler,
         name='machine_handler'),
     url(r'^machines/$', machines_handler, name='machines_handler'),
     url(
+        r'^rackcontrollers/(?P<system_id>[^/]+)/$', rackcontroller_handler,
+        name='rackcontroller_handler'),
+    url(
+        r'^rackcontrollers/$', rackcontrollers_handler,
+        name='rackcontrollers_handler'),
+    url(
         r'^devices/(?P<system_id>[^/]+)/$', device_handler,
         name='device_handler'),
     url(r'^devices/$', devices_handler, name='devices_handler'),
     url(r'^events/$', events_handler, name='events_handler'),
-    url(
-        r'^nodegroups/(?P<uuid>[^/]+)/$',
-        nodegroup_handler, name='nodegroup_handler'),
-    url(r'^nodegroups/$', nodegroups_handler, name='nodegroups_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/$',
-        nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<name>[^/]+)/$',
-        nodegroupinterface_handler, name='nodegroupinterface_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/$',
-        boot_images_handler, name='boot_images_handler'),
     url(
         r'^networks/(?P<name>[^/]+)/$',
         network_handler, name='network_handler'),
@@ -482,18 +465,6 @@ urlpatterns += patterns(
     url(r'^boot-sources/(?P<boot_source_id>[^/]+)/selections/(?P<id>[^/]+)/$',
         boot_source_selection_handler,
         name='boot_source_selection_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/$',
-        boot_sources_backward_handler, name='boot_sources_backward_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<id>[^/]+)/$',
-        boot_source_backward_handler, name='boot_source_backward_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
-        'selections/$',
-        boot_source_selections_backward_handler,
-        name='boot_source_selections_backward_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
-        'selections/(?P<id>[^/]+)/$',
-        boot_source_selection_backward_handler,
-        name='boot_source_selection_backward_handler'),
 )
 
 

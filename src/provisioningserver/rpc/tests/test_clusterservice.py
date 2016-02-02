@@ -5,15 +5,12 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
 from hashlib import sha256
 from hmac import HMAC
 from itertools import product
 import json
 import os.path
+import platform
 import random
 from random import randint
 from urllib.parse import urlparse
@@ -55,10 +52,7 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.drivers.power import power_drivers_by_name
-from provisioningserver.network import (
-    discover_networks,
-    get_ip_addr_json,
-)
+from provisioningserver.network import get_ip_addr
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -84,10 +78,6 @@ from provisioningserver.rpc.clusterservice import (
     PatchedURI,
 )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.monitors import (
-    cancel_monitor,
-    running_monitors,
-)
 from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
@@ -104,7 +94,6 @@ from provisioningserver.twisted.protocols import amp
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
-    Contains,
     Equals,
     HasLength,
     Is,
@@ -113,7 +102,6 @@ from testtools.matchers import (
     MatchesAll,
     MatchesListwise,
     MatchesStructure,
-    Not,
 )
 from twisted import web
 from twisted.application.internet import TimerService
@@ -840,15 +828,15 @@ class TestClusterClient(MAASTestCase):
         authenticate.side_effect = always_fail_with(exception)
 
     def patch_register_for_success(self, client):
-        register = self.patch_autospec(client, "registerWithRegion")
+        register = self.patch_autospec(client, "registerRackWithRegion")
         register.side_effect = always_succeed_with(True)
 
     def patch_register_for_failure(self, client):
-        register = self.patch_autospec(client, "registerWithRegion")
+        register = self.patch_autospec(client, "registerRackWithRegion")
         register.side_effect = always_succeed_with(False)
 
     def patch_register_for_error(self, client, exception):
-        register = self.patch_autospec(client, "registerWithRegion")
+        register = self.patch_autospec(client, "registerRackWithRegion")
         register.side_effect = always_fail_with(exception)
 
     def test_interfaces(self):
@@ -1176,60 +1164,65 @@ class TestClusterClient(MAASTestCase):
             protocol.Authenticate,
             MockCalledOnceWith(protocol, message=ANY))
 
-    def test_registerWithRegion_returns_True_when_accepted(self):
+    def test_registerRackWithRegion_returns_True_when_accepted(self):
         client = self.make_running_client()
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.side_effect = always_succeed_with({})
+        callRemote.side_effect = always_succeed_with({"system_id": "..."})
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        d = client.registerWithRegion()
+        d = client.registerRackWithRegion()
         self.assertTrue(extract_result(d))
 
         self.assertDocTestMatches(
-            "Cluster '...' registered (via ...).",
+            "Rack controller '...' registered (via eventloop:pid=12345).",
             logger.output)
 
-    def test_registerWithRegion_returns_False_when_rejected(self):
+    def test_registerRackWithRegion_returns_False_when_rejected(self):
         client = self.make_running_client()
 
         callRemote = self.patch_autospec(client, "callRemote")
-        callRemote.return_value = fail(exceptions.CannotRegisterCluster())
+        callRemote.return_value = fail(
+            exceptions.CannotRegisterRackController())
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        d = client.registerWithRegion()
+        d = client.registerRackWithRegion()
         self.assertFalse(extract_result(d))
 
         self.assertDocTestMatches(
-            "Cluster '...' REJECTED by the region (via ...).",
+            "Rack controller REJECTED by the region "
+            "(via eventloop:pid=12345).",
             logger.output)
 
-    def test_registerWithRegion_propagates_errors(self):
+    def test_registerRackWithRegion_propagates_errors(self):
         client = self.make_running_client()
         exception_type = factory.make_exception_type()
 
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.return_value = fail(exception_type())
 
-        d = client.registerWithRegion()
+        d = client.registerRackWithRegion()
         self.assertRaises(exception_type, extract_result, d)
 
     @inlineCallbacks
-    def test_registerWithRegion_end_to_end(self):
+    def test_registerRackWithRegion_end_to_end(self):
         maas_url = factory.make_simple_http_url()
-        cluster_uuid = factory.make_UUID()
+        hostname = platform.node().split('.')[0]
+        ip_addr = get_ip_addr()
+        mac_addresses = [iface['mac'] for iface in ip_addr.values()
+                         if 'mac' in iface.keys()]
         self.useFixture(ClusterConfigurationFixture(
-            maas_url=maas_url, cluster_uuid=cluster_uuid))
+            maas_url=maas_url))
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop()
         self.addCleanup((yield connecting))
         yield getRegionClient()
         self.assertThat(
-            protocol.Register, MockCalledOnceWith(
-                protocol, uuid=cluster_uuid, networks=discover_networks(),
-                url=urlparse(maas_url), ip_addr_json=get_ip_addr_json()))
+            protocol.RegisterRackController, MockCalledOnceWith(
+                protocol, system_id=None, hostname=hostname,
+                mac_addresses=mac_addresses, url=urlparse(maas_url)))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
@@ -1681,131 +1674,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                 })
 
 
-class TestClusterProtocol_CreateHostMaps(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.CreateHostMaps.commandName)
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_executes_create_host_maps(self):
-        create_host_maps = self.patch(clusterservice, "create_host_maps")
-        mappings = [
-            {"ip_address": factory.make_ipv4_address(),
-             "mac_address": factory.make_mac_address()}
-            for _ in range(2)
-        ]
-        shared_key = factory.make_name("shared_key")
-
-        yield call_responder(Cluster(), cluster.CreateHostMaps, {
-            "mappings": mappings, "shared_key": shared_key,
-        })
-        self.assertThat(
-            create_host_maps, MockCalledOnceWith(
-                mappings, shared_key))
-
-    @inlineCallbacks
-    def test__limits_concurrency(self):
-
-        def check_dhcp_locked(mappings, shared_key):
-            self.assertTrue(concurrency.dhcp.locked)
-            # While we're here, check this is *not* the IO thread.
-            self.expectThat(isInIOThread(), Is(False))
-
-        self.patch(clusterservice, "create_host_maps", check_dhcp_locked)
-
-        self.assertFalse(concurrency.dhcp.locked)
-        yield call_responder(Cluster(), cluster.CreateHostMaps, {
-            "mappings": {}, "shared_key": factory.make_name("key"),
-        })
-        self.assertFalse(concurrency.dhcp.locked)
-
-
-class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.RemoveHostMaps.commandName)
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_executes_remove_host_maps(self):
-        remove_host_maps = self.patch(clusterservice, "remove_host_maps")
-        ip_addresses = [factory.make_ipv4_address() for _ in range(2)]
-        shared_key = factory.make_name("shared_key")
-
-        yield call_responder(Cluster(), cluster.RemoveHostMaps, {
-            "ip_addresses": ip_addresses, "shared_key": shared_key,
-        })
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                ip_addresses, shared_key))
-
-    @inlineCallbacks
-    def test__limits_concurrency(self):
-
-        def check_dhcp_locked(ip_addresses, shared_key):
-            self.assertTrue(concurrency.dhcp.locked)
-            # While we're here, check this is *not* the IO thread.
-            self.expectThat(isInIOThread(), Is(False))
-
-        self.patch(clusterservice, "remove_host_maps", check_dhcp_locked)
-
-        self.assertFalse(concurrency.dhcp.locked)
-        yield call_responder(Cluster(), cluster.RemoveHostMaps, {
-            "ip_addresses": [], "shared_key": factory.make_name("key"),
-        })
-        self.assertFalse(concurrency.dhcp.locked)
-
-
-class TestClusterProtocol_StartMonitors(MAASTestCase):
-
-    def test__is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.StartMonitors.commandName)
-        self.assertIsNotNone(responder)
-
-    def test__executes_start_monitors(self):
-        deadline = datetime.now(amp.utc) + timedelta(seconds=10)
-        monitors = [{
-            "deadline": deadline, "context": factory.make_name("ctx"),
-            "id": factory.make_name("id")}]
-        d = call_responder(
-            Cluster(), cluster.StartMonitors, {"monitors": monitors})
-        self.addCleanup(cancel_monitor, monitors[0]["id"])
-        self.assertTrue(d.called)
-        self.assertThat(running_monitors, Contains(monitors[0]["id"]))
-
-
-class TestClusterProtocol_CancelMonitor(MAASTestCase):
-
-    def test__is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.CancelMonitor.commandName)
-        self.assertIsNotNone(responder)
-
-    def test__executes_cancel_monitor(self):
-        deadline = datetime.now(amp.utc) + timedelta(seconds=10)
-        monitors = [{
-            "deadline": deadline, "context": factory.make_name("ctx"),
-            "id": factory.make_name("id")}]
-        call_responder(
-            Cluster(), cluster.StartMonitors, {"monitors": monitors})
-
-        call_responder(
-            Cluster(), cluster.CancelMonitor, {"id": monitors[0]["id"]})
-        self.assertThat(running_monitors, Not(Contains(monitors[0]["id"])))
-
-
 class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -1822,6 +1690,11 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         # Prevent real work being done, which would involve HTTP calls.
         self.patch_autospec(tags, "process_node_tags")
 
+        nodes = [
+            {"system_id": factory.make_name("node")}
+            for _ in range(3)
+        ]
+
         response = yield call_responder(
             Cluster(), cluster.EvaluateTag, {
                 "tag_name": "all-nodes",
@@ -1831,6 +1704,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
                      "uri": "http://foo.example.com/"},
                 ],
                 "credentials": "abc:def:ghi",
+                "nodes": nodes,
             })
 
         self.assertEqual({}, response)
@@ -1849,6 +1723,10 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         resource_secret = factory.make_name("rsec")
         credentials = convert_tuple_to_string(
             (consumer_key, resource_token, resource_secret))
+        nodes = [
+            {"system_id": factory.make_name("node")}
+            for _ in range(3)
+        ]
 
         yield call_responder(
             Cluster(), cluster.EvaluateTag, {
@@ -1858,10 +1736,11 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
                     {"prefix": tag_ns_prefix, "uri": tag_ns_uri},
                 ],
                 "credentials": credentials,
+                "nodes": nodes,
             })
 
         self.assertThat(evaluate_tag, MockCalledOnceWith(
-            tag_name, tag_definition, {tag_ns_prefix: tag_ns_uri},
+            nodes, tag_name, tag_definition, {tag_ns_prefix: tag_ns_uri},
             (consumer_key, resource_token, resource_secret),
         ))
 
@@ -2352,3 +2231,70 @@ class TestClusterProtocol_EnlistNodesFromMicrosoftOCS(MAASTestCase):
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
                 "MicrosoftOCS", fake_error))
+
+
+class TestClusterProtocol_Refresh(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.RefreshRackControllerInfo.commandName)
+        self.assertIsNotNone(responder)
+
+    def test__defers_refresh_to_thread(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+
+        call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
+            "system_id": system_id,
+            "consumer_key": consumer_key,
+            "token_key": token_key,
+            "token_secret": token_secret,
+        })
+
+        self.assertThat(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.refresh, system_id, consumer_key, token_key,
+                token_secret))
+
+    def test_returns_extra_info(self):
+        self.patch_autospec(clusterservice, 'deferToThread')
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+        architecture = factory.make_name("architecture")
+        osystem = factory.make_name("osystem")
+        distro_series = factory.make_name("distro_series")
+        swap_size = random.randint(1, 100)
+        os_release = {
+            'ID': osystem,
+            'UBUNTU_CODENAME': distro_series,
+        }
+
+        self.patch(clusterservice, 'get_architecture').return_value = (
+            architecture)
+        self.patch(clusterservice, 'get_os_release').return_value = os_release
+        self.patch(clusterservice, 'get_swap_size').return_value = swap_size
+
+        response = call_responder(
+            Cluster(), cluster.RefreshRackControllerInfo, {
+                "system_id": system_id,
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+            })
+
+        self.assertItemsEqual(
+            {
+                'osystem': osystem,
+                'distro_series': distro_series,
+                'swap_size': swap_size,
+                'architecture': architecture,
+            }, response.result)

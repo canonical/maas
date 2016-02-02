@@ -39,12 +39,12 @@ class TestGetMAASFacingServerHost(MAASServerTestCase):
         self.set_maas_url(ip)
         self.assertEqual(ip, server_address.get_maas_facing_server_host())
 
-    def test_get_maas_facing_server_host_returns_nodegroup_maas_url(self):
+    def test_get_maas_facing_server_host_returns_rack_maas_url(self):
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
-        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
+        rack = factory.make_RackController(url=maas_url)
         self.assertEqual(
-            hostname, server_address.get_maas_facing_server_host(nodegroup))
+            hostname, server_address.get_maas_facing_server_host(rack))
 
     def test_get_maas_facing_server_host_strips_out_port(self):
         hostname = make_hostname()
@@ -110,10 +110,10 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
     def test__integrates_with_get_maas_facing_server_host(self):
         ip = factory.make_ipv4_address()
         maas_url = 'http://%s' % ip
-        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
+        rack = factory.make_RackController(url=maas_url)
         self.assertEqual(
             str(ip),
-            server_address.get_maas_facing_server_host(nodegroup))
+            server_address.get_maas_facing_server_host(rack))
 
     def test__uses_IPv4_hostname_directly_if_ipv4_set(self):
         ip = factory.make_ipv4_address()

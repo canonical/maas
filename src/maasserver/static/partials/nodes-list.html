@@ -5,7 +5,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <a href=""
                     data-ng-class="{ active: currentpage === 'nodes' }"
-                    data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Node', 'other': 'Nodes'}"></ng-pluralize></a>
+                    data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Machine', 'other': 'Machines'}"></ng-pluralize></a>
                 <span class="divide"></span>
                 <a href=""
                     data-ng-class="{ active: currentpage === 'devices' }"
@@ -130,13 +130,6 @@
                 <form class="twelve-col ng-hide"  data-ng-show="showMachine()">
                     <fieldset class="six-col no-padding no-margin-bottom">
                         <div class="inline">
-                            <label for="cluser" class="two-col">Cluster</label>
-                            <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
-                                data-ng-model="machine.cluster"
-                                data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
-                            </select>
-                        </div>
-                        <div class="inline">
                             <label for="machine-name" class="two-col">Machine name</label>
                             <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
                                 data-ng-model="machine.name">
@@ -177,21 +170,12 @@
                         </div>
                     </fieldset>
                     <fieldset class="six-col last-col no-padding no-margin-bottom"
-                        data-maas-power-parameters="machine.cluster.power_types"
+                        data-maas-power-parameters="power_types"
                         data-ng-model="machine.power">
                     </fieldset>
                 </form>
                 <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
-                    <fieldset class="six-col">
-                        <div class="inline">
-                            <label for="cluser" class="two-col">Cluster</label>
-                            <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
-                                data-ng-model="chassis.cluster"
-                                data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
-                            </select>
-                        </div>
-                    </fieldset>
-                    <fieldset class="six-col last-col"
+                    <fieldset class="six-col"
                         data-maas-power-parameters="chassisPowerTypes"
                         data-ng-model="chassis.power">
                     </fieldset>
@@ -316,7 +300,7 @@
                             <tr class="table-listing__row">
                                 <th class="t20">MAC address</th>
                                 <th class="t20">IP assignment</th>
-                                <th class="t20">Network</th>
+                                <th class="t20">Subnet</th>
                                 <th class="t35">IP address</th>
                                 <th class="t5"></th>
                             </tr>
@@ -337,11 +321,11 @@
                                     </select>
                                 </td>
                                 <td class="t20 table-listing__cell">
-                                    <select name="network" id="network"
-                                        placeholder="Select network" data-ng-model="interface.clusterInterfaceId"
-                                        data-ng-options="cInterface.id as cInterface.network for cInterface in getManagedInterfaces()"
+                                    <select name="subnet" id="subnet"
+                                        placeholder="Select subnet" data-ng-model="interface.subnetId"
+                                        data-ng-options="subnet.id as subnet.name for subnet in subnets"
                                         data-ng-show="interface.ipAssignment.name === 'static'">
-                                        <option value="" disabled selected>Select network</option>
+                                        <option value="" disabled selected>Select subnet</option>
                                     </select>
                                 </td>
                                 <td class="t35 table-listing__cell">
@@ -349,10 +333,10 @@
                                         data-ng-model="interface.ipAddress"
                                         data-ng-class="{ invalid: ipHasError(interface) }"
                                         data-ng-show="interface.ipAssignment.name === 'external'">
-                                    <input type="text" id="ip-address" ng-placeholder="getInterfaceStaticRange(interface.clusterInterfaceId)"
+                                    <input type="text" id="ip-address"
                                         data-ng-model="interface.ipAddress"
                                         data-ng-class="{ invalid: ipHasError(interface) }"
-                                        data-ng-show="interface.ipAssignment.name === 'static' && interface.clusterInterfaceId">
+                                        data-ng-show="interface.ipAssignment.name === 'static'">
                                 </td>
                                 <td class="t5 align-right">
                                     <!-- space needed to set correct height -->

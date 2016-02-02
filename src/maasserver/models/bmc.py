@@ -187,6 +187,56 @@ class BMC(CleanSave, TimestampedModel):
         # no match found - return None
         return None
 
+    def get_usable_rack_controllers(self):
+        """Return a list of `RackController`'s that have the ability to access
+        this `BMC`."""
+        ip_address = self.ip_address
+        if ip_address is None or ip_address.ip is None or ip_address.ip == '':
+            return set()
+
+        # The BMC has a valid StaticIPAddress set. Make sure that the subnet
+        # is correct for that BMC.
+        subnet = Subnet.objects.get_best_subnet_for_ip(ip_address.ip)
+        if self.ip_address.subnet.id != subnet.id:
+            self.ip_address.subnet = subnet
+            self.ip_address.save()
+
+        # Circular imports.
+        from maasserver.models.node import RackController
+
+        # Get all rack controllers that have an IP address on that subnet.
+        usable = set()
+        rack_controllers = RackController.objects.filter(
+            interface__ip_addresses__subnet=subnet,
+            interface__ip_addresses__ip__isnull=False)
+        for rack_controller in rack_controllers.prefetch_related(
+                'interface_set__ip_addresses'):
+            if rack_controller not in usable:
+                # We use `all()` in the query because the data was
+                # already prefetched.
+                for interface in rack_controller.interface_set.all():
+                    for ip_address in interface.ip_addresses.all():
+                        if (ip_address.ip != '' and
+                                ip_address.subnet_id == subnet.id and
+                                rack_controller not in usable):
+                            usable.add(rack_controller)
+                            break
+        return usable
+
+    def get_client_identifiers(self):
+        """Return a list of indetifiers that can be used to get the
+        `rpc.common.Client` for this `BMC`.
+
+        :raise NoBMCAccessError: Raised when no rack controllers have access
+            to this `BMC`.
+        """
+        rack_controllers = self.get_usable_rack_controllers()
+        identifers = [
+            controller.system_id
+            for controller in rack_controllers
+        ]
+        return identifers
+
 
 @receiver(post_delete)
 def delete_bmc(sender, instance, **kwargs):

@@ -126,16 +126,16 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         # RPC service is globally registered.
         if provisioningserver.services.running:
             raise AssertionError(
-                "Please ensure that cluster services are *not* running "
-                "before using this fixture.")
+                "Please ensure that rack controller services are *not* "
+                "running before using this fixture.")
         if "rpc" in provisioningserver.services.namedServices:
             raise AssertionError(
                 "Please ensure that no RPC service is registered globally "
                 "before using this fixture.")
 
     def asyncStart(self):
-        # Check that no cluster services are running and that there's no RPC
-        # service already registered.
+        # Check that no rack controller services are running and that there's
+        # no RPC service already registered.
         self.checkServicesClean()
         # Patch it into the global services object.
         self.rpc_service.setName("rpc")
@@ -223,8 +223,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
             commands = commands + (region.Identify,)
         if region.Authenticate not in commands:
             commands = commands + (region.Authenticate,)
-        if region.Register not in commands:
-            commands = commands + (region.Register,)
+        if region.RegisterRackController not in commands:
+            commands = commands + (region.RegisterRackController,)
         if amp.StartTLS not in commands:
             commands = commands + (amp.StartTLS,)
         protocol_factory = make_amp_protocol_factory(*commands)
@@ -232,7 +232,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         eventloop = self.getEventLoopName(protocol)
         protocol.Identify.return_value = {"ident": eventloop}
         protocol.Authenticate.side_effect = self._authenticate_with_cluster_key
-        protocol.Register.side_effect = always_succeed_with({})
+        protocol.RegisterRackController.side_effect = always_succeed_with(
+            {"system_id": ""})
         protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 

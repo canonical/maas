@@ -8,7 +8,6 @@ __all__ = []
 import random
 
 from maasserver.clusterrpc import utils
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -21,23 +20,10 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 class TestCallClusters(MAASServerTestCase):
     """Tests for `utils.call_clusters`."""
 
-    def test__gets_clients_for_accepted_nodegroups_only(self):
-        # Create several disabled nodegroups.
-        nodegroups = [
-            factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.DISABLED)
-            for _ in range(5)
-        ]
-
-        # Accept one of them at random.
-        accepted = random.choice(nodegroups)
-        accepted.accept()
-
-        # Watch those clients that are requested.
+    def test__gets_clients(self):
+        rack = factory.make_RackController()
         getClientFor = self.patch(utils, "getClientFor")
         getClientFor.return_value = lambda: None
-
-        # Prevent any calls from being made.
         async_gather = self.patch(async, "gather")
         async_gather.return_value = []
 
@@ -45,7 +31,7 @@ class TestCallClusters(MAASServerTestCase):
         # async.gather, but we're interested in the side-effect: getClientFor
         # has been called for the accepted nodegroup.
         self.assertItemsEqual([], utils.call_clusters(sentinel.command))
-        self.assertThat(getClientFor, MockCalledOnceWith(accepted.uuid))
+        self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
 
 
 class TestGetErrorMessageForException(MAASServerTestCase):
@@ -68,10 +54,10 @@ class TestGetErrorMessageForException(MAASServerTestCase):
             utils.get_error_message_for_exception(exception_class()))
 
     def test_returns_cluster_name_in_no_connections_error_message(self):
-        cluster = factory.make_NodeGroup()
+        rack = factory.make_RackController()
         exception = NoConnectionsAvailable(
-            "Unable to connect!", uuid=cluster.uuid)
+            "Unable to connect!", uuid=rack.system_id)
         self.assertEqual(
-            "Unable to connect to cluster '%s' (%s); no connections "
-            "available." % (cluster.cluster_name, cluster.uuid),
+            "Unable to connect to rack controller '%s' (%s); no connections "
+            "available." % (rack.hostname, rack.system_id),
             utils.get_error_message_for_exception(exception))

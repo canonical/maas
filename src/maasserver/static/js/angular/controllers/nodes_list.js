@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$routeParams', 'NodesManager', 'DevicesManager',
+    '$scope', '$rootScope', '$routeParams', 'MachinesManager', 'DevicesManager',
     'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
     'UsersManager',
-    function($scope, $rootScope, $routeParams, NodesManager, DevicesManager,
+    function($scope, $rootScope, $routeParams, MachinesManager, DevicesManager,
         GeneralManager, ManagerHelperService, SearchService, ZonesManager,
         UsersManager) {
 
@@ -20,11 +20,11 @@ angular.module('MAAS').controller('NodesListController', [
         };
 
         // Set title and page.
-        $rootScope.title = "Nodes";
+        $rootScope.title = "Machines";
         $rootScope.page = "nodes";
 
         // Set initial values.
-        $scope.nodes = NodesManager.getItems();
+        $scope.nodes = MachinesManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.currentpage = "nodes";
@@ -34,17 +34,17 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs = {};
         // Nodes tab.
         $scope.tabs.nodes = {};
-        $scope.tabs.nodes.pagetitle = "Nodes";
+        $scope.tabs.nodes.pagetitle = "Machines";
         $scope.tabs.nodes.currentpage = "nodes";
-        $scope.tabs.nodes.manager = NodesManager;
+        $scope.tabs.nodes.manager = MachinesManager;
         $scope.tabs.nodes.previous_search = "";
         $scope.tabs.nodes.search = "";
         $scope.tabs.nodes.searchValid = true;
-        $scope.tabs.nodes.selectedItems = NodesManager.getSelectedItems();
+        $scope.tabs.nodes.selectedItems = MachinesManager.getSelectedItems();
         $scope.tabs.nodes.filtered_items = [];
         $scope.tabs.nodes.predicate = 'fqdn';
         $scope.tabs.nodes.allViewableChecked = false;
-        $scope.tabs.nodes.metadata = NodesManager.getMetadata();
+        $scope.tabs.nodes.metadata = MachinesManager.getMetadata();
         $scope.tabs.nodes.filters = SearchService.getEmptyFilter();
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
@@ -534,9 +534,10 @@ angular.module('MAAS').controller('NodesListController', [
             return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
-        // Load NodesManager, DevicesManager, GeneralManager and ZonesManager.
+        // Load MachinesManager, DevicesManager, GeneralManager and
+        // ZonesManager.
         ManagerHelperService.loadManagers(
-            [NodesManager, DevicesManager, GeneralManager, ZonesManager,
+            [MachinesManager, DevicesManager, GeneralManager, ZonesManager,
             UsersManager]).then(
             function() {
                 $scope.loading = false;

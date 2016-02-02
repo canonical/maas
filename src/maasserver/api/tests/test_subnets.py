@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Subnet API."""
@@ -13,8 +13,8 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_STATUS,
-    NODEGROUP_STATUS,
     RDNS_MODE_CHOICES,
 )
 from maasserver.testing.api import (
@@ -345,16 +345,13 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
         subnet = factory.make_Subnet()
         network = subnet.get_ipnetwork()
         first_address = inet_ntop(network.first + 1)
-        range_start = inet_ntop(network.first + 2)
         if network.version == 6:
             last_address = inet_ntop(network.last)
         else:
             last_address = inet_ntop(network.last - 1)
-        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            ng, ip=first_address, ip_range_low=range_start,
-            ip_range_high=last_address, static_ip_range_low='',
-            static_ip_range_high='', subnet=subnet)
+        factory.make_IPRange(
+            subnet, first_address, last_address,
+            type=IPRANGE_TYPE.MANAGED_DHCP)
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})

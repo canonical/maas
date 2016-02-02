@@ -232,20 +232,23 @@ class StaticIPAddressManager(Manager):
                     # let the retry mechanism do its thing.
                     raise make_serialization_failure()
         else:
-            dynamic_range_low = IPAddress(dynamic_range_low)
-            dynamic_range_high = IPAddress(dynamic_range_high)
-            dynamic_range = IPRange(dynamic_range_low, dynamic_range_high)
-
             requested_address = IPAddress(requested_address)
             if requested_address not in network:
                 raise StaticIPAddressOutOfRange(
                     "%s is not inside the network %s" % (
                         requested_address.format(), network))
-            if requested_address in dynamic_range:
-                raise StaticIPAddressOutOfRange(
-                    "%s is inside the dynamic range %s to %s" % (
-                        requested_address.format(), dynamic_range_low.format(),
-                        dynamic_range_high.format()))
+
+            if (dynamic_range_low is not None and
+                    dynamic_range_high is not None):
+                dynamic_range_low = IPAddress(dynamic_range_low)
+                dynamic_range_high = IPAddress(dynamic_range_high)
+                dynamic_range = IPRange(dynamic_range_low, dynamic_range_high)
+                if requested_address in dynamic_range:
+                    raise StaticIPAddressOutOfRange(
+                        "%s is inside the dynamic range %s to %s" % (
+                            requested_address.format(),
+                            dynamic_range_low.format(),
+                            dynamic_range_high.format()))
             return self._attempt_allocation(
                 requested_address, alloc_type,
                 user=user, subnet=subnet)
@@ -449,179 +452,6 @@ class StaticIPAddressManager(Manager):
             else:
                 mapping[hostname] = (ttl, ips)
         return mapping
-
-    def _clean_discovered_ip_addresses_on_interface(
-            self, interface, subnet_family, dont_delete=[]):
-        # Clean the current DISCOVERED IP addresses linked to this interface.
-        old_discovered = StaticIPAddress.objects.filter_by_subnet_cidr_family(
-            subnet_family)
-        old_discovered = old_discovered.filter(
-            interface=interface, alloc_type=IPADDRESS_TYPE.DISCOVERED)
-        old_discovered = old_discovered.prefetch_related('interface_set')
-        old_discovered = list(old_discovered)
-        dont_delete_ids = [ip.id for ip in dont_delete]
-        for old_ip in old_discovered:
-            interfaces = list(old_ip.interface_set.all())
-            delete_ip = (
-                old_ip.id not in dont_delete_ids
-            )
-            if delete_ip:
-                if interfaces == [interface]:
-                    # Only the passed interface is connected to this
-                    # DISCOVERED IP address so we can just delete the IP
-                    # address.
-                    old_ip.delete()
-                else:
-                    # More than one is connected so we need to clear just
-                    # remove the link.
-                    interface.ip_addresses.remove(old_ip)
-
-    def update_leases(self, nodegroup, leases):
-        """Refresh our knowledge of a `nodegroup`'s IP mappings.
-
-        This deletes entries that are no longer current, adds new ones,
-        and updates or replaces ones that have changed.
-        This method also updates the Interface objects to link them to
-        their respective cluster interface.
-
-        :param nodegroup: The nodegroup that these updates are for.
-        :param leases: A list describing all current IP/MAC mappings as
-            managed by the node group's DHCP server: [ (ip, mac), ...].
-            Any :class:`StaticIPAddress` entries for `nodegroup` that are from
-            DISCOVERED not in `leases` will be deleted.
-        :return: Iterable of IP addresses that were newly leased.
-        """
-        # Circular imports.
-        from maasserver.models.interface import (
-            Interface,
-            UnknownInterface,
-            )
-
-        # Current DISCOVERED addresses attached to the NodeGroup
-        # we're updating.
-        discoved_ips = StaticIPAddress.objects.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED,
-            subnet__nodegroupinterface__nodegroup=nodegroup)
-        ip_leases = convert_leases_to_dict(leases)
-        discoved_ips = discoved_ips.prefetch_related('interface_set')
-        discoved_ips = {
-            str(ip.ip): ip
-            for ip in discoved_ips
-        }
-
-        # Update all the DISCOVERED allocations for the lease information.
-        mac_leases = defaultdict(list)
-        subnet = None
-        for ipaddr, mac_list in ip_leases.items():
-            # So we don't make a query for every IP address we check to see if
-            # the IP address is in the same subnet from the previous IP.
-            if subnet is None:
-                subnet = Subnet.objects.get_best_subnet_for_ip(ipaddr)
-            elif IPAddress(ipaddr) not in subnet.get_ipnetwork():
-                subnet = Subnet.objects.get_best_subnet_for_ip(ipaddr)
-            subnet_family = subnet.get_ipnetwork().version
-
-            # If the ipaddr is not in the dynamic range for the cluster
-            # interface then it is ignored. Address that match this criteria
-            # are hostmaps set on the clusters DHCP server.
-            ngi = subnet.get_managed_cluster_interface()
-            if IPAddress(ipaddr) not in ngi.get_dynamic_ip_range():
-                continue
-
-            # Get current DISCOVERED ip address or create a new one.
-            ipaddress = discoved_ips.pop(ipaddr, None)
-            if ipaddress is not None:
-                # All interfaces attached to the IP address that are not the
-                # current MAC address should be set to another IP address. This
-                # makes sure that those interfaces does not lose its link to
-                # their last subnet.
-                other_interfaces = list(
-                    ipaddress.interface_set.exclude(mac_address__in=mac_list))
-                if len(other_interfaces) > 0:
-                    # Get or create an empty DISCOVERED IP address for these
-                    # other interfaces, linked to the old subnet.  if we have
-                    # migrated from 1.8 to 1.9, it's possible to have more
-                    # than one empty_ip for the subnet.  Use the first one if
-                    # it is there, if it isn't, then let get_or_create make
-                    # one for us.
-                    empty_ip = StaticIPAddress.objects.filter(
-                        ip=None,
-                        alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                        subnet=ipaddress.subnet).first()
-                    if empty_ip is None:
-                        empty_ip, _ = StaticIPAddress.objects.get_or_create(
-                            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None,
-                            subnet=ipaddress.subnet)
-                    for other_interface in other_interfaces:
-                        other_interface.ip_addresses.remove(ipaddress)
-                        other_interface.ip_addresses.add(empty_ip)
-
-                # Update the subnet on the exist IP address to make sure its
-                # the correct subnet.
-                ipaddress.subnet = subnet
-                ipaddress.save()
-            else:
-                # This is a new IP address
-                ipaddress = StaticIPAddress.objects.create(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ipaddr,
-                    subnet=subnet)
-            for mac in mac_list:
-                mac_leases[mac].append(ipaddress)
-
-            # Update the DISCOVERED IP address for the interfaces with MAC
-            # address.
-            for mac in mac_list:
-                interfaces = list(
-                    Interface.objects.filter(mac_address=mac))
-                if len(interfaces) > 0:
-                    for interface in interfaces:
-                        # XXX 2015-09-04 blake_r: We assume that an interface
-                        # is on the same VLAN as the subnet. It would be nice
-                        # to figure out which one to fix but it is currently
-                        # not possible based on the lease information received.
-                        if interface.vlan_id == subnet.vlan_id:
-                            # Remove any extra DISCOVERED address on the
-                            # interface as it should only ever have one per IP
-                            # family.
-                            self._clean_discovered_ip_addresses_on_interface(
-                                interface, subnet_family,
-                                dont_delete=mac_leases[mac])
-                            # Add the newly discovered address to the
-                            # interface.
-                            interface.ip_addresses.add(ipaddress)
-                else:
-                    # Unknown MAC address so create an unknown interface for
-                    # this MAC address.
-                    unknown_interface = UnknownInterface(
-                        name="eth0", mac_address=mac, vlan_id=subnet.vlan_id)
-                    unknown_interface.save()
-                    unknown_interface.ip_addresses.add(ipaddress)
-
-        # Reload all the extra DISCOVERED IP addresses that are no longer
-        # leased so the information can be cleared. This is reloaded just to
-        # make sure the information is current from all of the lease updating
-        # above.
-        olds_ids = [
-            old_ip.id
-            for old_ip in discoved_ips.values()
-        ]
-        discoved_ips = StaticIPAddress.objects.filter(id__in=olds_ids)
-        for old_ip in discoved_ips:
-            if old_ip.is_linked_to_one_unknown_interface():
-                # IP address is linked to an unknown interface so the interface
-                # and the IP address is no longer needed.
-                for interface in old_ip.interface_set.all():
-                    interface.delete(remove_ip_address=False)
-                old_ip.delete()
-            elif len(old_ip.interface_set.all()) == 0:
-                # This IP address has not linked interfaces so it should
-                # be removed as well.
-                old_ip.delete()
-            else:
-                # This IP address is linked to a known interface, just clear
-                # its IP to keep the link to the subnet available.
-                old_ip.ip = None
-                old_ip.save()
 
     def filter_by_ip_family(self, family):
         possible_families = map_enum_reverse(IPADDRESS_FAMILY)

@@ -11,10 +11,15 @@ __all__ = [
 from base64 import b64decode
 import re
 
+import crochet
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from formencode.validators import StringBool
-from maasserver import locks
+from maasserver import (
+    eventloop,
+    locks,
+)
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     AnonNodesHandler,
@@ -34,12 +39,14 @@ from maasserver.api.utils import (
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
+    PowerProblem,
     StaticIPAddressExhaustion,
     Unauthorized,
 )
@@ -55,13 +62,20 @@ from maasserver.models import (
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.preseed import get_curtin_merged_config
+from maasserver.rpc import getClientFor
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
+from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+)
+from provisioningserver.rpc.cluster import PowerQuery
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import yaml
 
 # Machine's fields exposed on the API.
@@ -69,7 +83,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'system_id',
     'hostname',
     'owner',
-    'pxe_mac',
+    'boot_interface',
     'architecture',
     'min_hwe_kernel',
     'hwe_kernel',
@@ -84,6 +98,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'power_type',
     'power_state',
     'tag_names',
+    'address_ttl',
     'ip_addresses',
     ('interface_set', (
         'id',
@@ -111,6 +126,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'substatus_action',
     'substatus_message',
     'substatus_name',
+    'node_type',
 )
 
 
@@ -150,11 +166,13 @@ class MachineHandler(NodeHandler):
     fields = DISPLAYED_MACHINE_FIELDS
 
     @classmethod
-    def status(handler, machine):
-        """Return the substatus of the machine."""
-        # XXX ltrager 2015-12-10: Once the API version is bumped we can
-        # remove this can use the version from the parent class
-        return machine.status
+    def boot_interface(handler, machine):
+        """The network interface which is used to boot over the network."""
+        boot_interface = machine.get_boot_interface()
+        if boot_interface is None:
+            return None
+        else:
+            return {"mac_address": "%s" % boot_interface.mac_address}
 
     @admin_method
     def update(self, request, system_id):
@@ -195,7 +213,7 @@ class MachineHandler(NodeHandler):
             kilobytes, megabytes, gigabytes and terabytes.
         :type swap_size: unicode
 
-        Returns 404 if the machine is node found.
+        Returns 404 if the machine is not found.
         Returns 403 if the user does not have permission to update the machine.
         """
         machine = self.model.objects.get_node_or_404(
@@ -228,8 +246,38 @@ class MachineHandler(NodeHandler):
         return ('machine_handler', (machine_system_id, ))
 
     @operation(idempotent=False)
-    def start(self, request, system_id):
-        """Power up a machine.
+    def power_off(self, request, system_id):
+        """Power off a machine.
+
+        :param stop_mode: An optional power off mode. If 'soft',
+            perform a soft power down if the machine's power type supports
+            it, otherwise perform a hard power off. For all values other
+            than 'soft', and by default, perform a hard power off. A
+            soft power off generally asks the OS to shutdown the system
+            gracefully before powering off, while a hard power off
+            occurs immediately without any warning to the OS.
+        :type stop_mode: unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to stop the machine.
+        """
+        stop_mode = request.POST.get('stop_mode', 'hard')
+        comment = get_optional_param(request.POST, 'comment')
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        power_action_sent = machine.stop(
+            request.user, stop_mode=stop_mode, comment=comment)
+        if power_action_sent:
+            return machine
+        else:
+            return None
+
+    @operation(idempotent=False)
+    def deploy(self, request, system_id):
+        """Deploy an operating system to a machine.
 
         :param user_data: If present, this blob of user-data to be made
             available to the machines through the metadata service.
@@ -254,11 +302,9 @@ class MachineHandler(NodeHandler):
         and there were no IP addresses available on the relevant cluster
         interface.
         """
-        user_data = request.POST.get('user_data', None)
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
         hwe_kernel = request.POST.get('hwe_kernel', None)
-        comment = get_optional_param(request.POST, 'comment')
 
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -267,8 +313,6 @@ class MachineHandler(NodeHandler):
         if machine.owner is None:
             raise NodeStateViolation(
                 "Can't start machine: it hasn't been allocated.")
-        if user_data is not None:
-            user_data = b64decode(user_data)
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         if None in (series, license_key, hwe_kernel):
@@ -284,7 +328,40 @@ class MachineHandler(NodeHandler):
                 form.save()
             else:
                 raise MAASAPIValidationError(form.errors)
+        return self.power_on(request, system_id)
 
+    @operation(idempotent=False)
+    def power_on(self, request, system_id):
+        """Turn on a machine.
+
+        :param user_data: If present, this blob of user-data to be made
+            available to the machines through the metadata service.
+        :type user_data: base64-encoded unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Ideally we'd have MIME multipart and content-transfer-encoding etc.
+        deal with the encapsulation of binary data, but couldn't make it work
+        with the framework in reasonable time so went for a dumb, manual
+        encoding instead.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to start the machine.
+        Returns 503 if the start-up attempted to allocate an IP address,
+        and there were no IP addresses available on the relevant cluster
+        interface.
+        """
+        user_data = request.POST.get('user_data', None)
+        comment = get_optional_param(request.POST, 'comment')
+
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        if machine.owner is None:
+            raise NodeStateViolation(
+                "Can't start machine: it hasn't been allocated.")
+        if user_data is not None:
+            user_data = b64decode(user_data)
         try:
             machine.start(request.user, user_data=user_data, comment=comment)
         except StaticIPAddressExhaustion:
@@ -355,7 +432,7 @@ class MachineHandler(NodeHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
-    def abort_operation(self, request, system_id):
+    def abort(self, request, system_id):
         """Abort a machine's current operation.
 
         :param comment: Optional comment for the event log.
@@ -484,6 +561,93 @@ class MachineHandler(NodeHandler):
                 get_curtin_merged_config(machine), default_flow_style=False),
             content_type='text/plain')
 
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request, system_id):
+        """Obtain power parameters.
+
+        This method is reserved for admin users and returns a 403 if the
+        user is not one.
+
+        This returns the power parameters, if any, configured for a
+        node. For some types of power control this will include private
+        information such as passwords and secret keys.
+
+        Returns 404 if the node is not found.
+        """
+        machine = get_object_or_404(self.model, system_id=system_id)
+        return machine.power_parameters
+
+    @operation(idempotent=True)
+    def query_power_state(self, request, system_id):
+        """Query the power state of a node.
+
+        Send a request to the machine's power controller which asks it about
+        the machine's state.  The reply to this could be delayed by up to
+        30 seconds while waiting for the power controller to respond.
+        Use this method sparingly as it ties up an appserver thread
+        while waiting.
+
+        :param system_id: The machine to query.
+        :return: a dict whose key is "state" with a value of one of
+            'on' or 'off'.
+
+        Returns 404 if the machine is not found.
+        Returns 503 (with explanatory text) if the power state could not
+        be queried.
+        """
+        # addTask() is used here even though this function runs within a
+        # transaction. It is sane and correct to do so for a couple of
+        # reasons. First, the thing we want to do in the database is a *fact*
+        # and we want to record it whether or not this method raises an
+        # exception. Second, if the write to the database were to fail it does
+        # not matter that we won't be able to tell the caller. Ideally,
+        # however, we would not be making RPC calls from within transactions.
+        addTask = eventloop.services.getServiceNamed("database-tasks").addTask
+
+        machine = get_object_or_404(self.model, system_id=system_id)
+        rack = machine.get_boot_primary_rack_controller()
+
+        try:
+            client = getClientFor(rack.system_id)
+        except NoConnectionsAvailable:
+            maaslog.error(
+                "Unable to get RPC connection for cluster '%s' (%s)",
+                rack.hostname, rack.system_id)
+            raise PowerProblem("Unable to connect to cluster controller")
+
+        try:
+            power_info = machine.get_effective_power_info()
+        except UnknownPowerType as e:
+            raise PowerProblem(e)
+
+        if not power_info.can_be_started:
+            addTask(machine.update_power_state, POWER_STATE.UNKNOWN)
+            raise PowerProblem("Power state is not queryable")
+
+        call = client(
+            PowerQuery, system_id=system_id, hostname=machine.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters)
+        try:
+            state = call.wait(POWER_QUERY_TIMEOUT)
+        except crochet.TimeoutError:
+            maaslog.error(
+                "%s: Timed out waiting for power response in "
+                "Machine.power_state", machine.hostname)
+            raise PowerProblem("Timed out waiting for power response")
+        except PowerActionFail as e:
+            addTask(machine.update_power_state, POWER_STATE.ERROR)
+            raise PowerProblem(e)
+        except NotImplementedError as e:
+            addTask(machine.update_power_state, POWER_STATE.UNKNOWN)
+            raise PowerProblem(e)
+
+        # Record the new state.
+        addTask(machine.update_power_state, state["state"])
+
+        return state
+
 
 def create_machine(request):
     """Service an http request to create a machine.
@@ -537,22 +701,6 @@ def create_machine(request):
             raise MAASAPIValidationError(
                 'min_hwe_kernel must be in the form of hwe-<LETTER>.')
 
-    # XXX ltrager 2015-12-10: Change this to rack controller
-    if 'nodegroup' not in altered_query_data:
-        # If 'nodegroup' is not explicitly specified, get the origin of the
-        # request to figure out which nodegroup the new node should be
-        # attached to.
-        if request.data.get('autodetect_nodegroup', None) is None:
-            # We insist on this to protect command-line API users who
-            # are manually enlisting nodes.  You can't use the origin's
-            # IP address to indicate in which nodegroup the new node belongs.
-            raise MAASAPIValidationError(
-                "'autodetect_nodegroup' must be specified if 'nodegroup' "
-                "parameter missing")
-        nodegroup = find_nodegroup(request)
-        if nodegroup is not None:
-            altered_query_data['nodegroup'] = nodegroup
-
     Form = get_node_create_form(request.user)
     form = Form(data=altered_query_data, request=request)
     if form.is_valid():
@@ -567,12 +715,11 @@ def create_machine(request):
 
 class AnonMachinesHandler(AnonNodesHandler):
     """Anonymous access to Machines."""
-    create = update = delete = None
     model = Machine
     fields = DISPLAYED_MACHINE_FIELDS
 
     @operation(idempotent=False)
-    def new(self, request):
+    def create(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Machine.
 
@@ -627,12 +774,11 @@ class AnonMachinesHandler(AnonNodesHandler):
 class MachinesHandler(NodesHandler):
     """Manage the collection of all the nodes in the MAAS."""
     api_doc_section_name = "Machines"
-    create = update = delete = None
     anonymous = AnonMachinesHandler
     base_model = Machine
 
     @operation(idempotent=False)
-    def new(self, request):
+    def create(self, request):
         # Note: this docstring is duplicated above. Be sure to update both.
         """Create a new Machine.
 
@@ -814,10 +960,10 @@ class MachinesHandler(NodesHandler):
         return machines.order_by('id')
 
     @operation(idempotent=False)
-    def acquire(self, request):
-        """Acquire an available machine for deployment.
+    def allocate(self, request):
+        """Allocate an available machine for deployment.
 
-        Constraints parameters can be used to acquire a machine that possesses
+        Constraints parameters can be used to allocate a machine that possesses
         certain characteristics.  All the constraints are optional and when
         multiple constraints are provided, they are combined using 'AND'
         semantics.
@@ -973,6 +1119,29 @@ class MachinesHandler(NodesHandler):
         for machine in machines:
             response[machine.system_id] = machine.get_deployment_status()
         return response
+
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request):
+        """Retrieve power parameters for multiple machines.
+
+        :param id: An optional list of system ids.  Only machines with
+            matching system ids will be returned.
+        :type id: iterable
+
+        :return: A dictionary of power parameters, keyed by machine system_id.
+
+        Raises 403 if the user is not an admin.
+        """
+        match_ids = get_optional_list(request.GET, 'id')
+
+        if match_ids is None:
+            machines = self.base_model.objects.all()
+        else:
+            machines = self.base_model.objects.filter(system_id__in=match_ids)
+
+        return {machine.system_id: machine.power_parameters
+                for machine in machines}
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

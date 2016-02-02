@@ -19,13 +19,8 @@ import bson
 from fixtures import FakeLogger
 from lxml import etree
 from maastesting.factory import factory
-from maastesting.fakemethod import (
-    FakeMethod,
-    MultiFakeMethod,
-)
 from maastesting.matchers import (
     IsCallable,
-    Matches,
     MockCalledOnceWith,
     MockCallsMatch,
 )
@@ -38,7 +33,6 @@ from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
-    AfterPreprocessing,
     DocTestMatches,
     Equals,
     MatchesStructure,
@@ -469,12 +463,12 @@ class TestGenNodeDetails(PservTestCase):
         get_details_for_nodes.side_effect = lambda *args: responses.pop(0)
         self.fake_merge_details()
         node_details = tags.gen_node_details(
-            sentinel.client, sentinel.uuid, batches)
+            sentinel.client, batches)
         self.assertItemsEqual(
             [('s1', 'merged:foo'), ('s2', 'merged:bar'), ('s3', 'merged:cob')],
             node_details)
         self.assertSequenceEqual(
-            [call(sentinel.client, sentinel.uuid, batch) for batch in batches],
+            [call(sentinel.client, batch) for batch in batches],
             get_details_for_nodes.mock_calls)
 
 
@@ -487,26 +481,8 @@ class TestTagUpdating(PservTestCase):
     def fake_client(self):
         return MAASClient(None, None, factory.make_simple_http_url())
 
-    def fake_cached_knowledge(self):
-        nodegroup_uuid = factory.make_name('nodegroupuuid')
-        return self.fake_client(), nodegroup_uuid
-
-    def test_get_nodes_calls_correct_api_and_parses_result(self):
-        client, uuid = self.fake_cached_knowledge()
-        response = factory.make_response(
-            http.client.OK,
-            b'["system-id1", "system-id2"]',
-            'application/json',
-        )
-        mock = MagicMock(return_value=response)
-        self.patch(client, 'get', mock)
-        result = tags.get_nodes_for_node_group(client, uuid)
-        self.assertEqual(['system-id1', 'system-id2'], result)
-        url = '/api/2.0/nodegroups/%s/' % (uuid,)
-        mock.assert_called_once_with(url, op='list_nodes')
-
     def test_get_details_calls_correct_api_and_parses_result(self):
-        client, uuid = self.fake_cached_knowledge()
+        client = self.fake_client()
         data = {
             "system-1": {
                 "lshw": b"<lshw><data1 /></lshw>",
@@ -517,23 +493,29 @@ class TestTagUpdating(PservTestCase):
                 "lldp": b"<lldp><data2 /></lldp>",
             },
         }
-        content = bson.BSON.encode(data)
-        response = factory.make_response(
+        response1 = factory.make_response(
             http.client.OK,
-            content,
+            bson.BSON.encode(data["system-1"]),
             'application/bson'
         )
-        post = self.patch(client, 'post')
-        post.return_value = response
+        response2 = factory.make_response(
+            http.client.OK,
+            bson.BSON.encode(data["system-2"]),
+            'application/bson'
+        )
+        get = self.patch(client, 'get')
+        get.side_effect = [response1, response2]
         result = tags.get_details_for_nodes(
-            client, uuid, ['system-1', 'system-2'])
+            client, ['system-1', 'system-2'])
         self.assertEqual(data, result)
-        url = '/api/2.0/nodegroups/%s/' % (uuid,)
-        post.assert_called_once_with(
-            url, op='details', system_ids=["system-1", "system-2"])
+        self.assertThat(
+            get,
+            MockCallsMatch(
+                call('/api/2.0/nodes/system-1/', op='details'),
+                call('/api/2.0/nodes/system-2/', op='details')))
 
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
-        client, uuid = self.fake_cached_knowledge()
+        client = self.fake_client()
         content = b'{"added": 1, "removed": 2}'
         response = factory.make_response(
             http.client.OK,
@@ -545,12 +527,12 @@ class TestTagUpdating(PservTestCase):
         name = factory.make_name('tag')
         tag_definition = factory.make_name('//')
         result = tags.post_updated_nodes(
-            client, name, tag_definition, uuid,
+            client, name, tag_definition,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/2.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
-            url, op='update_nodes', as_json=True, nodegroup=uuid,
+            url, op='update_nodes', as_json=True,
             definition=tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
@@ -558,7 +540,7 @@ class TestTagUpdating(PservTestCase):
         # If a worker started processing a node late, it might try to post
         # an updated list with an out-of-date definition. It gets a CONFLICT in
         # that case, which should be handled.
-        client, uuid = self.fake_cached_knowledge()
+        client = self.fake_client()
         name = factory.make_name('tag')
         right_tag_defintion = factory.make_name('//')
         wrong_tag_definition = factory.make_name('//')
@@ -571,12 +553,12 @@ class TestTagUpdating(PservTestCase):
         self.patch(client, 'post', post_mock)
         result = tags.post_updated_nodes(
             client, name, wrong_tag_definition,
-            uuid, ['add-system-id'], ['remove-1', 'remove-2'])
+            ['add-system-id'], ['remove-1', 'remove-2'])
         # self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/2.0/tags/%s/' % (name,)
         self.assertEqual({}, result)
         post_mock.assert_called_once_with(
-            url, op='update_nodes', as_json=True, nodegroup=uuid,
+            url, op='update_nodes', as_json=True,
             definition=wrong_tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
@@ -596,91 +578,35 @@ class TestTagUpdating(PservTestCase):
     def test_process_node_tags_integration(self):
         self.useFixture(ClusterConfigurationFixture(
             maas_url=factory.make_simple_http_url()))
-        get_nodes = FakeMethod(
-            result=factory.make_response(
-                http.client.OK,
-                b'["system-id1", "system-id2"]',
-                'application/json',
-            ))
-        post_hw_details = FakeMethod(
-            result=factory.make_response(
-                http.client.OK,
-                bson.BSON.encode({
-                    'system-id1': {'lshw': b'<node />'},
-                    'system-id2': {'lshw': b'<not-node />'},
-                }),
-                'application/bson',
-            ))
-        get_fake = MultiFakeMethod([get_nodes])
-        post_update_fake = FakeMethod(
-            result=factory.make_response(
-                http.client.OK,
-                b'{"added": 1, "removed": 1}',
-                'application/json',
-            ))
-        post_fake = MultiFakeMethod([post_hw_details, post_update_fake])
-        self.patch(MAASClient, 'get', get_fake)
-        self.patch(MAASClient, 'post', post_fake)
+        get_hw_system1 = factory.make_response(
+            http.client.OK,
+            bson.BSON.encode({'lshw': b'<node />'}),
+            'application/bson',
+        )
+        get_hw_system2 = factory.make_response(
+            http.client.OK,
+            bson.BSON.encode({'lshw': b'<not-node />'}),
+            'application/bson',
+        )
+        mock_get = self.patch(MAASClient, 'get')
+        mock_get.side_effect = [get_hw_system1, get_hw_system2]
+        mock_post = self.patch(MAASClient, 'post')
+        mock_post.return_value = factory.make_response(
+            http.client.OK,
+            b'{"added": 1, "removed": 1}',
+            'application/json',
+        )
         tag_name = factory.make_name('tag')
-        nodegroup_uuid = factory.make_name("nodegroup-uuid")
         tag_definition = '//lshw:node'
         tag_nsmap = {"lshw": "lshw"}
         tags.process_node_tags(
+            [{"system_id": "system-id1"}, {"system_id": "system-id2"}],
             tag_name, tag_definition, tag_nsmap,
-            self.fake_client(), nodegroup_uuid)
-        nodegroup_url = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid,)
+            self.fake_client())
         tag_url = '/api/2.0/tags/%s/' % (tag_name,)
-        self.assertEqual(
-            [((nodegroup_url,), {'op': 'list_nodes'})],
-            get_nodes.calls)
-        self.assertEqual(
-            [
-                ((nodegroup_url,), {
-                    'op': 'details',
-                    'system_ids': ['system-id1', 'system-id2'],
-                }),
-            ],
-            post_hw_details.calls)
-        self.assertEqual(
-            [
-                ((tag_url,), {
-                    'as_json': True,
-                    'op': 'update_nodes',
-                    'nodegroup': nodegroup_uuid,
-                    'definition': tag_definition,
-                    'add': ['system-id1'],
-                    'remove': ['system-id2'],
-                }),
-            ],
-            post_update_fake.calls)
-
-    def test_process_node_tags_requests_details_in_batches(self):
-        client = object()
-        uuid = factory.make_name('nodegroupuuid')
-        self.patch(tags, 'get_nodes_for_node_group')
-        tags.get_nodes_for_node_group.return_value = ['a', 'b', 'c']
-        self.patch(tags, 'get_details_for_nodes')
-        tags.get_details_for_nodes.side_effect = [
-            {'a': {'lshw': b'<node />'},
-             'c': {'lshw': b'<parent><node /></parent>'}},
-            {'b': {'lshw': b'<not-node />'}},
-        ]
-        self.patch(tags, 'post_updated_nodes')
-        tag_name = factory.make_name('tag')
-        tag_definition = '//node'
-        tags.process_node_tags(
-            tag_name, tag_definition, tag_nsmap=None, client=client,
-            nodegroup_uuid=uuid, batch_size=2)
         self.assertThat(
-            tags.get_nodes_for_node_group,
-            MockCalledOnceWith(client, uuid))
-        self.assertThat(
-            tags.get_details_for_nodes, MockCallsMatch(
-                call(client, uuid, ['a', 'c']),
-                call(client, uuid, ['b']),
-            ))
-        batch1 = Matches(AfterPreprocessing(sorted, Equals(['a', 'c'])))
-        batch2 = Matches(AfterPreprocessing(sorted, Equals(['b'])))
-        self.assertThat(
-            tags.post_updated_nodes, MockCalledOnceWith(
-                client, tag_name, tag_definition, uuid, batch1, batch2))
+            mock_post,
+            MockCalledOnceWith(
+                tag_url, as_json=True, op='update_nodes',
+                definition=tag_definition,
+                add=['system-id1'], remove=['system-id2']))

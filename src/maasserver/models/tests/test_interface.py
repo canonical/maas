@@ -17,12 +17,8 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_PERMISSION,
-    NODE_STATUS,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
-    StaticIPAddressExhaustion,
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
@@ -49,19 +45,14 @@ from maasserver.testing.orm import (
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
-    MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import (
-    call,
-    sentinel,
-)
+from mock import call
 from netaddr import (
     IPAddress,
     IPNetwork,
-    IPRange,
 )
 from provisioningserver.utils.ipaddr import (
     get_first_and_last_usable_host_in_network,
@@ -69,11 +60,9 @@ from provisioningserver.utils.ipaddr import (
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
-    HasLength,
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
-    Not,
 )
 
 
@@ -251,8 +240,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test__filter_by_specifiers_matches_subnet_specifier(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         self.assertItemsEqual(
@@ -269,8 +260,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test__filter_by_specifiers_matches_subnet_cidr_alias(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         self.assertItemsEqual(
@@ -289,8 +282,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         space2 = factory.make_Space()
         subnet1 = factory.make_Subnet(space=space1)
         subnet2 = factory.make_Subnet(space=space2)
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         self.assertItemsEqual(
@@ -362,8 +357,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         space2 = factory.make_Space()
         subnet1 = factory.make_Subnet(space=space1)
         subnet2 = factory.make_Subnet(space=space2)
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         nodes1, map1 = Interface.objects.get_matching_node_map(
@@ -387,8 +384,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         space2 = factory.make_Space()
         subnet1 = factory.make_Subnet(space=space1)
         subnet2 = factory.make_Subnet(space=space2)
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, with_dhcp_rack_primary=False)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, with_dhcp_rack_primary=False)
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         iface3 = factory.make_Interface(node=node1)
@@ -554,48 +553,6 @@ class InterfaceTest(MAASServerTestCase):
         interface.delete()
         self.assertIsNone(reload_object(discovered_ip))
         self.assertIsNone(reload_object(static_ip))
-
-    def test_delete_of_static_on_managed_will_remove_host_maps(self):
-        mock_remove_host_maps = self.patch_autospec(
-            interface_module, "remove_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        static_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip,
-            subnet=subnet, interface=interface)
-        interface.delete()
-        self.assertIsNone(reload_object(static_ip))
-        self.assertThat(
-            mock_remove_host_maps,
-            MockCalledOnceWith({
-                nodegroup: {ip, interface.mac_address.get_raw()}
-                }))
-
-    def test_delete_of_discovered_will_remove_host_maps(self):
-        mock_remove_host_maps = self.patch_autospec(
-            interface_module, "remove_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        static_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
-            subnet=subnet, interface=interface)
-        interface.delete()
-        self.assertIsNone(reload_object(static_ip))
-        self.assertThat(
-            mock_remove_host_maps,
-            MockCalledOnceWith({
-                nodegroup: {ip}
-                }))
 
     def test_remove_gateway_link_on_node_ipv4(self):
         node = factory.make_Node()
@@ -1039,35 +996,35 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 ip=str(IPNetwork(cidr_list[i]).ip)))
 
     def test__links_interface_to_vlan_on_existing_subnet_with_logging(self):
-        ng = factory.make_NodeGroup()
+        fabric1 = factory.make_Fabric()
         fabric2 = factory.make_Fabric()
         fabric3 = factory.make_Fabric()
-        ngi1 = factory.make_NodeGroupInterface(ng)
-        ngi2 = factory.make_NodeGroupInterface(ng, fabric=fabric2)
-        ngi3 = factory.make_NodeGroupInterface(ng, fabric=fabric3)
+        vlan1 = factory.make_VLAN(fabric=fabric1)
+        vlan2 = factory.make_VLAN(fabric=fabric2)
+        vlan3 = factory.make_VLAN(fabric=fabric3)
+        subnet1 = factory.make_Subnet(vlan=vlan1)
+        subnet2 = factory.make_Subnet(vlan=vlan2)
+        subnet3 = factory.make_Subnet(vlan=vlan3)
         interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface3 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        vlan1 = ngi1.subnet.vlan
-        vlan2 = ngi2.subnet.vlan
-        vlan3 = ngi3.subnet.vlan
         maaslog = self.patch_autospec(interface_module, "maaslog")
-        interface1.update_ip_addresses([ngi1.subnet.cidr])
-        interface2.update_ip_addresses([ngi2.subnet.cidr])
-        interface3.update_ip_addresses([ngi3.subnet.cidr])
+        interface1.update_ip_addresses([subnet1.cidr])
+        interface2.update_ip_addresses([subnet2.cidr])
+        interface3.update_ip_addresses([subnet3.cidr])
         self.assertThat(interface1.vlan, Equals(vlan1))
         self.assertThat(interface2.vlan, Equals(vlan2))
         self.assertThat(interface3.vlan, Equals(vlan3))
         self.assertThat(maaslog.info, MockCallsMatch(
             call(("%s: Observed connected to %s via %s." % (
                 interface1.get_log_string(), interface1.vlan.fabric.get_name(),
-                ngi1.subnet.cidr))),
+                subnet1.cidr))),
             call(("%s: Observed connected to %s via %s." % (
                 interface2.get_log_string(), interface2.vlan.fabric.get_name(),
-                ngi2.subnet.cidr))),
+                subnet2.cidr))),
             call(("%s: Observed connected to %s via %s." % (
                 interface3.get_log_string(), interface3.vlan.fabric.get_name(),
-                ngi3.subnet.cidr))),
+                subnet3.cidr))),
         ))
 
     def test__deletes_old_discovered_ip_addresses_on_interface(self):
@@ -1207,11 +1164,9 @@ class UpdateIpAddressesTest(MAASServerTestCase):
         cidr = str(network)
         address = str(network.ip)
         vlan = VLAN.objects.get_default_vlan()
+        vlan.dhcp_on = True
+        vlan.save()
         subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         other_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=address,
@@ -1265,10 +1220,6 @@ class TestLinkSubnet(MAASServerTestCase):
     def test__AUTO_creates_link_to_AUTO_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         auto_subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=auto_subnet)
         interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, auto_subnet)
         interface = reload_object(interface)
         auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
@@ -1305,18 +1256,15 @@ class TestLinkSubnet(MAASServerTestCase):
 
     def test__STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_in_dynamic = IPAddress(ngi.get_dynamic_ip_range().first)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
+        ip_in_dynamic = IPAddress(subnet.get_dynamic_ranges().first().start_ip)
         error = self.assertRaises(
             StaticIPAddressOutOfRange, interface.link_subnet,
             INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_in_dynamic)
+        expected_range = subnet.get_dynamic_range_for_ip(ip_in_dynamic)
         self.assertEqual(
-            "IP address is inside a managed dynamic range %s-%s." % (
-                ngi.ip_range_low, ngi.ip_range_high),
+            "IP address is inside a dynamic range %s-%s." % (
+                expected_range.start_ip, expected_range.end_ip),
             str(error))
 
     def test__STATIC_sets_ip_in_no_subnet(self):
@@ -1330,7 +1278,7 @@ class TestLinkSubnet(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=None)))
 
-    def test__STATIC_sets_ip_in_unmanaged_subnet(self):
+    def test__STATIC_sets_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -1342,25 +1290,7 @@ class TestLinkSubnet(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
 
-    def test__STATIC_sets_ip_in_managed_subnet(self):
-        self.patch_autospec(interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_in_static = IPAddress(ngi.get_static_ip_range().first)
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet, ip_address=ip_in_static)
-        interface = reload_object(interface)
-        self.assertIsNotNone(
-            get_one(
-                interface.ip_addresses.filter(
-                    alloc_type=IPADDRESS_TYPE.STICKY, ip="%s" % ip_in_static,
-                    subnet=subnet)))
-
-    def test__STATIC_picks_ip_in_unmanaged_subnet(self):
+    def test__STATIC_picks_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(
@@ -1372,57 +1302,12 @@ class TestLinkSubnet(MAASServerTestCase):
         self.assertIsNotNone(ip_address)
         self.assertIn(IPAddress(ip_address.ip), subnet.get_ipnetwork())
 
-    def test__STATIC_picks_ip_in_managed_subnet(self):
-        self.patch_autospec(interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet)
-        interface = reload_object(interface)
-        ip_address = get_one(
-            interface.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
-        self.assertIsNotNone(ip_address)
-        self.assertIn(IPAddress(ip_address.ip), ngi.get_static_ip_range())
-
-    def test__STATIC_calls_update_host_maps(self):
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet)
-        interface = reload_object(interface)
-        ip_address = get_one(
-            interface.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
-        self.assertIsNotNone(ip_address)
-        self.assertThat(
-            mock_update_host_maps,
-            MockCalledOnceWith({
-                ngi.nodegroup: {
-                    ip_address.ip: interface.mac_address.get_raw(),
-                }}))
-
     def test__STATIC_calls_dns_update_by_node(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         mock_dns_update_by_node = self.patch_autospec(
             config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         interface.link_subnet(
             INTERFACE_LINK_TYPE.STATIC, subnet)
         interface = reload_object(interface)
@@ -1433,23 +1318,6 @@ class TestLinkSubnet(MAASServerTestCase):
         self.assertThat(
             mock_dns_update_by_node,
             MockCalledOnceWith(interface.node))
-
-    def test__STATIC_doesnt_call_update_host_maps_when_allocations_exist(self):
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=str(IPAddress(subnet.get_ipnetwork().last - 1)),
-            subnet=subnet, interface=interface)
-        interface.link_subnet(
-            INTERFACE_LINK_TYPE.STATIC, subnet)
-        self.assertThat(mock_update_host_maps, MockNotCalled())
 
     def test__LINK_UP_creates_link_STICKY_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1475,13 +1343,9 @@ class TestLinkSubnet(MAASServerTestCase):
 class TestForceAutoOrDHCPLink(MAASServerTestCase):
     """Tests for `Interface.force_auto_or_dhcp_link`."""
 
-    def test__sets_to_AUTO_on_managed_subnet(self):
+    def test__sets_to_AUTO_on_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = interface.force_auto_or_dhcp_link()
         self.assertEqual(IPADDRESS_TYPE.AUTO, static_ip.alloc_type)
         self.assertEqual(subnet, static_ip.subnet)
@@ -1575,7 +1439,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
-    def test__STATIC_deletes_link_in_unmanaged_subnet(self):
+    def test__STATIC_deletes_link_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -1588,68 +1452,14 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertIsNone(reload_object(static_ip))
 
-    def test__STATIC_deletes_link_in_managed_subnet(self):
-        mock_remove_host_maps = self.patch_autospec(
-            interface_module, "remove_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        static_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip,
-            subnet=subnet, interface=interface)
-        interface.unlink_subnet_by_id(static_ip.id)
-        self.assertIsNone(reload_object(static_ip))
-        self.assertThat(mock_remove_host_maps, MockCalledOnceWith({
-            nodegroup: {static_ip.ip, interface.mac_address.get_raw()},
-            }))
-
-    def test__STATIC_deletes_link_in_managed_subnet_calls_update_on_next(self):
-        mock_remove_host_maps = self.patch_autospec(
-            interface_module, "remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_one = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        ip_two = factory.pick_ip_in_network(
-            subnet.get_ipnetwork(), but_not=[ip_one])
-        static_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_one,
-            subnet=subnet, interface=interface)
-        next_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_two,
-            subnet=subnet, interface=interface)
-        interface.unlink_subnet_by_id(static_ip.id)
-        self.assertIsNone(reload_object(static_ip))
-        self.assertThat(mock_remove_host_maps, MockCalledOnceWith({
-            nodegroup: {static_ip.ip, interface.mac_address.get_raw()},
-            }))
-        self.assertThat(mock_update_host_maps, MockCalledOnceWith({
-            nodegroup: {next_ip.ip: interface.mac_address.get_raw()},
-            }))
-
     def test__STATIC_calls_dns_update_subnets(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "remove_host_maps")
-        self.patch_autospec(interface_module, "update_host_maps")
         mock_dns_update_subnets = self.patch_autospec(
             config, "dns_update_subnets")
         mock_dns_update_by_node = self.patch_autospec(
             config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip,
@@ -1719,13 +1529,9 @@ class TestUpdateIPAddress(MAASServerTestCase):
 
     def test__switch_dhcp_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP, ip="",
             subnet=subnet, interface=interface)
@@ -1733,11 +1539,6 @@ class TestUpdateIPAddress(MAASServerTestCase):
         network_v6 = factory.make_ipv6_network(slash=24)
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=new_subnet)
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1746,8 +1547,6 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
-        self.assertThat(
-            mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith())
 
@@ -1783,13 +1582,9 @@ class TestUpdateIPAddress(MAASServerTestCase):
 
     def test__switch_auto_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet, interface=interface)
@@ -1797,11 +1592,6 @@ class TestUpdateIPAddress(MAASServerTestCase):
         network_v6 = factory.make_ipv6_network(slash=24)
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=new_subnet)
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1810,8 +1600,6 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
-        self.assertThat(
-            mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
         self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith())
 
@@ -1847,13 +1635,9 @@ class TestUpdateIPAddress(MAASServerTestCase):
 
     def test__switch_link_up_to_static(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip="",
             subnet=subnet, interface=interface)
@@ -1861,11 +1645,6 @@ class TestUpdateIPAddress(MAASServerTestCase):
         network_v6 = factory.make_ipv6_network(slash=24)
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=new_subnet)
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1875,25 +1654,17 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNotNone(static_ip.ip)
         self.assertThat(
-            mock_update_host_maps, MockCalledOnceWith(nodegroup, static_ip))
-        self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_static_to_dhcp(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1903,25 +1674,17 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
         self.assertThat(
-            mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
-        self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_auto(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1931,25 +1694,17 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
         self.assertThat(
-            mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
-        self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_link_up(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         new_subnet = factory.make_Subnet(vlan=interface.vlan)
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1959,27 +1714,17 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, static_ip.subnet)
         self.assertIsNone(static_ip.ip)
         self.assertThat(
-            mock_remove_host_maps, MockCalledOnceWith(nodegroup, static_ip))
-        self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith(subnets=[subnet]))
 
     def test__switch_static_to_same_subnet_does_nothing(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         static_ip_address = static_ip.ip
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         static_ip = interface.update_ip_address(
@@ -1988,24 +1733,18 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(IPADDRESS_TYPE.STICKY, static_ip.alloc_type)
         self.assertEqual(subnet, static_ip.subnet)
         self.assertEqual(static_ip_address, static_ip.ip)
-        self.assertThat(mock_remove_host_maps, MockNotCalled())
-        self.assertThat(mock_update_host_maps, MockNotCalled())
         self.assertThat(mock_update_dns_zones, MockNotCalled())
 
     def test__switch_static_to_already_used_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         other_interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        used_ip_address = factory.pick_ip_in_static_range(
-            ngi, but_not=[static_ip.ip])
+        used_ip_address = factory.pick_ip_in_Subnet(
+            subnet, but_not=[static_ip.ip])
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=used_ip_address,
@@ -2017,25 +1756,17 @@ class TestUpdateIPAddress(MAASServerTestCase):
 
     def test__switch_static_to_same_subnet_with_different_ip(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network.cidr))
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
         static_ip_address = static_ip.ip
-        new_ip_address = factory.pick_ip_in_static_range(
-            ngi, but_not=[static_ip_address])
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
+        new_ip_address = factory.pick_ip_in_Subnet(
+            subnet, but_not=[static_ip_address])
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         new_static_ip = interface.update_ip_address(
@@ -2045,50 +1776,30 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(IPADDRESS_TYPE.STICKY, new_static_ip.alloc_type)
         self.assertEqual(subnet, new_static_ip.subnet)
         self.assertEqual(new_ip_address, new_static_ip.ip)
-        # The remove actual loads the IP address from the database so it
-        # is not the same object. We just need to check that the IP's match.
-        self.assertEqual(nodegroup, mock_remove_host_maps.call_args[0][0])
-        self.assertEqual(
-            static_ip_address, mock_remove_host_maps.call_args[0][1].ip)
-        self.assertThat(
-            mock_update_host_maps,
-            MockCalledOnceWith(nodegroup, new_static_ip))
         self.assertThat(
             mock_update_dns_zones, MockCalledOnceWith())
 
     def test__switch_static_to_another_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup_v4 = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v4.cidr))
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup_v4, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
-        other_static_ip = factory.make_StaticIPAddress(
+        factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi, but_not=[static_ip.ip]),
+            ip=factory.pick_ip_in_Subnet(subnet, but_not=[static_ip.ip]),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
-        nodegroup_v6 = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v6 = factory.make_ipv6_network(slash=24)
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr))
-        new_ngi = factory.make_NodeGroupInterface(
-            nodegroup_v6, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=new_subnet)
-        new_subnet_static_ip = factory.make_StaticIPAddress(
+        factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(new_ngi),
+            ip=factory.pick_ip_in_Subnet(new_subnet),
             subnet=new_subnet, interface=interface)
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         new_static_ip = interface.update_ip_address(
@@ -2098,50 +1809,25 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, new_static_ip.subnet)
         self.assertIsNotNone(new_static_ip.ip)
         self.assertThat(
-            mock_remove_host_maps,
-            MockCallsMatch(
-                call(nodegroup_v6, new_subnet_static_ip),
-                call(nodegroup_v4, static_ip),
-            ))
-        self.assertThat(
-            mock_update_host_maps,
-            MockCallsMatch(
-                call(nodegroup_v4, other_static_ip),
-                call(nodegroup_v6, new_static_ip),
-            ))
-        self.assertThat(
             mock_update_dns_zones,
             MockCallsMatch(
-                call(subnets=[subnet]),
                 call(),
                 ))
 
     def test__switch_static_to_another_subnet_with_ip_address(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        nodegroup_v4 = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v4 = factory.make_ipv4_network(slash=24)
         subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v4.cidr))
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup_v4, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         static_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=factory.pick_ip_in_static_range(ngi),
+            ip=factory.pick_ip_in_Subnet(subnet),
             subnet=subnet, interface=interface)
         static_id = static_ip.id
-        nodegroup_v6 = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         network_v6 = factory.make_ipv6_network(slash=24)
         new_subnet = factory.make_Subnet(
             vlan=interface.vlan, cidr=str(network_v6.cidr))
-        new_ngi = factory.make_NodeGroupInterface(
-            nodegroup_v6, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=new_subnet)
-        new_ip_address = factory.pick_ip_in_static_range(new_ngi)
-        mock_remove_host_maps = self.patch_autospec(
-            interface, "_remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface, "_update_host_maps")
+        new_ip_address = factory.pick_ip_in_Subnet(new_subnet)
         mock_update_dns_zones = self.patch_autospec(
             interface, "_update_dns_zones")
         new_static_ip = interface.update_ip_address(
@@ -2152,15 +1838,8 @@ class TestUpdateIPAddress(MAASServerTestCase):
         self.assertEqual(new_subnet, new_static_ip.subnet)
         self.assertEqual(new_ip_address, new_static_ip.ip)
         self.assertThat(
-            mock_remove_host_maps,
-            MockCalledOnceWith(nodegroup_v4, static_ip))
-        self.assertThat(
-            mock_update_host_maps,
-            MockCalledOnceWith(nodegroup_v6, new_static_ip))
-        self.assertThat(
             mock_update_dns_zones,
             MockCallsMatch(
-                call(subnets=[subnet]),
                 call(),
                 ))
 
@@ -2187,7 +1866,6 @@ class TestClaimAutoIPs(MAASServerTestCase):
 
     def test__claims_all_auto_ip_addresses(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
@@ -2213,7 +1891,6 @@ class TestClaimAutoIPs(MAASServerTestCase):
 
     def test__claims_all_missing_assigned_auto_ip_addresses(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         for _ in range(3):
@@ -2235,16 +1912,11 @@ class TestClaimAutoIPs(MAASServerTestCase):
             IPAddress(observed[0].ip) in observed[0].subnet.get_ipnetwork(),
             "Assigned IP address should be inside the subnet network.")
 
-    def test__claims_ip_address_in_static_ip_range(self):
+    def test__claims_ip_address_not_in_dynamic_ip_range(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet, interface=interface)
@@ -2253,60 +1925,40 @@ class TestClaimAutoIPs(MAASServerTestCase):
             1, len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.")
         self.assertEqual(subnet, observed[0].subnet)
-        self.assertTrue(
-            IPAddress(observed[0].ip) in (
-                IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)),
-            "Assigned IP address %s should be inside the static range "
-            "on the cluster (%s - %s)." % (
-                observed[0].ip, ngi.static_ip_range_low,
-                ngi.static_ip_range_high))
+        self.assertThat(
+            subnet.get_dynamic_range_for_ip(observed[0].ip), Equals(None))
+        self.assertTrue(subnet.is_valid_static_ip(observed[0].ip))
 
     def test__claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
-        # Make it a really small range, just to be safe.
-        ngi.static_ip_range_high = str(
-            IPAddress(ngi.static_ip_range_low) + 1)
-        ngi.save()
-        ngi.subnet.gateway_ip = ngi.static_ip_range_low
-        ngi.subnet.dns_servers = []
-        ngi.subnet.save()
+        network = factory.make_ipv4_network(slash=30)
+        subnet = factory.make_Subnet(
+            vlan=interface.vlan, cidr=str(network.cidr))
+        # Make it so only one IP is available.
+        subnet.gateway_ip = str(IPAddress(network.first))
+        subnet.save()
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=subnet, interface=interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=str(IPAddress(network.first + 1)),
             subnet=subnet, interface=interface)
         observed = interface.claim_auto_ips()
         self.assertEquals(
             1, len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.")
         self.assertEquals(subnet, observed[0].subnet)
-        self.assertTrue(
-            IPAddress(observed[0].ip) in (
-                IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)),
-            "Assigned IP address %s should be inside the static range "
-            "on the cluster (%s - %s)." % (
-                observed[0].ip, ngi.static_ip_range_low,
-                ngi.static_ip_range_high))
-        self.assertThat(
-            IPAddress(observed[0].ip), Not(Equals(IPAddress(
-                ngi.subnet.gateway_ip))))
+        self.assertEquals(
+            IPAddress(network.first + 2), IPAddress(observed[0].ip))
 
     def test__claim_fails_if_subnet_missing(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
         ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet, interface=interface)
@@ -2319,100 +1971,12 @@ class TestClaimAutoIPs(MAASServerTestCase):
             "Could not find subnet for interface %s." %
             interface.get_log_string()))
 
-    def test__claim_fails_if_no_static_range(self):
-        from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
-        ngi.static_ip_range_low = ""
-        ngi.static_ip_range_high = ""
-        ngi.save()
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        maaslog = self.patch_autospec(interface_module, "maaslog")
-        with ExpectedException(StaticIPAddressUnavailable):
-            interface.claim_auto_ips()
-        self.expectThat(maaslog.error, MockCalledOnceWith(
-            "Found matching NodeGroupInterface, but no static range has "
-            "been defined for %s. (did you mean to configure DHCP?) " %
-            interface.get_log_string()))
-
-    def test__calls_update_host_maps(self):
-        from maasserver.dns import config
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        observed = interface.claim_auto_ips()
-        self.assertThat(
-            mock_update_host_maps, MockCalledOnceWith({
-                nodegroup: {observed[0].ip: interface.mac_address.get_raw()}
-                }))
-
-    def test__calls_update_host_maps_per_address_family(self):
-        from maasserver.dns import config
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(
-            vlan=interface.vlan, cidr=str(network_v4.cidr))
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(
-            vlan=interface.vlan, cidr=str(network_v6.cidr))
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet_v4)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet_v6)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet_v4, interface=interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet_v6, interface=interface)
-        observed = interface.claim_auto_ips()
-        self.assertThat(
-            mock_update_host_maps, MockCallsMatch(
-                call({
-                    nodegroup: {
-                        observed[0].ip: interface.mac_address.get_raw(),
-                    }
-                }),
-                call({
-                    nodegroup: {
-                        observed[1].ip: interface.mac_address.get_raw(),
-                    }
-                })))
-
     def test__calls_dns_update_by_node(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
         mock_dns_update_by_node = self.patch_autospec(
             config, "dns_update_by_node")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip="",
             subnet=subnet, interface=interface)
@@ -2454,8 +2018,6 @@ class TestReleaseAutoIPs(MAASServerTestCase):
 
     def test__clears_all_auto_ips_with_ips(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "remove_host_maps")
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2483,8 +2045,6 @@ class TestReleaseAutoIPs(MAASServerTestCase):
 
     def test__clears_only_auto_ips_with_ips(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "remove_host_maps")
-        self.patch_autospec(interface_module, "update_host_maps")
         self.patch_autospec(config, "dns_update_by_node")
         self.patch_autospec(config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2505,70 +2065,14 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         self.assertEqual(subnet, observed[0].subnet)
         self.assertIsNone(observed[0].ip)
 
-    def test__calls_remove_host_maps_if_managed_subnet(self):
-        from maasserver.dns import config
-        mock_remove_host_maps = self.patch_autospec(
-            interface_module, "remove_host_maps")
-        self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        self.patch_autospec(config, "dns_update_subnets")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
-            subnet=subnet, interface=interface)
-        interface.release_auto_ips()
-        self.assertThat(
-            mock_remove_host_maps,
-            MockCalledOnceWith({
-                nodegroup: {ip, interface.mac_address.get_raw()},
-            }))
-
-    def test__calls_update_host_maps_for_next_ip_managed_subnet(self):
-        from maasserver.dns import config
-        self.patch_autospec(interface_module, "remove_host_maps")
-        mock_update_host_maps = self.patch_autospec(
-            interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        self.patch_autospec(config, "dns_update_subnets")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO,
-            subnet=subnet, interface=interface)
-        sip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            subnet=subnet, interface=interface).ip
-        interface.release_auto_ips()
-        self.assertThat(
-            mock_update_host_maps,
-            MockCalledOnceWith({
-                nodegroup: {sip: interface.mac_address.get_raw()},
-            }))
-
     def test__calls_dns_update_subnets(self):
         from maasserver.dns import config
-        self.patch_autospec(interface_module, "remove_host_maps")
-        self.patch_autospec(interface_module, "update_host_maps")
         mock_dns_update_by_node = self.patch_autospec(
             config, "dns_update_by_node")
         mock_dns_update_subnets = self.patch_autospec(
             config, "dns_update_subnets")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            subnet=subnet)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
@@ -2580,265 +2084,3 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         self.assertThat(
             mock_dns_update_by_node,
             MockCalledOnceWith(interface.node))
-
-
-class TestClaimStaticIPs(MAASServerTestCase):
-    """Tests for `Interface.claim_static_ips`."""
-
-    def test__without_address_calls_link_subnet_for_each_discovered(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=interface)
-
-        mock_link_subnet = self.patch_autospec(interface, "link_subnet")
-        interface.claim_static_ips()
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
-
-    def test__without_address_calls_link_subnet_once_per_subnet(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        # Make it have the same subnet twice.
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=interface)
-        # Make it have the same subnet twice.
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=interface)
-
-        mock_link_subnet = self.patch_autospec(interface, "link_subnet")
-        interface.claim_static_ips()
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
-
-    def test__without_address_does_nothing_if_none_managed(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=interface)
-        self.assertEqual(
-            0, len(interface.claim_static_ips()),
-            "No subnets should have been linked.")
-
-    def test__with_address_raises_error_if_ip_not_in_subnet(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        error = self.assertRaises(
-            StaticIPAddressOutOfRange, interface.claim_static_ips, ip_v6)
-        self.assertEqual(
-            "requested_address '%s' is not in a managed subnet for "
-            "interface '%s'." % (ip_v6, interface.name),
-            str(error))
-
-    def test__with_address_calls_link_subnet_with_ip_address(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        requested_ip = factory.pick_ip_in_network(network_v4)
-
-        mock_link_subnet = self.patch_autospec(interface, "link_subnet")
-        mock_link_subnet.return_value = sentinel.claimed_ip
-        [claimed_ip] = interface.claim_static_ips(requested_ip)
-        self.assertThat(
-            mock_link_subnet,
-            MockCalledOnceWith(
-                INTERFACE_LINK_TYPE.STATIC, subnet_v4,
-                ip_address=requested_ip))
-        self.assertEqual(sentinel.claimed_ip, claimed_ip)
-
-    def test__device_no_address_calls_link_subnet_for_each_discovered(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        parent = factory.make_Node()
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=interface)
-        device = factory.make_Device(parent=parent)
-        device_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=device)
-
-        mock_link_subnet = self.patch_autospec(device_interface, "link_subnet")
-        device_interface.claim_static_ips()
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
-
-    def test__device_no_address_calls_link_subnet_once_per_subnet(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        parent = factory.make_Node()
-        parent_nic0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent)
-        parent_nic1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=parent_nic0)
-        # Make second interface on the parent have the same subnet.
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=parent_nic1)
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=parent_nic0)
-        # Make second interface on the parent have the same subnet.
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v6, interface=parent_nic1)
-        device = factory.make_Device(parent=parent)
-        device_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=device)
-
-        mock_link_subnet = self.patch_autospec(device_interface, "link_subnet")
-        device_interface.claim_static_ips()
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v4))
-        self.assertThat(
-            mock_link_subnet,
-            MockAnyCall(INTERFACE_LINK_TYPE.STATIC, subnet_v6))
-
-    def test__device_with_address_calls_link_subnet_with_ip_address(self):
-        parent = factory.make_Node()
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent)
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
-            subnet=subnet_v4, interface=interface)
-        device = factory.make_Device(parent=parent)
-        device_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=device)
-        requested_ip = factory.pick_ip_in_network(network_v4)
-
-        mock_link_subnet = self.patch_autospec(device_interface, "link_subnet")
-        mock_link_subnet.return_value = sentinel.claimed_ip
-        [claimed_ip] = device_interface.claim_static_ips(requested_ip)
-        self.assertThat(
-            mock_link_subnet,
-            MockCalledOnceWith(
-                INTERFACE_LINK_TYPE.STATIC, subnet_v4,
-                ip_address=requested_ip))
-        self.assertEqual(sentinel.claimed_ip, claimed_ip)
-
-    def test__finds_device_subnet_via_parent_cluster_interface(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.DEPLOYED)
-        # Create a situation that looks like a migration from MAAS 1.8
-        # (no DISCOVERED IP addresses on this node, because it hasn't
-        # recommissioned.)
-        node.get_boot_interface().ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
-        device = factory.make_Device(parent=node)
-        iface = factory.make_Interface(node=device)
-        self.patch_autospec(iface, "link_subnet")
-        claimed_ips = iface.claim_static_ips()
-        self.assertThat(claimed_ips, HasLength(1))
-
-    def test__claim_static_fails_if_parent_subnet_cannot_be_found(self):
-        from maasserver.dns import config
-        self.patch_autospec(interface_module, "update_host_maps")
-        self.patch_autospec(config, "dns_update_by_node")
-        self.patch_autospec(config, "dns_update_subnets")
-        subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            subnet=subnet)
-        node = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet, unmanaged=True, status=NODE_STATUS.READY)
-        # Simulate an unmanaged network without association to a subnet.
-        # (this could happen after a migration)
-        StaticIPAddress.objects.all().delete()
-        interface = node.get_boot_interface()
-        maaslog = self.patch_autospec(interface_module, "maaslog")
-        with ExpectedException(StaticIPAddressExhaustion):
-            interface.claim_static_ips()
-        self.expectThat(maaslog.warning, MockCalledOnceWith(
-            "%s: Attempted to claim a static IP address, but no associated "
-            "subnet could be found. (Recommission node '%s' in order for "
-            "MAAS to discover the subnet.)" %
-            (interface.get_log_string(), node.hostname)))

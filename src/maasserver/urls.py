@@ -16,19 +16,10 @@ from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
 )
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
     logout,
-)
-from maasserver.views.clusters import (
-    ClusterDelete,
-    ClusterEdit,
-    ClusterInterfaceCreate,
-    ClusterInterfaceDelete,
-    ClusterInterfaceEdit,
-    ClusterListView,
 )
 from maasserver.views.images import (
     ImageDeleteView,
@@ -136,38 +127,6 @@ urlpatterns += patterns(
 # Settings views.
 urlpatterns += patterns(
     'maasserver.views',
-    adminurl(
-        r'^clusters/$',
-        ClusterListView.as_view(status=NODEGROUP_STATUS.ENABLED),
-        name='cluster-list'),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/edit/$', ClusterEdit.as_view(),
-        name='cluster-edit'),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/delete/$', ClusterDelete.as_view(),
-        name='cluster-delete'),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/add/$',
-        ClusterInterfaceCreate.as_view(), name='cluster-interface-create'),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>[^/]*)/'
-        'edit/$',
-        ClusterInterfaceEdit.as_view(), name='cluster-interface-edit'),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>[^/]*)/'
-        'delete/$',
-        ClusterInterfaceDelete.as_view(), name='cluster-interface-delete'),
-    # XXX: rvb 2012-10-08 bug=1063881:
-    # These two urls are only here to cope with the fact that an interface
-    # can have an empty name, thus leading to urls containing the
-    # pattern '//' that is then reduced by apache into '/'.
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>)'
-        'edit/$', ClusterInterfaceEdit.as_view()),
-    adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>)'
-        'delete/$', ClusterInterfaceDelete.as_view()),
-    # /XXX
     adminurl(r'^settings/$', settings, name='settings'),
     adminurl(r'^accounts/add/$', AccountsAdd.as_view(), name='accounts-add'),
     adminurl(

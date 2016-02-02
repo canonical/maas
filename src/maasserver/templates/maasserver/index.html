@@ -35,11 +35,6 @@
                     <li>
                         <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
                     </li>
-                    {% if user.is_superuser %}
-                    <li>
-                        <a data-ng-class="{ active: page === 'clusters' }" href="{% url 'cluster-list' %}">Clusters</a>
-                    </li>
-                    {% endif %}
                     <li>
                         <a data-ng-class="{ active: page === 'images' }" href="{% url 'images' %}">Images</a>
                     </li>

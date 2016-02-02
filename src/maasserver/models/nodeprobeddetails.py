@@ -17,9 +17,10 @@ from base64 import b64decode
 from collections import Sequence
 
 from metadataserver.enum import RESULT_TYPE
-from metadataserver.models import (
-    commissioningscript,
-    NodeResult,
+from metadataserver.models import NodeResult
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
 )
 
 # A map of commissioning script output names to their detail
@@ -27,8 +28,8 @@ from metadataserver.models import (
 # get_single_probed_details() and get_probed_details(), and in the
 # composite XML document that's used when evaluating tag expressions.
 script_output_nsmap = {
-    commissioningscript.LLDP_OUTPUT_NAME: "lldp",
-    commissioningscript.LSHW_OUTPUT_NAME: "lshw",
+    LLDP_OUTPUT_NAME: "lldp",
+    LSHW_OUTPUT_NAME: "lshw",
 }
 
 

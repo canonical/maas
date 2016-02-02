@@ -909,13 +909,13 @@ def _import_resources(force=False):
         action, not let it run automatically.
     """
     # Avoid circular import.
-    from maasserver.clusterrpc.boot_images import ClustersImporter
+    from maasserver.clusterrpc.boot_images import RackControllersImporter
 
     # Sync boot resources into the region.
     d = deferToDatabase(_import_resources_with_lock, force=force)
 
     def cb_import(_):
-        d = deferToDatabase(ClustersImporter.new)
+        d = deferToDatabase(RackControllersImporter.new)
         d.addCallback(lambda importer: importer.run())
         return d
 

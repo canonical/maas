@@ -15,7 +15,6 @@ from maasserver.clusterrpc.osystems import (
     get_os_release_title,
     get_preseed_data,
     validate_license_key,
-    validate_license_key_for,
 )
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
@@ -44,7 +43,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
 
     def test_yields_oses_known_to_a_cluster(self):
         # The operating systems known to a single node are returned.
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
@@ -53,8 +52,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         self.assertThat(osystems, AllMatch(IsInstance(dict)))
 
     def test_yields_oses_known_to_multiple_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
@@ -65,8 +64,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
     def test_only_yields_os_once(self):
         # Duplicate OSes that exactly match are suppressed. Typically
         # every cluster will have several (or all) OSes in common.
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         counter = Counter(
             osystem["name"] for osystem in
@@ -81,7 +80,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
                 AfterPreprocessing(get_count, Equals(1))))
 
     def test_os_data_is_passed_through_unmolested(self):
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
         example = {
             "osystems": [
@@ -100,9 +99,9 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             example["osystems"], gen_all_known_operating_systems())
 
     def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -110,7 +109,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:
                 # The first client found returns dummy OS information which
-                # includes the cluster's UUID (client.ident).
+                # includes the rack controllers's system_id (client.ident).
                 example = {"osystems": [{"name": client.ident}]}
                 callRemote.return_value = succeed(example)
             else:
@@ -125,7 +124,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             gen_all_known_operating_systems())
 
     def test_fixes_custom_osystem_release_titles(self):
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         releases = [factory.make_name("release") for _ in range(3)]
@@ -160,9 +159,9 @@ class TestGetOSReleaseTitle(MAASServerTestCase):
     """Tests for `get_os_release_title`."""
 
     def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         title = factory.make_name('title')
@@ -185,7 +184,7 @@ class TestGetOSReleaseTitle(MAASServerTestCase):
             get_os_release_title("bogus-os", "bogus-release"))
 
     def test_returns_None_if_title_is_blank(self):
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -201,8 +200,13 @@ class TestGetPreseedData(MAASServerTestCase):
 
     def test_returns_preseed_data(self):
         # The Windows driver is known to provide custom preseed data.
-        node = factory.make_Node(osystem="windows")
-        node.nodegroup.accept()
+        rack = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, osystem="windows")
+        boot_interface = node.get_boot_interface()
+        boot_interface.vlan.dhcp_on = True
+        boot_interface.vlan.primary_rack = rack
+        boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         preseed_data = get_preseed_data(
             PRESEED_TYPE.COMMISSIONING, node,
@@ -215,8 +219,13 @@ class TestGetPreseedData(MAASServerTestCase):
     def test_propagates_NotImplementedError(self):
         # The Windows driver is known to *not* provide custom preseed
         # data when using Curtin.
-        node = factory.make_Node(osystem="windows")
-        node.nodegroup.accept()
+        rack = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, osystem="windows")
+        boot_interface = node.get_boot_interface()
+        boot_interface.vlan.dhcp_on = True
+        boot_interface.vlan.primary_rack = rack
+        boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
             NotImplementedError, get_preseed_data, PRESEED_TYPE.CURTIN,
@@ -224,48 +233,18 @@ class TestGetPreseedData(MAASServerTestCase):
             metadata_url=factory.make_url())
 
     def test_propagates_NoSuchOperatingSystem(self):
-        node = factory.make_Node(osystem=factory.make_name("foo"))
-        node.nodegroup.accept()
+        rack = factory.make_RackController()
+        node = factory.make_Node(
+            interface=True, osystem=factory.make_name("foo"))
+        boot_interface = node.get_boot_interface()
+        boot_interface.vlan.dhcp_on = True
+        boot_interface.vlan.primary_rack = rack
+        boot_interface.vlan.save()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
             NoSuchOperatingSystem, get_preseed_data, PRESEED_TYPE.CURTIN,
             node, token=NodeKey.objects.get_token_for_node(node),
             metadata_url=factory.make_url())
-
-
-class TestValidateLicenseKeyFor(MAASServerTestCase):
-    """Tests for `validate_license_key_for`."""
-
-    def test_propagates_NoSuchOperatingSystem(self):
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.accept()
-        osystem = factory.make_name('os')
-        release = factory.make_name('release')
-        key = factory.make_name('key')
-        self.useFixture(RunningClusterRPCFixture())
-        self.assertRaises(
-            NoSuchOperatingSystem, validate_license_key_for, nodegroup,
-            osystem, release, key)
-
-    def test_returns_True(self):
-        # The Windows driver is known accept a license key in the format of
-        # 00000-00000-00000-00000-00000.
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.accept()
-        key = "00000-00000-00000-00000-00000"
-        self.useFixture(RunningClusterRPCFixture())
-        is_valid = validate_license_key_for(
-            nodegroup, "windows", "win2012", key)
-        self.assertTrue(is_valid)
-
-    def test_returns_False(self):
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.accept()
-        key = factory.make_name('invalid-key')
-        self.useFixture(RunningClusterRPCFixture())
-        is_valid = validate_license_key_for(
-            nodegroup, "windows", "win2012", key)
-        self.assertFalse(is_valid)
 
 
 class TestValidateLicenseKey(MAASServerTestCase):
@@ -274,7 +253,7 @@ class TestValidateLicenseKey(MAASServerTestCase):
     def test_returns_True_with_one_cluster(self):
         # The Windows driver is known accept a license key in the format of
         # 00000-00000-00000-00000-00000.
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         key = "00000-00000-00000-00000-00000"
         self.useFixture(RunningClusterRPCFixture())
         is_valid = validate_license_key("windows", "win2012", key)
@@ -283,8 +262,8 @@ class TestValidateLicenseKey(MAASServerTestCase):
     def test_returns_True_with_two_cluster(self):
         # The Windows driver is known accept a license key in the format of
         # 00000-00000-00000-00000-00000.
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         key = "00000-00000-00000-00000-00000"
         self.useFixture(RunningClusterRPCFixture())
         is_valid = validate_license_key("windows", "win2012", key)
@@ -293,8 +272,8 @@ class TestValidateLicenseKey(MAASServerTestCase):
     def test_returns_True_when_only_one_cluster_returns_True(self):
         # The Windows driver is known accept a license key in the format of
         # 00000-00000-00000-00000-00000.
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -314,8 +293,8 @@ class TestValidateLicenseKey(MAASServerTestCase):
     def test_returns_True_when_only_one_cluster_returns_True_others_fail(self):
         # The Windows driver is known accept a license key in the format of
         # 00000-00000-00000-00000-00000.
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -333,15 +312,15 @@ class TestValidateLicenseKey(MAASServerTestCase):
         self.assertTrue(is_valid)
 
     def test_returns_False_with_one_cluster(self):
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
         key = factory.make_name('invalid-key')
         self.useFixture(RunningClusterRPCFixture())
         is_valid = validate_license_key("windows", "win2012", key)
         self.assertFalse(is_valid)
 
     def test_returns_False_when_all_clusters_fail(self):
-        factory.make_NodeGroup().accept()
-        factory.make_NodeGroup().accept()
+        factory.make_RackController()
+        factory.make_RackController()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()

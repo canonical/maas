@@ -23,7 +23,3 @@ cache = {}
 
 # Cache key for the API credentials as last sent by the server.
 API_CREDENTIALS_CACHE_KEY = 'api_credentials'
-
-
-# Cache key for the uuid of the nodegroup that this worker manages.
-NODEGROUP_UUID_CACHE_KEY = 'nodegroup_uuid'

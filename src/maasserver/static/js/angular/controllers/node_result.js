@@ -6,9 +6,9 @@
 
 angular.module('MAAS').controller('NodeResultController', [
     '$scope', '$rootScope', '$routeParams', '$location',
-    'NodesManager', 'ManagerHelperService', 'ErrorService', function(
+    'MachinesManager', 'ManagerHelperService', 'ErrorService', function(
         $scope, $rootScope, $routeParams, $location,
-        NodesManager, ManagerHelperService, ErrorService) {
+        MachinesManager, ManagerHelperService, ErrorService) {
 
         // Set the title and page.
         $rootScope.title = "Loading...";
@@ -57,15 +57,15 @@ angular.module('MAAS').controller('NodeResultController', [
         };
 
         // Load nodes manager.
-        ManagerHelperService.loadManager(NodesManager).then(function() {
+        ManagerHelperService.loadManager(MachinesManager).then(function() {
             // If redirected from the NodeDetailsController then the node
             // will already be active. No need to set it active again.
-            var activeNode = NodesManager.getActiveItem();
+            var activeNode = MachinesManager.getActiveItem();
             if(angular.isObject(activeNode) &&
                 activeNode.system_id === $routeParams.system_id) {
                 nodeLoaded(activeNode);
             } else {
-                NodesManager.setActiveItem(
+                MachinesManager.setActiveItem(
                     $routeParams.system_id).then(function(node) {
                         nodeLoaded(node);
                     }, function(error) {

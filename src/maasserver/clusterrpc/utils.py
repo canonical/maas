@@ -12,20 +12,19 @@ __all__ = [
 from functools import partial
 
 from maasserver import logger
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import ClusterUnavailable
-from maasserver.models import NodeGroup
+from maasserver.models.node import RackController
 from maasserver.rpc import getClientFor
 from maasserver.utils import async
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from twisted.python.failure import Failure
 
 
-def call_clusters(command, nodegroups=None, ignore_errors=True):
-    """Make an RPC call to all clusters in parallel.
+def call_clusters(command, controllers=None, ignore_errors=True):
+    """Make an RPC call to all rack controllers in parallel.
 
-    :param nodegroups: The :class:`NodeGroup`s on which to make the RPC
-        call. If None, defaults to all :class:`NodeGroup`s.
+    :param controllers: The :class:`RackController`s on which to make the RPC
+        call. If None, defaults to all :class:`RackController`s.
     :param command: An :class:`amp.Command` to call on the clusters.
     :param ignore_errors: If True, errors encountered whilst calling
         `command` on the clusters won't raise an exception.
@@ -36,20 +35,20 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
         not being ignored.
     """
     calls = []
-    if nodegroups is None:
-        nodegroups = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ENABLED)
-    for ng in nodegroups:
+    if controllers is None:
+        controllers = RackController.objects.all()
+    for controller in controllers:
         try:
-            client = getClientFor(ng.uuid)
+            client = getClientFor(controller.system_id)
         except NoConnectionsAvailable:
             logger.error(
-                "Unable to get RPC connection for cluster '%s' (%s)",
-                ng.cluster_name, ng.uuid)
+                "Unable to get RPC connection for rack controller '%s' (%s)",
+                controller.hostname, controller.system_id)
             if not ignore_errors:
                 raise ClusterUnavailable(
-                    "Unable to get RPC connection for cluster '%s' (%s)"
-                    % (ng.cluster_name, ng.uuid))
+                    "Unable to get RPC connection for rack controller "
+                    "'%s' (%s)" % (
+                        controller.hostname, controller.system_id))
         else:
             call = partial(client, command)
             calls.append(call)
@@ -57,11 +56,11 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
     for response in async.gather(calls, timeout=10):
         if isinstance(response, Failure):
             # XXX: How to get the cluster ID/name here?
-            logger.error("Failure while communicating with cluster")
+            logger.error("Failure while communicating with rack controller")
             logger.error(response.getTraceback())
             if not ignore_errors:
                 raise ClusterUnavailable(
-                    "Failure while communicating with cluster.")
+                    "Failure while communicating with rack controller.")
         else:
             yield response
 
@@ -86,11 +85,10 @@ def get_error_message_for_exception(exception):
         exception, NoConnectionsAvailable)
     has_uuid_field = getattr(exception, 'uuid', None) is not None
     if (is_no_connections_error and has_uuid_field):
-        cluster = NodeGroup.objects.get_by_natural_key(
-            exception.uuid)
+        controller = RackController.objects.get(system_id=exception.uuid)
         return (
-            "Unable to connect to cluster '%s' (%s); no connections "
-            "available." % (cluster.cluster_name, cluster.uuid))
+            "Unable to connect to rack controller '%s' (%s); no connections "
+            "available." % (controller.hostname, controller.system_id))
 
     error_message = str(exception)
     if len(error_message) == 0:

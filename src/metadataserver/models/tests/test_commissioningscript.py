@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commissioning scripts."""
@@ -6,12 +6,7 @@
 __all__ = []
 
 import doctest
-from functools import partial
-from inspect import getsource
-from io import (
-    BytesIO,
-    StringIO,
-)
+from io import BytesIO
 import json
 from math import (
     ceil,
@@ -20,12 +15,6 @@ from math import (
 import os.path
 import random
 from random import randint
-import subprocess
-from subprocess import (
-    CalledProcessError,
-    check_output,
-    STDOUT,
-)
 import tarfile
 from textwrap import dedent
 import time
@@ -43,14 +32,8 @@ from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    TestWithoutCrochetMixin,
-)
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
+from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -64,9 +47,6 @@ from metadataserver.models.commissioningscript import (
     inject_lldp_result,
     inject_lshw_result,
     inject_result,
-    LLDP_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
-    make_function_call_script,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -74,14 +54,15 @@ from metadataserver.models.commissioningscript import (
 )
 from metadataserver.models.noderesult import NodeResult
 from mock import (
-    call,
     create_autospec,
     Mock,
     sentinel,
 )
 from netaddr import IPNetwork
-from provisioningserver.utils import typed
-from testtools.content import text_content
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+)
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -137,7 +118,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
         path = os.path.join(ARCHIVE_PREFIX, name)
         content = factory.make_string().encode('ascii')
         data = dict(name=name, content=content, hook='hook')
-        self.patch(cs_module, 'BUILTIN_COMMISSIONING_SCRIPTS', {name: data})
+        self.patch(cs_module, 'NODE_INFO_SCRIPTS', {name: data})
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertIn(path, archive.getnames())
         self.assertEqual(content, archive.extractfile(path).read())
@@ -172,166 +153,6 @@ class TestCommissioningScript(MAASServerTestCase):
         self.assertEqual(sample_binary_data, stored_script.content)
 
 
-class TestMakeFunctionCallScript(MAASServerTestCase):
-
-    def run_script(self, script):
-        script_filename = self.make_file("test.py", script)
-        os.chmod(script_filename, 0o700)
-        try:
-            return check_output((script_filename,), stderr=STDOUT)
-        except CalledProcessError as error:
-            self.addDetail("output", text_content(error.output))
-            raise
-
-    def test_basic(self):
-        def example_function():
-            print("Hello, World!", end="")
-        script = make_function_call_script(example_function)
-        self.assertEqual(b"Hello, World!", self.run_script(script))
-
-    def test_positional_args_get_passed_through(self):
-        def example_function(a, b):
-            print("a=%s, b=%d" % (a, b), end="")
-        script = make_function_call_script(example_function, "foo", 12345)
-        self.assertEqual(b"a=foo, b=12345", self.run_script(script))
-
-    def test_keyword_args_get_passed_through(self):
-        def example_function(a, b):
-            print("a=%s, b=%d" % (a, b), end="")
-        script = make_function_call_script(example_function, a="foo", b=12345)
-        self.assertEqual(b"a=foo, b=12345", self.run_script(script))
-
-    def test_positional_and_keyword_args_get_passed_through(self):
-        def example_function(a, b):
-            print("a=%s, b=%d" % (a, b), end="")
-        script = make_function_call_script(example_function, "foo", b=12345)
-        self.assertEqual(b"a=foo, b=12345", self.run_script(script))
-
-    def test_non_ascii_positional_args_are_passed_without_corruption(self):
-        def example_function(text):
-            from sys import stdout
-            stdout.buffer.write(text.encode("utf-8"))
-        script = make_function_call_script(example_function, "abc\u1234")
-        self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
-
-    def test_non_ascii_keyword_args_are_passed_without_corruption(self):
-        def example_function(text):
-            from sys import stdout
-            stdout.buffer.write(text.encode("utf-8"))
-        script = make_function_call_script(example_function, text="abc\u1234")
-        self.assertEqual("abc\u1234", self.run_script(script).decode("utf-8"))
-
-    def test_structured_arguments_are_passed_though_too(self):
-        # Anything that can be JSON serialized can be passed.
-        def example_function(arg):
-            if arg == {"123": "foo", "bar": [4, 5, 6]}:
-                print("Equal")
-            else:
-                print("Unequal, got %s" % repr(arg))
-        script = make_function_call_script(
-            example_function, {"123": "foo", "bar": [4, 5, 6]})
-        self.assertEqual(b"Equal\n", self.run_script(script))
-
-
-def isolate_function(function, namespace=None):
-    """Recompile the given function in the given namespace.
-
-    :param namespace: A dict to use as the namespace. If not provided, and
-        empty namespace will be used.
-    """
-    source = dedent(getsource(function))
-    modcode = compile(source, "isolated.py", "exec")
-    namespace = {} if namespace is None else namespace
-    exec(modcode, namespace)
-    return namespace[function.__name__]
-
-
-class TestLLDPScripts(TestWithoutCrochetMixin, MAASServerTestCase):
-
-    def test_install_script_installs_configures_and_restarts_upstart(self):
-        config_file = self.make_file("config", "# ...")
-        check_call = self.patch(subprocess, "check_call")
-        self.patch(os.path, "isdir").return_value = False
-        lldpd_install = isolate_function(cs_module.lldpd_install)
-        lldpd_install(config_file)
-        # lldpd is installed and restarted.
-        self.assertEqual(
-            check_call.call_args_list,
-            [
-                call(("apt-get", "install", "--yes", "lldpd")),
-                call(("initctl", "reload-configuration")),
-                call(("service", "lldpd", "restart"))
-            ])
-        # lldpd's config was updated to include an updated DAEMON_ARGS
-        # setting. Note that the new comment is on a new line, and
-        # does not interfere with existing config.
-        config_expected = dedent("""\
-            # ...
-            # Configured by MAAS:
-            DAEMON_ARGS="-c -f -s -e -r"
-            """).encode("ascii")
-        with open(config_file, "rb") as fd:
-            config_observed = fd.read()
-        self.assertEqual(config_expected, config_observed)
-
-    def test_install_script_installs_configures_and_restarts_systemd(self):
-        config_file = self.make_file("config", "# ...")
-        check_call = self.patch(subprocess, "check_call")
-        self.patch(os.path, "isdir").return_value = True
-        lldpd_install = isolate_function(cs_module.lldpd_install)
-        lldpd_install(config_file)
-        # lldpd is installed and restarted.
-        self.assertEqual(
-            check_call.call_args_list,
-            [
-                call(("apt-get", "install", "--yes", "lldpd")),
-                call(("systemctl", "daemon-reload")),
-                call(("service", "lldpd", "restart"))
-            ])
-        # lldpd's config was updated to include an updated DAEMON_ARGS
-        # setting. Note that the new comment is on a new line, and
-        # does not interfere with existing config.
-        config_expected = dedent("""\
-            # ...
-            # Configured by MAAS:
-            DAEMON_ARGS="-c -f -s -e -r"
-            """).encode("ascii")
-        with open(config_file, "rb") as fd:
-            config_observed = fd.read()
-        self.assertEqual(config_expected, config_observed)
-
-    def test_wait_script_waits_for_lldpd(self):
-        reference_file = self.make_file("reference")
-        time_delay = 8.98  # seconds
-        lldpd_wait = isolate_function(cs_module.lldpd_wait)
-        # Do the patching as late as possible, because the setup may call
-        # one of the patched functions somewhere in the plumbing.  We've had
-        # spurious test failures over this: bug 1283918.
-        self.patch(os.path, "getmtime").return_value = 10.65
-        self.patch(time, "time").return_value = 14.12
-        self.patch(time, "sleep")
-
-        lldpd_wait(reference_file, time_delay)
-
-        # lldpd_wait checks the mtime of the reference file,
-        self.assertThat(os.path.getmtime, MockCalledOnceWith(reference_file))
-        # and gets the current time,
-        self.assertThat(time.time, MockCalledOnceWith())
-        # then sleeps until time_delay seconds has passed since the
-        # mtime of the reference file.
-        self.assertThat(time.sleep, MockCalledOnceWith(
-            os.path.getmtime.return_value + time_delay -
-            time.time.return_value))
-
-    def test_capture_calls_lldpdctl(self):
-        check_call = self.patch(subprocess, "check_call")
-        lldpd_capture = isolate_function(cs_module.lldpd_capture)
-        lldpd_capture()
-        self.assertEqual(
-            check_call.call_args_list,
-            [call(("lldpctl", "-f", "xml"))])
-
-
 lldp_output_template = """
 <?xml version="1.0" encoding="UTF-8"?>
 <lldp label="LLDP neighbors">
@@ -361,46 +182,6 @@ def make_lldp_output(macs):
         )
     script = (lldp_output_template % interfaces).encode('utf8')
     return bytes(script)
-
-
-# The two following example outputs differ because eth2 and eth1 are not
-# configured and thus 'ifconfig -s -a' returns a list with both 'eth1'
-# and 'eth2' while 'ifconfig -s' does not contain them.
-
-# Example output of 'ifconfig -s -a':
-ifconfig_all = """
-Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
-eth2       1500 0         0      0      0 0             0      0
-eth1       1500 0         0      0      0 0             0      0
-eth0       1500 0   1366127      0      0 0        831110      0
-lo        65536 0     38075      0      0 0         38075      0
-virbr0     1500 0         0      0      0 0             0      0
-wlan0      1500 0   2304695      0      0 0       1436049      0
-"""
-
-# Example output of 'ifconfig -s':
-ifconfig_config = """
-Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
-eth0       1500 0   1366127      0      0 0        831110      0
-lo        65536 0     38115      0      0 0         38115      0
-virbr0     1500 0         0      0      0 0             0      0
-wlan0      1500 0   2304961      0      0 0       1436319      0
-"""
-
-
-class TestDHCPExplore(MAASServerTestCase):
-
-    def test_calls_dhclient_on_unconfigured_interfaces(self):
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [ifconfig_all, ifconfig_config]
-        mock_call = self.patch(subprocess, "call")
-        dhcp_explore = isolate_function(cs_module.dhcp_explore)
-        dhcp_explore()
-        self.assertThat(
-            mock_call,
-            MockCallsMatch(
-                call(["dhclient", "-nw", 'eth1']),
-                call(["dhclient", "-nw", 'eth2'])))
 
 
 class TestExtractRouters(MAASServerTestCase):
@@ -443,7 +224,7 @@ class TestInjectResult(MAASServerTestCase):
         exit_status = next(factory.random_octets)
         hook = Mock()
         self.patch(
-            cs_module, "BUILTIN_COMMISSIONING_SCRIPTS",
+            cs_module, "NODE_INFO_SCRIPTS",
             {name: {"hook": hook}})
 
         inject_result(node, name, output, exit_status)
@@ -631,554 +412,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger(name='commissioningscript'))
         update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
-
-
-class TestGatherPhysicalBlockDevices(MAASServerTestCase):
-
-    @typed
-    def make_lsblk_output(
-            self, name=None, read_only=False, removable=False,
-            model=None, rotary=True) -> bytes:
-        if name is None:
-            name = factory.make_name('name')
-        if model is None:
-            model = factory.make_name('model')
-        read_only = "1" if read_only else "0"
-        removable = "1" if removable else "0"
-        rotary = "1" if rotary else "0"
-        output = 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
-            name, read_only, removable, model, rotary)
-        return output.encode("ascii")
-
-    @typed
-    def make_udevadm_output(
-            self, name, serial=None, sata=True, cdrom=False,
-            dev='/dev') -> bytes:
-        if serial is None:
-            serial = factory.make_name('serial')
-        sata = "1" if sata else "0"
-        output = dedent("""\
-            P: /devices/pci0000:00/ata3/host2/target2:0:0/2:0:0:0/block/{name}
-            N: {name}
-            E: DEVNAME={dev}/{name}
-            E: DEVTYPE=disk
-            E: ID_ATA_SATA={sata}
-            E: ID_SERIAL_SHORT={serial}
-            """).format(dev=os.path.abspath(dev), name=name,
-                        serial=serial, sata=sata)
-        if cdrom:
-            output += "E: ID_CDROM=1"
-        else:
-            output += "E: ID_ATA_ROTATION_RATE_RPM=5400"
-        return output.encode("ascii")
-
-    def call_gather_physical_block_devices(
-            self, dev_disk_byid='/dev/disk/by-id/'):
-        output = StringIO()
-        namespace = {"print": partial(print, file=output)}
-        gather_physical_block_devices = isolate_function(
-            cs_module.gather_physical_block_devices, namespace)
-        gather_physical_block_devices(dev_disk_byid=dev_disk_byid)
-        return json.loads(output.getvalue())
-
-    def test__calls_lsblk(self):
-        check_output = self.patch(subprocess, "check_output")
-        check_output.return_value = b""
-        self.call_gather_physical_block_devices()
-        self.assertThat(check_output, MockCalledOnceWith(
-            ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")))
-
-    def test__returns_empty_list_when_no_disks(self):
-        check_output = self.patch(subprocess, "check_output")
-        check_output.return_value = b""
-        self.assertEqual([], self.call_gather_physical_block_devices())
-
-    def test__calls_lsblk_then_udevadm(self):
-        name = factory.make_name('name')
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(
-                name=name),
-            self.make_udevadm_output(
-                name, cdrom=True),
-            ]
-        self.call_gather_physical_block_devices()
-        self.assertThat(check_output, MockCallsMatch(
-            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
-            call(("udevadm", "info", "-q", "all", "-n", name))))
-
-    def test__returns_empty_list_when_cdrom_only(self):
-        name = factory.make_name('name')
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(
-                name=name),
-            self.make_udevadm_output(
-                name, cdrom=True),
-            ]
-        self.assertEqual([], self.call_gather_physical_block_devices())
-
-    def test__calls_lsblk_udevadm_then_blockdev(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.call_gather_physical_block_devices()
-        self.assertThat(check_output, MockCallsMatch(
-            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
-            call(("udevadm", "info", "-q", "all", "-n", name)),
-            call(("blockdev", "--getsize64", "/dev/%s" % name)),
-            call(("blockdev", "--getbsz", "/dev/%s" % name))))
-
-    def test__returns_block_device(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        # Create simulated /dev tree
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__removes_duplicate_block_device_same_serial_and_model(self):
-        """Multipath disks get multiple IDs, but same serial/model is same
-        device and should only be enumerated once."""
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        name2 = factory.make_name('name')
-
-        # Create simulated /dev tree.
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
-
-        check_output.side_effect = [
-            b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            b'%d' % size,
-            b'%d' % block_size,
-        ]
-
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__removes_duplicate_block_device_same_serial_blank_model(self):
-        """Multipath disks get multiple IDs, but same serial is same device."""
-        name = factory.make_name('name')
-        model = ""
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        name2 = factory.make_name('name')
-
-        # Create simulated /dev tree.
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
-
-        check_output.side_effect = [
-            b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            b'%d' % size,
-            b'%d' % block_size,
-        ]
-
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__keeps_block_device_same_serial_different_model(self):
-        """Multipath disks get multiple IDs, but same serial is same device."""
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        name2 = factory.make_name('name')
-        model2 = factory.make_name('model')
-
-        # Create simulated /dev tree.
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
-
-        check_output.side_effect = [
-            b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model2)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            b'%d' % size,
-            b'%d' % block_size,
-        ]
-
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }, {
-            "NAME": name2,
-            "PATH": os.path.join(devroot, name2),
-            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model2,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__keeps_block_device_blank_serial_same_model(self):
-        """Multipath disks get multiple IDs, but same serial is same device."""
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = ''
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        name2 = factory.make_name('name')
-
-        # Create simulated /dev tree.
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-
-        os.mknod(os.path.join(devroot, name))
-        os.symlink(os.path.join(devroot, name),
-                   os.path.join(byidroot, 'deviceid'))
-
-        os.mknod(os.path.join(devroot, name2))
-        os.symlink(os.path.join(devroot, name2),
-                   os.path.join(byidroot, 'deviceid2'))
-
-        check_output.side_effect = [
-            b"\n".join([
-                self.make_lsblk_output(name=name, model=model),
-                self.make_lsblk_output(name=name2, model=model)]),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            self.make_udevadm_output(name2, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            b'%d' % size,
-            b'%d' % block_size,
-        ]
-
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "ID_PATH": os.path.join(byidroot, 'deviceid'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }, {
-            "NAME": name2,
-            "PATH": os.path.join(devroot, name2),
-            "ID_PATH": os.path.join(byidroot, 'deviceid2'),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-        }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__returns_block_device_without_id_path(self):
-        """Block devices without by-id links should not have ID_PATH key"""
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-
-        # Create simulated /dev tree without by-id link
-        devroot = self.make_dir()
-        os.mkdir(os.path.join(devroot, 'disk'))
-        byidroot = os.path.join(devroot, 'disk', 'by_id')
-        os.mkdir(byidroot)
-        os.mknod(os.path.join(devroot, name))
-
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial, dev=devroot),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": os.path.join(devroot, name),
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices(byidroot))
-
-    def test__returns_block_device_readonly(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, read_only=True),
-            self.make_udevadm_output(name, serial=serial),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "1",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
-
-    def test__returns_block_device_ssd(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, rotary=False),
-            self.make_udevadm_output(name, serial=serial),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "0",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
-
-    def test__returns_block_device_not_sata(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial, sata=False),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "0",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "0",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
-
-    def test__returns_block_device_removable(self):
-        name = factory.make_name('name')
-        model = factory.make_name('model')
-        serial = factory.make_name('serial')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
-        block_size = random.choice([512, 1024, 4096])
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [
-            self.make_lsblk_output(name=name, model=model, removable=True),
-            self.make_udevadm_output(name, serial=serial),
-            b'%d' % size,
-            b'%d' % block_size,
-            ]
-        self.assertEqual([{
-            "NAME": name,
-            "PATH": "/dev/%s" % name,
-            "RO": "0",
-            "RM": "1",
-            "MODEL": model,
-            "ROTA": "1",
-            "SATA": "1",
-            "SERIAL": serial,
-            "SIZE": "%s" % size,
-            "BLOCK_SIZE": "%s" % block_size,
-            "RPM": "5400",
-            }], self.call_gather_physical_block_devices())
-
-    def test__returns_multiple_block_devices_in_order(self):
-        names = [factory.make_name('name') for _ in range(3)]
-        lsblk = [
-            self.make_lsblk_output(name=name)
-            for name in names
-            ]
-        call_outputs = []
-        call_outputs.append(b"\n".join(lsblk))
-        for name in names:
-            call_outputs.append(self.make_udevadm_output(name))
-        for name in names:
-            call_outputs.append(
-                b"%d" % random.randint(1000 * 1000, 1000 * 1000 * 1000))
-            call_outputs.append(
-                b"%d" % random.choice([512, 1024, 4096]))
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = call_outputs
-        device_names = [
-            block_info['NAME']
-            for block_info in self.call_gather_physical_block_devices()
-            ]
-        self.assertEqual(names, device_names)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

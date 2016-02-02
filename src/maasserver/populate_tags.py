@@ -10,14 +10,20 @@ __all__ = [
 
 from functools import partial
 
+from apiclient.creds import convert_tuple_to_string
 from lxml import etree
 from maasserver import logger
-from maasserver.models import NodeGroup
+from maasserver.models.node import (
+    Node,
+    RackController,
+)
 from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
 )
-from maasserver.rpc import getClientFor
+from maasserver.models.user import get_creds_tuple
+from maasserver.rpc import getAllClients
+from metadataserver.models.nodekey import NodeKey
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.tags import merge_details
@@ -43,6 +49,12 @@ tag_nsmap = {
 }
 
 
+def chunk_list(items, size):
+    """Split `items` into multiple lists of maximum `size`."""
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
 @synchronous
 def populate_tags(tag):
     """Evaluate `tag` for all nodes.
@@ -58,56 +70,86 @@ def populate_tags(tag):
       good thing to be waiting for in a web request.
 
     """
-    logger.debug('Evaluating the "%s" tag for all nodes', tag.name)
-    clusters = tuple(
-        (nodegroup.uuid, nodegroup.cluster_name, nodegroup.api_credentials)
-        for nodegroup in NodeGroup.objects.all_accepted())
-    [d] = _do_populate_tags(clusters, tag.name, tag.definition, tag_nsmap)
+    logger.debug('Evaluating the "%s" tag for all nodes.', tag.name)
+    clients = getAllClients()
+    if len(clients) == 0:
+        # XXX: allenap 2014-09-22 bug=1372544: No connected rack controllers.
+        # Nothing can be evaluated when this occurs.
+        return
+
+    # Split the work between the connected rack controllers. Building all the
+    # information that needs to be sent to them all.
+    node_ids = Node.objects.all().values_list("system_id", flat=True)
+    node_ids = [
+        {"system_id": node_id}
+        for node_id in node_ids
+    ]
+    chunk_size = int(len(node_ids) / len(clients))
+    chunked_node_ids = list(chunk_list(node_ids, chunk_size))
+    connected_racks = []
+    for idx, client in enumerate(clients):
+        rack = RackController.objects.get(system_id=client.ident)
+        token = NodeKey.objects.get_token_for_node(rack)
+        creds = convert_tuple_to_string(get_creds_tuple(token))
+        connected_racks.append({
+            "system_id": rack.system_id,
+            "hostname": rack.hostname,
+            "client": client,
+            "tag_name": tag.name,
+            "tag_definition": tag.definition,
+            "tag_nsmap": [
+                {"prefix": prefix, "uri": uri}
+                for prefix, uri in tag_nsmap.items()
+            ],
+            "credentials": creds,
+            "nodes": list(chunked_node_ids[idx]),
+        })
+
+    [d] = _do_populate_tags(connected_racks)
     return d
 
 
 @asynchronous(timeout=FOREVER)
-def _do_populate_tags(clusters, tag_name, tag_definition, tag_nsmap):
-    """Send RPC calls to each cluster, requesting evaluation of tags.
+def _do_populate_tags(clients):
+    """Send RPC calls to each rack controller, requesting evaluation of tags.
 
-    :param clusters: A sequence of ``(uuid, cluster-name, creds)`` tuples for
-        each cluster. The name is used for logging only.
-    :param tag_name: The name of the tag being evaluated.
-    :param tag_definition: The definition of the tag, an XPath expression.
-    :oaram tag_nsmap: The NS mapping used to compile the expression.
+    :param clients: List of connected rack controllers that EvaluateTag
+        will be called.
     """
-    creds = {uuid: creds for uuid, _, creds in clusters}
-    tag_nsmap_on_wire = [
-        {"prefix": prefix, "uri": uri}
-        for prefix, uri in tag_nsmap.items()
-    ]
 
-    def make_call(client):
+    def call_client(client_info):
+        client = client_info["client"]
         return client(
-            EvaluateTag, tag_name=tag_name, tag_definition=tag_definition,
-            tag_nsmap=tag_nsmap_on_wire, credentials=creds[client.ident])
-
-    def evaluate_tags(clients):
-        # Call EvaluateTag on each cluster concurrently.
-        return DeferredList(
-            (make_call(client) for client in clients),
-            consumeErrors=True)
+            EvaluateTag,
+            tag_name=client_info["tag_name"],
+            tag_definition=client_info["tag_definition"],
+            tag_nsmap=client_info["tag_nsmap"],
+            credentials=client_info["credentials"],
+            nodes=client_info["nodes"])
 
     def check_results(results):
-        for (uuid, name, creds), (success, result) in zip(clusters, results):
+        for client_info, (success, result) in zip(clients, results):
             if success:
                 maaslog.info(
-                    "Tag %s (%s) evaluated on cluster %s (%s)", tag_name,
-                    tag_definition, name, uuid)
+                    "Tag %s (%s) evaluated on rack controller %s (%s)",
+                    client_info['tag_name'],
+                    client_info['tag_definition'],
+                    client_info['hostname'],
+                    client_info['system_id'])
             else:
                 maaslog.error(
-                    "Tag %s (%s) could not be evaluated on cluster %s (%s): "
-                    "%s", tag_name, tag_definition, name, uuid,
+                    "Tag %s (%s) could not be evaluated on rack controller "
+                    "%s (%s): %s",
+                    client_info['tag_name'],
+                    client_info['tag_definition'],
+                    client_info['hostname'],
+                    client_info['system_id'],
                     result.getErrorMessage())
 
-    d = _get_clients_for_populating_tags(
-        [(uuid, name) for (uuid, name, _) in clusters], tag_name)
-    d.addCallback(evaluate_tags)
+    d = DeferredList((
+        call_client(client_info)
+        for client_info in clients),
+        consumeErrors=True)
     d.addCallback(check_results)
     d.addErrback(log.err)
 
@@ -115,40 +157,6 @@ def _do_populate_tags(clusters, tag_name, tag_definition, tag_nsmap):
     # this to finish. However, for the sake of testing, we return the Deferred
     # wrapped up in a list so that crochet does not block.
     return [d]
-
-
-@asynchronous(timeout=FOREVER)
-def _get_clients_for_populating_tags(clusters, tag_name):
-    """Obtain RPC clients for the given clusters.
-
-    :param clusters: A sequence of ``(uuid, name)`` tuples for each cluster.
-        The name is used for logging only.
-    :param tag_name: The tag for which these clients are being obtained. This
-        is used only for logging.
-    """
-    # Wait up to `timeout` seconds to obtain clients to all clusters.
-    d = DeferredList(
-        (getClientFor(uuid, timeout=30) for uuid, _ in clusters),
-        consumeErrors=True)
-
-    def got_clients(results):
-        clients = []
-        for (uuid, name), (success, result) in zip(clusters, results):
-            if success:
-                clients.append(result)
-            else:
-                # XXX: allenap 2014-09-22 bug=1372544: Filtering out
-                # unavailable (or otherwise broken) clients means that tags
-                # aren't going to be evaluated for that cluster's nodes.
-                # That's bad. It would be good to be able to ask another
-                # cluster to evaluate them, but the cluster-side code needs
-                # changing to allow that. For now, we just skip.
-                maaslog.warning(
-                    "Cannot evaluate tag %s on cluster %s (%s): %s",
-                    tag_name, name, uuid, result.getErrorMessage())
-        return clients
-
-    return d.addCallback(got_clients)
 
 
 def populate_tags_for_single_node(tags, node):

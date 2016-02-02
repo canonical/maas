@@ -12,28 +12,13 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_list
-from maasserver.enum import (
-    INTERFACE_LINK_TYPE,
-    IPADDRESS_TYPE,
-    NODE_PERMISSION,
-)
-from maasserver.exceptions import (
-    MAASAPIBadRequest,
-    MAASAPIValidationError,
-    StaticIPAddressExhaustion,
-)
+from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
-    ClaimIPForMACForm,
     DeviceForm,
     DeviceWithMACsForm,
-    ReleaseIPForm,
 )
-from maasserver.models import (
-    StaticIPAddress,
-    Subnet,
-)
-from maasserver.models.interface import Interface
 from maasserver.models.node import Device
 from piston3.utils import rc
 
@@ -144,123 +129,14 @@ class DeviceHandler(OperationsHandler):
             device_system_id = device.system_id
         return ('device_handler', (device_system_id,))
 
-    @operation(idempotent=False)
-    def claim_sticky_ip_address(self, request, system_id):
-        """Assign a "sticky" IP address to a device's MAC.
-
-        :param mac_address: Optional MAC address on the device on which to
-            assign the sticky IP address.  If not passed, defaults to the
-            primary MAC for the device.
-        :param requested_address: Optional IP address to claim.  If this
-            isn't passed, this method will draw an IP address from the static
-            range of the cluster interface this MAC is related to.
-            If passed, this method lets you associate any IP address
-            with a MAC address if the MAC isn't related to a cluster interface.
-
-        Returns 404 if the device is not found.
-        Returns 400 if the mac_address is not found on the device.
-        Returns 503 if there are not enough IPs left on the cluster interface
-        to which the mac_address is linked.
-        Returns 503 if the interface does not have an associated subnet.
-        Returns 503 if the requested_address falls in a dynamic range.
-        Returns 503 if the requested_address is already allocated.
-        """
-        device = Device.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        form = ClaimIPForMACForm(request.POST)
-
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-        else:
-            raw_mac = request.POST.get('mac_address', None)
-            if raw_mac is None:
-                interface = device.get_boot_interface()
-            else:
-                try:
-                    interface = Interface.objects.get(
-                        mac_address=raw_mac, node=device)
-                except Interface.DoesNotExist:
-                    raise MAASAPIBadRequest(
-                        "mac_address %s not found on the device" % raw_mac)
-            requested_address = request.POST.get('requested_address', None)
-            if requested_address is None:
-                sticky_ips = interface.claim_static_ips()
-            else:
-                subnet = Subnet.objects.get_best_subnet_for_ip(
-                    requested_address)
-                sticky_ips = [
-                    interface.link_subnet(
-                        INTERFACE_LINK_TYPE.STATIC, subnet,
-                        ip_address=requested_address),
-                ]
-
-            if len(sticky_ips) == 0:
-                raise StaticIPAddressExhaustion(
-                    "%s: An IP address could not be claimed at this time. "
-                    "Check your subnet ranges and utilization and try again." %
-                    device.hostname)
-            else:
-                maaslog.info(
-                    "%s: Sticky IP address(es) allocated: %s", device.hostname,
-                    ', '.join(allocation.ip for allocation in sticky_ips))
-
-            return device
-
-    @operation(idempotent=False)
-    def release_sticky_ip_address(self, request, system_id):
-        """Release a "sticky" IP address from a device's MAC.
-
-        :param address: Optional IP address to release. If left unspecified,
-            will release every "sticky" IP address associated with the device.
-
-        Returns 400 if the specified addresses could not be deallocated
-        Returns 404 if the device is not found.
-        """
-        device = Device.objects.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        form = ReleaseIPForm(request.POST)
-
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
-
-        address = request.POST.get('address', None)
-        if address is not None and address.strip() == '':
-            raise MAASAPIBadRequest(
-                {'address': ["Cannot be empty if supplied."]})
-
-        deallocated_ips = []
-        if address:
-            sip = StaticIPAddress.objects.filter(
-                alloc_type=IPADDRESS_TYPE.STICKY, ip=address,
-                interface__node=device).first()
-            if sip is None:
-                raise MAASAPIBadRequest(
-                    "%s is not a sticky IP address on device: %s",
-                    address, device.hostname)
-            for interface in sip.interface_set.all():
-                interface.unlink_ip_address(sip)
-            deallocated_ips.append(address)
-        else:
-            for interface in device.interface_set.all():
-                for ip_address in interface.ip_addresses.filter(
-                        alloc_type=IPADDRESS_TYPE.STICKY, ip__isnull=False):
-                    if ip_address.ip:
-                        interface.unlink_ip_address(ip_address)
-                        deallocated_ips.append(ip_address.ip)
-
-        maaslog.info(
-            "%s: Sticky IP address(es) deallocated: %s", device.hostname,
-            ', '.join(str(ip) for ip in deallocated_ips))
-        return device
-
 
 class DevicesHandler(OperationsHandler):
     """Manage the collection of all the devices in the MAAS."""
     api_doc_section_name = "Devices"
-    create = read = update = delete = None
+    update = delete = None
 
     @operation(idempotent=False)
-    def new(self, request):
+    def create(self, request):
         """Create a new device.
 
         :param mac_addresses: One or more MAC addresses for the device.
@@ -278,8 +154,7 @@ class DevicesHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @operation(idempotent=True)
-    def list(self, request):
+    def read(self, request):
         """List devices visible to the user, optionally filtered by criteria.
 
         :param hostname: An optional list of hostnames.  Only devices with
@@ -315,8 +190,6 @@ class DevicesHandler(OperationsHandler):
         devices = devices.prefetch_related('interface_set__node')
         devices = devices.prefetch_related('interface_set__ip_addresses')
         devices = devices.prefetch_related('tags')
-        devices = devices.select_related('nodegroup')
-        devices = devices.prefetch_related('nodegroup__nodegroupinterface_set')
         devices = devices.prefetch_related('zone')
         devices = devices.prefetch_related('domain')
         return devices.order_by('id')

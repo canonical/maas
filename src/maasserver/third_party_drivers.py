@@ -26,10 +26,12 @@ from typing import List
 
 from formencode import ForEach
 from formencode.validators import String
-from metadataserver.models import commissioningscript
 from provisioningserver.config import (
     ConfigBase,
     ConfigMeta,
+)
+from provisioningserver.refresh.node_info_scripts import (
+    LIST_MODALIASES_OUTPUT_NAME,
 )
 from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
@@ -120,7 +122,7 @@ class DriversConfig(ConfigBase, Schema, metaclass=DriversConfigMeta):
 @typed
 def node_modaliases(node) -> List[str]:
     """Return a list of modaliases from the node."""
-    name = commissioningscript.LIST_MODALIASES_OUTPUT_NAME
+    name = LIST_MODALIASES_OUTPUT_NAME
     query = node.noderesult_set.filter(name__exact=name)
 
     if len(query) == 0:

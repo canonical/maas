@@ -42,12 +42,9 @@ from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
 )
-from maasserver.enum import (
-    COMPONENT,
-    NODEGROUP_STATUS,
-)
+from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
-from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.node import RackController
 from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
 from maasserver.views.combo import MERGE_VIEWS
@@ -94,7 +91,7 @@ class AccessMiddleware:
             reverse('api-doc'),
             # Metadata service is for use by nodes; no login.
             reverse('metadata'),
-            # RPC information is for use by clusters; no login.
+            # RPC information is for use by rack controllers; no login.
             reverse('rpc-info'),
             # Boot resources simple streams endpoint; no login.
             SIMPLESTREAMS_URL_REGEXP,
@@ -122,38 +119,39 @@ class AccessMiddleware:
 class ExternalComponentsMiddleware:
     """Middleware to check external components at regular intervals."""
 
-    def _check_cluster_connectivity(self):
-        """Check each accepted cluster to see if it's connected.
+    def _check_rack_controller_connectivity(self):
+        """Check each rack controller to see if it's connected.
 
-        If any clusters are disconnected, add a persistent error.
+        If any rack controllers are disconnected, add a persistent error.
         """
-        clusters = NodeGroup.objects.filter(status=NODEGROUP_STATUS.ENABLED)
-        connected_cluster_uuids = {client.ident for client in getAllClients()}
-        disconnected_clusters = {
-            cluster for cluster in clusters
-            if cluster.uuid not in connected_cluster_uuids
+        controllers = RackController.objects.all()
+        connected_ids = {client.ident for client in getAllClients()}
+        disconnected_controllers = {
+            controller
+            for controller in controllers
+            if controller.system_id not in connected_ids
         }
-        if len(disconnected_clusters) == 0:
-            discard_persistent_error(COMPONENT.CLUSTERS)
+        if len(disconnected_controllers) == 0:
+            discard_persistent_error(COMPONENT.RACK_CONTROLLERS)
         else:
-            if len(disconnected_clusters) == 1:
+            if len(disconnected_controllers) == 1:
                 message = (
-                    "One cluster is not yet connected to the region")
+                    "One rack controller is not yet connected to the region")
             else:
                 message = (
-                    "%d clusters are not yet connected to the region"
-                    % len(disconnected_clusters))
+                    "%d rack controllers are not yet connected to the region"
+                    % len(disconnected_controllers))
             message = (
-                "%s. Visit the <a href=\"%s\">clusters page</a> for more "
-                "information." % (message, reverse('cluster-list')))
-            register_persistent_error(COMPONENT.CLUSTERS, message)
+                "%s. Visit the <a href=\"%s\">rack controllers page</a> for "
+                "more information." % (message, reverse('index')))
+            register_persistent_error(COMPONENT.RACK_CONTROLLERS, message)
 
     def process_request(self, request):
         # This middleware hijacks the request to perform checks.  Any
         # error raised during these checks should be caught to avoid
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
-        self._check_cluster_connectivity()
+        self._check_rack_controller_connectivity()
         return None
 
 

@@ -43,8 +43,8 @@ angular.module('MAAS').filter('removeAvailableByNew', function() {
 });
 
 angular.module('MAAS').controller('NodeStorageController', [
-    '$scope', 'NodesManager', 'ConverterService', 'UsersManager',
-    function($scope, NodesManager, ConverterService, UsersManager) {
+    '$scope', 'MachinesManager', 'ConverterService', 'UsersManager',
+    function($scope, MachinesManager, ConverterService, UsersManager) {
 
         // From models/partitiontable.py - must be kept in sync.
         var INITIAL_PARTITION_OFFSET = 4 * 1024 * 1024;
@@ -586,7 +586,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 return;
             }
 
-            NodesManager.setBootDisk($scope.node, item.block_id);
+            MachinesManager.setBootDisk($scope.node, item.block_id);
         };
 
         // Return array of selected filesystems.
@@ -672,7 +672,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Confirm the unmount action for filesystem.
         $scope.filesystemConfirmUnmount = function(filesystem) {
-            NodesManager.updateFilesystem(
+            MachinesManager.updateFilesystem(
                 $scope.node,
                 filesystem.block_id, filesystem.partition_id,
                 filesystem.fstype, null);
@@ -699,11 +699,11 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.filesystemConfirmDelete = function(filesystem) {
             if(filesystem.original_type === "partition") {
                 // Delete the partition.
-                NodesManager.deletePartition(
+                MachinesManager.deletePartition(
                     $scope.node, filesystem.original.id);
             } else {
                 // Delete the disk.
-                NodesManager.deleteDisk(
+                MachinesManager.deleteDisk(
                     $scope.node, filesystem.original.id);
             }
 
@@ -900,7 +900,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     var parentName = disk.original.name.split("-")[0] + "-";
                     name = name.slice(parentName.length);
                 }
-                NodesManager.updateDisk($scope.node, disk.block_id, {
+                MachinesManager.updateDisk($scope.node, disk.block_id, {
                     name: name
                 });
             }
@@ -930,7 +930,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Confirm the unformat action.
         $scope.availableConfirmUnformat = function(disk) {
-            NodesManager.updateFilesystem(
+            MachinesManager.updateFilesystem(
                 $scope.node,
                 disk.block_id, disk.partition_id,
                 null, null);
@@ -975,7 +975,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
 
             // Update the filesystem.
-            NodesManager.updateFilesystem(
+            MachinesManager.updateFilesystem(
                 $scope.node,
                 disk.block_id, disk.partition_id,
                 disk.$options.fstype, disk.$options.mountPoint);
@@ -1080,15 +1080,15 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availableConfirmDelete = function(disk) {
             if(disk.type === "lvm-vg") {
                 // Delete the volume group.
-                NodesManager.deleteVolumeGroup(
+                MachinesManager.deleteVolumeGroup(
                     $scope.node, disk.block_id);
             } else if(disk.type === "partition") {
                 // Delete the partition.
-                NodesManager.deletePartition(
+                MachinesManager.deletePartition(
                     $scope.node, disk.partition_id);
             } else {
                 // Delete the disk.
-                NodesManager.deleteDisk(
+                MachinesManager.deleteDisk(
                     $scope.node, disk.block_id);
             }
 
@@ -1197,7 +1197,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_point = disk.$options.mountPoint;
                 }
             }
-            NodesManager.createPartition(
+            MachinesManager.createPartition(
                 $scope.node, disk.block_id, bytes, params);
 
             // Remove the disk if needed.
@@ -1299,7 +1299,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Confirm the delete action for cache set.
         $scope.cacheSetConfirmDelete = function(cacheset) {
-            NodesManager.deleteCacheSet(
+            MachinesManager.deleteCacheSet(
                 $scope.node, cacheset.cache_set_id);
 
             var idx = $scope.cachesets.indexOf(cacheset);
@@ -1331,7 +1331,7 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             // Create cache set.
             var disk = $scope.getSelectedAvailable()[0];
-            NodesManager.createCacheSet(
+            MachinesManager.createCacheSet(
                 $scope.node, disk.block_id, disk.partition_id);
 
             // Remove from available.
@@ -1438,7 +1438,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_point = $scope.availableNew.mountPoint;
                 }
             }
-            NodesManager.createBcache($scope.node, params);
+            MachinesManager.createBcache($scope.node, params);
 
             // Remove device from available.
             var idx = $scope.available.indexOf($scope.availableNew.device);
@@ -1642,7 +1642,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_point = $scope.availableNew.mountPoint;
                 }
             }
-            NodesManager.createRAID($scope.node, params);
+            MachinesManager.createRAID($scope.node, params);
 
             // Remove devices from available.
             angular.forEach($scope.availableNew.devices, function(device) {
@@ -1725,7 +1725,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.block_devices.push(device.block_id);
                 }
             });
-            NodesManager.createVolumeGroup($scope.node, params);
+            MachinesManager.createVolumeGroup($scope.node, params);
 
             // Remove devices from available.
             angular.forEach($scope.availableNew.devices, function(device) {
@@ -1835,7 +1835,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     params.mount_point = disk.$options.mountPoint;
                 }
             }
-            NodesManager.createLogicalVolume(
+            MachinesManager.createLogicalVolume(
                 $scope.node, disk.block_id, name, bytes, params);
 
             // Remove the disk if needed.
@@ -1873,7 +1873,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             angular.forEach(disk.$options.tags, function(tag) {
                 tags.push(tag.text);
             });
-            NodesManager.updateDiskTags(
+            MachinesManager.updateDiskTags(
                 $scope.node, disk.block_id, tags);
             disk.tags = disk.$options.tags;
             disk.$options = {};

@@ -8,19 +8,22 @@ __all__ = []
 from maasserver.models import nodeprobeddetails
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.models import commissioningscript
 from mock import create_autospec
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+)
 
 
 def make_lshw_result(node, data, script_result=0):
     return factory.make_NodeResult_for_commissioning(
-        node=node, name=commissioningscript.LSHW_OUTPUT_NAME,
+        node=node, name=LSHW_OUTPUT_NAME,
         data=data, script_result=script_result)
 
 
 def make_lldp_result(node, data, script_result=0):
     return factory.make_NodeResult_for_commissioning(
-        node=node, name=commissioningscript.LLDP_OUTPUT_NAME,
+        node=node, name=LLDP_OUTPUT_NAME,
         data=data, script_result=script_result)
 
 

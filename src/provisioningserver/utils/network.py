@@ -218,7 +218,7 @@ class MAASIPSet(set):
     def __contains__(self, item):
         return bool(self.find(item))
 
-    def get_unused_ranges(self, outer_range):
+    def get_unused_ranges(self, outer_range, comment="unused"):
         """Calculates and returns a list of unused IP ranges, based on
         the supplied range of desired addresses.
 
@@ -248,7 +248,7 @@ class MAASIPSet(set):
             # range.
             if candidate_end - candidate_start >= 0:
                 unused_ranges.append(
-                    make_iprange(candidate_start, candidate_end, "unused"))
+                    make_iprange(candidate_start, candidate_end, comment))
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
         if type(outer_range) == IPNetwork and outer_range.version == 4:
@@ -259,7 +259,7 @@ class MAASIPSet(set):
         # of the range we're checking against.
         if candidate_end - candidate_start >= 0:
             unused_ranges.append(
-                make_iprange(candidate_start, candidate_end, "unused"))
+                make_iprange(candidate_start, candidate_end, comment))
         return MAASIPSet(unused_ranges)
 
     def get_full_range(self, outer_range):

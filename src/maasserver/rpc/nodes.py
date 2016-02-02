@@ -21,8 +21,8 @@ from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
     Node,
-    NodeGroup,
     PhysicalInterface,
+    RackController,
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
@@ -71,17 +71,19 @@ def _gen_cluster_nodes_power_parameters(nodes):
 
     nodes_unchecked = (
         nodes
-        .filter(power_state_updated=None)
+        .filter(power_state_queried=None)
         .filter(bmc__power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
+        .distinct()
     )
     nodes_checked = (
         nodes
-        .exclude(power_state_updated=None)
-        .exclude(power_state_updated__gt=five_minutes_ago)
+        .exclude(power_state_queried=None)
+        .exclude(power_state_queried__gt=five_minutes_ago)
         .filter(bmc__power_type__in=QUERY_POWER_TYPES)
         .exclude(status=NODE_STATUS.BROKEN)
-        .order_by("power_state_updated", "system_id")
+        .order_by("power_state_queried", "system_id")
+        .distinct()
     )
 
     for node in chain(nodes_unchecked, nodes_checked):
@@ -110,7 +112,7 @@ def _gen_up_to_json_limit(things, limit):
     for index, thing in enumerate(things):
         # Adjust the limit according the the size of thing.
         if index == 0:
-            # A sole element does not need a delimiter.
+            # A sole element does not need a delimiter.n
             limit -= len(json.dumps(thing))
         else:
             # There is a delimiter between this and the preceeding element.
@@ -129,20 +131,34 @@ def _gen_up_to_json_limit(things, limit):
 
 @synchronous
 @transactional
-def list_cluster_nodes_power_parameters(uuid):
-    """Return power parameters for a cluster's nodes, in priority order.
+def list_cluster_nodes_power_parameters(system_id):
+    """Return power parameters that a rack controller should power check,
+    in priority order.
 
     For :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
     """
     try:
-        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
-    except NodeGroup.DoesNotExist:
-        raise NoSuchCluster.from_uuid(uuid)
-    else:
-        nodes = nodegroup.node_set.all()
-        details = _gen_cluster_nodes_power_parameters(nodes)
-        details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
-        return list(details)
+        rack = RackController.objects.get(system_id=system_id)
+    except RackController.DoesNotExist:
+        raise NoSuchCluster.from_uuid(system_id)
+
+    # Generate all the the power queries that will fit into the response.
+    nodes = rack.get_bmc_accessible_nodes()
+    details = _gen_cluster_nodes_power_parameters(nodes)
+    details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
+    details = list(details)
+
+    # Update the queried time on all of the nodes at once. So another
+    # rack controller does not update them at the same time. This operation
+    # is done on all nodes at the same time in one query.
+    system_ids = [
+        detail["system_id"]
+        for detail in details
+    ]
+    Node.objects.filter(
+        system_id__in=system_ids).update(power_state_queried=now())
+
+    return details
 
 
 @synchronous
@@ -161,12 +177,10 @@ def update_node_power_state(system_id, power_state):
 
 @synchronous
 @transactional
-def create_node(cluster_uuid, architecture, power_type,
+def create_node(architecture, power_type,
                 power_parameters, mac_addresses, hostname=None):
     """Create a new `Node` and return it.
 
-    :param cluster_uuid: The UUID of the cluster upon which the node
-        should be created.
     :param architecture: The architecture of the new node.
     :param power_type: The power type of the new node.
     :param power_parameters: A JSON-encoded string of power parameters
@@ -188,12 +202,10 @@ def create_node(cluster_uuid, architecture, power_type,
     if '/' not in architecture:
         architecture = '%s/generic' % architecture
 
-    cluster = NodeGroup.objects.get_by_natural_key(cluster_uuid)
     data = {
         'power_type': power_type,
         'power_parameters': power_parameters,
         'architecture': architecture,
-        'nodegroup': cluster,
         'mac_addresses': mac_addresses,
     }
 

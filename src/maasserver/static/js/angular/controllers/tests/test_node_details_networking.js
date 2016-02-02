@@ -290,12 +290,12 @@ describe("NodeNetworkingController", function() {
 
     // Load the required dependencies for the NodeNetworkingController.
     var FabricsManager, VLANsManager, SubnetsManager, UsersManager;
-    var NodesManager, GeneralManager, ManagerHelperService;
+    var MachinesManager, GeneralManager, ManagerHelperService;
     beforeEach(inject(function($injector) {
         FabricsManager = $injector.get("FabricsManager");
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
-        NodesManager = $injector.get("NodesManager");
+        MachinesManager = $injector.get("MachinesManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
@@ -324,7 +324,7 @@ describe("NodeNetworkingController", function() {
             FabricsManager: FabricsManager,
             VLANsManager: VLANsManager,
             SubnetsManager: SubnetsManager,
-            NodesManager: NodesManager,
+            MachinesManager: MachinesManager,
             GeneralManager: GeneralManager,
             ManagerHelperService: ManagerHelperService
         });
@@ -1122,10 +1122,10 @@ describe("NodeNetworkingController", function() {
             $scope.originalInterfaces[id] = original_nic;
             $scope.interfaces = [nic];
 
-            spyOn(NodesManager, "updateInterface").and.returnValue(
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterface(nic);
-            expect(NodesManager.updateInterface).not.toHaveBeenCalled();
+            expect(MachinesManager.updateInterface).not.toHaveBeenCalled();
         });
 
         it("resets name if its invalid and doesn't call update", function() {
@@ -1146,14 +1146,14 @@ describe("NodeNetworkingController", function() {
             $scope.originalInterfaces[id] = original_nic;
             $scope.interfaces = [nic];
 
-            spyOn(NodesManager, "updateInterface").and.returnValue(
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterface(nic);
             expect(nic.name).toBe(name);
-            expect(NodesManager.updateInterface).not.toHaveBeenCalled();
+            expect(MachinesManager.updateInterface).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.updateInterface if name changed", function() {
+        it("calls MachinesManager.updateInterface if name changed", function() {
             var controller = makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
@@ -1171,17 +1171,17 @@ describe("NodeNetworkingController", function() {
             $scope.originalInterfaces[id] = original_nic;
             $scope.interfaces = [nic];
 
-            spyOn(NodesManager, "updateInterface").and.returnValue(
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterface(nic);
-            expect(NodesManager.updateInterface).toHaveBeenCalledWith(
+            expect(MachinesManager.updateInterface).toHaveBeenCalledWith(
                 node, id, {
                     "name": nic.name,
                     "vlan": vlan.id
                 });
         });
 
-        it("calls NodesManager.updateInterface if vlan changed", function() {
+        it("calls MachinesManager.updateInterface if vlan changed", function() {
             var controller = makeController();
             var id = makeInteger(0, 100);
             var name = makeName("nic");
@@ -1199,10 +1199,10 @@ describe("NodeNetworkingController", function() {
             $scope.originalInterfaces[id] = original_nic;
             $scope.interfaces = [nic];
 
-            spyOn(NodesManager, "updateInterface").and.returnValue(
+            spyOn(MachinesManager, "updateInterface").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterface(nic);
-            expect(NodesManager.updateInterface).toHaveBeenCalledWith(
+            expect(MachinesManager.updateInterface).toHaveBeenCalledWith(
                 node, id, {
                     "name": name,
                     "vlan": vlan.id
@@ -1412,7 +1412,7 @@ describe("NodeNetworkingController", function() {
 
     describe("saveInterfaceLink", function() {
 
-        it("calls NodesManager.linkSubnet with params", function() {
+        it("calls MachinesManager.linkSubnet with params", function() {
             var controller = makeController();
             var nic = {
                 id: makeInteger(0, 100),
@@ -1421,10 +1421,10 @@ describe("NodeNetworkingController", function() {
                 link_id: makeInteger(0, 100),
                 ip_address: "192.168.122.1"
             };
-            spyOn(NodesManager, "linkSubnet").and.returnValue(
+            spyOn(MachinesManager, "linkSubnet").and.returnValue(
                 $q.defer().promise);
             $scope.saveInterfaceLink(nic);
-            expect(NodesManager.linkSubnet).toHaveBeenCalledWith(
+            expect(MachinesManager.linkSubnet).toHaveBeenCalledWith(
                 node, nic.id, {
                     "mode": "static",
                     "subnet": nic.subnet.id,
@@ -2308,14 +2308,14 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic);
             $scope.selectedMode = "delete";
 
-            spyOn(NodesManager, "deleteInterface");
+            spyOn(MachinesManager, "deleteInterface");
             $scope.confirmRemove(nic);
 
             expect($scope.selectedMode).toBeNull();
             expect($scope.selectedInterfaces).toEqual([]);
         });
 
-        it("calls NodesManager.deleteInterface", function() {
+        it("calls MachinesManager.deleteInterface", function() {
             var controller = makeController();
             var nic = {
                 id: makeInteger(0, 100),
@@ -2325,14 +2325,14 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic);
             $scope.selectedMode = "delete";
 
-            spyOn(NodesManager, "deleteInterface");
+            spyOn(MachinesManager, "deleteInterface");
             $scope.confirmRemove(nic);
 
-            expect(NodesManager.deleteInterface).toHaveBeenCalledWith(
+            expect(MachinesManager.deleteInterface).toHaveBeenCalledWith(
                 node, nic.id);
         });
 
-        it("calls NodesManager.unlinkSubnet", function() {
+        it("calls MachinesManager.unlinkSubnet", function() {
             var controller = makeController();
             var nic = {
                 id: makeInteger(0, 100),
@@ -2342,10 +2342,10 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic);
             $scope.selectedMode = "delete";
 
-            spyOn(NodesManager, "unlinkSubnet");
+            spyOn(MachinesManager, "unlinkSubnet");
             $scope.confirmRemove(nic);
 
-            expect(NodesManager.unlinkSubnet).toHaveBeenCalledWith(
+            expect(MachinesManager.unlinkSubnet).toHaveBeenCalledWith(
                 node, nic.id, nic.link_id);
         });
 
@@ -2360,7 +2360,7 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic);
             $scope.selectedMode = "delete";
 
-            spyOn(NodesManager, "unlinkSubnet");
+            spyOn(MachinesManager, "unlinkSubnet");
             $scope.confirmRemove(nic);
 
             expect($scope.interfaces).toEqual([]);
@@ -2699,11 +2699,11 @@ describe("NodeNetworkingController", function() {
             };
             $scope.selectedInterfaces = [{}];
             $scope.selectedMode = "add";
-            spyOn(NodesManager, "createVLANInterface").and.returnValue(
+            spyOn(MachinesManager, "createVLANInterface").and.returnValue(
                 $q.defer().promise);
 
             $scope.addInterface();
-            expect(NodesManager.createVLANInterface).toHaveBeenCalledWith(
+            expect(MachinesManager.createVLANInterface).toHaveBeenCalledWith(
                 node, {
                     parent: parent.id,
                     vlan: vlan.id,
@@ -3176,14 +3176,14 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic2);
             $scope.showCreateBond();
 
-            spyOn(NodesManager, "createBondInterface").and.returnValue(
+            spyOn(MachinesManager, "createBondInterface").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "cannotAddBond").and.returnValue(true);
             $scope.newBondInterface.name = "bond0";
             $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
 
             $scope.addBond();
-            expect(NodesManager.createBondInterface).not.toHaveBeenCalled();
+            expect(MachinesManager.createBondInterface).not.toHaveBeenCalled();
         });
 
         it("calls createBondInterface and removes selection", function() {
@@ -3213,14 +3213,14 @@ describe("NodeNetworkingController", function() {
             $scope.toggleInterfaceSelect(nic2);
             $scope.showCreateBond();
 
-            spyOn(NodesManager, "createBondInterface").and.returnValue(
+            spyOn(MachinesManager, "createBondInterface").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "cannotAddBond").and.returnValue(false);
             $scope.newBondInterface.name = "bond0";
             $scope.newBondInterface.macAddress = "00:11:22:33:44:55";
             $scope.addBond();
 
-            expect(NodesManager.createBondInterface).toHaveBeenCalledWith(
+            expect(MachinesManager.createBondInterface).toHaveBeenCalledWith(
                 node, {
                     name: "bond0",
                     mac_address: "00:11:22:33:44:55",
@@ -3363,12 +3363,13 @@ describe("NodeNetworkingController", function() {
                 mode: "auto"
             };
 
-            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+            spyOn(MachinesManager, "createPhysicalInterface").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(true);
             $scope.addPhysicalInterface();
 
-            expect(NodesManager.createPhysicalInterface).not.toHaveBeenCalled();
+            expect(
+                MachinesManager.createPhysicalInterface).not.toHaveBeenCalled();
         });
 
         it("calls createPhysicalInterface and removes selection", function() {
@@ -3389,21 +3390,22 @@ describe("NodeNetworkingController", function() {
             $scope.selectedMode = "create-physical";
 
             var defer = $q.defer();
-            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+            spyOn(MachinesManager, "createPhysicalInterface").and.returnValue(
                 defer.promise);
             spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
             $scope.addPhysicalInterface();
             defer.resolve();
             $scope.$digest();
 
-            expect(NodesManager.createPhysicalInterface).toHaveBeenCalledWith(
-                node, {
-                    name: "eth0",
-                    mac_address: "00:11:22:33:44:55",
-                    vlan: vlan.id,
-                    subnet: subnet.id,
-                    mode: "auto"
-                });
+            expect(
+                MachinesManager.createPhysicalInterface).toHaveBeenCalledWith(
+                    node, {
+                        name: "eth0",
+                        mac_address: "00:11:22:33:44:55",
+                        vlan: vlan.id,
+                        subnet: subnet.id,
+                        mode: "auto"
+                    });
             expect($scope.newInterface).toEqual({});
             expect($scope.selectedMode).toBeNull();
         });
@@ -3427,7 +3429,7 @@ describe("NodeNetworkingController", function() {
             };
 
             var defer = $q.defer();
-            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+            spyOn(MachinesManager, "createPhysicalInterface").and.returnValue(
                 defer.promise);
             spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
             $scope.addPhysicalInterface();
@@ -3453,7 +3455,7 @@ describe("NodeNetworkingController", function() {
             };
 
             var defer = $q.defer();
-            spyOn(NodesManager, "createPhysicalInterface").and.returnValue(
+            spyOn(MachinesManager, "createPhysicalInterface").and.returnValue(
                 defer.promise);
             spyOn($scope, "cannotAddPhysicalInterface").and.returnValue(false);
             $scope.addPhysicalInterface();

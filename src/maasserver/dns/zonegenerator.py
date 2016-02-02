@@ -9,15 +9,12 @@ __all__ = [
 
 
 import collections
-from itertools import (
-    chain,
-    groupby,
-)
+from itertools import chain
 import socket
 
 from maasserver import logger
 from maasserver.enum import (
-    NODEGROUP_STATUS,
+    IPRANGE_TYPE,
     RDNS_MODE,
 )
 from maasserver.exceptions import MAASException
@@ -25,13 +22,12 @@ from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import (
     IPAddress,
     IPNetwork,
-    IPRange,
 )
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -76,10 +72,6 @@ def get_hostname_ip_mapping(domain_or_subnet):
     """Return a mapping {hostnames -> (ttl, ips)} for the allocated nodes in
     `domain` or `subnet`.
     """
-    # Circular imports.
-    if isinstance(domain_or_subnet, NodeGroup):
-        raise DNSException(
-            "get_hostname_ip_mapping no longer takes NodeGroup")
     return StaticIPAddress.objects.get_hostname_ip_mapping(domain_or_subnet)
 
 
@@ -101,23 +93,24 @@ def warn_loopback(ip):
         logger.warning(WARNING_MESSAGE % ip)
 
 
-def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
+def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
     """Return the DNS server's IP address.
 
-    That address is derived from the config maas_url or nodegroup.maas_url.
+    That address is derived from the config maas_url or rack_controller.url.
     Consult the 'maas-region-admin local_config_set --maas-url' command for
     details on how to set the MAAS URL.
 
-    :param nodegroup: Optional cluster to which the DNS server should be
-        accessible.  If given, the server address will be taken from the
-        cluster's `maas_url` setting.  Otherwise, it will be taken from the
-        globally configured default MAAS URL.
+    :param rack_controller: Optional rack controller to which the DNS server
+        should be accessible.  If given, the server address will be taken from
+        the rack controller's `maas_url` setting.  Otherwise, it will be taken
+        from the globally configured default MAAS URL.
     :param ipv4: Include IPv4 server addresses?
     :param ipv6: Include IPv6 server addresses?
 
     """
     try:
-        ip = get_maas_facing_server_address(nodegroup, ipv4=ipv4, ipv6=ipv6)
+        ip = get_maas_facing_server_address(
+            rack_controller, ipv4=ipv4, ipv6=ipv6)
     except socket.error as e:
         raise DNSException(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
@@ -135,8 +128,8 @@ def get_dns_search_paths():
     """Return all the search paths for the DNS server."""
     return set(
         name
-        for name in NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ENABLED).values_list("name", flat=True)
+        for name in Domain.objects.filter(
+            authoritative=True).values_list("name", flat=True)
         if name
     )
 
@@ -166,32 +159,8 @@ class ZoneGenerator:
 
     @staticmethod
     def _get_mappings():
-        """Return a lazily evaluated nodegroup:mapping dict."""
+        """Return a lazily evaluated mapping dict."""
         return lazydict(get_hostname_ip_mapping)
-
-    @staticmethod
-    def _get_networks():
-        """Return a lazily evaluated nodegroup:network_details dict.
-
-        network_details takes the form of a tuple of (network,
-        (network.ip_range_low, network.ip_range_high)).
-        """
-
-        def get_network(nodegroup):
-            return [
-                (iface.network, (iface.ip_range_low, iface.ip_range_high))
-                for iface in nodegroup.get_managed_interfaces()
-            ]
-        return lazydict(get_network)
-
-    @staticmethod
-    def _get_forward_domains(domains):
-        """Return the set of managed domains for the given `domains`."""
-        return set(
-            domain
-            for domain in Domain.objects.filter(
-                name__in=domains,
-                authoritative=True))
 
     @staticmethod
     def _gen_forward_zones(domains, serial, mappings, default_ttl):
@@ -199,46 +168,23 @@ class ZoneGenerator:
         dns_ip = get_dns_server_address()
         domains = set(domains)
 
-        # We need to collect the dynamic ranges for all nodegroups where
-        # nodegroup.name == domain.name, so that we can generate mappings for
-        # them.
-        get_domain = lambda nodegroup: nodegroup.name
-        nodegroups = set(
-            nodegroup
-            for nodegroup in NodeGroup.objects.filter(
-                name__in=[domain.name for domain in domains]))
-        forward_nodegroups = set(sorted(nodegroups, key=get_domain))
-        nodegroup_dict = {}
-        for domainname, nodegroups in groupby(forward_nodegroups, get_domain):
-            # dynamic ranges come from nodegroups (still)
-            # addresses come from Node and StaticIPAddress with no regard for
-            # nodegroup, since it could be any with the name overrides.
-            nodegroup_dict[domainname] = list(nodegroups)
-
         # For each of the domains that we are generating, create the zone from:
-        # 1. nodegroup dynamic ranges
-        # 2. node: ip mapping(domain) (which includes dnsresource addresses)
-        # 4. dnsresource non-address records in this domain
+        # 1. Node: ip mapping(domain) (which includes dnsresource addresses).
+        # 2. Dnsresource non-address records in this domain.
+        # 3. For the default domain all forward look ups for the managed and
+        #    unmanaged dynamic ranges.
         for domain in domains:
-            # 1. nodegroup dynamic ranges
-            nodegroups = nodegroup_dict.get(domain.name, [])
-            dynamic_ranges = [
-                interface.get_dynamic_ip_range()
-                for nodegroup in nodegroups
-                for interface in nodegroup.get_managed_interfaces()
-            ]
-            dnsresources = DNSResource.objects.filter(domain=domain)
-            # 2. node: ip mapping(domain)
+            # 1. node: ip mapping(domain)
             # Map all of the nodes in this domain, including the user-reserved
             # ip addresses.
             mapping = {
                 hostname.split('.')[0]: (ttl, ips)
                 for hostname, (ttl, ips) in mappings[domain].items()
             }
-            # 3. Create non-address records.  Specifically ignore any CNAME
+            # 2. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
             other_mapping = {}
-            for dnsrr in dnsresources:
+            for dnsrr in DNSResource.objects.filter(domain=domain):
                 dataset = dnsrr.dnsdata_set.all()
                 for rrtype in set(data.rrtype for data in dataset):
                     # Start at 2^31-1, and then select the minimum ttl found in
@@ -257,6 +203,20 @@ class ZoneGenerator:
                             ttl = min(ttl, default_ttl)
                         other_mapping[dnsrr.name] = (ttl, values)
 
+            # 3. Default domain we place all forward entries for the managed
+            # and unmanaged dynamic ranges in this domain.
+            dynamic_ranges = []
+            if domain.id == 0:
+                subnets = Subnet.objects.all().prefetch_related("iprange_set")
+                for subnet in subnets:
+                    # We loop through the whole set so the prefetch above works
+                    # in one query.
+                    for ip_range in subnet.iprange_set.all():
+                        if ip_range.type in [
+                                IPRANGE_TYPE.MANAGED_DHCP,
+                                IPRANGE_TYPE.UNMANAGED_DHCP]:
+                            dynamic_ranges.append(ip_range.get_MAASIPRange())
+
             yield DNSForwardZoneConfig(
                 domain.name, serial=serial, dns_ip=dns_ip,
                 default_ttl=default_ttl,
@@ -269,27 +229,16 @@ class ZoneGenerator:
                 )
 
     @staticmethod
-    def _get_reverse_nodegroups(nodegroups):
-        """Return the set of reverse nodegroups among `nodegroups`.
-
-        This is the subset of the given nodegroups that are managed.
-        """
-        return set(
-            nodegroup
-            for nodegroup in nodegroups
-            if nodegroup.manages_dns())
-
-    @staticmethod
-    def _gen_reverse_zones(subnets, serial, mappings, networks, default_ttl):
+    def _gen_reverse_zones(subnets, serial, mappings, default_ttl):
         """Generator of reverse zones, sorted by network."""
 
         subnets = set(subnets)
         # For each of the zones that we are generating (one or more per
         # subnet), compile the zone from:
-        # 1. nodegroup dynamic ranges on this subnet
-        # 2. node: ip mapping(subnet), including DNSResource records for
-        #    StaticIPAddresses in this subnet
-        # 3. interfaces on any node that have IP addresses in this subnet
+        # 1. Dynamic ranges on this subnet.
+        # 2. Node: ip mapping(subnet), including DNSResource records for
+        #    StaticIPAddresses in this subnet.
+        # 3. Interfaces on any node that have IP addresses in this subnet.
         rfc2317_glue = {}
         for subnet in subnets:
             network = IPNetwork(subnet.cidr)
@@ -308,18 +257,11 @@ class ZoneGenerator:
                         "%s/124" %
                         IPNetwork("%s/124" % network.network).network)
                     rfc2317_glue.setdefault(basenet, set()).add(network)
-        for subnet in subnets:
-            network = IPNetwork(subnet.cidr)
-            nodegroups = set(
-                nodegroup
-                for nodegroup in NodeGroup.objects.filter(
-                    nodegroupinterface__subnet=subnet)
-                if len(nodegroup.get_managed_interfaces()) > 0)
+
             # 1. Figure out the dynamic ranges.
             dynamic_ranges = [
-                IPRange(iprange[1][0], iprange[1][1])
-                for nodegroup in nodegroups
-                for iprange in networks[nodegroup]
+                ip_range.netaddr_iprange
+                for ip_range in subnet.get_dynamic_ranges()
             ]
 
             # 2. Start with the map of all of the nodes on this subnet,
@@ -364,7 +306,7 @@ class ZoneGenerator:
             yield DNSReverseZoneConfig(
                 Domain.objects.get_default_domain().name, serial=serial,
                 default_ttl=default_ttl,
-                mapping=mapping, network=network,
+                mapping=mapping, network=IPNetwork(subnet.cidr),
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
             )
@@ -388,14 +330,13 @@ class ZoneGenerator:
             "No serial number or serial number generator specified.")
 
         mappings = self._get_mappings()
-        networks = self._get_networks()
         serial = self.serial or self.serial_generator()
         default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(
                 self.domains, serial, mappings, default_ttl),
             self._gen_reverse_zones(
-                self.subnets, serial, mappings, networks, default_ttl),
+                self.subnets, serial, mappings, default_ttl),
             )
 
     def as_list(self):

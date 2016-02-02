@@ -92,9 +92,9 @@ describe("NodeStorageController", function() {
     }));
 
     // Load the required dependencies for the NodeStorageController.
-    var NodesManager;
+    var MachinesManager;
     beforeEach(inject(function($injector) {
-        NodesManager = $injector.get("NodesManager");
+        MachinesManager = $injector.get("MachinesManager");
     }));
 
     // Create the node and functions that will be called on the parent.
@@ -115,7 +115,7 @@ describe("NodeStorageController", function() {
         // Create the controller.
         var controller = $controller("NodeStorageController", {
             $scope: $scope,
-            NodesManager: NodesManager
+            MachinesManager: MachinesManager
         });
         return controller;
     }
@@ -560,34 +560,34 @@ describe("NodeStorageController", function() {
         it("does nothing if already boot disk", function() {
             var controller = makeController();
             var disk = { is_boot: true };
-            spyOn(NodesManager, "setBootDisk");
+            spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
 
             $scope.setAsBootDisk(disk);
 
-            expect(NodesManager.setBootDisk).not.toHaveBeenCalled();
+            expect(MachinesManager.setBootDisk).not.toHaveBeenCalled();
         });
 
         it("does nothing if set boot disk disabled", function() {
             var controller = makeController();
             var disk = { is_boot: false };
-            spyOn(NodesManager, "setBootDisk");
+            spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(true);
 
             $scope.setAsBootDisk(disk);
 
-            expect(NodesManager.setBootDisk).not.toHaveBeenCalled();
+            expect(MachinesManager.setBootDisk).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.setBootDisk", function() {
+        it("calls MachinesManager.setBootDisk", function() {
             var controller = makeController();
             var disk = { block_id: makeInteger(0, 100), is_boot: false };
-            spyOn(NodesManager, "setBootDisk");
+            spyOn(MachinesManager, "setBootDisk");
             spyOn($scope, "isBootDiskDisabled").and.returnValue(false);
 
             $scope.setAsBootDisk(disk);
 
-            expect(NodesManager.setBootDisk).toHaveBeenCalledWith(
+            expect(MachinesManager.setBootDisk).toHaveBeenCalledWith(
                 node, disk.block_id);
         });
     });
@@ -836,7 +836,7 @@ describe("NodeStorageController", function() {
 
     describe("filesystemConfirmUnmount", function() {
 
-        it("calls NodesManager.updateFilesystem", function() {
+        it("calls MachinesManager.updateFilesystem", function() {
             var controller = makeController();
             var filesystem = {
                 block_id: makeInteger(0, 100),
@@ -844,12 +844,12 @@ describe("NodeStorageController", function() {
                 fstype: makeName("fs")
             };
             $scope.filesystems = [filesystem];
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemConfirmUnmount(filesystem);
 
-            expect(NodesManager.updateFilesystem).toHaveBeenCalledWith(
+            expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                 node, filesystem.block_id, filesystem.partition_id,
                 filesystem.fstype, null);
         });
@@ -862,7 +862,7 @@ describe("NodeStorageController", function() {
                 fstype: makeName("fs")
             };
             $scope.filesystems = [filesystem];
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemConfirmUnmount(filesystem);
@@ -905,7 +905,7 @@ describe("NodeStorageController", function() {
 
     describe("filesystemConfirmDelete", function() {
 
-        it("calls NodesManager.deletePartition for partition", function() {
+        it("calls MachinesManager.deletePartition for partition", function() {
             var controller = makeController();
             var filesystem = {
                 original_type: "partition",
@@ -914,17 +914,17 @@ describe("NodeStorageController", function() {
                 }
             };
             $scope.filesystems = [filesystem];
-            spyOn(NodesManager, "deletePartition");
+            spyOn(MachinesManager, "deletePartition");
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemConfirmDelete(filesystem);
-            expect(NodesManager.deletePartition).toHaveBeenCalledWith(
+            expect(MachinesManager.deletePartition).toHaveBeenCalledWith(
                 node, filesystem.original.id);
             expect($scope.filesystems).toEqual([]);
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
         });
 
-        it("calls NodesManager.deleteDisk for disk", function() {
+        it("calls MachinesManager.deleteDisk for disk", function() {
             var controller = makeController();
             var filesystem = {
                 original_type: "physical",
@@ -933,11 +933,11 @@ describe("NodeStorageController", function() {
                 }
             };
             $scope.filesystems = [filesystem];
-            spyOn(NodesManager, "deleteDisk");
+            spyOn(MachinesManager, "deleteDisk");
             spyOn($scope, "updateFilesystemSelection");
 
             $scope.filesystemConfirmDelete(filesystem);
-            expect(NodesManager.deleteDisk).toHaveBeenCalledWith(
+            expect(MachinesManager.deleteDisk).toHaveBeenCalledWith(
                 node, filesystem.original.id);
             expect($scope.filesystems).toEqual([]);
             expect($scope.updateFilesystemSelection).toHaveBeenCalledWith();
@@ -1572,11 +1572,11 @@ describe("NodeStorageController", function() {
                     name: name
                 }
             };
-            spyOn(NodesManager, "updateDisk");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.saveAvailableName(disk);
             expect(disk.name).toBe(name);
-            expect(NodesManager.updateDisk).not.toHaveBeenCalled();
+            expect(MachinesManager.updateDisk).not.toHaveBeenCalled();
         });
 
         it("does nothing if name is the same", function() {
@@ -1588,10 +1588,10 @@ describe("NodeStorageController", function() {
                     name: name
                 }
             };
-            spyOn(NodesManager, "updateDisk");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.saveAvailableName(disk);
-            expect(NodesManager.updateDisk).not.toHaveBeenCalled();
+            expect(MachinesManager.updateDisk).not.toHaveBeenCalled();
         });
 
         it("calls updateDisks with new name", function() {
@@ -1607,10 +1607,10 @@ describe("NodeStorageController", function() {
                     name: name
                 }
             };
-            spyOn(NodesManager, "updateDisk");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.saveAvailableName(disk);
-            expect(NodesManager.updateDisk).toHaveBeenCalledWith(
+            expect(MachinesManager.updateDisk).toHaveBeenCalledWith(
                 node, id, { name: newName });
         });
 
@@ -1626,10 +1626,10 @@ describe("NodeStorageController", function() {
                     name: "vg0-lvold"
                 }
             };
-            spyOn(NodesManager, "updateDisk");
+            spyOn(MachinesManager, "updateDisk");
 
             $scope.saveAvailableName(disk);
-            expect(NodesManager.updateDisk).toHaveBeenCalledWith(
+            expect(MachinesManager.updateDisk).toHaveBeenCalledWith(
                 node, id, { name: "lvnew" });
         });
     });
@@ -1679,18 +1679,18 @@ describe("NodeStorageController", function() {
 
     describe("availableConfirmUnformat", function() {
 
-        it("calls NodesManager.updateFilesystem", function() {
+        it("calls MachinesManager.updateFilesystem", function() {
             var controller = makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
                 partition_id: makeInteger(0, 100)
             };
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmUnformat(disk);
 
-            expect(NodesManager.updateFilesystem).toHaveBeenCalledWith(
+            expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                 node, disk.block_id, disk.partition_id,
                 null, null);
         });
@@ -1702,7 +1702,7 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100),
                 fstype: "ext4"
             };
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmUnformat(disk);
@@ -1841,13 +1841,13 @@ describe("NodeStorageController", function() {
                 }
             };
             spyOn($scope, "isMountPointInvalid").and.returnValue(true);
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
 
             $scope.availableConfirmFormatAndMount(disk);
-            expect(NodesManager.updateFilesystem).not.toHaveBeenCalled();
+            expect(MachinesManager.updateFilesystem).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.updateFilesystem with fstype and mount_point",
+        it("calls MachinesManager.updateFilesystem with fstype and mount_point",
             function() {
                 var controller = makeController();
                 var disk = {
@@ -1858,10 +1858,10 @@ describe("NodeStorageController", function() {
                         mountPoint: makeName("/path")
                     }
                 };
-                spyOn(NodesManager, "updateFilesystem");
+                spyOn(MachinesManager, "updateFilesystem");
 
                 $scope.availableConfirmFormatAndMount(disk);
-                expect(NodesManager.updateFilesystem).toHaveBeenCalledWith(
+                expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                     node, disk.block_id, disk.partition_id,
                     disk.$options.fstype, disk.$options.mountPoint);
             });
@@ -1876,7 +1876,7 @@ describe("NodeStorageController", function() {
                     mountPoint: makeName("/path")
                 }
             };
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmFormatAndMount(disk);
@@ -1899,7 +1899,7 @@ describe("NodeStorageController", function() {
                     mountPoint: makeName("/path")
                 }
             };
-            spyOn(NodesManager, "updateFilesystem");
+            spyOn(MachinesManager, "updateFilesystem");
             $scope.available = [disk];
 
             $scope.availableConfirmFormatAndMount(disk);
@@ -2209,7 +2209,7 @@ describe("NodeStorageController", function() {
 
     describe("availableConfirmDelete", function() {
 
-        it("calls NodesManager.deleteVolumeGroup for lvm-vg", function() {
+        it("calls MachinesManager.deleteVolumeGroup for lvm-vg", function() {
             var controller = makeController();
             var disk = {
                 type: "lvm-vg",
@@ -2217,18 +2217,18 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100)
             };
             $scope.available = [disk];
-            spyOn(NodesManager, "deleteVolumeGroup");
+            spyOn(MachinesManager, "deleteVolumeGroup");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmDelete(disk);
-            expect(NodesManager.deleteVolumeGroup).toHaveBeenCalledWith(
+            expect(MachinesManager.deleteVolumeGroup).toHaveBeenCalledWith(
                 node, disk.block_id);
             expect($scope.available).toEqual([]);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
 
-        it("calls NodesManager.deletePartition for partition", function() {
+        it("calls MachinesManager.deletePartition for partition", function() {
             var controller = makeController();
             var disk = {
                 type: "partition",
@@ -2236,18 +2236,18 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100)
             };
             $scope.available = [disk];
-            spyOn(NodesManager, "deletePartition");
+            spyOn(MachinesManager, "deletePartition");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmDelete(disk);
-            expect(NodesManager.deletePartition).toHaveBeenCalledWith(
+            expect(MachinesManager.deletePartition).toHaveBeenCalledWith(
                 node, disk.partition_id);
             expect($scope.available).toEqual([]);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
 
-        it("calls NodesManager.deleteDisk for disk", function() {
+        it("calls MachinesManager.deleteDisk for disk", function() {
             var controller = makeController();
             var disk = {
                 type: "physical",
@@ -2255,11 +2255,11 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100)
             };
             $scope.available = [disk];
-            spyOn(NodesManager, "deleteDisk");
+            spyOn(MachinesManager, "deleteDisk");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmDelete(disk);
-            expect(NodesManager.deleteDisk).toHaveBeenCalledWith(
+            expect(MachinesManager.deleteDisk).toHaveBeenCalledWith(
                 node, disk.block_id);
             expect($scope.available).toEqual([]);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
@@ -2476,11 +2476,11 @@ describe("NodeStorageController", function() {
                     sizeUnits: "GB"
                 }
             };
-            spyOn(NodesManager, "createPartition");
+            spyOn(MachinesManager, "createPartition");
 
             $scope.availableConfirmPartition(disk);
 
-            expect(NodesManager.createPartition).not.toHaveBeenCalled();
+            expect(MachinesManager.createPartition).not.toHaveBeenCalled();
         });
 
         it("calls createPartition with bytes", function() {
@@ -2498,11 +2498,11 @@ describe("NodeStorageController", function() {
                     sizeUnits: "GB"
                 }
             };
-            spyOn(NodesManager, "createPartition");
+            spyOn(MachinesManager, "createPartition");
 
             $scope.availableConfirmPartition(disk);
 
-            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                 node, disk.block_id, 2 * 1000 * 1000 * 1000, {});
         });
 
@@ -2523,11 +2523,11 @@ describe("NodeStorageController", function() {
                     mountPoint: "/"
                 }
             };
-            spyOn(NodesManager, "createPartition");
+            spyOn(MachinesManager, "createPartition");
 
             $scope.availableConfirmPartition(disk);
 
-            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                 node, disk.block_id, 2 * 1000 * 1000 * 1000, {
                     fstype: "ext4",
                     mount_point: "/"
@@ -2550,7 +2550,7 @@ describe("NodeStorageController", function() {
                     sizeUnits: "GB"
                 }
             };
-            spyOn(NodesManager, "createPartition");
+            spyOn(MachinesManager, "createPartition");
 
             $scope.availableConfirmPartition(disk);
 
@@ -2558,7 +2558,7 @@ describe("NodeStorageController", function() {
             var align_size = (4 * 1024 * 1024);
             var expected = align_size *
                 Math.floor(available_size / align_size);
-            expect(NodesManager.createPartition).toHaveBeenCalledWith(
+            expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                 node, disk.block_id, expected, {});
         });
 
@@ -2581,7 +2581,7 @@ describe("NodeStorageController", function() {
                         sizeUnits: "GB"
                     }
                 };
-                spyOn(NodesManager, "createPartition");
+                spyOn(MachinesManager, "createPartition");
 
                 $scope.availableConfirmPartition(disk);
 
@@ -2589,7 +2589,7 @@ describe("NodeStorageController", function() {
                 var align_size = (4 * 1024 * 1024);
                 var expected = align_size *
                     Math.floor(available_size / align_size);
-                expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                     node, disk.block_id, expected, {});
         });
 
@@ -2610,7 +2610,7 @@ describe("NodeStorageController", function() {
                         sizeUnits: "GB"
                     }
                 };
-                spyOn(NodesManager, "createPartition");
+                spyOn(MachinesManager, "createPartition");
 
                 $scope.availableConfirmPartition(disk);
 
@@ -2619,7 +2619,7 @@ describe("NodeStorageController", function() {
                 var expected = align_size * Math.floor(
                     (available_size - (5 * 1024 * 1024)) /
                     align_size);
-                expect(NodesManager.createPartition).toHaveBeenCalledWith(
+                expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                     node, disk.block_id, expected, {});
             });
     });
@@ -2921,19 +2921,19 @@ describe("NodeStorageController", function() {
 
     describe("cacheSetConfirmDelete", function() {
 
-        it("calls NodesManager.deleteCacheSet and removes from list",
+        it("calls MachinesManager.deleteCacheSet and removes from list",
             function() {
                 var controller = makeController();
                 var cacheset = {
                     cache_set_id: makeInteger(0, 100)
                 };
                 $scope.cachesets = [cacheset];
-                spyOn(NodesManager, "deleteCacheSet");
+                spyOn(MachinesManager, "deleteCacheSet");
                 spyOn($scope, "updateCacheSetsSelection");
 
                 $scope.cacheSetConfirmDelete(cacheset);
 
-                expect(NodesManager.deleteCacheSet).toHaveBeenCalledWith(
+                expect(MachinesManager.deleteCacheSet).toHaveBeenCalledWith(
                     node, cacheset.cache_set_id);
                 expect($scope.cachesets).toEqual([]);
                 expect($scope.updateCacheSetsSelection).toHaveBeenCalledWith();
@@ -3028,13 +3028,13 @@ describe("NodeStorageController", function() {
             };
             $scope.available = [disk];
             spyOn($scope, "canCreateCacheSet").and.returnValue(false);
-            spyOn(NodesManager, "createCacheSet");
+            spyOn(MachinesManager, "createCacheSet");
 
             $scope.createCacheSet();
-            expect(NodesManager.createCacheSet).not.toHaveBeenCalled();
+            expect(MachinesManager.createCacheSet).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.createCacheSet and removes from available",
+        it("calls MachinesManager.createCacheSet and removes from available",
             function() {
                 var controller = makeController();
                 var disk = {
@@ -3044,10 +3044,10 @@ describe("NodeStorageController", function() {
                 };
                 $scope.available = [disk];
                 spyOn($scope, "canCreateCacheSet").and.returnValue(true);
-                spyOn(NodesManager, "createCacheSet");
+                spyOn(MachinesManager, "createCacheSet");
 
                 $scope.createCacheSet();
-                expect(NodesManager.createCacheSet).toHaveBeenCalledWith(
+                expect(MachinesManager.createCacheSet).toHaveBeenCalledWith(
                     node, disk.block_id, disk.partition_id);
                 expect($scope.available).toEqual([]);
             });
@@ -3325,13 +3325,13 @@ describe("NodeStorageController", function() {
                 mountPoint: ""
             };
             $scope.availableNew = availableNew;
-            spyOn(NodesManager, "createBcache");
+            spyOn(MachinesManager, "createBcache");
 
             $scope.availableConfirmCreateBcache();
-            expect(NodesManager.createBcache).not.toHaveBeenCalled();
+            expect(MachinesManager.createBcache).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.createBcache for partition", function() {
+        it("calls MachinesManager.createBcache for partition", function() {
             var controller = makeController();
             spyOn($scope, "createBcacheCanSave").and.returnValue(true);
             var device = {
@@ -3351,11 +3351,11 @@ describe("NodeStorageController", function() {
             };
             $scope.available = [device];
             $scope.availableNew = availableNew;
-            spyOn(NodesManager, "createBcache");
+            spyOn(MachinesManager, "createBcache");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmCreateBcache();
-            expect(NodesManager.createBcache).toHaveBeenCalledWith(
+            expect(MachinesManager.createBcache).toHaveBeenCalledWith(
                 node, {
                     name: availableNew.name,
                     cache_set: availableNew.cacheset.cache_set_id,
@@ -3369,7 +3369,7 @@ describe("NodeStorageController", function() {
                 true);
         });
 
-        it("calls NodesManager.createBcache for block device", function() {
+        it("calls MachinesManager.createBcache for block device", function() {
             var controller = makeController();
             spyOn($scope, "createBcacheCanSave").and.returnValue(true);
             var device = {
@@ -3389,11 +3389,11 @@ describe("NodeStorageController", function() {
             };
             $scope.available = [device];
             $scope.availableNew = availableNew;
-            spyOn(NodesManager, "createBcache");
+            spyOn(MachinesManager, "createBcache");
             spyOn($scope, "updateAvailableSelection");
 
             $scope.availableConfirmCreateBcache();
-            expect(NodesManager.createBcache).toHaveBeenCalledWith(
+            expect(MachinesManager.createBcache).toHaveBeenCalledWith(
                 node, {
                     name: availableNew.name,
                     cache_set: availableNew.cacheset.cache_set_id,
@@ -3997,13 +3997,13 @@ describe("NodeStorageController", function() {
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
             $scope.setAsSpareRAIDMember(disk0);
-            spyOn(NodesManager, "createRAID");
+            spyOn(MachinesManager, "createRAID");
 
             $scope.availableConfirmCreateRAID();
-            expect(NodesManager.createRAID).not.toHaveBeenCalled();
+            expect(MachinesManager.createRAID).not.toHaveBeenCalled();
         });
 
-        it("calls NodesManager.createRAID", function() {
+        it("calls MachinesManager.createRAID", function() {
             var controller = makeController();
             spyOn($scope, "createRAIDCanSave").and.returnValue(true);
             var partition0 = {
@@ -4037,10 +4037,10 @@ describe("NodeStorageController", function() {
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
             $scope.setAsSpareRAIDMember(disk0);
-            spyOn(NodesManager, "createRAID");
+            spyOn(MachinesManager, "createRAID");
 
             $scope.availableConfirmCreateRAID();
-            expect(NodesManager.createRAID).toHaveBeenCalledWith(
+            expect(MachinesManager.createRAID).toHaveBeenCalledWith(
                 node, {
                     name: availableNew.name,
                     level: "raid-1",
@@ -4051,7 +4051,7 @@ describe("NodeStorageController", function() {
                 });
         });
 
-        it("calls NodesManager.createRAID with filesystem", function() {
+        it("calls MachinesManager.createRAID with filesystem", function() {
             var controller = makeController();
             spyOn($scope, "createRAIDCanSave").and.returnValue(true);
             var partition0 = {
@@ -4085,10 +4085,10 @@ describe("NodeStorageController", function() {
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
             $scope.setAsSpareRAIDMember(disk0);
-            spyOn(NodesManager, "createRAID");
+            spyOn(MachinesManager, "createRAID");
 
             $scope.availableConfirmCreateRAID();
-            expect(NodesManager.createRAID).toHaveBeenCalledWith(
+            expect(MachinesManager.createRAID).toHaveBeenCalledWith(
                 node, {
                     name: availableNew.name,
                     level: "raid-1",
@@ -4289,13 +4289,14 @@ describe("NodeStorageController", function() {
                     devices: [partition0, partition1, disk0, disk1]
                 };
                 $scope.availableNew = availableNew;
-                spyOn(NodesManager, "createVolumeGroup");
+                spyOn(MachinesManager, "createVolumeGroup");
 
                 $scope.availableConfirmCreateVolumeGroup();
-                expect(NodesManager.createVolumeGroup).not.toHaveBeenCalled();
+                expect(
+                    MachinesManager.createVolumeGroup).not.toHaveBeenCalled();
             });
 
-        it("calls NodesManager.createVolumeGroup", function() {
+        it("calls MachinesManager.createVolumeGroup", function() {
             var controller = makeController();
             spyOn($scope, "createVolumeGroupCanSave").and.returnValue(true);
             var partition0 = {
@@ -4321,10 +4322,10 @@ describe("NodeStorageController", function() {
                 devices: [partition0, partition1, disk0, disk1]
             };
             $scope.availableNew = availableNew;
-            spyOn(NodesManager, "createVolumeGroup");
+            spyOn(MachinesManager, "createVolumeGroup");
 
             $scope.availableConfirmCreateVolumeGroup();
-            expect(NodesManager.createVolumeGroup).toHaveBeenCalledWith(
+            expect(MachinesManager.createVolumeGroup).toHaveBeenCalledWith(
                 node, {
                     name: availableNew.name,
                     block_devices: [disk0.block_id, disk1.block_id],
@@ -4481,11 +4482,11 @@ describe("NodeStorageController", function() {
                     sizeUnits: "GB"
                 }
             };
-            spyOn(NodesManager, "createLogicalVolume");
+            spyOn(MachinesManager, "createLogicalVolume");
 
             $scope.availableConfirmLogicalVolume(disk);
 
-            expect(NodesManager.createLogicalVolume).not.toHaveBeenCalled();
+            expect(MachinesManager.createLogicalVolume).not.toHaveBeenCalled();
         });
 
         it("calls createLogicalVolume with bytes", function() {
@@ -4505,11 +4506,11 @@ describe("NodeStorageController", function() {
                     mountPoint: ""
                 }
             };
-            spyOn(NodesManager, "createLogicalVolume");
+            spyOn(MachinesManager, "createLogicalVolume");
 
             $scope.availableConfirmLogicalVolume(disk);
 
-            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+            expect(MachinesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {});
         });
 
@@ -4530,11 +4531,11 @@ describe("NodeStorageController", function() {
                     mountPoint: "/"
                 }
             };
-            spyOn(NodesManager, "createLogicalVolume");
+            spyOn(MachinesManager, "createLogicalVolume");
 
             $scope.availableConfirmLogicalVolume(disk);
 
-            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+            expect(MachinesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {
                     fstype: "ext4",
                     mount_point: "/"
@@ -4558,11 +4559,11 @@ describe("NodeStorageController", function() {
                     mountPoint: ""
                 }
             };
-            spyOn(NodesManager, "createLogicalVolume");
+            spyOn(MachinesManager, "createLogicalVolume");
 
             $scope.availableConfirmLogicalVolume(disk);
 
-            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+            expect(MachinesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2.6 * 1000 * 1000 * 1000, {});
         });
 
@@ -4586,11 +4587,11 @@ describe("NodeStorageController", function() {
                     mountPoint: ""
                 }
             };
-            spyOn(NodesManager, "createLogicalVolume");
+            spyOn(MachinesManager, "createLogicalVolume");
 
             $scope.availableConfirmLogicalVolume(disk);
 
-            expect(NodesManager.createLogicalVolume).toHaveBeenCalledWith(
+            expect(MachinesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2.035 * 1000 * 1000 * 1000, {});
         });
     });
@@ -4679,7 +4680,7 @@ describe("NodeStorageController", function() {
 
     describe("availableSaveTags", function() {
 
-        it("calls NodesManager.updateDiskTags", function() {
+        it("calls MachinesManager.updateDiskTags", function() {
             var controller = makeController();
             var tags = [
                 { text: "new" },
@@ -4693,11 +4694,11 @@ describe("NodeStorageController", function() {
                    tags: tags
                 }
             };
-            spyOn(NodesManager, "updateDiskTags");
+            spyOn(MachinesManager, "updateDiskTags");
 
             $scope.availableSaveTags(disk);
 
-            expect(NodesManager.updateDiskTags).toHaveBeenCalledWith(
+            expect(MachinesManager.updateDiskTags).toHaveBeenCalledWith(
                 node, disk.block_id, ["new", "old"]);
             expect(disk.$options).toEqual({});
             expect(disk.tags).toEqual(tags);

@@ -21,7 +21,7 @@ from maasserver.websockets import protocol as protocol_module
 from maasserver.websockets.base import Handler
 from maasserver.websockets.handlers import (
     DeviceHandler,
-    NodeHandler,
+    MachineHandler,
 )
 from maasserver.websockets.protocol import (
     MSG_TYPE,
@@ -36,11 +36,11 @@ from maastesting.matchers import (
     MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
-from metadataserver.models.commissioningscript import LSHW_OUTPUT_NAME
 from mock import (
     MagicMock,
     sentinel,
 )
+from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (
     Equals,
@@ -545,7 +545,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         message = {
             "type": MSG_TYPE.REQUEST,
             "request_id": 1,
-            "method": "node.get",
+            "method": "machine.get",
             "params": {
                 "system_id": node.system_id,
                 }
@@ -576,7 +576,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         message = {
             "type": MSG_TYPE.REQUEST,
             "request_id": 1,
-            "method": "node.get",
+            "method": "machine.get",
             "params": {
                 "system_id": node.system_id,
                 }
@@ -604,7 +604,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         message = {
             "type": MSG_TYPE.REQUEST,
             "request_id": 1,
-            "method": "node.get",
+            "method": "machine.get",
             "params": {
                 "system_id": node.system_id,
                 }
@@ -659,11 +659,11 @@ class MakeProtocolFactoryMixin:
         return protocol, factory
 
 ALL_NOTIFIERS = (
+    "controller",
     "device",
     "event",
     "fabric",
-    "node",
-    "nodegroup",
+    "machine",
     "space",
     "subnet",
     "tag",
@@ -673,12 +673,12 @@ ALL_NOTIFIERS = (
 )
 
 ALL_HANDLERS = (
-    "cluster",
+    "controller",
     "device",
     "event",
     "fabric",
     "general",
-    "node",
+    "machine",
     "space",
     "subnet",
     "tag",
@@ -706,11 +706,11 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         factory = self.make_factory()
         self.assertIsNone(factory.getHandler("unknown"))
 
-    def test_getHandler_returns_NodeHandler(self):
+    def test_getHandler_returns_MachineHandler(self):
         factory = self.make_factory()
         self.assertIs(
-            NodeHandler,
-            factory.getHandler("node"))
+            MachineHandler,
+            factory.getHandler("machine"))
 
     def test_getHandler_returns_DeviceHandler(self):
         factory = self.make_factory()
@@ -730,10 +730,10 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         try:
             self.expectThat(
                 rpc_service.events.connected.registerHandler,
-                MockCalledOnceWith(factory.updateCluster))
+                MockCalledOnceWith(factory.updateRackController))
             self.expectThat(
                 rpc_service.events.disconnected.registerHandler,
-                MockCalledOnceWith(factory.updateCluster))
+                MockCalledOnceWith(factory.updateRackController))
         finally:
             factory.stopFactory()
 
@@ -744,10 +744,10 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         factory.stopFactory()
         self.expectThat(
             rpc_service.events.connected.unregisterHandler,
-            MockCalledOnceWith(factory.updateCluster))
+            MockCalledOnceWith(factory.updateRackController))
         self.expectThat(
             rpc_service.events.disconnected.unregisterHandler,
-            MockCalledOnceWith(factory.updateCluster))
+            MockCalledOnceWith(factory.updateRackController))
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = self.make_factory()
@@ -824,16 +824,17 @@ class TestWebSocketFactoryTransactional(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_updateCluster_calls_onNotify_for_cluster_update(self):
+    def test_updateRackController_calls_onNotify_for_controller_update(self):
         user = yield deferToDatabase(transactional(maas_factory.make_User))
-        cluster = yield deferToDatabase(
-            transactional(maas_factory.make_NodeGroup))
+        controller = yield deferToDatabase(
+            transactional(maas_factory.make_RackController))
         protocol, factory = self.make_protocol_with_factory(user=user)
         mock_onNotify = self.patch(factory, "onNotify")
-        cluster_handler = MagicMock()
-        factory.handlers["cluster"] = cluster_handler
-        yield factory.updateCluster(cluster.uuid)
+        controller_handler = MagicMock()
+        factory.handlers["controller"] = controller_handler
+        yield factory.updateRackController(controller.system_id)
         self.assertThat(
             mock_onNotify,
             MockCalledOnceWith(
-                cluster_handler, "cluster", "update", cluster.id))
+                controller_handler,
+                "controller", "update", controller.system_id))

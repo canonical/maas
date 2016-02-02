@@ -23,8 +23,7 @@ from maasserver import (
     eventloop,
     security,
 )
-from maasserver.enum import NODEGROUP_STATUS
-from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.node import RackController
 from maasserver.rpc import getClientFor
 from maasserver.rpc.regionservice import RegionServer
 from maasserver.testing.eventloop import (
@@ -109,12 +108,11 @@ class ClusterRPCFixture(fixtures.Fixture):
         assert isinstance(rpc_service.connections, defaultdict)
         assert rpc_service.connections.default_factory is set
         # Populate a connections mapping with a fake connection for each
-        # node-group known at present.
+        # rack controller known at present.
         fake_connections = defaultdict(set)
-        for nodegroup in NodeGroup.objects.all():
-            if nodegroup.status == NODEGROUP_STATUS.ENABLED:
-                connection = FakeConnection(nodegroup.uuid)
-                fake_connections[connection.ident].add(connection)
+        for controller in RackController.objects.all():
+            connection = FakeConnection(controller.system_id)
+            fake_connections[connection.ident].add(connection)
         # Patch the fake connections into place for this fixture's lifetime.
         self.addCleanup(patch(rpc_service, "connections", fake_connections))
 
@@ -150,12 +148,12 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
     Example usage (in this case, for stubbing the `Identify` RPC method)::
 
-      nodegroup = factory.make_NodeGroup()
+      controller = factory.make_RackController()
       fixture = self.useFixture(MockRegionToClusterRPCFixture())
-      protocol, io = fixture.makeCluster(nodegroup, region.Identify)
+      protocol, io = fixture.makeCluster(controller, region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
 
-      client = getClientFor(nodegroup.uuid)
+      client = getClientFor(controller.system_id)
       result = client(region.Identify)
       io.flush()  # Call this in the reactor thread.
 
@@ -195,14 +193,14 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
             debug=False,  # Debugging is useful, but too noisy by default.
         )
 
-    def makeCluster(self, nodegroup, *commands):
+    def makeCluster(self, controller, *commands):
         """Make and add a new stub cluster connection with the `commands`.
 
         See `make_amp_protocol_factory` for details.
 
         Note that if the ``Identify`` call is not amongst `commands`, it will
-        be added. In addition, its return value is also set to return the UUID
-        of `nodegroup`. There's a good reason: the first thing that
+        be added. In addition, its return value is also set to return the
+        system_id of `controller`. There's a good reason: the first thing that
         `RegionServer` does when a connection is made is call `Identify`. This
         has to succeed or the connection will never been added to the RPC
         service's list of connections.
@@ -216,7 +214,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
             commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
-        ident_response = {"ident": nodegroup.uuid}
+        ident_response = {"ident": controller.system_id}
         protocol.Identify.side_effect = (
             lambda _: defer.succeed(ident_response.copy()))
         protocol.Authenticate.side_effect = (
@@ -236,12 +234,12 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
 
     Example usage::
 
-      nodegroup = factory.make_NodeGroup()
+      controller = factory.make_RackController()
       fixture = self.useFixture(RegionToClusterRPCFixture())
-      protocol = fixture.makeCluster(nodegroup, region.Identify)
+      protocol = fixture.makeCluster(controller, region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
 
-      client = getClientFor(nodegroup.uuid)
+      client = getClientFor(controller.system_id)
       d = client(region.Identify)
 
       def check(result):
@@ -315,14 +313,14 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         return endpoints.connectProtocol(endpoint, protocol)
 
     @synchronous
-    def makeCluster(self, nodegroup, *commands):
+    def makeCluster(self, controller, *commands):
         """Make and add a new stub cluster connection with the `commands`.
 
         See `make_amp_protocol_factory` for details.
 
         Note that if the ``Identify`` call is not amongst `commands`, it will
         be added. In addition, its return value is also set to return the UUID
-        of `nodegroup`. There's a good reason: the first thing that
+        of `controller`. There's a good reason: the first thing that
         `RegionServer` does when a connection is made is call `Identify`. This
         has to succeed or the connection will never been added to the RPC
         service's list of connections.
@@ -335,7 +333,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
-        ident_response = {"ident": nodegroup.uuid}
+        ident_response = {"ident": controller.system_id}
         protocol.Identify.side_effect = (
             lambda protocol: defer.succeed(ident_response.copy()))
         protocol.Authenticate.side_effect = (
@@ -344,5 +342,5 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         # The connection is now established, but there is a brief handshake
         # that takes place immediately upon connection.  We wait for that to
         # finish before returning.
-        getClientFor(nodegroup.uuid, timeout=5)
+        getClientFor(controller.system_id, timeout=5)
         return protocol

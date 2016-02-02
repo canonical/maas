@@ -13,8 +13,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models.interface import UnknownInterface
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -26,14 +24,13 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPAddress
-from provisioningserver.rpc.exceptions import NoSuchCluster
 from testtools.matchers import MatchesStructure
 
 
 class TestUpdateLease(MAASServerTestCase):
 
     def make_kwargs(
-            self, cluster_uuid, action=None, mac=None, ip=None, timestamp=None,
+            self, action=None, mac=None, ip=None, timestamp=None,
             lease_time=None, hostname=None, subnet=None):
         if action is None:
             action = random.choice(["commit", "expiry", "release"])
@@ -55,7 +52,6 @@ class TestUpdateLease(MAASServerTestCase):
         if IPAddress(ip).version == IPADDRESS_FAMILY.IPv6:
             ip_family = "ipv6"
         return {
-            "cluster_uuid": cluster_uuid,
             "action": action,
             "mac": mac,
             "ip": ip,
@@ -66,88 +62,68 @@ class TestUpdateLease(MAASServerTestCase):
         }
 
     def make_managed_subnet(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        subnet = factory.make_Subnet()
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, subnet=subnet,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        return nodegroup, subnet, ngi
-
-    def test_raises_NoSuchCluster(self):
-        uuid = factory.make_UUID()
-        kwargs = self.make_kwargs(uuid)
-        self.assertRaises(NoSuchCluster, update_lease, **kwargs)
+        return factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
 
     def test_raises_LeaseUpdateError_for_unknown_action(self):
-        nodegroup = factory.make_NodeGroup()
         action = factory.make_name("action")
-        kwargs = self.make_kwargs(nodegroup.uuid, action=action)
+        kwargs = self.make_kwargs(action=action)
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
         self.assertEquals(
             "Unknown lease action: %s" % action, str(error))
 
     def test_raises_LeaseUpdateError_for_no_subnet(self):
-        nodegroup = factory.make_NodeGroup()
-        kwargs = self.make_kwargs(nodegroup.uuid)
+        kwargs = self.make_kwargs()
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
         self.assertEquals(
             "No subnet exists for: %s" % kwargs["ip"], str(error))
 
     def test_raises_LeaseUpdateError_for_ipv4_mismatch(self):
-        nodegroup = factory.make_NodeGroup()
         ipv6_network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(cidr=str(ipv6_network.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, subnet=subnet)
-        kwargs = self.make_kwargs(nodegroup.uuid, subnet=subnet)
+        kwargs = self.make_kwargs(subnet=subnet)
         kwargs["ip_family"] = "ipv4"
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
         self.assertEquals(
             "Family for the subnet does not match. Expected: ipv4", str(error))
 
     def test_raises_LeaseUpdateError_for_ipv6_mismatch(self):
-        nodegroup = factory.make_NodeGroup()
         ipv4_network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(cidr=str(ipv4_network.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, subnet=subnet)
-        kwargs = self.make_kwargs(nodegroup.uuid, subnet=subnet)
+        kwargs = self.make_kwargs(subnet=subnet)
         kwargs["ip_family"] = "ipv6"
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
         self.assertEquals(
             "Family for the subnet does not match. Expected: ipv6", str(error))
 
-    def test_does_nothing_if_not_in_dyanmic_range(self):
-        nodegroup, _, ngi = self.make_managed_subnet()
-        ip = str(IPAddress(ngi.get_static_ip_range()[0]))
-        kwargs = self.make_kwargs(nodegroup.uuid, ip=ip)
-        update_lease(**kwargs)
-        self.assertIsNone(
-            StaticIPAddress.objects.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip).first())
-
     def test_does_nothing_if_expiry_for_unknown_mac(self):
-        nodegroup, _, ngi = self.make_managed_subnet()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        kwargs = self.make_kwargs(nodegroup.uuid, action="expiry", ip=ip)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        kwargs = self.make_kwargs(action="expiry", ip=ip)
         update_lease(**kwargs)
         self.assertIsNone(
             StaticIPAddress.objects.filter(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip).first())
 
     def test_does_nothing_if_release_for_unknown_mac(self):
-        nodegroup, _, ngi = self.make_managed_subnet()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        kwargs = self.make_kwargs(nodegroup.uuid, action="release", ip=ip)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        kwargs = self.make_kwargs(action="release", ip=ip)
         update_lease(**kwargs)
         self.assertIsNone(
             StaticIPAddress.objects.filter(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip).first())
 
     def test_creates_lease_for_unknown_interface(self):
-        nodegroup, subnet, ngi = self.make_managed_subnet()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
-        kwargs = self.make_kwargs(nodegroup.uuid, action="commit", ip=ip)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
+        kwargs = self.make_kwargs(action="commit", ip=ip)
         update_lease(**kwargs)
         unknown_interface = UnknownInterface.objects.filter(
             mac_address=kwargs["mac"]).first()
@@ -165,10 +141,12 @@ class TestUpdateLease(MAASServerTestCase):
         ))
 
     def test_creates_ignores_none_hostname(self):
-        nodegroup, subnet, ngi = self.make_managed_subnet()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            nodegroup.uuid, action="commit", ip=ip, hostname="(none)")
+            action="commit", ip=ip, hostname="(none)")
         update_lease(**kwargs)
         unknown_interface = UnknownInterface.objects.filter(
             mac_address=kwargs["mac"]).first()
@@ -186,14 +164,14 @@ class TestUpdateLease(MAASServerTestCase):
         ))
 
     def test_creates_lease_for_physical_interface(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            ngi.nodegroup.uuid, action="commit",
+            action="commit",
             mac=boot_interface.mac_address, ip=ip)
         update_lease(**kwargs)
 
@@ -219,14 +197,14 @@ class TestUpdateLease(MAASServerTestCase):
             "Interface should only have one DISCOVERED IP address.")
 
     def test_creates_lease_for_physical_interface_keeps_other_ip_family(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            ngi.nodegroup.uuid, action="commit",
+            action="commit",
             mac=boot_interface.mac_address, ip=ip)
 
         # Make DISCOVERED in the other address family to make sure it is
@@ -248,19 +226,19 @@ class TestUpdateLease(MAASServerTestCase):
             "have been deleted.")
 
     def test_creates_lease_for_bond_interface(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
 
         bond_interface = factory.make_Interface(
             INTERFACE_TYPE.BOND, mac_address=boot_interface.mac_address,
             parents=[boot_interface])
 
         kwargs = self.make_kwargs(
-            ngi.nodegroup.uuid, action="commit",
+            action="commit",
             mac=bond_interface.mac_address, ip=ip)
         update_lease(**kwargs)
 
@@ -279,14 +257,14 @@ class TestUpdateLease(MAASServerTestCase):
             sip.interface_set.values_list("id", flat=True))
 
     def test_release_removes_lease_keeps_discovered_subnet(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            ngi.nodegroup.uuid, action="release",
+            action="release",
             mac=boot_interface.mac_address, ip=ip)
         update_lease(**kwargs)
 
@@ -302,14 +280,14 @@ class TestUpdateLease(MAASServerTestCase):
             sip.interface_set.values_list("id", flat=True))
 
     def test_expiry_removes_lease_keeps_discovered_subnet(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_static_range=False, dhcp_on=True)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
         boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        ip = str(IPAddress(ngi.get_dynamic_ip_range()[0]))
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            ngi.nodegroup.uuid, action="expiry",
+            action="expiry",
             mac=boot_interface.mac_address, ip=ip)
         update_lease(**kwargs)
 

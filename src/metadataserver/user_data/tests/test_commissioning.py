@@ -55,7 +55,7 @@ class TestCommissioningUserData(MAASServerTestCase):
                 b'def encode_multipart_data',
             }))
 
-    def test_nodegroup_passed_to_get_preseed_context(self):
+    def test_primary_rack_passed_to_get_preseed_context(self):
         # I don't care about what effect it has, I just want to know
         # that it was passed as it can affect the contents of
         # `server_host` in the context.
@@ -63,8 +63,12 @@ class TestCommissioningUserData(MAASServerTestCase):
             # Use the real return value as it contains data necessary to
             # render the template.
             return_value=get_preseed_context())
-        node = factory.make_Node()
+        node = factory.make_Node(interface=True)
+        nic = node.get_boot_interface()
+        nic.vlan.dhcp_on = True
+        nic.vlan.primary_rack = factory.make_RackController()
+        nic.vlan.save()
         generate_user_data(node)
         self.assertThat(
             utils.get_preseed_context,
-            MockCalledWith(nodegroup=node.nodegroup))
+            MockCalledWith(rack_controller=nic.vlan.primary_rack))

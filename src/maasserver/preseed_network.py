@@ -51,7 +51,8 @@ class CurtinNetworkGenerator:
 
         self.network_config.append({
             "type": "nameserver",
-            "address": get_dns_server_address(nodegroup=self.node.nodegroup),
+            "address": get_dns_server_address(
+                rack_controller=self.node.get_boot_primary_rack_controller()),
             "search": sorted(get_dns_search_paths()),
         })
 

@@ -51,7 +51,8 @@ describe("GeneralManager", function() {
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
             ["node_actions", "device_actions", "architectures", "hwe_kernels",
-             "default_min_hwe_kernel", "osinfo", "bond_options", "version"]);
+             "default_min_hwe_kernel", "osinfo", "bond_options", "version",
+             "power_types"]);
     });
 
     it("_data.node_actions has correct data", function() {
@@ -181,6 +182,7 @@ describe("GeneralManager", function() {
             GeneralManager._data.osinfo.loaded = true;
             GeneralManager._data.bond_options.loaded = true;
             GeneralManager._data.version.loaded = true;
+            GeneralManager._data.power_types.loaded = true;
             expect(GeneralManager.isLoaded()).toBe(true);
         });
     });
@@ -428,11 +430,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(8);
+            expect(GeneralManager._loadData.calls.count()).toBe(9);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

@@ -10,7 +10,6 @@ __all__ = [
     "Authenticate",
     "ConfigureDHCPv4",
     "ConfigureDHCPv6",
-    "CreateHostMaps",
     "DescribePowerTypes",
     "GetPreseedData",
     "Identify",
@@ -322,26 +321,6 @@ class ConfigureDHCPv6(_ConfigureDHCP):
     """
 
 
-class CreateHostMaps(amp.Command):
-    """Create host maps in the DHCP server's configuration.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"mappings", AmpList([
-            (b"ip_address", amp.Unicode()),
-            (b"mac_address", amp.Unicode()),
-        ])),
-        (b"shared_key", amp.Unicode()),
-    ]
-    response = []
-    errors = {
-        exceptions.CannotCreateHostMap: (
-            b"CannotCreateHostMap"),
-    }
-
-
 class RemoveHostMaps(amp.Command):
     """Remove host maps from the DHCP server's configuration.
 
@@ -383,40 +362,10 @@ class ImportBootImages(amp.Command):
     errors = []
 
 
-class StartMonitors(amp.Command):
-    """Starts monitors(s) on the cluster.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"monitors", AmpList(
-            [(b"deadline", amp.DateTime()),
-             (b"context", StructureAsJSON()),
-             (b"id", amp.Unicode()),
-             ]))
-    ]
-    response = []
-    errors = []
-
-
-class CancelMonitor(amp.Command):
-    """Cancels an existing monitor on the cluster.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"id", amp.Unicode()),
-        ]
-    response = []
-    error = []
-
-
 class EvaluateTag(amp.Command):
-    """Evaluate a tag against all of the cluster's nodes.
+    """Evaluate a tag against the list of nodes.
 
-    :since: 1.7
+    :since: 2.0
     """
 
     arguments = [
@@ -428,6 +377,10 @@ class EvaluateTag(amp.Command):
         ])),
         # A 3-part credential string for the web API.
         (b"credentials", amp.Unicode()),
+        # List of nodes the rack controller should evaluate.
+        (b"nodes", AmpList([
+            (b"system_id", amp.Unicode()),
+        ])),
     ]
     response = []
     errors = []
@@ -545,5 +498,25 @@ class IsImportBootImagesRunning(amp.Command):
     arguments = []
     response = [
         (b"running", amp.Boolean()),
+    ]
+    errors = {}
+
+
+class RefreshRackControllerInfo(amp.Command):
+    """Refresh the rack controller's hardware and network details.
+
+    :since: 2.0
+    """
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        (b"consumer_key", amp.Unicode()),
+        (b"token_key", amp.Unicode()),
+        (b"token_secret", amp.Unicode()),
+    ]
+    response = [
+        (b"architecture", amp.Unicode()),
+        (b"osystem", amp.Unicode()),
+        (b"distro_series", amp.Unicode()),
+        (b"swap_size", amp.Integer()),
     ]
     errors = {}

@@ -10,6 +10,7 @@ __all__ = [
 from functools import partial
 import json
 from os import urandom
+import platform
 import random
 import re
 from urllib.parse import urlparse
@@ -34,13 +35,16 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.network import (
-    discover_networks,
-    get_ip_addr_json,
-)
+from provisioningserver.network import get_ip_addr
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.query import get_power_state
+from provisioningserver.refresh import (
+    get_architecture,
+    get_os_release,
+    get_swap_size,
+    refresh,
+)
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -54,15 +58,7 @@ from provisioningserver.rpc.boot_images import (
     list_boot_images,
 )
 from provisioningserver.rpc.common import RPCProtocol
-from provisioningserver.rpc.dhcp import (
-    create_host_maps,
-    remove_host_maps,
-)
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.monitors import (
-    cancel_monitor,
-    start_monitors,
-)
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
     get_os_release_title,
@@ -125,6 +121,7 @@ class Cluster(RPCProtocol):
     connection is established, AMP is symmetric.
     """
 
+    # XXX ltrager 2016-01-09 remove with NodeGroup
     @cluster.Identify.responder
     def identify(self):
         """identify()
@@ -294,37 +291,6 @@ class Cluster(RPCProtocol):
         d.addCallback(lambda _: {})
         return d
 
-    @cluster.CreateHostMaps.responder
-    def create_host_maps(self, mappings, shared_key):
-        d = concurrency.dhcp.run(
-            deferToThread, create_host_maps, mappings, shared_key)
-        d.addCallback(lambda _: {})
-        return d
-
-    @cluster.RemoveHostMaps.responder
-    def remove_host_maps(self, ip_addresses, shared_key):
-        # Note that the `ip_addresses` parameter is now a list of
-        # IPs *and* MAC addresses. Prior to MAAS 1.9 it was a list of
-        # IP addresses because that's what was used as the key for the host
-        # mappings but we now use the MAC as the key in order to be able
-        # to assign the same IP to two NICs. As a result, this code (the host
-        # map removal code) has to deal with legacy host maps using the IP
-        # as the key and host maps with the MAC as the key.
-        d = concurrency.dhcp.run(
-            deferToThread, remove_host_maps, ip_addresses, shared_key)
-        d.addCallback(lambda _: {})
-        return d
-
-    @cluster.StartMonitors.responder
-    def start_monitors(self, monitors):
-        start_monitors(monitors)
-        return {}
-
-    @cluster.CancelMonitor.responder
-    def cancel_timer(self, id):
-        cancel_monitor(id)
-        return {}
-
     @amp.StartTLS.responder
     def get_tls_parameters(self):
         """get_tls_parameters()
@@ -342,7 +308,8 @@ class Cluster(RPCProtocol):
             return tls.get_tls_parameters_for_cluster()
 
     @cluster.EvaluateTag.responder
-    def evaluate_tag(self, tag_name, tag_definition, tag_nsmap, credentials):
+    def evaluate_tag(
+            self, tag_name, tag_definition, tag_nsmap, credentials, nodes):
         """evaluate_tag()
 
         Implementation of
@@ -350,7 +317,7 @@ class Cluster(RPCProtocol):
         """
         # It's got to run in a thread because it does blocking IO.
         d = deferToThread(
-            evaluate_tag, tag_name, tag_definition,
+            evaluate_tag, nodes, tag_name, tag_definition,
             # Transform tag_nsmap into a format that LXML likes.
             {entry["prefix"]: entry["uri"] for entry in tag_nsmap},
             # Parse the credential string into a 3-tuple.
@@ -451,6 +418,39 @@ class Cluster(RPCProtocol):
         d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
         return {}
 
+    @cluster.RefreshRackControllerInfo.responder
+    def refresh(self, system_id, consumer_key, token_key, token_secret):
+        """refresh()
+
+        Implementation of
+        :py:class:
+          `~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
+        """
+        d = deferToThread(refresh, system_id, consumer_key, token_key,
+                          token_secret)
+        d.addErrback(partial(catch_probe_and_enlist_error, "Refresh"))
+
+        os_release = get_os_release()
+        if 'ID' in os_release:
+            osystem = os_release['ID']
+        elif 'NAME' in os_release:
+            osystem = os_release['NAME']
+        else:
+            osystem = ''
+        if 'UBUNTU_CODENAME' in os_release:
+            distro_series = os_release['UBUNTU_CODENAME']
+        elif 'VERSION_ID' in os_release:
+            distro_series = os_release['VERSION_ID']
+        else:
+            distro_series = ''
+
+        return {
+            'architecture': get_architecture(),
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'swap_size': get_swap_size(),
+        }
+
 
 @implementer(IConnection)
 class ClusterClient(Cluster):
@@ -510,36 +510,42 @@ class ClusterClient(Cluster):
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
 
-    def registerWithRegion(self):
+    def registerRackWithRegion(self):
+        # XXX ltrager 2015-12-22 ClusterConfiguration needs to be updated for
+        # rack controllers. The UUID stored here will be the node ID given by
+        # the region
         with ClusterConfiguration.open() as config:
-            uuid = config.cluster_uuid
+            #uuid = config.cluster_uuid
             url = config.maas_url
+        system_id = None
 
-        networks = discover_networks()
-
-        ip_addr_json = None
+        ip_addr = None
         try:
-            ip_addr_json = get_ip_addr_json()
+            ip_addr = get_ip_addr()
         except ExternalProcessError as epe:
             log.msg(
                 "Warning: Could not gather IP address information: %s" % epe)
+        mac_addresses = [iface['mac'] for iface in ip_addr.values()
+                         if 'mac' in iface.keys()]
+        # Make sure we don't accidentally include the domain name
+        hostname = platform.node().split('.')[0]
 
-        def cb_register(_):
+        def cb_register(data):
             log.msg(
-                "Cluster '%s' registered (via %s)."
-                % (uuid, self.eventloop))
+                "Rack controller '%s' registered (via %s)."
+                % (data['system_id'], self.eventloop))
             return True
 
         def eb_register(failure):
-            failure.trap(exceptions.CannotRegisterCluster)
+            failure.trap(exceptions.CannotRegisterRackController)
             log.msg(
-                "Cluster '%s' REJECTED by the region (via %s)."
-                % (uuid, self.eventloop))
+                "Rack controller REJECTED by the region (via %s)."
+                % self.eventloop)
             return False
 
         d = self.callRemote(
-            region.Register, uuid=uuid, networks=networks,
-            url=urlparse(url), ip_addr_json=ip_addr_json)
+            region.RegisterRackController, system_id=system_id,
+            hostname=hostname, mac_addresses=mac_addresses, url=urlparse(url))
         return d.addCallbacks(cb_register, eb_register)
 
     @inlineCallbacks
@@ -550,7 +556,7 @@ class ClusterClient(Cluster):
 
         if authenticated:
             log.msg("Event-loop '%s' authenticated." % self.ident)
-            registered = yield self.registerWithRegion()
+            registered = yield self.registerRackWithRegion()
             if registered:
                 self.service.connections[self.eventloop] = self
                 self.ready.set(self.eventloop)

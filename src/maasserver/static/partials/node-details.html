@@ -102,8 +102,8 @@
                     <div class="page-header__feedback ng-hide" data-ng-show="hasActionPowerError(actionOption.name)">
                         <p class="page-header__feedback-message info">
                             Node cannot be {$ actionOption.sentence $}, because power control software for the
-                            node is missing from its cluster controller. To proceed, install the
-                            {$ getPowerErrors() $} on the {$ node.nodegroup.cluster_name $} cluster.
+                            node is missing from its rack controller. To proceed, install the
+                            {$ getPowerErrors() $} on the rack controller.
                         </p>
                         <div class="right">
                             <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
@@ -138,17 +138,6 @@
                 </div>
                 <fieldset class="six-col">
                     <div class="ng-hide" data-ng-show="isSuperUser()">
-                        <div class="inline">
-                            <label for="cluser" class="two-col">Cluster</label>
-                            <div class="three-col">
-                                <select name="cluster" id="cluster" placeholder="Choose a cluster"
-                                    data-ng-disabled="!summary.editing"
-                                    data-ng-model="summary.cluster.selected"
-                                    data-ng-options="cluster as cluster.cluster_name for cluster in summary.cluster.options">
-                                    <option value="" disabled="disabled">Choose a cluster</option>
-                                </select>
-                            </div>
-                        </div>
                         <div class="inline">
                             <label for="zone" class="two-col">Zone</label>
                             <div class="three-col">
@@ -205,10 +194,6 @@
                     </div>
                     <div data-ng-hide="isSuperUser()">
                         <dl>
-                            <dt class="two-col">Cluster</dt>
-                                <dd class="four-col last-col">
-                                    {$ node.nodegroup.name $}
-                                </dd>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
                                     {$ node.zone.name $}
@@ -302,8 +287,8 @@
                     <ul class="flash-messages">
                         <li class="flash-messages__item error">
                             Power control software for this power type is missing from the
-                            cluster controller.  To proceed, install the {$ getPowerErrors() $}
-                            on the {$ node.nodegroup.cluster_name $} cluster.
+                            rack controller.  To proceed, install the {$ getPowerErrors() $}
+                            on the rack controller.
                         </li>
                     </ul>
                 </div>

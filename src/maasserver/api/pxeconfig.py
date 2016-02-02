@@ -23,7 +23,7 @@ from maasserver.models import (
     BootResource,
     Config,
     Event,
-    NodeGroup,
+    RackController,
 )
 from maasserver.models.interface import (
     Interface,
@@ -35,10 +35,7 @@ from maasserver.preseed import (
 )
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils import (
-    find_nodegroup,
-    strip_domain,
-)
+from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.kernel_opts import KernelParameters
@@ -46,18 +43,18 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
 
 
-def find_nodegroup_for_pxeconfig_request(request):
-    """Find the nodegroup responsible for a `pxeconfig` request.
+def find_rack_controller_for_pxeconfig_request(request):
+    """Find the rack controller responsible for a `pxeconfig` request.
 
-    Looks for the `cluster_uuid` parameter in the request.  If there is
+    Looks for the `rackcontroller_id` parameter in the request.  If there is
     none, figures it out based on the requesting IP as a compatibility
     measure.  In that case, the result may be incorrect.
     """
-    uuid = request.GET.get('cluster_uuid', None)
-    if uuid is None:
-        return find_nodegroup(request)
+    rackcontroller_id = request.GET.get('rackcontroller_id', None)
+    if rackcontroller_id is None:
+        return find_rack_controller(request)
     else:
-        return NodeGroup.objects.get(uuid=uuid)
+        return RackController.objects.get(system_id=rackcontroller_id)
 
 
 def get_node_from_mac_string(mac_string):
@@ -77,9 +74,10 @@ def get_node_from_mac_string(mac_string):
 
 
 def get_boot_image(
-        nodegroup, osystem, architecture, subarchitecture, series, purpose):
-    """Obtain the first available boot image for this cluster for the given
-    osystem, architecture, subarchitecute, series, and purpose."""
+        rack_controller, osystem, architecture, subarchitecture, series,
+        purpose):
+    """Obtain the first available boot image for this rack controller for the
+    given osystem, architecture, subarchitecute, series, and purpose."""
     # When local booting a node we put it through a PXE cycle. In
     # this case it requests a purpose of "local" when looking for
     # boot images.  To avoid unnecessary work, we can shortcut that
@@ -89,13 +87,13 @@ def get_boot_image(
 
     try:
         images = get_boot_images_for(
-            nodegroup, osystem, architecture, subarchitecture, series)
+            rack_controller, osystem, architecture, subarchitecture, series)
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
             "Unable to identify boot image for (%s/%s/%s/%s/%s): "
-            "no RPC connection to cluster '%s'",
+            "no RPC connection to rack controller '%s'",
             osystem, architecture, subarchitecture, series, purpose,
-            nodegroup.name)
+            rack_controller.hostname)
         return None
     for image in images:
         # get_boot_images_for returns all images that match the subarchitecure
@@ -106,9 +104,9 @@ def get_boot_image(
             return image
     logger.error(
         "Unable to identify boot image for (%s/%s/%s/%s/%s): "
-        "cluster '%s' does not have matching boot image.",
+        "rack controller '%s' does not have matching boot image.",
         osystem, architecture, subarchitecture, series, purpose,
-        nodegroup.name)
+        rack_controller.hostname)
     return None
 
 
@@ -157,10 +155,10 @@ def pxeconfig(request):
     :param subarch: Subarchitecture name (in the pxelinux namespace).
     :param local: The IP address of the cluster controller.
     :param remote: The IP address of the booting node.
-    :param cluster_uuid: UUID of the cluster responsible for this node.
-        If omitted, the call will attempt to figure it out based on the
-        requesting IP address, for compatibility.  Passing `cluster_uuid`
-        is preferred.
+    :param rackcontroller_id: system_id of the rackcontroller responsible for
+        this node. If omitted, the call will attempt to figure it out based on
+        the requesting IP address, for compatibility.  Passing
+        `rackcontroller_id` is preferred.
     """
     request_mac = request.GET.get('mac', None)
     cluster_ip = get_mandatory_param(request.GET, "local")
@@ -199,14 +197,12 @@ def pxeconfig(request):
         osystem = node.get_osystem()
         series = node.get_distro_series()
 
+    rack_controller = find_rack_controller_for_pxeconfig_request(request)
     if node:
         arch, subarch = node.architecture.split('/')
         preseed_url = compose_preseed_url(node)
-        # The node's hostname may include a domain, but we ignore that
-        # and use the one from the nodegroup instead.
-        hostname = strip_domain(node.hostname)
-        nodegroup = node.nodegroup
-        domain = nodegroup.name
+        hostname = node.hostname
+        domain = node.domain.name
 
         # Pre MAAS-1.9 the subarchitecture defined any kernel the node needed
         # to be able to boot. This could be a hardware enablement kernel(e.g
@@ -223,13 +219,10 @@ def pxeconfig(request):
              node.min_hwe_kernel):
             subarch = node.min_hwe_kernel
     else:
-        nodegroup = find_nodegroup_for_pxeconfig_request(request)
-        preseed_url = compose_enlistment_preseed_url(nodegroup=nodegroup)
+        preseed_url = compose_enlistment_preseed_url(
+            rack_controller=rack_controller)
         hostname = 'maas-enlist'
-        if nodegroup is not None:
-            domain = nodegroup.name
-        else:
-            domain = b'local'
+        domain = b'local'
 
         arch = get_optional_param(request.GET, 'arch')
         if arch is None:
@@ -285,7 +278,7 @@ def pxeconfig(request):
     # (which should never happen in reality but may happen in tests), we
     # fall back to using 'no-such-image' as our default.
     latest_image = get_boot_image(
-        nodegroup, osystem, arch, subarch, series, boot_purpose)
+        rack_controller, osystem, arch, subarch, series, boot_purpose)
     if latest_image is None:
         # XXX 2014-03-18 gmb bug=1294131:
         #     We really ought to raise an exception here so that client
@@ -328,7 +321,8 @@ def pxeconfig(request):
         # we still need to return the global kernel options.
         extra_kernel_opts = Config.objects.get_config("kernel_opts")
 
-    server_address = get_maas_facing_server_address(nodegroup=nodegroup)
+    server_address = get_maas_facing_server_address(
+        rack_controller=rack_controller)
 
     # If the node is enlisting and the arch is the default arch (i386),
     # use the dedicated enlistment template which performs architecture

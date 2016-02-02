@@ -205,17 +205,6 @@ class TestFabric(MAASServerTestCase):
             "fabric.",
             error.message)
 
-    def test_cant_delete_fabric_if_connected_to_cluster_interfaces(self):
-        fabric = factory.make_Fabric()
-        nodegroup = factory.make_NodeGroup()
-        factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, vlan=fabric.get_default_vlan())
-        error = self.assertRaises(ValidationError, fabric.delete)
-        self.assertEqual(
-            "Can't delete fabric: cluster interfaces are connected to "
-            "VLANs from this fabric.",
-            error.message)
-
     def test_cant_delete_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
         error = self.assertRaises(

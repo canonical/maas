@@ -444,7 +444,6 @@ class TestHandler(MAASServerTestCase):
     def test_create_with_form_creates_node(self):
         hostname = factory.make_name("hostname")
         arch = make_usable_architecture(self)
-        nodegroup = factory.make_NodeGroup()
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'],
             form=AdminNodeWithMACAddressesForm)
@@ -452,7 +451,6 @@ class TestHandler(MAASServerTestCase):
             "hostname": hostname,
             "architecture": arch,
             "mac_addresses": [factory.make_mac_address()],
-            "nodegroup": nodegroup.uuid,
             })
         self.expectThat({
             "hostname": hostname,
@@ -462,7 +460,6 @@ class TestHandler(MAASServerTestCase):
     def test_create_with_form_uses_form_from_get_form_class(self):
         hostname = factory.make_name("hostname")
         arch = make_usable_architecture(self)
-        nodegroup = factory.make_NodeGroup()
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'])
         self.patch(
@@ -472,7 +469,6 @@ class TestHandler(MAASServerTestCase):
             "hostname": hostname,
             "architecture": arch,
             "mac_addresses": [factory.make_mac_address()],
-            "nodegroup": nodegroup.uuid,
             })
         self.expectThat({
             "hostname": hostname,

@@ -154,7 +154,9 @@ class Factory:
             raise TooManyRandomRetries("Could not find an available VLAN tag.")
 
     def make_ipv4_address(self):
-        octets = islice(self.random_octets, 4)
+        octets = list(islice(self.random_octets, 4))
+        if octets[0] == 0:
+            octets[0] = 1
         return '%d.%d.%d.%d' % tuple(octets)
 
     def make_ipv6_address(self):

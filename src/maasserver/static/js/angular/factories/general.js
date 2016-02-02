@@ -93,6 +93,13 @@ angular.module('MAAS').factory(
                     replaceData: function(oldData, newData) {
                         oldData.text = newData;
                     }
+                },
+                power_types: {
+                    method: "general.power_types",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
                 }
             };
 

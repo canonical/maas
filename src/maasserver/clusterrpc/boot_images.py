@@ -1,10 +1,10 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Obtain list of boot images from cluster."""
+"""Obtain list of boot images from rack controllers."""
 
 __all__ = [
-    "ClustersImporter",
+    "RackControllersImporter",
     "get_all_available_boot_images",
     "get_boot_images",
     "get_boot_images_for",
@@ -61,13 +61,13 @@ def suppress_failures(responses):
 
 @synchronous
 def is_import_boot_images_running():
-    """Return True if any cluster is currently import boot images."""
+    """Return True if any rack controller is currently import boot images."""
     responses = async.gather(
         partial(client, IsImportBootImagesRunning)
         for client in getAllClients())
 
-    # Only one cluster needs to say its importing image, for this method to
-    # return True. Must go through all responses so they are all
+    # Only one rack controller needs to say its importing image, for this
+    # method to return True. Must go through all responses so they are all
     # marked handled.
     running = False
     for response in suppress_failures(responses):
@@ -76,33 +76,33 @@ def is_import_boot_images_running():
 
 
 @synchronous
-def is_import_boot_images_running_for(nodegroup):
-    """Return True if the cluster is currently import boot images.
+def is_import_boot_images_running_for(rack_controller):
+    """Return True if the rack_controller is currently import boot images.
 
-    :param nodegroup: The nodegroup.
+    :param rack_controller: The RackController.
 
-    :raises NoConnectionsAvailable: When no connections to the node's
-        cluster are available for use.
+    :raises NoConnectionsAvailable: When no connections to the rack controller
+        are available for use.
     :raises crochet.TimeoutError: If a response has not been received within
         30 seconds.
     """
-    client = getClientFor(nodegroup.uuid, timeout=1)
+    client = getClientFor(rack_controller.system_id, timeout=1)
     call = client(IsImportBootImagesRunning)
     return call.wait(30).get("running")
 
 
 @synchronous
-def get_boot_images(nodegroup):
-    """Obtain the avaliable boot images of this cluster.
+def get_boot_images(rack_controller):
+    """Obtain the avaliable boot images of this rack controller.
 
-    :param nodegroup: The nodegroup.
+    :param rack_controller: The RackController.
 
-    :raises NoConnectionsAvailable: When no connections to the node's
-        cluster are available for use.
+    :raises NoConnectionsAvailable: When no connections to the rack controller
+        are available for use.
     :raises crochet.TimeoutError: If a response has not been received within
         30 seconds.
     """
-    client = getClientFor(nodegroup.uuid, timeout=1)
+    client = getClientFor(rack_controller.system_id, timeout=1)
     try:
         call = client(ListBootImagesV2)
         return call.wait(30).get("images")
@@ -113,7 +113,7 @@ def get_boot_images(nodegroup):
 
 @synchronous
 def _get_available_boot_images():
-    """Obtain boot images available on connected clusters."""
+    """Obtain boot images available on connected rack controllers."""
     listimages_v1 = lambda client: partial(client, ListBootImages)
     listimages_v2 = lambda client: partial(client, ListBootImagesV2)
     clients_v2 = getAllClients()
@@ -140,7 +140,7 @@ def _get_available_boot_images():
 
 @synchronous
 def get_common_available_boot_images():
-    """Obtain boot images that are available on *all* clusters."""
+    """Obtain boot images that are available on *all* rack controllers."""
     image_sets = list(_get_available_boot_images())
     if len(image_sets) > 0:
         images = frozenset.intersection(*image_sets)
@@ -152,7 +152,7 @@ def get_common_available_boot_images():
 
 @synchronous
 def get_all_available_boot_images():
-    """Obtain boot images that are available on *any* clusters."""
+    """Obtain boot images that are available on *any* rack controllers."""
     image_sets = list(_get_available_boot_images())
     if len(image_sets) > 0:
         images = frozenset.union(*image_sets)
@@ -164,25 +164,25 @@ def get_all_available_boot_images():
 
 @synchronous
 def get_boot_images_for(
-        nodegroup, osystem, architecture, subarchitecture, series):
-    """Obtain the available boot images of this cluster for the given
+        rack_controller, osystem, architecture, subarchitecture, series):
+    """Obtain the available boot images of this rack controller for the given
     osystem, architecture, subarchitecute, and series.
 
-    :param nodegroup: The nodegroup.
+    :param rack_controller: The RackController.
     :param osystem: The operating system.
     :param architecture: The architecture.
     :param subarchitecute: The subarchitecute.
     :param series: The operating system series.
 
-    :raises NoConnectionsAvailable: When no connections to the node's
-        cluster are available for use.
+    :raises NoConnectionsAvailable: When no connections to the rack controller
+        are available for use.
     :raises crochet.TimeoutError: If a response has not been received within
         30 seconds.
     """
     # Avoid circular imports when running the Node view tests in isolation.
     from maasserver.models import BootResource
 
-    images = get_boot_images(nodegroup)
+    images = get_boot_images(rack_controller)
     images = [
         image
         for image in images
@@ -191,9 +191,9 @@ def get_boot_images_for(
         image['architecture'] == architecture
         ]
 
-    # Subarchitecture can be different than what the cluster sends back. This
-    # is because of hwe kernels. If the image matches this far, then we check
-    # its matching BootResource for all supported subarchitectures.
+    # Subarchitecture can be different than what the rack controller sends
+    # back. This is because of hwe kernels. If the image matches this far, then
+    # we check its matching BootResource for all supported subarchitectures.
     matching_images = []
     for image in images:
         if image['subarchitecture'] == subarchitecture:
@@ -209,19 +209,18 @@ def get_boot_images_for(
 undefined = object()
 
 
-class ClustersImporter:
-    """Utility to help import boot resources from the region to clusters."""
+class RackControllersImporter:
+    """Utility to help import boot resources from the region to rack
+    controllers."""
 
     @staticmethod
-    def _get_uuids():
+    def _get_system_ids():
         # Avoid circular import.
-        from maasserver.enum import NODEGROUP_STATUS
-        from maasserver.models import NodeGroup
+        from maasserver.models import RackController
 
-        enabled = NODEGROUP_STATUS.ENABLED
-        clusters = NodeGroup.objects.filter(status=enabled)
-        uuids = clusters.values_list("uuid", flat=True)
-        return list(uuids)
+        racks = RackController.objects.all()
+        system_ids = racks.values_list("system_id", flat=True)
+        return list(system_ids)
 
     @staticmethod
     def _get_sources():
@@ -242,43 +241,44 @@ class ClustersImporter:
 
     @classmethod
     @transactional
-    def new(cls, uuids=undefined, sources=undefined, proxy=undefined):
+    def new(cls, system_ids=undefined, sources=undefined, proxy=undefined):
         """Create a new importer.
 
-        Obtain values for `uuids`, `sources` and `proxy` if they're not
+        Obtain values for `system_ids`, `sources` and `proxy` if they're not
         provided. This MUST be called in a database thread.
 
-        :return: :class:`ClustersImporter`
+        :return: :class:`RackControllersImporter`
         """
         return cls(
-            cls._get_uuids() if uuids is undefined else uuids,
+            cls._get_system_ids() if system_ids is undefined else system_ids,
             cls._get_sources() if sources is undefined else sources,
             cls._get_proxy() if proxy is undefined else proxy,
         )
 
     @classmethod
     def schedule(
-            cls, uuids=undefined, sources=undefined, proxy=undefined,
+            cls, system_ids=undefined, sources=undefined, proxy=undefined,
             concurrency=1, delay=0, clock=reactor):
-        """Schedule cluster imports to happen."""
+        """Schedule rack controller imports to happen."""
 
         def do_import():
-            d = deferToDatabase(ClustersImporter.new, uuids, sources, proxy)
+            d = deferToDatabase(
+                RackControllersImporter.new, system_ids, sources, proxy)
             d.addCallback(lambda importer: importer.run(concurrency))
             return d
 
         return clock.callLater(delay, do_import)
 
-    def __init__(self, uuids, sources, proxy=None):
+    def __init__(self, system_ids, sources, proxy=None):
         """Create a new importer.
 
-        :param uuids: A sequence of cluster UUIDs.
+        :param system_ids: A sequence of rack controller system_id's.
         :param sources: A sequence of endpoints; see `ImportBootImages`.
         :param proxy: The HTTP/HTTPS proxy to use, or `None`
         :type proxy: :class:`urlparse.ParseResult` or string
         """
-        super(ClustersImporter, self).__init__()
-        self.uuids = tuple(flatten(uuids))
+        super(RackControllersImporter, self).__init__()
+        self.system_ids = tuple(flatten(system_ids))
         if isinstance(sources, Sequence):
             self.sources = sources
         else:
@@ -290,48 +290,50 @@ class ClustersImporter:
 
     @asynchronous
     def __call__(self, lock):
-        """Ask the clusters to download the region's boot resources.
+        """Ask the rack controllers to download the region's boot resources.
 
-        :param lock: A concurrency primitive to limit the number of clusters
-            importing at one time.
+        :param lock: A concurrency primitive to limit the number of rack
+            controllers importing at one time.
         """
-        def sync_cluster(uuid, sources, proxy):
-            d = getClientFor(uuid, timeout=1)
+        def sync_rack(system_id, sources, proxy):
+            d = getClientFor(system_id, timeout=1)
             d.addCallback(lambda client: client(
                 ImportBootImages, sources=sources,
                 http_proxy=proxy, https_proxy=proxy))
             return d
 
         return DeferredList(
-            (lock.run(sync_cluster, uuid, self.sources, self.proxy)
-             for uuid in self.uuids),
+            (lock.run(sync_rack, system_id, self.sources, self.proxy)
+             for system_id in self.system_ids),
             consumeErrors=True)
 
     @asynchronous
     def run(self, concurrency=1):
-        """Ask the clusters to download the region's boot resources.
+        """Ask the rack controllers to download the region's boot resources.
 
         Report the results via the log.
 
-        :param concurrency: Limit the number of clusters importing at one
-            time to no more than `concurrency`.
+        :param concurrency: Limit the number of rack controllers importing at
+            one time to no more than `concurrency`.
         """
         lock = DeferredSemaphore(concurrency)
 
         def report(results):
-            message_success = "Cluster (%s) has imported boot resources."
-            message_failure = "Cluster (%s) failed to import boot resources."
+            message_success = (
+                "Rack controller (%s) has imported boot resources.")
+            message_failure = (
+                "Rack controller (%s) failed to import boot resources.")
             message_disconn = (
-                "Cluster (%s) did not import boot resources; it is not "
-                "connected to the region at this time."
+                "Rack controller (%s) did not import boot resources; it is "
+                "not connected to the region at this time."
             )
-            for uuid, (success, result) in zip(self.uuids, results):
+            for system_id, (success, result) in zip(self.system_ids, results):
                 if success:
-                    log.msg(message_success % uuid)
+                    log.msg(message_success % system_id)
                 elif result.check(NoConnectionsAvailable):
-                    log.msg(message_disconn % uuid)
+                    log.msg(message_disconn % system_id)
                 else:
-                    log.err(result, message_failure % uuid)
+                    log.err(result, message_failure % system_id)
 
         return self(lock).addCallback(report).addErrback(
             log.err, "General failure syncing boot resources.")

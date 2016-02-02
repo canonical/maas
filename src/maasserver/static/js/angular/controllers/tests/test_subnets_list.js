@@ -19,8 +19,7 @@ describe("SubentsListController", function() {
         $routeParams = {};
     }));
 
-    // Load the NodesManager, DevicesManager,
-    // NodesManager, RegionConnection, SearchService.
+    // Load the manages and services.
     var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
     var ManagerHelperService, RegionConnection;
     beforeEach(inject(function($injector) {

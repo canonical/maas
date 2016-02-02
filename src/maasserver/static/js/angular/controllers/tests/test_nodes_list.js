@@ -34,13 +34,13 @@ describe("NodesListController", function() {
         $routeParams = {};
     }));
 
-    // Load the NodesManager, DevicesManager, GeneralManager,
-    // NodesManager, RegionConnection, SearchService and mock the
+    // Load the MachinesManager, DevicesManager, GeneralManager,
+    // MachinesManager, RegionConnection, SearchService and mock the
     // websocket connection.
-    var NodesManager, DevicesManager, GeneralManager;
+    var MachinesManager, DevicesManager, GeneralManager;
     var ManagerHelperService, SearchService;
     beforeEach(inject(function($injector) {
-        NodesManager = $injector.get("NodesManager");
+        MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
         GeneralManager = $injector.get("GeneralManager");
         ZonesManager = $injector.get("ZonesManager");
@@ -84,7 +84,7 @@ describe("NodesListController", function() {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
-            NodesManager: NodesManager,
+            MachinesManager: MachinesManager,
             DevicesManager: DevicesManager,
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
@@ -105,7 +105,7 @@ describe("NodesListController", function() {
                 system_id: makeName("system_id"),
                 $selected: false
             };
-            NodesManager._items.push(node);
+            MachinesManager._items.push(node);
             return node;
         }
         else if (tab === 'devices') {
@@ -121,14 +121,14 @@ describe("NodesListController", function() {
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
-        expect($rootScope.title).toBe("Nodes");
+        expect($rootScope.title).toBe("Machines");
         expect($rootScope.page).toBe("nodes");
     });
 
     it("sets initial values on $scope", function() {
         // tab-independent variables.
         var controller = makeController();
-        expect($scope.nodes).toBe(NodesManager.getItems());
+        expect($scope.nodes).toBe(MachinesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.addHardwareOption).toBeNull();
@@ -166,12 +166,12 @@ describe("NodesListController", function() {
                 devicesFilters);
         });
 
-    it("calls loadManagers with NodesManager, DevicesManager," +
+    it("calls loadManagers with MachinesManager, DevicesManager," +
         "GeneralManager, UsersManager",
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [NodesManager, DevicesManager, GeneralManager,
+                [MachinesManager, DevicesManager, GeneralManager,
                  ZonesManager, UsersManager]);
         });
 
@@ -243,7 +243,7 @@ describe("NodesListController", function() {
             var manager;
             beforeEach(function() {
                 if(tab === "nodes") {
-                    manager = NodesManager;
+                    manager = MachinesManager;
                 } else if(tab === "devices") {
                     manager = DevicesManager;
                 } else {
@@ -1249,15 +1249,15 @@ describe("NodesListController", function() {
                 var controller = makeController();
                 var defer = $q.defer();
                 spyOn(
-                    NodesManager,
+                    MachinesManager,
                     "performAction").and.returnValue(defer.promise);
                 spyOn(
                     $scope, 'hasActionsFailed').and.returnValue(false);
                 spyOn(
                     $scope, 'hasActionsInProgress').and.returnValue(false);
                 var object = makeObject("nodes");
-                NodesManager._items.push(object);
-                NodesManager._selectedItems.push(object);
+                MachinesManager._items.push(object);
+                MachinesManager._selectedItems.push(object);
                 $scope.tabs.nodes.actionOption = { name: "deploy" };
                 $scope.tabs.nodes.osSelection.osystem = "ubuntu";
                 $scope.tabs.nodes.osSelection.release = "ubuntu/trusty";
@@ -1294,15 +1294,15 @@ describe("NodesListController", function() {
                 var controller = makeController();
                 var defer = $q.defer();
                 spyOn(
-                    NodesManager,
+                    MachinesManager,
                     "performAction").and.returnValue(defer.promise);
                 spyOn(
                     $scope, 'hasActionsFailed').and.returnValue(false);
                 spyOn(
                     $scope, 'hasActionsInProgress').and.returnValue(false);
                 var object = makeObject("nodes");
-                NodesManager._items.push(object);
-                NodesManager._selectedItems.push(object);
+                MachinesManager._items.push(object);
+                MachinesManager._selectedItems.push(object);
                 $scope.tabs.nodes.actionOption = { name: "commission" };
                 $scope.tabs.nodes.commissionOptions.enableSSH = true;
                 $scope.tabs.nodes.commissionOptions.skipNetworking = true;

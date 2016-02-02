@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', 'ClustersManager', 'ZonesManager',
-    'NodesManager', 'GeneralManager', 'RegionConnection',
+    '$scope', '$http', 'ZonesManager',
+    'MachinesManager', 'GeneralManager', 'RegionConnection',
     'ManagerHelperService', 'ValidationService', function(
-        $scope, $http, ClustersManager, ZonesManager, NodesManager,
+        $scope, $http, ZonesManager, MachinesManager,
         GeneralManager, RegionConnection, ManagerHelperService,
         ValidationService) {
 
@@ -20,7 +20,6 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Set initial values.
         $scope.viewable = false;
         $scope.model = 'machine';
-        $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
@@ -214,15 +213,6 @@ angular.module('MAAS').controller('AddHardwareController', [
             }
         ];
 
-        // Get the master cluster from the loaded clusters.
-        function masterCluster() {
-            if($scope.clusters.length === 0) {
-                return null;
-            } else {
-                return $scope.clusters[0];
-            }
-        }
-
         // Get the default zone from the loaded zones.
         function defaultZone() {
             if($scope.zones.length === 0) {
@@ -263,7 +253,6 @@ angular.module('MAAS').controller('AddHardwareController', [
             // items selected for the new machine.
             if(angular.isObject(cloneMachine)) {
                 return {
-                    cluster: cloneMachine.cluster,
                     name: '',
                     macs: [newMAC()],
                     zone: cloneMachine.zone,
@@ -278,7 +267,6 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // No clone machine. So create a new blank machine.
             return {
-                cluster: masterCluster(),
                 name: '',
                 macs: [newMAC()],
                 zone: defaultZone(),
@@ -294,7 +282,6 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Return a new chassis object.
         function newChassis() {
             return {
-                cluster: masterCluster(),
                 power: {
                     type: null,
                     parameters: {}
@@ -322,11 +309,6 @@ angular.module('MAAS').controller('AddHardwareController', [
                 zone: {
                     id: machine.zone.id,
                     name: machine.zone.name
-                },
-                nodegroup: {
-                    id: machine.cluster.id,
-                    uuid: machine.cluster.uuid,
-                    cluster_name: machine.cluster.cluster_name
                 }
             };
         }
@@ -439,7 +421,6 @@ angular.module('MAAS').controller('AddHardwareController', [
             // Early-out for errors.
             in_error = (
                 $scope.machine === null ||
-                $scope.machine.cluster === null ||
                 $scope.machine.zone === null ||
                 $scope.machine.architecture === '' ||
                 $scope.machine.power.type === null ||
@@ -469,7 +450,6 @@ angular.module('MAAS').controller('AddHardwareController', [
             // Early-out for errors.
             in_error = (
                 $scope.chassis === null ||
-                $scope.chassis.cluster === null ||
                 $scope.chassis.power.type === null);
             if(in_error) {
                 return in_error;
@@ -500,19 +480,20 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.error = null;
 
             // Add the machine.
-            NodesManager.create(convertMachineToProtocol($scope.machine)).then(
-                function() {
-                    if(addAnother) {
-                        $scope.machine = newMachine($scope.machine);
-                    } else {
-                        $scope.machine = newMachine();
+            MachinesManager.create(
+                convertMachineToProtocol($scope.machine)).then(
+                    function() {
+                        if(addAnother) {
+                            $scope.machine = newMachine($scope.machine);
+                        } else {
+                            $scope.machine = newMachine();
 
-                        // Hide the scope if not adding another.
-                        $scope.hide();
-                    }
-                }, function(error) {
-                    $scope.error = error;
-                });
+                            // Hide the scope if not adding another.
+                            $scope.hide();
+                        }
+                    }, function(error) {
+                        $scope.error = error;
+                    });
         };
 
         // Called to perform the saving of the chassis.
@@ -550,10 +531,10 @@ angular.module('MAAS').controller('AddHardwareController', [
             });
         };
 
-        // Load clusters and zones. Once loaded create the first machine and
+        // Load zones. Once loaded create the first machine and
         // chassis.
         ManagerHelperService.loadManagers(
-            [ClustersManager, ZonesManager]).then(function() {
+            [ZonesManager]).then(function() {
                 // Add the first machine and chassis.
                 $scope.machine = newMachine();
                 $scope.chassis = newChassis();

@@ -5,12 +5,8 @@
 
 __all__ = []
 
-from datetime import (
-    datetime,
-    timedelta,
-)
+from datetime import datetime
 import random
-import threading
 
 from django.core.exceptions import (
     PermissionDenied,
@@ -19,7 +15,10 @@ from django.core.exceptions import (
 from django.db import transaction
 from fixtures import LoggerFixture
 from maasserver import preseed as preseed_module
-from maasserver.clusterrpc import power as power_module
+from maasserver.clusterrpc.power import (
+    power_off_node,
+    power_on_node,
+)
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
@@ -32,8 +31,6 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
 )
 from maasserver.exceptions import NodeStateViolation
@@ -57,12 +54,9 @@ from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
-    get_failed_status,
-    MONITORED_STATUSES,
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TRANSITIONS,
 )
-from maasserver.rpc import monitors as monitors_module
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -89,6 +83,7 @@ from maastesting.twisted import always_succeed_with
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
+    NodeKey,
     NodeResult,
     NodeUserData,
 )
@@ -110,9 +105,8 @@ from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
-from provisioningserver.rpc.cluster import StartMonitors
+from provisioningserver.rpc.cluster import RefreshRackControllerInfo
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import (
     map_enum,
@@ -273,11 +267,6 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(
             ValidationError,
             factory.make_Node, hostname=bad_hostname)
-
-    def test_work_queue_returns_nodegroup_uuid(self):
-        nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=nodegroup)
-        self.assertEqual(nodegroup.uuid, node.work_queue)
 
     def test_display_status_shows_default_status(self):
         node = factory.make_Node()
@@ -1010,8 +999,9 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             agent_name=agent_name)
-        self.patch_autospec(node_module.TransitionMonitor, "stop")
+        self.patch(Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
+        self.patch(Node, "_stop").return_value = None
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.abort_deploying(admin)
@@ -1066,19 +1056,18 @@ class TestNode(MAASServerTestCase):
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
-        # Use a "controlled" power type (i.e. a power type for which we
-        # can query the status of the node).
-        power_type = random.choice(QUERY_POWER_TYPES)
-        node = factory.make_Node(
+        rack = factory.make_RackController()
+        node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
-            power_type=power_type)
-        self.patch(node, 'start_transition_monitor')
+            power_type="virsh", primary_rack=rack)
+        self.patch(Node, '_set_status_expires')
         self.patch(node_module, "post_commit_do")
         node.power_state = POWER_STATE.ON
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.expectThat(
-            node.start_transition_monitor,
-            MockCalledOnceWith(node.get_releasing_time()))
+            Node._set_status_expires,
+            MockCalledOnceWith(node.system_id, node.get_releasing_time()))
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -1092,8 +1081,9 @@ class TestNode(MAASServerTestCase):
         expected_power_info.power_parameters['power_off_mode'] = "hard"
         self.expectThat(
             node_module.post_commit_do, MockCalledOnceWith(
-                node_module.power_off_node, node.system_id, node.hostname,
-                node.nodegroup.uuid, expected_power_info,
+                Node._power_control_node, power_off_node,
+                node.system_id, node.hostname,
+                [], [rack.system_id], expected_power_info,
             ))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
@@ -1111,14 +1101,15 @@ class TestNode(MAASServerTestCase):
         uncontrolled_power_types.discard("ether_wake")
         power_type = random.choice(list(uncontrolled_power_types))
         self.assertNotEqual("ether_wake", power_type)
-        node = factory.make_Node(
+        rack = factory.make_RackController()
+        node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
-            power_type=power_type)
-        self.patch(node, 'start_transition_monitor')
+            power_type=power_type, primary_rack=rack)
+        self.patch(Node, '_set_status_expires')
         self.patch(node_module, "post_commit_do")
         node.power_state = POWER_STATE.ON
         node.release()
-        self.expectThat(node.start_transition_monitor, MockNotCalled())
+        self.expectThat(Node._set_status_expires, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -1134,8 +1125,9 @@ class TestNode(MAASServerTestCase):
             node_module.post_commit_do, MockCallsMatch(
                 # A call to power off the node is first scheduled.
                 call(
-                    node_module.power_off_node, node.system_id, node.hostname,
-                    node.nodegroup.uuid, expected_power_info),
+                    Node._power_control_node, power_off_node,
+                    node.system_id, node.hostname,
+                    [], [rack.system_id], expected_power_info),
                 # Also a call to deallocate AUTO IP addresses.
                 call(
                     reactor.callLater, 0, deferToDatabase,
@@ -1148,12 +1140,12 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         self.patch(node, '_stop')
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         node.power_state = POWER_STATE.OFF
         with post_commit_hooks:
             node.release()
         self.expectThat(node._stop, MockNotCalled())
-        self.expectThat(node.start_transition_monitor, MockNotCalled())
+        self.expectThat(Node._set_status_expires, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -1168,7 +1160,8 @@ class TestNode(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
+        self.patch(node, '_stop').return_value = None
         node_result = factory.make_NodeResult_for_installation(node=node)
         self.assertEqual(
             [node_result], list(NodeResult.objects.filter(
@@ -1206,8 +1199,7 @@ class TestNode(MAASServerTestCase):
         ip1 = factory.make_StaticIPAddress(interface=interface1)
         ip2 = factory.make_StaticIPAddress(interface=interface2)
         # Create another node with a static IP address.
-        other_node = factory.make_Node(
-            nodegroup=node.nodegroup, interface=True)
+        other_node = factory.make_Node(interface=True)
         factory.make_StaticIPAddress(interface=other_node.get_boot_interface())
         self.assertItemsEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
 
@@ -1337,6 +1329,7 @@ class TestNode(MAASServerTestCase):
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+        self.patch(node, '_stop').return_value = None
         node.set_netboot(on=False)
         with post_commit_hooks:
             node.release()
@@ -1345,6 +1338,7 @@ class TestNode(MAASServerTestCase):
     def test_release_logs_user_request(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        self.patch(node, "_stop").return_value = None
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.release(owner)
@@ -1357,6 +1351,7 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.osystem = factory.make_name('os')
         node.distro_series = factory.make_name('series')
+        self.patch(node, "_stop").return_value = None
         with post_commit_hooks:
             node.release()
         self.assertEqual("", node.osystem)
@@ -1367,9 +1362,10 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh',
             power_state=POWER_STATE.ON)
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         node_stop = self.patch(node, '_stop')
-        node.release()
+        with post_commit_hooks:
+            node.release()
         self.assertThat(
             node_stop, MockCalledOnceWith(user))
 
@@ -1378,7 +1374,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh',
             power_state=POWER_STATE.OFF)
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         node_stop = self.patch(node, '_stop')
         with post_commit_hooks:
             node.release()
@@ -1392,7 +1388,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.OFF)
         release_auto_ips = self.patch_autospec(
             node, "release_auto_ips")
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
         self.assertThat(release_auto_ips, MockNotCalled())
@@ -1406,7 +1402,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, power_type='ether_wake')
         release = self.patch_autospec(
             node, "release_auto_ips")
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
         self.assertThat(release, MockNotCalled())
@@ -1418,7 +1414,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, power_type='virsh')
         release = self.patch_autospec(node, "release_auto_ips")
         self.patch_autospec(node, '_stop')
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
         self.assertThat(release, MockNotCalled())
@@ -1462,6 +1458,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         mock_clear = self.patch(node, "_clear_acquired_filesystems")
+        self.patch(node, "_stop").return_value = None
         with post_commit_hooks:
             node.release()
         self.assertThat(mock_clear, MockCalledOnceWith())
@@ -1473,7 +1470,8 @@ class TestNode(MAASServerTestCase):
 
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.NEW, owner=user)
-        self.patch(node, 'start_transition_monitor')
+        self.patch(Node, '_set_status_expires')
+        self.patch(Node, '_start').return_value = None
         with post_commit_hooks:
             return_value = node.accept_enlistment(user)
         self.assertEqual((node, target_state), (return_value, node.status))
@@ -1546,9 +1544,11 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_start, MockCalledOnceWith(admin, ANY))
 
     def test_start_commissioning_sets_options(self):
+        rack = factory.make_RackController()
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
-        node_start = self.patch(node, 'start')
+            interface=True, status=NODE_STATUS.NEW, power_type='virsh',
+            bmc_connected_to=rack)
+        node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
@@ -1596,6 +1596,8 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, '_start')
+        node_start.side_effect = lambda user, user_data: post_commit()
         NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
@@ -1607,7 +1609,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_clears_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        node_start = self.patch(node, 'start')
+        node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
@@ -1618,7 +1620,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_doesnt_clear_storage_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        node_start = self.patch(node, 'start')
+        node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         clear_storage = self.patch_autospec(
             node, '_clear_full_storage_configuration')
@@ -1629,7 +1631,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_calls__clear_networking_configuration(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        node_start = self.patch(node, 'start')
+        node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
@@ -1640,7 +1642,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_doesnt_call__clear_networking(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        node_start = self.patch(node, 'start')
+        node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         clear_networking = self.patch_autospec(
             node, '_clear_networking_configuration')
@@ -1658,6 +1660,7 @@ class TestNode(MAASServerTestCase):
             node, filename, script_result, RESULT_TYPE.COMMISSIONING,
             Bin(data))
         other_node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(Node, "_start").return_value = None
         with post_commit_hooks:
             other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
@@ -1695,7 +1698,7 @@ class TestNode(MAASServerTestCase):
              NODE_STATUS.FAILED_COMMISSIONING))
         node = factory.make_Node(status=status)
         # Patch out some things that we don't want to do right now.
-        self.patch(node, '_start_transition_monitor_async')
+        self.patch(Node, '_set_status_expires')
         self.patch(node, '_start').return_value = None
         # Fake an error during the post-commit hook.
         error_message = factory.make_name("error")
@@ -1768,45 +1771,42 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_stop, MockCalledOnceWith(admin))
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
-    def test_start_commissioning_starts_monitor(self):
+    def test_start_commissioning_sets_status_expired(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         admin = factory.make_admin()
 
-        monitor_timeout = random.randint(1, 100)
-        monitor_start = self.patch_autospec(
-            node_module.TransitionMonitor, "start")
+        timeout = random.randint(1, 100)
+        set_status_expires = self.patch_autospec(
+            Node, "_set_status_expires")
 
+        self.patch(Node, "_start").return_value = None
         self.patch(node, 'get_commissioning_time')
-        node.get_commissioning_time.return_value = monitor_timeout
+        node.get_commissioning_time.return_value = timeout
 
         with post_commit_hooks:
             node.start_commissioning(admin)
 
-        self.assertThat(monitor_start, MockCalledOnceWith(ANY))
-        [monitor], _ = monitor_start.call_args  # Extract `self`.
-        self.assertAttributes(monitor, {
-            "timeout": timedelta(seconds=monitor_timeout),
-            "status": NODE_STATUS.READY,
-            "system_id": node.system_id,
-        })
+        self.assertThat(
+            set_status_expires, MockCalledOnceWith(node.system_id, timeout))
 
-    def test_abort_commissioning_stops_monitor(self):
+    def test_abort_commissioning_clears_status_expires(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         admin = factory.make_admin()
-        monitor_stop = self.patch_autospec(
-            node_module.TransitionMonitor, "stop")
+        self.patch(Node, "_stop").return_value = None
+        clear_status_expires = self.patch_autospec(
+            Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
         with post_commit_hooks:
             node.abort_commissioning(admin)
-        self.assertThat(monitor_stop, MockCalledOnceWith(ANY))
-        [monitor], _ = monitor_stop.call_args  # Extract `self`.
-        self.assertAttributes(monitor, {"system_id": node.system_id})
+        self.assertThat(
+            clear_status_expires, MockCalledOnceWith(node.system_id))
 
     def test_abort_commissioning_logs_user_request(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         admin = factory.make_admin()
-        self.patch_autospec(node_module.TransitionMonitor, "stop")
+        self.patch(Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
+        self.patch(Node, "_stop").return_value = None
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.abort_commissioning(admin)
@@ -1964,28 +1964,19 @@ class TestNode(MAASServerTestCase):
         self.assertTrue(node.netboot)
 
     def test_fqdn_validation_failure_if_nonexistant(self):
-        nodegroup = factory.make_NodeGroup(
-            name=factory.make_string(),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_with_domain = '%s.%s' % (
             factory.make_string(), factory.make_string())
         self.assertRaises(
             ValidationError,
-            factory.make_Node,
-            nodegroup=nodegroup, hostname=hostname_with_domain)
+            factory.make_Node, hostname=hostname_with_domain)
 
     def test_fqdn_default_domain_if_not_given(self):
         domain = Domain.objects.get_default_domain()
         domain.name = factory.make_name('domain')
         domain.save()
-        nodegroup = factory.make_NodeGroup(
-            name=domain.name,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_without_domain = factory.make_string()
         hostname = "%s.%s" % (hostname_without_domain, domain.name)
-        node = factory.make_Node(
-            nodegroup=nodegroup,
-            hostname=hostname_without_domain)
+        node = factory.make_Node(hostname=hostname_without_domain)
         self.assertEqual(hostname, node.fqdn)
 
     def test_fqdn_if_specified(self):
@@ -1993,14 +1984,9 @@ class TestNode(MAASServerTestCase):
         Domain.objects.get_default_domain()
         # one for us.
         domain = factory.make_Domain()
-        nodegroup = factory.make_NodeGroup(
-            name=domain.name,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_without_domain = factory.make_string()
         hostname = "%s.%s" % (hostname_without_domain, domain.name)
-        node = factory.make_Node(
-            nodegroup=nodegroup,
-            hostname=hostname)
+        node = factory.make_Node(hostname=hostname)
         self.assertEqual(hostname, node.fqdn)
 
     def test_split_arch_returns_arch_as_tuple(self):
@@ -2154,7 +2140,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
-        self.patch(node, 'stop_transition_monitor')
+        self.patch(Node, '_clear_status_expires')
         with post_commit_hooks:
             node.update_power_state(POWER_STATE.OFF)
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
@@ -2166,21 +2152,19 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
 
-    def test_update_power_state_stops_monitor_if_releasing(self):
+    def test_update_power_state_clear_status_expires_if_releasing(self):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
-            owner=None)
-        self.patch(node, 'stop_transition_monitor')
-        with post_commit_hooks:
-            node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+            owner=None, status_expires=datetime.now())
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertIsNone(node.status_expires)
 
-    def test_update_power_state_does_not_stop_monitor_if_not_releasing(self):
+    def test_update_power_state_does_not_clear_expires_if_not_releasing(self):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
-        self.patch(node, 'stop_transition_monitor')
+        self.patch(Node, '_clear_status_expires')
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.stop_transition_monitor, MockNotCalled())
+        self.assertThat(Node._clear_status_expires, MockNotCalled())
 
     def test_update_power_state_does_not_change_status_if_not_off(self):
         node = factory.make_Node(
@@ -2193,7 +2177,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
         release = self.patch_autospec(node, 'release_auto_ips')
-        self.patch(node, 'stop_transition_monitor')
+        self.patch(Node, '_clear_status_expires')
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(release, MockCalledOnceWith())
 
@@ -2221,35 +2205,11 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
         register_event = self.patch(node, '_register_request_event')
         self.patch(node, 'on_network').return_value = True
+        self.patch(Node, "_start").return_value = None
         node.start(admin)
         self.assertThat(register_event, MockCalledOnceWith(
             admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT, action='start',
             comment=None))
-
-    def test_handle_monitor_expired_marks_node_as_failed(self):
-        self.disable_node_query()
-        status = random.choice(MONITORED_STATUSES)
-        node = factory.make_Node(status=status)
-        timeout = random.randint(1, 100)
-        monitor_context = {
-            'timeout': timeout,
-        }
-        node.handle_monitor_expired(monitor_context)
-        node = reload_object(node)
-        self.assertEqual(get_failed_status(status), node.status)
-        error_msg = (
-            "Node operation '%s' timed out after %s." % (
-                NODE_STATUS_CHOICES_DICT[status],
-                timedelta(seconds=timeout))
-        )
-        self.assertEqual(error_msg, node.error_description)
-
-    def test_handle_monitor_expired_ignores_event_if_node_state_changed(self):
-        status = factory.pick_enum(NODE_STATUS, but_not=MONITORED_STATUSES)
-        node = factory.make_Node(status=status)
-        node.handle_monitor_expired({})
-        node = reload_object(node)
-        self.assertEqual(status, node.status)
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -2753,29 +2713,6 @@ class TestNodePowerParameters(MAASServerTestCase):
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
 
-class TestNodeIsBootInterfaceOnManagedInterface(MAASServerTestCase):
-
-    def test__returns_true_if_managed(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        self.assertTrue(node.is_boot_interface_on_managed_interface())
-
-    def test__returns_false_if_no_boot_interface(self):
-        node = factory.make_Node()
-        self.assertFalse(node.is_boot_interface_on_managed_interface())
-
-    def test__returns_false_if_no_attached_cluster_interface(self):
-        node = factory.make_Node()
-        node.boot_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node)
-        node.save()
-        self.assertFalse(node.is_boot_interface_on_managed_interface())
-
-    def test__returns_false_if_cluster_interface_unmanaged(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        self.assertFalse(node.is_boot_interface_on_managed_interface())
-
-
 class NodeTransitionsTests(MAASServerTestCase):
     """Test the structure of NODE_TRANSITIONS."""
 
@@ -2942,7 +2879,8 @@ class NodeManagerTest(MAASServerTestCase):
         # (to ensure they are filtered out.)
         factory.make_Space()
         factory.make_Node_with_Interface_on_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False)
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
@@ -2951,8 +2889,10 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_filter_nodes_by_not_spaces(self):
         factory.make_Space()
-        extra_node = factory.make_Node_with_Interface_on_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet()
+        extra_node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False)
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
@@ -2962,8 +2902,10 @@ class NodeManagerTest(MAASServerTestCase):
     def test_filter_nodes_by_fabrics(self):
         fabric = factory.make_Fabric()
         factory.make_Space()
-        factory.make_Node_with_Interface_on_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet(fabric=fabric)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric)
         iface = node.get_boot_interface()
         fabric = iface.vlan.fabric
         self.assertItemsEqual(
@@ -2971,8 +2913,10 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_filter_nodes_by_not_fabrics(self):
         fabric = factory.make_Fabric()
-        extra_node = factory.make_Node_with_Interface_on_Subnet()
-        node = factory.make_Node_with_Interface_on_Subnet(fabric=fabric)
+        extra_node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric)
         iface = node.get_boot_interface()
         fabric = iface.vlan.fabric
         self.assertItemsEqual(
@@ -2981,64 +2925,80 @@ class NodeManagerTest(MAASServerTestCase):
     def test_filter_nodes_by_fabric_classes(self):
         fabric1 = factory.make_Fabric(class_type="10g")
         fabric2 = factory.make_Fabric(class_type="1g")
-        node1 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
-        factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric1)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric2)
         self.assertItemsEqual(
             [node1], Node.objects.filter_by_fabric_classes(["10g"]))
 
     def test_filter_nodes_by_not_fabric_classes(self):
         fabric1 = factory.make_Fabric(class_type="10g")
         fabric2 = factory.make_Fabric(class_type="1g")
-        factory.make_Node_with_Interface_on_Subnet(fabric=fabric1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(fabric=fabric2)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, fabric=fabric2)
         self.assertItemsEqual(
             [node2], Node.objects.exclude_fabric_classes(["10g"]))
 
     def test_filter_nodes_by_vids(self):
         vlan1 = factory.make_VLAN(vid=1)
         vlan2 = factory.make_VLAN(vid=2)
-        node1 = factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
-        factory.make_Node_with_Interface_on_Subnet(vlan=vlan2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, vlan=vlan1)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, vlan=vlan2)
         self.assertItemsEqual(
             [node1], Node.objects.filter_by_vids([1]))
 
     def test_filter_nodes_by_not_vids(self):
         vlan1 = factory.make_VLAN(vid=1)
         vlan2 = factory.make_VLAN(vid=2)
-        factory.make_Node_with_Interface_on_Subnet(vlan=vlan1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(vlan=vlan2)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, vlan=vlan1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, vlan=vlan2)
         self.assertItemsEqual(
             [node2], Node.objects.exclude_vids([1]))
 
     def test_filter_nodes_by_subnet(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet1)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet2)
         self.assertItemsEqual(
             [node1], Node.objects.filter_by_subnets([subnet1]))
 
     def test_filter_nodes_by_not_subnet(self):
         subnet1 = factory.make_Subnet()
         subnet2 = factory.make_Subnet()
-        factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet2)
         self.assertItemsEqual(
             [node2], Node.objects.exclude_subnets([subnet1]))
 
     def test_filter_nodes_by_subnet_cidr(self):
         subnet1 = factory.make_Subnet(cidr='192.168.1.0/24')
         subnet2 = factory.make_Subnet(cidr='192.168.2.0/24')
-        node1 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        node1 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet1)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet2)
         self.assertItemsEqual(
             [node1], Node.objects.filter_by_subnet_cidrs(['192.168.1.0/24']))
 
     def test_filter_nodes_by_not_subnet_cidr(self):
         subnet1 = factory.make_Subnet(cidr='192.168.1.0/24')
         subnet2 = factory.make_Subnet(cidr='192.168.2.0/24')
-        factory.make_Node_with_Interface_on_Subnet(subnet=subnet1)
-        node2 = factory.make_Node_with_Interface_on_Subnet(subnet=subnet2)
+        factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet1)
+        node2 = factory.make_Node_with_Interface_on_Subnet(
+            with_dhcp_rack_primary=False, subnet=subnet2)
         self.assertItemsEqual(
             [node2], Node.objects.exclude_subnet_cidrs(
                 ['192.168.1.0/24']))
@@ -3048,9 +3008,9 @@ class NodeManagerTest(MAASServerTestCase):
         subnet1 = factory.make_Subnet(cidr='192.168.1.0/24', fabric=fabric1)
         subnet2 = factory.make_Subnet(cidr='192.168.2.0/24', fabric=fabric1)
         factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet1, fabric=fabric1)
+            with_dhcp_rack_primary=False, subnet=subnet1, fabric=fabric1)
         node2 = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet2, fabric=fabric1)
+            with_dhcp_rack_primary=False, subnet=subnet2, fabric=fabric1)
         self.assertItemsEqual(
             [node2], Node.objects
                          .filter_by_fabrics([fabric1])
@@ -3119,6 +3079,7 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         self.assertItemsEqual(other_nodes, Node.objects.all())
 
     def test_children_get_deleted_when_parent_is_released(self):
+        self.patch(Node, "_stop").return_value = None
         owner = factory.make_User()
         # Create children.
         parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
@@ -3130,73 +3091,8 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
 
 
-class TestNodeTransitionMonitors(MAASServerTestCase):
-
-    def prepare_rpc(self):
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        return self.useFixture(MockLiveRegionToClusterRPCFixture())
-
-    def patch_datetime_now(self, nowish_timestamp):
-        mock_datetime = self.patch(monitors_module, "datetime")
-        mock_datetime.now.return_value = nowish_timestamp
-
-    def test__start_transition_monitor_starts_monitor(self):
-        done = threading.Event()
-        rpc_fixture = self.prepare_rpc()
-        now = datetime.now(tz=amp.utc)
-        self.patch_datetime_now(now)
-        node = factory.make_Node()
-
-        def handle(self, monitors):
-            done.set()  # Tell the calling thread.
-            return defer.succeed({})
-
-        cluster = rpc_fixture.makeCluster(node.nodegroup, StartMonitors)
-        cluster.StartMonitors.side_effect = handle
-
-        monitor_timeout = random.randint(1, 100)
-        node.start_transition_monitor(monitor_timeout)
-        post_commit_hooks.fire()
-
-        self.assertTrue(done.wait(5))
-        self.assertThat(
-            cluster.StartMonitors,
-            MockCalledOnceWith(ANY, monitors=[{
-                'deadline': now + timedelta(seconds=monitor_timeout),
-                'id': node.system_id,
-                'context': {
-                    'timeout': monitor_timeout,
-                    'node_status': node.status,
-                },
-            }]))
-
-
 class TestNodeNetworking(MAASServerTestCase):
     """Tests for methods on the `Node` related to networking."""
-
-    def test_release_leases_calls_remove_host_maps_with_leases(self):
-        node = factory.make_Node()
-        interfaces = [
-            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-            for _ in range(3)
-        ]
-        removal_mappings = {}
-        for interface in interfaces:
-            subnet = factory.make_Subnet(vlan=interface.vlan)
-            nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-            factory.make_NodeGroupInterface(
-                nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-                subnet=subnet)
-            lease_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-            factory.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=lease_ip,
-                subnet=subnet, interface=interface)
-            removal_mappings[nodegroup] = set([lease_ip])
-        mock_remove_host_maps = self.patch(node_module, "remove_host_maps")
-        node.release_leases()
-        self.assertThat(
-            mock_remove_host_maps, MockCalledOnceWith(removal_mappings))
 
     def test_claim_auto_ips_works_with_multiple_auto_on_the_same_subnet(self):
         node = factory.make_Node()
@@ -3317,11 +3213,7 @@ class TestNodeNetworking(MAASServerTestCase):
         node = factory.make_Node()
         boot_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
-        subnet = factory.make_Subnet(vlan=boot_interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
+        subnet = factory.make_Subnet(vlan=boot_interface.vlan, dhcp_on=True)
         node.set_initial_networking_configuration()
         boot_interface = reload_object(boot_interface)
         auto_ip = boot_interface.ip_addresses.filter(
@@ -3366,20 +3258,13 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__ipv4_and_ipv6(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4)
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v4),
@@ -3410,9 +3295,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__managed_subnet_over_unmanaged(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         unmanaged_network = factory.make_ipv4_network()
         unmanaged_subnet = factory.make_Subnet(
@@ -3422,11 +3306,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             ip=factory.pick_ip_in_network(unmanaged_network),
             subnet=unmanaged_subnet, interface=interface)
         managed_network = factory.make_ipv4_network()
-        managed_subnet = factory.make_Subnet(
-            cidr=str(managed_network.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=managed_subnet)
+        managed_subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            cidr=str(managed_network.cidr), dhcp_on=True)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(managed_network),
@@ -3437,9 +3318,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__bond_over_physical_interface(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -3468,9 +3348,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__physical_over_vlan_interface(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -3495,9 +3374,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__boot_interface_over_other_interfaces(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         physical_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         physical_network = factory.make_ipv4_network()
@@ -3524,9 +3402,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__sticky_ip_over_user_reserved(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         sticky_network = factory.make_ipv4_network()
@@ -3549,9 +3426,8 @@ class TestGetBestGuessForDefaultGateways(MAASServerTestCase):
             node.get_best_guess_for_default_gateways())
 
     def test__user_reserved_ip_over_auto(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node)
         user_reserved_network = factory.make_ipv4_network()
@@ -3578,24 +3454,19 @@ class TestGetDefaultGateways(MAASServerTestCase):
     """Tests for `Node.get_default_gateways`."""
 
     def test__return_set_ipv4_and_ipv6(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v4_2 = factory.make_ipv4_network()
-        subnet_v4_2 = factory.make_Subnet(cidr=str(network_v4_2.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4_2)
+        subnet_v4_2 = factory.make_Subnet(
+            cidr=str(network_v4_2.cidr), dhcp_on=True)
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         network_v6_2 = factory.make_ipv6_network()
-        subnet_v6_2 = factory.make_Subnet(cidr=str(network_v6_2.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6_2)
+        subnet_v6_2 = factory.make_Subnet(
+            cidr=str(network_v6_2.cidr), dhcp_on=True)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v4),
@@ -3621,17 +3492,14 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_set_ipv4_and_guess_ipv6(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v4_2 = factory.make_ipv4_network()
-        subnet_v4_2 = factory.make_Subnet(cidr=str(network_v4_2.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v4_2)
+        subnet_v4_2 = factory.make_Subnet(
+            cidr=str(network_v4_2.cidr), dhcp_on=True)
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         factory.make_StaticIPAddress(
@@ -3654,19 +3522,16 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_set_ipv6_and_guess_ipv4(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
         network_v6_2 = factory.make_ipv6_network()
-        subnet_v6_2 = factory.make_Subnet(cidr=str(network_v6_2.cidr))
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet_v6_2)
+        subnet_v6_2 = factory.make_Subnet(
+            cidr=str(network_v6_2.cidr), dhcp_on=True)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_network(network_v4),
@@ -3687,9 +3552,8 @@ class TestGetDefaultGateways(MAASServerTestCase):
             ), node.get_default_gateways())
 
     def test__return_guess_ipv4_and_ipv6(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, nodegroup=nodegroup, disable_ipv4=False)
+            status=NODE_STATUS.READY, disable_ipv4=False)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
@@ -3745,27 +3609,25 @@ class TestNode_Start(MAASServerTestCase):
         self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         self.patch_autospec(node_module, 'power_driver_check')
 
-    def prepare_rpc_to_cluster(self, nodegroup):
+    def prepare_rpc_to_rack_controller(self, rack_controller):
         protocol = self.rpc_fixture.makeCluster(
-            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn,
-            cluster_module.StartMonitors)
-        protocol.CreateHostMaps.side_effect = always_succeed_with({})
-        protocol.StartMonitors.side_effect = always_succeed_with({})
+            rack_controller,
+            cluster_module.PowerOn)
         protocol.PowerOn.side_effect = always_succeed_with({})
         return protocol
 
-    def make_acquired_node_with_interface(self, user, nodegroup=None):
+    def make_acquired_node_with_interface(self, user, bmc_connected_to=None):
         node = factory.make_Node_with_Interface_on_Subnet(
-            nodegroup=nodegroup, status=NODE_STATUS.READY, with_boot_disk=True)
-        self.prepare_rpc_to_cluster(node.nodegroup)
+            status=NODE_STATUS.READY, with_boot_disk=True,
+            bmc_connected_to=bmc_connected_to)
         node.acquire(user)
         return node
 
     def test__sets_user_data(self):
         user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_interface(user, nodegroup)
+        rack_controller = factory.make_RackController()
+        self.prepare_rpc_to_rack_controller(rack_controller)
+        node = self.make_acquired_node_with_interface(user, rack_controller)
         self.patch(node, 'on_network').return_value = True
         user_data = factory.make_bytes()
 
@@ -3777,9 +3639,9 @@ class TestNode_Start(MAASServerTestCase):
 
     def test__resets_user_data(self):
         user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_interface(user, nodegroup)
+        rack_controller = factory.make_RackController()
+        self.prepare_rpc_to_rack_controller(rack_controller)
+        node = self.make_acquired_node_with_interface(user, rack_controller)
         self.patch(node, 'on_network').return_value = True
         user_data = factory.make_bytes()
         NodeUserData.objects.set_user_data(node, user_data)
@@ -3791,9 +3653,9 @@ class TestNode_Start(MAASServerTestCase):
 
     def test__claims_auto_ip_addresses(self):
         user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_interface(user, nodegroup)
+        rack_controller = factory.make_RackController()
+        self.prepare_rpc_to_rack_controller(rack_controller)
+        node = self.make_acquired_node_with_interface(user, rack_controller)
         self.patch(node, 'on_network').return_value = True
 
         claim_auto_ips = self.patch_autospec(
@@ -3807,12 +3669,15 @@ class TestNode_Start(MAASServerTestCase):
 
     def test__only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        node = self.make_acquired_node_with_interface(user, nodegroup)
+        rack_controller = factory.make_RackController()
+        self.prepare_rpc_to_rack_controller(rack_controller)
+        node = self.make_acquired_node_with_interface(user, rack_controller)
         node.status = NODE_STATUS.BROKEN
         node.save()
 
+        self.patch(node, "_get_bmc_client_connection_info").return_value = (
+            [], [])
+        self.patch(Node, "_power_control_node")
         claim_auto_ips = self.patch_autospec(
             node, "claim_auto_ips", spec_set=False)
 
@@ -3832,12 +3697,14 @@ class TestNode_Start(MAASServerTestCase):
 
     def test__starts_nodes(self):
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            user, bmc_connected_to=rack_controller)
         power_info = node.get_effective_power_info()
 
-        power_on_node = self.patch(node_module, "power_on_node")
-        power_on_node.return_value = defer.succeed(None)
-        self.patch_autospec(node, '_start_transition_monitor_async')
+        power_control_node = self.patch(Node, "_power_control_node")
+        power_control_node.return_value = defer.succeed(None)
+        self.patch(Node, '_set_status_expires')
 
         with post_commit_hooks:
             node.start(user)
@@ -3845,24 +3712,33 @@ class TestNode_Start(MAASServerTestCase):
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
 
-        self.expectThat(power_on_node, MockCalledOnceWith(
-            node.system_id, node.hostname, node.nodegroup.uuid,
+        client_idents, fallback_idents = node._get_bmc_client_connection_info()
+        self.expectThat(power_control_node, MockCalledOnceWith(
+            power_on_node, node.system_id, node.hostname,
+            client_idents, fallback_idents,
             power_info))
 
-        # A transition monitor was started.
+        # Set status expires was called.
         self.expectThat(
-            node._start_transition_monitor_async,
-            MockCalledOnceWith(ANY, node.hostname))
+            Node._set_status_expires,
+            MockCalledOnceWith(node.system_id, ANY))
 
     def test__node_start_checks_power_driver(self):
-        self.patch_autospec(node_module, "power_on_node")
+        client = MagicMock()
+        client.ident = sentinel.ident
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            user, bmc_connected_to=rack_controller)
         driver_check = self.patch(node_module, "power_driver_check")
         with post_commit_hooks:
             node.start(user)
         self.expectThat(driver_check, MockCalledOnceWith(
-            node.nodegroup.uuid, node.get_effective_power_type()))
+            client, node.get_effective_power_type()))
 
     def test__start_logs_user_request(self):
         admin = factory.make_admin()
@@ -3881,34 +3757,43 @@ class TestNode_Start(MAASServerTestCase):
             (Though jtv is praiseworthy, and that's worth noting).
             """
 
-        mock_getClientFor = self.patch(power_module, 'getClientFor')
-        mock_getClientFor.return_value = defer.fail(
+        power_control_node = self.patch(Node, '_power_control_node')
+        power_control_node.return_value = defer.fail(
             PraiseBeToJTVException("Defiance is futile"))
 
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            user, bmc_connected_to=rack_controller)
 
         with ExpectedException(PraiseBeToJTVException):
             with post_commit_hooks:
                 node.start(user)
 
     def test__marks_allocated_node_as_deploying(self):
+        self.patch(Node, '_power_control_node')
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            user, bmc_connected_to=rack_controller)
         with post_commit_hooks:
             node.start(user)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test__does_not_change_state_of_deployed_node(self):
+        self.patch(Node, "_power_control_node")
         user = factory.make_User()
         # Create a node that we can execute power actions on, so that we
         # exercise the whole of start().
+        rack_controller = factory.make_RackController()
         node = factory.make_Node(
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
             owner=user, interface=True)
-        power_on_node = self.patch(node_module, "power_on_node")
-        power_on_node.return_value = defer.succeed(None)
+        boot_interface = node.get_boot_interface()
+        boot_interface.vlan.dhcp_on = True
+        boot_interface.vlan.primary_rack = rack_controller
+        boot_interface.vlan.save()
         with post_commit_hooks:
             node.start(user)
         self.assertEqual(
@@ -3925,43 +3810,49 @@ class TestNode_Start(MAASServerTestCase):
             power_parameters=node.get_effective_power_parameters(),
         )
         self.patch(node, 'get_effective_power_info').return_value = power_info
-        power_on_node = self.patch(node_module, "power_on_node")
+        power_control_node = self.patch_autospec(Node, "_power_control_node")
         node.start(user)
-        self.assertThat(power_on_node, MockNotCalled())
+        self.assertThat(power_control_node, MockNotCalled())
 
     def test__does_not_start_nodes_the_user_cannot_edit(self):
-        power_on_node = self.patch_autospec(node_module, "power_on_node")
+        power_control_node = self.patch_autospec(Node, "_power_control_node")
         owner = factory.make_User()
         node = self.make_acquired_node_with_interface(owner)
 
         user = factory.make_User()
         with ExpectedException(PermissionDenied):
             node.start(user)
-            self.assertThat(power_on_node, MockNotCalled())
+            self.assertThat(power_control_node, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
-        power_on_node = self.patch_autospec(node_module, "power_on_node")
+        power_control_node = self.patch_autospec(Node, "_power_control_node")
         owner = factory.make_User()
-        node = self.make_acquired_node_with_interface(owner)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            owner, bmc_connected_to=rack_controller)
 
         admin = factory.make_admin()
         with post_commit_hooks:
             node.start(admin)
 
+        client_idents, fallback_idents = node._get_bmc_client_connection_info()
         self.expectThat(
-            power_on_node, MockCalledOnceWith(
-                node.system_id, node.hostname, node.nodegroup.uuid,
+            power_control_node, MockCalledOnceWith(
+                power_on_node, node.system_id, node.hostname,
+                client_idents, fallback_idents,
                 node.get_effective_power_info()))
 
     def test__releases_auto_ips_when_power_action_fails(self):
         exception_type = factory.make_exception_type()
 
-        mock_getClientFor = self.patch(power_module, 'getClientFor')
-        mock_getClientFor.return_value = defer.fail(
+        power_control_node = self.patch(Node, '_power_control_node')
+        power_control_node.return_value = defer.fail(
             exception_type("He's fallen in the water!"))
 
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_acquired_node_with_interface(
+            user, bmc_connected_to=rack_controller)
 
         release_auto_ips = self.patch_autospec(
             node, "release_auto_ips")
@@ -4023,18 +3914,22 @@ class TestNode_Stop(MAASServerTestCase):
         self.patch_autospec(node_module, 'power_driver_check')
 
     def make_node_with_interface(
-            self, user, nodegroup=None, power_type="virsh"):
+            self, user, power_type="virsh", bmc_connected_to=None):
         node = factory.make_Node_with_Interface_on_Subnet(
-            nodegroup=nodegroup, status=NODE_STATUS.READY,
-            power_type=power_type, with_boot_disk=True)
+            status=NODE_STATUS.READY,
+            power_type=power_type, with_boot_disk=True,
+            bmc_connected_to=bmc_connected_to)
         node.acquire(user)
         return node
 
     def test__stops_nodes(self):
-        power_off_node = self.patch_autospec(node_module, "power_off_node")
+        power_control_node = self.patch_autospec(
+            Node, "_power_control_node")
 
         user = factory.make_User()
-        node = self.make_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            user, bmc_connected_to=rack_controller)
         expected_power_info = node.get_effective_power_info()
 
         stop_mode = factory.make_name('stop-mode')
@@ -4045,20 +3940,56 @@ class TestNode_Stop(MAASServerTestCase):
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
 
+        client_idents, fallback_idents = node._get_bmc_client_connection_info()
         self.expectThat(
-            power_off_node, MockCalledOnceWith(
-                node.system_id, node.hostname, node.nodegroup.uuid,
+            power_control_node, MockCalledOnceWith(
+                power_off_node, node.system_id, node.hostname,
+                client_idents, fallback_idents,
                 expected_power_info))
 
-    def test__node_stop_checks_power_driver(self):
-        self.patch_autospec(node_module, "power_off_node")
+    def test__fallback_to_pxe_rack_controllers(self):
+        client = MagicMock()
+        client.ident = sentinel.ident
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.side_effect = [
+            defer.fail(NoConnectionsAvailable()),
+            defer.succeed(client),
+        ]
+
         user = factory.make_User()
+        rack_controller = factory.make_RackController()
         node = self.make_node_with_interface(user)
+        boot_interface = node.get_boot_interface()
+        boot_interface.vlan.dhcp_on = True
+        boot_interface.vlan.primary_rack = rack_controller
+        boot_interface.vlan.save()
+
         driver_check = self.patch(node_module, "power_driver_check")
         with post_commit_hooks:
             node.stop(user, factory.make_name('stop-mode'))
         self.expectThat(driver_check, MockCalledOnceWith(
-            node.nodegroup.uuid, node.get_effective_power_type()))
+            client, node.get_effective_power_type()))
+        self.expectThat(mock_getClientFromIdentifiers, MockCallsMatch(
+            call([]),
+            call([rack_controller.system_id])))
+
+    def test__node_stop_checks_power_driver(self):
+        client = MagicMock()
+        client.ident = sentinel.ident
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        user = factory.make_User()
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            user, bmc_connected_to=rack_controller)
+        driver_check = self.patch(node_module, "power_driver_check")
+        with post_commit_hooks:
+            node.stop(user, factory.make_name('stop-mode'))
+        self.expectThat(driver_check, MockCalledOnceWith(
+            client, node.get_effective_power_type()))
 
     def test__does_not_stop_nodes_the_user_cannot_edit(self):
         power_off_node = self.patch_autospec(node_module, "power_off_node")
@@ -4071,8 +4002,10 @@ class TestNode_Stop(MAASServerTestCase):
 
     def test_stop_logs_user_request(self):
         admin = factory.make_admin()
-        node = self.make_node_with_interface(admin)
-        self.patch_autospec(node_module, "power_off_node")
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            admin, bmc_connected_to=rack_controller)
+        self.patch_autospec(Node, "_power_control_node")
         register_event = self.patch(node, '_register_request_event')
         with post_commit_hooks:
             node.stop(admin)
@@ -4080,9 +4013,12 @@ class TestNode_Stop(MAASServerTestCase):
             admin, EVENT_TYPES.REQUEST_NODE_STOP, action='stop', comment=None))
 
     def test__allows_admin_to_stop_any_node(self):
-        power_off_node = self.patch_autospec(node_module, "power_off_node")
+        power_control_node = self.patch_autospec(
+            Node, "_power_control_node")
         owner = factory.make_User()
-        node = self.make_node_with_interface(owner)
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            owner, bmc_connected_to=rack_controller)
         expected_power_info = node.get_effective_power_info()
 
         stop_mode = factory.make_name('stop-mode')
@@ -4092,10 +4028,11 @@ class TestNode_Stop(MAASServerTestCase):
         with post_commit_hooks:
             node.stop(admin, stop_mode)
 
+        client_idents, fallback_idents = node._get_bmc_client_connection_info()
         self.expectThat(
-            power_off_node, MockCalledOnceWith(
-                node.system_id, node.hostname, node.nodegroup.uuid,
-                expected_power_info))
+            power_control_node, MockCalledOnceWith(
+                power_off_node, node.system_id, node.hostname,
+                client_idents, fallback_idents, expected_power_info))
 
     def test__does_not_attempt_power_off_if_no_power_type(self):
         # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
@@ -4123,28 +4060,102 @@ class TestNode_Stop(MAASServerTestCase):
     def test__propagates_failures_when_power_action_fails(self):
         fake_exception_type = factory.make_exception_type()
 
-        mock_getClientFor = self.patch(power_module, 'getClientFor')
-        mock_getClientFor.return_value = defer.fail(
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, 'getClientFromIdentifiers')
+        mock_getClientFromIdentifiers.return_value = defer.fail(
             fake_exception_type("Soon be the weekend!"))
 
         user = factory.make_User()
-        node = self.make_node_with_interface(user)
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            user, bmc_connected_to=rack_controller)
 
         with ExpectedException(fake_exception_type):
             with post_commit_hooks:
                 node.stop(user)
 
-    def test__returns_None_if_power_action_not_sent(self):
-        user = factory.make_User()
-        node = self.make_node_with_interface(user, power_type="")
-
-        self.patch_autospec(node_module, "power_off_node")
-        self.assertThat(node.stop(user), Is(None))
-
     def test__returns_Deferred_if_power_action_sent(self):
         user = factory.make_User()
-        node = self.make_node_with_interface(user, power_type="virsh")
+        rack_controller = factory.make_RackController()
+        node = self.make_node_with_interface(
+            user, power_type="virsh", bmc_connected_to=rack_controller)
 
-        self.patch_autospec(node_module, "power_off_node")
+        self.patch_autospec(Node, "_power_control_node")
         with post_commit_hooks:
             self.assertThat(node.stop(user), IsInstance(defer.Deferred))
+
+
+class TestRackController(MAASServerTestCase):
+
+    def test_refresh_issues_rpc_call(self):
+        rackcontroller = factory.make_RackController()
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(
+            rackcontroller, RefreshRackControllerInfo)
+        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': rackcontroller.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'swap_size': 0,
+        })
+
+        rackcontroller.refresh()
+        token = NodeKey.objects.get_token_for_node(rackcontroller)
+
+        self.expectThat(
+            protocol.RefreshRackControllerInfo,
+            MockCalledOnceWith(
+                ANY, system_id=rackcontroller.system_id,
+                consumer_key=token.consumer.key, token_key=token.key,
+                token_secret=token.secret))
+
+    def test_refresh_logs_user_request(self):
+        rackcontroller = factory.make_RackController(
+            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(
+            rackcontroller, RefreshRackControllerInfo)
+        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': rackcontroller.architecture,
+            'osystem': '',
+            'distro_series': '',
+            'swap_size': 0,
+        })
+
+        register_event = self.patch(rackcontroller, '_register_request_event')
+        rackcontroller.refresh()
+        post_commit_hooks.reset()  # Ignore these for now.
+        rackcontroller = reload_object(rackcontroller)
+        self.assertThat(register_event, MockCalledOnceWith(
+            rackcontroller.owner,
+            EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
+            action='starting refresh'))
+
+    def test_refresh_sets_extra_values(self):
+        rackcontroller = factory.make_RackController(status=NODE_STATUS.NEW)
+        osystem = factory.make_name('osystem')
+        distro_series = factory.make_name('distro_series')
+        swap_size = random.randint(1, 1000)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(
+            rackcontroller, RefreshRackControllerInfo)
+        protocol.RefreshRackControllerInfo.return_value = defer.succeed({
+            'architecture': rackcontroller.architecture,
+            'osystem': osystem,
+            'distro_series': distro_series,
+            'swap_size': swap_size,
+        })
+
+        rackcontroller.refresh()
+        rackcontroller = reload_object(rackcontroller)
+        self.assertEquals(osystem, rackcontroller.osystem)
+        self.assertEquals(distro_series, rackcontroller.distro_series)
+        self.assertEquals(swap_size, rackcontroller.swap_size)

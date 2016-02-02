@@ -26,7 +26,6 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils.importlib import import_module
 from maasserver.eventloop import services
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
@@ -423,52 +422,38 @@ class WebSocketFactory(Factory):
         service."""
         rpc_service = services.getServiceNamed("rpc")
         rpc_service.events.connected.registerHandler(
-            self.updateCluster)
+            self.updateRackController)
         rpc_service.events.disconnected.registerHandler(
-            self.updateCluster)
+            self.updateRackController)
 
     def unregisterRPCEvents(self):
         """Unregister from connected and disconnected events from the RPC
         service."""
         rpc_service = services.getServiceNamed("rpc")
         rpc_service.events.connected.unregisterHandler(
-            self.updateCluster)
+            self.updateRackController)
         rpc_service.events.disconnected.unregisterHandler(
-            self.updateCluster)
+            self.updateRackController)
 
-    def updateCluster(self, ident):
-        """Called when a cluster connects or disconnects from this region
-        over the RPC connection.
+    def updateRackController(self, ident):
+        """Called when a rack controller connects or disconnects from this
+        region over the RPC connection.
 
-        This is hard-coded to call the `ClusterHandler` as at the moment
+        This is hard-coded to call the `ControllerHandler` as at the moment
         it is the only handler that needs this event.
         """
-        # The `ClusterHandler` expects the `on_listen` call to use the `id`
-        # of the `Cluster` object, not the uuid. The `uuid` for the cluster
-        # is converted into its `id`, and send to the onNotify call for the
-        # `ClusterHandler`.
-        d = deferToDatabase(self.getCluster, ident)
-        d.addCallback(self.sendOnNotifyToCluster)
+        d = deferToDatabase(self.sendOnNotifyToController, ident)
         d.addErrback(
             log.err,
-            "Failed to send 'update' notification for cluster(%s) when "
-            "RPC event fired." % ident)
+            "Failed to send 'update' notification for rack controller(%s) "
+            "when RPC event fired." % ident)
         return d
 
-    @synchronous
-    @transactional
-    def getCluster(self, cluster_uuid):
-        """Return `NodeGroup` with `cluster_uuid`."""
-        try:
-            return NodeGroup.objects.get(uuid=cluster_uuid)
-        except NodeGroup.DoesNotExist:
-            return None
-
-    def sendOnNotifyToCluster(self, cluster):
-        """Send onNotify to the `ClusterHandler` for `cluster`."""
-        cluster_handler = self.getHandler("cluster")
-        if cluster_handler is None or cluster is None:
+    def sendOnNotifyToController(self, system_id):
+        """Send onNotify to the `ControllerHandler` for `system_id`."""
+        rack_handler = self.getHandler("controller")
+        if rack_handler is None:
             return
         else:
             return self.onNotify(
-                cluster_handler, "cluster", "update", cluster.id)
+                rack_handler, "controller", "update", system_id)

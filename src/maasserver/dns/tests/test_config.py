@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from itertools import islice
 import random
 import time
 
@@ -28,21 +27,16 @@ from maasserver.dns.config import (
     get_trusted_networks,
     get_upstream_dns,
     is_dns_enabled,
-    is_dns_in_use,
     next_zone_serial,
     zone_serial,
 )
 from maasserver.enum import (
-    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.models import (
     Config,
     Domain,
-    interface as interface_module,
 )
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -60,7 +54,6 @@ from mock import (
 from netaddr import (
     IPAddress,
     IPNetwork,
-    IPRange,
 )
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -220,13 +213,8 @@ class TestDeferringChangesPostCommit_by_node(MAASServerTestCase):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
         subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet, nodegroup=nodegroup,
-            domain=Domain.objects.get_default_domain(),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            subnet=subnet, domain=Domain.objects.get_default_domain())
         node.save()
         node.hostname = factory.make_name('hostname')
         # The above will have created all sorts of things: confirm that
@@ -250,13 +238,8 @@ class TestDeferringChangesPostCommit_by_node(MAASServerTestCase):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
         subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet, nodegroup=nodegroup,
-            domain=Domain.objects.get_default_domain(),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            subnet=subnet, domain=Domain.objects.get_default_domain())
         node.save()
         node.hostname = factory.make_name('hostname')
         self.assertThat(dns_add_zones_now, MockNotCalled())
@@ -277,17 +260,12 @@ class TestDeferringChangesPostCommit_by_node(MAASServerTestCase):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
         subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ENABLED)
         node = factory.make_Node_with_Interface_on_Subnet(
-            subnet=subnet, nodegroup=nodegroup,
-            domain=Domain.objects.get_default_domain(),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            subnet=subnet, domain=Domain.objects.get_default_domain())
         node.save()
         node.hostname = factory.make_name('hostname')
-        # It turns out that all the above causes 5 calls to dns_add_zones_now.
-        self.assertEqual(5, dns_add_zones_now.call_count)
+        # It turns out that all the above causes 2 calls to dns_add_zones_now.
+        self.assertEqual(2, dns_add_zones_now.call_count)
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
         # Now make sure that dns_update_zones_now gets called once and only
         # once.
@@ -303,11 +281,6 @@ class TestConsolidatingChanges(MAASServerTestCase):
     def setUp(self):
         super(TestConsolidatingChanges, self).setUp()
         self.useFixture(RegionConfigurationFixture())
-
-    def make_managed_nodegroup(self):
-        return factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            status=NODEGROUP_STATUS.ENABLED)
 
     def test__zone_changes_applied_while_holding_dns_lock(self):
 
@@ -510,34 +483,23 @@ class TestDNSServer(MAASServerTestCase):
         # Reload BIND.
         self.bind.runner.rndc('reload')
 
-    def create_managed_nodegroup(self, network=None, name=None):
-        if network is None:
-            network = IPNetwork('192.168.0.1/24')
-        return factory.make_NodeGroup(
-            network=network, name=name,
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-
-    def create_nodegroup_with_static_ip(self, lease_number=1, nodegroup=None,
-                                        domain=None):
+    def create_node_with_static_ip(
+            self, domain=None, subnet=None):
         if domain is None:
-            domain = factory.make_Domain()
-        if nodegroup is None:
-            nodegroup = self.create_managed_nodegroup(name=domain.name)
-        [interface] = nodegroup.get_managed_interfaces()
+            domain = Domain.objects.get_default_domain()
+        if subnet is None:
+            network = factory.make_ipv4_network()
+            subnet = factory.make_Subnet(cidr=str(network.cidr))
         node = factory.make_Node(
-            nodegroup=nodegroup,
-            domain=domain,
+            interface=True, status=NODE_STATUS.READY, domain=domain,
             disable_ipv4=False)
-        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        ips = IPRange(
-            interface.static_ip_range_low, interface.static_ip_range_high)
-        static_ip = str(next(islice(ips, lease_number, lease_number + 1)))
-        staticaddress = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip=static_ip,
-            subnet=interface.subnet, interface=nic)
-        dns_update_zones_now([node.domain], [interface.subnet])
-        return nodegroup, node, staticaddress
+        nic = node.get_boot_interface()
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=nic)
+        dns_update_zones_now([domain], [subnet])
+        return node, static_ip
 
     def dig_resolve(self, fqdn, version=4):
         """Resolve `fqdn` using dig.  Returns a list of results."""
@@ -564,29 +526,29 @@ class TestDNSServer(MAASServerTestCase):
             version = IPAddress(ip).version
         fqdn = "%s.%s" % (hostname, domain)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
-        self.expectThat(
+        self.assertThat(
             forward_lookup_result, Contains(ip),
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
         reverse_lookup_result = self.dig_reverse_resolve(
             ip, version=version)
-        self.expectThat(
+        self.assertThat(
             reverse_lookup_result, Contains("%s." % fqdn),
-            "Failed to reverse resolve '%s' (results: '%s')." % (
-                fqdn, ','.join(reverse_lookup_result)))
+            "Failed to reverse resolve '%s' missing '%s' (results: '%s')." % (
+                ip, "%s." % fqdn, ','.join(reverse_lookup_result)))
 
 
 class TestDNSConfigModifications(TestDNSServer):
 
     def test_dns_add_zones_now_loads_dns_zone(self):
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_add_zones_now([node.domain], [static.subnet])
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_add_zones_now_preserves_trusted_networks(self):
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
@@ -598,15 +560,15 @@ class TestDNSConfigModifications(TestDNSServer):
             FileContains(matcher=Contains(trusted_network)))
 
     def test_dns_update_zones_now_changes_dns_zone(self):
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
-        nodegroup, new_node, new_static = (
-            self.create_nodegroup_with_static_ip(
-                nodegroup=nodegroup, lease_number=2, domain=node.domain))
+        new_node, new_static = (
+            self.create_node_with_static_ip(
+                domain=node.domain, subnet=static.subnet))
         dns_update_zones_now(
-            [node.domain, new_node.domain],
-            [static.subnet, new_static.subnet])
+            [node.domain],
+            [static.subnet])
         self.assertDNSMatches(
             new_node.hostname, new_node.domain.name, new_static.ip)
 
@@ -618,22 +580,14 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(settings, 'DNS_CONNECT', True)
         self.assertTrue(is_dns_enabled())
 
-    def test_is_dns_in_use_return_False_no_configured_interface(self):
-        self.assertFalse(is_dns_in_use())
-
-    def test_is_dns_in_use_return_True_if_configured_interface(self):
-        self.create_managed_nodegroup()
-        self.assertTrue(is_dns_in_use())
-
     def test_dns_update_all_zones_now_loads_full_dns_config(self):
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_update_all_zones_now_passes_reload_retry_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
-        self.create_managed_nodegroup()
         bind_reload_with_retries = self.patch_autospec(
             dns_config_module, "bind_reload_with_retries")
         dns_update_all_zones_now(reload_retry=True)
@@ -641,7 +595,6 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_dns_update_all_zones_now_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
-        self.create_managed_nodegroup()
         random_ip = factory.make_ipv4_address()
         Config.objects.set_config("upstream_dns", random_ip)
         bind_write_options = self.patch_autospec(
@@ -654,7 +607,6 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_dns_update_all_zones_now_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
-        self.create_managed_nodegroup()
         trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
@@ -664,114 +616,82 @@ class TestDNSConfigModifications(TestDNSServer):
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
 
-    def test_dns_update_all_zones_now_does_nada_if_no_iface_configured(self):
-        self.patch(settings, 'DNS_CONNECT', True)
-        bind_write_configuration = self.patch_autospec(
-            dns_config_module, "bind_write_configuration")
-        dns_update_all_zones_now()
-        self.assertThat(bind_write_configuration, MockNotCalled())
-
     def test_dns_config_has_NS_record(self):
         ip = factory.make_ipv4_address()
         with RegionConfiguration.open_for_update() as config:
             config.maas_url = 'http://%s/' % ip
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        domain = factory.make_Domain()
+        node, static = self.create_node_with_static_ip(domain=domain)
         self.patch(settings, 'DNS_CONNECT', True)
         dns_update_all_zones_now()
         # Sleep half a second to make sure bind is fully-ready. This is not the
         # best, but it does prevent this tests from failing randomly.
         time.sleep(0.5)
-        # Get the NS record for the zone 'nodegroup.name'.
+        # Get the NS record for the zone 'domain.name'.
         ns_record = dig_call(
             port=self.bind.config.port,
-            commands=[nodegroup.name, 'NS', '+short'])
+            commands=[domain.name, 'NS', '+short'])
         self.assertGreater(
-            len(ns_record), 0, "No NS record for nodegroup.name.")
+            len(ns_record), 0, "No NS record for domain.name.")
         # Resolve that hostname.
         ip_of_ns_record = dig_call(
             port=self.bind.config.port, commands=[ns_record, '+short'])
         self.assertEqual(ip, ip_of_ns_record)
 
-    def test_edit_nodegroupinterface_updates_DNS_zone(self):
+    def test_edit_subnet_updates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         old_network = IPNetwork('192.168.7.1/24')
-        nodegroup = factory.make_NodeGroup(
-            network=old_network, status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        [interface] = nodegroup.get_managed_interfaces()
-        _, node, lease = self.create_nodegroup_with_static_ip(
-            nodegroup=nodegroup)
+        subnet = factory.make_Subnet(cidr=str(old_network.cidr))
+        node, lease = self.create_node_with_static_ip(subnet=subnet)
         self.assertItemsEqual(
             get_expected_names(node, lease),
             self.dig_reverse_resolve(lease.ip))
-        # Edit nodegroup's network information to '192.168.44.1/24'
-        interface.ip = '192.168.44.7'
-        interface.subnet_mask = '255.255.255.0'
-        interface.subnet.gateway_ip = '192.168.44.14'
-        interface.ip_range_low = '192.168.44.0'
-        interface.ip_range_high = '192.168.44.128'
-        interface.static_ip_range_low = '192.168.44.129'
-        interface.static_ip_range_high = '192.168.44.255'
-        interface.save()
+        # Edit subnet's network information to '192.168.44.1/24'
+        subnet.cidr = '192.168.44.1/24'
+        subnet.gateway_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        subnet.dns_servers = []
+        subnet.save()
         # The IP from the old network does not resolve anymore.
         self.assertEqual([''], self.dig_reverse_resolve(lease.ip))
         # A lease in the new network resolves.
-        _, node, lease = self.create_nodegroup_with_static_ip(
-            nodegroup=nodegroup)
+        node, lease = self.create_node_with_static_ip(subnet=subnet)
         self.assertTrue(
-            IPAddress(lease.ip) in interface.network,
+            IPAddress(lease.ip) in subnet.get_ipnetwork(),
             "The lease IP Address is not in the new network")
         self.assertItemsEqual(
             get_expected_names(node, lease),
             self.dig_reverse_resolve(lease.ip))
 
-    def test_changing_interface_management_updates_DNS_zone(self):
+    def test_delete_domain_disables_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = factory.make_ip4_or_6_network(
-            host_bits=random.randint(3, 10))
+        network = IPNetwork('192.168.7.1/24')
         ip = factory.pick_ip_in_network(network)
-        nodegroup = factory.make_NodeGroup(
-            network=network, status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        [interface] = nodegroup.get_managed_interfaces()
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        interface.save()
-        self.assertEqual([''], self.dig_reverse_resolve(ip))
-
-    def test_delete_nodegroup_disables_DNS_zone(self):
-        self.patch(settings, "DNS_CONNECT", True)
-        network = factory.make_ip4_or_6_network(
-            host_bits=random.randint(3, 10))
-        ip = factory.pick_ip_in_network(network)
-        nodegroup = factory.make_NodeGroup(
-            network=network, status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        nodegroup.delete()
+        domain = factory.make_Domain()
+        domain.delete()
         self.assertEqual([''], self.dig_reverse_resolve(ip))
 
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        self.patch_autospec(interface_module, "remove_host_maps")
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         node.delete()
-        fqdn = "%s.%s" % (node.hostname, nodegroup.name)
+        fqdn = "%s.%s" % (node.hostname, node.domain.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
 
     def test_change_node_hostname_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         node.hostname = factory.make_name('hostname')
         node.save()
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_change_node_other_field_does_not_update_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        node, static = self.create_node_with_static_ip()
         recorder = FakeMethod()
         self.patch(DomainConfigBase, 'write_config', recorder)
         node.error = factory.make_string()
@@ -786,22 +706,17 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
 
     def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = factory.make_ip4_or_6_network(
-            host_bits=random.randint(3, 10))
-        nodegroup = self.create_managed_nodegroup(network=network)
-        [interface] = nodegroup.get_managed_interfaces()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
         node = factory.make_Node(
-            nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
-            disable_ipv4=False)
-        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            interface=True, status=NODE_STATUS.DEPLOYED, disable_ipv4=False)
+        nic = node.get_boot_interface()
         # Get an IP in the dynamic range.
-        ip_range = IPRange(
-            interface.ip_range_low, interface.ip_range_high)
-        ip = "%s" % random.choice(ip_range)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         ip_obj = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
-            subnet=interface.subnet, interface=nic)
-        dns_update_zones_now([node.domain], [interface.subnet])
+            subnet=subnet, interface=nic)
+        dns_update_zones_now([node.domain], [subnet])
         self.assertDNSMatches(node.hostname, node.domain.name, ip_obj.ip)
 
 
@@ -810,25 +725,18 @@ class TestDNSResource(TestDNSServer):
 
     def test_dnsresources_are_in_the_dns(self):
         self.patch(settings, "DNS_CONNECT", True)
-        network = factory.make_ip4_or_6_network(
-            host_bits=random.randint(3, 10))
-        nodegroup = self.create_managed_nodegroup(network=network)
-        [interface] = nodegroup.get_managed_interfaces()
-        node = factory.make_Node(
-            nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
-            disable_ipv4=False)
-        # Get an IP in the dynamic range.
-        ip_range = IPRange(
-            interface.ip_range_low, interface.ip_range_high)
-        ip = "%s" % random.choice(ip_range)
+        domain = factory.make_Domain()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip = factory.pick_ip_in_IPRange(dynamic_range)
         ip_obj = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip,
-            subnet=interface.subnet)
+            subnet=subnet)
         rrname = factory.make_name('label')
         dnsrr = factory.make_DNSResource(
-            name=rrname, domain=node.domain,
+            name=rrname, domain=domain,
             ip_addresses=[ip_obj])
-        self.assertDNSMatches(dnsrr.name, node.domain.name, ip_obj.ip)
+        self.assertDNSMatches(dnsrr.name, domain.name, ip_obj.ip)
 
 
 class TestIPv6DNS(TestDNSServer):
@@ -836,9 +744,8 @@ class TestIPv6DNS(TestDNSServer):
     def test_bind_configuration_includes_ipv6_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         network = factory.make_ipv6_network(slash=random.randint(118, 125))
-        nodegroup = self.create_managed_nodegroup(network=network)
-        nodegroup, node, static = self.create_nodegroup_with_static_ip(
-            nodegroup=nodegroup)
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        node, static = self.create_node_with_static_ip(subnet=subnet)
         self.assertDNSMatches(
             node.hostname, node.domain.name, static.ip, version=6)
 

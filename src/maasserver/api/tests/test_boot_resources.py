@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Resources` API."""
@@ -358,7 +358,7 @@ class TestBootResourcesAPI(APITestCase):
         self.become_admin()
 
         from maasserver.clusterrpc import boot_images
-        self.patch(boot_images, "ClustersImporter")
+        self.patch(boot_images, "RackControllersImporter")
 
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
@@ -372,7 +372,7 @@ class TestBootResourcesAPI(APITestCase):
             reverse('boot_resources_handler'), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         self.assertThat(
-            boot_images.ClustersImporter.schedule,
+            boot_images.RackControllersImporter.schedule,
             MockCalledOnceWith())
 
     def test_import_requires_admin(self):
@@ -527,7 +527,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         self.become_admin()
 
         from maasserver.clusterrpc import boot_images
-        self.patch(boot_images, "ClustersImporter")
+        self.patch(boot_images, "RackControllersImporter")
 
         rfile, content = self.make_empty_resource_file()
         response = self.client.put(
@@ -535,7 +535,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         self.assertThat(
-            boot_images.ClustersImporter.schedule,
+            boot_images.RackControllersImporter.schedule,
             MockCalledOnceWith())
 
     def test_PUT_with_multiple_requests_and_large_content(self):

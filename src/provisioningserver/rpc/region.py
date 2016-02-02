@@ -18,8 +18,7 @@ __all__ = [
     "Identify",
     "ListNodePowerParameters",
     "MarkNodeFailed",
-    "MonitorExpired",
-    "Register",
+    "RegisterRackController",
     "RegisterEventType",
     "ReloadCluster",
     "ReportBootImages",
@@ -27,14 +26,12 @@ __all__ = [
     "RequestNodeInfoByMACAddress",
     "SendEvent",
     "SendEventMACAddress",
-    "UpdateLeases",
     "UpdateNodePowerState",
 ]
 
 from provisioningserver.rpc.arguments import (
     AmpList,
     Bytes,
-    CompressedAmpList,
     ParsedURL,
     StructureAsJSON,
 )
@@ -43,7 +40,7 @@ from provisioningserver.rpc.common import (
     Identify,
 )
 from provisioningserver.rpc.exceptions import (
-    CannotRegisterCluster,
+    CannotRegisterRackController,
     CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
@@ -54,29 +51,27 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.twisted.protocols import amp
 
 
-class Register(amp.Command):
-    """Register a cluster with the region controller.
+class RegisterRackController(amp.Command):
+    """Register a rack controller with the region controller.
 
-    This is the last part of the Authenticate and Register two-step. See
-    cluster-bootstrap_ for an explanation.
+    This is the second step of the Authenticate, Register, Commision
+    process.
 
-    :since: 1.7
+    :since: 2.0
     """
 
     arguments = [
-        (b"uuid", amp.Unicode()),
-        (b"networks", AmpList([
-            (b"interface", amp.Unicode()),
-            (b"ip", amp.Unicode()),
-            (b"subnet_mask", amp.Unicode()),
-        ], optional=True)),
-        # The URL for the region as seen by the cluster.
+        (b"system_id", amp.Unicode(optional=True)),
+        (b"hostname", amp.Unicode()),
+        (b"mac_addresses", amp.ListOf(amp.Unicode())),
+        # The URL for the region as seen by the rack controller.
         (b"url", ParsedURL(optional=True)),
-        (b"ip_addr_json", amp.Unicode(optional=True)),
     ]
-    response = []
+    response = [
+        (b"system_id", amp.Unicode()),
+    ]
     errors = {
-        CannotRegisterCluster: b"CannotRegisterCluster",
+        CannotRegisterRackController: b"CannotRegisterRackController",
     }
 
 
@@ -147,24 +142,6 @@ class GetBootSourcesV2(amp.Command):
                   (b"labels", amp.ListOf(amp.Unicode()))]))])),
     ]
     errors = []
-
-
-class UpdateLeases(amp.Command):
-    """Report DHCP leases on the invoking cluster controller.
-
-    :since: 1.7
-    """
-    arguments = [
-        # The cluster UUID.
-        (b"uuid", amp.Unicode()),
-        (b"mappings", CompressedAmpList(
-            [(b"ip", amp.Unicode()),
-             (b"mac", amp.Unicode())]))
-    ]
-    response = []
-    errors = {
-        NoSuchCluster: b"NoSuchCluster",
-    }
 
 
 class GetArchiveMirrors(amp.Command):
@@ -389,22 +366,6 @@ class CommissionNode(amp.Command):
     errors = {
         CommissionNodeFailed: b"CommissionNodeFailed",
     }
-
-
-class MonitorExpired(amp.Command):
-    """Called by a cluster when a running monitor hits its deadline.
-
-    The original context parameter from the StartMonitors call is returned.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"id", amp.Unicode()),
-        (b"context", StructureAsJSON()),
-        ]
-    response = []
-    errors = []
 
 
 class ReloadCluster(amp.Command):

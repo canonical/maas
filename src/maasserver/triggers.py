@@ -35,8 +35,8 @@ from maasserver.utils.orm import transactional
 
 
 # Procedure that is called when a tag is added or removed from a node/device.
-# Sends a notify message for node_update or device_update depending on if the
-# node type is node.
+# Sends a notify message for machine_update or device_update depending on if
+# the node type is node.
 NODE_TAG_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
@@ -48,12 +48,12 @@ NODE_TAG_NOTIFY = dedent("""\
       WHERE id = %s;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
         WHERE id = node.parent_id;
-        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -64,9 +64,9 @@ NODE_TAG_NOTIFY = dedent("""\
 
 
 # Procedure that is called when a tag is updated. This will send the correct
-# node_update or device_update notify message for all nodes with this tag.
+# machine_update or device_update notify message for all nodes with this tag.
 TAG_NODES_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION tag_update_node_device_notify()
+    CREATE OR REPLACE FUNCTION tag_update_machine_device_notify()
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
@@ -82,12 +82,12 @@ TAG_NODES_NOTIFY = dedent("""\
         AND maasserver_node_tags.node_id = maasserver_node.id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -99,10 +99,10 @@ TAG_NODES_NOTIFY = dedent("""\
 
 
 # Procedure that is called when a event is created.
-# Sends a notify message for node_update or device_update depending on if the
-# link node type is a node.
+# Sends a notify message for machine_update or device_update depending on if
+# the link node type is a node.
 EVENT_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION event_create_node_device_notify()
+    CREATE OR REPLACE FUNCTION event_create_machine_device_notify()
     RETURNS trigger AS $$
     DECLARE
       node RECORD;
@@ -113,12 +113,12 @@ EVENT_NODE_NOTIFY = dedent("""\
       WHERE id = NEW.node_id;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
         WHERE id = node.parent_id;
-        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -128,46 +128,8 @@ EVENT_NODE_NOTIFY = dedent("""\
     """)
 
 
-# Procedure that is called when a NodeGroupInterface is added, updated, or
-# deleted from a `NodeGroup`. Sends a notify message for nodegroup_update.
-NODEGROUP_INTERFACE_NODEGROUP_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
-    DECLARE
-      nodegroup RECORD;
-    BEGIN
-      PERFORM pg_notify('nodegroup_update',CAST(%s AS text));
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
-# Procedure that is called when a Subnet related to a NodeGroupInterface is
-# updated. Sends a notify message for nodegroup_update.
-SUBNET_NODEGROUP_INTERFACE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION subnet_update_nodegroup_notify()
-    RETURNS trigger AS $$
-    DECLARE
-      nodegroup RECORD;
-    BEGIN
-      FOR nodegroup IN (
-        SELECT ng.id
-        FROM
-          maasserver_nodegroup ng,
-          maasserver_nodegroupinterface ngi,
-          maasserver_subnet subnet
-        WHERE subnet.id = ngi.subnet_id AND ngi.nodegroup_id = ng.id)
-      LOOP
-        PERFORM pg_notify('nodegroup_update',CAST(nodegroup.id AS text));
-      END LOOP;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-
 # Procedure that is called when a static ip address is linked or unlinked to
-# an Interface. Sends a notify message for node_update or device_update
+# an Interface. Sends a notify message for machine_update or device_update
 # depending on if the node type is node.
 INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -181,12 +143,12 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
       AND maasserver_interface.id = %s;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
         WHERE id = node.parent_id;
-        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -197,8 +159,8 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
 
 
 # Procedure that is called when a Interface address updated. Will send
-# node_update or device_update when the Interface is moved from another node
-# to a new node. Sends a notify message for node_update or device_update
+# machine_update or device_update when the Interface is moved from another node
+# to a new node. Sends a notify message for machine_update or device_update
 # depending on if the node type is node, both for the old node and the new
 # node.
 INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
@@ -214,12 +176,12 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
         WHERE id = OLD.node_id;
 
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -230,12 +192,12 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
       WHERE id = NEW.node_id;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
         WHERE id = node.parent_id;
-        PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
       ELSE
         PERFORM pg_notify('device_update',CAST(node.system_id AS text));
       END IF;
@@ -246,8 +208,8 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
 
 
 # Procedure that is called when a physical or virtual block device is updated.
-# Sends a notify message for node_update or device_update depending on if the
-# node type is node.
+# Sends a notify message for machine_update or device_update depending on if
+# the node type is node.
 PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
@@ -259,7 +221,7 @@ PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent("""\
       AND maasserver_blockdevice.id = %s;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -280,7 +242,7 @@ PARTITIONTABLE_NODE_NOTIFY = dedent("""\
         AND maasserver_blockdevice.id = %s;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -303,7 +265,7 @@ PARTITION_NODE_NOTIFY = dedent("""\
       AND maasserver_partitiontable.id = %s;
 
       IF node.node_type = %d THEN
-        PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -333,7 +295,7 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
           AND maasserver_partition.id = %s));
 
       IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -362,7 +324,7 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent("""\
           OR maasserver_filesystem.cache_set_id = %s);
 
       IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -390,7 +352,7 @@ CACHESET_NODE_NOTIFY = dedent("""\
       AND maasserver_filesystem.cache_set_id = %s;
 
       IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -420,12 +382,12 @@ SUBNET_NODE_NOTIFY = dedent("""\
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -457,12 +419,12 @@ FABRIC_NODE_NOTIFY = dedent("""\
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -498,12 +460,12 @@ SPACE_NODE_NOTIFY = dedent("""\
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -530,12 +492,12 @@ VLAN_NODE_NOTIFY = dedent("""\
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -566,12 +528,12 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
         IF node.node_type = %d THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
           WHERE id = node.parent_id;
-          PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+          PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
         ELSE
           PERFORM pg_notify('device_update',CAST(node.system_id AS text));
         END IF;
@@ -622,7 +584,7 @@ def render_device_notification_procedure(proc_name, event_name, obj):
             SELECT system_id INTO pnode
             FROM maasserver_node
             WHERE id = {obj}.parent_id;
-            PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
           ELSE
             PERFORM pg_notify('{event_name}',CAST({obj}.system_id AS text));
           END IF;
@@ -644,12 +606,12 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           WHERE id = %s;
 
           IF node.node_type = %d THEN
-            PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
           ELSIF node.parent_id IS NOT NULL THEN
             SELECT system_id INTO pnode
             FROM maasserver_node
             WHERE id = node.parent_id;
-            PERFORM pg_notify('node_update',CAST(pnode.system_id AS text));
+            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
           ELSE
             PERFORM pg_notify('device_update',CAST(node.system_id AS text));
           END IF;
@@ -703,21 +665,21 @@ def register_all_triggers():
     # Node where type is node table
     register_procedure(
         render_notification_procedure(
-            'node_create_notify', 'node_create', 'NEW.system_id'))
+            'machine_create_notify', 'machine_create', 'NEW.system_id'))
     register_procedure(
         render_notification_procedure(
-            'node_update_notify', 'node_update', 'NEW.system_id'))
+            'machine_update_notify', 'machine_update', 'NEW.system_id'))
     register_procedure(
         render_notification_procedure(
-            'node_delete_notify', 'node_delete', 'OLD.system_id'))
+            'machine_delete_notify', 'machine_delete', 'OLD.system_id'))
     register_trigger(
-        "maasserver_node", "node_create_notify", "insert",
+        "maasserver_node", "machine_create_notify", "insert",
         {'NEW.node_type': NODE_TYPE.MACHINE})
     register_trigger(
-        "maasserver_node", "node_update_notify", "update",
+        "maasserver_node", "machine_update_notify", "update",
         {'NEW.node_type': NODE_TYPE.MACHINE})
     register_trigger(
-        "maasserver_node", "node_delete_notify", "delete",
+        "maasserver_node", "machine_delete_notify", "delete",
         {'OLD.node_type': NODE_TYPE.MACHINE})
 
     # Node(device) table
@@ -808,92 +770,45 @@ def register_all_triggers():
     register_trigger(
         "maasserver_subnet", "subnet_delete_notify", "delete")
 
-    # Nodegroup table
-    register_procedure(
-        render_notification_procedure(
-            'nodegroup_create_notify', 'nodegroup_create', 'NEW.id'))
-    register_procedure(
-        render_notification_procedure(
-            'nodegroup_update_notify', 'nodegroup_update', 'NEW.id'))
-    register_procedure(
-        render_notification_procedure(
-            'nodegroup_delete_notify', 'nodegroup_delete', 'OLD.id'))
-    register_trigger(
-        "maasserver_nodegroup", "nodegroup_create_notify", "insert")
-    register_trigger(
-        "maasserver_nodegroup", "nodegroup_update_notify", "update")
-    register_trigger(
-        "maasserver_nodegroup", "nodegroup_delete_notify", "delete")
-
-    # Nodegroup interface table
-    register_procedure(
-        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
-            'nodegroupinterface_create_notify',
-            'NEW.nodegroup_id',
-            ))
-    register_procedure(
-        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
-            'nodegroupinterface_update_notify',
-            'NEW.nodegroup_id',
-            ))
-    register_procedure(
-        NODEGROUP_INTERFACE_NODEGROUP_NOTIFY % (
-            'nodegroupinterface_delete_notify',
-            'OLD.nodegroup_id',
-            ))
-    register_trigger(
-        "maasserver_nodegroupinterface",
-        "nodegroupinterface_create_notify", "insert")
-    register_trigger(
-        "maasserver_nodegroupinterface",
-        "nodegroupinterface_update_notify", "update")
-    register_trigger(
-        "maasserver_nodegroupinterface",
-        "nodegroupinterface_delete_notify", "delete")
-
-    register_procedure(SUBNET_NODEGROUP_INTERFACE_NOTIFY)
-    register_trigger(
-        "maasserver_subnet", "subnet_update_nodegroup_notify", "update")
-
     # Subnet node notifications
     register_procedure(
-        SUBNET_NODE_NOTIFY % ('subnet_node_update_notify', 'NEW.id',
-                              NODE_TYPE.MACHINE))
+        SUBNET_NODE_NOTIFY % (
+            'subnet_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_subnet",
-        "subnet_node_update_notify", "update")
+        "subnet_machine_update_notify", "update")
 
     # Fabric node notifications
     register_procedure(
-        FABRIC_NODE_NOTIFY % ('fabric_node_update_notify', 'NEW.id',
-                              NODE_TYPE.MACHINE))
+        FABRIC_NODE_NOTIFY % (
+            'fabric_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_fabric",
-        "fabric_node_update_notify", "update")
+        "fabric_machine_update_notify", "update")
 
     # Space node notifications
     register_procedure(
-        SPACE_NODE_NOTIFY % ('space_node_update_notify', 'NEW.id',
-                             NODE_TYPE.MACHINE))
+        SPACE_NODE_NOTIFY % (
+            'space_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_space",
-        "space_node_update_notify", "update")
+        "space_machine_update_notify", "update")
 
     # VLAN node notifications
     register_procedure(
-        VLAN_NODE_NOTIFY % ('vlan_node_update_notify', 'NEW.id',
-                            NODE_TYPE.MACHINE))
+        VLAN_NODE_NOTIFY % (
+            'vlan_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_vlan",
-        "vlan_node_update_notify", "update")
+        "vlan_machine_update_notify", "update")
 
     # IP address node notifications
     register_procedure(
         STATIC_IP_ADDRESS_NODE_NOTIFY % (
-            'ipaddress_node_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'ipaddress_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_staticipaddress",
-        "ipaddress_node_update_notify", "update")
+        "ipaddress_machine_update_notify", "update")
 
     # IP address subnet notifications
     register_procedure(
@@ -939,19 +854,21 @@ def register_all_triggers():
     # Node tag link table
     register_procedure(
         NODE_TAG_NOTIFY % (
-            'node_device_tag_link_notify', 'NEW.node_id', NODE_TYPE.MACHINE))
+            'machine_device_tag_link_notify', 'NEW.node_id',
+            NODE_TYPE.MACHINE))
     register_procedure(
         NODE_TAG_NOTIFY % (
-            'node_device_tag_unlink_notify', 'OLD.node_id', NODE_TYPE.MACHINE))
+            'machine_device_tag_unlink_notify', 'OLD.node_id',
+            NODE_TYPE.MACHINE))
     register_trigger(
-        "maasserver_node_tags", "node_device_tag_link_notify", "insert")
+        "maasserver_node_tags", "machine_device_tag_link_notify", "insert")
     register_trigger(
-        "maasserver_node_tags", "node_device_tag_unlink_notify", "delete")
+        "maasserver_node_tags", "machine_device_tag_unlink_notify", "delete")
 
     # Tag table, update to linked nodes.
     register_procedure(TAG_NODES_NOTIFY % NODE_TYPE.MACHINE)
     register_trigger(
-        "maasserver_tag", "tag_update_node_device_notify", "update")
+        "maasserver_tag", "tag_update_machine_device_notify", "update")
 
     # User table
     register_procedure(
@@ -990,7 +907,7 @@ def register_all_triggers():
     # Events table, update to linked node.
     register_procedure(EVENT_NODE_NOTIFY % NODE_TYPE.MACHINE)
     register_trigger(
-        "maasserver_event", "event_create_node_device_notify", "insert")
+        "maasserver_event", "event_create_machine_device_notify", "insert")
 
     # MAC static ip address table, update to linked node.
     register_procedure(

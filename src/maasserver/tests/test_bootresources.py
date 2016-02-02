@@ -1244,14 +1244,14 @@ class TestImportImages(MAASTransactionServerTestCase):
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['http_proxy']))
 
-    def test__import_resources_schedules_import_to_clusters(self):
+    def test__import_resources_schedules_import_to_rack_controllers(self):
         from maasserver.clusterrpc import boot_images
-        self.patch(boot_images.ClustersImporter, "run")
+        self.patch(boot_images.RackControllersImporter, "run")
 
         bootresources._import_resources(force=True)
 
         self.assertThat(
-            boot_images.ClustersImporter.run,
+            boot_images.RackControllersImporter.run,
             MockCalledOnceWith())
 
 
@@ -1490,7 +1490,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # cause a database access and we ought to fix that.
         import maasserver.websockets.handlers  # noqa
 
-        cluster = factory.make_NodeGroup()
+        rack_controller = factory.make_RackController()
         service = bootresources.ImportResourcesProgressService()
 
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -1502,8 +1502,8 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # are no clusters connected.
         self.assertFalse(service.are_boot_images_available_in_any_cluster())
 
-        # Connect a cluster to the region via RPC.
-        cluster_rpc = region_rpc.makeCluster(cluster, ListBootImagesV2)
+        # Connect a rack controller to the region via RPC.
+        cluster_rpc = region_rpc.makeCluster(rack_controller, ListBootImagesV2)
 
         # are_boot_images_available_in_the_region() returns False when none of
         # the clusters have any images.
@@ -1524,7 +1524,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # cause a database access and we ought to fix that.
         import maasserver.websockets.handlers  # noqa
 
-        cluster = factory.make_NodeGroup()
+        rack_controller = factory.make_RackController()
         service = bootresources.ImportResourcesProgressService()
 
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -1536,9 +1536,9 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # are no clusters connected.
         self.assertFalse(service.are_boot_images_available_in_any_cluster())
 
-        # Connect a cluster to the region via RPC.
+        # Connect a rack controller to the region via RPC.
         cluster_rpc = region_rpc.makeCluster(
-            cluster, ListBootImagesV2, ListBootImages)
+            rack_controller, ListBootImagesV2, ListBootImages)
 
         # All calls to ListBootImagesV2 raises a UnhandledCommand.
         cluster_rpc.ListBootImagesV2.side_effect = UnhandledCommand

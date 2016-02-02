@@ -24,8 +24,9 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import transactional
-from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase
+from metadataserver.models.nodekey import NodeKey
+from metadataserver.nodeinituser import get_node_init_user
 
 
 class MultipleUsersScenarios(metaclass=ABCMeta):
@@ -108,10 +109,11 @@ def log_in_as_normal_user(client):
     return user
 
 
-def make_worker_client(nodegroup):
-    """Create a test client logged in as if it were `nodegroup`."""
+def make_worker_client(rack_controller):
+    """Create a test client logged in as if it were `rack_controller`."""
+    token = NodeKey.objects.get_token_for_node(rack_controller)
     return OAuthAuthenticatedClient(
-        get_worker_user(), token=nodegroup.api_token)
+        get_node_init_user(), token=token)
 
 
 def explain_unexpected_response(expected_status, response):

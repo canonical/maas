@@ -6,11 +6,11 @@
 
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
-    'NodesManager', 'ClustersManager', 'ZonesManager', 'GeneralManager',
+    'MachinesManager', 'ZonesManager', 'GeneralManager',
     'UsersManager', 'TagsManager', 'ManagerHelperService', 'ErrorService',
     'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
-        NodesManager, ClustersManager, ZonesManager, GeneralManager,
+        MachinesManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, ManagerHelperService, ErrorService,
         ValidationService) {
 
@@ -25,6 +25,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.allActionOptions = GeneralManager.getData("node_actions");
         $scope.availableActionOptions = [];
         $scope.actionError = null;
+        $scope.power_types = GeneralManager.getData("power_types");
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.osSelection = {
             osystem: null,
@@ -41,12 +42,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Holds errors that are displayed on the details page.
         $scope.errors = {
-            cluster_disconnected: {
-                viewable: false,
-                message: "The cluster this node belongs to is disconnected. " +
-                    "Reconnect the cluster to the region controller to save " +
-                    "changes on this node."
-            },
             invalid_arch: {
                 viewable: false,
                 message: "This node has an invalid architecture. Update the " +
@@ -69,10 +64,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Summary section.
         $scope.summary = {
             editing: false,
-            cluster: {
-                selected: null,
-                options: ClustersManager.getItems()
-            },
             architecture: {
                 selected: null,
                 options: GeneralManager.getData("architectures")
@@ -151,18 +142,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             } else {
                 hideError("invalid_arch");
             }
-
-            // Show the cluster disconnected error if the cluster is not
-            // connected.
-            if(angular.isObject($scope.node.nodegroup)) {
-                var cluster = ClustersManager.getItemFromList(
-                    $scope.node.nodegroup.id);
-                if(!cluster.connected) {
-                    showError("cluster_disconnected");
-                } else {
-                    hideError("cluster_disconnected");
-                }
-            }
         }
 
         // Updates the page title.
@@ -205,26 +184,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Update the viewable errors.
             updateErrors();
 
-            // Always keep the available power types up-to-date even in
-            // editing mode.
-            var cluster;
-            if(angular.isObject($scope.node.nodegroup)) {
-                cluster = ClustersManager.getItemFromList(
-                    $scope.node.nodegroup.id);
-            }
-            if(angular.isObject(cluster)) {
-                $scope.power.types = cluster.power_types;
-            } else {
-                $scope.power.types = [];
-            }
-
-            // If the no cluster or the cluster is disconnected then always
-            // force editing to false. Its not possible to stay editing the
-            // power section when the cluster is disconnected.
-            if(!angular.isObject(cluster) || !cluster.connected) {
-                $scope.power.editing = false;
-            }
-
             // Do not update the selected items, when editing this would
             // cause the users selection to change.
             if($scope.power.editing) {
@@ -233,9 +192,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             var i;
             $scope.power.type = null;
-            for(i = 0; i < $scope.power.types.length; i++) {
-                if($scope.node.power_type === $scope.power.types[i].name) {
-                    $scope.power.type = $scope.power.types[i];
+            for(i = 0; i < $scope.power_types.length; i++) {
+                if($scope.node.power_type === $scope.power_types[i].name) {
+                    $scope.power.type = $scope.power_types[i];
                     break;
                 }
             }
@@ -267,10 +226,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
 
-            if(angular.isObject($scope.node.nodegroup)) {
-                $scope.summary.cluster.selected =
-                    ClustersManager.getItemFromList($scope.node.nodegroup.id);
-            }
             $scope.summary.zone.selected = ZonesManager.getItemFromList(
                 $scope.node.zone.id);
             $scope.summary.architecture.selected = $scope.node.architecture;
@@ -283,11 +238,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             if($scope.canEdit() && hasInvalidArchitecture($scope.node)) {
                 $scope.summary.editing = true;
             }
-
-            // Since the summary contains the selected cluster and the
-            // power type is derived for that selection. Update the power
-            // section as well.
-            updatePower();
         }
 
         // Updates the machine output section.
@@ -427,12 +377,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Update the availableActionOptions when the node actions change.
             $scope.$watch("node.actions", updateAvailableActionOptions);
 
-            // Update the summary when the node or clusters list is
-            // updated.
-            $scope.$watch("node.nodegroup.id", updateSummary);
-            $scope.$watchCollection(
-                $scope.summary.cluster.options, updateSummary);
-
             // Update the summary when the node or architectures list is
             // updated.
             $scope.$watch("node.architecture", updateSummary);
@@ -455,11 +399,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
 
-            // Update power section when the selected cluster becomes
-            // connected or disconnected. Calling updatePower also
-            // calls updateErrors
-            $scope.$watch("summary.cluster.selected.connected", updatePower);
-
 
             // Update the machine output view when summary, commissioning, or
             // installation results are updated on the node.
@@ -469,44 +408,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.installation_results", updateMachineOutput);
         }
 
-        // Return true if the given error is because of RPC.
-        function isDisconnectedClusterError(error) {
-            // Contains disconnected cluster if error contains this content.
-            var errorString = "Unable to get RPC connection for cluster";
-            return error.indexOf(errorString) >= 0;
-        }
-
-        // Process the given error when saving the node.
-        function handleSaveError(error) {
-            // If it errored because the cluster was disconnected update
-            // the cluster information, because this is not pushed over
-            // the websocket. If it didn't error for that reason then
-            // the cluster is connected.
-            var cluster = ClustersManager.getItemFromList(
-                $scope.node.nodegroup.id);
-            if(isDisconnectedClusterError(error)) {
-                cluster.connected = false;
-            } else {
-                // Not a disconnection, so, cluster.connected needs to be true.
-                cluster.connected = true;
-                console.log(error);
-            }
-        }
-
         // Update the node with new data on the region.
         $scope.updateNode = function(node) {
-            return NodesManager.updateItem(node).then(function(node) {
-                // If it was able to save correctly then the cluster is
-                // connected. An error would have been raised if it wasn't.
-                var cluster = ClustersManager.getItemFromList(
-                    node.nodegroup.id);
-                if(angular.isObject(cluster)) {
-                    cluster.connected = true;
-                }
+            return MachinesManager.updateItem(node).then(function(node) {
                 updateName();
                 updateSummary();
             }, function(error) {
-                handleSaveError(error);
+                console.log(error);
                 updateName();
                 updateSummary();
             });
@@ -596,7 +504,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Check the power state of the node.
         $scope.checkPowerState = function() {
             $scope.checkingPower = true;
-            NodesManager.checkPowerState($scope.node).then(function() {
+            MachinesManager.checkPowerState($scope.node).then(function() {
                 $scope.checkingPower = false;
             });
         };
@@ -721,7 +629,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
             }
 
-            NodesManager.performAction(
+            MachinesManager.performAction(
                 $scope.node, $scope.actionOption.name, extra).then(function() {
                     // If the action was delete, then go back to listing.
                     if($scope.actionOption.name === "delete") {
@@ -757,9 +665,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            return (
-                $scope.isSuperUser() &&
-                !isErrorViewable("cluster_disconnected"));
+            return $scope.isSuperUser();
         };
 
         // Called to edit the node name.
@@ -846,7 +752,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
             // Copy the node and make the changes.
             var node = angular.copy($scope.node);
-            node.nodegroup = angular.copy($scope.summary.cluster.selected);
             node.zone = angular.copy($scope.summary.zone.selected);
             node.architecture = $scope.summary.architecture.selected;
             if($scope.summary.min_hwe_kernel.selected === null) {
@@ -1030,8 +935,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Load all the required managers.
         ManagerHelperService.loadManagers([
-            NodesManager,
-            ClustersManager,
+            MachinesManager,
             ZonesManager,
             GeneralManager,
             UsersManager,
@@ -1040,12 +944,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already
             // the activeItem.
-            var activeNode = NodesManager.getActiveItem();
+            var activeNode = MachinesManager.getActiveItem();
             if(angular.isObject(activeNode) &&
                 activeNode.system_id === $routeParams.system_id) {
                 nodeLoaded(activeNode);
             } else {
-                NodesManager.setActiveItem(
+                MachinesManager.setActiveItem(
                     $routeParams.system_id).then(function(node) {
                         nodeLoaded(node);
                     }, function(error) {
@@ -1060,6 +964,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager.startPolling("architectures");
             GeneralManager.startPolling("hwe_kernels");
             GeneralManager.startPolling("osinfo");
+            GeneralManager.startPolling("power_types");
         });
 
         // Stop polling for architectures, hwe_kernels, and osinfo when the
@@ -1068,5 +973,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager.stopPolling("architectures");
             GeneralManager.stopPolling("hwe_kernels");
             GeneralManager.stopPolling("osinfo");
+            GeneralManager.stopPolling("power_types");
         });
     }]);

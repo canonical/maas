@@ -7,7 +7,6 @@ __all__ = []
 
 import random
 
-from maasserver.models import NodeGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -48,18 +47,6 @@ class TestFactory(MAASServerTestCase):
         but_not = [2]
         self.assertEqual(
             10, factory.pick_choice(options, but_not=but_not))
-
-    def test_make_Node_creates_nodegroup_if_none_given(self):
-        existing_nodegroup_ids = set(
-            nodegroup.id for nodegroup in NodeGroup.objects.all())
-        new_node = factory.make_Node()
-        self.assertIsNotNone(new_node.nodegroup)
-        self.assertNotIn(new_node.nodegroup.id, existing_nodegroup_ids)
-
-    def test_make_Node_uses_given_nodegroup(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup, factory.make_Node(nodegroup=nodegroup).nodegroup)
 
     def test_make_Zone_returns_physical_zone(self):
         self.assertIsNotNone(factory.make_Zone())

@@ -92,6 +92,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "rpc",
             "rpc-advertise",
             "postgres-listener",
+            "status-monitor",
             "web",
         ]
         self.assertItemsEqual(expected_services, service.namedServices)

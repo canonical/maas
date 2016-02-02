@@ -8,10 +8,21 @@ from django.db import (
     models,
 )
 import django.db.models.deletion
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 import maasserver.models.dnsresource
 from maasserver.models.domain import DEFAULT_DOMAIN_NAME
 import maasserver.models.node
+
+
+class NODEGROUPINTERFACE_MANAGEMENT:
+    """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
+    # A nodegroupinterface starts out as UNMANAGED.
+    DEFAULT = 0
+    #: Do not manage DHCP or DNS for this interface.
+    UNMANAGED = 0
+    #: Manage DHCP for this interface.
+    DHCP = 1
+    #: Manage DHCP and DNS for this interface.
+    DHCP_AND_DNS = 2
 
 
 def migrate_nodegroup_name(apps, schema_editor):

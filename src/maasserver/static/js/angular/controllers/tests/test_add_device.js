@@ -19,10 +19,10 @@ describe("AddDeviceController", function() {
 
     // Load the required dependencies for the AddDeviceController
     // and mock the websocket connection.
-    var ClustersManager, DevicesManager, ManagerHelperService;
+    var SubnetsManager, DevicesManager, ManagerHelperService;
     var ValidationService, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
-        ClustersManager = $injector.get("ClustersManager");
+        SubnetsManager = $injector.get("SubnetsManager");
         DevicesManager = $injector.get("DevicesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ValidationService = $injector.get("ValidationService");
@@ -49,125 +49,64 @@ describe("AddDeviceController", function() {
 
         return $controller("AddDeviceController", {
             $scope: $scope,
-            ClustersManager: ClustersManager,
+            SubnetsManager: SubnetsManager,
             DevicesManager: DevicesManager,
             ValidationService: ValidationService,
             ManagerHelperService: ManagerHelperService
         });
     }
 
-    // Generating random networks is difficult, so we just use an array
-    // of random networks and select one from it.
-    var networks = [
+    // Generating random subnets is difficult, so we just use an array
+    // of random subnets and select one from it.
+    var subnets = [
         {
-            ip: "192.168.1.2",
-            network: "192.168.1.0/24",
-            subnet_mask: "255.255.255.0",
-            broadcast_ip: "192.168.1.255",
-            router_ip: "192.168.1.1",
-            static_range: {
-                low: "192.168.1.10",
-                high: "192.168.1.149"
-            },
-            dynamic_range: {
-                low: "192.168.1.150",
-                high: "192.168.1.254"
-            }
+            cidr: "192.168.1.0/24",
+            name: "192.168.1.0/24",
+            first_ip: "192.168.1.1"
         },
         {
-            ip: "192.168.2.2",
-            network: "192.168.2.0/24",
-            subnet_mask: "255.255.255.0",
-            broadcast_ip: "192.168.2.255",
-            router_ip: "192.168.2.1",
-            static_range: {
-                low: "192.168.2.10",
-                high: "192.168.2.149"
-            },
-            dynamic_range: {
-                low: "192.168.2.150",
-                high: "192.168.2.254"
-            }
+            cidr: "192.168.2.0/24",
+            name: "192.168.2.0/24",
+            first_ip: "192.168.2.1"
         },
         {
-            ip: "172.16.1.2",
-            network: "172.16.0.0/16",
-            subnet_mask: "255.255.0.0",
-            broadcast_ip: "172.16.255.255",
-            router_ip: "172.16.1.1",
-            static_range: {
-                low: "172.16.2.1",
-                high: "172.16.3.254"
-            },
-            dynamic_range: {
-                low: "172.16.4.1",
-                high: "172.16.6.254"
-            }
+            cidr: "172.16.0.0/16",
+            name: "172.16.0.0/16",
+            first_ip: "172.16.1.1"
         },
         {
-            ip: "172.17.1.2",
-            network: "172.17.0.0/16",
-            subnet_mask: "255.255.0.0",
-            broadcast_ip: "172.17.255.255",
-            router_ip: "172.17.1.1",
-            static_range: {
-                low: "172.17.2.1",
-                high: "172.17.3.254"
-            },
-            dynamic_range: {
-                low: "172.17.4.1",
-                high: "172.17.6.254"
-            }
+            cidr: "172.17.0.0/16",
+            name: "172.17.0.0/16",
+            first_ip: "172.17.1.1"
         }
     ];
-    var _nextNetwork = 0;
+    var _nextSubnet = 0;
     beforeEach(function() {
         // Reset the next network before each test.
-        _nextNetwork = 0;
+        _nextSubnet = 0;
     });
 
-    // Make an unmanaged cluster interface.
-    var _nicId = 0;
-    function makeClusterInterface() {
-        if(_nextNetwork >= networks.length) {
-            throw new Error("Out of fake networks.");
+    // Make a subnet.
+    var _subnetId = 0;
+    function makeSubnet() {
+        if(_nextSubnet >= subnets.length) {
+            throw new Error("Out of fake subnets.");
         }
-        var nic = networks[_nextNetwork++];
-        nic.id = _nicId++;
-        nic.management = 0;
-        return nic;
-    }
-
-    // Make a managed cluster interface.
-    function makeManagedClusterInterface() {
-        var nic = makeClusterInterface();
-        nic.management = 2;
-        return nic;
-    }
-
-    // Make a cluster with give interfaces.
-    var _clusterId = 0;
-    function makeCluster(interfaces) {
-        if(!angular.isArray(interfaces)) {
-            interfaces = [makeManagedClusterInterface()];
-        }
-        return {
-            id: _clusterId++,
-            uuid: makeName("uuid"),
-            interfaces: interfaces
-        };
+        var subnet = subnets[_nextSubnet++];
+        subnet.id = _subnetId++;
+        return subnet;
     }
 
     // Make a interface
-    function makeInterface(mac, ipAssignment, clusterInterfaceId, ipAddress) {
+    function makeInterface(mac, ipAssignment, subnetId, ipAddress) {
         if(angular.isUndefined(mac)) {
             mac = "";
         }
         if(angular.isUndefined(ipAssignment)) {
             ipAssignment = null;
         }
-        if(angular.isUndefined(clusterInterfaceId)) {
-            clusterInterfaceId = null;
+        if(angular.isUndefined(subnetId)) {
+            subnetId = null;
         }
         if(angular.isUndefined(ipAddress)) {
             ipAddress = "";
@@ -175,7 +114,7 @@ describe("AddDeviceController", function() {
         return {
             mac: mac,
             ipAssignment: ipAssignment,
-            clusterInterfaceId: clusterInterfaceId,
+            subnetId: subnetId,
             ipAddress: ipAddress
         };
     }
@@ -188,7 +127,6 @@ describe("AddDeviceController", function() {
     it("sets initial values on $scope", function() {
         var controller = makeController();
         expect($scope.viewable).toBe(false);
-        expect($scope.clusters).toBe(ClustersManager.getItems());
         expect($scope.error).toBe(null);
         expect($scope.ipAssignments).toEqual([
             {
@@ -209,17 +147,17 @@ describe("AddDeviceController", function() {
             interfaces: [{
                 mac: "",
                 ipAssignment: null,
-                clusterInterfaceId: null,
+                subnetId: null,
                 ipAddress: ""
             }]
         });
     });
 
-    it("calls loadManager with ClustersManagers", function() {
+    it("calls loadManager with SubnetsManager", function() {
         spyOn(ManagerHelperService, "loadManager");
         var controller = makeController();
         expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            ClustersManager);
+            SubnetsManager);
     });
 
     describe("show", function() {
@@ -260,39 +198,6 @@ describe("AddDeviceController", function() {
                 done();
             });
             $scope.hide();
-        });
-    });
-
-    describe("getManagedInterfaces", function() {
-
-        it("returns only managed interfaces", function() {
-            var controller = makeController();
-            var managedInterfaces = [
-                makeManagedClusterInterface(),
-                makeManagedClusterInterface(),
-                makeManagedClusterInterface()
-                ];
-            $scope.clusters = [
-                makeCluster([]),
-                makeCluster([managedInterfaces[0]]),
-                makeCluster([managedInterfaces[1], makeClusterInterface()]),
-                makeCluster([managedInterfaces[2]])
-                ];
-            expect($scope.getManagedInterfaces()).toEqual(managedInterfaces);
-        });
-    });
-
-    describe("getInterfaceStaticRange", function() {
-
-        it("returns text including low and high of static range", function() {
-            var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            $scope.clusters = [
-                makeCluster([nic])
-                ];
-            expect($scope.getInterfaceStaticRange(nic.id)).toEqual(
-                nic.static_range.low + " - " + nic.static_range.high +
-                " (Optional)");
         });
     });
 
@@ -399,9 +304,9 @@ describe("AddDeviceController", function() {
 
         it("returns false if external ip out of managed network", function() {
             var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
+            var subnet = makeSubnet();
+            SubnetsManager._items = [subnet];
+            $scope.subnets = [subnet];
             // No class A address is in the fake networks.
             var deviceInterface = makeInterface();
             deviceInterface.ipAddress = "10.0.1.1";
@@ -413,11 +318,11 @@ describe("AddDeviceController", function() {
 
         it("returns true if external ip in managed network", function() {
             var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
+            var subnet = makeSubnet();
+            SubnetsManager._items = [subnet];
+            $scope.subnets = [subnet];
             var deviceInterface = makeInterface();
-            deviceInterface.ipAddress = nic.static_range.low;
+            deviceInterface.ipAddress = subnet.first_ip;
             deviceInterface.ipAssignment = {
                 name: "external"
             };
@@ -426,11 +331,11 @@ describe("AddDeviceController", function() {
 
         it("returns false if static in managed network", function() {
             var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
+            var subnet = makeSubnet();
+            SubnetsManager._items = [subnet];
+            $scope.subnets = [subnet];
             var deviceInterface = makeInterface();
-            deviceInterface.ipAddress = nic.static_range.low;
+            deviceInterface.ipAddress = subnet.first_ip;
             deviceInterface.ipAssignment = {
                 name: "static"
             };
@@ -439,12 +344,12 @@ describe("AddDeviceController", function() {
 
         it("returns false if static ip in select network", function() {
             var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
+            var subnet = makeSubnet();
+            SubnetsManager._items = [subnet];
+            $scope.subnets = [subnet];
             var deviceInterface = makeInterface();
-            deviceInterface.ipAddress = nic.static_range.low;
-            deviceInterface.clusterInterfaceId = nic.id;
+            deviceInterface.ipAddress = subnet.first_ip;
+            deviceInterface.subnetId = subnet.id;
             deviceInterface.ipAssignment = {
                 name: "static"
             };
@@ -453,27 +358,12 @@ describe("AddDeviceController", function() {
 
         it("returns true if static ip out of select network", function() {
             var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var otherNic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
+            var subnet = makeSubnet();
+            SubnetsManager._items = [subnet];
+            $scope.subnets = [subnet];
             var deviceInterface = makeInterface();
-            deviceInterface.ipAddress = otherNic.static_range.low;
-            deviceInterface.clusterInterfaceId = nic.id;
-            deviceInterface.ipAssignment = {
-                name: "static"
-            };
-            expect($scope.ipHasError(deviceInterface)).toBe(true);
-        });
-
-        it("returns true if static ip in dynamic range of network", function() {
-            var controller = makeController();
-            var nic = makeManagedClusterInterface();
-            var cluster = makeCluster([nic]);
-            $scope.clusters = [cluster];
-            var deviceInterface = makeInterface();
-            deviceInterface.ipAddress = nic.dynamic_range.low;
-            deviceInterface.clusterInterfaceId = nic.id;
+            deviceInterface.ipAddress = "120.22.22.1";
+            deviceInterface.subnetId = subnet.id;
             deviceInterface.ipAssignment = {
                 name: "static"
             };
@@ -582,71 +472,69 @@ describe("AddDeviceController", function() {
                 expect($scope.deviceHasError()).toBe(true);
             });
 
-        it("returns false if static ip assignment and cluster interface",
+        it("returns false if static ip assignment and subnet",
             function() {
                 var controller = makeController();
-                var nic = makeManagedClusterInterface();
-                var cluster = makeCluster([nic]);
-                $scope.clusters = [cluster];
+                var subnet = makeSubnet();
+                SubnetsManager._items = [subnet];
+                $scope.subnets = [subnet];
                 $scope.device.name = "abc";
                 $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
                 $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].subnetId = subnet.id;
                 expect($scope.deviceHasError()).toBe(false);
             });
 
-        it("returns true if static ip assignment, cluster interface, and " +
+        it("returns true if static ip assignment, subnet, and " +
             "invalid ip address",
             function() {
                 var controller = makeController();
-                var nic = makeManagedClusterInterface();
-                var cluster = makeCluster([nic]);
-                $scope.clusters = [cluster];
+                var subnet = makeSubnet();
+                SubnetsManager._items = [subnet];
+                $scope.subnets = [subnet];
                 $scope.device.name = "abc";
                 $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
                 $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
+                $scope.device.interfaces[0].subnetId = subnet.id;
                 $scope.device.interfaces[0].ipAddress = "192.168";
                 expect($scope.deviceHasError()).toBe(true);
             });
 
-        it("returns true if static ip assignment, cluster interface, and " +
+        it("returns true if static ip assignment, subnet, and " +
             "ip address out of network",
             function() {
                 var controller = makeController();
-                var nic = makeManagedClusterInterface();
-                var otherNic = makeManagedClusterInterface();
-                var cluster = makeCluster([nic]);
-                $scope.clusters = [cluster];
+                var subnet = makeSubnet();
+                SubnetsManager._items = [subnet];
+                $scope.subnets = [subnet];
                 $scope.device.name = "abc";
                 $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
                 $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
-                $scope.device.interfaces[0].ipAddress =
-                    otherNic.static_range.low;
+                $scope.device.interfaces[0].subnetId = subnet.id;
+                $scope.device.interfaces[0].ipAddress = "122.10.1.0";
                 expect($scope.deviceHasError()).toBe(true);
             });
 
-        it("returns false if static ip assignment, cluster interface, and " +
+        it("returns false if static ip assignment, subnet, and " +
             "ip address in network",
             function() {
                 var controller = makeController();
-                var nic = makeManagedClusterInterface();
-                var cluster = makeCluster([nic]);
-                $scope.clusters = [cluster];
+                var subnet = makeSubnet();
+                SubnetsManager._items = [subnet];
+                $scope.subnets = [subnet];
                 $scope.device.name = "abc";
                 $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
                 $scope.device.interfaces[0].ipAssignment = {
                     name: "static"
                 };
-                $scope.device.interfaces[0].clusterInterfaceId = nic.id;
-                $scope.device.interfaces[0].ipAddress = nic.static_range.low;
+                $scope.device.interfaces[0].subnetId = subnet.id;
+                $scope.device.interfaces[0].ipAddress = subnet.first_ip;
                 expect($scope.deviceHasError()).toBe(false);
             });
     });
@@ -755,8 +643,8 @@ describe("AddDeviceController", function() {
             var name = makeName("name");
             var mac = makeName("mac");
             var assignment = "static";
-            var nicId = makeInteger();
             var ipAddress = makeName("ip");
+            var subnet = makeSubnet();
             $scope.device = {
                 name: name,
                 interfaces: [{
@@ -764,7 +652,7 @@ describe("AddDeviceController", function() {
                     ipAssignment: {
                         name: assignment
                     },
-                    clusterInterfaceId: nicId,
+                    subnetId: subnet.id,
                     ipAddress: ipAddress
                 }]
             };
@@ -777,7 +665,7 @@ describe("AddDeviceController", function() {
                     mac: mac,
                     ip_assignment: assignment,
                     ip_address: ipAddress,
-                    "interface": nicId
+                    subnet: subnet.id
                 }]
             });
         });

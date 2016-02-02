@@ -23,6 +23,9 @@ class TestVLANHandler(MAASServerTestCase):
             "fabric": vlan.fabric_id,
             "updated": dehydrate_datetime(vlan.updated),
             "created": dehydrate_datetime(vlan.created),
+            "dhcp_on": vlan.dhcp_on,
+            "primary_rack": vlan.primary_rack,
+            "secondary_rack": vlan.secondary_rack,
             "subnet_ids": [
                 subnet.id
                 for subnet in vlan.subnet_set.all()

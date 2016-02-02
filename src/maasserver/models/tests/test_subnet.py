@@ -14,9 +14,8 @@ from django.core.exceptions import (
 )
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_PERMISSION,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
     RDNS_MODE_CHOICES,
 )
 from maasserver.models.subnet import (
@@ -36,6 +35,7 @@ from testtools.matchers import (
     Contains,
     Equals,
     HasLength,
+    Is,
     MatchesStructure,
     Not,
 )
@@ -481,67 +481,15 @@ class SubnetTest(MAASServerTestCase):
         self.assertIPBestMatchesSubnet(network.first - 1, None)
         self.assertIPBestMatchesSubnet(network.first + 1, None)
 
-    def test_get_managed_cluster_interface(self):
-        subnet = factory.make_Subnet()
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        self.assertEqual(ngi, subnet.get_managed_cluster_interface())
-
 
 class SubnetIPRangeTest(MAASServerTestCase):
 
-    def test__finds_used_ranges(self):
-        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        subnet = factory.make_Subnet(
-            gateway_ip='', dns_servers=[], host_bits=8)
-        net = subnet.get_ipnetwork()
-        free_ip_1 = inet_ntop(net.first + 1)
-        cluster_ip = inet_ntop(net.first + 2)
-        free_ip_2 = inet_ntop(net.first + 3)
-        free_ip_3 = inet_ntop(net.first + 9)
-        dynamic_range_low = inet_ntop(net.first + 10)
-        dynamic_range_high = inet_ntop(net.first + 49)
-        static_range_low = inet_ntop(net.first + 50)
-        static_range_high = inet_ntop(net.first + 99)
-        free_ip_4 = inet_ntop(net.first + 100)
-        factory.make_NodeGroupInterface(
-            ng, subnet=subnet, ip=cluster_ip,
-            ip_range_low=dynamic_range_low,
-            ip_range_high=dynamic_range_high,
-            static_ip_range_low=static_range_low,
-            static_ip_range_high=static_range_high)
-        s = subnet.get_ipranges_in_use()
-        self.assertThat(s, Contains(cluster_ip))
-        self.assertThat(s, Contains(dynamic_range_low))
-        self.assertThat(s, Contains(dynamic_range_high))
-        self.assertThat(s, Not(Contains(static_range_low)))
-        self.assertThat(s, Not(Contains(static_range_high)))
-        self.assertThat(s, Not(Contains(free_ip_1)))
-        self.assertThat(s, Not(Contains(free_ip_2)))
-        self.assertThat(s, Not(Contains(free_ip_3)))
-        self.assertThat(s, Not(Contains(free_ip_4)))
-        self.assertThat(s[cluster_ip].purpose, Contains('cluster-ip'))
-        self.assertThat(
-            s[dynamic_range_low].purpose, Contains('dynamic-range'))
-
     def test__finds_used_ranges_includes_allocated_ip(self):
-        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(
             gateway_ip='', dns_servers=[], host_bits=8)
         net = subnet.get_ipnetwork()
-        cluster_ip = inet_ntop(net.first + 2)
-        dynamic_range_low = inet_ntop(net.first + 10)
-        dynamic_range_high = inet_ntop(net.first + 49)
         static_range_low = inet_ntop(net.first + 50)
         static_range_high = inet_ntop(net.first + 99)
-        factory.make_NodeGroupInterface(
-            ng, subnet=subnet, ip=cluster_ip,
-            ip_range_low=dynamic_range_low,
-            ip_range_high=dynamic_range_high,
-            static_ip_range_low=static_range_low,
-            static_ip_range_high=static_range_high)
         factory.make_StaticIPAddress(
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
         s = subnet.get_ipranges_in_use()
@@ -549,21 +497,11 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Not(Contains(static_range_high)))
 
     def test__get_ipranges_not_in_use_includes_free_ips(self):
-        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(
             gateway_ip='', dns_servers=[], host_bits=8)
         net = subnet.get_ipnetwork()
-        cluster_ip = inet_ntop(net.first + 2)
-        dynamic_range_low = inet_ntop(net.first + 10)
-        dynamic_range_high = inet_ntop(net.first + 49)
         static_range_low = inet_ntop(net.first + 50)
         static_range_high = inet_ntop(net.first + 99)
-        factory.make_NodeGroupInterface(
-            ng, subnet=subnet, ip=cluster_ip,
-            ip_range_low=dynamic_range_low,
-            ip_range_high=dynamic_range_high,
-            static_ip_range_low=static_range_low,
-            static_ip_range_high=static_range_high)
         factory.make_StaticIPAddress(
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
         s = subnet.get_ipranges_not_in_use()
@@ -571,21 +509,11 @@ class SubnetIPRangeTest(MAASServerTestCase):
         self.assertThat(s, Contains(static_range_high))
 
     def test__get_iprange_usage_includes_used_and_unused_ips(self):
-        ng = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         subnet = factory.make_Subnet(
             gateway_ip='', dns_servers=[], host_bits=8)
         net = subnet.get_ipnetwork()
-        cluster_ip = inet_ntop(net.first + 2)
-        dynamic_range_low = inet_ntop(net.first + 10)
-        dynamic_range_high = inet_ntop(net.first + 49)
         static_range_low = inet_ntop(net.first + 50)
         static_range_high = inet_ntop(net.first + 99)
-        factory.make_NodeGroupInterface(
-            ng, subnet=subnet, ip=cluster_ip,
-            ip_range_low=dynamic_range_low,
-            ip_range_high=dynamic_range_high,
-            static_ip_range_low=static_range_low,
-            static_ip_range_high=static_range_high)
         factory.make_StaticIPAddress(
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
         s = subnet.get_iprange_usage()
@@ -633,3 +561,48 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips()
         self.expectThat(json[0]["ip"], Equals('10.0.0.1'))
         self.expectThat(json, HasLength(1))
+
+
+class TestSubnetGetRelatedRanges(MAASServerTestCase):
+
+    def test__get_dynamic_ranges_returns_dynamic_range_filter(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_dynamic_range=True, with_static_range=True)
+        dynamic_ranges = subnet.get_dynamic_ranges()
+        ranges = list(dynamic_ranges)
+        self.assertThat(ranges, HasLength(1))
+        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.MANAGED_DHCP))
+
+    def test__get_dynamic_ranges_returns_unmanaged_dynamic_range_filter(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_dynamic_range=True, with_static_range=True,
+            unmanaged=True)
+        dynamic_ranges = subnet.get_dynamic_ranges()
+        ranges = list(dynamic_ranges)
+        self.assertThat(ranges, HasLength(1))
+        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.UNMANAGED_DHCP))
+
+    def test__get_dynamic_ranges_returns_static_range_filter(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_dynamic_range=True, with_static_range=True)
+        static_ranges = subnet.get_static_ranges()
+        ranges = list(static_ranges)
+        self.assertThat(ranges, HasLength(1))
+        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.MANAGED_STATIC))
+
+    def test__get_dynamic_range_for_ip(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_dynamic_range=True, with_static_range=True,
+            unmanaged=random.choice([True, False]))
+        dynamic_range = subnet.get_dynamic_ranges().first()
+        start_ip = dynamic_range.start_ip
+        end_ip = dynamic_range.end_ip
+        random_ip = str(IPAddress(random.randint(
+            int(IPAddress(start_ip) + 1), int(IPAddress(end_ip) - 1))))
+        self.assertThat(subnet.get_dynamic_range_for_ip('0.0.0.0'), Is(None))
+        self.assertThat(
+            subnet.get_dynamic_range_for_ip(start_ip), Equals(dynamic_range))
+        self.assertThat(
+            subnet.get_dynamic_range_for_ip(end_ip), Equals(dynamic_range))
+        self.assertThat(
+            subnet.get_dynamic_range_for_ip(random_ip), Equals(dynamic_range))

@@ -23,15 +23,14 @@ import time
 from urllib.parse import urlparse
 
 from crochet import wait_for
+from django.db import IntegrityError
 from maasserver import (
-    dhcp,
     eventloop,
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     INTERFACE_TYPE,
-    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
@@ -41,15 +40,13 @@ from maasserver.models import (
     Event,
     EventType,
     Node,
+    RackController,
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
-    signals,
-    StaticIPAddress,
     timestampedmodel,
 )
 from maasserver.models.interface import PhysicalInterface
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     events as events_module,
@@ -99,15 +96,13 @@ from mock import (
     sentinel,
 )
 import netaddr
-from netaddr.ip import IPNetwork
-from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc import (
     cluster,
     common,
     exceptions,
 )
 from provisioningserver.rpc.exceptions import (
-    CannotRegisterCluster,
+    CannotRegisterRackController,
     NoSuchCluster,
     NoSuchNode,
 )
@@ -124,16 +119,13 @@ from provisioningserver.rpc.region import (
     Identify,
     ListNodePowerParameters,
     MarkNodeFailed,
-    MonitorExpired,
-    Register,
     RegisterEventType,
+    RegisterRackController,
     ReportBootImages,
-    ReportForeignDHCPServer,
     RequestNodeInfoByMACAddress,
     SendEvent,
     SendEventMACAddress,
     UpdateLease,
-    UpdateLeases,
     UpdateNodePowerState,
 )
 from provisioningserver.rpc.testing import (
@@ -145,7 +137,6 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import events
 from simplejson import dumps
-from testtools import ExpectedException
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
@@ -234,76 +225,51 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         self.assertThat(salt, HasLength(16))
 
 
-class TestRegionProtocol_Register(DjangoTransactionTestCase):
+class TestRegionProtocol_RegisterRackController(MAASTestCase):
 
-    def test__is_registered(self):
+    def make_Region(self):
+        patched_region = Region()
+        patched_region.factory = Factory.forProtocol(RegionServer)
+        patched_region.factory.service = RegionService()
+        return patched_region
+
+    def test_register_rack_controllers_is_registered(self):
         protocol = Region()
-        responder = protocol.locateResponder(Register.commandName)
+        responder = protocol.locateResponder(
+            RegisterRackController.commandName)
         self.assertIsNotNone(responder)
 
-    @transactional
-    def get_nodegroup(self, uuid):
-        return NodeGroup.objects.get_by_natural_key(uuid)
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_rackcontroller_returns_system_id(self):
+        yield deferToDatabase(factory.make_RackController)
+        hostname = factory.make_name("hostname")
+        mac = factory.make_MAC().raw
+        response = yield call_responder(
+            self.make_Region(), RegisterRackController,
+            {"system_id": None, "hostname": hostname, "mac_addresses": [mac]})
+        self.assertIn("system_id", response)
+        rackcontroller = yield deferToDatabase(
+            RackController.objects.get, system_id=response['system_id'])
+        self.assertEquals(hostname, rackcontroller.hostname)
+        nic = yield deferToDatabase(rackcontroller.interface_set.first)
+        self.assertEquals(mac, nic.mac_address.raw)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__registers_cluster_with_only_uuid(self):
-        uuid = factory.make_UUID()
-        args = {"uuid": uuid}
-        response = yield call_responder(Region(), Register, args)
-        self.assertEqual({}, response)
-        nodegroup = yield deferToDatabase(self.get_nodegroup, uuid)
-        self.assertEqual(uuid, nodegroup.uuid)
-
-    @transactional
-    def get_cluster_networks(self, cluster):
-        return [
-            {"interface": ngi.interface, "ip": ngi.ip,
-             "subnet_mask": str(IPNetwork(ngi.subnet.cidr).cidr.netmask)}
-            for ngi in cluster.nodegroupinterface_set.all()
-        ]
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__registers_cluster_with_uuid_and_networks(self):
-        uuid = factory.make_UUID()
-        networks = [
-            {"interface": "eth0", "ip": "192.168.0.0",
-             "subnet_mask": "255.255.255.0"},
-            {"interface": "eth1", "ip": "192.168.1.0",
-             "subnet_mask": "255.255.255.0"},
-        ]
-
-        args = {"uuid": uuid, "networks": networks}
-        response = yield call_responder(Region(), Register, args)
-        self.assertEqual({}, response)
-        nodegroup = yield deferToDatabase(self.get_nodegroup, uuid)
-        self.assertEqual(uuid, nodegroup.uuid)
-        networks_observed = yield deferToDatabase(
-            self.get_cluster_networks, nodegroup)
-        self.assertItemsEqual(networks, networks_observed)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__raises_CannotRegisterCluster_when_it_cant(self):
-        args = {
-            "uuid": factory.make_UUID(),
-            "networks": [
-                # The IP address is invalid, so the region will reject
-                # this registration.
-                {"interface": "eth0", "ip": "1.2.3",
-                 "subnet_mask": "255.255.255.255"},
-            ],
-        }
+    def test_raises_CannotRegisterRackController_when_it_cant(self):
+        patched_create = self.patch(RackController.objects, 'create')
+        patched_create.side_effect = IntegrityError()
+        hostname = factory.make_name("hostname")
         error = yield assert_fails_with(
-            call_responder(Region(), Register, args),
-            CannotRegisterCluster)
-        self.assertDocTestMatches(
-            """\
-            The cluster ... could not be registered:
-            * interfaces: ...
-            """,
-            str(error))
+            call_responder(self.make_Region(), RegisterRackController,
+                           {"system_id": None,
+                            "hostname": hostname,
+                            "mac_addresses": []}),
+            CannotRegisterRackController)
+        self.assertEquals(
+            ("Unable to find existing node or create a new one with hostname "
+             "'%s'." % hostname,), error.args)
 
 
 class TestRegionProtocol_StartTLS(MAASTestCase):
@@ -400,59 +366,6 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
-
-    def test_update_leases_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(UpdateLeases.commandName)
-        self.assertIsNotNone(responder)
-
-    @transactional
-    def make_interface_on_managed_cluster_interface(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        boot_interface = node.get_boot_interface()
-        subnet = boot_interface.ip_addresses.first().subnet
-        ngi = subnet.nodegroupinterface_set.first()
-        nodegroup = ngi.nodegroup
-        return boot_interface, ngi, nodegroup
-
-    @transactional
-    def get_leases_for(self, nodegroup):
-        return [
-            (ip.ip, interface.mac_address.get_raw())
-            for ip in StaticIPAddress.objects.filter(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                subnet__nodegroupinterface__nodegroup=nodegroup)
-            for interface in ip.interface_set.all()]
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__stores_leases(self):
-        interface, ngi, nodegroup = yield deferToDatabase(
-            self.make_interface_on_managed_cluster_interface)
-        mapping = {
-            "ip": ngi.ip_range_low,
-            "mac": interface.mac_address.get_raw(),
-        }
-
-        response = yield call_responder(Region(), UpdateLeases, {
-            "uuid": nodegroup.uuid, "mappings": [mapping]})
-
-        self.assertThat(response, Equals({}))
-
-        [(ip, mac)] = yield deferToDatabase(
-            self.get_leases_for, nodegroup=nodegroup)
-        self.expectThat(ip, Equals(mapping["ip"]))
-        self.expectThat(mac, Equals(mapping["mac"]))
-
-    @wait_for_reactor
-    def test__raise_NoSuchCluster_if_cluster_not_found(self):
-        uuid = factory.make_name("uuid")
-        d = call_responder(
-            Region(), UpdateLeases, {"uuid": uuid, "mappings": []})
-        return assert_fails_with(d, NoSuchCluster)
-
-
 class TestRegionProtocol_UpdateLease(DjangoTransactionTestCase):
 
     def setUp(self):
@@ -463,26 +376,6 @@ class TestRegionProtocol_UpdateLease(DjangoTransactionTestCase):
         protocol = Region()
         responder = protocol.locateResponder(UpdateLease.commandName)
         self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__raises_NoSuchCluster_if_cluster_not_found(self):
-        uuid = factory.make_name("uuid")
-
-        yield eventloop.start()
-        try:
-            with ExpectedException(NoSuchCluster):
-                yield call_responder(
-                    Region(), UpdateLease, {
-                        "cluster_uuid": uuid,
-                        "action": "expiry",
-                        "mac": factory.make_mac_address(),
-                        "ip_family": "ipv4",
-                        "ip": factory.make_ipv4_address(),
-                        "timestamp": int(time.time()),
-                        })
-        finally:
-            yield eventloop.reset()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -669,8 +562,6 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
-        self.patch(signals.monitors, 'MONITOR_CANCEL_CONNECT', False)
-
         system_id = yield deferToDatabase(self.create_deploying_node)
 
         error_description = factory.make_name('error-description')
@@ -707,14 +598,14 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
 class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
     @transactional
-    def create_nodegroup(self, **kwargs):
-        nodegroup = factory.make_NodeGroup(**kwargs)
-        return nodegroup
+    def create_node(self, **kwargs):
+        node = factory.make_Node(**kwargs)
+        return node
 
     @transactional
-    def create_node(self, nodegroup, **kwargs):
-        node = factory.make_Node(nodegroup=nodegroup, **kwargs)
-        return node
+    def create_rack_controller(self, **kwargs):
+        rack = factory.make_RackController(**kwargs)
+        return rack
 
     @transactional
     def get_node_power_parameters(self, node):
@@ -729,13 +620,16 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test__returns_correct_arguments(self):
-        nodegroup = yield deferToDatabase(self.create_nodegroup)
+        rack = yield deferToDatabase(
+            self.create_rack_controller, power_type='')
+
         nodes = []
         for _ in range(3):
             node = yield deferToDatabase(
-                self.create_node, nodegroup,
-                power_type=random.choice(QUERY_POWER_TYPES),
-                power_state_updated=None)
+                self.create_node,
+                power_type="virsh",
+                power_state_updated=None,
+                bmc_connected_to=rack)
             power_params = yield deferToDatabase(
                 self.get_node_power_parameters, node)
             nodes.append({
@@ -749,12 +643,11 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
         # Create a node with an invalid power type (i.e. the empty string).
         # This will not be reported by the call to ListNodePowerParameters.
         yield deferToDatabase(
-            self.create_node, nodegroup, power_type="",
-            power_state_updated=None)
+            self.create_node, power_type="", power_state_updated=None)
 
         response = yield call_responder(
             Region(), ListNodePowerParameters,
-            {'uuid': nodegroup.uuid})
+            {'uuid': rack.system_id})
 
         self.maxDiff = None
         self.assertItemsEqual(nodes, response['nodes'])
@@ -1165,34 +1058,35 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
                 "'%s'.", name, event_description, mac_address))
 
 
-class TestConfigureCluster(MAASServerTestCase):
-    """Tests for the `configureCluster` function."""
-
-    def test__logs_when_cluster_is_not_known(self):
-        ident = factory.make_UUID()
-        with TwistedLoggerFixture() as logger:
-            regionservice.configureCluster(ident)
-        self.assertDocTestMatches(
-            "Cluster '...' is not recognised; cannot configure.",
-            logger.output)
-
-    def test__logs_when_cluster_has_been_configured(self):
-        ident = factory.make_NodeGroup().uuid
-        with TwistedLoggerFixture() as logger:
-            regionservice.configureCluster(ident)
-        self.assertDocTestMatches(
-            "Cluster ... (...) has been configured.",
-            logger.output)
-
-    def test__configures_dhcp(self):
-        ident = factory.make_NodeGroup().uuid
-        self.patch_autospec(regionservice, "configure_dhcp_now")
-        regionservice.configureCluster(ident)
-        self.assertThat(
-            regionservice.configure_dhcp_now,
-            MockCalledOnceWith(ANY))
-        [cluster] = regionservice.configure_dhcp_now.call_args[0]
-        self.assertThat(cluster.uuid, Equals(ident))
+# NODE_GROUP_REMOVAL - blake_r - Fix.
+#class TestConfigureCluster(MAASServerTestCase):
+#    """Tests for the `configureCluster` function."""
+#
+#    def test__logs_when_cluster_is_not_known(self):
+#        ident = factory.make_UUID()
+#        with TwistedLoggerFixture() as logger:
+#            regionservice.configureCluster(ident)
+#        self.assertDocTestMatches(
+#            "Cluster '...' is not recognised; cannot configure.",
+#            logger.output)
+#
+#    def test__logs_when_cluster_has_been_configured(self):
+#        ident = factory.make_NodeGroup().uuid
+#        with TwistedLoggerFixture() as logger:
+#            regionservice.configureCluster(ident)
+#        self.assertDocTestMatches(
+#            "Cluster ... (...) has been configured.",
+#            logger.output)
+#
+#    def test__configures_dhcp(self):
+#        ident = factory.make_NodeGroup().uuid
+#        self.patch_autospec(regionservice, "configure_dhcp_now")
+#        regionservice.configureCluster(ident)
+#        self.assertThat(
+#            regionservice.configure_dhcp_now,
+#            MockCalledOnceWith(ANY))
+#        [cluster] = regionservice.configure_dhcp_now.call_args[0]
+#        self.assertThat(cluster.uuid, Equals(ident))
 
 
 class TestRegionServer(MAASServerTestCase):
@@ -1434,7 +1328,7 @@ class TestRegionServer(MAASServerTestCase):
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        server = rpc_fixture.makeCluster(factory.make_NodeGroup())
+        server = rpc_fixture.makeCluster(factory.make_RackController())
         self.assertThat(
             server.Authenticate,
             MockCalledOnceWith(server, message=ANY))
@@ -1802,8 +1696,12 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: {c1, c2}}, service.connections)
         # Both mock waiters are called twice. A real waiter would only be
         # called once because it immediately unregisters itself once called.
-        self.assertThat(waiter1.callback, MockCallsMatch(call(c1), call(c2)))
-        self.assertThat(waiter2.callback, MockCallsMatch(call(c1), call(c2)))
+        self.assertThat(
+            waiter1.callback,
+            MockCallsMatch(call(c1), call(c2)))
+        self.assertThat(
+            waiter2.callback,
+            MockCallsMatch(call(c1), call(c2)))
 
     def test_addConnectionFor_fires_connected_event(self):
         service = RegionService()
@@ -1858,7 +1756,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: set()}, service.waiters)
 
         def check(conn_returned):
-            self.assertThat(conn_returned, Is(conn))
+            self.assertEquals(conn, conn_returned)
 
         return d.addCallback(check)
 
@@ -1877,7 +1775,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: {d}}, service.waiters)
 
         def check(conn_returned):
-            self.assertThat(conn_returned, Is(conn))
+            self.assertEqual(conn, conn_returned)
             # The waiter has been unregistered.
             self.assertEqual({uuid: set()}, service.waiters)
 
@@ -1901,7 +1799,8 @@ class TestRegionService(MAASTestCase):
         d = DeferredList((d1, d2))
 
         def check(results):
-            self.assertEqual([(True, conn), (True, conn)], results)
+            self.assertEqual(
+                [(True, conn), (True, conn)], results)
             # The waiters have both been unregistered.
             self.assertEqual({uuid: set()}, service.waiters)
 
@@ -2396,63 +2295,63 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # If the RPC service is down, _get_addresses() returns nothing.
         self.assertItemsEqual([], service._get_addresses())
 
-
-class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
-
-    def test_create_node_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(
-            ReportForeignDHCPServer.commandName)
-        self.assertIsNotNone(responder)
-
-    @transactional
-    def create_cluster_interface(self):
-        cluster = factory.make_NodeGroup()
-        return factory.make_NodeGroupInterface(cluster)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_sets_foreign_dhcp_value(self):
-        foreign_dhcp_ip = factory.make_ipv4_address()
-        cluster_interface = yield deferToDatabase(
-            self.create_cluster_interface)
-        cluster = cluster_interface.nodegroup
-
-        response = yield call_responder(
-            Region(), ReportForeignDHCPServer,
-            {
-                'cluster_uuid': cluster.uuid,
-                'interface_name': cluster_interface.name,
-                'foreign_dhcp_ip': foreign_dhcp_ip,
-            })
-
-        self.assertEqual({}, response)
-        cluster_interface = yield deferToDatabase(
-            transactional_reload_object, cluster_interface)
-
-        self.assertEqual(
-            foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_does_not_trigger_update_signal(self):
-        configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
-
-        foreign_dhcp_ip = factory.make_ipv4_address()
-        cluster_interface = yield deferToDatabase(
-            self.create_cluster_interface)
-        cluster = cluster_interface.nodegroup
-
-        response = yield call_responder(
-            Region(), ReportForeignDHCPServer,
-            {
-                'cluster_uuid': cluster.uuid,
-                'interface_name': cluster_interface.name,
-                'foreign_dhcp_ip': foreign_dhcp_ip,
-            })
-
-        self.assertEqual({}, response)
-        self.assertThat(configure_dhcp, MockNotCalled())
+# NODE_GROUP_REMOVAL - blake_r - Fix.
+#class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
+#
+#    def test_create_node_is_registered(self):
+#        protocol = Region()
+#        responder = protocol.locateResponder(
+#            ReportForeignDHCPServer.commandName)
+#        self.assertIsNotNone(responder)
+#
+#    @transactional
+#    def create_cluster_interface(self):
+#        cluster = factory.make_NodeGroup()
+#        return factory.make_NodeGroupInterface(cluster)
+#
+#    @wait_for_reactor
+#    @inlineCallbacks
+#    def test_sets_foreign_dhcp_value(self):
+#        foreign_dhcp_ip = factory.make_ipv4_address()
+#        cluster_interface = yield deferToDatabase(
+#            self.create_cluster_interface)
+#        cluster = cluster_interface.nodegroup
+#
+#        response = yield call_responder(
+#            Region(), ReportForeignDHCPServer,
+#            {
+#                'cluster_uuid': cluster.uuid,
+#                'interface_name': cluster_interface.name,
+#                'foreign_dhcp_ip': foreign_dhcp_ip,
+#            })
+#
+#        self.assertEqual({}, response)
+#        cluster_interface = yield deferToDatabase(
+#            transactional_reload_object, cluster_interface)
+#
+#        self.assertEqual(
+#            foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
+#
+#    @wait_for_reactor
+#    @inlineCallbacks
+#    def test_does_not_trigger_update_signal(self):
+#        configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
+#
+#        foreign_dhcp_ip = factory.make_ipv4_address()
+#        cluster_interface = yield deferToDatabase(
+#            self.create_cluster_interface)
+#        cluster = cluster_interface.nodegroup
+#
+#        response = yield call_responder(
+#            Region(), ReportForeignDHCPServer,
+#            {
+#                'cluster_uuid': cluster.uuid,
+#                'interface_name': cluster_interface.name,
+#                'foreign_dhcp_ip': foreign_dhcp_ip,
+#            })
+#
+#        self.assertEqual({}, response)
+#        self.assertThat(configure_dhcp, MockNotCalled())
 
 
 class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
@@ -2464,28 +2363,28 @@ class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
         self.assertIsNotNone(responder)
 
     @transactional
-    def create_cluster_and_interfaces(self):
-        cluster = factory.make_NodeGroup()
+    def create_controller_and_interfaces(self):
+        controller = factory.make_RackController()
         for _ in range(3):
-            factory.make_NodeGroupInterface(cluster)
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=controller)
         interfaces = [
             {
                 'name': interface.name,
-                'interface': interface.interface,
-                'ip': interface.ip,
+                'interface': interface.name,
+                'ip': '',
             }
-            for interface in cluster.nodegroupinterface_set.all()]
-        return cluster, interfaces
+            for interface in controller.interface_set.all()]
+        return controller, interfaces
 
     @wait_for_reactor
     @inlineCallbacks
     def test_returns_all_cluster_interfaces(self):
-        cluster, expected_interfaces = yield deferToDatabase(
-            self.create_cluster_and_interfaces)
+        controller, expected_interfaces = yield deferToDatabase(
+            self.create_controller_and_interfaces)
 
         response = yield call_responder(
             Region(), GetClusterInterfaces,
-            {'cluster_uuid': cluster.uuid})
+            {'cluster_uuid': controller.system_id})
 
         self.assertIsNot(None, response)
         self.assertItemsEqual(
@@ -2527,9 +2426,9 @@ class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
         self.assertThat(
             create_node_function,
             MockCalledOnceWith(
-                params['cluster_uuid'], params['architecture'],
-                params['power_type'], params['power_parameters'],
-                params['mac_addresses'], hostname=params['hostname']))
+                params['architecture'], params['power_type'],
+                params['power_parameters'], params['mac_addresses'],
+                hostname=params['hostname']))
         self.assertEqual(
             create_node_function.return_value.system_id,
             response['system_id'])
@@ -2561,34 +2460,6 @@ class TestRegionProtocol_CommissionNode(DjangoTransactionTestCase):
             commission_node_function,
             MockCalledOnceWith(
                 params['system_id'], params['user']))
-
-
-class TestRegionProtocol_TimerExpired(MAASTestCase):
-
-    def test_timer_expired_node_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(
-            CreateNode.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handle_monitor_expired(self):
-        handle_monitor_expired = self.patch(
-            regionservice, 'handle_monitor_expired')
-
-        params = {
-            'id': factory.make_name('id'),
-            'context': factory.make_name("ctx"),
-        }
-
-        response = yield call_responder(
-            Region(), MonitorExpired, params)
-        self.assertIsNotNone(response)
-
-        self.assertThat(
-            handle_monitor_expired,
-            MockCalledOnceWith(params['id'], params['context']))
 
 
 class TestRegionProtocol_RequestNodeInforByMACAddress(

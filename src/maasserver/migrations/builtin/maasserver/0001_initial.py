@@ -8,16 +8,13 @@ from django.db import (
     models,
 )
 import django.db.models.deletion
-import djorm_pgarray.fields
 import maasserver.fields
 import maasserver.models.bootresource
 import maasserver.models.cleansave
-import maasserver.models.downloadprogress
 import maasserver.models.fabric
 import maasserver.models.filestorage
 import maasserver.models.interface
 import maasserver.models.node
-import maasserver.models.nodegroupinterface
 import maasserver.models.space
 import maasserver.models.sshkey
 import maasserver.models.sslkey
@@ -44,7 +41,7 @@ class Migration(migrations.Migration):
                 ('id_path', models.FilePathField(help_text='Path of by-id alias. (e.g. /dev/disk/by-id/wwn-0x50004...)', null=True, blank=True)),
                 ('size', models.BigIntegerField(help_text='Size of block device in bytes.', validators=[django.core.validators.MinValueValidator(4194304)])),
                 ('block_size', models.IntegerField(help_text='Size of a block on the device in bytes.', validators=[django.core.validators.MinValueValidator(512)])),
-                ('tags', djorm_pgarray.fields.ArrayField(default=[], dbtype='text', null=False)),
+                ('tags', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
             ],
             options={
                 'ordering': ['id'],
@@ -123,9 +120,9 @@ class Migration(migrations.Migration):
                 ('updated', models.DateTimeField(editable=False)),
                 ('os', models.CharField(default='', help_text='The operating system for which to import resources.', max_length=20, blank=True)),
                 ('release', models.CharField(default='', help_text='The OS release for which to import resources.', max_length=20, blank=True)),
-                ('arches', djorm_pgarray.fields.ArrayField(dbtype='text')),
-                ('subarches', djorm_pgarray.fields.ArrayField(dbtype='text')),
-                ('labels', djorm_pgarray.fields.ArrayField(dbtype='text')),
+                ('arches', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
+                ('subarches', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
+                ('labels', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
                 ('boot_source', models.ForeignKey(to='maasserver.BootSource')),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
@@ -178,8 +175,8 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('filename', models.CharField(max_length=255, editable=False)),
-                ('size', models.IntegerField(blank=True, null=True, validators=[maasserver.models.downloadprogress.validate_nonnegative_if_given])),
-                ('bytes_downloaded', models.IntegerField(blank=True, null=True, validators=[maasserver.models.downloadprogress.validate_nonnegative_if_given])),
+                ('size', models.IntegerField(blank=True, null=True)),
+                ('bytes_downloaded', models.IntegerField(blank=True, null=True)),
                 ('error', models.CharField(max_length=1000, blank=True)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
@@ -302,7 +299,7 @@ class Migration(migrations.Migration):
                 ('ipv4_params', maasserver.fields.JSONObjectField(default='', blank=True)),
                 ('ipv6_params', maasserver.fields.JSONObjectField(default='', blank=True)),
                 ('params', maasserver.fields.JSONObjectField(default='', blank=True)),
-                ('tags', djorm_pgarray.fields.ArrayField(default=[], dbtype='text', null=False)),
+                ('tags', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
                 ('enabled', models.BooleanField(default=True)),
             ],
             options={
@@ -366,7 +363,7 @@ class Migration(migrations.Migration):
                 ('min_hwe_kernel', models.CharField(max_length=31, null=True, blank=True)),
                 ('hwe_kernel', models.CharField(max_length=31, null=True, blank=True)),
                 ('installable', models.BooleanField(default=True, db_index=True, editable=False)),
-                ('routers', djorm_pgarray.fields.ArrayField(dbtype='macaddr')),
+                ('routers', django.contrib.postgres.fields.ArrayField(size=None, base_field=maasserver.fields.MACAddressField(), null=True, blank=True, default=list)),
                 ('agent_name', models.CharField(default='', max_length=255, null=True, blank=True)),
                 ('error_description', models.TextField(default='', editable=False, blank=True)),
                 ('cpu_count', models.IntegerField(default=0)),
@@ -513,7 +510,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(help_text='Identifying name for this subnet.', max_length=255, validators=[django.core.validators.RegexValidator('^[.: \\w/-]+$')])),
                 ('cidr', maasserver.fields.CIDRField(unique=True)),
                 ('gateway_ip', maasserver.fields.MAASIPAddressField(null=True, blank=True)),
-                ('dns_servers', djorm_pgarray.fields.ArrayField(default=[], dbtype='text')),
+                ('dns_servers', django.contrib.postgres.fields.ArrayField(size=None, base_field=models.TextField(), null=True, blank=True, default=list)),
                 ('space', models.ForeignKey(to='maasserver.Space', on_delete=django.db.models.deletion.PROTECT)),
             ],
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
@@ -592,7 +589,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='subnet',
             name='vlan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.subnet.get_default_vlan, to='maasserver.VLAN'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=0, to='maasserver.VLAN'),
         ),
         migrations.AddField(
             model_name='staticipaddress',
@@ -622,7 +619,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='nodegroupinterface',
             name='vlan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.nodegroupinterface.get_default_vlan, to='maasserver.VLAN'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='maasserver.VLAN'),
         ),
         migrations.AddField(
             model_name='node',
@@ -686,7 +683,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='interface',
             name='vlan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.interface.get_default_vlan, to='maasserver.VLAN'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, default=0, to='maasserver.VLAN'),
         ),
         migrations.AddField(
             model_name='filesystem',

@@ -11,15 +11,12 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.forms_interface_link import (
     InterfaceLinkForm,
     InterfaceSetDefaultGatwayForm,
     InterfaceUnlinkForm,
 )
-from maasserver.models import interface as interface_module
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -232,12 +229,9 @@ class TestInterfaceLinkForm(MAASServerTestCase):
 
     def test__STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_in_dynamic = IPAddress(ngi.get_dynamic_ip_range().first)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
+        dynamic_range = subnet.get_dynamic_ranges()[0]
+        ip_in_dynamic = factory.pick_ip_in_IPRange(dynamic_range)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
             "subnet": subnet.id,
@@ -246,8 +240,8 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual({
             "ip_address": [
-                "IP address is inside a managed dynamic range %s to %s." % (
-                    ngi.ip_range_low, ngi.ip_range_high)]
+                "IP address is inside a dynamic range %s to %s." % (
+                    dynamic_range.start_ip, dynamic_range.end_ip)]
             }, form.errors)
 
     def test__STATIC_sets_ip_in_unmanaged_subnet(self):
@@ -282,7 +276,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
 
-    def test__STATIC_sets_ip_for_unmanaged_subnet_cidr_specifier(self):
+    def test__STATIC_sets_ip_for_subnet_cidr_specifier(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -298,30 +292,24 @@ class TestInterfaceLinkForm(MAASServerTestCase):
                 interface.ip_addresses.filter(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet)))
 
-    def test__STATIC_sets_ip_in_managed_subnet(self):
-        # Silence update_host_maps.
-        self.patch_autospec(interface_module, "update_host_maps")
+    def test__STATIC_sets_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_in_static = IPAddress(ngi.get_static_ip_range().first)
+        ip_in_subnet = factory.pick_ip_in_Subnet(subnet)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
             "subnet": subnet.id,
-            "ip_address": "%s" % ip_in_static,
+            "ip_address": "%s" % ip_in_subnet,
             })
         self.assertTrue(form.is_valid(), form.errors)
         interface = form.save()
         self.assertIsNotNone(
             get_one(
                 interface.ip_addresses.filter(
-                    alloc_type=IPADDRESS_TYPE.STICKY, ip="%s" % ip_in_static,
+                    alloc_type=IPADDRESS_TYPE.STICKY, ip="%s" % ip_in_subnet,
                     subnet=subnet)))
 
-    def test__STATIC_picks_ip_in_unmanaged_subnet(self):
+    def test__STATIC_picks_ip_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         form = InterfaceLinkForm(instance=interface, data={
@@ -336,38 +324,11 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         self.assertIsNotNone(ip_address)
         self.assertIn(IPAddress(ip_address.ip), subnet.get_ipnetwork())
 
-    def test__STATIC_picks_ip_in_managed_subnet(self):
-        # Silence update_host_maps.
-        self.patch_autospec(interface_module, "update_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        form = InterfaceLinkForm(instance=interface, data={
-            "mode": INTERFACE_LINK_TYPE.STATIC,
-            "subnet": subnet.id,
-            })
-        self.assertTrue(form.is_valid(), form.errors)
-        interface = form.save()
-        ip_address = get_one(
-            interface.ip_addresses.filter(
-                alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet))
-        self.assertIsNotNone(ip_address)
-        self.assertIn(IPAddress(ip_address.ip), ngi.get_static_ip_range())
-
     def test__STATIC_sets_node_gateway_link_ipv4(self):
-        # Silence update_host_maps.
-        self.patch_autospec(interface_module, "update_host_maps")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv4_network()
         subnet = factory.make_Subnet(
             cidr=str(network.cidr), vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
             "subnet": subnet.id,
@@ -382,16 +343,10 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         self.assertEqual(ip_address, node.gateway_link_ipv4)
 
     def test__STATIC_sets_node_gateway_link_ipv6(self):
-        # Silence update_host_maps.
-        self.patch_autospec(interface_module, "update_host_maps")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
         subnet = factory.make_Subnet(
             cidr=str(network.cidr), vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
         form = InterfaceLinkForm(instance=interface, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
             "subnet": subnet.id,
@@ -463,11 +418,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[eth0, eth1], node=node)
         subnet = factory.make_Subnet(vlan=eth0.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        ngi = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip_in_static = IPAddress(ngi.get_static_ip_range().first)
+        ip_in_static = factory.pick_ip_in_Subnet(subnet)
         form = InterfaceLinkForm(instance=eth0, data={
             "mode": INTERFACE_LINK_TYPE.STATIC,
             "subnet": subnet.id,
@@ -502,7 +453,7 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
                 link_id)],
             }, form.errors)
 
-    def test__DHCP_deletes_link_with_unmanaged_subnet(self):
+    def test__DHCP_deletes_link_with_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
         interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
@@ -515,29 +466,7 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
         form.save()
         self.assertIsNone(reload_object(dhcp_ip))
 
-    def test__DHCP_deletes_link_with_managed_subnet(self):
-        self.patch_autospec(interface_module, "remove_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        dhcp_subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=dhcp_subnet)
-        interface.link_subnet(INTERFACE_LINK_TYPE.DHCP, dhcp_subnet)
-        interface = reload_object(interface)
-        dhcp_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.DHCP)
-        assigned_ip = factory.pick_ip_in_network(dhcp_subnet.get_ipnetwork())
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=assigned_ip,
-            subnet=dhcp_subnet, interface=interface)
-        form = InterfaceUnlinkForm(instance=interface, data={
-            "id": dhcp_ip.id,
-        })
-        self.assertTrue(form.is_valid(), form.errors)
-        form.save()
-        self.assertIsNone(reload_object(dhcp_ip))
-
-    def test__STATIC_deletes_link_in_unmanaged_subnet(self):
+    def test__STATIC_deletes_link_in_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
@@ -547,25 +476,6 @@ class TestInterfaceUnlinkForm(MAASServerTestCase):
         static_ip = get_one(
             interface.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet))
-        form = InterfaceUnlinkForm(instance=interface, data={
-            "id": static_ip.id,
-        })
-        self.assertTrue(form.is_valid(), form.errors)
-        form.save()
-        self.assertIsNone(reload_object(static_ip))
-
-    def test__STATIC_deletes_link_in_managed_subnet(self):
-        self.patch_autospec(interface_module, "remove_host_maps")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            subnet=subnet)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        static_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip,
-            subnet=subnet, interface=interface)
         form = InterfaceUnlinkForm(instance=interface, data={
             "id": static_ip.id,
         })

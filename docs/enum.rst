@@ -8,12 +8,3 @@ MAAS Enums
 
 .. autoclass:: maasserver.enum.NODE_STATUS
    :members:
-
-.. autoclass:: maasserver.enum.NODEGROUP_STATUS
-   :members:
-
-.. autoclass:: maasserver.enum.NODEGROUPINTERFACE_MANAGEMENT
-   :members:
-
-.. autoclass:: maasserver.enum.NODE_STATUS
-   :members:

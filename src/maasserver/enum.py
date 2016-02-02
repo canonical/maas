@@ -15,11 +15,6 @@ __all__ = [
     'INTERFACE_TYPE_CHOICES',
     'INTERFACE_TYPE_CHOICES_DICT',
     'IPADDRESS_TYPE',
-    'NODEGROUP_STATUS',
-    'NODEGROUP_STATUS_CHOICES',
-    'NODEGROUPINTERFACE_MANAGEMENT',
-    'NODEGROUPINTERFACE_MANAGEMENT_CHOICES',
-    'NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT',
     'NODE_PERMISSION',
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
@@ -45,7 +40,7 @@ class COMPONENT:
     """Major moving parts of the application that may have failure states."""
     PSERV = 'provisioning server'
     IMPORT_PXE_FILES = 'maas-import-pxe-files script'
-    CLUSTERS = 'clusters'
+    RACK_CONTROLLERS = 'clusters'
     REGION_IMAGE_IMPORT = 'Image importer'
 
 
@@ -168,62 +163,6 @@ class USERDATA_TYPE:
     CURTIN = 'curtin_userdata'
 
 
-class NODEGROUP_STATUS:
-    """The vocabulary of a `NodeGroup`'s possible statuses."""
-    #: A nodegroup starts out as ``ENABLED``.
-    DEFAULT = 1
-
-    #: An ENABLED cluster is one that should be operational.
-    ENABLED = 1
-    #: A DISABLED cluster should not sync images or deploy new nodes.
-    DISABLED = 2
-
-
-# Django choices for NODEGROUP_STATUS: sequence of tuples (key, UI
-# representation).
-NODEGROUP_STATUS_CHOICES = (
-    (NODEGROUP_STATUS.ENABLED, "Enabled"),
-    (NODEGROUP_STATUS.DISABLED, "Disabled"),
-    )
-
-
-class NODEGROUP_STATE:
-    """The vocabulary of a `NodeGroup`'s possible state."""
-    #:
-    DISCONNECTED = "Disconnected"
-    #:
-    OUT_OF_SYNC = "Out-of-sync"
-    #:
-    SYNCING = "Syncing"
-    #:
-    SYNCED = "Synced"
-
-
-class NODEGROUPINTERFACE_MANAGEMENT:
-    """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
-    # A nodegroupinterface starts out as UNMANAGED.
-    DEFAULT = 0
-    #: Do not manage DHCP or DNS for this interface.
-    UNMANAGED = 0
-    #: Manage DHCP for this interface.
-    DHCP = 1
-    #: Manage DHCP and DNS for this interface.
-    DHCP_AND_DNS = 2
-
-
-# Django choices for NODEGROUP_STATUS: sequence of tuples (key, UI
-# representation).
-NODEGROUPINTERFACE_MANAGEMENT_CHOICES = (
-    (NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED, "Unmanaged"),
-    (NODEGROUPINTERFACE_MANAGEMENT.DHCP, "DHCP"),
-    (NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, "DHCP and DNS"),
-    )
-
-
-NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
-    OrderedDict(NODEGROUPINTERFACE_MANAGEMENT_CHOICES))
-
-
 class RDNS_MODE:
     """The vocabulary of a `Subnet`'s possible reverse DNS modes."""
     # By default, we do what we've always done: assume we rule the DNS world.
@@ -297,6 +236,39 @@ IPADDRESS_TYPE_CHOICES = (
 
 
 IPADDRESS_TYPE_CHOICES_DICT = OrderedDict(IPADDRESS_TYPE_CHOICES)
+
+
+class IPRANGE_TYPE:
+    """The vocabulary of possible types of `IPRange` objects."""
+
+    # Managed by MAAS DHCP.
+    MANAGED_DHCP = 'managed_dhcp'
+
+    # Managed by an external DHCP server.
+    UNMANAGED_DHCP = 'unmanaged_dhcp'
+
+    # Reserved administratively. This is like an "inverse static range";
+    # IP addresses that MAAS is specifically not allowed to touch.
+    ADMIN_RESERVED = 'admin_reserved'
+
+    # Reserved for exclusive use by a particular user.
+    USER_RESERVED = 'user_reserved'
+
+    # MAAS-managed static IP address range.
+    # XXX mpontillo 2015-12-21: This is deprecated, and will be removed in the
+    # near future. (This is the pre-2.0 concept of a "static range".) We're
+    # keeping it in the short term, to reduce the amount of code change
+    # necessary to implement IP ranges.
+    MANAGED_STATIC = 'managed_static'
+
+
+IPRANGE_TYPE_CHOICES = (
+    (IPRANGE_TYPE.MANAGED_DHCP, "MAAS Managed DHCP"),
+    (IPRANGE_TYPE.UNMANAGED_DHCP, "Non-MAAS DHCP"),
+    (IPRANGE_TYPE.ADMIN_RESERVED, "Administratively Reserved"),
+    (IPRANGE_TYPE.USER_RESERVED, "User Reserved"),
+    (IPRANGE_TYPE.MANAGED_STATIC, "MAAS Managed Static IP Addresses"),
+)
 
 
 class POWER_STATE:

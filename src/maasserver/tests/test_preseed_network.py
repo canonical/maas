@@ -203,7 +203,8 @@ class AssertNetworkConfigMixin:
 
     def collectDNSConfig(self, node):
         config = "- type: nameserver\n  address: %s\n  search:\n" % (
-            get_dns_server_address(nodegroup=node.nodegroup))
+            get_dns_server_address(
+                rack_controller=node.get_boot_primary_rack_controller()))
         dns_searches = sorted(get_dns_search_paths())
         for dns_name in dns_searches:
             config += "   - %s\n" % dns_name

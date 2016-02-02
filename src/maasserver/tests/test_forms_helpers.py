@@ -6,16 +6,12 @@
 __all__ = []
 
 from django.forms import CharField
-from maasserver.enum import (
-    BOOT_RESOURCE_TYPE,
-    NODE_STATUS,
-)
+from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     get_node_create_form,
     get_node_edit_form,
-    initialize_node_group,
     list_all_usable_architectures,
     MAASModelForm,
     NodeForm,
@@ -23,11 +19,6 @@ from maasserver.forms import (
     pick_default_architecture,
     remove_None_values,
 )
-from maasserver.models import (
-    Node,
-    NodeGroup,
-)
-from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -54,27 +45,7 @@ class TestHelpers(MAASServerTestCase):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, architecture=architecture)
 
-    def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
-        preselected_nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=preselected_nodegroup)
-        initialize_node_group(node)
-        self.assertEqual(preselected_nodegroup, node.nodegroup)
-
-    def test_initialize_node_group_initializes_nodegroup_to_form_value(self):
-        node = Node(
-            NODE_STATUS.NEW, architecture=make_usable_architecture(self))
-        nodegroup = factory.make_NodeGroup()
-        initialize_node_group(node, nodegroup)
-        self.assertEqual(nodegroup, node.nodegroup)
-
-    def test_initialize_node_group_defaults_to_master(self):
-        node = Node(
-            NODE_STATUS.NEW,
-            architecture=make_usable_architecture(self))
-        initialize_node_group(node)
-        self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
-
-    def test_list_all_usable_architectures_combines_nodegroups(self):
+    def test_list_all_usable_architectures_combines(self):
         arches = [
             (factory.make_name('arch'), factory.make_name('subarch'))
             for _ in range(3)]

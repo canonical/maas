@@ -4,21 +4,17 @@
 """Signals coming off models."""
 
 __all__ = [
-    "dhcp",
     "dns",
     "events",
     "interfaces",
-    "monitors",
     "nodes",
     "power",
 ]
 
 from maasserver.models.signals import (
-    dhcp,
     dns,
     events,
     interfaces,
-    monitors,
     nodes,
     power,
 )

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API documentation functionality."""
@@ -288,43 +288,25 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_handler_with_maas_handler(self):
         # Ensure that describe_handler() yields something sensible with a
         # "real" MAAS API handler.
-        from maasserver.api.nodes import NodeHandler as handler
+        from maasserver.api.zones import ZoneHandler as handler
         description = describe_handler(handler)
         # The RUD of CRUD actions are still available, but the C(reate) action
         # has been overridden with custom non-ReSTful operations.
         expected_actions = {
             "DELETE delete op=None restful=True",
             "GET read op=None restful=True",
-            "GET details op=details restful=False",
-            "GET power_parameters op=power_parameters restful=False",
-            "GET query_power_state op=query_power_state restful=False",
-            "POST start op=start restful=False",
-            "POST stop op=stop restful=False",
-            "POST release op=release restful=False",
-            "POST commission op=commission restful=False",
             "PUT update op=None restful=True",
-            "POST claim_sticky_ip_address op=claim_sticky_ip_address "
-            "restful=False",
-            "POST release_sticky_ip_address op=release_sticky_ip_address "
-            "restful=False",
-            "POST mark_fixed op=mark_fixed restful=False",
-            "POST mark_broken op=mark_broken restful=False",
-            "POST abort_operation op=abort_operation restful=False",
-            "POST set_storage_layout op=set_storage_layout restful=False",
-            "POST clear_default_gateways op=clear_default_gateways "
-            "restful=False",
-            "GET get_curtin_config op=get_curtin_config restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action
             for action in description["actions"]
             }
         self.assertSetEqual(expected_actions, observed_actions)
-        self.assertSetEqual({"system_id"}, set(description["params"]))
+        self.assertSetEqual({"name"}, set(description["params"]))
         # The path is a URI Template <http://tools.ietf.org/html/rfc6570>, the
         # components of which correspond to the parameters declared.
         self.assertEqual(
-            "/api/2.0/nodes/{system_id}/",
+            "/api/2.0/zones/{name}/",
             description["path"])
 
     def test_describe_resource_anonymous_resource(self):

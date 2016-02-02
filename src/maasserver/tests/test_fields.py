@@ -16,26 +16,19 @@ from django.db import (
     DatabaseError,
 )
 from django.db.models import BinaryField
-from maasserver.enum import (
-    INTERFACE_TYPE,
-    NODEGROUPINTERFACE_MANAGEMENT,
-)
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
     EditableBinaryField,
     IPListFormField,
     LargeObjectField,
     LargeObjectFile,
     MAC,
-    NodeGroupFormField,
     register_mac_type,
     validate_mac,
     VerboseRegexField,
     VerboseRegexValidator,
 )
-from maasserver.models import (
-    Interface,
-    NodeGroup,
-)
+from maasserver.models import Interface
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -51,83 +44,6 @@ from maastesting.matchers import MockCalledOnceWith
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
-
-
-class TestNodeGroupFormField(MAASServerTestCase):
-
-    def test_label_from_instance_tolerates_missing_interface(self):
-        nodegroup = factory.make_NodeGroup()
-        nodegroup.nodegroupinterface_set.all().delete()
-        self.assertEqual(
-            nodegroup.name,
-            NodeGroupFormField().label_from_instance(nodegroup))
-
-    def test_label_from_instance_shows_name_and_address(self):
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.assertEqual(
-            '%s: %s' % (nodegroup.name, interface.ip),
-            NodeGroupFormField().label_from_instance(nodegroup))
-
-    def test_clean_defaults_to_master(self):
-        spellings_for_none = [None, '', b'']
-        field = NodeGroupFormField()
-        self.assertEqual(
-            [NodeGroup.objects.ensure_master()] * len(spellings_for_none),
-            [field.clean(spelling) for spelling in spellings_for_none])
-
-    def test_clean_accepts_nodegroup(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(nodegroup, NodeGroupFormField().clean(nodegroup))
-
-    def test_clean_accepts_id_as_unicode(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean("%s" % nodegroup.id))
-
-    def test_clean_accepts_id_as_bytes(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(("%s" % nodegroup.id).encode('ascii')))
-
-    def test_clean_accepts_uuid(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(nodegroup.uuid))
-
-    def test_clean_accepts_uuid_as_bytes(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(nodegroup.uuid.encode('ascii')))
-
-    def test_clean_accepts_cluster_name(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(nodegroup.cluster_name))
-
-    def test_clean_accepts_cluster_name_as_bytes(self):
-        nodegroup = factory.make_NodeGroup()
-        self.assertEqual(
-            nodegroup,
-            NodeGroupFormField().clean(nodegroup.cluster_name.encode('ascii')))
-
-    def test_clean_accepts_numeric_cluster_name(self):
-        # This cluster has a name that looks just like a number.  Pick a number
-        # that's highly unlikely to clash with the node's ID.
-        cluster_name = '%s' % randint(1000000, 10000000)
-        nodegroup = factory.make_NodeGroup(cluster_name=cluster_name)
-        self.assertEqual(nodegroup, NodeGroupFormField().clean(cluster_name))
-
-    def test_clean_rejects_unknown_nodegroup(self):
-        self.assertRaises(
-            ValidationError,
-            NodeGroupFormField().clean, factory.make_name('nonesuch'))
 
 
 class TestMAC(MAASServerTestCase):

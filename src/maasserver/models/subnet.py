@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for subnets."""
+from maasserver.enum import IPRANGE_TYPE
+
 
 __all__ = [
     'create_cidr',
@@ -27,8 +29,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.enum import (
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
     RDNS_MODE,
     RDNS_MODE_CHOICES,
 )
@@ -119,38 +119,25 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         SELECT DISTINCT
             subnet.*,
             masklen(subnet.cidr) "prefixlen",
-            ngi.management "ngi_mgmt",
-            nodegroup.status "nodegroup_status"
+            vlan.dhcp_on "dhcp_on"
         FROM maasserver_subnet AS subnet
-        LEFT OUTER JOIN maasserver_nodegroupinterface AS ngi
-            ON ngi.subnet_id = subnet.id
         INNER JOIN maasserver_vlan AS vlan
             ON subnet.vlan_id = vlan.id
-        LEFT OUTER JOIN maasserver_nodegroup AS nodegroup
-          ON ngi.nodegroup_id = nodegroup.id
         WHERE
             %s << subnet.cidr /* Specified IP is inside range */
         ORDER BY
-            /* For nodegroup_status, 1=ENABLED, 2=DISABLED, and NULL
-               means the outer join didn't find a related NodeGroup. */
-            nodegroup_status NULLS LAST,
-            /* For ngi_mgmt, higher numbers indicate "more management".
-               (and NULL indicates lack of a related NodeGroupInterface. */
-            ngi_mgmt DESC NULLS LAST,
-            /* If there are multiple (or no) subnets related to a NodeGroup,
-               we'll want to pick the most specific one that the IP address
-               falls within. */
+            /* Pick subnet that is on a VLAN that is managed over a subnet
+               that is not managed on a VLAN. */
+            dhcp_on DESC,
+            /* If there are multiple subnets we want to pick the most specific
+               one that the IP address falls within. */
             prefixlen DESC
         LIMIT 1
         """
 
     def get_best_subnet_for_ip(self, ip):
         """Find the most-specific managed Subnet the specified IP address
-        belongs to.
-
-        The most-specific Subnet is a Subnet that is both referred to by
-        a managed, active NodeGroupInterface.
-        """
+        belongs to."""
         subnets = self.raw(
             self.find_best_subnet_for_ip_query,
             params=[str(ip)])
@@ -386,36 +373,8 @@ class Subnet(CleanSave, TimestampedModel):
             message = "Gateway IP must be within CIDR range."
             raise ValidationError({'gateway_ip': [message]})
 
-    def get_managed_cluster_interface(self):
-        """Return the cluster interface that manages this subnet."""
-        # Prefer enabled, non-UNMANAGED networks.
-        interfaces = self.nodegroupinterface_set.filter(
-            nodegroup__status=NODEGROUP_STATUS.ENABLED)
-        interfaces = interfaces.exclude(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        ngi = interfaces.first()
-        if ngi is None:
-            # Circular imports
-            from maasserver.models import NodeGroupInterface
-            ngi = NodeGroupInterface.objects.get_by_managed_range_for_subnet(
-                self)
-        return ngi
-
     def clean(self, *args, **kwargs):
         self.validate_gateway_ip()
-
-    def get_cluster_interfaces(self):
-        """Returns a `QuerySet` of NodeGroupInterface objects which may
-        manage this subnet."""
-        # Circular imports
-        from maasserver.models import NodeGroupInterface
-        return NodeGroupInterface.objects.filter(subnet=self)
-
-    def get_managed_cluster_interfaces(self):
-        """Returns a `QuerySet` of managed NodeGroupInterface objects for
-        this subnet."""
-        return self.get_cluster_interfaces().exclude(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
     def get_staticipaddresses_in_use(self):
         """Returns a list of `netaddr.IPAddress` objects to represent each
@@ -432,23 +391,6 @@ class Subnet(CleanSave, TimestampedModel):
             for ip in self.staticipaddress_set.all()
             if ip.ip)
 
-    def _get_ipranges_in_use_on_related_clusters(self):
-        """Returns a `set` of IP ranges that may be used on this `Subnet`,
-        based on querying all of its attached cluster interfaces."""
-        # We could filter by 'management' here, but we might miss some in-use
-        # IP addresses for enabled (but not actively managing) clusters.
-        ranges = set()
-        for ngi in self.nodegroupinterface_set.all():
-            # Since there won't be very many nodegroups, we'll use a
-            # runtime filter here rather than a database filter.
-            # This way, the websocket can prefetch_related.
-            if ngi.nodegroup.status != NODEGROUP_STATUS.ENABLED:
-                continue
-            ngi_ranges = ngi.get_ipranges_in_use_on_ipnetwork(
-                self.get_ipnetwork(), include_static_range=False)
-            ranges |= ngi_ranges
-        return ranges
-
     def get_ipranges_in_use(self):
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`."""
@@ -458,7 +400,9 @@ class Subnet(CleanSave, TimestampedModel):
             make_iprange(ip, purpose="assigned-ip")
             for ip in assigned_ip_addresses
         )
-        ranges |= self._get_ipranges_in_use_on_related_clusters()
+        for iprange in self.get_dynamic_ranges():
+            ranges |= set(iprange.get_MAASIPRange())
+        ranges |= self.get_reserved_maasipset()
         return MAASIPSet(ranges)
 
     def get_ipranges_not_in_use(self):
@@ -488,3 +432,61 @@ class Subnet(CleanSave, TimestampedModel):
             for ip in self.staticipaddress_set.all()
             if ip.ip
             ], key=lambda json: IPAddress(json['ip']))
+
+    def get_dynamic_ranges(self):
+        return self.iprange_set.filter(
+            type__in=[IPRANGE_TYPE.MANAGED_DHCP, IPRANGE_TYPE.UNMANAGED_DHCP])
+
+    def get_static_ranges(self):
+        # XXX mpontillo 2016-01-07: this needs to be deprecated in favor of
+        # assuming the entire range is static
+        return self.iprange_set.filter(type=IPRANGE_TYPE.MANAGED_STATIC)
+
+    def get_admin_reserved_ranges(self):
+        return self.iprange_set.filter(type=IPRANGE_TYPE.ADMIN_RESERVED)
+
+    def get_user_reserved_ranges(self):
+        return self.iprange_set.filter(type=IPRANGE_TYPE.USER_RESERVED)
+
+    def is_valid_static_ip(self, ip):
+        for iprange in self.get_static_ranges():
+            if ip in iprange.netaddr_iprange:
+                return True
+        return False
+
+    def get_reserved_maasipset(self):
+        # XXX mpontillo 2016-01-21: migrate static ranges to their opposite
+        # admin-reserved so this is no longer necessary.
+        static_ranges = set(
+            iprange.get_MAASIPRange()
+            for iprange in self.get_static_ranges())
+        if len(static_ranges) > 0:
+            reserved_ranges = MAASIPSet(static_ranges).get_unused_ranges(
+                self.cidr, comment="reserved")
+        else:
+            reserved_ranges = MAASIPSet([])
+        reserved_ranges |= MAASIPSet(
+            iprange.get_MAASIPRange()
+            for iprange in self.get_admin_reserved_ranges()
+        )
+        # XXX mpontillo 2016-01-21: need to determine how to deal with user
+        # reserved ranges. For now, exclude them all.
+        reserved_ranges |= MAASIPSet(
+            iprange.get_MAASIPRange()
+            for iprange in self.get_user_reserved_ranges()
+        )
+        return reserved_ranges
+
+    def get_dynamic_range_for_ip(self, ip):
+        """Return `IPRange` for the provided `ip`."""
+        # XXX mpontillo 2016-01-21: for some reason this query doesn't work.
+        # I tried it both like this, and with:
+        #     start_ip__gte=ip, and end_ip__lte=ip
+        # return get_one(self.get_dynamic_ranges().extra(
+        #        where=["start_ip >= inet '%s'" % ip,
+        # ... which sounds a lot like comment 15 in:
+        #     https://code.djangoproject.com/ticket/11442
+        for iprange in self.get_dynamic_ranges():
+            if ip in iprange.netaddr_iprange:
+                return iprange
+        return None

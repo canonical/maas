@@ -31,10 +31,9 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
     NODE_STATUS,
     NODE_TYPE,
-    NODEGROUP_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
     PARTITION_TABLE_TYPE,
     POWER_STATE,
     RDNS_MODE,
@@ -56,7 +55,6 @@ from maasserver.models import (
     DNSData,
     DNSResource,
     Domain,
-    DownloadProgress,
     Event,
     EventType,
     Fabric,
@@ -64,14 +62,14 @@ from maasserver.models import (
     FileStorage,
     Filesystem,
     FilesystemGroup,
+    IPRange,
     LargeFile,
     LicenseKey,
     Node,
-    NodeGroup,
-    NodeGroupInterface,
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
+    RackController,
     RegionController,
     Space,
     SSHKey,
@@ -96,13 +94,12 @@ from maasserver.models.interface import (
     InterfaceRelationship,
 )
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.models.subnet import create_cidr
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import round_size_to_nearest_block
 import maastesting.factory
-from maastesting.factory import NO_VALUE
+from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -113,7 +110,6 @@ from metadataserver.models import (
 from netaddr import (
     IPAddress,
     IPNetwork,
-    IPRange,
 )
 from provisioningserver.utils.enum import map_enum
 
@@ -260,19 +256,17 @@ class Factory(maastesting.factory.Factory):
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
 
-    def make_Device(self, hostname=None, nodegroup=None, interface=False,
-                    domain=None,
+    def make_Device(self, hostname=None, interface=False, domain=None,
                     disable_ipv4=None, vlan=None, fabric=None, **kwargs):
         if hostname is None:
             hostname = self.make_string(20)
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
         if disable_ipv4 is None:
             disable_ipv4 = self.pick_bool()
         if domain is None:
             domain = Domain.objects.get_default_domain()
-        device = Device(hostname=hostname, nodegroup=nodegroup,
-                        disable_ipv4=disable_ipv4, domain=domain, **kwargs)
+        device = Device(
+            hostname=hostname, disable_ipv4=disable_ipv4, domain=domain,
+            **kwargs)
         device.save()
         if interface:
             self.make_Interface(
@@ -290,11 +284,11 @@ class Factory(maastesting.factory.Factory):
             self, interface=False, hostname=None, domain=None, status=None,
             architecture="i386/generic", min_hwe_kernel=None,
             hwe_kernel=None, node_type=NODE_TYPE.MACHINE, updated=None,
-            created=None, nodegroup=None, zone=None,
-            networks=None, sortable_name=False,
+            created=None, zone=None, networks=None, sortable_name=False,
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, disable_ipv4=None,
-            with_boot_disk=True, vlan=None, fabric=None, **kwargs):
+            with_boot_disk=True, vlan=None, fabric=None,
+            bmc_connected_to=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -302,6 +296,9 @@ class Factory(maastesting.factory.Factory):
             by name, where the database and the python code may have different
             ideas about collation orders, especially when it comes to case
             differences.
+        :param bmc_connected_to: Assign an IP address to the BMC for this node
+            so this rack controller can control the power.
+        :type bmc_connected_to: `:class:RackController`
         """
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is None:
@@ -312,12 +309,10 @@ class Factory(maastesting.factory.Factory):
             hostname = hostname.lower()
         if status is None:
             status = NODE_STATUS.DEFAULT
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
         if zone is None:
             zone = self.make_Zone()
         if power_type is None:
-            power_type = 'ether_wake'
+            power_type = 'virsh'
         if power_parameters is None:
             power_parameters = {}
         if power_state is None:
@@ -330,7 +325,7 @@ class Factory(maastesting.factory.Factory):
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             min_hwe_kernel=min_hwe_kernel, hwe_kernel=hwe_kernel,
-            node_type=node_type, nodegroup=nodegroup, zone=zone,
+            node_type=node_type, zone=zone,
             power_state=power_state, power_state_updated=power_state_updated,
             disable_ipv4=disable_ipv4, domain=domain,
             **kwargs)
@@ -351,6 +346,47 @@ class Factory(maastesting.factory.Factory):
             self.make_Filesystem(
                 partition=root_partition, mount_point='/', acquired=acquired)
 
+        # Setup the BMC connected to rack controller if a BMC is created.
+        if bmc_connected_to is not None:
+            if node.power_type != "virsh":
+                raise Exception(
+                    "bmc_connected_to requires that power_type set to 'virsh'")
+            rack_interface = bmc_connected_to.get_boot_interface()
+            if rack_interface is None:
+                rack_interface = self.make_Interface(
+                    INTERFACE_TYPE.PHYSICAL, node=bmc_connected_to)
+            existing_static_ips = [
+                ip_address
+                for ip_address in rack_interface.ip_addresses.filter(
+                    alloc_type__in=[
+                        IPADDRESS_TYPE.AUTO,
+                        IPADDRESS_TYPE.STICKY,
+                    ], subnet__isnull=False, ip__isnull=False)
+                if ip_address.ip
+            ]
+            if len(existing_static_ips) == 0:
+                network = factory.make_ipv4_network()
+                subnet = self.make_Subnet(
+                    cidr=str(network.cidr), vlan=rack_interface.vlan)
+                ip_address = self.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.STICKY,
+                    ip=self.pick_ip_in_Subnet(subnet),
+                    subnet=subnet, interface=rack_interface)
+            else:
+                ip_address = existing_static_ips[0]
+            current_ip_addresses = [
+                sip.ip
+                for sip in StaticIPAddress.objects.filter(
+                    subnet=ip_address.subnet)
+                if sip.ip
+            ]
+            bmc_ip_address = self.pick_ip_in_Subnet(
+                ip_address.subnet, but_not=current_ip_addresses)
+            node.power_parameters = {
+                "power_address": "qemu+ssh://user@%s/system" % bmc_ip_address
+            }
+            node.save()
+
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:
@@ -358,6 +394,13 @@ class Factory(maastesting.factory.Factory):
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
+
+    def make_RackController(self, **kwargs):
+        node = self.make_Node_with_Interface_on_Subnet(
+            node_type=NODE_TYPE.RACK_CONTROLLER,
+            with_dhcp_rack_primary=False, with_dhcp_rack_secondary=False,
+            **kwargs)
+        return RackController.objects.get(system_id=node.system_id)
 
     def make_BMC(
             self, power_type=None, power_parameters=None, ip_address=None,
@@ -372,146 +415,6 @@ class Factory(maastesting.factory.Factory):
             ip_address=ip_address, **kwargs)
         bmc.save()
         return bmc
-
-    def get_interface_fields(self, name=None, ip=None, router_ip=None,
-                             network=None, subnet=None, subnet_mask=None,
-                             ip_range_low=None, ip_range_high=None,
-                             interface=None, management=None,
-                             static_ip_range_low=None,
-                             static_ip_range_high=None, **kwargs):
-        """Return a dict of parameters for a cluster interface.
-
-        These are the values that go into a `NodeGroupInterface` model object
-        or form, except the `NodeGroup`.  All IP address fields are unicode
-        strings.
-
-        The `network` parameter is not included in the result, but if you
-        pass an `IPNetwork` as its value, this will be the network that the
-        cluster interface will be attached to.  Its IP address, netmask, and
-        address ranges will be taken from `network`.
-        """
-        if name is None:
-            name = factory.make_name('ngi')
-        if subnet is not None:
-            network = subnet.get_ipnetwork()
-        if network is None:
-            network = factory.make_ipv4_network()
-        # Split the network into dynamic and static ranges.
-        if network.size > 2:
-            middle = network.size // 2
-            dynamic_range = IPRange(network.first, network[middle])
-            static_range = IPRange(network[middle + 1], network.last)
-        else:
-            dynamic_range = network
-            static_range = None
-        if subnet is None and subnet_mask is None:
-            assert type(network) == IPNetwork
-            subnet_mask = str(network.netmask)
-        if static_ip_range_low is None or static_ip_range_high is None:
-            if static_range is None:
-                static_ip_range_low = None
-                static_ip_range_high = None
-            else:
-                static_low = static_range.first
-                static_high = static_range.last
-                if static_ip_range_low is None:
-                    static_ip_range_low = str(IPAddress(static_low))
-                if static_ip_range_high is None:
-                    static_ip_range_high = str(IPAddress(static_high))
-        if ip_range_low is None:
-            ip_range_low = str(IPAddress(dynamic_range.first))
-        if ip_range_high is None:
-            ip_range_high = str(IPAddress(dynamic_range.last))
-        if router_ip is None:
-            router_ip = factory.pick_ip_in_network(network)
-        if ip is None:
-            ip = factory.pick_ip_in_network(network)
-        if management is None:
-            management = factory.pick_enum(NODEGROUPINTERFACE_MANAGEMENT)
-        if interface is None:
-            # Make the name start with something sane, because we have code
-            # that [falls back to] filtering based on interface name that
-            # runs when we register a new cluster. (in other words, tests
-            # will fail if this doesn't look like it should be a physical
-            # Ethernet card.)
-            interface = self.make_name('eth')
-        return dict(
-            name=name,
-            subnet=subnet,
-            subnet_mask=subnet_mask,
-            ip_range_low=ip_range_low,
-            ip_range_high=ip_range_high,
-            static_ip_range_low=static_ip_range_low,
-            static_ip_range_high=static_ip_range_high,
-            router_ip=router_ip,
-            ip=ip,
-            management=management,
-            interface=interface)
-
-    def make_NodeGroup(self, name=None, uuid=None, cluster_name=None,
-                       dhcp_key=None, ip=None, router_ip=None, network=None,
-                       subnet_mask=None, ip_range_low=None,
-                       ip_range_high=None, interface=None, management=None,
-                       status=None, maas_url='', static_ip_range_low=None,
-                       static_ip_range_high=None, default_disable_ipv4=None,
-                       **kwargs):
-        """Create a :class:`NodeGroup`.
-
-        If `management` is set (to a `NODEGROUPINTERFACE_MANAGEMENT` value),
-        a :class:`NodeGroupInterface` will be created as well.
-
-        If network (an instance of IPNetwork) is provided, use it to populate
-        subnet_mask, broadcast_ip, ip_range_low, ip_range_high, router_ip and
-        worker_ip.  This is a convenience for setting up a coherent network
-        all in one go.
-        """
-        if status is None:
-            status = factory.pick_enum(NODEGROUP_STATUS)
-        if name is None:
-            name = self.make_name('nodegroup')
-        if uuid is None:
-            uuid = factory.make_UUID()
-        if cluster_name is None:
-            cluster_name = factory.make_name('cluster')
-        if dhcp_key is None:
-            # TODO: Randomise this properly.
-            dhcp_key = ''
-        if default_disable_ipv4 is None:
-            default_disable_ipv4 = factory.pick_bool()
-        cluster = NodeGroup.objects.new(
-            name=name, uuid=uuid, cluster_name=cluster_name, status=status,
-            dhcp_key=dhcp_key, maas_url=maas_url,
-            default_disable_ipv4=default_disable_ipv4)
-        if management is not None:
-            interface_settings = dict(
-                ip=ip, router_ip=router_ip, network=network,
-                subnet_mask=subnet_mask, ip_range_low=ip_range_low,
-                ip_range_high=ip_range_high, interface=interface,
-                management=management, static_ip_range_low=static_ip_range_low,
-                static_ip_range_high=static_ip_range_high)
-            interface_settings.update(kwargs)
-            self.make_NodeGroupInterface(cluster, **interface_settings)
-        return cluster
-
-    def make_unrenamable_NodeGroup_with_Node(self):
-        """Create a `NodeGroup` that can't be renamed, and `Node`.
-
-        Node groups can't be renamed while they are in an accepted state, have
-        DHCP and DNS management enabled, and have a node that is in allocated
-        state.
-
-        The cluster will also have a managed interface.
-
-        :return: tuple: (`NodeGroup`, `Node`).
-        """
-        name = self.make_name('original-name')
-        nodegroup = self.make_NodeGroup(
-            name=name, status=NODEGROUP_STATUS.ENABLED)
-        factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = self.make_Node(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
-        return nodegroup, node
 
     def make_Domain(self, name=None, ttl=None, authoritative=True):
         if name is None:
@@ -601,52 +504,6 @@ class Factory(maastesting.factory.Factory):
             dnsrr.save()
         return dnsrr
 
-    def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
-                                router_ip=None, network=None,
-                                subnet=None, subnet_mask=None,
-                                ip_range_low=None, ip_range_high=None,
-                                interface=None, management=None,
-                                static_ip_range_low=None,
-                                static_ip_range_high=None, fabric=None,
-                                **kwargs):
-        interface_settings = self.get_interface_fields(
-            name=name, ip=ip, router_ip=router_ip,
-            network=network, subnet=subnet, subnet_mask=subnet_mask,
-            ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            interface=interface, management=management,
-            static_ip_range_low=static_ip_range_low,
-            static_ip_range_high=static_ip_range_high)
-        interface_settings.update(**kwargs)
-
-        # Only populate the subnet field if the subnet_mask exists.
-        # (the caller could want an unconfigured NodeGroupInterface)
-        if interface_settings['subnet_mask']:
-            cidr = create_cidr(
-                interface_settings['ip'], interface_settings['subnet_mask'])
-
-            defaults = {
-                'name': cidr,
-                'cidr': cidr,
-                'space': Space.objects.get_default_space(),
-            }
-
-            if fabric is not None:
-                defaults['vlan'] = fabric.get_default_vlan()
-
-            subnet, _ = Subnet.objects.get_or_create(
-                cidr=cidr, defaults=defaults)
-        elif interface_settings['subnet']:
-            subnet = interface_settings.pop('subnet')
-            interface_settings['subnet_mask'] = subnet.get_ipnetwork().netmask
-
-        if 'broadcast_ip' in interface_settings:
-            del interface_settings['broadcast_ip']
-
-        interface = NodeGroupInterface(
-            nodegroup=nodegroup, **interface_settings)
-        interface.save()
-        return interface
-
     def make_NodeResult_for_commissioning(
             self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from commissioning a node."""
@@ -686,38 +543,30 @@ class Factory(maastesting.factory.Factory):
         return MAC(self.make_mac_address())
 
     def make_Node_with_Interface_on_Subnet(
-            self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            interface_count=1, nodegroup=None, vlan=None, subnet=None,
-            cidr=None, fabric=None, ifname=None, unmanaged=False, **kwargs):
-        """Create a Node that has a Interface which is on a Subnet that has a
-        NodeGroupInterface.
+            self, interface_count=1, vlan=None, subnet=None,
+            cidr=None, fabric=None, ifname=None, unmanaged=False,
+            with_dhcp_rack_primary=True, with_dhcp_rack_secondary=False,
+            primary_rack=None, secondary_rack=None,
+            **kwargs):
+        """Create a Node that has a Interface which is on a Subnet.
 
         :param interface_count: count of interfaces to add
         :param **kwargs: Additional parameters to pass to make_Node.
         """
         mac_address = None
         iftype = INTERFACE_TYPE.PHYSICAL
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED)
         if 'address' in kwargs:
             mac_address = kwargs['address']
             del kwargs['address']
         if 'iftype' in kwargs:
             iftype = kwargs['iftype']
             del kwargs['iftype']
-        node = self.make_Node(
-            nodegroup=nodegroup, fabric=fabric, **kwargs)
+        node = self.make_Node(fabric=fabric, **kwargs)
         if vlan is None:
-            vlan = self.make_VLAN(fabric=fabric)
+            dhcp_on = with_dhcp_rack_primary or with_dhcp_rack_secondary
+            vlan = self.make_VLAN(fabric=fabric, dhcp_on=dhcp_on)
         if subnet is None:
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
-        # Check if the subnet already has a managed interface.
-        ngis = subnet.nodegroupinterface_set.filter(nodegroup=nodegroup)
-        ngis = ngis.exclude(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        ngi = ngis.first()
-        if ngi is None and not unmanaged:
-            self.make_NodeGroupInterface(
-                nodegroup, vlan=vlan, management=management, subnet=subnet)
         boot_interface = self.make_Interface(
             iftype, name=ifname, node=node, vlan=vlan,
             mac_address=mac_address)
@@ -747,6 +596,18 @@ class Factory(maastesting.factory.Factory):
                 self.make_StaticIPAddress(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip="",
                     subnet=subnet, interface=interface)
+        if with_dhcp_rack_primary:
+            if primary_rack is None:
+                primary_rack = self.make_RackController(
+                    vlan=vlan, subnet=subnet)
+            vlan.primary_rack = primary_rack
+            vlan.save()
+        if with_dhcp_rack_secondary:
+            if secondary_rack is None:
+                secondary_rack = self.make_RackController(
+                    vlan=vlan, subnet=subnet)
+            vlan.secondary_rack = secondary_rack
+            vlan.save()
         return node
 
     UNDEFINED = float('NaN')
@@ -833,11 +694,12 @@ class Factory(maastesting.factory.Factory):
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
                     gateway_ip=None, dns_servers=None, host_bits=None,
-                    fabric=None, vid=None, rdns_mode=RDNS_MODE.DEFAULT):
+                    fabric=None, vid=None, dhcp_on=False,
+                    rdns_mode=RDNS_MODE.DEFAULT):
         if name is None:
             name = factory.make_name('name')
         if vlan is None:
-            vlan = factory.make_VLAN(fabric=fabric, vid=vid)
+            vlan = factory.make_VLAN(fabric=fabric, vid=vid, dhcp_on=dhcp_on)
         if space is None:
             space = factory.make_Space()
         if cidr is None:
@@ -853,6 +715,23 @@ class Factory(maastesting.factory.Factory):
             space=space, dns_servers=dns_servers, rdns_mode=rdns_mode)
         subnet.save()
         return subnet
+
+    def pick_ip_in_Subnet(self, subnet, but_not=[]):
+        return self.pick_ip_in_network(IPNetwork(subnet.cidr), but_not=but_not)
+
+    def pick_ip_in_IPRange(self, ip_range, but_not=[]):
+        if but_not is None:
+            but_not = []
+        netaddr_range = ip_range.netaddr_iprange
+        first = netaddr_range.first
+        last = netaddr_range.last
+        but_not = [IPAddress(but) for but in but_not if but is not None]
+        for _ in range(100):
+            address = IPAddress(random.randint(first, last))
+            if address not in but_not:
+                return str(address)
+        raise TooManyRandomRetries(
+            "Could not find available IP in IPRange")
 
     def make_FanNetwork(self, name=None, underlay=None, overlay=None,
                         dhcp=None, host_reserve=1, bridge=None, off=None):
@@ -884,14 +763,14 @@ class Factory(maastesting.factory.Factory):
         raise maastesting.factory.TooManyRandomRetries(
             "Could not generate vid in fabric %s" % fabric)
 
-    def make_VLAN(self, name=None, vid=None, fabric=None):
+    def make_VLAN(self, name=None, vid=None, fabric=None, dhcp_on=False):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if fabric is None:
             fabric = Fabric.objects.get_default_fabric()
         if vid is None:
             # Don't create the vid=0 VLAN, it's auto-created.
             vid = self._get_available_vid(fabric)
-        vlan = VLAN(name=name, vid=vid, fabric=fabric)
+        vlan = VLAN(name=name, vid=vid, fabric=fabric, dhcp_on=dhcp_on)
         vlan.save()
         return vlan
 
@@ -938,6 +817,53 @@ class Factory(maastesting.factory.Factory):
                 InterfaceRelationship(child=interface, parent=parent).save()
         interface.save()
         return reload_object(interface)
+
+    def make_IPRange(
+            self, subnet, start_ip, end_ip, comment=None, user=None,
+            type=None):
+        iprange = IPRange(
+            subnet=subnet, start_ip=start_ip, end_ip=end_ip, type=type,
+            comment=comment, user=user)
+        iprange.save()
+        return iprange
+
+    def make_ipv4_Subnet_with_IPRanges(
+            self, cidr=None, unmanaged=False, with_dynamic_range=True,
+            with_static_range=True, **kwargs):
+        if cidr is not None:
+            network = IPNetwork(cidr)
+            slash = network.prefixlen
+        else:
+            slash = random.choice(
+                [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28])
+            network = factory.make_ipv4_network(slash=slash)
+        host_bits = 32 - slash
+        # Use at most 25% of the subnet per range type.
+        range_size = 2 ** (host_bits - 2)
+        router_address = IPAddress(network.first + 1)
+        dns_servers = random.choice([
+            [], ['8.8.8.8', '8.8.4.4'], [str(IPAddress(network.last - 1))]])
+        subnet = self.make_Subnet(
+            cidr=str(network), gateway_ip=str(router_address),
+            dns_servers=dns_servers, **kwargs)
+        # Create a "dynamic range" for this Subnet.
+        if with_dynamic_range:
+            if unmanaged:
+                range_type = IPRANGE_TYPE.UNMANAGED_DHCP
+            else:
+                range_type = IPRANGE_TYPE.MANAGED_DHCP
+            self.make_IPRange(
+                subnet, type=range_type,
+                start_ip=str(IPAddress(network.first + 2)),
+                end_ip=str(IPAddress(network.first + range_size + 2)))
+            # Create a "static range" for this Subnet.
+        if with_static_range:
+            # XXX mpontillo 2016-01-07: Convert this to ADMIN_RESERVED.
+            self.make_IPRange(
+                subnet, type=IPRANGE_TYPE.MANAGED_STATIC,
+                start_ip=str(IPAddress(network.last - range_size - 2)),
+                end_ip=str(IPAddress(network.last - 2)))
+        return subnet
 
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):
@@ -1047,90 +973,6 @@ class Factory(maastesting.factory.Factory):
                 settings.DEFAULT_CHARSET)
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
-
-    def make_DownloadProgress(self, nodegroup=None, filename=None,
-                              size=NO_VALUE, bytes_downloaded=NO_VALUE,
-                              error=None):
-        """Create a `DownloadProgress` in some poorly-defined state.
-
-        If you have specific wishes about the object's state, you'll want to
-        use one of the specialized `make_DownloadProgress_*` methods instead.
-
-        Pass a `size` of `None` to indicate that total file size is not yet
-        known.  The default picks either a random number, or None.
-        """
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
-        if filename is None:
-            filename = self.make_name('download')
-        if size is NO_VALUE:
-            if self.pick_bool():
-                size = random.randint(0, 1000000000)
-            else:
-                size = None
-        if bytes_downloaded is NO_VALUE:
-            if self.pick_bool():
-                if size is None:
-                    max_size = 1000000000
-                else:
-                    max_size = size
-                bytes_downloaded = random.randint(0, max_size)
-            else:
-                bytes_downloaded = None
-        if error is None:
-            if self.pick_bool():
-                error = self.make_string()
-            else:
-                error = ''
-        return DownloadProgress.objects.create(
-            nodegroup=nodegroup, filename=filename, size=size,
-            bytes_downloaded=bytes_downloaded)
-
-    def make_DownloadProgress_initial(self, nodegroup=None, filename=None,
-                                      size=NO_VALUE):
-        """Create a `DownloadProgress` as reported before a download."""
-        return self.make_DownloadProgress(
-            nodegroup=nodegroup, filename=filename, size=size,
-            bytes_downloaded=None, error='')
-
-    def make_DownloadProgress_success(self, nodegroup=None, filename=None,
-                                      size=None):
-        """Create a `DownloadProgress` indicating success."""
-        if size is None:
-            size = random.randint(0, 1000000000)
-        return self.make_DownloadProgress(
-            nodegroup=nodegroup, filename=filename, size=size,
-            bytes_downloaded=size, error='')
-
-    def make_DownloadProgress_incomplete(self, nodegroup=None, filename=None,
-                                         size=NO_VALUE,
-                                         bytes_downloaded=None):
-        """Create a `DownloadProgress` that's not done yet."""
-        if size is NO_VALUE:
-            if self.pick_bool():
-                # File can't be empty, or the download can't be incomplete.
-                size = random.randint(1, 1000000000)
-            else:
-                size = None
-        if bytes_downloaded is None:
-            if size is None:
-                max_size = 1000000000
-            else:
-                max_size = size
-            bytes_downloaded = random.randint(0, max_size - 1)
-        return self.make_DownloadProgress(
-            nodegroup=nodegroup, filename=filename, size=size,
-            bytes_downloaded=bytes_downloaded, error='')
-
-    def make_DownloadProgress_failure(self, nodegroup=None, filename=None,
-                                      size=NO_VALUE,
-                                      bytes_downloaded=NO_VALUE, error=None):
-        """Create a `DownloadProgress` indicating failure."""
-        if error is None:
-            error = self.make_string()
-        return self.make_DownloadProgress_incomplete(
-            nodegroup=nodegroup, filename=filename, size=size,
-            bytes_downloaded=bytes_downloaded, error=error)
 
     def make_Zone(self, name=None, description=None, nodes=None,
                   sortable_name=False):

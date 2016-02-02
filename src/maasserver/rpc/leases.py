@@ -4,7 +4,6 @@
 """RPC helpers relating to DHCP leases."""
 
 __all__ = [
-    "update_leases",
     "update_lease",
 ]
 
@@ -19,51 +18,11 @@ from maasserver.models.interface import (
     Interface,
     UnknownInterface,
 )
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.utils.orm import transactional
 from netaddr import IPAddress
-from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous
-
-
-def convert_mappings_to_leases(mappings):
-    """Convert AMP mappings to record_lease_state() leases.
-
-    Take mappings, as used by UpdateLeases, and turn into leases
-    as used by record_lease_state().
-    """
-    return [
-        (mapping["ip"], mapping["mac"])
-        for mapping in mappings
-    ]
-
-
-@synchronous
-@transactional
-def update_leases(uuid, mappings):
-    """Updates DHCP leases on a cluster given the mappings in UpdateLeases.
-
-    :param uuid: Cluster UUID as found in
-        :py:class`~provisioningserver.rpc.region.UpdateLeases`.
-    :param mappings: List of {<ip>: <mac>} dicts as defined in
-        :py:class`~provisioningserver.rpc.region.UpdateLeases`.
-
-    Converts the mappings format into a dict that
-    StaticIPAddress.objects.update_leases needs and then calls it.
-
-    :raises NoSuchCluster: If the cluster identified by `uuid` does not
-        exist.
-    """
-    try:
-        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
-    except NodeGroup.DoesNotExist:
-        raise NoSuchCluster.from_uuid(uuid)
-    else:
-        leases = convert_mappings_to_leases(mappings)
-        StaticIPAddress.objects.update_leases(nodegroup, leases)
-        return {}
 
 
 class LeaseUpdateError(Exception):
@@ -73,12 +32,10 @@ class LeaseUpdateError(Exception):
 @synchronous
 @transactional
 def update_lease(
-        cluster_uuid, action, mac, ip_family, ip, timestamp,
+        action, mac, ip_family, ip, timestamp,
         lease_time=None, hostname=None):
     """Update one DHCP leases from a cluster.
 
-    :param cluster_uuid: Cluster UUID as found in
-        :py:class`~provisioningserver.rpc.region.UpdateLease`.
     :param action: DHCP action taken on the cluster as found in
         :py:class`~provisioningserver.rpc.region.UpdateLease`.
     :param mac: MAC address for the action taken on the cluster as found in
@@ -107,11 +64,6 @@ def update_lease(
     :raises NoSuchCluster: If the cluster identified by `cluster_uuid` does not
         exist.
     """
-    try:
-        NodeGroup.objects.get_by_natural_key(cluster_uuid)
-    except NodeGroup.DoesNotExist:
-        raise NoSuchCluster.from_uuid(cluster_uuid)
-
     # Check for a valid action.
     if action not in ["commit", "expiry", "release"]:
         raise LeaseUpdateError("Unknown lease action: %s" % action)
@@ -133,8 +85,8 @@ def update_lease(
 
     # We will recieve actions on all addresses in the subnet. We only want
     # to update the addresses in the dynamic range.
-    ngi = subnet.get_managed_cluster_interface()
-    if IPAddress(ip) not in ngi.get_dynamic_ip_range():
+    dynamic_range = subnet.get_dynamic_range_for_ip(IPAddress(ip))
+    if dynamic_range is None:
         # Do nothing.
         return {}
 

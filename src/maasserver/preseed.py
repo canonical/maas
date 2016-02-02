@@ -40,7 +40,6 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     ClusterUnavailable,
     MissingBootImage,
-    PreseedError,
 )
 from maasserver.models import (
     BootResource,
@@ -79,45 +78,32 @@ def curtin_supports_custom_storage():
     return hasattr(block_meta, "CUSTOM")
 
 
-def get_enlist_preseed(nodegroup=None):
+def get_enlist_preseed(rack_controller=None):
     """Return the enlistment preseed.
 
-    :param nodegroup: The nodegroup used to generate the preseed.
+    :param rack_controller: The rack controller used to generate the preseed.
     :return: The rendered preseed string.
     :rtype: unicode.
     """
     return render_enlistment_preseed(
-        PRESEED_TYPE.ENLIST, nodegroup=nodegroup)
+        PRESEED_TYPE.ENLIST, rack_controller=rack_controller)
 
 
-def get_enlist_userdata(nodegroup=None):
+def get_enlist_userdata(rack_controller=None):
     """Return the enlistment preseed.
 
-    :param nodegroup: The nodegroup used to generate the preseed.
+    :param rack_controller: The rack controller used to generate the preseed.
     :return: The rendered enlistment user-data string.
     :rtype: unicode.
     """
     return render_enlistment_preseed(
-        USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
-
-
-def list_gateways_and_macs(node):
-    """Return a node's router addresses, as a set of IP/MAC pairs.
-
-    In each returned pair, the MAC address is that of a network interface
-    on the node.  The IP address is a router address for that interface.
-    """
-    result = set()
-    for mac in node.macaddress_set.filter(cluster_interface__isnull=False):
-        for cluster_interface in mac.get_cluster_interfaces():
-            if cluster_interface.router_ip not in (None, ''):
-                result.add((cluster_interface.router_ip, mac.mac_address))
-    return result
+        USERDATA_TYPE.ENLIST, rack_controller=rack_controller)
 
 
 def curtin_maas_reporter(node, events_support=True):
     token = NodeKey.objects.get_token_for_node(node)
-    base_url = node.nodegroup.maas_url
+    rack_controller = node.get_boot_primary_rack_controller()
+    base_url = rack_controller.url
     if events_support:
         return {
             'reporting': {
@@ -274,16 +260,17 @@ def get_curtin_image(node):
     osystem = node.get_osystem()
     series = node.get_distro_series()
     arch, subarch = node.split_arch()
+    rack_controller = node.get_boot_primary_rack_controller()
     try:
         images = get_boot_images_for(
-            node.nodegroup, osystem, arch, subarch, series)
+            rack_controller, osystem, arch, subarch, series)
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
-            "Unable to get RPC connection for cluster '%s' (%s)",
-            node.nodegroup.cluster_name, node.nodegroup.uuid)
+            "Unable to get RPC connection for rack controller '%s' (%s)",
+            rack_controller.hostname, rack_controller.system_id)
         raise ClusterUnavailable(
-            "Unable to get RPC connection for cluster '%s' (%s)" %
-            (node.nodegroup.cluster_name, node.nodegroup.uuid))
+            "Unable to get RPC connection for rack controller '%s' (%s)" %
+            (rack_controller.hostname, rack_controller.system_id))
     for image in images:
         if image['purpose'] == 'xinstall':
             return image
@@ -334,14 +321,17 @@ def get_curtin_config(node):
     series = node.get_distro_series()
     template = load_preseed_template(
         node, USERDATA_TYPE.CURTIN, osystem, series)
-    context = get_preseed_context(osystem, series, nodegroup=node.nodegroup)
-    context.update(get_node_preseed_context(node, osystem, series))
-    context.update(get_curtin_context(node))
-
+    rack_controller = node.get_boot_primary_rack_controller()
+    context = get_preseed_context(
+        osystem, series, rack_controller=rack_controller)
+    context.update(
+        get_node_preseed_context(
+            node, osystem, series, rack_controller=rack_controller))
+    context.update(get_curtin_context(node, rack_controller=rack_controller))
     return template.substitute(**context)
 
 
-def get_curtin_context(node):
+def get_curtin_context(node, rack_controller=None):
     """Return the curtin-specific context dictionary to be used to render
     user-data templates.
 
@@ -349,41 +339,12 @@ def get_curtin_context(node):
     :rtype: dict.
     """
     token = NodeKey.objects.get_token_for_node(node)
-    base_url = node.nodegroup.maas_url
+    if rack_controller is None:
+        rack_controller = node.get_boot_primary_rack_controller()
+    base_url = rack_controller.url
     return {
         'curtin_preseed': compose_cloud_init_preseed(node, token, base_url)
     }
-
-
-def get_supported_purposes_for_node(node):
-    """Return all purposes the node currently supports based on its
-    os, architecture, and series."""
-    os_name = node.get_osystem()
-    series = node.get_distro_series()
-    arch, subarch = node.split_arch()
-    try:
-        images = get_boot_images_for(
-            node.nodegroup, os_name, arch, subarch, series)
-    except (NoConnectionsAvailable, TimeoutError):
-        logger.error(
-            "Unable to get RPC connection for cluster '%s' (%s)",
-            node.nodegroup.cluster_name, node.nodegroup.uuid)
-        raise ClusterUnavailable(
-            "Unable to get RPC connection for cluster '%s' (%s)" %
-            (node.nodegroup.cluster_name, node.nodegroup.uuid))
-    return {image['purpose'] for image in images}
-
-
-def get_available_purpose_for_node(purposes, node):
-    """Return the best available purpose for the given purposes and images."""
-    supported_purposes = get_supported_purposes_for_node(node)
-    for purpose in purposes:
-        if purpose in supported_purposes:
-            return purpose
-    logger.error(
-        "Unable to determine purpose for node: '%s'", node.fqdn)
-    raise PreseedError(
-        "Unable to determine purpose for node: '%s'", node.fqdn)
 
 
 def get_preseed_type_for(node):
@@ -602,25 +563,25 @@ def get_netloc_and_path(url):
     return parsed_url.netloc, parsed_url.path
 
 
-def get_preseed_context(osystem='', release='', nodegroup=None):
+def get_preseed_context(osystem='', release='', rack_controller=None):
     """Return the node-independent context dictionary to be used to render
     preseed templates.
 
     :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
-    :param nodegroup: The nodegroup used to generate the preseed.
+    :param rack_controller: The rack controller used to generate the preseed.
     :return: The context dictionary.
     :rtype: dict.
     """
-    server_host = get_maas_facing_server_host(nodegroup=nodegroup)
+    server_host = get_maas_facing_server_host(rack_controller=rack_controller)
     main_archive_hostname, main_archive_directory = get_netloc_and_path(
         Config.objects.get_config('main_archive'))
     ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
         Config.objects.get_config('ports_archive'))
-    if nodegroup is None:
+    if rack_controller is None:
         base_url = None
     else:
-        base_url = nodegroup.maas_url
+        base_url = rack_controller.url
     return {
         'main_archive_hostname': main_archive_hostname,
         'main_archive_directory': main_archive_directory,
@@ -636,7 +597,8 @@ def get_preseed_context(osystem='', release='', nodegroup=None):
         }
 
 
-def get_node_preseed_context(node, osystem='', release=''):
+def get_node_preseed_context(
+        node, osystem='', release='', rack_controller=None):
     """Return the node-dependent context dictionary to be used to render
     preseed templates.
 
@@ -646,11 +608,13 @@ def get_node_preseed_context(node, osystem='', release=''):
     :return: The context dictionary.
     :rtype: dict.
     """
+    if rack_controller is None:
+        rack_controller = node.get_boot_primary_rack_controller()
     # Create the url and the url-data (POST parameters) used to turn off
     # PXE booting once the install of the node is finished.
     node_disable_pxe_url = absolute_reverse(
         'metadata-node-by-id', args=['latest', node.system_id],
-        base_url=node.nodegroup.maas_url)
+        base_url=rack_controller.url)
     node_disable_pxe_data = urlencode({'op': 'netboot_off'})
     driver = get_third_party_driver(node)
     return {
@@ -666,18 +630,20 @@ def get_node_preseed_context(node, osystem='', release=''):
     }
 
 
-def render_enlistment_preseed(prefix, osystem='', release='', nodegroup=None):
+def render_enlistment_preseed(
+        prefix, osystem='', release='', rack_controller=None):
     """Return the enlistment preseed.
 
     :param prefix: See `get_preseed_filenames`.
     :param osystem: See `get_preseed_filenames`.
     :param release: See `get_preseed_filenames`.
-    :param nodegroup: The nodegroup used to generate the preseed.
+    :param rack_controller: The rack controller used to generate the preseed.
     :return: The rendered preseed string.
     :rtype: unicode.
     """
     template = load_preseed_template(None, prefix, osystem, release)
-    context = get_preseed_context(osystem, release, nodegroup=nodegroup)
+    context = get_preseed_context(
+        osystem, release, rack_controller=rack_controller)
     # Render the snippets in the main template.
     snippets = get_snippet_context()
     snippets.update(context)
@@ -695,19 +661,25 @@ def render_preseed(node, prefix, osystem='', release=''):
     :rtype: unicode.
     """
     template = load_preseed_template(node, prefix, osystem, release)
-    nodegroup = node.nodegroup
-    context = get_preseed_context(osystem, release, nodegroup=nodegroup)
-    context.update(get_node_preseed_context(node, osystem, release))
+    rack_controller = node.get_boot_primary_rack_controller()
+    context = get_preseed_context(
+        osystem, release, rack_controller=rack_controller)
+    context.update(
+        get_node_preseed_context(
+            node, osystem, release, rack_controller=rack_controller))
     return template.substitute(**context).encode("utf-8")
 
 
-def compose_enlistment_preseed_url(nodegroup=None):
+def compose_enlistment_preseed_url(rack_controller=None):
     """Compose enlistment preseed URL.
 
-    :param nodegroup: The nodegroup used to generate the preseed.
+    :param rack_controller: The rack controller used to generate the preseed.
     """
     # Always uses the latest version of the metadata API.
-    base_url = nodegroup.maas_url if nodegroup is not None else None
+    base_url = (
+        rack_controller.url
+        if rack_controller is not None
+        else None)
     version = 'latest'
     return absolute_reverse(
         'metadata-enlist-preseed', args=[version],
@@ -718,7 +690,7 @@ def compose_preseed_url(node):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
-    base_url = node.nodegroup.maas_url
+    base_url = node.get_boot_primary_rack_controller().url
     return absolute_reverse(
         'metadata-node-by-id', args=[version, node.system_id],
         query={'op': 'get_preseed'}, base_url=base_url)

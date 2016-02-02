@@ -7,7 +7,7 @@ __all__ = [
     'absolute_reverse',
     'absolute_reverse_url',
     'build_absolute_uri',
-    'find_nodegroup',
+    'find_rack_controller',
     'get_local_cluster_UUID',
     'ignore_unused',
     'make_validation_error_message',
@@ -24,8 +24,6 @@ from urllib.parse import (
 
 from django.core.urlresolvers import reverse
 from maasserver.config import RegionConfiguration
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
-from maasserver.exceptions import NodeGroupMisconfiguration
 from provisioningserver.config import (
     ClusterConfiguration,
     UUID_NOT_SET,
@@ -132,59 +130,25 @@ def get_local_cluster_UUID():
             return config.cluster_uuid
 
 
-def find_nodegroup(request):
-    """Find the nodegroup whose subnet contains the requester's address.
+def find_rack_controller(request):
+    """Find the rack controller whose managing the subnet that contains the
+    requester's address.
 
-    There may be multiple matching nodegroups, but this endeavours to choose
-    the most appropriate.
-
-    :raises `maasserver.exceptions.NodeGroupMisconfiguration`: When more than
-        one nodegroup claims to manage the requester's network.
+    There may be multiple matching rack controllers, but we choose the active
+    rack controller for that subnet.
     """
     # Circular imports.
-    from maasserver.models import NodeGroup
+    from maasserver.models.subnet import Subnet
     ip_address = request.META['REMOTE_ADDR']
     if ip_address is None:
         return None
 
-    # Fetch nodegroups with interfaces in the requester's network,
-    # preferring those with managed networks first. The `NodeGroup`
-    # objects returned are annotated with the `management` field of the
-    # matching `NodeGroupInterface`. See https://docs.djangoproject.com
-    # /en/dev/topics/db/sql/#adding-annotations for this curious feature
-    # of Django's ORM.
-    query = NodeGroup.objects.raw("""
-        SELECT
-            ng.*,
-            ngi.management
-        FROM maasserver_nodegroup AS ng
-        JOIN maasserver_nodegroupinterface AS ngi ON ng.id = ngi.nodegroup_id
-        JOIN maasserver_subnet AS subnet ON subnet.id = ngi.subnet_id
-        WHERE
-            inet %s BETWEEN
-                (ngi.ip & netmask(subnet.cidr)) AND
-                (ngi.ip | ~netmask(subnet.cidr))
-        ORDER BY ngi.management DESC, ng.id ASC
-        """, [ip_address])
-    nodegroups = list(query)
-    if len(nodegroups) == 0:
+    subnet = Subnet.objects.get_best_subnet_for_ip(ip_address)
+    if subnet is None:
         return None
-    if len(nodegroups) == 1:
-        return nodegroups[0]
-
-    # There are multiple matching nodegroups. Only zero or one may
-    # have a managed interface, otherwise it is a misconfiguration.
-    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-    nodegroups_with_managed_interfaces = {
-        nodegroup.id for nodegroup in nodegroups
-        if nodegroup.management != unmanaged
-        }
-    if len(nodegroups_with_managed_interfaces) > 1:
-        raise NodeGroupMisconfiguration(
-            "Multiple clusters on the same network; only "
-            "one cluster may manage the network of which "
-            "%s is a member." % ip_address)
-    return nodegroups[0]
+    if subnet.vlan.dhcp_on is False:
+        return None
+    return subnet.vlan.primary_rack
 
 
 def synchronised(lock):

@@ -1,4 +1,4 @@
-# Copyright 2013-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Tags API."""
@@ -262,16 +262,16 @@ class TestTagAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
-    def test_POST_update_nodes_allows_nodegroup_worker(self):
+    def test_POST_update_nodes_allows_rack_controller(self):
         tag = factory.make_Tag()
-        nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=nodegroup)
-        client = make_worker_client(nodegroup)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node()
+        client = make_worker_client(rack_controller)
         response = client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'add': [node.system_id],
-                'nodegroup': nodegroup.uuid,
+                'rack_controller': rack_controller.system_id,
             })
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
@@ -279,12 +279,12 @@ class TestTagAPI(APITestCase):
         self.assertEqual({'added': 1, 'removed': 0}, parsed_result)
         self.assertItemsEqual([node], tag.node_set.all())
 
-    def test_POST_update_nodes_refuses_unidentified_nodegroup_worker(self):
+    def test_POST_update_nodes_refuses_unidentified_rack_controller(self):
         tag = factory.make_Tag()
-        nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=nodegroup)
-        client = make_worker_client(nodegroup)
-        # We don't pass nodegroup:uuid so we get refused
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node()
+        client = make_worker_client(rack_controller)
+        # We don't pass rack controller system_id so we get refused.
         response = client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
@@ -293,50 +293,32 @@ class TestTagAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())
 
-    def test_POST_update_nodes_refuses_non_nodegroup_worker(self):
+    def test_POST_update_nodes_refuses_non_rack_controller(self):
         tag = factory.make_Tag()
-        nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=nodegroup)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node()
         response = self.client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'add': [node.system_id],
-                'nodegroup': nodegroup.uuid,
+                'rack_controller': rack_controller.system_id,
             })
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
-
-    def test_POST_update_nodes_doesnt_modify_other_nodegroup_nodes(self):
-        tag = factory.make_Tag()
-        nodegroup_mine = factory.make_NodeGroup()
-        nodegroup_theirs = factory.make_NodeGroup()
-        node_theirs = factory.make_Node(nodegroup=nodegroup_theirs)
-        client = make_worker_client(nodegroup_mine)
-        response = client.post(
-            self.get_tag_uri(tag), {
-                'op': 'update_nodes',
-                'add': [node_theirs.system_id],
-                'nodegroup': nodegroup_mine.uuid,
-            })
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual({'added': 0, 'removed': 0}, parsed_result)
         self.assertItemsEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_ignores_incorrect_definition(self):
         tag = factory.make_Tag()
         orig_def = tag.definition
-        nodegroup = factory.make_NodeGroup()
-        node = factory.make_Node(nodegroup=nodegroup)
-        client = make_worker_client(nodegroup)
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node()
+        client = make_worker_client(rack_controller)
         tag.definition = '//new/node/definition'
         tag.save()
         response = client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'add': [node.system_id],
-                'nodegroup': nodegroup.uuid,
+                'rack_controller': rack_controller.system_id,
                 'definition': orig_def,
             })
         self.assertEqual(http.client.CONFLICT, response.status_code)

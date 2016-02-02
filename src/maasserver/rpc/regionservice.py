@@ -23,36 +23,28 @@ from socket import (
 )
 import threading
 
-from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 from maasserver import (
     eventloop,
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
-from maasserver.dhcp import configure_dhcp_now
 from maasserver.enum import NODE_TYPE
 from maasserver.models.node import (
     Node,
     RegionController,
-    RegionRackController,
 )
-from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
-    clusters,
     configuration,
     events,
     leases,
     nodes,
-)
-from maasserver.rpc.monitors import handle_monitor_expired
-from maasserver.rpc.nodegroupinterface import (
-    get_cluster_interfaces_as_dicts,
-    update_foreign_dhcp_ip,
+    rackcontrollers,
 )
 from maasserver.rpc.nodes import (
     commission_node,
@@ -60,10 +52,7 @@ from maasserver.rpc.nodes import (
     request_node_info_by_mac_address,
 )
 from maasserver.security import get_shared_secret
-from maasserver.utils import (
-    make_validation_error_message,
-    synchronised,
-)
+from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_one,
     transactional,
@@ -123,6 +112,7 @@ class Region(RPCProtocol):
     connection is established, AMP is symmetric.
     """
 
+    # XXX ltrager 2016-01-09 remove with NodeGroup
     @region.Identify.responder
     def identify(self):
         """identify()
@@ -143,21 +133,26 @@ class Region(RPCProtocol):
 
         return d.addCallback(got_secret)
 
-    @region.Register.responder
-    def register(self, uuid, networks, url, ip_addr_json):
+    @region.RegisterRackController.responder
+    def register_rackcontroller(self, system_id, hostname, mac_addresses, url):
         d = deferToDatabase(
-            clusters.register_cluster, uuid, networks=networks, url=url,
-            ip_addr_json=ip_addr_json)
+            rackcontrollers.register_rackcontroller, system_id=system_id,
+            hostname=hostname, mac_addresses=mac_addresses, url=url)
 
-        def cb_cluster_registered(cluster):
-            return {}
+        def cb_registered(rackcontroller):
+            self.factory.service._addConnectionFor(
+                rackcontroller.system_id, self)
+            if rackcontroller.needs_refresh:
+                deferToDatabase(rackcontroller.refresh)
+            return {'system_id': rackcontroller.system_id}
 
-        def eb_validation_error(failure):
-            failure.trap(ValidationError)
-            raise exceptions.CannotRegisterCluster.from_uuid(
-                uuid, make_validation_error_message(failure.value))
+        def eb_registered(failure):
+            failure.trap(IntegrityError)
+            raise exceptions.CannotRegisterRackController(
+                "Unable to find existing node or create a new one with "
+                "hostname '%s'." % hostname)
 
-        return d.addCallbacks(cb_cluster_registered, eb_validation_error)
+        return d.addCallbacks(cb_registered, eb_registered)
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
@@ -167,15 +162,6 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.ReportBootImages`.
         """
         return {}
-
-    @region.UpdateLeases.responder
-    def update_leases(self, uuid, mappings):
-        """update_leases(uuid, mappings)
-
-        Implementation of
-        :py:class`~provisioningserver.rpc.region.UpdateLeases`.
-        """
-        return deferToDatabase(leases.update_leases, uuid, mappings)
 
     @region.UpdateLease.responder
     def update_lease(
@@ -190,7 +176,7 @@ class Region(RPCProtocol):
         """
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         d = dbtasks.deferTask(
-            leases.update_lease, cluster_uuid, action, mac, ip_family, ip,
+            leases.update_lease, action, mac, ip_family, ip,
             timestamp, lease_time, hostname)
 
         # Catch all errors except the NoSuchCluster failure. We want that to
@@ -351,8 +337,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
         d = deferToDatabase(
-            update_foreign_dhcp_ip, cluster_uuid, interface_name,
-            foreign_dhcp_ip)
+            rackcontrollers.update_foreign_dhcp_ip,
+            cluster_uuid, interface_name, foreign_dhcp_ip)
         d.addCallback(lambda _: {})
         return d
 
@@ -364,20 +350,9 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.GetClusterInterfaces`.
         """
         d = deferToDatabase(
-            get_cluster_interfaces_as_dicts, cluster_uuid)
+            rackcontrollers.get_rack_controllers_interfaces_as_dicts,
+            cluster_uuid)
         d.addCallback(lambda interfaces: {'interfaces': interfaces})
-        return d
-
-    @region.MonitorExpired.responder
-    def timer_expired(self, id, context):
-        """timer_expired()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.MonitorExpired`.
-        """
-        d = deferToDatabase(
-            handle_monitor_expired, id, context)
-        d.addCallback(lambda _: {})
         return d
 
     @region.CreateNode.responder
@@ -389,8 +364,8 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.CreateNode`.
         """
         d = deferToDatabase(
-            create_node, cluster_uuid, architecture,
-            power_type, power_parameters, mac_addresses, hostname=hostname)
+            create_node, architecture, power_type, power_parameters,
+            mac_addresses, hostname=hostname)
         d.addCallback(lambda node: {'system_id': node.system_id})
         return d
 
@@ -447,14 +422,16 @@ def configureCluster(ident):
 
     :param ident: The cluster's UUID.
     """
-    try:
-        cluster = NodeGroup.objects.get(uuid=ident)
-    except NodeGroup.DoesNotExist:
-        log.msg("Cluster '%s' is not recognised; cannot configure." % (ident,))
-    else:
-        configure_dhcp_now(cluster)
-        log.msg("Cluster %s (%s) has been configured." % (
-            cluster.cluster_name, cluster.uuid))
+    # NODE_GROUP_REMOVAL - blake_r - Fix.
+    #try:
+    #    cluster = NodeGroup.objects.get(uuid=ident)
+    #except NodeGroup.DoesNotExist:
+    #    log.msg("Cluster '%s' is not recognised; cannot configure." % (
+    #       ident,))
+    #else:
+    #    configure_dhcp_now(cluster)
+    #    log.msg("Cluster %s (%s) has been configured." % (
+    #        cluster.cluster_name, cluster.uuid))
 
 
 @implementer(IConnection)
@@ -599,6 +576,42 @@ class RegionService(service.Service, object):
             connection = random.choice(conns)
             return defer.succeed(connection)
 
+    def _getConnectionFromIdentifiers(self, identifiers, timeout):
+        """Wait up to `timeout` seconds for at least one connection from
+        `identifiers`.
+
+        Returns a `Deferred` which will fire with a list of random connections
+        to each client. Only one connection per client will be returned.
+
+        The public interface to this method is `getClientFromIdentifiers`.
+        """
+        matched_connections = []
+        for ident in identifiers:
+            conns = list(self.connections[ident])
+            if len(conns) > 0:
+                matched_connections.append(random.choice(conns))
+        if len(matched_connections) > 0:
+            return defer.succeed(matched_connections)
+        else:
+            # No connections for any of the identifiers. Wait for at least one
+            # connection to appear during the timeout.
+
+            def discard_all(waiters, identifiers, d):
+                """Discard all defers in the waiters for all identifiers."""
+                for ident in identifiers:
+                    waiters[ident].discard(d)
+
+            def cb_conn_list(conn):
+                """Convert connection into a list."""
+                return [conn]
+
+            d = deferWithTimeout(timeout)
+            d.addBoth(callOut, discard_all, self.waiters, identifiers, d)
+            d.addCallback(cb_conn_list)
+            for ident in identifiers:
+                self.waiters[ident].add(d)
+            return d
+
     def _addConnectionFor(self, ident, connection):
         """Adds `connection` to the set of connections for `ident`.
 
@@ -723,29 +736,57 @@ class RegionService(service.Service, object):
         return port
 
     @asynchronous(timeout=FOREVER)
-    def getClientFor(self, uuid, timeout=30):
-        """Return a :class:`common.Client` for the specified cluster.
+    def getClientFor(self, system_id, timeout=30):
+        """Return a :class:`common.Client` for the specified rack controller.
 
-        If more than one connection exists to that cluster - implying
-        that there are multiple cluster controllers for the particular
+        If more than one connection exists to that rack controller - implying
+        that there are multiple rack controllers for the particular
         cluster, for HA - one of them will be returned at random.
 
-        :param uuid: The UUID - as a string - of the cluster that a
-            connection is wanted for.
+        :param system_id: The system_id - as a string - of the rack controller
+            that a connection is wanted for.
         :param timeout: The number of seconds to wait for a connection
             to become available.
         :raises exceptions.NoConnectionsAvailable: When no connection to the
-            given cluster is available.
+            given rack controller is available.
         """
-        d = self._getConnectionFor(uuid, timeout)
+        d = self._getConnectionFor(system_id, timeout)
 
         def cancelled(failure):
             failure.trap(CancelledError)
             raise exceptions.NoConnectionsAvailable(
-                "Unable to connect to cluster %s; no connections available." %
-                uuid, uuid=uuid)
+                "Unable to connect to rack controller %s; no connections "
+                "available." % system_id, uuid=system_id)
 
         return d.addCallbacks(common.Client, cancelled)
+
+    @asynchronous(timeout=FOREVER)
+    def getClientFromIdentifiers(self, identifiers, timeout=30):
+        """Return a :class:`common.Client` for one of the specified
+        identifiers.
+
+        If more than one connection exists to that given `identifiers`, then
+        one of them will be returned at random.
+
+        :param identifiers: List of system_id's of the rack controller
+            that a connection is wanted for.
+        :param timeout: The number of seconds to wait for a connection
+            to become available.
+        :raises exceptions.NoConnectionsAvailable: When no connection to any
+            of the rack controllers is available.
+        """
+        d = self._getConnectionFromIdentifiers(identifiers, timeout)
+
+        def cancelled(failure):
+            failure.trap(CancelledError)
+            raise exceptions.NoConnectionsAvailable(
+                "Unable to connect to any rack controller %s; no connections "
+                "available." % ','.join(identifiers))
+
+        def cb_client(conns):
+            return common.Client(random.choice(conns))
+
+        return d.addCallbacks(cb_client, cancelled)
 
     @asynchronous(timeout=FOREVER)
     def getAllClients(self):
@@ -755,6 +796,18 @@ class RegionService(service.Service, object):
             for conns in self.connections.values()
             for conn in conns
         ]
+
+    @asynchronous(timeout=FOREVER)
+    def getRandomClient(self):
+        """Return a list of all connected :class:`common.Client`s."""
+        clients = list(self.connections.values())
+        if len(clients) == 0:
+            raise exceptions.NoConnectionsAvailable(
+                "Unable to connect to any rack controller; no connections "
+                "available.")
+        else:
+            conns = list(random.choice(clients))
+            return common.Client(random.choice(conns))
 
 
 class RegionAdvertisingService(TimerService, object):
@@ -939,7 +992,7 @@ class RegionAdvertisingService(TimerService, object):
         Each tuple corresponds to somewhere an event-loop is listening
         within the whole region. The `name` is the event-loop name.
         """
-        regions = RegionRackController.region_objects.all()
+        regions = RegionController.objects.all()
         regions = regions.prefetch_related("processes", "processes__endpoints")
         all_endpoints = []
         for region_obj in regions:

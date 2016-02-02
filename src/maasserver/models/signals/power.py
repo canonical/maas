@@ -10,9 +10,10 @@ __all__ = [
 from datetime import timedelta
 
 from maasserver.enum import POWER_STATE
+from maasserver.exceptions import PowerProblem
 from maasserver.models import Node
 from maasserver.node_status import QUERY_TRANSITIONS
-from maasserver.rpc import getClientFor
+from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.orm import (
     post_commit,
     transactional,
@@ -52,25 +53,31 @@ WAIT_TO_QUERY = timedelta(seconds=20)
 
 
 @transactional
-def get_node_cluster_and_power_info(system_id):
-    """Get the node, cluster, and power-info for the specified node.
+def get_node_power_info(system_id):
+    """Get the node, client idents, fallback idents, and power-info for the
+    specified node.
 
-    :return: A ``(node, cluster, power_info)`` tuple, which will be ``(None,
-        None, None)`` if the node does not exist.
+    :return: A ``(node, client_idents, fallback_idents, power_info)`` tuple,
+        which will be ``(None, None, None, None)`` if the node does not exist.
     """
     # Obtain the node and its nodegroup/cluster.
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        return None, None, None
+        return None, None, None, None
     else:
-        # Now obtain the node's power information.
+        try:
+            client_idents, fallback_idents = (
+                node._get_bmc_client_connection_info())
+        except PowerProblem:
+            # No rack controller for this node skip.
+            return node, None, None, None
         try:
             power_info = node.get_effective_power_info()
         except UnknownPowerType:
-            return node, node.nodegroup, None
+            return node, client_idents, fallback_idents, None
         else:
-            return node, node.nodegroup, power_info
+            return node, client_idents, fallback_idents, power_info
 
 
 @transactional
@@ -98,8 +105,8 @@ def update_power_state_of_node(system_id):
         enum, or `None` which denotes that the status could not be queried or
         updated for any of a number of reasons; check the log.
     """
-    node, cluster, power_info = yield deferToDatabase(
-        get_node_cluster_and_power_info, system_id)
+    node, client_idents, fallback_idents, power_info = yield deferToDatabase(
+        get_node_power_info, system_id)
 
     if node is None:
         # The node may have been deleted before we get to this point. Silently
@@ -117,13 +124,18 @@ def update_power_state_of_node(system_id):
         # spam, so we silently abandon this task.
         return
 
+    # Get the client to query the power state.
     try:
-        client = yield getClientFor(cluster.uuid)
+        client = yield getClientFromIdentifiers(client_idents)
     except NoConnectionsAvailable:
-        maaslog.warning(
-            "%s: Could not check power status (no connection to cluster)",
-            node.hostname)
-        return
+        try:
+            client = yield getClientFromIdentifiers(fallback_idents)
+        except NoConnectionsAvailable:
+            maaslog.warning(
+                "%s: Could not check power status (no connection "
+                "to any rack controller).",
+                node.hostname)
+            return
 
     try:
         response = yield client(

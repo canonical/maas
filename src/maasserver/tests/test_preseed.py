@@ -8,7 +8,6 @@ __all__ = []
 import http.client
 import os
 from pipes import quote
-import random
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -17,13 +16,11 @@ from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_STATUS,
-    NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
 )
 from maasserver.exceptions import (
     ClusterUnavailable,
     MissingBootImage,
-    PreseedError,
 )
 from maasserver.models import (
     BootResource,
@@ -38,7 +35,6 @@ from maasserver.preseed import (
     compose_preseed_url,
     curtin_maas_reporter,
     GENERIC_FILENAME,
-    get_available_purpose_for_node,
     get_curtin_config,
     get_curtin_context,
     get_curtin_image,
@@ -53,7 +49,6 @@ from maasserver.preseed import (
     get_preseed_filenames,
     get_preseed_template,
     get_preseed_type_for,
-    get_supported_purposes_for_node,
     load_preseed_template,
     PreseedTemplate,
     render_enlistment_preseed,
@@ -426,9 +421,7 @@ class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
     def test_get_preseed_context_contains_keys(self):
-        release = factory.make_string()
-        nodegroup = factory.make_NodeGroup(maas_url=factory.make_string())
-        context = get_preseed_context(release, nodegroup)
+        context = get_preseed_context()
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
              'server_url', 'main_archive_hostname', 'main_archive_directory',
@@ -443,8 +436,7 @@ class TestPreseedContext(MAASServerTestCase):
         ports_archive = factory.make_url(netloc="ports-archive.example.com")
         Config.objects.set_config('main_archive', main_archive)
         Config.objects.set_config('ports_archive', ports_archive)
-        nodegroup = factory.make_NodeGroup(maas_url=factory.make_string())
-        context = get_preseed_context(factory.make_Node(), nodegroup)
+        context = get_preseed_context()
         parsed_main_archive = urlparse(main_archive)
         parsed_ports_archive = urlparse(ports_archive)
         self.assertEqual(
@@ -467,7 +459,8 @@ class TestNodePreseedContext(
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         release = factory.make_string()
         context = get_node_preseed_context(node, release)
@@ -479,7 +472,8 @@ class TestNodePreseedContext(
             context)
 
     def test_context_contains_third_party_drivers(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         release = factory.make_string()
         enable_third_party_drivers = factory.pick_bool()
@@ -518,20 +512,22 @@ class TestRenderPreseed(
     ]
 
     def test_render_preseed(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(node, self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, bytes)
 
-    def test_get_preseed_uses_nodegroup_maas_url(self):
+    def test_get_preseed_uses_rack_controller_url(self):
         ng_url = 'http://%s' % factory.make_hostname()
-        self.rpc_nodegroup.maas_url = ng_url
-        self.rpc_nodegroup.save()
+        self.rpc_rack_controller.url = ng_url
+        self.rpc_rack_controller.save()
         maas_url = factory.make_simple_http_url()
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            status=NODE_STATUS.COMMISSIONING)
         self.configure_get_boot_images_for_node(node, 'install')
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         preseed = render_preseed(node, self.preseed, "precise")
@@ -564,17 +560,17 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         preseed = render_enlistment_preseed(self.preseed, "precise")
         self.assertTrue(yaml.safe_load(preseed))
 
-    def test_get_preseed_uses_nodegroup_maas_url(self):
-        ng_url = 'http://%s' % factory.make_hostname()
+    def test_get_preseed_uses_rack_controller_maas_url(self):
+        url = 'http://%s' % factory.make_hostname()
         maas_url = factory.make_simple_http_url()
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        nodegroup = factory.make_NodeGroup(maas_url=ng_url)
+        rack_controller = factory.make_RackController(url=url)
         preseed = render_enlistment_preseed(
-            self.preseed, "precise", nodegroup=nodegroup)
+            self.preseed, "precise", rack_controller=rack_controller)
         self.assertThat(
             preseed.decode("utf-8"),
             MatchesAll(
-                Contains(ng_url),
+                Contains(url),
                 Not(Contains(maas_url)),
             ))
 
@@ -586,7 +582,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         return yaml.safe_load(reporter_yaml)
 
     def test__curtin_maas_reporter_with_events_support(self):
-        node = factory.make_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
         reporter = curtin_maas_reporter(node, True)
         self.assertItemsEqual(
@@ -594,7 +590,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         self.assertEqual(
             absolute_reverse(
                 'metadata-status', args=[node.system_id],
-                base_url=node.nodegroup.maas_url),
+                base_url=node.get_boot_primary_rack_controller().url),
             reporter['reporting']['maas']['endpoint'])
         self.assertEqual(
             'webhook',
@@ -610,14 +606,15 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             reporter['reporting']['maas']['token_secret'])
 
     def test__curtin_maas_reporter_without_events_support(self):
-        node = factory.make_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
         token = NodeKey.objects.get_token_for_node(node)
         reporter = curtin_maas_reporter(node, False)
         self.assertEqual(['reporter'], list(reporter.keys()))
         self.assertEqual(
             absolute_reverse(
                 'curtin-metadata-version', args=['latest'],
-                query={'op': 'signal'}, base_url=node.nodegroup.maas_url),
+                query={'op': 'signal'},
+                base_url=node.get_boot_primary_rack_controller().url),
             reporter['reporter']['maas']['url'])
         self.assertEqual(
             token.consumer.key,
@@ -630,7 +627,8 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             reporter['reporter']['maas']['token_secret'])
 
     def test__returns_list_of_yaml_strings_matching_curtin(self):
-        preseeds = compose_curtin_maas_reporter(factory.make_Node())
+        preseeds = compose_curtin_maas_reporter(
+            factory.make_Node_with_Interface_on_Subnet())
         self.assertIsInstance(preseeds, list)
         self.assertThat(preseeds, HasLength(1))
         reporter = self.load_reporter(preseeds)
@@ -732,10 +730,8 @@ class TestGetCurtinUserData(
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, interface=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
@@ -751,10 +747,8 @@ class TestGetCurtinUserData(
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
     def test_get_curtin_userdata_doesnt_call_compose_config_on_otheros(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, interface=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
@@ -770,10 +764,8 @@ class TestGetCurtinUserData(
         self.assertThat(mock_compose_network, MockNotCalled())
 
     def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, interface=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_supports_storage = self.patch(
@@ -796,11 +788,8 @@ class TestGetCurtinUserDataOS(
     ]
 
     def test_get_curtin_userdata(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=self.os_name,
-            interface=True)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=self.os_name)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         user_data = get_curtin_userdata(node)
@@ -814,8 +803,8 @@ class TestCurtinUtilities(
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         self.assertThat(
@@ -836,8 +825,8 @@ class TestCurtinUtilities(
         if main_arch is None:
             main_arch = factory.make_name('arch')
         arch = '%s/%s' % (main_arch, factory.make_name('subarch'))
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, architecture=arch)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, architecture=arch)
         return node
 
     def extract_archive_setting(self, userdata):
@@ -885,8 +874,8 @@ class TestCurtinUtilities(
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_context(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         context = get_curtin_context(node)
         self.assertItemsEqual(
             ['curtin_preseed'], context)
@@ -897,7 +886,7 @@ class TestCurtinUtilities(
         series = factory.make_name('series')
         architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
-        node = factory.make_Node(
+        node = factory.make_Node_with_Interface_on_Subnet(
             osystem=osystem, distro_series=series, architecture=architecture)
         mock_get_boot_images_for = self.patch(
             preseed_module, 'get_boot_images_for')
@@ -906,10 +895,12 @@ class TestCurtinUtilities(
         get_curtin_image(node)
         self.assertThat(
             mock_get_boot_images_for,
-            MockCalledOnceWith(node.nodegroup, osystem, arch, subarch, series))
+            MockCalledOnceWith(
+                node.get_boot_primary_rack_controller(),
+                osystem, arch, subarch, series))
 
     def test_get_curtin_image_raises_ClusterUnavailable(self):
-        node = factory.make_Node()
+        node = factory.make_Node_with_Interface_on_Subnet()
         self.patch(
             preseed_module,
             'get_boot_images_for').side_effect = NoConnectionsAvailable
@@ -939,8 +930,8 @@ class TestCurtinUtilities(
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = factory.make_name('xi_type')
         cluster_ip = factory.make_ipv4_address()
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=osystem['name'],
             architecture=architecture, distro_series=series,
             boot_cluster_ip=cluster_ip)
         arch, subarch = architecture.split('/')
@@ -964,8 +955,8 @@ class TestCurtinUtilities(
         osystem = make_usable_osystem(self)
         series = osystem['default_release']
         architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=osystem['name'],
             architecture=architecture, distro_series=series)
         # Make boot image that is not xinstall
         arch, subarch = architecture.split('/')
@@ -996,12 +987,10 @@ class TestCurtinUtilities(
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = 'tgz'
         cluster_ip = factory.make_ipv4_address()
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller, osystem=osystem['name'],
             architecture=architecture, distro_series=series,
             boot_cluster_ip=cluster_ip)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = make_rpc_boot_image(
             osystem=osystem['name'], release=series,
@@ -1018,68 +1007,6 @@ class TestCurtinUtilities(
                 cluster_ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
-
-    def test_get_supported_purposes_for_node_calls_get_boot_images_for(self):
-        osystem = factory.make_name('os')
-        series = factory.make_name('series')
-        architecture = make_usable_architecture(self)
-        arch, subarch = architecture.split('/')
-        node = factory.make_Node(
-            osystem=osystem, distro_series=series, architecture=architecture)
-        mock_get_boot_images_for = self.patch(
-            preseed_module, 'get_boot_images_for')
-        mock_get_boot_images_for.return_value = [
-            make_rpc_boot_image(purpose='xinstall')]
-        get_supported_purposes_for_node(node)
-        self.assertThat(
-            mock_get_boot_images_for,
-            MockCalledOnceWith(node.nodegroup, osystem, arch, subarch, series))
-
-    def test_get_supported_purposes_for_node_raises_ClusterUnavailable(self):
-        node = factory.make_Node()
-        self.patch(
-            preseed_module,
-            'get_boot_images_for').side_effect = NoConnectionsAvailable
-        self.assertRaises(
-            ClusterUnavailable,
-            get_supported_purposes_for_node, node)
-
-    def test_get_supported_purposes_for_node_returns_set_of_purposes(self):
-        osystem = factory.make_name('os')
-        series = factory.make_name('series')
-        architecture = make_usable_architecture(self)
-        arch, subarch = architecture.split('/')
-        node = factory.make_Node(
-            osystem=osystem, distro_series=series, architecture=architecture)
-        mock_get_boot_images_for = self.patch(
-            preseed_module, 'get_boot_images_for')
-        mock_get_boot_images_for.return_value = [
-            make_rpc_boot_image(purpose='xinstall'),
-            make_rpc_boot_image(purpose='xinstall'),
-            make_rpc_boot_image(purpose='install')]
-        self.assertItemsEqual(
-            {'xinstall', 'install'},
-            get_supported_purposes_for_node(node))
-
-    def test_get_available_purpose_for_node_raises_PreseedError(self):
-        node = factory.make_Node()
-        self.patch(
-            preseed_module,
-            'get_supported_purposes_for_node').return_value = set()
-        self.assertRaises(
-            PreseedError,
-            get_available_purpose_for_node, [], node)
-
-    def test_get_available_purpose_for_node_returns_best_purpose_match(self):
-        node = factory.make_Node()
-        purposes = [factory.make_name('purpose') for _ in range(3)]
-        purpose = random.choice(purposes)
-        self.patch(
-            preseed_module,
-            'get_supported_purposes_for_node').return_value = [purpose]
-        self.assertEqual(
-            purpose,
-            get_available_purpose_for_node(purposes, node))
 
     def test_get_preseed_type_for_commissioning(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -1114,8 +1041,9 @@ class TestPreseedMethods(
     """
 
     def test_get_preseed_returns_curtin_preseed(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')
@@ -1126,14 +1054,16 @@ class TestPreseedMethods(
         self.assertTrue(preseed.startswith(b'#cloud-config'))
 
     def test_get_preseed_returns_commissioning_preseed(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            status=NODE_STATUS.COMMISSIONING)
         preseed = get_preseed(node)
         self.assertIn(b'#cloud-config', preseed)
 
     def test_get_preseed_returns_commissioning_preseed_for_disk_erasing(self):
-        node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.DISK_ERASING)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            status=NODE_STATUS.DISK_ERASING)
         preseed = get_preseed(node)
         self.assertIn(b'#cloud-config', preseed)
 
@@ -1158,14 +1088,15 @@ class TestPreseedURLs(
     def test_compose_enlistment_preseed_url_returns_abs_link_wth_nodegrp(self):
         maas_url = factory.make_simple_http_url(path='')
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
-        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
+        rack_controller = factory.make_RackController(url=maas_url)
 
         self.assertThat(
-            compose_enlistment_preseed_url(nodegroup=nodegroup),
+            compose_enlistment_preseed_url(rack_controller=rack_controller),
             StartsWith(maas_url))
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
         response = self.client.get(compose_preseed_url(node))
         self.assertEqual(
@@ -1174,5 +1105,5 @@ class TestPreseedURLs(
 
     def test_compose_preseed_url_returns_absolute_link(self):
         self.assertThat(
-            compose_preseed_url(factory.make_Node()),
+            compose_preseed_url(factory.make_Node_with_Interface_on_Subnet()),
             StartsWith('http://'))

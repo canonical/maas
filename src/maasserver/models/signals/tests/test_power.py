@@ -97,19 +97,21 @@ class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
 
 class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
-    def prepare_rpc(self, nodegroup, side_effect):
+    def prepare_rpc(self, rack_controller, side_effect):
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         protocol = self.rpc_fixture.makeCluster(
-            nodegroup, cluster_module.PowerQuery)
+            rack_controller, cluster_module.PowerQuery)
         protocol.PowerQuery.side_effect = side_effect
 
     def test__updates_node_power_state(self):
-        node = factory.make_Node(power_type="virsh")
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", bmc_connected_to=rack_controller)
         random_state = random.choice(["on", "off"])
         self.prepare_rpc(
-            node.nodegroup,
+            rack_controller,
             side_effect=always_succeed_with({"state": random_state}))
         self.assertThat(
             power.update_power_state_of_node(node.system_id),
@@ -126,27 +128,33 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Is(None))  # Denotes that nothing happened.
 
     def test__handles_node_being_deleted_in_the_middle(self):
-        node = factory.make_Node(power_type="virsh", power_state="off")
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", power_state="off",
+            bmc_connected_to=rack_controller)
         self.prepare_rpc(
-            node.nodegroup,
+            rack_controller,
             side_effect=always_succeed_with({"state": "on"}))
 
         def delete_node_then_get_client(uuid):
-            from maasserver.rpc import getClientFor
+            from maasserver.rpc import getClientFromIdentifiers
             d = deferToDatabase(transactional(node.delete))
-            d.addCallback(lambda _: getClientFor(uuid))
+            d.addCallback(lambda _: getClientFromIdentifiers(uuid))
             return d
 
-        getClientFor = self.patch_autospec(power, "getClientFor")
-        getClientFor.side_effect = delete_node_then_get_client
+        getClientFromIdentifiers = self.patch_autospec(
+            power, "getClientFromIdentifiers")
+        getClientFromIdentifiers.side_effect = delete_node_then_get_client
 
         self.assertThat(
             power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
 
     def test__updates_power_state_to_unknown_on_UnknownPowerType(self):
-        node = factory.make_Node(power_type="virsh")
-        self.prepare_rpc(node.nodegroup, side_effect=UnknownPowerType())
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", bmc_connected_to=rack_controller)
+        self.prepare_rpc(rack_controller, side_effect=UnknownPowerType())
         self.expectThat(
             power.update_power_state_of_node(node.system_id),
             Equals("unknown"))
@@ -155,8 +163,10 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Equals("unknown"))
 
     def test__updates_power_state_to_unknown_on_NotImplementedError(self):
-        node = factory.make_Node(power_type="virsh")
-        self.prepare_rpc(node.nodegroup, side_effect=NotImplementedError())
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", bmc_connected_to=rack_controller)
+        self.prepare_rpc(rack_controller, side_effect=NotImplementedError())
         self.expectThat(
             power.update_power_state_of_node(node.system_id),
             Equals("unknown"))
@@ -165,9 +175,12 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Equals("unknown"))
 
     def test__does_nothing_on_PowerActionAlreadyInProgress(self):
-        node = factory.make_Node(power_type="virsh", power_state="off")
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", power_state="off",
+            bmc_connected_to=rack_controller)
         self.prepare_rpc(
-            node.nodegroup, side_effect=PowerActionAlreadyInProgress())
+            rack_controller, side_effect=PowerActionAlreadyInProgress())
         self.expectThat(
             power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
@@ -176,10 +189,14 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Equals("off"))
 
     def test__does_nothing_on_NoConnectionsAvailable(self):
-        node = factory.make_Node(power_type="virsh", power_state="off")
-        self.prepare_rpc(node.nodegroup, side_effect=None)
-        getClientFor = self.patch_autospec(power, "getClientFor")
-        getClientFor.side_effect = NoConnectionsAvailable()
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", power_state="off",
+            bmc_connected_to=rack_controller)
+        self.prepare_rpc(rack_controller, side_effect=None)
+        getClientFromIdentifiers = self.patch_autospec(
+            power, "getClientFromIdentifiers")
+        getClientFromIdentifiers.side_effect = NoConnectionsAvailable()
         self.expectThat(
             power.update_power_state_of_node(node.system_id),
             Is(None))  # Denotes that nothing happened.
@@ -188,8 +205,10 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Equals("off"))
 
     def test__updates_power_state_to_error_on_PowerActionFail(self):
-        node = factory.make_Node(power_type="virsh")
-        self.prepare_rpc(node.nodegroup, side_effect=PowerActionFail())
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", bmc_connected_to=rack_controller)
+        self.prepare_rpc(rack_controller, side_effect=PowerActionFail())
         self.expectThat(
             power.update_power_state_of_node(node.system_id),
             Equals("error"))
@@ -198,8 +217,10 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
             Equals("error"))
 
     def test__updates_power_state_to_error_on_other_error(self):
-        node = factory.make_Node(power_type="virsh")
-        self.prepare_rpc(node.nodegroup, side_effect=factory.make_exception())
+        rack_controller = factory.make_RackController()
+        node = factory.make_Node(
+            power_type="virsh", bmc_connected_to=rack_controller)
+        self.prepare_rpc(rack_controller, side_effect=factory.make_exception())
         self.assertThat(
             power.update_power_state_of_node(node.system_id),
             Equals("error"))

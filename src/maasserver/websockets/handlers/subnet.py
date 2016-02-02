@@ -21,7 +21,6 @@ class SubnetHandler(TimestampedModelHandler):
             Subnet.objects.all()
                   .select_related('space', 'vlan')
                   .prefetch_related('vlan__fabric')
-                  .prefetch_related('nodegroupinterface_set__nodegroup')
                   .prefetch_related('staticipaddress_set__user')
                   .prefetch_related(
                       'staticipaddress_set__interface_set__node'))

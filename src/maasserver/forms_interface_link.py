@@ -128,13 +128,12 @@ class InterfaceLinkForm(forms.Form):
                 set_form_error(
                     self, "ip_address",
                     "IP address is not in the given subnet '%s'." % subnet)
-            ngi = subnet.get_managed_cluster_interface()
-            if (ngi is not None and
-                    ip_address in ngi.get_dynamic_ip_range()):
+            ip_range = subnet.get_dynamic_range_for_ip(ip_address)
+            if ip_range is not None:
                 set_form_error(
                     self, "ip_address",
-                    "IP address is inside a managed dynamic range "
-                    "%s to %s." % (ngi.ip_range_low, ngi.ip_range_high))
+                    "IP address is inside a dynamic range "
+                    "%s to %s." % (ip_range.start_ip, ip_range.end_ip))
 
     def _clean_mode_link_up(self):
         # Cannot set LINK_UP unless no other IP address are attached to

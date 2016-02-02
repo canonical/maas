@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -8,16 +8,10 @@ __all__ = [
     "Node",
     "RackController",
     "RegionController",
-    "RegionRackController",
-    "fqdn_is_duplicate",
-    "nodegroup_fqdn",
     ]
 
 
-from collections import (
-    defaultdict,
-    namedtuple,
-)
+from collections import namedtuple
 from datetime import timedelta
 from operator import attrgetter
 import re
@@ -49,7 +43,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from maasserver import DefaultMeta
-from maasserver.clusterrpc.dhcp import remove_host_maps
 from maasserver.clusterrpc.power import (
     power_driver_check,
     power_off_node,
@@ -72,7 +65,10 @@ from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
 )
-from maasserver.exceptions import NodeStateViolation
+from maasserver.exceptions import (
+    NodeStateViolation,
+    PowerProblem,
+)
 from maasserver.fields import (
     JSONObjectField,
     MAASIPAddressField,
@@ -101,14 +97,16 @@ from maasserver.node_status import (
     is_failed_status,
     NODE_TRANSITIONS,
 )
-from maasserver.rpc.monitors import TransitionMonitor
+from maasserver.rpc import (
+    getClientFor,
+    getClientFromIdentifiers,
+)
 from maasserver.sequence import Sequence
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils import strip_domain
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -136,13 +134,16 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.rpc.exceptions import CannotRemoveHostMap
+from provisioningserver.rpc.cluster import RefreshRackControllerInfo
+from provisioningserver.rpc.exceptions import (
+    CannotRemoveHostMap,
+    NoConnectionsAvailable,
+)
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
-    synchronous,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
@@ -454,62 +455,36 @@ class DeviceManager(BaseNodeManager):
     extra_filters = {'node_type': NODE_TYPE.DEVICE}
 
 
+class ControllerManager(BaseNodeManager):
+    """All controllers `RackController`, `RegionController`, and
+    `RegionRackController`."""
+
+    extra_filters = {
+        'node_type__in': [
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            ]}
+
+
 class RackControllerManager(BaseNodeManager):
     """Rack controllers are nodes which are used by MAAS to deploy nodes."""
 
-    extra_filters = {'node_type': NODE_TYPE.RACK_CONTROLLER}
+    extra_filters = {
+        'node_type__in': [
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            ]}
 
 
 class RegionControllerManager(BaseNodeManager):
     """Region controllers are the API, UI, and Coordinators of MAAS."""
 
-    extra_filters = {'node_type': NODE_TYPE.REGION_CONTROLLER}
-
-
-class RegionRackControllerManager(
-        RegionControllerManager, RackControllerManager):
-    """Controllers that run both region and cluster on same machine."""
-
-    extra_filters = {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER}
-
-
-class RegionControllerAndRegionRackControllerManager(
-        RegionControllerManager, RackControllerManager):
-    """Controllers that run both region and cluster on same machine.
-
-    This manager returns both `RegionController` and `RegionRackController`.
-    """
-
     extra_filters = {
         'node_type__in': [
             NODE_TYPE.REGION_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        ]
-    }
-
-
-def nodegroup_fqdn(hostname, nodegroup_name):
-    """Build a FQDN from a hostname and a given domain name.
-
-    Strip any labels after the first from the hostname, and then append the
-    given domain name.  This used to be from the nodegroup, but is
-    transitioning to node.domain
-    """
-    stripped_hostname = strip_domain(hostname)
-    return '%s.%s' % (stripped_hostname, nodegroup_name)
-
-
-def fqdn_is_duplicate(node, fqdn):
-    """Determine if fqdn exists on any other nodes."""
-    hostname = strip_domain(fqdn)
-    nodes = Node.objects.filter(
-        hostname__startswith=hostname).exclude(id=node.id)
-
-    for check_node in nodes:
-        if check_node.fqdn == fqdn:
-            return True
-
-    return False
+            ]}
 
 
 def get_default_domain():
@@ -558,7 +533,6 @@ class Node(CleanSave, TimestampedModel):
     :ivar distro_series: This `Node`'s booting distro series, if
         it's blank then the default_distro_series will be used.
     :ivar bmc: The BMC / power controller for this node.
-    :ivar nodegroup: The `NodeGroup` this `Node` belongs to.
     :ivar tags: The list of :class:`Tag`s associated with this `Node`.
     :ivar objects: The :class:`GeneralManager`.
     :ivar enable_ssh: An optional flag to indicate if this node can have
@@ -595,6 +569,12 @@ class Node(CleanSave, TimestampedModel):
     status = IntegerField(
         choices=NODE_STATUS_CHOICES, editable=False,
         default=NODE_STATUS.DEFAULT)
+
+    # Set to time in the future when the node status should transition to
+    # a failed status. This is used by the StatusMonitorService inside
+    # the region processes. Each run periodically to update nodes.
+    status_expires = DateTimeField(
+        null=True, blank=False, default=None, editable=False)
 
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False,
@@ -650,6 +630,14 @@ class Node(CleanSave, TimestampedModel):
         choices=POWER_STATE_CHOICES, default=POWER_STATE.UNKNOWN,
         editable=False)
 
+    # Set when a rack controller says its going to update the power state
+    # for this node. This prevents other rack controllers from also checking
+    # this node at the same time.
+    power_state_queried = DateTimeField(
+        null=True, blank=False, default=None, editable=False)
+
+    # Set when a rack controller has actually checked this power state and
+    # the last time the power was updated.
     power_state_updated = DateTimeField(
         null=True, blank=False, default=None, editable=False)
 
@@ -661,12 +649,6 @@ class Node(CleanSave, TimestampedModel):
     netboot = BooleanField(default=True)
 
     license_key = CharField(max_length=30, null=True, blank=True)
-
-    # XXX 2016-01-06 blake_r: This field can now be blank because of
-    # RackController and RegionController are now based on Node. This field
-    # will be removed soon once all the new RackController work is completed.
-    nodegroup = ForeignKey(
-        'maasserver.NodeGroup', editable=True, null=True, blank=True)
 
     tags = ManyToManyField(Tag)
 
@@ -724,6 +706,10 @@ class Node(CleanSave, TimestampedModel):
     skip_networking = BooleanField(default=False)
     skip_storage = BooleanField(default=False)
 
+    # The URL the RackController uses to access to RegionController's.
+    url = CharField(
+        blank=True, editable=False, max_length=255, default='')
+
     # Used only by a RegionController to determine which
     # RegionControllerProcess is currently controlling DNS on this node.
     # Used only by `REGION_CONTROLLER` all other types this should be NULL.
@@ -737,6 +723,9 @@ class Node(CleanSave, TimestampedModel):
     # managers") for details.
     # 'objects' are all the nodes types
     objects = GeneralManager()
+
+    # Manager that returns all controller objects. See `ControllerManager`.
+    controllers = ControllerManager()
 
     def __str__(self):
         if self.hostname:
@@ -804,7 +793,7 @@ class Node(CleanSave, TimestampedModel):
 
         Return the FQDN for this host.
         """
-        return nodegroup_fqdn(self.hostname, self.domain.name)
+        return '%s.%s' % (self.hostname, self.domain.name)
 
     def get_deployment_time(self):
         """Return the deployment time of this node (in seconds).
@@ -944,37 +933,6 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
-
-    @synchronous
-    def start_transition_monitor(self, timeout):
-        """Start cluster-side transition monitor."""
-        monitor = (
-            TransitionMonitor.fromNode(self)
-            .within(seconds=timeout)
-            .status_should_be(self.status))
-        post_commit().addCallback(
-            callOut, self._start_transition_monitor_async, monitor,
-            self.hostname)
-
-    @synchronous
-    def stop_transition_monitor(self):
-        """Stop cluster-side transition monitor."""
-        monitor = TransitionMonitor.fromNode(self)
-        post_commit().addCallback(
-            callOut, self._stop_transition_monitor_async, monitor,
-            self.hostname)
-
-    def handle_monitor_expired(self, context):
-        """Handle a monitor expired event."""
-        failed_status = get_failed_status(self.status)
-        if failed_status is not None:
-            timeout_timedelta = timedelta(seconds=context['timeout'])
-            self._mark_failed(
-                None, "Node operation '%s' timed out after %s." % (
-                    (
-                        NODE_STATUS_CHOICES_DICT[self.status],
-                        timeout_timedelta
-                    )))
 
     def ip_addresses(self):
         """IP addresses allocated to this node.
@@ -1133,12 +1091,9 @@ class Node(CleanSave, TimestampedModel):
                     ["Architecture must be defined for installable nodes."]})
 
     def clean_hostname_domain(self, prev):
-        # Thru MAAS 1.9, if the node was on a nodegroupinterface that did not
-        # manage the DNS, then hostname was an FQDN. (Otherwise, we simply
-        # threw away any domain portion of the name, and used NodeGroup.name.
-        # The migration code took care of that logic, and here we assume that
-        # if you set the hostname to a name with dots, that you mean for that
-        # to be the FQDN of the host.
+        # If you set the hostname to a name with dots, that you mean for that
+        # to be the FQDN of the host. Se we check that a domain exists for
+        # the remaining portion of the hostname.
         if self.hostname.find('.') > -1:
             # They have specified an FQDN.  Split up the pieces, and throw
             # an error if the domain does not exist.
@@ -1293,6 +1248,31 @@ class Node(CleanSave, TimestampedModel):
         self.start_commissioning(user)
         return self
 
+    @classmethod
+    @transactional
+    def _set_status_expires(self, system_id, seconds):
+        """Set the status_expires field on node."""
+        try:
+            node = Node.objects.get(system_id=system_id)
+        except Node.DoesNotExist:
+            return
+
+        db_time = now()
+        node.status_expires = db_time + timedelta(seconds=seconds)
+        node.save(update_fields=['status_expires'])
+
+    @classmethod
+    @transactional
+    def _clear_status_expires(self, system_id):
+        """Clear the status_expires field on node."""
+        try:
+            node = Node.objects.get(system_id=system_id)
+        except Node.DoesNotExist:
+            return
+
+        node.status_expires = None
+        node.save(update_fields=['status_expires'])
+
     @transactional
     def start_commissioning(
             self, user, enable_ssh=False, skip_networking=False,
@@ -1347,12 +1327,6 @@ class Node(CleanSave, TimestampedModel):
                 'default_min_hwe_kernel')
         self.save()
 
-        # Prepare a transition monitor for later.
-        monitor = (
-            TransitionMonitor.fromNode(self)
-            .within(seconds=self.get_commissioning_time())
-            .status_should_be(NODE_STATUS.READY))
-
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -1373,8 +1347,8 @@ class Node(CleanSave, TimestampedModel):
             assert isinstance(starting, Deferred) or starting is None
 
             post_commit().addCallback(
-                callOut, self._start_transition_monitor_async, monitor,
-                self.hostname)
+                callOutToDatabase, Node._set_status_expires,
+                self.system_id, self.get_commissioning_time())
 
             if starting is None:
                 starting = post_commit()
@@ -1400,25 +1374,6 @@ class Node(CleanSave, TimestampedModel):
                 return failure  # Propagate.
 
             return starting.addErrback(eb_start, self.hostname)
-
-    @classmethod
-    @asynchronous
-    def _start_transition_monitor_async(cls, monitor, hostname):
-        """Start the given `monitor`.
-
-        :param monitor: An instance of `TransitionMonitor`.
-        :param hostname: The node's hostname, for logging.
-        """
-        def start():
-            # Start the transition monitor. Only log failures; don't crash.
-            return monitor.start().addErrback(eb_start, hostname)
-
-        def eb_start(failure, hostname):
-            maaslog.warning(
-                "%s: Could not start transition monitor: %s",
-                hostname, failure.getErrorMessage())
-
-        reactor.callLater(0, start)
 
     @classmethod
     @asynchronous
@@ -1454,9 +1409,6 @@ class Node(CleanSave, TimestampedModel):
             user, EVENT_TYPES.REQUEST_NODE_ABORT_COMMISSIONING,
             action='abort commissioning', comment=comment)
 
-        # Prepare a transition monitor for later.
-        monitor = TransitionMonitor.fromNode(self)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -1476,8 +1428,7 @@ class Node(CleanSave, TimestampedModel):
             assert isinstance(stopping, Deferred) or stopping is None
 
             post_commit().addCallback(
-                callOut, self._stop_transition_monitor_async, monitor,
-                self.hostname)
+                callOutToDatabase, Node._clear_status_expires, self.system_id)
 
             if stopping is None:
                 stopping = post_commit()
@@ -1517,9 +1468,6 @@ class Node(CleanSave, TimestampedModel):
             user, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT,
             action='abort deploying', comment=comment)
 
-        # Prepare a transition monitor for later.
-        monitor = TransitionMonitor.fromNode(self)
-
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
@@ -1536,8 +1484,7 @@ class Node(CleanSave, TimestampedModel):
             assert isinstance(stopping, Deferred) or stopping is None
 
             post_commit().addCallback(
-                callOut, self._stop_transition_monitor_async, monitor,
-                self.hostname)
+                callOutToDatabase, Node._clear_status_expires, self.system_id)
 
             if stopping is None:
                 stopping = post_commit()
@@ -1558,25 +1505,6 @@ class Node(CleanSave, TimestampedModel):
                 return failure  # Propagate.
 
             return stopping.addErrback(eb_abort, self.hostname)
-
-    @classmethod
-    @asynchronous
-    def _stop_transition_monitor_async(cls, monitor, hostname):
-        """Stop the given `monitor`.
-
-        :param monitor: An instance of `TransitionMonitor`.
-        :param hostname: The node's hostname, for logging.
-        """
-        def stop():
-            # Stop the transition monitor. Only log failures; don't crash.
-            return monitor.stop().addErrback(eb_stop, hostname)
-
-        def eb_stop(failure, hostname):
-            maaslog.warning(
-                "%s: Could not stop transition monitor: %s",
-                hostname, failure.getErrorMessage())
-
-        reactor.callLater(0, stop)
 
     @classmethod
     @asynchronous
@@ -1667,11 +1595,6 @@ class Node(CleanSave, TimestampedModel):
                 return tag, tag.kernel_opts
         global_value = Config.objects.get_config('kernel_opts')
         return None, global_value
-
-    @property
-    def work_queue(self):
-        """The name of the queue for tasks specific to this node."""
-        return self.nodegroup.work_queue
 
     def get_osystem(self):
         """Return the operating system to install that node."""
@@ -1799,9 +1722,9 @@ class Node(CleanSave, TimestampedModel):
                 power_type, power_params,
             )
 
-    def confirm_power_driver_operable(self):
-        power_type = self.get_effective_power_type()
-        missing_packages = power_driver_check(self.nodegroup.uuid, power_type)
+    @staticmethod
+    def confirm_power_driver_operable(client, power_type, conn_ident):
+        missing_packages = power_driver_check(client, power_type)
         if len(missing_packages) > 0:
             missing_packages = sorted(missing_packages)
             if len(missing_packages) > 2:
@@ -1809,12 +1732,12 @@ class Node(CleanSave, TimestampedModel):
                     missing_packages[:-1]), missing_packages[-1]]
             package_list = " and ".join(missing_packages)
             raise PowerActionFail(
-                "Power control software is missing from the cluster "
-                "controller. To proceed, "
-                "install the %s package%s on the %s cluster." % (
+                "Power control software is missing from the rack "
+                "controller %s. To proceed, "
+                "install the %s package%s." % (
+                    conn_ident,
                     package_list,
-                    "s" if len(missing_packages) > 1 else "",
-                    self.nodegroup.cluster_name))
+                    "s" if len(missing_packages) > 1 else ""))
 
     def acquire(
             self, user, token=None, agent_name='', comment=None):
@@ -2049,7 +1972,9 @@ class Node(CleanSave, TimestampedModel):
             # state): update_power_state() will take care of making the node
             # READY, remove the owner, and release the assigned auto IP
             # addresses when the power is finally off.
-            self.start_transition_monitor(self.get_releasing_time())
+            post_commit().addCallback(
+                callOutToDatabase, Node._set_status_expires,
+                self.system_id, self.get_releasing_time())
             release_to_ready = False
         else:
             # The node's power cannot be reliably controlled. Frankly, this
@@ -2144,7 +2069,7 @@ class Node(CleanSave, TimestampedModel):
             comment=comment)
         self._mark_failed(user, comment)
 
-    def _mark_failed(self, user, comment=None):
+    def _mark_failed(self, user, comment=None, commit=True):
         """Mark this node as failed.
 
         The actual 'failed' state depends on the current status of the
@@ -2154,7 +2079,8 @@ class Node(CleanSave, TimestampedModel):
         if new_status is not None:
             self.status = new_status
             self.error_description = comment if comment else ''
-            self.save()
+            if commit:
+                self.save()
             maaslog.error(
                 "%s: Marking node failed: %s", self.hostname, comment)
         elif self.status == NODE_STATUS.NEW:
@@ -2218,7 +2144,7 @@ class Node(CleanSave, TimestampedModel):
             power_state == POWER_STATE.OFF)
         if mark_ready:
             # Ensure the node is released when it powers down.
-            self.stop_transition_monitor()
+            self.status_expires = None
             self._release_to_ready()
         self.save()
 
@@ -2311,23 +2237,6 @@ class Node(CleanSave, TimestampedModel):
             acquired=True)
         filesystems.delete()
 
-    def release_leases(self):
-        """Release all leases assigned to the node."""
-        ip_leases = StaticIPAddress.objects.filter(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip__isnull=False,
-            subnet__isnull=False, interface__node=self)
-        removal_mapping = defaultdict(set)
-        for ip in ip_leases:
-            if ip.ip:
-                ngi = ip.subnet.get_managed_cluster_interface()
-                if ngi is not None:
-                    removal_mapping[ngi.nodegroup].add(ip.ip)
-        remove_host_maps_failures = list(
-            remove_host_maps(removal_mapping))
-        if len(remove_host_maps_failures) != 0:
-            # There's only ever one failure here.
-            remove_host_maps_failures[0].raiseException()
-
     def claim_auto_ips(self):
         """Assign IP addresses to all interface links set to AUTO."""
         exclude_addresses = set()
@@ -2382,7 +2291,7 @@ class Node(CleanSave, TimestampedModel):
             auto_set = True
         if not auto_set:
             # Failed to set AUTO mode on the boot interface. Lets force an
-            # AUTO on a managed subnet that is on the same VLAN as the
+            # AUTO on a subnet that is on the same VLAN as the
             # interface. If that fails we just set the interface to DHCP with
             # no subnet defined.
             boot_interface.force_auto_or_dhcp_link()
@@ -2430,10 +2339,8 @@ class Node(CleanSave, TimestampedModel):
                 staticip.id = link.staticipaddress_id
             JOIN maasserver_subnet AS subnet ON
                 subnet.id = staticip.subnet_id
-            LEFT JOIN maasserver_nodegroupinterface AS ngi ON
-                ngi.subnet_id = subnet.id
-            LEFT JOIN maasserver_nodegroup AS nodegroup ON
-                nodegroup.id = ngi.nodegroup_id
+            JOIN maasserver_vlan AS vlan ON
+                vlan.id = subnet.vlan_id
             WHERE
                 node.id = %s AND
                 subnet.gateway_ip IS NOT NULL AND
@@ -2446,8 +2353,7 @@ class Node(CleanSave, TimestampedModel):
                 )
             ORDER BY
                 family(subnet.gateway_ip),
-                nodegroup.status,
-                ngi.management DESC,
+                vlan.dhcp_on DESC,
                 CASE
                     WHEN interface.type = 'bond' THEN 1
                     WHEN interface.type = 'physical' AND
@@ -2580,6 +2486,46 @@ class Node(CleanSave, TimestampedModel):
             return None
         return interfaces[0]
 
+    def get_boot_primary_rack_controller(self):
+        """Return the `RackController` that this node will boot from as its
+        primary rack controller ."""
+        boot_interface = self.get_boot_interface()
+        if (boot_interface is None or
+                boot_interface.vlan is None or
+                not boot_interface.vlan.dhcp_on):
+            return None
+        else:
+            return boot_interface.vlan.primary_rack
+
+    def get_boot_secondary_rack_controller(self):
+        """Return the `RackController` that this node will boot from as its
+        secondary rack controller ."""
+        boot_interface = self.get_boot_interface()
+        if (boot_interface is None or
+                boot_interface.vlan is None or
+                not boot_interface.vlan.dhcp_on):
+            return None
+        else:
+            return boot_interface.vlan.secondary_rack
+
+    def get_boot_rack_controllers(self):
+        """Return the `RackController` that this node will boot from."""
+        boot_interface = self.get_boot_interface()
+        if (boot_interface is None or
+                boot_interface.vlan is None or
+                not boot_interface.vlan.dhcp_on):
+            return []
+        else:
+            racks = [
+                boot_interface.vlan.primary_rack,
+                boot_interface.vlan.secondary_rack,
+            ]
+            return [
+                rack
+                for rack in racks
+                if rack is not None
+            ]
+
     def get_pxe_mac_vendor(self):
         """Return the vendor of the MAC address the node booted from."""
         boot_interface = self.get_boot_interface()
@@ -2624,16 +2570,6 @@ class Node(CleanSave, TimestampedModel):
         """Returns the subtatus of the nome as a user-friendly string."""
         return NODE_STATUS_CHOICES_DICT[self.status]
 
-    def is_boot_interface_on_managed_interface(self):
-        """Return True if the boot interface is attached to a managed cluster
-        interface."""
-        boot_interface = self.get_boot_interface()
-        if boot_interface is not None:
-            cluster_interface = boot_interface.get_cluster_interface()
-            if cluster_interface is not None:
-                return cluster_interface.is_managed
-        return False
-
     @transactional
     def start(self, user, user_data=None, comment=None):
         if not user.has_perm(NODE_PERMISSION.EDIT, self):
@@ -2648,6 +2584,33 @@ class Node(CleanSave, TimestampedModel):
         self._register_request_event(
             user, event, action='start', comment=comment)
         return self._start(user, user_data)
+
+    def _get_bmc_client_connection_info(self):
+        """Return a tuple that list the rack controllers that can communicate
+        to the BMC for this node.
+
+        First entry in the tuple is the rack controllers that can communicate
+        to a BMC because it has an IP address on a subnet that the rack
+        controller also has an IP address.
+
+        Second entry is a fallback to the old way pre-MAAS 2.0 where only
+        the rack controller that owned the node could power it on. Here we
+        providing the primary and secondary rack controllers that are managing
+        the VLAN that this node PXE boots from.
+        """
+        if self.bmc is None:
+            client_idents = []
+        else:
+            client_idents = self.bmc.get_client_identifiers()
+        fallback_idents = [
+            rack.system_id
+            for rack in self.get_boot_rack_controllers()
+        ]
+        if len(client_idents) == 0 and len(fallback_idents) == 0:
+            raise PowerProblem(
+                "No rack controllers can access the BMC of node: %s" % (
+                    self.hostname))
+        return client_idents, fallback_idents
 
     @transactional
     def _start(self, user, user_data=None):
@@ -2690,13 +2653,10 @@ class Node(CleanSave, TimestampedModel):
             # The current state being ALLOCATED is our indication that the node
             # is being deployed for the first time.
             self.claim_auto_ips()
-            transition_monitor = (
-                TransitionMonitor.fromNode(self)
-                .within(seconds=self.get_deployment_time())
-                .status_should_be(self.status))
+            deployment_timeout = self.get_deployment_time()
             self._start_deployment()
         else:
-            transition_monitor = None
+            deployment_timeout = None
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_started:
@@ -2704,20 +2664,25 @@ class Node(CleanSave, TimestampedModel):
             # Everything we've done up to this point is still valid;
             # this is not an error state.
             return None
-        self.confirm_power_driver_operable()
 
-        def pc_power_on_node(system_id, hostname, nodegroup_uuid, power_info):
-            d = power_on_node(system_id, hostname, nodegroup_uuid, power_info)
-            if transition_monitor is not None:
+        def pc_power_on_node(
+                system_id, hostname, client_idents, fallback_idents,
+                power_info):
+
+            d = Node._power_control_node(
+                power_on_node, system_id, hostname,
+                client_idents, fallback_idents, power_info)
+            if deployment_timeout is not None:
                 d.addCallback(
-                    callOut, self._start_transition_monitor_async,
-                    transition_monitor, hostname)
+                    callOutToDatabase, Node._set_status_expires,
+                    self.system_id, deployment_timeout)
             d.addErrback(callOutToDatabase, self.release_auto_ips)
             return d
 
+        client_idents, fallback_idents = self._get_bmc_client_connection_info()
         return post_commit_do(
             pc_power_on_node, self.system_id, self.hostname,
-            self.nodegroup.uuid, power_info)
+            client_idents, fallback_idents, power_info)
 
     @transactional
     def stop(self, user, stop_mode='hard', comment=None):
@@ -2758,15 +2723,37 @@ class Node(CleanSave, TimestampedModel):
             # node we don't know how to stop isn't an error state, but
             # it's a no-op.
             return None
-        self.confirm_power_driver_operable()
 
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode
 
         # Request that the node be powered off post-commit.
+        client_idents, fallback_idents = self._get_bmc_client_connection_info()
         return post_commit_do(
-            power_off_node, self.system_id, self.hostname,
-            self.nodegroup.uuid, power_info)
+            Node._power_control_node, power_off_node,
+            self.system_id, self.hostname,
+            client_idents, fallback_idents, power_info)
+
+    @staticmethod
+    def _power_control_node(
+            power_method, system_id, hostname, client_idents, fallback_idents,
+            power_info):
+        """Perform the `power_method` with the given parameters."""
+
+        def eb_fallback_clients(failure):
+            failure.trap(NoConnectionsAvailable)
+            return getClientFromIdentifiers(fallback_idents)
+
+        def cb_check_power_driver(client, power_info):
+            Node.confirm_power_driver_operable(
+                client, power_info.power_type, client.ident)
+            return client
+
+        d = getClientFromIdentifiers(client_idents)
+        d.addErrback(eb_fallback_clients)
+        d.addCallback(cb_check_power_driver, power_info)
+        d.addCallback(power_method, system_id, hostname, power_info)
+        return d
 
     @classmethod
     @transactional
@@ -2782,7 +2769,7 @@ class Node(CleanSave, TimestampedModel):
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are
-# serialized on the API.
+# serialized on the API.    def get_primary_rack_controller(self):
 class Machine(Node):
     """An installable node."""
 
@@ -2808,21 +2795,60 @@ class RackController(Node):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
+    def refresh(self):
+        """Refresh the hardware and networking columns of the rack controller."
 
-class RegionControllerMixin:
-    """All the class methods for both `RegionController` and
-    `RegionRackController` should be placed in this mixin. This mixin is
-    included in both classes to provide the methods on the class.
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
+        """
+        # Avoid circular imports
+        from metadataserver.models import NodeKey
 
-    This is work around Django where it does not allow a class to have a more
-    than one non-abstract class.
+        self._register_request_event(
+            self.owner, EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
+            action='starting refresh')
+        self.status = NODE_STATUS.COMMISSIONING
+        self.save()
 
-    Preventing:
-    class RegionRackController(RegionController, RackController)
-    """
+        client = getClientFor(self.system_id, timeout=1)
+        token = NodeKey.objects.get_token_for_node(self)
+        call = client(
+            RefreshRackControllerInfo, system_id=self.system_id,
+            consumer_key=token.consumer.key, token_key=token.key,
+            token_secret=token.secret)
+
+        response = call.wait(30)
+        if response['architecture'] != '':
+            self.architecture = response['architecture']
+        if response['osystem'] != '':
+            self.osystem = response['osystem']
+        if response['distro_series'] != '':
+            self.distro_series = response['distro_series']
+        if response['swap_size'] > 0:
+            self.swap_size = response['swap_size']
+        self.save()
+
+    def get_bmc_accessible_nodes(self):
+        """Return `QuerySet` of nodes that this rack controller can access.
+
+        This looks at the IP address assigned to all BMC's and filters out
+        only the BMC's this rack controller can access. Returning all nodes
+        connected to those BMCs.
+        """
+        subnet_ids = set()
+        for interface in self.interface_set.all().prefetch_related(
+                "ip_addresses"):
+            for ip_address in interface.ip_addresses.all():
+                if ip_address.ip and ip_address.subnet_id is not None:
+                    subnet_ids.add(ip_address.subnet_id)
+
+        nodes = Node.objects.filter(
+            bmc__ip_address__ip__isnull=False,
+            bmc__ip_address__subnet_id__in=subnet_ids).distinct()
+        return nodes
 
 
-class RegionController(Node, RegionControllerMixin):
+class RegionController(Node):
     """A node which is running multiple regiond's."""
 
     objects = RegionControllerManager()
@@ -2833,26 +2859,6 @@ class RegionController(Node, RegionControllerMixin):
     def __init__(self, *args, **kwargs):
         super(RegionController, self).__init__(
             node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs)
-
-
-class RegionRackController(RackController, RegionControllerMixin):
-    """A node which is running multiple regiond's and rackd."""
-
-    objects = RegionRackControllerManager()
-
-    # Provides a manager that will return `RegionController` and
-    # `RegionRackController`.
-    region_objects = RegionControllerAndRegionRackControllerManager()
-
-    class Meta:
-        proxy = True
-
-    def __init__(self, *args, **kwargs):
-        # Skip __init__ for RackController as Django will complain about
-        # multiple values for node_type.
-        Node.__init__(
-            self, node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-            *args, **kwargs)
 
 
 class Device(Node):

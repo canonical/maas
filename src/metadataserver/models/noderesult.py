@@ -118,7 +118,7 @@ class NodeResult(CleanSave, TimestampedModel):
         """More-or-less human-readable Yaml HTML representation
         of the output.
         """
-        from metadataserver.models.commissioningscript import (
+        from provisioningserver.refresh.node_info_scripts import (
             LLDP_OUTPUT_NAME,
             LSHW_OUTPUT_NAME,
         )

@@ -9,6 +9,8 @@ from django.db import transaction
 from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -59,6 +61,7 @@ from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
 from mock import ANY
+from netaddr import IPNetwork
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
 
@@ -271,7 +274,6 @@ class TestCommissionAction(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, status=self.status,
             power_type='ether_wake', power_state=POWER_STATE.OFF)
-        self.patch_autospec(node, 'start_transition_monitor')
         node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
@@ -315,7 +317,6 @@ class TestAbortAction(MAASTransactionServerTestCase):
                 power_type='virsh')
             admin = factory.make_admin()
 
-        self.patch_autospec(node, 'stop_transition_monitor')
         node_stop = self.patch_autospec(node, '_stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
@@ -340,7 +341,6 @@ class TestAbortAction(MAASTransactionServerTestCase):
                 power_type='virsh')
             admin = factory.make_admin()
 
-        self.patch_autospec(node, 'stop_transition_monitor')
         node_stop = self.patch_autospec(node, '_stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
@@ -519,21 +519,29 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user,
-            power_state=POWER_STATE.OFF)
-        boot_interface = node.get_boot_interface()
-        ip_address = boot_interface.ip_addresses.first()
-        subnet = ip_address.subnet
-        ngi = subnet.nodegroupinterface_set.first()
+        network = IPNetwork("10.0.0.0/30")
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+        rack_controller = factory.make_RackController()
+        subnet.vlan.dhcp_on = True
+        subnet.vlan.primary_rack = rack_controller
+        subnet.vlan.save()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, power_type='virsh', owner=user,
+            power_state=POWER_STATE.OFF, bmc_connected_to=rack_controller)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=subnet.vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="", subnet=subnet,
+            interface=interface)
 
-        # Narrow the available IP range and pre-claim the only address.
-        ngi.static_ip_range_high = ngi.static_ip_range_low
-        ngi.save()
+        # Pre-claim the only addresses.
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                ngi.network, ngi.static_ip_range_low, ngi.static_ip_range_high,
-                ngi.ip_range_low, ngi.ip_range_high)
+                network, "10.0.0.1", "10.0.0.1", "", "")
+            StaticIPAddress.objects.allocate_new(
+                network, "10.0.0.2", "10.0.0.2", "", "")
+            StaticIPAddress.objects.allocate_new(
+                network, "10.0.0.3", "10.0.0.3", "", "")
 
         e = self.assertRaises(NodeActionError, Deploy(node, user).execute)
         self.expectThat(
@@ -601,7 +609,6 @@ class TestPowerOffAction(MAASServerTestCase):
             interface=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
-        self.patch(node, 'start_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
 
         PowerOff(node, user).execute()
@@ -690,10 +697,10 @@ class TestReleaseAction(MAASServerTestCase):
             interface=True, status=self.actionable_status,
             power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
-        self.patch(node, 'start_transition_monitor')
         node_stop = self.patch_autospec(node, '_stop')
 
-        Release(node, user).execute()
+        with post_commit_hooks:
+            Release(node, user).execute()
 
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.assertThat(
@@ -820,8 +827,6 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.make_exception()
         self.patch(node, '_start').side_effect = exception
         self.patch(node, '_stop').side_effect = exception
-        self.patch_autospec(node, 'start_transition_monitor')
-        self.patch_autospec(node, 'stop_transition_monitor')
 
     def make_action(self, action_class, node_status, power_state=None):
         node = factory.make_Node(

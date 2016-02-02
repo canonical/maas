@@ -34,6 +34,7 @@ from maasserver.api.utils import (
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -55,7 +56,7 @@ from maasserver.preseed import (
     get_enlist_userdata,
     get_preseed,
 )
-from maasserver.utils import find_nodegroup
+from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one
 from metadataserver import logger
 from metadataserver.enum import (
@@ -69,9 +70,7 @@ from metadataserver.models import (
     NodeResult,
     NodeUserData,
 )
-from metadataserver.models.commissioningscript import (
-    BUILTIN_COMMISSIONING_SCRIPTS,
-)
+from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.user_data import poweroff
 from piston.utils import rc
 from provisioningserver.events import (
@@ -275,8 +274,8 @@ class StatusHandler(MetadataViewHandler):
         def _save_commissioning_result(node, path, exit_status, content):
             # Depending on the name of the file received, we need to invoke a
             # function to process it.
-            if sent_file['path'] in BUILTIN_COMMISSIONING_SCRIPTS:
-                postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[path]['hook']
+            if sent_file['path'] in NODE_INFO_SCRIPTS:
+                postprocess_hook = NODE_INFO_SCRIPTS[path]['hook']
                 postprocess_hook(
                     node=node, output=content, exit_status=exit_status)
             return NodeResult.objects.store_data(
@@ -349,11 +348,7 @@ class StatusHandler(MetadataViewHandler):
         if _is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
 
-                # Ensure that any IP lease are forcefully released in case
-                # the host didn't bother doing that.
-                node.release_leases()
-
-                node.stop_transition_monitor()
+                node.status_expires = None
                 if result == 'SUCCESS':
                     # Recalculate tags.
                     populate_tags_for_single_node(Tag.objects.all(), node)
@@ -447,8 +442,8 @@ class VersionIndexHandler(MetadataViewHandler):
         script_result = int(request.POST.get('script_result', 0))
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
-            if name in BUILTIN_COMMISSIONING_SCRIPTS:
-                postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
+            if name in NODE_INFO_SCRIPTS:
+                postprocess_hook = NODE_INFO_SCRIPTS[name]['hook']
                 postprocess_hook(
                     node=node, output=raw_content,
                     exit_status=script_result)
@@ -497,10 +492,6 @@ class VersionIndexHandler(MetadataViewHandler):
             return rc.ALL_OK
 
         if node.status == NODE_STATUS.COMMISSIONING:
-            # Ensure that any IP lease are forcefully released in case
-            # the host didn't bother doing that.
-            if status != SIGNAL_STATUS.WORKING:
-                node.release_leases()
 
             # Store the commissioning results.
             self._store_commissioning_results(node, request)
@@ -522,7 +513,7 @@ class VersionIndexHandler(MetadataViewHandler):
             # we are using bug fix 1382075 here.
             if node.power_type != "mscm":
                 store_node_power_parameters(node, request)
-            node.stop_transition_monitor()
+            node.status_expires = None
             target_status = self.signaling_statuses.get(status)
 
             # Recalculate tags when commissioning ends.
@@ -551,7 +542,8 @@ class VersionIndexHandler(MetadataViewHandler):
 
         node.status = target_status
         # When moving to a terminal state, remove the allocation.
-        node.owner = None
+        if node.node_type != NODE_TYPE.RACK_CONTROLLER:
+            node.owner = None
         node.error = request.POST.get('error', '')
 
         # Done.
@@ -730,13 +722,13 @@ class EnlistUserDataHandler(OperationsHandler):
 
     def read(self, request, version):
         check_version(version)
-        nodegroup = find_nodegroup(request)
+        rack_controller = find_rack_controller(request)
         # XXX: Set a charset for text/plain. Django automatically encodes
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
         return HttpResponse(
-            get_enlist_userdata(nodegroup=nodegroup),
+            get_enlist_userdata(rack_controller=rack_controller),
             content_type="text/plain")
 
 
@@ -754,13 +746,14 @@ class AnonMetaDataHandler(VersionIndexHandler):
     @operation(idempotent=True)
     def get_enlist_preseed(self, request, version=None):
         """Render and return a preseed script for enlistment."""
-        nodegroup = find_nodegroup(request)
+        rack_controller = find_rack_controller(request)
         # XXX: Set a charset for text/plain. Django automatically encodes
         # non-binary content using DEFAULT_CHARSET (which is UTF-8 by default)
         # but only sets the charset parameter in the content-type header when
         # a content-type is NOT provided.
         return HttpResponse(
-            get_enlist_preseed(nodegroup=nodegroup), content_type="text/plain")
+            get_enlist_preseed(rack_controller=rack_controller),
+            content_type="text/plain")
 
     @operation(idempotent=True)
     def get_preseed(self, request, version=None, system_id=None):

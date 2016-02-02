@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API."""
@@ -10,41 +10,28 @@ import json
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.api import nodes as nodes_module
-from maasserver.api.node_group_interfaces import (
-    DISPLAYED_NODEGROUPINTERFACE_FIELDS,
-)
+from maasserver.api import machines as machines_module
 from maasserver.api.nodes import store_node_power_parameters
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     Config,
-    NodeGroup,
-    NodeGroupInterface,
     SSHKey,
 )
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
-from maasserver.testing.api import (
-    APITestCase,
-    log_in_as_normal_user,
-    make_worker_client,
-)
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import DjangoTransactionTestCase
 from mock import Mock
-from netaddr import IPAddress
 from testtools.matchers import (
     Contains,
     Equals,
     MatchesListwise,
-    MatchesStructure,
 )
 
 
@@ -458,8 +445,9 @@ class APIErrorsTest(DjangoTransactionTestCase):
         # Monkey patch api.create_node to have it raise a RuntimeError.
         def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
-        self.patch(nodes_module, 'create_node', raise_exception)
-        response = self.client.post(reverse('nodes_handler'), {'op': 'new'})
+        self.patch(machines_module, 'create_machine', raise_exception)
+        response = self.client.post(
+            reverse('machines_handler'), {'op': 'create'})
 
         self.assertEqual(
             (
@@ -477,218 +465,3 @@ def dict_subset(obj, fields):
         field: value for field, value in zip(fields, values)
         if value is not undefined
     }
-
-
-class TestNodeGroupInterfacesAPI(APITestCase):
-
-    def test_list_lists_interfaces(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup()
-        response = self.client.get(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'list'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            [
-                dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS)
-                for interface in nodegroup.nodegroupinterface_set.all()
-            ],
-            json_load_bytes(response.content))
-
-    def test_list_works_for_normal_user(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        log_in_as_normal_user(self.client)
-        response = self.client.get(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'list'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-
-    def test_list_works_for_master_worker(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        client = make_worker_client(nodegroup)
-        response = client.get(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'list'})
-        self.assertEqual(http.client.OK, response.status_code)
-
-    def test_new_creates_interface(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-
-        interface_settings = factory.get_interface_fields()
-        del interface_settings['subnet']
-        query_data = dict(interface_settings, op="new")
-        response = self.client.post(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            query_data)
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        # Replace empty strings with None as empty strings are converted into
-        # None for fields with null=True.
-        expected_result = {
-            key: (value if value != '' else None)
-            for key, value in interface_settings.items()
-        }
-        new_interface = NodeGroupInterface.objects.get(
-            nodegroup=nodegroup, name=interface_settings['name'])
-        self.assertThat(
-            new_interface,
-            MatchesStructure.byEquality(**expected_result))
-
-    def test_new_validates_data(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup()
-        response = self.client.post(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'new', 'ip': 'invalid ip'})
-        self.assertEqual(
-            (
-                http.client.BAD_REQUEST,
-                {'ip': ["Enter a valid IPv4 or IPv6 address."]},
-            ),
-            (response.status_code, json_load_bytes(response.content)))
-
-    def test_new_does_not_work_for_normal_user(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        log_in_as_normal_user(self.client)
-        response = self.client.post(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'new'})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_new_works_for_master_worker(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
-            {'op': 'new'})
-        # It's a bad request because we've not entered all the required
-        # data but it's not FORBIDDEN which means we passed the test.
-        self.assertEqual(
-            (
-                http.client.BAD_REQUEST,
-                {'ip': ["This field is required."]},
-            ),
-            (response.status_code, json_load_bytes(response.content)))
-
-
-class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
-
-    def test_read_works_for_normal_user(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        log_in_as_normal_user(self.client)
-        response = self.client.get(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-
-    def test_read_works_for_master_worker(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        client = make_worker_client(nodegroup)
-        response = client.get(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(http.client.OK, response.status_code)
-
-    def test_update_does_not_work_for_normal_user(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        log_in_as_normal_user(self.client)
-        response = self.client.put(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]),
-            {'ip_range_high': factory.make_ipv4_address()})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_update_works_for_master_worker(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.client = make_worker_client(nodegroup)
-        new_ip_range_high = IPAddress(interface.ip_range_high) - 1
-        response = self.client.put(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]),
-            {'ip_range_high': new_ip_range_high})
-        self.assertEqual(http.client.OK, response.status_code)
-
-    def test_delete_does_not_work_for_normal_user(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        log_in_as_normal_user(self.client)
-        response = self.client.delete(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_delete_works_for_master_worker(self):
-        nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_NodeGroupInterface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.client = make_worker_client(nodegroup)
-        response = self.client.delete(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(http.client.NO_CONTENT, response.status_code)
-
-
-class TestNodeGroupInterfaceAPI(APITestCase):
-
-    def test_read_interface(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(nodegroup)
-        response = self.client.get(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(
-            dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS),
-            json_load_bytes(response.content))
-
-    def test_update_interface(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(nodegroup)
-        new_ip_range_high = str(
-            IPAddress(interface.ip_range_high) - 1)
-        response = self.client.put(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]),
-            {'ip_range_high': new_ip_range_high})
-        self.assertEqual(
-            (http.client.OK, new_ip_range_high),
-            (response.status_code, reload_object(interface).ip_range_high))
-
-    def test_delete_interface(self):
-        self.become_admin()
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(nodegroup)
-        response = self.client.delete(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(http.client.NO_CONTENT, response.status_code)
-        self.assertFalse(
-            NodeGroupInterface.objects.filter(
-                name=interface.name, nodegroup=nodegroup).exists())

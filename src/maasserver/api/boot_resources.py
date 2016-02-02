@@ -203,8 +203,10 @@ class BootResourcesHandler(OperationsHandler):
         # sync a new resource.
         if file_content is not None:
             # Avoid circular import.
-            from maasserver.clusterrpc.boot_images import ClustersImporter
-            post_commit_do(ClustersImporter.schedule)
+            from maasserver.clusterrpc.boot_images import (
+                RackControllersImporter,
+            )
+            post_commit_do(RackControllersImporter.schedule)
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -304,8 +306,10 @@ class BootResourceFileUploadHandler(OperationsHandler):
                 raise MAASAPIBadRequest(
                     "Saved content does not match given SHA256 value.")
             # Avoid circular import.
-            from maasserver.clusterrpc.boot_images import ClustersImporter
-            post_commit_do(ClustersImporter.schedule)
+            from maasserver.clusterrpc.boot_images import (
+                RackControllersImporter,
+            )
+            post_commit_do(RackControllersImporter.schedule)
         return rc.ALL_OK
 
     @classmethod

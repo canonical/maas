@@ -6,6 +6,7 @@
 __all__ = [
     'Bcache',
     'BlockDevice',
+    'BMC',
     'BootResource',
     'BootResourceFile',
     'BootResourceSet',
@@ -27,13 +28,12 @@ __all__ = [
     'Filesystem',
     'FilesystemGroup',
     'Interface',
+    'IPRange',
     'LargeFile',
     'LicenseKey',
     'logger',
     'Machine',
     'Node',
-    'NodeGroup',
-    'NodeGroupInterface',
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
@@ -43,7 +43,6 @@ __all__ = [
     'RegionController',
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
-    'RegionRackController',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -70,6 +69,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.bmc import BMC
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
@@ -82,7 +82,6 @@ from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
-from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.models.fabric import Fabric
@@ -102,6 +101,7 @@ from maasserver.models.interface import (
     UnknownInterface,
     VLANInterface,
 )
+from maasserver.models.iprange import IPRange
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.node import (
@@ -110,10 +110,7 @@ from maasserver.models.node import (
     Node,
     RackController,
     RegionController,
-    RegionRackController,
 )
-from maasserver.models.nodegroup import NodeGroup
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -139,6 +136,7 @@ from piston3.doc import HandlerDocumentation
 # export in __all__.
 ignore_unused(
     Bcache,
+    BMC,
     BondInterface,
     BootResource,
     BootResourceFile,
@@ -146,7 +144,6 @@ ignore_unused(
     CacheSet,
     ComponentError,
     Config,
-    DownloadProgress,
     Event,
     EventType,
     Fabric,
@@ -154,11 +151,10 @@ ignore_unused(
     Filesystem,
     FilesystemGroup,
     Interface,
+    IPRange,
     LargeFile,
     LicenseKey,
     logger,
-    NodeGroup,
-    NodeGroupInterface,
     Partition,
     PartitionTable,
     RAID,
@@ -166,7 +162,6 @@ ignore_unused(
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
-    RegionRackController,
     SSHKey,
     StaticIPAddress,
     Tag,

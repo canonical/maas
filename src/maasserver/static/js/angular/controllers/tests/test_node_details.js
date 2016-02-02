@@ -36,11 +36,11 @@ describe("NodeDetailsController", function() {
 
     // Load the required dependencies for the NodeDetails controller and
     // mock the websocket connection.
-    var NodesManager, DevicesManager, GeneralManager, UsersManager, TagsManager;
-    var RegionConnection, ManagerHelperService, ErrorService, webSocket;
+    var MachinesManager, DevicesManager, GeneralManager, UsersManager;
+    var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
+    var webSocket;
     beforeEach(inject(function($injector) {
-        NodesManager = $injector.get("NodesManager");
-        ClustersManager = $injector.get("ClustersManager");
+        MachinesManager = $injector.get("MachinesManager");
         ZonesManager = $injector.get("ZonesManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
@@ -54,19 +54,6 @@ describe("NodeDetailsController", function() {
         spyOn(RegionConnection, "buildSocket").and.returnValue(webSocket);
     }));
 
-    // Make a fake cluster.
-    function makeCluster() {
-        var cluster = {
-            id: makeInteger(0, 10000),
-            name: makeName("cluster"),
-            uuid: makeName("uuid"),
-            power_types: [],
-            connected: true
-        };
-        ClustersManager._items.push(cluster);
-        return cluster;
-    }
-
     // Make a fake zone.
     function makeZone() {
         var zone = {
@@ -79,7 +66,6 @@ describe("NodeDetailsController", function() {
 
     // Make a fake node.
     function makeNode() {
-        var cluster = makeCluster();
         var zone = makeZone();
         var node = {
             system_id: makeName("system_id"),
@@ -87,7 +73,6 @@ describe("NodeDetailsController", function() {
             fqdn: makeName("fqdn"),
             actions: [],
             architecture: "amd64/generic",
-            nodegroup: angular.copy(cluster),
             zone: angular.copy(zone),
             power_type: "",
             power_parameters: null,
@@ -99,7 +84,7 @@ describe("NodeDetailsController", function() {
             interfaces: [],
             extra_macs: []
         };
-        NodesManager._items.push(node);
+        MachinesManager._items.push(node);
         return node;
     }
 
@@ -146,8 +131,7 @@ describe("NodeDetailsController", function() {
             $rootScope: $rootScope,
             $routeParams: $routeParams,
             $location: $location,
-            NodesManager: NodesManager,
-            ClustersManager: ClustersManager,
+            MachinesManager: MachinesManager,
             ZonesManager: ZonesManager,
             GeneralManager: GeneralManager,
             UsersManager: UsersManager,
@@ -167,7 +151,7 @@ describe("NodeDetailsController", function() {
     // Make the controller and resolve the setActiveItem call.
     function makeControllerResolveSetActiveItem() {
         var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -196,6 +180,7 @@ describe("NodeDetailsController", function() {
         expect($scope.availableActionOptions).toEqual([]);
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
+        expect($scope.power_types).toBe(GeneralManager.getData("power_types"));
         expect($scope.osSelection.osystem).toBeNull();
         expect($scope.osSelection.release).toBeNull();
         expect($scope.commissionOptions).toEqual({
@@ -211,10 +196,6 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect($scope.summary).toEqual({
             editing: false,
-            cluster: {
-                selected: null,
-                options: ClustersManager.getItems()
-            },
             architecture: {
                 selected: null,
                 options: GeneralManager.getData("architectures")
@@ -229,8 +210,6 @@ describe("NodeDetailsController", function() {
             },
             tags: []
         });
-        expect($scope.summary.cluster.options).toBe(
-            ClustersManager.getItems());
         expect($scope.summary.architecture.options).toBe(
             GeneralManager.getData("architectures"));
         expect($scope.summary.min_hwe_kernel.options).toBe(
@@ -270,27 +249,27 @@ describe("NodeDetailsController", function() {
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            NodesManager, ClustersManager, ZonesManager, GeneralManager,
+            MachinesManager, ZonesManager, GeneralManager,
             UsersManager, TagsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
         var controller = makeController(defer);
-        NodesManager._activeItem = node;
+        MachinesManager._activeItem = node;
 
         defer.resolve();
         $rootScope.$digest();
 
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
-        expect(NodesManager.setActiveItem).not.toHaveBeenCalled();
+        expect(MachinesManager.setActiveItem).not.toHaveBeenCalled();
     });
 
     it("calls setActiveItem if node is not active", function() {
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -298,7 +277,7 @@ describe("NodeDetailsController", function() {
         defer.resolve();
         $rootScope.$digest();
 
-        expect(NodesManager.setActiveItem).toHaveBeenCalledWith(
+        expect(MachinesManager.setActiveItem).toHaveBeenCalledWith(
             node.system_id);
     });
 
@@ -352,76 +331,8 @@ describe("NodeDetailsController", function() {
             expect($scope.summary.editing).toBe(false);
         });
 
-    it("skips cluster_disconnected error if the nodegroup on node is invalid",
-        function() {
-            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-            cluster.connected = false;
-            node.nodegroup = undefined;
-
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.errors.cluster_disconnected.viewable).toBe(false);
-        });
-
-    it("cluster_disconnected error visible if cluster disconnected",
-        function() {
-            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-            cluster.connected = false;
-
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.errors.cluster_disconnected.viewable).toBe(true);
-        });
-
-    it("cluster_disconnected error not visible if cluster connected",
-        function() {
-            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-            cluster.connected = true;
-
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.errors.cluster_disconnected.viewable).toBe(false);
-        });
-
-    it("power section is disabled when the cluster disconnects",
-      function() {
-          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-          cluster.connected = false;
-
-          var controller = makeControllerResolveSetActiveItem();
-          expect($scope.power.editing).toBe(false);
-      });
-
-    it("power section is editable when the cluster connects",
-      function() {
-          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-          cluster.connected = true;
-
-          var controller = makeControllerResolveSetActiveItem();
-          expect($scope.power.editing).toBe(true);
-      });
-
-    it("power section editability transitions according to cluster connection",
-      function() {
-          var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-          cluster.connected = true;
-
-          var controller = makeControllerResolveSetActiveItem();
-          // Should begin as true, ...
-          expect($scope.power.editing).toBe(true);
-
-          // turn false when the cluster disconnects...
-          cluster.connected = false;
-          $rootScope.$digest();
-          expect($scope.power.editing).toBe(false);
-
-          // ...and back on again, when it reconnects.
-          cluster.connected = true;
-          $rootScope.$digest();
-          expect($scope.power.editing).toBe(true);
-      });
-
     it("summary section is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect($scope.summary.cluster.selected).toBe(
-            ClustersManager.getItemFromList(node.nodegroup.id));
         expect($scope.summary.zone.selected).toBe(
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
@@ -438,32 +349,6 @@ describe("NodeDetailsController", function() {
 
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.errors.missing_power.viewable).toBe(false);
-    });
-
-    it("power section is updated once setActiveItem resolves", function() {
-        var power_types = [
-            {
-                name: makeName("power")
-            },
-            {
-                name: makeName("power")
-            },
-            {
-                name: makeName("power")
-            }
-        ];
-        var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
-        cluster.power_types = power_types;
-        node.power_type = power_types[0].name;
-        node.power_parameters = {
-            data: makeName("data")
-        };
-
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.power.types).toBe(power_types);
-        expect($scope.power.type).toBe(power_types[0]);
-        expect($scope.power.parameters).toEqual(node.power_parameters);
-        expect($scope.power.parameters).not.toBe(node.power_parameters);
     });
 
     it("power section placed in edit mode if power_type blank", function() {
@@ -600,7 +485,7 @@ describe("NodeDetailsController", function() {
 
     it("starts watching once setActiveItem resolves", function() {
         var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -629,20 +514,17 @@ describe("NodeDetailsController", function() {
             "node.fqdn",
             "node.devices",
             "node.actions",
-            "node.nodegroup.id",
             "node.architecture",
             "node.min_hwe_kernel",
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",
-            "summary.cluster.selected.connected",
             "node.summary_xml",
             "node.summary_yaml",
             "node.commissioning_results",
             "node.installation_results"
         ]);
         expect(watchCollections).toEqual([
-            $scope.summary.cluster.options,
             $scope.summary.architecture.options,
             $scope.summary.min_hwe_kernel.options,
             $scope.summary.zone.options
@@ -650,7 +532,7 @@ describe("NodeDetailsController", function() {
     });
 
     it("calls startPolling onces managers loaded", function() {
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         spyOn(GeneralManager, "startPolling");
         var defer = $q.defer();
@@ -660,7 +542,7 @@ describe("NodeDetailsController", function() {
         $rootScope.$digest();
 
         expect(GeneralManager.startPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["hwe_kernels"], ["osinfo"]]);
+            [["architectures"], ["hwe_kernels"], ["osinfo"], ["power_types"]]);
     });
 
     it("calls stopPolling when the $scope is destroyed", function() {
@@ -668,12 +550,12 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         $scope.$destroy();
         expect(GeneralManager.stopPolling.calls.allArgs()).toEqual(
-            [["architectures"], ["hwe_kernels"], ["osinfo"]]);
+            [["architectures"], ["hwe_kernels"], ["osinfo"], ["power_types"]]);
     });
 
     it("updates $scope.devices", function() {
         var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
+        spyOn(MachinesManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
         var controller = makeController(defer);
@@ -866,7 +748,7 @@ describe("NodeDetailsController", function() {
 
         it("sets checkingPower to true", function() {
             var controller = makeController();
-            spyOn(NodesManager, "checkPowerState").and.returnValue(
+            spyOn(MachinesManager, "checkPowerState").and.returnValue(
                 $q.defer().promise);
             $scope.checkPowerState();
             expect($scope.checkingPower).toBe(true);
@@ -876,7 +758,7 @@ describe("NodeDetailsController", function() {
             function() {
                 var controller = makeController();
                 var defer = $q.defer();
-                spyOn(NodesManager, "checkPowerState").and.returnValue(
+                spyOn(MachinesManager, "checkPowerState").and.returnValue(
                     defer.promise);
                 $scope.checkPowerState();
                 defer.resolve();
@@ -1098,20 +980,20 @@ describe("NodeDetailsController", function() {
 
         it("calls performAction with node and actionOption name", function() {
             var controller = makeController();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
             $scope.actionOption = {
                 name: "release"
             };
             $scope.actionGo();
-            expect(NodesManager.performAction).toHaveBeenCalledWith(
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "release", {});
         });
 
         it("calls performAction with osystem and distro_series", function() {
             var controller = makeController();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1120,7 +1002,7 @@ describe("NodeDetailsController", function() {
             $scope.osSelection.osystem = "ubuntu";
             $scope.osSelection.release = "ubuntu/trusty";
             $scope.actionGo();
-            expect(NodesManager.performAction).toHaveBeenCalledWith(
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "deploy", {
                     osystem: "ubuntu",
                     distro_series: "trusty"
@@ -1129,7 +1011,7 @@ describe("NodeDetailsController", function() {
 
         it("calls performAction with commissionOptions", function() {
             var controller = makeController();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 $q.defer().promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1139,7 +1021,7 @@ describe("NodeDetailsController", function() {
             $scope.commissionOptions.skipNetworking = false;
             $scope.commissionOptions.skipStorage = false;
             $scope.actionGo();
-            expect(NodesManager.performAction).toHaveBeenCalledWith(
+            expect(MachinesManager.performAction).toHaveBeenCalledWith(
                 node, "commission", {
                     enable_ssh: true,
                     skip_networking: false,
@@ -1150,7 +1032,7 @@ describe("NodeDetailsController", function() {
         it("clears actionOption on resolve", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1165,7 +1047,7 @@ describe("NodeDetailsController", function() {
         it("clears osSelection on resolve", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1182,7 +1064,7 @@ describe("NodeDetailsController", function() {
         it("clears commissionOptions on resolve", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1204,7 +1086,7 @@ describe("NodeDetailsController", function() {
         it("clears actionError on resolve", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1220,7 +1102,7 @@ describe("NodeDetailsController", function() {
         it("changes path to node listing on delete", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             spyOn($location, "path");
             $scope.node = node;
@@ -1236,7 +1118,7 @@ describe("NodeDetailsController", function() {
         it("sets actionError when rejected", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "performAction").and.returnValue(
+            spyOn(MachinesManager, "performAction").and.returnValue(
                 defer.promise);
             $scope.node = node;
             $scope.actionOption = {
@@ -1303,16 +1185,9 @@ describe("NodeDetailsController", function() {
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns false if cluster_disconnected error viewable", function() {
-            var controller = makeController();
-            $scope.errors.cluster_disconnected.viewable = true;
-            expect($scope.canEdit()).toBe(false);
-        });
-
-        it("returns true if super user and not cluster_disconnected error",
+        it("returns true if super user",
             function() {
                 var controller = makeController();
-                $scope.errors.cluster_disconnected.viewable = false;
                 expect($scope.canEdit()).toBe(true);
             });
     });
@@ -1427,7 +1302,7 @@ describe("NodeDetailsController", function() {
 
         it("sets editing to false", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
 
@@ -1441,7 +1316,7 @@ describe("NodeDetailsController", function() {
 
         it("calls updateItem with copy of node", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
 
@@ -1450,13 +1325,13 @@ describe("NodeDetailsController", function() {
             $scope.nameHeader.value = makeName("name");
             $scope.saveEditName();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode).not.toBe(node);
         });
 
         it("calls updateItem with new hostname on node", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
 
@@ -1466,14 +1341,14 @@ describe("NodeDetailsController", function() {
             $scope.nameHeader.value = newName;
             $scope.saveEditName();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode.hostname).toBe(newName);
         });
 
         it("calls updateName once updateItem resolves", function() {
             var controller = makeController();
             var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 defer.promise);
             spyOn($scope, "editNameInvalid").and.returnValue(false);
 
@@ -1535,22 +1410,15 @@ describe("NodeDetailsController", function() {
             $scope.summary.architecture.options = [node.architecture];
             $scope.summary.editing = true;
             $scope.cancelEditSummary();
-
-            // Since updateSummary is private in the controller, check
-            // that the selected cluster is set, this will prove that
-            // the method was called.
-            expect($scope.summary.cluster.selected).toBe(
-                ClustersManager.getItemFromList(node.nodegroup.id));
         });
     });
 
     describe("saveEditSummary", function() {
 
-        // Configures the summary area in the scope to have a new cluster,
-        // zone, and architecture.
+        // Configures the summary area in the scope to have a zone, and
+        // architecture.
         function configureSummary() {
             $scope.summary.editing = true;
-            $scope.summary.cluster.selected = makeCluster();
             $scope.summary.zone.selected = makeZone();
             $scope.summary.architecture.selected = makeName("architecture");
             $scope.summary.tags = [
@@ -1574,7 +1442,7 @@ describe("NodeDetailsController", function() {
         it("sets editing to false", function() {
             var controller = makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             $scope.node = node;
@@ -1587,26 +1455,25 @@ describe("NodeDetailsController", function() {
         it("calls updateItem with copy of node", function() {
             var controller = makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             $scope.node = node;
             $scope.summary.editing = true;
             $scope.saveEditSummary();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode).not.toBe(node);
         });
 
         it("calls updateItem with new copied values on node", function() {
             var controller = makeController();
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             $scope.node = node;
             configureSummary();
-            var newCluster = $scope.summary.cluster.selected;
             var newZone = $scope.summary.zone.selected;
             var newArchitecture = $scope.summary.architecture.selected;
             var newTags = [];
@@ -1615,81 +1482,11 @@ describe("NodeDetailsController", function() {
             });
             $scope.saveEditSummary();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
-            expect(calledWithNode.nodegroup).toEqual(newCluster);
-            expect(calledWithNode.nodegroup).not.toBe(newCluster);
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode.zone).toEqual(newZone);
             expect(calledWithNode.zone).not.toBe(newZone);
             expect(calledWithNode.architecture).toBe(newArchitecture);
             expect(calledWithNode.tags).toEqual(newTags);
-        });
-
-        it("calls updateSummary once updateItem resolves", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            $scope.node = node;
-            configureSummary();
-            $scope.saveEditSummary();
-
-            defer.resolve(node);
-            $rootScope.$digest();
-
-            // Since updateSummary is private in the controller, check
-            // that the selected cluster is set, this will prove that
-            // the method was called.
-            expect($scope.summary.cluster.selected).toBe(
-                ClustersManager.getItemFromList(node.nodegroup.id));
-        });
-
-        it("sets cluster connected once updateItem resolves", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.connected = false;
-
-            $scope.node = node;
-            configureSummary();
-            $scope.summary.cluster.selected = node.nodegroup;
-            $scope.saveEditSummary();
-
-            defer.resolve(node);
-            $rootScope.$digest();
-
-            expect(cluster.connected).toBe(true);
-        });
-
-        it("calls updateSummary once updateItem is rejected", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            $scope.node = node;
-            configureSummary();
-            $scope.saveEditSummary();
-
-            spyOn(console, "log");
-            defer.reject(makeName("error"));
-            $rootScope.$digest();
-
-            // Since updateSummary is private in the controller, check
-            // that the selected cluster is set, this will prove that
-            // the method was called.
-            expect($scope.summary.cluster.selected).toBe(
-                ClustersManager.getItemFromList(node.nodegroup.id));
         });
 
         it("logs error if not disconnected error", function() {
@@ -1697,7 +1494,7 @@ describe("NodeDetailsController", function() {
             spyOn($scope, "invalidArchitecture").and.returnValue(false);
 
             var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 defer.promise);
 
             $scope.node = node;
@@ -1710,71 +1507,6 @@ describe("NodeDetailsController", function() {
             $rootScope.$digest();
 
             expect(console.log).toHaveBeenCalledWith(error);
-        });
-
-        it("doesnt log error if disconnected error", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            $scope.node = node;
-            configureSummary();
-            $scope.saveEditSummary();
-
-            spyOn(console, "log");
-            defer.reject("Unable to get RPC connection for cluster");
-            $rootScope.$digest();
-
-            expect(console.log).not.toHaveBeenCalled();
-        });
-
-        it("sets cluster disconnected if disconnected error", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.connected = true;
-
-            $scope.node = node;
-            configureSummary();
-            $scope.saveEditSummary();
-
-            defer.reject("Unable to get RPC connection for cluster");
-            $rootScope.$digest();
-
-            expect(cluster.connected).toBe(false);
-        });
-
-        it("sets cluster connected if not disconnected error", function() {
-            var controller = makeController();
-            spyOn($scope, "invalidArchitecture").and.returnValue(false);
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.connected = false;
-
-            $scope.node = node;
-            configureSummary();
-            $scope.summary.cluster.selected = node.nodegroup;
-            $scope.saveEditSummary();
-
-            spyOn(console, "log");
-            defer.reject(makeName("error"));
-            $rootScope.$digest();
-
-            expect(cluster.connected).toBe(true);
         });
     });
 
@@ -1832,28 +1564,6 @@ describe("NodeDetailsController", function() {
             $scope.cancelEditPower();
             expect($scope.power.editing).toBe(true);
         });
-
-        it("calls updatePower", function() {
-            var controller = makeController();
-            $scope.node = node;
-            $scope.power.editing = true;
-
-            // Set power_types so we can check that updatePower is called.
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.power_types = [
-                {
-                    type: makeName("power")
-                }
-            ];
-
-            $scope.cancelEditPower();
-
-            // Since updatePower is private in the controller, check
-            // that the power types are set from the cluster, this will
-            // prove that the method was called.
-            expect($scope.power.types).toEqual(cluster.power_types);
-        });
     });
 
     describe("saveEditPower", function() {
@@ -1872,7 +1582,7 @@ describe("NodeDetailsController", function() {
 
         it("sets editing to false", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             $scope.node = node;
@@ -1887,7 +1597,7 @@ describe("NodeDetailsController", function() {
 
         it("calls updateItem with copy of node", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             $scope.node = node;
@@ -1897,13 +1607,13 @@ describe("NodeDetailsController", function() {
             };
             $scope.saveEditPower();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode).not.toBe(node);
         });
 
         it("calls updateItem with new copied values on node", function() {
             var controller = makeController();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
 
             var newPowerType = {
@@ -1919,7 +1629,7 @@ describe("NodeDetailsController", function() {
             $scope.power.parameters = newPowerParameters;
             $scope.saveEditPower();
 
-            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode.power_type).toBe(newPowerType.name);
             expect(calledWithNode.power_parameters).toEqual(
                 newPowerParameters);
@@ -1927,92 +1637,11 @@ describe("NodeDetailsController", function() {
                 newPowerParameters);
         });
 
-        it("calls updateSummary once updateItem resolves", function() {
-            var controller = makeController();
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            $scope.node = node;
-            $scope.power.editing = true;
-            $scope.power.type = {
-                name: makeName("power")
-            };
-            $scope.power.parameters = {
-                foo: makeName("bar")
-            };
-            $scope.saveEditPower();
-
-            defer.resolve(node);
-            $rootScope.$digest();
-
-            // Since updateSummary is private in the controller, check
-            // that the selected cluster is set, this will prove that
-            // the method was called.
-            expect($scope.summary.cluster.selected).toBe(
-                ClustersManager.getItemFromList(node.nodegroup.id));
-        });
-
-        it("sets cluster connected once updateItem resolves", function() {
-            var controller = makeController();
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.connected = false;
-
-            $scope.node = node;
-            $scope.power.editing = true;
-            $scope.power.type = {
-                name: makeName("power")
-            };
-            $scope.power.parameters = {
-                foo: makeName("bar")
-            };
-            $scope.saveEditPower();
-
-            defer.resolve(node);
-            $rootScope.$digest();
-
-            expect(cluster.connected).toBe(true);
-        });
-
-        it("calls updateSummary once updateItem is rejected", function() {
-            var controller = makeController();
-
-            var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
-                defer.promise);
-
-            $scope.node = node;
-            $scope.power.editing = true;
-            $scope.power.type = {
-                name: makeName("power")
-            };
-            $scope.power.parameters = {
-                foo: makeName("bar")
-            };
-            $scope.saveEditPower();
-
-            spyOn(console, "log");
-            defer.reject(makeName("error"));
-            $rootScope.$digest();
-
-            // Since updateSummary is private in the controller, check
-            // that the selected cluster is set, this will prove that
-            // the method was called.
-            expect($scope.summary.cluster.selected).toBe(
-                ClustersManager.getItemFromList(node.nodegroup.id));
-        });
-
         it("calls handleSaveError once updateItem is rejected", function() {
             var controller = makeController();
 
             var defer = $q.defer();
-            spyOn(NodesManager, "updateItem").and.returnValue(
+            spyOn(MachinesManager, "updateItem").and.returnValue(
                 defer.promise);
 
             $scope.node = node;

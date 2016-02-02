@@ -21,11 +21,8 @@ from maasserver.dns.zonegenerator import (
     sequence,
     ZoneGenerator,
 )
-from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
-from maasserver.models.nodegroup import NodeGroup
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.subnet import Subnet
 from maasserver.sequence import (
     INT_MAX,
@@ -65,14 +62,6 @@ def next_zone_serial():
     return '%0.10d' % next(zone_serial)
 
 
-def is_dns_in_use():
-    """Is there at least one interface configured to manage DNS?"""
-    interfaces_with_dns = (
-        NodeGroupInterface.objects.filter(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
-    return interfaces_with_dns.exists()
-
-
 def is_dns_enabled():
     """Is MAAS configured to manage DNS?"""
     return settings.DNS_CONNECT
@@ -95,7 +84,7 @@ def dns_add_zones_now(domains, subnets):
     :param subnets: The subnet(s) for which zones should be served.
     :type subnets: :py:class:`Subnet`, or an iterable thereof.
     """
-    if not (is_dns_enabled() and is_dns_in_use()):
+    if not is_dns_enabled():
         return
 
     default_ttl = Config.objects.get_config('default_dns_ttl')
@@ -152,7 +141,7 @@ def dns_update_zones_now(domains, subnets):
     :param subnets: Those subnet(s) for which the zone should be updated.
     :type subnets: A :py:class:`Domain`, or an iterable thereof.
     """
-    if not (is_dns_enabled() and is_dns_in_use()):
+    if not is_dns_enabled():
         return
 
     serial = next_zone_serial()
@@ -200,15 +189,6 @@ def dns_update_by_node(node):
     :return: The post-commit `Deferred`.
     """
     if is_dns_enabled():
-        # optimization:
-        # If the nodegroup is being deleted, we don't actually need to
-        # do anything, since that will trigger dns_update_all_zones()
-        try:
-            if node.nodegroup:
-                pass
-        except NodeGroup.DoesNotExist:
-            return
-
         auth_domains = []
         if node.domain.authoritative is True:
             auth_domains.append(node.domain)
@@ -235,15 +215,11 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
         to manage DNS. This makes sense when deconfiguring an interface.
     :type force: bool
     """
-
-    write_conf = is_dns_enabled() and (force or is_dns_in_use())
-    if not write_conf:
+    if not is_dns_enabled():
         return
 
     domains = Domain.objects.filter(authoritative=True)
-    subnets = Subnet.objects.filter(
-        nodegroupinterface__management=(
-            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS))
+    subnets = Subnet.objects.all()
     default_ttl = Config.objects.get_config('default_dns_ttl')
     zones = ZoneGenerator(
         domains, subnets, default_ttl,

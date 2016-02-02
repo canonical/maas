@@ -15,7 +15,6 @@ from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.models import (
     BootSource,
     BootSourceSelection,
-    NodeGroup,
 )
 from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -152,12 +151,6 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(
             start_up.dns_update_all_zones,
             MockCalledOnceWith(reload_retry=True))
-
-    def test__creates_master_nodegroup(self):
-        start_up.inner_start_up()
-        clusters = NodeGroup.objects.all()
-        self.assertThat(clusters, HasLength(1))
-        self.assertItemsEqual([NodeGroup.objects.ensure_master()], clusters)
 
     def test__calls_create_gnupg_home(self):
         start_up.inner_start_up()

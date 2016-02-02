@@ -68,49 +68,38 @@ def process_response(response):
         return content
 
 
-def get_nodes_for_node_group(client, nodegroup_uuid):
-    """Retrieve the UUIDs of nodes in a particular group.
-
-    :param client: MAAS client instance
-    :param nodegroup_uuid: Node group for which to retrieve nodes
-    :return: List of UUIDs for nodes in nodegroup
-    """
-    path = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid)
-    return process_response(client.get(path, op='list_nodes'))
-
-
-def get_details_for_nodes(client, nodegroup_uuid, system_ids):
+def get_details_for_nodes(client, system_ids):
     """Retrieve details for a set of nodes.
 
     :param client: MAAS client
     :param system_ids: List of UUIDs of systems for which to fetch LLDP data
     :return: Dictionary mapping node UUIDs to details, e.g. LLDP output
     """
-    path = '/api/2.0/nodegroups/%s/' % (nodegroup_uuid,)
-    return process_response(client.post(
-        path, op='details', system_ids=system_ids))
+    details = {}
+    for system_id in system_ids:
+        path = '/api/2.0/nodes/%s/' % system_id
+        data = process_response(client.get(path, op='details'))
+        details[system_id] = data
+    return details
 
 
-def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
+def post_updated_nodes(client, tag_name, tag_definition, added, removed):
     """Update the nodes relevant for a particular tag.
 
     :param client: MAAS client
     :param tag_name: Name of tag
     :param tag_definition: Definition of the tag, used to assure that the work
         being done matches the current value.
-    :param uuid: NodeGroup uuid of this worker. Needed for security
-        permissions. (The nodegroup worker is only allowed to touch nodes in
-        its nodegroup, otherwise you need to be a superuser.)
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
     path = '/api/2.0/tags/%s/' % (tag_name,)
     maaslog.debug(
-        "Updating nodes for %s %s, adding %s removing %s"
-        % (tag_name, uuid, len(added), len(removed)))
+        "Updating nodes for %s, adding %s removing %s"
+        % (tag_name, len(added), len(removed)))
     try:
         return process_response(client.post(
-            path, op='update_nodes', as_json=True, nodegroup=uuid,
+            path, op='update_nodes', as_json=True,
             definition=tag_definition, add=added, remove=removed))
     except urllib.error.HTTPError as e:
         if e.code == http.client.CONFLICT:
@@ -266,7 +255,7 @@ def gen_batches(things, batch_size):
     return (things[s] for s in slices)
 
 
-def gen_node_details(client, nodegroup_uuid, batches):
+def gen_node_details(client, batches):
     """Fetch node details.
 
     This lazily fetches data in batches, but this detail is hidden
@@ -274,43 +263,38 @@ def gen_node_details(client, nodegroup_uuid, batches):
 
     :return: An iterator of ``(system-id, details-document)`` tuples.
     """
-    get_details = partial(get_details_for_nodes, client, nodegroup_uuid)
+    get_details = partial(get_details_for_nodes, client)
     for batch in batches:
         for system_id, details in get_details(batch).items():
             yield system_id, merge_details(details)
 
 
-def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
+def process_all(client, tag_name, tag_definition, system_ids,
                 xpath, batch_size=None):
     maaslog.debug(
-        "processing %d system_ids for tag %s nodegroup %s",
-        len(system_ids), tag_name, nodegroup_uuid)
+        "processing %d system_ids for tag %s.",
+        len(system_ids), tag_name)
 
     if batch_size is None:
         batch_size = DEFAULT_BATCH_SIZE
 
     batches = gen_batches(system_ids, batch_size)
-    node_details = gen_node_details(client, nodegroup_uuid, batches)
+    node_details = gen_node_details(client, batches)
     nodes_matched, nodes_unmatched = classify(
         partial(try_match_xpath, xpath, logger=maaslog), node_details)
-
-    # Upload all updates for one nodegroup at one time. This should be no more
-    # than ~41*10,000 = 410kB. That should take <1s even on a 10Mbit network.
-    # This also allows us to track if a nodegroup has been processed in the DB,
-    # without having to add another API call.
     post_updated_nodes(
-        client, tag_name, tag_definition, nodegroup_uuid,
+        client, tag_name, tag_definition,
         nodes_matched, nodes_unmatched)
 
 
 def process_node_tags(
-        tag_name, tag_definition, tag_nsmap,
-        client, nodegroup_uuid, batch_size=None):
+        nodes, tag_name, tag_definition, tag_nsmap,
+        client, batch_size=None):
     """Update the nodes for a new/changed tag definition.
 
+    :param nodes: List of nodes to process tags for.
     :param client: A `MAASClient` used to fetch the node's details via
         calls to the web API.
-    :param nodegroup_uuid: The UUID for this cluster.
     :param tag_name: Name of the tag to update nodes for
     :param tag_definition: Tag definition
     :param batch_size: Size of batch
@@ -318,8 +302,10 @@ def process_node_tags(
     # We evaluate this early, so we can fail before sending a bunch of data to
     # the server
     xpath = etree.XPath(tag_definition, namespaces=tag_nsmap)
-    # Get nodes to process
-    system_ids = get_nodes_for_node_group(client, nodegroup_uuid)
+    system_ids = [
+        node["system_id"]
+        for node in nodes
+    ]
     process_all(
-        client, tag_name, tag_definition, nodegroup_uuid, system_ids, xpath,
+        client, tag_name, tag_definition, system_ids, xpath,
         batch_size=batch_size)

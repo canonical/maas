@@ -54,6 +54,7 @@ def get_default_config():
         'upstream_dns': None,
         'dnssec_validation': "auto",
         'ntp_server': 'ntp.ubuntu.com',
+        'omapi_key': '',
         # RPC configuration.
         'rpc_region_certificate': None,
         'rpc_shared_secret': None,
