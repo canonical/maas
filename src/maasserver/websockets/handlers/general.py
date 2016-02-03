@@ -94,19 +94,19 @@ class GeneralHandler(Handler):
             actions = dict()
             for name, action in ACTIONS_DICT.items():
                 permission = action.permission
-                if action.node_permission is not None:
-                    permission = action.node_permission
+                if action.installable_permission is not None:
+                    permission = action.installable_permission
                 if permission != NODE_PERMISSION.ADMIN:
                     actions[name] = action
         return self.dehydrate_actions(actions)
 
     def device_actions(self, params):
         """Return all possible device actions."""
-        # Remove the actions that can only be performed on nodes.
+        # Remove the actions that can only be performed on installable nodes.
         actions = {
             name: action
             for name, action in ACTIONS_DICT.items()
-            if not action.node_only
+            if not action.installable_only
             }
         return self.dehydrate_actions(actions)
 

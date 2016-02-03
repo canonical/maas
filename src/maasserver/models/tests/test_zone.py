@@ -5,7 +5,6 @@
 
 __all__ = []
 
-from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import (
     DEFAULT_ZONE_NAME,
     Zone,
@@ -73,55 +72,31 @@ class TestZone(MAASServerTestCase):
         self.assertFalse(factory.make_Zone().is_default())
 
     def test_nodes_only_set(self):
-        """zone.node_only_set has only type node."""
+        """zone.nodes_olny_set has all installable nodes."""
         zone = factory.make_Zone()
-        node1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node3 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
+        node1 = factory.make_Node(zone=zone, installable=True)
+        node2 = factory.make_Node(zone=zone, installable=True)
+        node3 = factory.make_Node(zone=zone, installable=True)
+        device1 = factory.make_Node(zone=zone, installable=False)
+        device2 = factory.make_Node(zone=zone, installable=False)
         self.assertEqual(zone.node_only_set.count(), 3)
         self.assertIn(node1, zone.node_only_set)
         self.assertIn(node2, zone.node_only_set)
         self.assertIn(node3, zone.node_only_set)
         self.assertNotIn(device1, zone.node_only_set)
         self.assertNotIn(device2, zone.node_only_set)
-        self.assertNotIn(rack_controller, zone.node_only_set)
 
     def test_devices_only_set(self):
-        """zone.devices_only_set has only type device."""
+        """zone.devices_only_set has all non-installable nodes."""
         zone = factory.make_Zone()
-        node1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node3 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
+        node1 = factory.make_Node(zone=zone, installable=True)
+        node2 = factory.make_Node(zone=zone, installable=True)
+        node3 = factory.make_Node(zone=zone, installable=True)
+        device1 = factory.make_Node(zone=zone, installable=False)
+        device2 = factory.make_Node(zone=zone, installable=False)
         self.assertEqual(zone.device_only_set.count(), 2)
         self.assertNotIn(node1, zone.device_only_set)
         self.assertNotIn(node2, zone.device_only_set)
         self.assertNotIn(node3, zone.device_only_set)
         self.assertIn(device1, zone.device_only_set)
         self.assertIn(device2, zone.device_only_set)
-        self.assertNotIn(rack_controller, zone.node_only_set)
-
-    def test_rack_controllers_only_set(self):
-        """zone.rack_controllers_only_set has only type rack_controller."""
-        zone = factory.make_Zone()
-        node1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        node3 = factory.make_Node(zone=zone, node_type=NODE_TYPE.MACHINE)
-        device1 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        device2 = factory.make_Node(zone=zone, node_type=NODE_TYPE.DEVICE)
-        rack_controller = factory.make_Node(
-            zone=zone, node_type=NODE_TYPE.RACK_CONTROLLER)
-        self.assertEqual(zone.device_only_set.count(), 2)
-        self.assertNotIn(node1, zone.rack_controller_only_set)
-        self.assertNotIn(node2, zone.rack_controller_only_set)
-        self.assertNotIn(node3, zone.rack_controller_only_set)
-        self.assertNotIn(device1, zone.rack_controller_only_set)
-        self.assertNotIn(device2, zone.rack_controller_only_set)
-        self.assertIn(rack_controller, zone.rack_controller_only_set)

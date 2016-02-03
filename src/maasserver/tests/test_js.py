@@ -43,9 +43,9 @@ def get_browser_names_from_env():
     """Parse the environment variable ``MAAS_TEST_BROWSERS`` to get a list of
     the browsers to use for the JavaScript tests.
 
-    Returns ['Chrome', 'PhantomJS'] if the environment variable is not set.
+    Returns ['Chrome'] if the environment variable is not set.
     """
-    names = os.environ.get('MAAS_TEST_BROWSERS', 'Chrome, PhantomJS')
+    names = os.environ.get('MAAS_TEST_BROWSERS', 'Chrome')
     return extract_word_list(names)
 
 

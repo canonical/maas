@@ -393,14 +393,14 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
-    def test__excludes_no_power_type(self):
+    def test__excludes_devices(self):
         cluster = factory.make_NodeGroup()
         node_queryable = self.make_Node(cluster)
 
-        factory.make_Device(nodegroup=cluster, power_type='')
-        factory.make_Device(nodegroup=cluster, power_type='')
+        factory.make_Device(nodegroup=cluster)
+        factory.make_Device(nodegroup=cluster, power_type="ipmi")
         factory.make_Device(
-            nodegroup=cluster, power_type='', power_state_updated=(
+            nodegroup=cluster, power_type="ipmi", power_state_updated=(
                 now() - timedelta(minutes=10)))
 
         power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)

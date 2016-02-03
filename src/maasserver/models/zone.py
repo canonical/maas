@@ -19,7 +19,6 @@ from django.db.models import (
     TextField,
 )
 from maasserver import DefaultMeta
-from maasserver.enum import NODE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -89,15 +88,10 @@ class Zone(CleanSave, TimestampedModel):
 
     @property
     def node_only_set(self):
-        """Returns just the nodes of node_type node in this zone."""
-        return self.node_set.filter(node_type=NODE_TYPE.MACHINE)
+        """Returns just the installable nodes in this zone"""
+        return self.node_set.filter(installable=True)
 
     @property
     def device_only_set(self):
-        """Returns just the nodes of node_type device in this zone."""
-        return self.node_set.filter(node_type=NODE_TYPE.DEVICE)
-
-    @property
-    def rack_controller_only_set(self):
-        """Returns just the nodes of node_type rack controller in this zone."""
-        return self.node_set.filter(node_type=NODE_TYPE.RACK_CONTROLLER)
+        """Returns the non-installable nodes in this zone"""
+        return self.node_set.filter(installable=False)

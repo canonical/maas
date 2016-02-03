@@ -13,7 +13,6 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
     POWER_STATE,
 )
 from maasserver.exceptions import NodeActionError
@@ -71,7 +70,7 @@ class FakeNodeAction(NodeAction):
     display = "Action label"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.VIEW
-    node_only = False
+    installable_only = False
 
     # For testing: an inhibition for inhibit() to return.
     fake_inhibition = None
@@ -166,25 +165,25 @@ class TestNodeAction(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         self.assertFalse(MyAction(node, factory.make_User()).is_permitted())
 
-    def test_is_permitted_uses_node_permission(self):
+    def test_is_permitted_uses_installable_permission(self):
 
         class MyAction(FakeNodeAction):
             permission = NODE_PERMISSION.VIEW
-            node_permission = NODE_PERMISSION.EDIT
+            installable_permission = NODE_PERMISSION.EDIT
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         self.assertFalse(MyAction(node, factory.make_User()).is_permitted())
 
-    def test_is_permitted_doest_use_node_permission_if_device(self):
+    def test_is_permitted_doest_use_installable_permission_if_device(self):
 
         class MyAction(FakeNodeAction):
             permission = NODE_PERMISSION.VIEW
-            node_permission = NODE_PERMISSION.EDIT
+            installable_permission = NODE_PERMISSION.EDIT
 
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
-            node_type=NODE_TYPE.DEVICE)
+            installable=False)
         self.assertTrue(MyAction(node, factory.make_User()).is_permitted())
 
     def test_inhibition_wraps_inhibit(self):
@@ -214,22 +213,22 @@ class TestNodeAction(MAASServerTestCase):
         action.fake_inhibition = factory.make_string()
         self.assertIsNone(action.inhibition)
 
-    def test_node_only_is_not_actionable_if_node_isnt_node_type(self):
+    def test_installable_only_is_not_actionable_if_node_isnt_installable(self):
         status = NODE_STATUS.NEW
         owner = factory.make_User()
         node = factory.make_Node(
-            owner=owner, status=status, node_type=NODE_TYPE.DEVICE)
+            owner=owner, status=status, installable=False)
         action = FakeNodeAction(node, owner)
-        action.node_only = True
+        action.installable_only = True
         self.assertFalse(action.is_actionable())
 
-    def test_node_only_is_actionable_if_node_type_is_node(self):
+    def test_installable_only_is_actionable_if_node_is_installable(self):
         status = NODE_STATUS.NEW
         owner = factory.make_User()
         node = factory.make_Node(
-            owner=owner, status=status, node_type=NODE_TYPE.MACHINE)
+            owner=owner, status=status, installable=True)
         action = FakeNodeAction(node, owner)
-        action.node_only = True
+        action.installable_only = True
         self.assertTrue(action.is_actionable())
 
     def test_is_actionable_checks_node_status_in_actionable_status(self):

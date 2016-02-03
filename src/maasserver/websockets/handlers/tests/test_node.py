@@ -23,7 +23,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
@@ -214,7 +213,6 @@ class TestNodeHandler(MAASServerTestCase):
                 "module": driver["module"] if "module" in driver else "",
                 "comment": driver["comment"] if "comment" in driver else "",
             },
-            "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
         }
@@ -250,7 +248,7 @@ class TestNodeHandler(MAASServerTestCase):
             # Make some devices.
             for _ in range(3):
                 factory.make_Node(
-                    node_type=NODE_TYPE.DEVICE, parent=node, interface=True)
+                    installable=False, parent=node, interface=True)
 
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
@@ -335,7 +333,7 @@ class TestNodeHandler(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = NodeHandler(owner, {})
-        device = factory.make_Node(node_type=NODE_TYPE.DEVICE, parent=node)
+        device = factory.make_Node(installable=False, parent=node)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         self.assertEqual({
@@ -833,7 +831,7 @@ class TestNodeHandler(MAASServerTestCase):
         # Make some devices.
         for _ in range(3):
             factory.make_Node(
-                node_type=NODE_TYPE.DEVICE, parent=node, interface=True)
+                installable=False, parent=node, interface=True)
 
         self.patch_autospec(interface_module, "update_host_maps")
         boot_interface = node.get_boot_interface()
@@ -858,7 +856,7 @@ class TestNodeHandler(MAASServerTestCase):
         owner = factory.make_User()
         handler = NodeHandler(owner, {})
         # Create a device.
-        factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)
+        factory.make_Node(owner=owner, installable=False)
         node = factory.make_Node(owner=owner)
         self.assertItemsEqual(
             [self.dehydrate_node(node, handler, for_list=True)],

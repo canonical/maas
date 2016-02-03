@@ -24,7 +24,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
@@ -330,7 +329,7 @@ class TestFilteredNodesListFromRequest(APITestCase):
             for _ in range(3)]
         # Create devices.
         nodes = [
-            factory.make_Node(node_type=NODE_TYPE.DEVICE)
+            factory.make_Node(installable=False)
             for _ in range(3)]
 
         query = RequestFixture({}, '')
@@ -691,7 +690,7 @@ class TestNodesAPI(APITestCase):
             for _ in range(3)]
         # Create devices.
         nodes = [
-            factory.make_Node(node_type=NODE_TYPE.DEVICE)
+            factory.make_Node(installable=False)
             for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(http.client.OK, response.status_code)
@@ -1549,7 +1548,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_accept_fails_for_device(self):
         self.become_admin()
-        factory.make_Node(node_type=NODE_TYPE.DEVICE)
+        factory.make_Node(installable=False)
         node_id = factory.make_string()
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
@@ -1611,7 +1610,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_release_ignores_devices(self):
         node_ids = {
-            factory.make_Node(node_type=NODE_TYPE.DEVICE).system_id
+            factory.make_Node(installable=False).system_id
             for _ in range(3)
         }
         response = self.client.post(
@@ -1923,7 +1922,7 @@ class TestDeploymentStatus(APITestCase):
 
     def test_GET_rejects_devices(self):
         owned_node = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            installable=False, owner=self.logged_in_user)
         response = self.client.get(
             self.endpoint,
             {'op': 'deployment_status', 'nodes': [owned_node.system_id]})
@@ -2095,7 +2094,7 @@ class TestPowerState(APITransactionTestCase):
     def test__catches_no_connection_error(self):
         getClientFor = self.patch(nodes_module, 'getClientFor')
         getClientFor.side_effect = NoConnectionsAvailable()
-        node = factory.make_Node(power_state=POWER_STATE.ON, power_type=None)
+        node = factory.make_Node(power_state=POWER_STATE.ON)
 
         response = self.client.get(
             self.get_node_uri(node), {"op": "query_power_state"})
@@ -2167,6 +2166,12 @@ class TestPowerState(APITransactionTestCase):
             settings.DEFAULT_CHARSET), response.content)
         # The node's power state is now "unknown".
         self.assertPowerState(node, POWER_STATE.UNKNOWN)
+
+    def test__returns_400_if_device(self):
+        device = factory.make_Device()
+        response = self.client.get(
+            self.get_node_uri(device), {"op": "query_power_state"})
+        self.assertResponseCode(http.client.BAD_REQUEST, response)
 
     def test__returns_actual_state(self):
         node = factory.make_Node(power_type="ipmi")

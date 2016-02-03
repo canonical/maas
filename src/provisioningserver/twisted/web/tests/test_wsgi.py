@@ -11,16 +11,14 @@ __metaclass__ = type
 from sys import exc_info
 import tempfile
 import traceback
-import warnings
 
 from zope.interface.verify import verifyObject
 
-from twisted.python.compat import intToBytes, urlquote, _PY3
+from twisted.python.compat import intToBytes, urlquote
 from twisted.python.log import addObserver, removeObserver, err
 from twisted.python.failure import Failure
-from twisted.python.threadable import getThreadID
 from twisted.python.threadpool import ThreadPool
-from twisted.internet.defer import Deferred, gatherResults, inlineCallbacks
+from twisted.internet.defer import Deferred, gatherResults
 from twisted.internet import reactor
 from twisted.internet.error import ConnectionLost
 from twisted.trial.unittest import TestCase, SkipTest
@@ -30,6 +28,11 @@ from twisted.web.server import Request, Site, version
 from provisioningserver.twisted.web.wsgi import WSGIResource
 from twisted.web.test.test_web import DummyChannel
 
+
+try:
+    from threading import get_ident
+except ImportError:
+    from thread import get_ident
 
 
 class SynchronousThreadPool:
@@ -218,65 +221,6 @@ class WSGITestsMixin:
         return response.split(b'\r\n\r\n', 1)[1]
 
 
-    def prepareRequest(self, application=None):
-        """
-        Prepare a L{Request} which, when a request is received, captures the
-        C{environ} and C{start_response} callable passed to a WSGI app.
-
-        @param application: An optional WSGI application callable that accepts
-            the familiar C{environ} and C{start_response} args and returns an
-            iterable of body content. If not supplied, C{start_response} will
-            be called with a "200 OK" status and no headers, and no content
-            will be yielded.
-
-        @return: A two-tuple of (C{request}, C{deferred}). The former is a
-            Twisted L{Request}. The latter is a L{Deferred} which will be
-            called back with a two-tuple of the arguments passed to a WSGI
-            application (i.e. the C{environ} and C{start_response} callable),
-            or will errback with any error arising within the WSGI app.
-        """
-        result = Deferred()
-
-        def outerApplication(environ, startResponse):
-            try:
-                if application is None:
-                    startResponse('200 OK', [])
-                    content = iter(())  # No content.
-                else:
-                    content = application(environ, startResponse)
-            except:
-                result.errback()
-                startResponse('500 Error', [])
-                return iter(())
-            else:
-                result.callback((environ, startResponse))
-                return content
-
-        resource = WSGIResource(
-            self.reactor, self.threadpool, outerApplication)
-
-        root = Resource()
-        root.putChild(b"res", resource)
-
-        channel = self.channelFactory()
-        channel.site = Site(root)
-
-        class CannedRequest(Request):
-            """
-            Convenient L{Request} derivative which has canned values for all
-            of C{requestReceived}'s arguments.
-            """
-            def requestReceived(
-                    self, command=b"GET", path=b"/res", version=b"1.1"):
-                return Request.requestReceived(
-                    self, command=command, path=path, version=version)
-
-        request = CannedRequest(channel, queued=False)
-        request.gotLength(0)  # Initialize buffer for request body.
-
-        return request, result
-
-
 
 class EnvironTests(WSGITestsMixin, TestCase):
     """
@@ -287,7 +231,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         def assertEnvironKeyEqual(result):
             environ, startResponse = result
             self.assertEqual(environ[key], value)
-            return value
         return assertEnvironKeyEqual
 
 
@@ -300,9 +243,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         def cbRendered(result):
             environ, startResponse = result
             self.assertIdentical(type(environ), dict)
-            # Environment keys are always native strings.
-            for name in environ:
-                self.assertIsInstance(name, str)
         d.addCallback(cbRendered)
         return d
 
@@ -322,19 +262,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         post.addCallback(self.environKeyEqual('REQUEST_METHOD', 'POST'))
 
         return gatherResults([get, post])
-
-
-    @inlineCallbacks
-    def test_requestMethodIsNativeString(self):
-        """
-        The C{'REQUEST_METHOD'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        for method in b"GET", u"GET":
-            request, result = self.prepareRequest()
-            request.requestReceived(method)
-            result.addCallback(self.environKeyEqual('REQUEST_METHOD', 'GET'))
-            self.assertIsInstance((yield result), str)
 
 
     def test_scriptName(self):
@@ -367,29 +294,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
 
         return gatherResults([
                 root, emptyChild, leaf, container, internal, unencoded])
-
-
-    @inlineCallbacks
-    def test_scriptNameIsNativeString(self):
-        """
-        The C{'SCRIPT_NAME'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        request, result = self.prepareRequest()
-        request.requestReceived(path=b"/res")
-        result.addCallback(self.environKeyEqual('SCRIPT_NAME', '/res'))
-        self.assertIsInstance((yield result), str)
-
-        if _PY3:
-            # Native strings are rejected by Request.requestReceived() before
-            # t.w.wsgi has any say in the matter.
-            request, result = self.prepareRequest()
-            self.assertRaises(TypeError, request.requestReceived, path=u"/res")
-        else:
-            request, result = self.prepareRequest()
-            request.requestReceived(path=u"/res")
-            result.addCallback(self.environKeyEqual('SCRIPT_NAME', '/res'))
-            self.assertIsInstance((yield result), str)
 
 
     def test_pathInfo(self):
@@ -428,30 +332,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
                 internalContainer, unencoded])
 
 
-    @inlineCallbacks
-    def test_pathInfoIsNativeString(self):
-        """
-        The C{'PATH_INFO'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        request, result = self.prepareRequest()
-        request.requestReceived(path=b"/res/foo/bar")
-        result.addCallback(self.environKeyEqual('PATH_INFO', '/foo/bar'))
-        self.assertIsInstance((yield result), str)
-
-        if _PY3:
-            # Native strings are rejected by Request.requestReceived() before
-            # t.w.wsgi has any say in the matter.
-            request, result = self.prepareRequest()
-            self.assertRaises(
-                TypeError, request.requestReceived, path=u"/res/foo/bar")
-        else:
-            request, result = self.prepareRequest()
-            request.requestReceived(path=u"/res/foo/bar")
-            result.addCallback(self.environKeyEqual('PATH_INFO', '/foo/bar'))
-            self.assertIsInstance((yield result), str)
-
-
     def test_queryString(self):
         """
         The C{'QUERY_STRING'} key of the C{environ} C{dict} passed to the
@@ -482,30 +362,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
             missing, empty, present, unencoded, doubleQuestion])
 
 
-    @inlineCallbacks
-    def test_queryStringIsNativeString(self):
-        """
-        The C{'QUERY_STRING'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        request, result = self.prepareRequest()
-        request.requestReceived(path=b"/res?foo=bar")
-        result.addCallback(self.environKeyEqual('QUERY_STRING', 'foo=bar'))
-        self.assertIsInstance((yield result), str)
-
-        if _PY3:
-            # Native strings are rejected by Request.requestReceived() before
-            # t.w.wsgi has any say in the matter.
-            request, result = self.prepareRequest()
-            self.assertRaises(
-                TypeError, request.requestReceived, path=u"/res?foo=bar")
-        else:
-            request, result = self.prepareRequest()
-            request.requestReceived(path=u"/res?foo=bar")
-            result.addCallback(self.environKeyEqual('QUERY_STRING', 'foo=bar'))
-            self.assertIsInstance((yield result), str)
-
-
     def test_contentType(self):
         """
         The C{'CONTENT_TYPE'} key of the C{environ} C{dict} passed to the
@@ -522,20 +378,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         return gatherResults([missing, present])
 
 
-    @inlineCallbacks
-    def test_contentTypeIsNativeString(self):
-        """
-        The C{'CONTENT_TYPE'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        for contentType in b"x-foo/bar", u"x-foo/bar":
-            request, result = self.prepareRequest()
-            request.requestHeaders.addRawHeader(b"Content-Type", contentType)
-            request.requestReceived()
-            result.addCallback(self.environKeyEqual('CONTENT_TYPE', 'x-foo/bar'))
-            self.assertIsInstance((yield result), str)
-
-
     def test_contentLength(self):
         """
         The C{'CONTENT_LENGTH'} key of the C{environ} C{dict} passed to the
@@ -550,20 +392,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         present.addCallback(self.environKeyEqual('CONTENT_LENGTH', '1234'))
 
         return gatherResults([missing, present])
-
-
-    @inlineCallbacks
-    def test_contentLengthIsNativeString(self):
-        """
-        The C{'CONTENT_LENGTH'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        for contentLength in b"1234", u"1234":
-            request, result = self.prepareRequest()
-            request.requestHeaders.addRawHeader(b"Content-Length", contentLength)
-            request.requestReceived()
-            result.addCallback(self.environKeyEqual('CONTENT_LENGTH', '1234'))
-            self.assertIsInstance((yield result), str)
 
 
     def test_serverName(self):
@@ -586,23 +414,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         return gatherResults([missing, present])
 
 
-    @inlineCallbacks
-    def test_serverNameIsNativeString(self):
-        """
-        The C{'SERVER_NAME'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        for serverName in b"host.example.com", u"host.example.com":
-            request, result = self.prepareRequest()
-            # This is kind of a cheat; getRequestHostname() breaks in Python 3
-            # when the "Host" request header is set to a native string because
-            # it tries to split around b":", so we patch the method.
-            request.getRequestHostname = lambda: serverName
-            request.requestReceived()
-            result.addCallback(self.environKeyEqual('SERVER_NAME', 'host.example.com'))
-            self.assertIsInstance((yield result), str)
-
-
     def test_serverPort(self):
         """
         The C{'SERVER_PORT'} key of the C{environ} C{dict} passed to the
@@ -622,18 +433,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         return d
 
 
-    @inlineCallbacks
-    def test_serverPortIsNativeString(self):
-        """
-        The C{'SERVER_PORT'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        request, result = self.prepareRequest()
-        request.requestReceived()
-        result.addCallback(self.environKeyEqual('SERVER_PORT', '80'))
-        self.assertIsInstance((yield result), str)
-
-
     def test_serverProtocol(self):
         """
         The C{'SERVER_PROTOCOL'} key of the C{environ} C{dict} passed to the
@@ -647,23 +446,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
         new.addCallback(self.environKeyEqual('SERVER_PROTOCOL', 'HTTP/1.1'))
 
         return gatherResults([old, new])
-
-
-    @inlineCallbacks
-    def test_serverProtocolIsNativeString(self):
-        """
-        The C{'SERVER_PROTOCOL'} key of the C{environ} C{dict} passed to the
-        application is always a native string.
-        """
-        for serverProtocol in b"1.1", u"1.1":
-            request, result = self.prepareRequest()
-            # In Python 3, native strings can be rejected by Request.write()
-            # which will cause a crash after the bit we're trying to test, so
-            # we patch write() out here to do nothing.
-            request.write = lambda data: None
-            request.requestReceived(version=b"1.1")
-            result.addCallback(self.environKeyEqual('SERVER_PROTOCOL', '1.1'))
-            self.assertIsInstance((yield result), str)
 
 
     def test_remoteAddr(self):
@@ -796,37 +578,6 @@ class EnvironTests(WSGITestsMixin, TestCase):
             self.assertEqual(len(events), 2)
         errors.addCallback(cbErrors)
         return errors
-
-
-    @inlineCallbacks
-    def test_wsgiErrorsAcceptsOnlyNativeStrings(self):
-        """
-        The C{'wsgi.errors'} file-like object from the C{environ} C{dict} will
-        permit writes of only native strings in Python 3, and will warn
-        against the use of non-native strings in Python 2.
-        """
-        request, result = self.prepareRequest()
-        request.requestReceived()
-        environ, _ = yield result
-        errors = environ["wsgi.errors"]
-
-        if _PY3:
-            # In Python 3, TypeError is raised.
-            error = self.assertRaises(TypeError, errors.write, b"fred")
-            self.assertEqual(
-                "write() argument must be str, not b'fred' (bytes)",
-                str(error))
-        else:
-            # In Python 2, only a warning is issued; existing WSGI
-            # applications may rely on this non-compliant behaviour.
-            with warnings.catch_warnings(record=True) as caught:
-                errors.write(u"fred")
-            self.assertEqual(1, len(caught))
-            self.assertEqual(UnicodeWarning, caught[0].category)
-            self.assertEqual(
-                "write() argument should be str, not u'fred' (unicode)",
-                str(caught[0].message))
-
 
 
 class InputStreamTestMixin(WSGITestsMixin):
@@ -1215,31 +966,6 @@ class StartResponseTests(WSGITestsMixin, TestCase):
         return d
 
 
-    def test_statusMustBeNativeString(self):
-        """
-        The response status passed to the I{start_response} callable MUST be a
-        native string in Python 2 and Python 3.
-        """
-        status = b"200 OK" if _PY3 else u"200 OK"
-
-        def application(environ, startResponse):
-            startResponse(status, [])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            if _PY3:
-                self.assertEqual(
-                    "status must be str, not b'200 OK' (bytes)", str(error))
-            else:
-                self.assertEqual(
-                    "status must be str, not u'200 OK' (unicode)", str(error))
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
     def _headersTest(self, appHeaders, expectedHeaders):
         """
         Verify that if the response headers given by C{appHeaders} are passed
@@ -1288,164 +1014,6 @@ class StartResponseTests(WSGITestsMixin, TestCase):
         return self._headersTest(
             [('foo', 'bar'), ('baz', 'quux')],
             [b'Baz: quux', b'Foo: bar'])
-
-
-    def test_headersMustBeSequence(self):
-        """
-        The headers passed to the I{start_response} callable MUST be a
-        sequence.
-        """
-        headers = [("key", "value")]
-
-        def application(environ, startResponse):
-            startResponse("200 OK", iter(headers))
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            self.assertRegexpMatches(
-                str(error), "headers must be a list, not "
-                "<list_?iterator .+> [(]list_?iterator[)]")
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
-    @inlineCallbacks
-    def test_headersShouldBePlainList(self):
-        """
-        The headers passed to the I{start_response} callable SHOULD be a plain
-        list.
-        """
-        def application(environ, startResponse):
-            startResponse("200 OK", (("not", "list"),))
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-
-        # In both Python 2 and Python 3, only a warning is issued; existing
-        # WSGI applications may rely on this non-compliant behaviour, and we
-        # can actually work with any sequence type.
-        with warnings.catch_warnings(record=True) as caught:
-            request.requestReceived()
-            yield result
-        self.assertEqual(1, len(caught))
-        self.assertEqual(RuntimeWarning, caught[0].category)
-        self.assertEqual(
-            "headers should be a list, not (('not', 'list'),) (tuple)",
-            str(caught[0].message))
-
-
-    def test_headersMustEachBeSequence(self):
-        """
-        Each header passed to the I{start_response} callable MUST be a
-        sequence.
-        """
-        header = ("key", "value")
-
-        def application(environ, startResponse):
-            startResponse("200 OK", [iter(header)])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            self.assertRegexpMatches(
-                str(error), "header must be a [(]str, str[)] tuple, not "
-                "<tuple_?iterator .+> [(]tuple_?iterator[)]")
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
-    @inlineCallbacks
-    def test_headersShouldEachBeTuple(self):
-        """
-        Each header passed to the I{start_response} callable SHOULD be a
-        tuple.
-        """
-        def application(environ, startResponse):
-            startResponse("200 OK", [["not", "tuple"]])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-
-        # In both Python 2 and Python 3, only a warning is issued; existing
-        # WSGI applications may rely on this non-compliant behaviour, and we
-        # can actually work with any sequence type.
-        with warnings.catch_warnings(record=True) as caught:
-            request.requestReceived()
-            yield result
-        self.assertEqual(1, len(caught))
-        self.assertEqual(RuntimeWarning, caught[0].category)
-        self.assertEqual(
-            "header should be a (str, str) tuple, not ['not', 'tuple'] (list)",
-            str(caught[0].message))
-
-
-    def test_headersShouldEachHaveKeyAndValue(self):
-        """
-        Each header passed to the I{start_response} callable MUST hold a key
-        and a value, and ONLY a key and a value.
-        """
-        def application(environ, startResponse):
-            startResponse("200 OK", [("too", "many", "cooks")])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            self.assertEqual(
-                "header must be a (str, str) tuple, not "
-                "('too', 'many', 'cooks')", str(error))
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
-    def test_headerKeyMustBeNativeString(self):
-        """
-        Each header key passed to the I{start_response} callable MUST be at
-        native string in Python 2 and Python 3.
-        """
-        key = b"key" if _PY3 else u"key"
-
-        def application(environ, startResponse):
-            startResponse("200 OK", [(key, "value")])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            self.assertEqual(
-                "header must be (str, str) tuple, not (%r, 'value')" % (key,),
-                str(error))
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
-    def test_headerValueMustBeNativeString(self):
-        """
-        Each header value passed to the I{start_response} callable MUST be at
-        native string in Python 2 and Python 3.
-        """
-        value = b"value" if _PY3 else u"value"
-
-        def application(environ, startResponse):
-            startResponse("200 OK", [("key", value)])
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            self.assertEqual(
-                "header must be (str, str) tuple, not ('key', %r)" % (value,),
-                str(error))
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
 
 
     def test_applicationProvidedContentType(self):
@@ -1725,32 +1293,6 @@ class StartResponseTests(WSGITestsMixin, TestCase):
         return d
 
 
-    def test_writeAcceptsOnlyByteStrings(self):
-        """
-        The C{write} callable returned from C{start_response} only accepts
-        byte strings.
-        """
-        def application(environ, startResponse):
-            write = startResponse("200 OK", [])
-            write(u"bogus")
-            return iter(())
-
-        request, result = self.prepareRequest(application)
-        request.requestReceived()
-
-        def checkMessage(error):
-            if _PY3:
-                self.assertEqual(
-                    "Can only write bytes to a transport, not 'bogus'",
-                    str(error))
-            else:
-                self.assertEqual(
-                    "Can only write bytes to a transport, not u'bogus'",
-                    str(error))
-
-        return self.assertFailure(result, TypeError).addCallback(checkMessage)
-
-
 
 class ApplicationTests(WSGITestsMixin, TestCase):
     """
@@ -1818,16 +1360,16 @@ class ApplicationTests(WSGITestsMixin, TestCase):
             def application(environ, startResponse):
                 def result():
                     for i in range(3):
-                        invoked.append(getThreadID())
+                        invoked.append(get_ident())
                         yield intToBytes(i)
-                invoked.append(getThreadID())
+                invoked.append(get_ident())
                 startResponse('200 OK', [('content-length', '3')])
                 return result()
             return application
 
         d, requestFactory = self.requestFactoryFactory()
         def cbRendered(ignored):
-            self.assertNotIn(getThreadID(), invoked)
+            self.assertNotIn(get_ident(), invoked)
             self.assertEqual(len(set(invoked)), 1)
         d.addCallback(cbRendered)
 
@@ -1848,7 +1390,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         class ThreadVerifier(Request):
             def write(self, bytes):
-                invoked.append(getThreadID())
+                invoked.append(get_ident())
                 return Request.write(self, bytes)
 
         def applicationFactory():
@@ -1860,7 +1402,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         d, requestFactory = self.requestFactoryFactory(ThreadVerifier)
         def cbRendered(ignored):
-            self.assertEqual(set(invoked), set([getThreadID()]))
+            self.assertEqual(set(invoked), set([get_ident()]))
         d.addCallback(cbRendered)
 
         self.lowLevelRender(
@@ -1880,7 +1422,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         class ThreadVerifier(Request):
             def write(self, bytes):
-                invoked.append(getThreadID())
+                invoked.append(get_ident())
                 return Request.write(self, bytes)
 
         def applicationFactory():
@@ -1891,7 +1433,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         d, requestFactory = self.requestFactoryFactory(ThreadVerifier)
         def cbRendered(ignored):
-            self.assertEqual(set(invoked), set([getThreadID()]))
+            self.assertEqual(set(invoked), set([get_ident()]))
         d.addCallback(cbRendered)
 
         self.lowLevelRender(
@@ -1910,7 +1452,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         class ThreadVerifier(Request):
             def setResponseCode(self, code, message):
-                invoked.append(getThreadID())
+                invoked.append(get_ident())
                 return Request.setResponseCode(self, code, message)
 
         def applicationFactory():
@@ -1921,7 +1463,7 @@ class ApplicationTests(WSGITestsMixin, TestCase):
 
         d, requestFactory = self.requestFactoryFactory(ThreadVerifier)
         def cbRendered(ignored):
-            self.assertEqual(set(invoked), set([getThreadID()]))
+            self.assertEqual(set(invoked), set([get_ident()]))
         d.addCallback(cbRendered)
 
         self.lowLevelRender(

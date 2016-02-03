@@ -3,10 +3,8 @@
 # See LICENSE for details.
 
 """
-Tests for L{twisted.protocols.amp}.
+Tests for L{provisioningserver.twisted.protocols.amp}.
 """
-
-from __future__ import absolute_import, division
 
 # SKIP; format-import should not modify this file.
 import datetime
@@ -53,7 +51,6 @@ def writeSequence(self, iovec):
     self.write(b"".join(iovec))
 
 FakeTransport.writeSequence = writeSequence
-
 
 
 class TestProto(protocol.Protocol):
@@ -111,6 +108,9 @@ class SimpleSymmetricProtocol(amp.AMP):
 
     def amp_HELLO(self, box):
         return amp.Box(hello=box[b'hello'])
+
+    def amp_HOWDOYOUDO(self, box):
+        return amp.QuitBox(howdoyoudo=b'world')
 
 
 
@@ -199,6 +199,10 @@ class Goodbye(amp.Command):
     # commandName left blank on purpose: this tests implicit command names.
     response = [(b'goodbye', amp.String())]
     responseType = amp.QuitBox
+
+class Howdoyoudo(amp.Command):
+    commandName = b'howdoyoudo'
+    # responseType = amp.QuitBox
 
 class WaitForever(amp.Command):
     commandName = b'wait_forever'
@@ -310,6 +314,10 @@ class SimpleSymmetricCommandProtocol(FactoryNotifier):
         return self.waiting
     WaitForever.responder(waitforit)
 
+    def howdo(self):
+        return dict(howdoyoudo=b'world')
+    Howdoyoudo.responder(howdo)
+
     def saybye(self):
         return dict(goodbye=b"everyone")
     Goodbye.responder(saybye)
@@ -341,6 +349,7 @@ class DeferredSymmetricCommandProtocol(SimpleSymmetricCommandProtocol):
             self.maybeLaterProto = TestProto(self.onConnLost, SWITCH_SERVER_DATA)
             self.maybeLater = defer.Deferred()
             return self.maybeLater
+        raise UnknownProtocol(name)
     TestSwitchProto.responder(switchit)
 
 class BadNoAnswerCommandProtocol(SimpleSymmetricCommandProtocol):
@@ -637,7 +646,7 @@ class CommandDispatchTests(unittest.TestCase):
                                                    b'print': b"ignored",
                                                    b'_answer': b"1"}))
         self.assertEqual(answers, [dict(hello=b"yay",
-                                         Print=u"ignored")])
+                                         Print="ignored")])
 
 
     def _localCallbackErrorLoggingTest(self, callResult):
@@ -1217,7 +1226,7 @@ class AMPTests(unittest.TestCase):
                                           (amp.IBoxSender, amp.AMP),
                                           (amp.IBoxReceiver, amp.AMP),
                                           (amp.IResponderLocator, amp.AMP)]:
-            self.assertTrue(interface.implementedBy(implementation),
+            self.failUnless(interface.implementedBy(implementation),
                             "%s does not implements(%s)" % (implementation, interface))
 
 
@@ -1358,7 +1367,7 @@ class AMPTests(unittest.TestCase):
         self.assertEqual(type(repr(amp._SwitchBox('a'))), str)
         self.assertEqual(type(repr(amp.QuitBox())), str)
         self.assertEqual(type(repr(amp.AmpBox())), str)
-        self.assertTrue("AmpBox" in repr(amp.AmpBox()))
+        self.failUnless("AmpBox" in repr(amp.AmpBox()))
 
 
     def test_innerProtocolInRepr(self):
@@ -1419,13 +1428,13 @@ class AMPTests(unittest.TestCase):
         x = b"H" * (0xffff+1)
         tl = self.assertRaises(amp.TooLong, c.sendHello, x)
         p.flush()
-        self.assertFalse(tl.isKey)
-        self.assertTrue(tl.isLocal)
+        self.failIf(tl.isKey)
+        self.failUnless(tl.isLocal)
         self.assertEqual(tl.keyName, b'hello')
         self.failUnlessIdentical(tl.value, x)
-        self.assertTrue(str(len(x)) in repr(tl))
-        self.assertTrue("value" in repr(tl))
-        self.assertTrue('hello' in repr(tl))
+        self.failUnless(str(len(x)) in repr(tl))
+        self.failUnless("value" in repr(tl))
+        self.failUnless('hello' in repr(tl))
 
 
     def test_helloWorldCommand(self):
@@ -1500,7 +1509,7 @@ class AMPTests(unittest.TestCase):
         cl = L.pop()
         cl.trap(error.ConnectionDone)
         # The exception should have been logged.
-        self.assertTrue(self.flushLoggedErrors(ThingIDontUnderstandError))
+        self.failUnless(self.flushLoggedErrors(ThingIDontUnderstandError))
 
 
 
@@ -1534,7 +1543,7 @@ class AMPTests(unittest.TestCase):
         HELLO = b'world'
         c.callRemote(NoAnswerHello, hello=HELLO)
         p.flush()
-        self.assertTrue(s.greeted)
+        self.failUnless(s.greeted)
 
 
     def test_requiresNoAnswerFail(self):
@@ -1549,12 +1558,12 @@ class AMPTests(unittest.TestCase):
         c.callRemote(NoAnswerHello, hello=HELLO)
         p.flush()
         # This should be logged locally.
-        self.assertTrue(self.flushLoggedErrors(amp.RemoteAmpError))
+        self.failUnless(self.flushLoggedErrors(amp.RemoteAmpError))
         HELLO = b'world'
         c.callRemote(Hello, hello=HELLO).addErrback(L.append)
         p.flush()
         L.pop().trap(error.ConnectionDone)
-        self.assertFalse(s.greeted)
+        self.failIf(s.greeted)
 
 
     def test_noAnswerResponderBadAnswer(self):
@@ -1661,7 +1670,7 @@ class AMPTests(unittest.TestCase):
             self.testSucceeded = True
         c.switchToTestProtocol().addCallback(switched)
         p.flush()
-        self.assertTrue(self.testSucceeded)
+        self.failUnless(self.testSucceeded)
 
 
     def test_protocolSwitch(self, switcher=SimpleSymmetricCommandProtocol,
@@ -1689,8 +1698,8 @@ class AMPTests(unittest.TestCase):
 
         def cbConnsLost(info):
             ((serverSuccess, serverData), (clientSuccess, clientData)) = info
-            self.assertTrue(serverSuccess)
-            self.assertTrue(clientSuccess)
+            self.failUnless(serverSuccess)
+            self.failUnless(clientSuccess)
             self.assertEqual(b''.join(serverData), SWITCH_CLIENT_DATA)
             self.assertEqual(b''.join(clientData), SWITCH_SERVER_DATA)
             self.testSucceeded = True
@@ -1709,14 +1718,14 @@ class AMPTests(unittest.TestCase):
             # going to corrupt the connection, we do it before it's closed.
             if spuriousError:
                 s.waiting.errback(amp.RemoteAmpError(
-                        b"SPURIOUS",
+                        "SPURIOUS",
                         "Here's some traffic in the form of an error."))
             else:
                 s.waiting.callback({})
             p.flush()
         c.transport.loseConnection() # close it
         p.flush()
-        self.assertTrue(self.testSucceeded)
+        self.failUnless(self.testSucceeded)
 
 
     def test_protocolSwitchDeferred(self):
@@ -1744,7 +1753,7 @@ class AMPTests(unittest.TestCase):
         c.switchToTestProtocol(fail=True).addErrback(L.append)
         p.flush()
         L.pop().trap(UnknownProtocol)
-        self.assertFalse(self.testSucceeded)
+        self.failIf(self.testSucceeded)
         # It's a known error, so let's send a "hello" on the same connection;
         # it should work.
         c.sendHello(b'world').addCallback(L.append)
@@ -2634,102 +2643,6 @@ class CommandTests(unittest.TestCase):
             None)
 
 
-    def test_commandNameDefaultsToClassNameAsByteString(self):
-        """
-        A L{Command} subclass without a defined C{commandName} that's
-        not a byte string.
-        """
-        class NewCommand(amp.Command):
-            """
-            A new command.
-            """
-
-        self.assertEqual(b"NewCommand", NewCommand.commandName)
-
-
-    def test_commandNameMustBeAByteString(self):
-        """
-        A L{Command} subclass cannot be defined with a C{commandName} that's
-        not a byte string.
-        """
-        error = self.assertRaises(
-            TypeError, type, "NewCommand", (amp.Command, ),
-            {"commandName": u"FOO"})
-        self.assertRegexpMatches(
-            str(error), "^Command names must be byte strings, got: u?'FOO'$")
-
-
-    def test_commandArgumentsMustBeNamedWithByteStrings(self):
-        """
-        A L{Command} subclass's C{arguments} must have byte string names.
-        """
-        error = self.assertRaises(
-            TypeError, type, "NewCommand", (amp.Command, ),
-            {"arguments": [(u"foo", None)]})
-        self.assertRegexpMatches(
-            str(error), "^Argument names must be byte strings, got: u?'foo'$")
-
-
-    def test_commandResponseMustBeNamedWithByteStrings(self):
-        """
-        A L{Command} subclass's C{response} must have byte string names.
-        """
-        error = self.assertRaises(
-            TypeError, type, "NewCommand", (amp.Command, ),
-            {"response": [(u"foo", None)]})
-        self.assertRegexpMatches(
-            str(error), "^Response names must be byte strings, got: u?'foo'$")
-
-
-    def test_commandErrorsIsConvertedToDict(self):
-        """
-        A L{Command} subclass's C{errors} is coerced into a C{dict}.
-        """
-        class NewCommand(amp.Command):
-            errors = [(ZeroDivisionError, b"ZDE")]
-
-        self.assertEqual(
-            {ZeroDivisionError: b"ZDE"},
-            NewCommand.errors)
-
-
-    def test_commandErrorsMustUseBytesForOnWireRepresentation(self):
-        """
-        A L{Command} subclass's C{errors} must map exceptions to byte strings.
-        """
-        error = self.assertRaises(
-            TypeError, type, "NewCommand", (amp.Command, ),
-            {"errors": [(ZeroDivisionError, u"foo")]})
-        self.assertRegexpMatches(
-            str(error), "^Error names must be byte strings, got: u?'foo'$")
-
-
-    def test_commandFatalErrorsIsConvertedToDict(self):
-        """
-        A L{Command} subclass's C{fatalErrors} is coerced into a C{dict}.
-        """
-        class NewCommand(amp.Command):
-            fatalErrors = [(ZeroDivisionError, b"ZDE")]
-
-        self.assertEqual(
-            {ZeroDivisionError: b"ZDE"},
-            NewCommand.fatalErrors)
-
-
-    def test_commandFatalErrorsMustUseBytesForOnWireRepresentation(self):
-        """
-        A L{Command} subclass's C{fatalErrors} must map exceptions to byte
-        strings.
-        """
-        error = self.assertRaises(
-            TypeError, type, "NewCommand", (amp.Command, ),
-            {"fatalErrors": [(ZeroDivisionError, u"foo")]})
-        self.assertRegexpMatches(
-            str(error), "^Fatal error names must be byte strings, "
-            "got: u?'foo'$")
-
-
-
 class ListOfTestsMixin:
     """
     Base class for testing L{ListOf}, a parameterized zero-or-more argument
@@ -3163,13 +3076,13 @@ class DescriptorTests(unittest.TestCase):
         L{amp.Descriptor.toBox} to reconstruct a file descriptor value.
         """
         name = "alpha"
-        nameAsBytes = name.encode("ascii")
+        name_as_bytes = name.encode("ascii")
         strings = {}
         descriptor = 17
         sendObjects = {name: descriptor}
 
         argument = amp.Descriptor()
-        argument.toBox(nameAsBytes, strings, sendObjects.copy(), self.protocol)
+        argument.toBox(name_as_bytes, strings, sendObjects.copy(), self.protocol)
 
         receiver = amp.BinaryBoxProtocol(
             amp.BoxDispatcher(amp.CommandLocator()))
@@ -3178,7 +3091,7 @@ class DescriptorTests(unittest.TestCase):
 
         receiveObjects = {}
         argument.fromBox(
-            nameAsBytes, strings.copy(), receiveObjects, receiver)
+            name_as_bytes, strings.copy(), receiveObjects, receiver)
 
         # Make sure we got the descriptor.  Adjust by fuzz to be more convincing
         # of having gone through L{IUNIXTransport.sendFileDescriptor}, not just
@@ -3268,46 +3181,6 @@ class UTCTests(unittest.TestCase):
         passed an offset sign other than C{'+'} or C{'-'}.
         """
         self.assertRaises(ValueError, tz, '?', 0, 0)
-
-
-
-class RemoteAmpErrorTests(unittest.TestCase):
-    """
-    Tests for L{amp.RemoteAmpError}.
-    """
-
-    def test_stringMessage(self):
-        """
-        L{amp.RemoteAmpError} renders the given C{errorCode} (C{bytes}) and
-        C{description} into a native string.
-        """
-        error = amp.RemoteAmpError(b"BROKEN", "Something has broken")
-        self.assertEqual("Code<BROKEN>: Something has broken", str(error))
-
-
-    def test_stringMessageReplacesNonAsciiText(self):
-        """
-        When C{errorCode} contains non-ASCII characters, L{amp.RemoteAmpError}
-        renders then as backslash-escape sequences.
-        """
-        error = amp.RemoteAmpError(b"BROKEN-\xff", "Something has broken")
-        self.assertEqual("Code<BROKEN-\\xff>: Something has broken", str(error))
-
-
-    def test_stringMessageWithLocalFailure(self):
-        """
-        L{amp.RemoteAmpError} renders local errors with a "(local)" marker and
-        a brief traceback.
-        """
-        failure = Failure(Exception("Something came loose"))
-        error = amp.RemoteAmpError(
-            b"BROKEN", "Something has broken", local=failure)
-        self.assertRegexpMatches(
-            str(error), (
-                "^Code<BROKEN> [(]local[)]: Something has broken\n"
-                "Traceback [(]failure with no frames[)]: "
-                "<.+Exception.>: Something came loose\n"
-            ))
 
 
 

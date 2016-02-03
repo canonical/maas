@@ -229,8 +229,8 @@ class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
         backend = MAASAuthorizationBackend()
         user = factory.make_User()
         parent = factory.make_Node()
-        device = factory.make_Device(
-            owner=user, parent=parent)
+        device = factory.make_Node(
+            owner=user, installable=False, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         self.assertTrue(
@@ -242,8 +242,8 @@ class TestMAASAuthorizationBackendForDeviceInterface(MAASServerTestCase):
         user = factory.make_User()
         owner = factory.make_User()
         parent = factory.make_Node()
-        device = factory.make_Device(
-            owner=owner, parent=parent)
+        device = factory.make_Node(
+            owner=owner, installable=False, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         self.assertFalse(

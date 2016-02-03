@@ -3,6 +3,256 @@ Changelog
 =========
 
 
+1.10.0
+======
+
+Important Announcements
+-----------------------
+
+**MAAS 1.10 Transitional Release**
+ MAAS 1.10 is an interim release between 1.9 and 2.0, aimed at providing
+ full support of MAAS in Xenial until MAAS 2.0 is released. This transition
+ is required due to recent changes in core dependencies used by MAAS, namely
+ Django and Python 3.
+
+ * Python 3.5 has now been made the default Python version in Ubuntu Xenial.
+   As such, MAAS 1.10 has moved away from supporting Python 2 to support
+   Python 3.5. While MAAS itself has been ported to Python 3.5, the team
+   has made great effort at porting other MAAS core dependencies.
+
+ * Django 1.8 has been made available in Ubuntu Xenial. Starting from
+   Django 1.7, migrations are now handled by a native migration system
+   instead of South. This has made Django backwards incompatible. As such,
+   MAAS 1.10+ has gained support for Django 1.8 and dropped support for
+   Django < 1.7.
+
+ Note that while MAAS 1.9 could still be run with Python 2 and Django 1.6
+ in Xenial, the MAAS team is no longer supporting it in Xenial only.
+ MAAS 1.9 support will remain in Trusty until its EOL, however, users
+ running Xenial are now required to upgrade to MAAS 1.10 (or later).
+
+Minor bugs fixed in this release
+--------------------------------
+
+LP: #1536754    Upgrade from 1.8 to 1.9 lost connected macs in all but one network
+LP: #1540765    Fix unable to detect IPMI control settings during enlistment
+
+
+1.9.0
+=====
+
+Important announcements
+-----------------------
+
+**New Networking Concepts and API's: Fabrics, Spaces and Subnets**
+ With the introduction of new MAAS networking concepts, new API's are also
+ been introduced. These are:
+
+  * fabrics
+  * spaces
+  * subnets
+  * vlans
+  * fan-networks
+
+ MAAS 1.9.0 will continue to provide backwards compatibility with the old
+ network API for reading purposes, but moving forward, users are required to
+ use the new API to manipulate fabrics, spaces and subnets.
+
+**Advanced Network and Storage Configuration only available for Ubuntu deployments**
+ Users can now perform advanced network and storage configurations for nodes
+ before deployment. The advanced configuration is only available for Ubuntu
+ deployments. All other deployments using third party OS', including CentOS,
+ RHEL, Windows and Custom Images, won't result in such configuration.
+
+**Re-commissioning required for upgraded MAAS**
+ Now that storage partitioning and advanced configuration is supported natively,
+ VM nodes in MAAS need to be re-commissioned.
+
+  * If upgrading from MAAS 1.8, only VM nodes with VirtIO storage devices need
+    to be re-commissioned.
+
+  * If upgrading from MAAS 1.7, all nodes will need to be re-commissioned in
+    order for MAAS to correctly capture the storage and networking devices.
+
+ This does not affect nodes that are currently deployed.
+
+**Default Storage Partitioning Layout - Flat**
+ With the introduction of custom storage, MAAS has also introduced the concept
+ of partitioning layouts. Partitioning layouts allow the user to quickly
+ auto-configure the disk partitioning scheme after first commissioning or
+ re-commissioning (if selected to do so). The partitioning layouts are set
+ globally on the `Settings` page.
+
+ The current default Partitioning layout is 'Flat', maintaining backwards
+ compatibility with previous MAAS releases. This means MAAS will take the
+ first disk it finds in the system and use it as the root and boot disk.
+
+**Deployment with configured /etc/network/interfaces**
+ Starting with MAAS 1.9, all node deployments will result in writing
+ `/etc/network/interfaces` statically, by default. This increases MAAS'
+ robustness and reliability as users no longer have to depend on DHCP for
+ IP address allocation solely.
+
+ MAAS will continue to provide IP addresses via DHCP, even though interfaces
+ in `/etc/network/interfaces` may have been configured statically.
+
+Major new features
+------------------
+
+**Storage Partitioning and Advanced Configuration**
+ MAAS now supports Storage Partitioning and Advanced Configuration natively.
+ This allows MAAS to deploy machines with different Storage Layouts, as
+ well as different complex partitioning configurations. Storage support
+ includes:
+
+ * LVM
+ * Bcache
+ * Software RAID levels 0, 1, 5, 6, 10.
+ * Advanced partitioning
+
+ Storace configuration is available both via the WebUI and API. For more
+ information refer to :ref:`storage`.
+
+**Advanced Networking (Fabrics, Spaces, Subnetworks) and Node Network Configuration**
+ MAAS now supports Advanced Network configuration, allowing users to not
+ only perform advanced node network configuration, but also allowing users
+ to declare and map their infrastructure in the form of Fabrics, VLANs,
+ Spaces and Subnets.
+
+ **Fabrics, Spaces, Subnets and Fan networks**
+  MAAS now supports the concept of Fabrics, Spaces, Subnets and FANS,
+  which introduce a whole new way of declaring and mapping your network
+  and infrastructure in MAAS.
+
+  The MAAS WebUI allows users to view all the declared Fabrics, Spaces,
+  VLANs inside fabrics and Subnets inside Spaces. The WebUI does not yet
+  support the ability to create new of these, but the API does.
+
+  These new concepts replace the old `Network` concepts from MAAS'
+  earlier versions. For more information, see :ref:`networking`.
+
+  For more information about the API, see :ref:`api`.
+
+ **Advanced Node Networking Configuration**
+  MAAS can now perform the Node's networking configuration. Doing so,
+  results in `/etc/network/interfaces` being written. Advanced
+  configuration includes:
+
+   * Assign subnets, fabrics, and IP to interfaces.
+   * Create VLAN interfaces.
+   * Create bond interfaces.
+   * Change interface names.
+
+  MAAS also allows configuration of node interfaces in different modes:
+
+   * Auto Assign - Node interface will be configured statically
+     and MAAS will auto assign an IP address.
+   * DHCP - The node interface will be configured to DHCP.
+   * Static - The user will be able to specify what IP address the
+     interface will obtain, while MAAS will configure it statically.
+   * Unconfigured - MAAS will leave the interface with LINK UP.
+
+**Curtin & cloud-init status updates**
+ Starting from MAAS 1.9.0, curtin and cloud-init will now send messages
+ to MAAS providing information regarding various of the actions being
+ taken. This information will be displayed in MAAS in the `Node Event Log`.
+
+ Note that this information is only available when using MAAS 1.9.0 and
+ the latest version fo curtin. For cloud-init messages this information
+ is only available when deploying Wily+.
+
+**Fabric and subnet creation**
+ MAAS now auto-creates multiple fabrics per physical interface connected
+ to the Cluster Controller, and will correctly create subnetworks under
+ each fabric, as well as VLAN's, if any of the Cluster Controller
+ interface is a VLAN interface.
+
+**HWE Kernels**
+ MAAS now has a different approach to deploying Hardware Enablement
+ Kernels. Start from MAAS 1.9, the HWE kernels are no longer coupled
+ to subarchitectures of a machine. For each Ubuntu release, users
+ will be able to select any of the available HWE kernels for such
+ release, as well as set the minimum kernel the machine will be
+ deployed with by default.
+
+ For more information, see :ref:`hardware-enablement-kernels`.
+
+**CentOS images can be imported automatically**
+ CentOS Image (CentOS 6 and 7) can now be imported automatically from the
+ MAAS Images page. These images are currently part of the daily streams.
+
+ In order to test this images, you need to use the daily image stream.
+ This can be changed in the `Settings` page under `Boot Images` to
+ `http://maas.ubuntu.com/images/ephemeral-v2/daily/`. Once changed, images
+ can be imported from the MAAS Images page. The CentOS image will be
+ published in the Releases stream shortly.
+
+
+Minor notable changes
+---------------------
+
+**Minimal Config Files for Daemons**
+ Starting from MAAS 1.9, minimal configuration files have been introduced
+ for both, the MAAS Region Controller and the MAAS Cluster Controller daemons.
+
+ *  The Region Controller (`maas-regiond`) has now dropped the usage of
+    `/etc/maas/maas_local_settings.py` in favor of `/etc/maas/regiond.conf`.
+    Available configuration options are now `database_host`, `database_name`,
+    `database_user`, `database_pass`, `maas_url`. MAAS will attempt to migrate
+    any configuration on upgrade, otherwise it will use sane defaults.
+
+ *  The Cluster Controller (`maas-clusterd`) has now dropped the usage of
+    `/etc/maas/pserv.yaml` and `/etc/maas/maas_cluster.conf` in favor of
+    `/etc/maas/clusterd.conf`. Available configuration options are now `maas_url`
+    and `cluster_uuid` only. MAAS will attempt to migrate any configuration
+    on upgrade, otherwise it will use sane defaults.
+
+**Commissioning Actions**
+ MAAS now supports commissioning actions. These allow the user to specify
+ how commissioning should behave in certain escenarios. The commissioning
+ actions available are:
+
+  * Enable SSH during commissioning & Keep machine ON after commissioning
+  * Keep network configuration after commissioning
+  * Keep storage configuration after commissioning
+
+**Warn users about missing power control tools**
+ MAAS now warns users about the missing power control tools. Each MAAS
+ power driver use a set of power tools that may or may not be installed
+ by default. If these power tools are missing from the system, MAAS will
+ warn users.
+
+**Python Power Drivers**
+ Starting from MAAS 1.9, MAAS is moving away from using shell scripts
+ templates for Power Drivers. These are being migrated to MAAS'
+ internal control as power drivers. Currently supported are APC, MSCM,
+ MSFT OCS, SM15k, UCSM, Virsh, VMWare and IPMI.
+
+ Remaining Power Drivers include AMT, Fence CDU's, Moonshot.
+
+Major bugs fixed in this release
+--------------------------------
+
+See https://launchpad.net/maas/+milestone/1.9.0 for details.
+
+
+1.9.0 (RC4)
+============
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1523674    Virsh is reporting ppc64le, not ppc64el.
+
+LP: #1524091    Don't require DHCP to be on if it should be off.
+
+LP: #1523988    No required packages for HMC as it uses pure python paramiko ssh client.
+
+LP: #1524007    Don't hold the cluster configuration lock while reloading boot images.
+
+LP: #1524924    Fix commissioning to correctly identify secondary subnets, VLAN's and fabrics.
+
+
 1.9.0 (RC3)
 =============
 

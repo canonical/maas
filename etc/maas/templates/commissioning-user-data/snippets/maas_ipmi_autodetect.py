@@ -36,7 +36,7 @@ class IPMIError(Exception):
 def run_command(command_args):
     """Run a command. Return output if successful or raise exception if not."""
     output = subprocess.check_output(command_args, stderr=subprocess.STDOUT)
-    return output
+    return output.decode('utf-8')
 
 
 def bmc_get(key):

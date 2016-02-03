@@ -6,7 +6,6 @@ Sphinx extension that produces a JSON file with details about all the
 available versions of the MAAS documentation.
 """
 
-
 import json
 import os
 
@@ -27,12 +26,12 @@ def write_versions_file(app, exception):
     if not isinstance(app.builder, sphinx.builders.html.StandaloneHTMLBuilder):
         return
 
-    doc_versions = app.config.doc_versions
+    import conf  # Our configuration with custom values.
     versions_file = os.path.join(app.outdir, VERSION_FILE)
-    with open(versions_file, 'wb') as f:
-        f.write(json.dumps(doc_versions))
+    with open(versions_file, 'w', encoding="ascii") as f:
+        f.write(json.dumps(conf.doc_versions))
 
 
 def setup(app):
     app.add_config_value(VERSION_CONFIG_NAME, {}, False)
-    app.connect(b'build-finished', write_versions_file)
+    app.connect('build-finished', write_versions_file)

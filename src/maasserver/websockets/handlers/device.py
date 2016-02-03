@@ -11,7 +11,6 @@ from maasserver.clusterrpc import dhcp
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
-    NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -88,7 +87,7 @@ class DeviceHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Device.devices.filter(node_type=NODE_TYPE.DEVICE, parent=None)
+            Device.devices.filter(installable=False, parent=None)
             .select_related('nodegroup', 'owner')
             .prefetch_related('interface_set__ip_addresses__subnet')
             .prefetch_related('nodegroup__nodegroupinterface_set')
@@ -99,7 +98,7 @@ class DeviceHandler(TimestampedModelHandler):
         allowed_methods = ['list', 'get', 'set_active', 'create', 'action']
         exclude = [
             "id",
-            "type",
+            "installable",
             "boot_interface",
             "boot_cluster_ip",
             "boot_disk",

@@ -19,7 +19,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
-    NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
@@ -107,7 +106,7 @@ class NodeHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Node.nodes.filter(node_type=NODE_TYPE.MACHINE)
+            Node.nodes.filter(installable=True)
                 .select_related('nodegroup', 'boot_interface', 'owner')
                 .prefetch_related(
                     'interface_set__ip_addresses__subnet__vlan__fabric')
@@ -152,6 +151,7 @@ class NodeHandler(TimestampedModelHandler):
         ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
+            "installable",
             "parent",
             "boot_interface",
             "boot_cluster_ip",
@@ -1188,7 +1188,7 @@ class NodeHandler(TimestampedModelHandler):
         @transactional
         def get_node_cluster_and_power_info():
             obj = self.get_object(params)
-            if obj.power_type is not None:
+            if obj.installable:
                 node_info = obj.system_id, obj.hostname
                 nodegroup_info = obj.nodegroup.cluster_name, obj.nodegroup.uuid
                 try:
@@ -1199,8 +1199,8 @@ class NodeHandler(TimestampedModelHandler):
                     return node_info, nodegroup_info, power_info
             else:
                 raise HandlerError(
-                    "%s: Unable to query power state; no power state defined"
-                    % obj.hostname)
+                    "%s: Unable to query power state; not an "
+                    "installable node" % obj.hostname)
 
         @transactional
         def update_power_state(state):

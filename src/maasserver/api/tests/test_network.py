@@ -130,8 +130,11 @@ class TestListConnectedMACs(APITestCase):
             owner = factory.make_User()
         if node is None:
             node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
         for subnet in subnets:
+            interface.vlan = subnet.vlan
+            interface.save()
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.DHCP, ip="",
                 subnet=subnet, interface=interface)

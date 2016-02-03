@@ -61,15 +61,8 @@
                         <div class="table__row" data-ng-repeat="ip in subnet.ip_addresses">
                             <div class="table__data table__column--15">{$ ip.ip $}</div>
                             <div class="table__data table__column--15">{$ ip.user $}</div>
-                            <div class="table__data table__column--20">
-			      <!--
-                              XXX ltrager 2015-12-02
-                              node_type is an enum of node(0), device(1), or rack_controller(2). We need to create some type of Javascript enum to represent this
-                              -->
-			      <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.hostname $}</a>
-			      <span data-ng-if="ip.node_summary.node_type == 1">{$ ip.node_summary.hostname $}</span>
-			    </div>
-                            <div class="table__data table__column--15">{$ ip.node_summary.node_type == 0 ? "Node" : "Device" $}</div>
+                            <div class="table__data table__column--20"><a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.installable">{$ ip.node_summary.hostname $}</a><span data-ng-if="!ip.node_summary.installable">{$ ip.node_summary.hostname $}</span></div>
+                            <div class="table__data table__column--15">{$ ip.node_summary.installable ? "Node" : "Device" $}</div>
                             <div class="table__data table__column--35" data-ng-switch="ip.alloc_type">
                                 <span data-ng-switch-when="0">Automatic</span>
                                 <span data-ng-switch-when="1">Sticky</span>

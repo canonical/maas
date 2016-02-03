@@ -12,7 +12,6 @@ libjs-yui3-full
 make
 nodejs-legacy
 npm
-phantomjs
 python-pocket-lint
 python3-django-nose
 socat

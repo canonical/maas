@@ -1248,7 +1248,7 @@
     gateway_link_ipv6: null
     hostname: mild-chicken
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1290,7 +1290,7 @@
     gateway_link_ipv6: null
     hostname: powerless-slip
     hwe_kernel: hwe-t
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1332,7 +1332,7 @@
     gateway_link_ipv6: null
     hostname: frightening-visitor
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1374,7 +1374,7 @@
     gateway_link_ipv6: null
     hostname: lanky-chickens
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1416,7 +1416,7 @@
     gateway_link_ipv6: null
     hostname: squiggly-bomb
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1458,7 +1458,7 @@
     gateway_link_ipv6: null
     hostname: definite-worm
     hwe_kernel: hwe-t
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1500,7 +1500,7 @@
     gateway_link_ipv6: null
     hostname: variable-brush
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1542,7 +1542,7 @@
     gateway_link_ipv6: null
     hostname: urban-railway
     hwe_kernel: ''
-    node_type: 0
+    installable: true
     license_key: ''
     memory: 1024
     min_hwe_kernel: ''
@@ -1584,7 +1584,7 @@
     gateway_link_ipv6: null
     hostname: test-device
     hwe_kernel: null
-    node_type: 1
+    installable: false
     license_key: null
     memory: 0
     min_hwe_kernel: null
@@ -1626,7 +1626,7 @@
     gateway_link_ipv6: null
     hostname: test2-device
     hwe_kernel: null
-    node_type: 1
+    installable: false
     license_key: null
     memory: 0
     min_hwe_kernel: null
@@ -1666,7 +1666,7 @@
     gateway_link_ipv6: null
     hostname: test3-device
     hwe_kernel: null
-    node_type: 1
+    installable: false
     license_key: null
     memory: 0
     min_hwe_kernel: null

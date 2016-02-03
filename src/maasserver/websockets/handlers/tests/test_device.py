@@ -7,7 +7,6 @@ __all__ = []
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
-    NODE_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
@@ -108,7 +107,6 @@ class TestDeviceHandler(MAASServerTestCase):
                 tag.name
                 for tag in node.tags.all()
                 ],
-            "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": {
                 "id": node.zone.id,
@@ -142,7 +140,7 @@ class TestDeviceHandler(MAASServerTestCase):
         if owner is None:
             owner = factory.make_User()
         device = factory.make_Node(
-            nodegroup=nodegroup, node_type=NODE_TYPE.DEVICE,
+            nodegroup=nodegroup, installable=False,
             interface=True, owner=owner)
         interface = device.get_boot_interface()
         if ip_assignment == DEVICE_IP_ASSIGNMENT.EXTERNAL:
@@ -485,7 +483,7 @@ class TestDeviceHandler(MAASServerTestCase):
 
     def test_action_performs_action(self):
         user = factory.make_User()
-        device = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
+        device = factory.make_Node(owner=user, installable=False)
         handler = DeviceHandler(user, {})
         handler.action({"system_id": device.system_id, "action": "delete"})
         self.assertIsNone(reload_object(device))

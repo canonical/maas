@@ -14,7 +14,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODE_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
@@ -33,6 +32,7 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import json_load_bytes
+from mock import patch
 from testtools.matchers import (
     HasLength,
     Not,
@@ -64,10 +64,10 @@ class TestDevicesAPI(APITestCase):
         device = Node.devices.get(system_id=system_id)
         self.assertEqual(hostname, device.hostname)
         self.assertIsNone(device.parent)
-        self.assertEquals(device.node_type, NODE_TYPE.DEVICE)
-        self.assertEquals(NodeGroup.objects.ensure_master(), device.nodegroup)
-        self.assertEquals(self.logged_in_user, device.owner)
-        self.assertEquals(
+        self.assertFalse(device.installable)
+        self.assertEqual(NodeGroup.objects.ensure_master(), device.nodegroup)
+        self.assertEqual(self.logged_in_user, device.owner)
+        self.assertEqual(
             macs,
             {nic.mac_address for nic in device.interface_set.all()})
 
@@ -90,9 +90,9 @@ class TestDevicesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         system_id = json_load_bytes(response.content)['system_id']
         device = Node.devices.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
-        self.assertEquals(parent, device.parent)
-        self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(parent, device.parent)
+        self.assertFalse(device.installable)
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
@@ -120,8 +120,8 @@ class TestDevicesAPI(APITestCase):
     def create_devices(self, owner, nodegroup=None, nb=3):
         return [
             factory.make_Node(
-                nodegroup=nodegroup, interface=True,
-                node_type=NODE_TYPE.DEVICE, owner=owner)
+                nodegroup=nodegroup, interface=True, installable=False,
+                owner=owner)
             for _ in range(nb)
         ]
 
@@ -213,7 +213,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_POST_method_doesnt_exist(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            installable=False, owner=self.logged_in_user)
 
         response = self.client.post(get_device_uri(device))
         self.assertEqual(
@@ -221,7 +221,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_GET_reads_device(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            installable=False, owner=self.logged_in_user)
 
         response = self.client.get(get_device_uri(device))
         self.assertEqual(
@@ -231,7 +231,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_PUT_updates_device_hostname(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            installable=False, owner=self.logged_in_user)
         new_hostname = factory.make_name('hostname')
 
         response = self.client.put(
@@ -245,8 +245,7 @@ class TestDeviceAPI(APITestCase):
     def test_PUT_updates_device_parent(self):
         parent = factory.make_Node()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user,
-            parent=parent)
+            installable=False, owner=self.logged_in_user, parent=parent)
         new_parent = factory.make_Node()
 
         response = self.client.put(
@@ -259,7 +258,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_PUT_rejects_edit_if_not_permitted(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=factory.make_User())
+            installable=False, owner=factory.make_User())
         old_hostname = device.hostname
 
         response = self.client.put(
@@ -270,7 +269,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_DELETE_removes_device(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            installable=False, owner=self.logged_in_user)
         response = self.client.delete(get_device_uri(device))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
@@ -278,7 +277,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_DELETE_rejects_deletion_if_not_permitted(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=factory.make_User())
+            installable=False, owner=factory.make_User())
         response = self.client.delete(get_device_uri(device))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(device, reload_object(device))
@@ -293,9 +292,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             ng, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         parent = factory.make_Node_with_Interface_on_Subnet(
             nodegroup=ng, subnet=ngi.subnet)
-        device = factory.make_Device(
-            parent=parent, interface=True, disable_ipv4=False,
-            owner=self.logged_in_user)
+        device = factory.make_Node(
+            installable=False, parent=parent, interface=True,
+            disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -314,9 +313,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             ng, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         parent = factory.make_Node_with_Interface_on_Subnet(
             nodegroup=ng, subnet=ngi.subnet)
-        device = factory.make_Device(
-            parent=parent, interface=True, disable_ipv4=False,
-            owner=self.logged_in_user)
+        device = factory.make_Node(
+            installable=False, parent=parent, interface=True,
+            disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -338,9 +337,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         ngi.save()
         parent = factory.make_Node_with_Interface_on_Subnet(
             nodegroup=ng, subnet=subnet, unmanaged=True)
-        device = factory.make_Device(
-            parent=parent, interface=True, disable_ipv4=False,
-            owner=self.logged_in_user)
+        device = factory.make_Node(
+            installable=False, parent=parent, interface=True,
+            disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -385,7 +384,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test__claims_ip_address_from_cluster_interface(self):
         parent = factory.make_Node_with_Interface_on_Subnet()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, parent=parent, interface=True,
+            installable=False, parent=parent, interface=True,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
@@ -402,7 +401,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test__rejected_if_not_permitted(self):
         parent = factory.make_Node_with_Interface_on_Subnet()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, parent=parent, interface=True,
+            installable=False, parent=parent, interface=True,
             disable_ipv4=False, owner=factory.make_User())
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -412,7 +411,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_creates_ip_with_random_ip(self):
         requested_address = factory.make_ip_address()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
@@ -433,8 +432,9 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         )
 
     def test_503_if_no_subnet_found(self):
-        device = factory.make_Device(
-            interface=True, disable_ipv4=False, owner=self.logged_in_user)
+        device = factory.make_Node(
+            installable=False, interface=True, disable_ipv4=False,
+            owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -446,13 +446,13 @@ class TestClaimStickyIpAddressAPI(APITestCase):
             http.client.SERVICE_UNAVAILABLE, response.status_code,
             response.content)
 
-    def test_503_if_no_ip_found(self):
-        claim_static_ips = self.patch_autospec(
-            Interface, 'claim_static_ips')
+    @patch.object(Interface, 'claim_static_ips')
+    def test_503_if_no_ip_found(self, claim_static_ips):
         claim_static_ips.side_effect = [list()]
 
-        device = factory.make_Device(
-            interface=True, disable_ipv4=False, owner=self.logged_in_user)
+        device = factory.make_Node(
+            installable=False, interface=True, disable_ipv4=False,
+            owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
         response = self.client.post(
@@ -467,7 +467,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_creates_ip_for_specific_mac(self):
         requested_address = factory.make_ip_address()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         second_nic = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
@@ -493,7 +493,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_rejects_invalid_ip(self):
         requested_address = factory.make_name('bogus')
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         interface = device.interface_set.all()[0]
         response = self.client.post(
@@ -512,7 +512,7 @@ class TestClaimStickyIpAddressAPI(APITestCase):
         mac_address = factory.make_name('bogus')
         requested_address = factory.make_ip_address()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         response = self.client.post(
             get_device_uri(device),
@@ -531,13 +531,13 @@ class TestClaimStickyIpAddressAPI(APITestCase):
     def test_rejects_unrelated_mac(self):
         # Create an other device.
         other_device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=factory.make_User())
         other_nic = other_device.interface_set.all()[0]
 
         requested_address = factory.make_ip_address()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch_autospec(interface_module, "update_host_maps")
@@ -558,7 +558,7 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
     def test__releases_ip_address(self):
         parent = factory.make_Node_with_Interface_on_Subnet()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, parent=parent, interface=True,
+            installable=False, parent=parent, interface=True,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch_autospec(interface_module, "update_host_maps")
@@ -579,7 +579,7 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
 
     def test__rejects_invalid_ip(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         response = self.client.post(
             get_device_uri(device),
@@ -595,7 +595,7 @@ class TestDeviceReleaseStickyIpAddressAPI(APITestCase):
 
     def test__rejects_empty_ip(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, interface=True, disable_ipv4=False,
+            installable=False, interface=True, disable_ipv4=False,
             owner=self.logged_in_user)
         response = self.client.post(
             get_device_uri(device),
@@ -616,7 +616,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         network = factory._make_random_network(slash=24)
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         device = factory.make_Node_with_Interface_on_Subnet(
-            node_type=NODE_TYPE.DEVICE, subnet=subnet,
+            installable=False, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
         for _ in range(4):
             extra_nic = factory.make_Interface(
@@ -643,7 +643,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
         network = factory._make_random_network(slash=24)
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         device = factory.make_Node_with_Interface_on_Subnet(
-            node_type=NODE_TYPE.DEVICE, subnet=subnet,
+            installable=False, subnet=subnet,
             disable_ipv4=False, owner=self.logged_in_user)
         extra_nic = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
@@ -675,7 +675,7 @@ class TestDeviceReleaseStickyIpAddressAPITransactional(APITransactionTestCase):
     def test__rejected_if_not_permitted(self):
         parent = factory.make_Node_with_Interface_on_Subnet()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, parent=parent, interface=True,
+            installable=False, parent=parent, interface=True,
             disable_ipv4=False, owner=factory.make_User())
         # Silence 'update_host_maps' and 'remove_host_maps'
         self.patch_autospec(interface_module, "update_host_maps")

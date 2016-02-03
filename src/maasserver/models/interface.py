@@ -40,7 +40,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
-    NODE_TYPE,
     NODEGROUPINTERFACE_MANAGEMENT,
 )
 from maasserver.exceptions import (
@@ -541,7 +540,7 @@ class Interface(CleanSave, TimestampedModel):
         """
         is_on_device_with_parent = (
             self.node is not None and
-            self.node.node_type == NODE_TYPE.DEVICE and
+            not self.node.installable and
             self.node.parent is not None)
         if is_on_device_with_parent:
             # Use the parents cluster interfaces.
@@ -567,7 +566,7 @@ class Interface(CleanSave, TimestampedModel):
         """
         is_on_device_with_parent = (
             self.node is not None and
-            self.node.node_type == NODE_TYPE.DEVICE and
+            not self.node.installable and
             self.node.parent is not None)
         if is_on_device_with_parent:
             # Use the parents cluster interfaces.
@@ -1388,7 +1387,7 @@ class Interface(CleanSave, TimestampedModel):
         interface belongs to a Device). Otherwise, return None.
         """
         if (self.node is not None and
-                self.node.node_type == NODE_TYPE.DEVICE and
+                not self.node.installable and
                 self.node.parent is not None):
             return self.node.parent
         else:

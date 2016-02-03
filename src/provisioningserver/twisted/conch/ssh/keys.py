@@ -8,29 +8,37 @@ Handling of RSA and DSA keys.
 Maintainer: U{Paul Swartz}
 """
 
-from __future__ import absolute_import, division
-
-# SKIP; format-import should not modify this file.
 # base library imports
 import base64
+from hashlib import (
+    md5,
+    sha1,
+)
 import itertools
-from hashlib import md5, sha1
 
-# external library imports
-from Crypto.Cipher import DES3, AES
-from Crypto.PublicKey import RSA, DSA
 from Crypto import Util
+# external library imports
+from Crypto.Cipher import (
+    AES,
+    DES3,
+)
+from Crypto.PublicKey import (
+    DSA,
+    RSA,
+)
+# sibling imports
+from provisioningserver.twisted.conch.ssh import (
+    common,
+    sexpy,
+)
+from pyasn1.codec.ber import (
+    decoder as berDecoder,
+    encoder as berEncoder,
+)
 from pyasn1.error import PyAsn1Error
 from pyasn1.type import univ
-from pyasn1.codec.ber import decoder as berDecoder
-from pyasn1.codec.ber import encoder as berEncoder
-
-from provisioningserver.twisted.conch.ssh import common, sexpy
+# twisted
 from twisted.python import randbytes
-from twisted.python.compat import iterbytes, long, izip, nativeString, _PY3
-from twisted.python.deprecate import deprecated
-from twisted.python.versions import Version
-
 
 
 class BadKeyError(Exception):
@@ -67,8 +75,7 @@ class Key(object):
         Return a Key object corresponding to the data in filename.  type
         and passphrase function as they do in fromString.
         """
-        with open(filename, 'rb') as f:
-            return Class.fromString(f.read(), type, passphrase)
+        return Class.fromString(file(filename, 'rb').read(), type, passphrase)
     fromFile = classmethod(fromFile)
 
 
@@ -80,9 +87,9 @@ class Key(object):
         to guess a type.  If the key is encrypted, passphrase is used as
         the decryption key.
 
-        @type data: C{bytes}
-        @type type: C{None}/C{bytes}
-        @type passphrase: C{None}/C{bytes}
+        @type data: C{str}
+        @type type: C{None}/C{str}
+        @type passphrase: C{None}/C{str}
         @rtype: C{Key}
         """
         if type is None:
@@ -116,7 +123,7 @@ class Key(object):
             integer g
             integer y
 
-        @type blob: C{bytes}
+        @type blob: C{str}
         @return: a C{Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the key type (the first string) is unknown.
         """
@@ -154,17 +161,17 @@ class Key(object):
             integer y
             integer x
 
-        @type blob: C{bytes}
+        @type blob: C{str}
         @return: a C{Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the key type (the first string) is unknown.
         """
         keyType, rest = common.getNS(blob)
 
-        if keyType == b'ssh-rsa':
+        if keyType == 'ssh-rsa':
             n, e, d, u, p, q, rest = common.getMP(rest, 6)
             rsakey = Class(RSA.construct((n, e, d, p, q, u)))
             return rsakey
-        elif keyType == b'ssh-dss':
+        elif keyType == 'ssh-dss':
             p, q, g, y, x, rest = common.getMP(rest, 5)
             dsakey = Class(DSA.construct((y, g, p, q, x)))
             return dsakey
@@ -179,7 +186,7 @@ class Key(object):
         string.  The format of an OpenSSH public key string is::
             <key type> <base64-encoded public key blob>
 
-        @type data: C{bytes}
+        @type data: C{str}
         @return: A {Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the blob type is unknown.
         """
@@ -207,8 +214,8 @@ class Key(object):
         The ASN.1 structure of a DSA key is::
             (0, p, q, g, y, x)
 
-        @type data: C{bytes}
-        @type passphrase: C{bytes}
+        @type data: C{str}
+        @type passphrase: C{str}
         @return: a C{Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if
             * a passphrase is provided for an unencrypted key
@@ -216,7 +223,7 @@ class Key(object):
         @raises EncryptedKeyError: if
             * a passphrase is not provided for an encrypted key
         """
-        lines = data.strip().split(b'\n')
+        lines = data.strip().split('\n')
         kind = lines[0][11:14]
         if lines[1].startswith(b'Proc-Type: 4,ENCRYPTED'):  # encrypted key
             if not passphrase:
@@ -225,47 +232,46 @@ class Key(object):
 
             # Determine cipher and initialization vector
             try:
-                _, cipher_iv_info = lines[2].split(b' ', 1)
-                cipher, ivdata = cipher_iv_info.rstrip().split(b',', 1)
+                _, cipher_iv_info = lines[2].split(' ', 1)
+                cipher, ivdata = cipher_iv_info.rstrip().split(',', 1)
             except ValueError:
-                raise BadKeyError('invalid DEK-info %r' % (lines[2],))
+                raise BadKeyError('invalid DEK-info %r' % lines[2])
 
-            if cipher == b'AES-128-CBC':
+            if cipher == 'AES-128-CBC':
                 CipherClass = AES
                 keySize = 16
                 if len(ivdata) != 32:
                     raise BadKeyError('AES encrypted key with a bad IV')
-            elif cipher == b'DES-EDE3-CBC':
+            elif cipher == 'DES-EDE3-CBC':
                 CipherClass = DES3
                 keySize = 24
                 if len(ivdata) != 16:
                     raise BadKeyError('DES encrypted key with a bad IV')
             else:
-                raise BadKeyError('unknown encryption type %r' % (cipher,))
+                raise BadKeyError('unknown encryption type %r' % cipher)
 
             # extract keyData for decoding
-            iv = bytes(bytearray([int(ivdata[i:i + 2], 16)
-                                  for i in range(0, len(ivdata), 2)]))
+            iv = ''.join([chr(int(ivdata[i:i + 2], 16))
+                          for i in range(0, len(ivdata), 2)])
             ba = md5(passphrase + iv[:8]).digest()
             bb = md5(ba + passphrase + iv[:8]).digest()
             decKey = (ba + bb)[:keySize]
-            b64Data = base64.decodestring(b''.join(lines[3:-1]))
+            b64Data = base64.decodestring(''.join(lines[3:-1]))
             keyData = CipherClass.new(decKey,
                                       CipherClass.MODE_CBC,
                                       iv).decrypt(b64Data)
-            removeLen = ord(keyData[-1:])
+            removeLen = ord(keyData[-1])
             keyData = keyData[:-removeLen]
         else:
-            b64Data = b''.join(lines[1:-1])
+            b64Data = ''.join(lines[1:-1])
             keyData = base64.decodestring(b64Data)
 
         try:
             decodedKey = berDecoder.decode(keyData)[0]
         except PyAsn1Error as e:
-            raise BadKeyError(
-                'Failed to decode key (Bad Passphrase?): %s' % (e,))
+            raise BadKeyError('Failed to decode key (Bad Passphrase?): %s' % e)
 
-        if kind == b'RSA':
+        if kind == 'RSA':
             if len(decodedKey) == 2:  # alternate RSA key
                 decodedKey = decodedKey[0]
             if len(decodedKey) < 6:
@@ -275,13 +281,11 @@ class Key(object):
             if p > q:  # make p smaller than q
                 p, q = q, p
             return Class(RSA.construct((n, e, d, p, q)))
-        elif kind == b'DSA':
+        elif kind == 'DSA':
             p, q, g, y, x = [long(value) for value in decodedKey[1: 6]]
             if len(decodedKey) < 6:
                 raise BadKeyError('DSA key failed to decode properly')
             return Class(DSA.construct((y, g, p, q, x)))
-        else:
-            raise BadKeyError("unknown key type %s" % (kind,))
     _fromString_PRIVATE_OPENSSH = classmethod(_fromString_PRIVATE_OPENSSH)
 
 
@@ -294,22 +298,21 @@ class Key(object):
         The names for a RSA (key type 'rsa-pkcs1-sha1') key are: n, e.
         The names for a DSA (key type 'dsa') key are: y, g, p, q.
 
-        @type data: C{bytes}
+        @type data: C{str}
         @return: a C{Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the key type is unknown
         """
         sexp = sexpy.parse(base64.decodestring(data[1:-1]))
-        assert sexp[0] == b'public-key'
+        assert sexp[0] == 'public-key'
         kd = {}
         for name, data in sexp[1][1:]:
             kd[name] = common.getMP(common.NS(data))[0]
-        if sexp[1][0] == b'dsa':
-            return Class(DSA.construct((kd[b'y'], kd[b'g'],
-                                        kd[b'p'], kd[b'q'])))
-        elif sexp[1][0] == b'rsa-pkcs1-sha1':
-            return Class(RSA.construct((kd[b'n'], kd[b'e'])))
+        if sexp[1][0] == 'dsa':
+            return Class(DSA.construct((kd['y'], kd['g'], kd['p'], kd['q'])))
+        elif sexp[1][0] == 'rsa-pkcs1-sha1':
+            return Class(RSA.construct((kd['n'], kd['e'])))
         else:
-            raise BadKeyError('unknown lsh key type %s' % (sexp[1][0],))
+            raise BadKeyError('unknown lsh key type %s' % sexp[1][0])
     _fromString_PUBLIC_LSH = classmethod(_fromString_PUBLIC_LSH)
 
 
@@ -322,27 +325,27 @@ class Key(object):
         The names for a RSA (key type 'rsa-pkcs1-sha1') key are: n, e, d, p, q.
         The names for a DSA (key type 'dsa') key are: y, g, p, q, x.
 
-        @type data: C{bytes}
+        @type data: C{str}
         @return: a {Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the key type is unknown
         """
         sexp = sexpy.parse(data)
-        assert sexp[0] == b'private-key'
+        assert sexp[0] == 'private-key'
         kd = {}
         for name, data in sexp[1][1:]:
             kd[name] = common.getMP(common.NS(data))[0]
-        if sexp[1][0] == b'dsa':
+        if sexp[1][0] == 'dsa':
             assert len(kd) == 5, len(kd)
-            return Class(DSA.construct((kd[b'y'], kd[b'g'], kd[b'p'],
-                                        kd[b'q'], kd[b'x'])))
-        elif sexp[1][0] == b'rsa-pkcs1':
+            return Class(DSA.construct((kd['y'], kd['g'], kd['p'],
+                                        kd['q'], kd['x'])))
+        elif sexp[1][0] == 'rsa-pkcs1':
             assert len(kd) == 8, len(kd)
-            if kd[b'p'] > kd[b'q']:  # make p smaller than q
-                kd[b'p'], kd[b'q'] = kd[b'q'], kd[b'p']
-            return Class(RSA.construct((kd[b'n'], kd[b'e'], kd[b'd'],
-                                        kd[b'p'], kd[b'q'])))
+            if kd['p'] > kd['q']:  # make p smaller than q
+                kd['p'], kd['q'] = kd['q'], kd['p']
+            return Class(RSA.construct((kd['n'], kd['e'], kd['d'],
+                                        kd['p'], kd['q'])))
         else:
-            raise BadKeyError('unknown lsh key type %s' % (sexp[1][0],))
+            raise BadKeyError('unknown lsh key type %s' % sexp[1][0])
     _fromString_PRIVATE_LSH = classmethod(_fromString_PRIVATE_LSH)
 
 
@@ -368,19 +371,19 @@ class Key(object):
             integer y
             integer x
 
-        @type data: C{bytes}
+        @type data: C{str}
         @return: a C{Crypto.PublicKey.pubkey.pubkey} object
         @raises BadKeyError: if the key type (the first string) is unknown
         """
         keyType, data = common.getNS(data)
-        if keyType == b'ssh-dss':
+        if keyType == 'ssh-dss':
             p, data = common.getMP(data)
             q, data = common.getMP(data)
             g, data = common.getMP(data)
             y, data = common.getMP(data)
             x, data = common.getMP(data)
             return Class(DSA.construct((y, g, p, q, x)))
-        elif keyType == b'ssh-rsa':
+        elif keyType == 'ssh-rsa':
             e, data = common.getMP(data)
             d, data = common.getMP(data)
             n, data = common.getMP(data)
@@ -389,7 +392,7 @@ class Key(object):
             q, data = common.getMP(data)
             return Class(RSA.construct((n, e, d, p, q, u)))
         else:
-            raise BadKeyError("unknown key type %s" % (keyType,))
+            raise BadKeyError("unknown key type %s" % keyType)
     _fromString_AGENTV3 = classmethod(_fromString_AGENTV3)
 
 
@@ -455,19 +458,17 @@ class Key(object):
         """
         lines = [
             '<%s %s (%s bits)' % (
-                nativeString(self.type()),
+                self.type(),
                 self.isPublic() and 'Public Key' or 'Private Key',
                 self.keyObject.size())]
         for k, v in sorted(self.data().items()):
-            if _PY3 and isinstance(k, bytes):
-                k = k.decode('ascii')
             lines.append('attr %s:' % k)
             by = common.MP(v)[4:]
             while by:
                 m = by[:15]
                 by = by[15:]
                 o = ''
-                for c in iterbytes(m):
+                for c in m:
                     o = o + '%02x:' % ord(c)
                 if len(m) < 15:
                     o = o[:-1]
@@ -519,32 +520,25 @@ class Key(object):
         """
         Return the type of the object we wrap.  Currently this can only be
         'RSA' or 'DSA'.
-
-        @rtype: L{str}
         """
         # the class is Crypto.PublicKey.<type>.<stuff we don't care about>
         mod = self.keyObject.__class__.__module__
         if mod.startswith('Crypto.PublicKey'):
             type = mod.split('.')[2]
         else:
-            raise RuntimeError(
-                'unknown type of object: %r' % (self.keyObject,))
+            raise RuntimeError('unknown type of object: %r' % self.keyObject)
         if type in ('RSA', 'DSA'):
             return type
         else:
-            raise RuntimeError('unknown type of key: %s' % (type,))
+            raise RuntimeError('unknown type of key: %s' % type)
 
 
     def sshType(self):
         """
-        Get the type of the object we wrap as defined in the SSH protocol,
-        defined in RFC 4253, Section 6.6. Currently this can only be b'ssh-rsa'
-        or b'ssh-dss'.
-
-        @return: The key type format.
-        @rtype: L{bytes}
+        Return the type of the object we wrap as defined in the ssh protocol.
+        Currently this can only be 'ssh-rsa' or 'ssh-dss'.
         """
-        return {'RSA': b'ssh-rsa', 'DSA': b'ssh-dss'}[self.type()]
+        return {'RSA': 'ssh-rsa', 'DSA': 'ssh-dss'}[self.type()]
 
 
     def data(self):
@@ -578,19 +572,17 @@ class Key(object):
             integer g
             integer y
 
-        @rtype: C{bytes}
+        @rtype: C{str}
         """
         type = self.type()
         data = self.data()
         if type == 'RSA':
-            return (common.NS(b'ssh-rsa') + common.MP(data['e']) +
+            return (common.NS('ssh-rsa') + common.MP(data['e']) +
                     common.MP(data['n']))
         elif type == 'DSA':
-            return (common.NS(b'ssh-dss') + common.MP(data['p']) +
+            return (common.NS('ssh-dss') + common.MP(data['p']) +
                     common.MP(data['q']) + common.MP(data['g']) +
                     common.MP(data['y']))
-        else:
-            raise BadKeyError("unknown key type %s" % (type,))
 
 
     def privateBlob(self):
@@ -618,16 +610,14 @@ class Key(object):
         type = self.type()
         data = self.data()
         if type == 'RSA':
-            return (common.NS(b'ssh-rsa') + common.MP(data['n']) +
+            return (common.NS('ssh-rsa') + common.MP(data['n']) +
                     common.MP(data['e']) + common.MP(data['d']) +
                     common.MP(data['u']) + common.MP(data['p']) +
                     common.MP(data['q']))
         elif type == 'DSA':
-            return (common.NS(b'ssh-dss') + common.MP(data['p']) +
+            return (common.NS('ssh-dss') + common.MP(data['p']) +
                     common.MP(data['q']) + common.MP(data['g']) +
                     common.MP(data['y']) + common.MP(data['x']))
-        else:
-            raise BadKeyError("unknown key type %s" % (type,))
 
 
     def toString(self, type, extra=None):
@@ -644,14 +634,14 @@ class Key(object):
             is not part of the key itself.  For public OpenSSH keys, this is
             a comment.  For private OpenSSH keys, this is a passphrase to
             encrypt with.
-        @type extra: L{bytes} or L{NoneType}
+        @type extra: L{str} or L{NoneType}
 
-        @rtype: L{bytes}
+        @rtype: L{str}
         """
         method = getattr(self, '_toString_%s' % type.upper(), None)
         if method is None:
-            raise BadKeyError('unknown key type: %s' % (type,))
-        if method.__code__.co_argcount == 2:
+            raise BadKeyError('unknown type: %s' % type)
+        if method.func_code.co_argcount == 2:
             return method(extra)
         else:
             return method()
@@ -666,19 +656,18 @@ class Key(object):
 
         @param extra: Comment for a public key or passphrase for a
             private key
-        @type extra: C{bytes}
+        @type extra: C{str}
 
-        @rtype: C{bytes}
+        @rtype: C{str}
         """
         data = self.data()
         if self.isPublic():
-            b64Data = base64.encodestring(self.blob()).replace(b'\n', b'')
+            b64Data = base64.encodestring(self.blob()).replace('\n', '')
             if not extra:
-                extra = b''
-            return (self.sshType() + b' ' + b64Data + b' ' + extra).strip()
+                extra = ''
+            return ('%s %s %s' % (self.sshType(), b64Data, extra)).strip()
         else:
-            lines = [b''.join((b'-----BEGIN ', self.type().encode('ascii'),
-                               b' PRIVATE KEY-----'))]
+            lines = ['-----BEGIN %s PRIVATE KEY-----' % self.type()]
             if self.type() == 'RSA':
                 p, q = data['p'], data['q']
                 objData = (0, data['n'], data['e'], data['d'], q, p,
@@ -688,27 +677,25 @@ class Key(object):
                 objData = (0, data['p'], data['q'], data['g'], data['y'],
                            data['x'])
             asn1Sequence = univ.Sequence()
-            for index, value in izip(itertools.count(), objData):
+            for index, value in itertools.izip(itertools.count(), objData):
                 asn1Sequence.setComponentByPosition(index, univ.Integer(value))
             asn1Data = berEncoder.encode(asn1Sequence)
             if extra:
                 iv = randbytes.secureRandom(8)
-                hexiv = ''.join(['%02X' % ord(x) for x in iterbytes(iv)])
-                hexiv = hexiv.encode('ascii')
-                lines.append(b'Proc-Type: 4,ENCRYPTED')
-                lines.append(b'DEK-Info: DES-EDE3-CBC,' + hexiv + b'\n')
+                hexiv = ''.join(['%02X' % ord(x) for x in iv])
+                lines.append('Proc-Type: 4,ENCRYPTED')
+                lines.append('DEK-Info: DES-EDE3-CBC,%s\n' % hexiv)
                 ba = md5(extra + iv).digest()
                 bb = md5(ba + extra + iv).digest()
                 encKey = (ba + bb)[:24]
                 padLen = 8 - (len(asn1Data) % 8)
-                asn1Data += (chr(padLen) * padLen).encode('ascii')
+                asn1Data += (chr(padLen) * padLen)
                 asn1Data = DES3.new(encKey, DES3.MODE_CBC,
                                     iv).encrypt(asn1Data)
-            b64Data = base64.encodestring(asn1Data).replace(b'\n', b'')
+            b64Data = base64.encodestring(asn1Data).replace('\n', '')
             lines += [b64Data[i:i + 64] for i in range(0, len(b64Data), 64)]
-            lines.append(b''.join((b'-----END ', self.type().encode('ascii'),
-                                   b' PRIVATE KEY-----')))
-            return b'\n'.join(lines)
+            lines.append('-----END %s PRIVATE KEY-----' % self.type())
+            return '\n'.join(lines)
 
 
     def _toString_LSH(self):
@@ -716,52 +703,44 @@ class Key(object):
         Return a public or private LSH key.  See _fromString_PUBLIC_LSH and
         _fromString_PRIVATE_LSH for the key formats.
 
-        @rtype: C{bytes}
+        @rtype: C{str}
         """
         data = self.data()
-        type = self.type()
         if self.isPublic():
-            if type == 'RSA':
-                keyData = sexpy.pack([[b'public-key',
-                                       [b'rsa-pkcs1-sha1',
-                                        [b'n', common.MP(data['n'])[4:]],
-                                        [b'e', common.MP(data['e'])[4:]]]]])
-            elif type == 'DSA':
-                keyData = sexpy.pack([[b'public-key',
-                                       [b'dsa',
-                                        [b'p', common.MP(data['p'])[4:]],
-                                        [b'q', common.MP(data['q'])[4:]],
-                                        [b'g', common.MP(data['g'])[4:]],
-                                        [b'y', common.MP(data['y'])[4:]]]]])
-            else:
-                raise BadKeyError("unknown key type %s" % (type,))
-            return (b'{' + base64.encodestring(keyData).replace(b'\n', b'') +
-                    b'}')
+            if self.type() == 'RSA':
+                keyData = sexpy.pack([['public-key',
+                                       ['rsa-pkcs1-sha1',
+                                        ['n', common.MP(data['n'])[4:]],
+                                        ['e', common.MP(data['e'])[4:]]]]])
+            elif self.type() == 'DSA':
+                keyData = sexpy.pack([['public-key',
+                                       ['dsa',
+                                        ['p', common.MP(data['p'])[4:]],
+                                        ['q', common.MP(data['q'])[4:]],
+                                        ['g', common.MP(data['g'])[4:]],
+                                        ['y', common.MP(data['y'])[4:]]]]])
+            return '{' + base64.encodestring(keyData).replace('\n', '') + '}'
         else:
-            if type == 'RSA':
+            if self.type() == 'RSA':
                 p, q = data['p'], data['q']
-                return sexpy.pack([[b'private-key',
-                                    [b'rsa-pkcs1',
-                                     [b'n', common.MP(data['n'])[4:]],
-                                     [b'e', common.MP(data['e'])[4:]],
-                                     [b'd', common.MP(data['d'])[4:]],
-                                     [b'p', common.MP(q)[4:]],
-                                     [b'q', common.MP(p)[4:]],
-                                     [b'a', common.MP(
-                                         data['d'] % (q - 1))[4:]],
-                                     [b'b', common.MP(
-                                         data['d'] % (p - 1))[4:]],
-                                     [b'c', common.MP(data['u'])[4:]]]]])
-            elif type == 'DSA':
-                return sexpy.pack([[b'private-key',
-                                    [b'dsa',
-                                     [b'p', common.MP(data['p'])[4:]],
-                                     [b'q', common.MP(data['q'])[4:]],
-                                     [b'g', common.MP(data['g'])[4:]],
-                                     [b'y', common.MP(data['y'])[4:]],
-                                     [b'x', common.MP(data['x'])[4:]]]]])
-            else:
-                raise BadKeyError("unknown key type %s'" % (type,))
+                return sexpy.pack([['private-key',
+                                    ['rsa-pkcs1',
+                                     ['n', common.MP(data['n'])[4:]],
+                                     ['e', common.MP(data['e'])[4:]],
+                                     ['d', common.MP(data['d'])[4:]],
+                                     ['p', common.MP(q)[4:]],
+                                     ['q', common.MP(p)[4:]],
+                                     ['a', common.MP(data['d'] % (q - 1))[4:]],
+                                     ['b', common.MP(data['d'] % (p - 1))[4:]],
+                                     ['c', common.MP(data['u'])[4:]]]]])
+            elif self.type() == 'DSA':
+                return sexpy.pack([['private-key',
+                                    ['dsa',
+                                     ['p', common.MP(data['p'])[4:]],
+                                     ['q', common.MP(data['q'])[4:]],
+                                     ['g', common.MP(data['g'])[4:]],
+                                     ['y', common.MP(data['y'])[4:]],
+                                     ['x', common.MP(data['x'])[4:]]]]])
 
 
     def _toString_AGENTV3(self):
@@ -769,7 +748,7 @@ class Key(object):
         Return a private Secure Shell Agent v3 key.  See
         _fromString_AGENTV3 for the key format.
 
-        @rtype: C{bytes}
+        @rtype: C{str}
         """
         data = self.data()
         if not self.isPublic():
@@ -779,19 +758,19 @@ class Key(object):
             elif self.type() == 'DSA':
                 values = (data['p'], data['q'], data['g'], data['y'],
                           data['x'])
-            return common.NS(self.sshType()) + b''.join(map(common.MP, values))
+            return common.NS(self.sshType()) + ''.join(map(common.MP, values))
 
 
     def sign(self, data):
         """
         Returns a signature with this Key.
 
-        @type data: C{bytes}
-        @rtype: C{bytes}
+        @type data: C{str}
+        @rtype: C{str}
         """
         if self.type() == 'RSA':
-            digest = pkcs1Digest(data, self.keyObject.size() // 8)
-            signature = self.keyObject.sign(digest, b'')[0]
+            digest = pkcs1Digest(data, self.keyObject.size() / 8)
+            signature = self.keyObject.sign(digest, '')[0]
             ret = common.NS(Util.number.long_to_bytes(signature))
         elif self.type() == 'DSA':
             digest = sha1(data).digest()
@@ -803,8 +782,6 @@ class Key(object):
             # Make sure they are padded out to 160 bits (20 bytes each)
             ret = common.NS(Util.number.long_to_bytes(sig[0], 20) +
                             Util.number.long_to_bytes(sig[1], 20))
-        else:
-            raise BadKeyError("unknown key type %s" % (self.type(),))
         return common.NS(self.sshType()) + ret
 
 
@@ -812,44 +789,36 @@ class Key(object):
         """
         Returns true if the signature for data is valid for this Key.
 
-        @type signature: C{bytes}
-        @type data: C{bytes}
+        @type signature: C{str}
+        @type data: C{str}
         @rtype: C{bool}
         """
         if len(signature) == 40:
             # DSA key with no padding
-            signatureType, signature = b'ssh-dss', common.NS(signature)
+            signatureType, signature = 'ssh-dss', common.NS(signature)
         else:
             signatureType, signature = common.getNS(signature)
         if signatureType != self.sshType():
             return False
         if self.type() == 'RSA':
             numbers = common.getMP(signature)
-            digest = pkcs1Digest(data, self.keyObject.size() // 8)
+            digest = pkcs1Digest(data, self.keyObject.size() / 8)
         elif self.type() == 'DSA':
             signature = common.getNS(signature)[0]
-            numbers = [
-                Util.number.bytes_to_long(n) for n in
-                    (signature[:20], signature[20:])
-                ]
+            numbers = [Util.number.bytes_to_long(n) for n in (signature[:20],
+                       signature[20:])]
             digest = sha1(data).digest()
-        else:
-            raise BadKeyError("unknown key type %s" % (self.type(),))
         return self.keyObject.verify(digest, numbers)
 
 
 
-@deprecated(Version("Twisted", 15, 5, 0))
 def objectType(obj):
     """
-    DEPRECATED. Return the SSH key type corresponding to a
+    Return the SSH key type corresponding to a
     C{Crypto.PublicKey.pubkey.pubkey} object.
 
-    @param obj: Key for which the type is returned.
-    @type obj: C{Crypto.PublicKey.pubkey.pubkey}
-
-    @return: Return the SSH key type corresponding to a PyCrypto object.
-    @rtype: C{str}
+    @type obj:  C{Crypto.PublicKey.pubkey.pubkey}
+    @rtype:     C{str}
     """
     keyDataMapping = {
         ('n', 'e', 'd', 'p', 'q'): 'ssh-rsa',
@@ -866,11 +835,11 @@ def objectType(obj):
 def pkcs1Pad(data, messageLength):
     """
     Pad out data to messageLength according to the PKCS#1 standard.
-    @type data: C{bytes}
+    @type data: C{str}
     @type messageLength: C{int}
     """
     lenPad = messageLength - 2 - len(data)
-    return b'\x01' + (b'\xff' * lenPad) + b'\x00' + data
+    return '\x01' + ('\xff' * lenPad) + '\x00' + data
 
 
 
@@ -878,8 +847,8 @@ def pkcs1Digest(data, messageLength):
     """
     Create a message digest using the SHA1 hash algorithm according to the
     PKCS#1 standard.
-    @type data: C{bytes}
-    @type messageLength: C{int}
+    @type data: C{str}
+    @type messageLength: C{str}
     """
     digest = sha1(data).digest()
     return pkcs1Pad(ID_SHA1 + digest, messageLength)
@@ -893,11 +862,7 @@ def lenSig(obj):
     @type obj: C{Crypto.PublicKey.pubkey.pubkey}
     @rtype: C{long}
     """
-    return obj.size() // 8
+    return obj.size() / 8
 
 
-ID_SHA1 = b'\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14'
-
-if _PY3:
-    # objectType is deprecated and not being ported to Python 3.
-    del objectType
+ID_SHA1 = '\x30\x21\x30\x09\x06\x05\x2b\x0e\x03\x02\x1a\x05\x00\x04\x14'

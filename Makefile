@@ -154,14 +154,14 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 
 define karma-deps
   jasmine-core@2.4.1
-  karma@0.13.15
+  karma@0.13.19
   karma-chrome-launcher@0.2.2
   karma-firefox-launcher@0.1.7
   karma-jasmine@0.3.6
   karma-opera-launcher@0.3.0
-  karma-phantomjs-launcher@0.2.1
+  karma-phantomjs-launcher@0.2.3
   karma-failed-reporter@0.0.3
-	phantomjs@1.9.19
+  phantomjs@1.9.19
 endef
 
 bin/karma: deps = $(strip $(karma-deps))
@@ -204,14 +204,14 @@ coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
 
 coverage.xml: coverage.data
-	python-coverage xml --include 'src/*' -o $@
+	python3-coverage xml --include 'src/*' -o $@
 
 coverage/index.html: coverage.data
 	@$(RM) -r $(@D)
-	python-coverage html --include 'src/*' -d $(@D)
+	python3-coverage html --include 'src/*' -d $(@D)
 
 coverage.data:
-	@$(error Use `$(MAKE) test` to generate coverage data, or invoke a \
+	@$(error Use `$(MAKE) test+coverage` to generate coverage data, or invoke a \
             test script using the `--with-coverage` flag)
 
 lint: lint-py lint-js lint-doc lint-rst
@@ -321,6 +321,8 @@ clean: stop clean-run
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
+	pkill -u $(USER) postgres ||:
+	$(RM) -r .db .db.lock
 
 # Be selective about what to remove from run and run-e2e.
 define clean-run-template

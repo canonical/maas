@@ -13,7 +13,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
-    NODE_TYPE,
 )
 from maasserver.exceptions import (
     MAASAPIValidationError,
@@ -107,8 +106,8 @@ class InterfacesHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)
-        # machine type nodes require the node needs to be in the correct state.
-        if node.node_type == NODE_TYPE.MACHINE:
+        # Installable nodes require the node needs to be in the correct state.
+        if node.installable:
             raise_error_for_invalid_state_on_allocated_operations(
                 node, request.user, "create")
         form = PhysicalInterfaceForm(node=node, data=request.data)
@@ -372,7 +371,7 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        if interface.get_node().installable:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
@@ -402,7 +401,7 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        if interface.get_node().installable:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
@@ -444,7 +443,7 @@ class InterfaceHandler(OperationsHandler):
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
-        if node.node_type == NODE_TYPE.MACHINE:
+        if node.installable:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
@@ -475,7 +474,7 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        if interface.get_node().installable:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
@@ -502,7 +501,7 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        if interface.get_node().installable:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
