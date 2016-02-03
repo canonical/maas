@@ -49,7 +49,7 @@ class TestRunCommand(MAASTestCase):
 
         self.assertEqual(
             [test_stdout, test_stderr],
-            output.decode("ascii").split())
+            output.split())
 
     def test_exception_on_failure(self):
         """"Failed commands should raise an exception."""
