@@ -165,7 +165,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'on'
+        call_and_check_mock.return_value = b'on'
 
         result = ipmi_power_driver._issue_ipmi_command('on', **context)
 
@@ -194,7 +194,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'off'
+        call_and_check_mock.return_value = b'off'
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
@@ -224,7 +224,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'off'
+        call_and_check_mock.return_value = b'off'
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
@@ -250,7 +250,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (b'', b'')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'other'
+        call_and_check_mock.return_value = b'other'
 
         result = ipmi_power_driver._issue_ipmi_command('query', **context)
 
