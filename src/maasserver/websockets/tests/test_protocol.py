@@ -661,6 +661,7 @@ class MakeProtocolFactoryMixin:
 ALL_NOTIFIERS = (
     "controller",
     "device",
+    "domain",
     "event",
     "fabric",
     "machine",
@@ -675,6 +676,7 @@ ALL_NOTIFIERS = (
 ALL_HANDLERS = (
     "controller",
     "device",
+    "domain",
     "event",
     "fabric",
     "general",

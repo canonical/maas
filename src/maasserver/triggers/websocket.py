@@ -558,6 +558,120 @@ STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+# Procedure that is called when an IP address is updated, to update its related
+# domain.
+STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      dom RECORD;
+    BEGIN
+      IF OLD.ip != NEW.ip THEN
+        FOR dom IN (
+          SELECT DISTINCT ON (domain.id)
+            domain.id
+          FROM maasserver_staticipaddress AS staticipaddress
+          LEFT JOIN (
+            maasserver_interface_ip_addresses AS iia
+            JOIN maasserver_interface AS interface ON
+              iia.interface_id = interface.id
+            JOIN maasserver_node AS node ON
+              node.boot_interface_id = interface.id) ON
+            iia.staticipaddress_id = staticipaddress.id
+          LEFT JOIN (
+            maasserver_dnsresource_ip_addresses AS dia
+            JOIN maasserver_dnsresource AS dnsresource ON
+              dia.dnsresource_id = dnsresource.id) ON
+            dia.staticipaddress_id = staticipaddress.id
+          JOIN maasserver_domain AS domain ON
+            domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+          WHERE staticipaddress.id = OLD.id OR staticipaddress.id = NEW.id)
+        LOOP
+          PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+        END LOOP;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when an IP address is inserted or deleted, to update
+# its related domain.
+STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      dom RECORD;
+    BEGIN
+      FOR dom IN (
+        SELECT DISTINCT ON (domain.id)
+          domain.id
+        FROM maasserver_staticipaddress AS staticipaddress
+        LEFT JOIN (
+          maasserver_interface_ip_addresses AS iia
+          JOIN maasserver_interface AS interface ON
+            iia.interface_id = interface.id
+          JOIN maasserver_node AS node ON
+            node.boot_interface_id = interface.id) ON
+          iia.staticipaddress_id = staticipaddress.id
+        LEFT JOIN (
+          maasserver_dnsresource_ip_addresses AS dia
+          JOIN maasserver_dnsresource AS dnsresource ON
+            dia.dnsresource_id = dnsresource.id) ON
+          dia.staticipaddress_id = staticipaddress.id
+        JOIN maasserver_domain AS domain ON
+          domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+        WHERE staticipaddress.id = %s)
+      LOOP
+        PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when a DNSData entry is changed.
+DNSDATA_DOMAIN_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        domain RECORD;
+    BEGIN
+      SELECT DISTINCT ON (domain_id) domain_id INTO domain
+      FROM maasserver_dnsdata AS dnsdata
+      JOIN maasserver_dnsresource AS dnsresource ON
+        dnsresource.id = dnsdata.dnsresource_id
+      WHERE dnsdata.dnsresource_id = %s;
+      PERFORM pg_notify('domain_update',CAST(domain.domain_id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when a DNSData entry is inserted/removed.
+DNSRESOURCE_DOMAIN_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        domain RECORD;
+    BEGIN
+      PERFORM pg_notify('domain_update',CAST(%s.domain_id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Procedure that is called when a DNSData entry is updated.
+DNSRESOURCE_DOMAIN_UPDATE_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+        domain RECORD;
+    BEGIN
+      PERFORM pg_notify('domain_update',CAST(OLD.domain_id AS text));
+      IF OLD.domain_id != NEW.domain_id THEN
+        PERFORM pg_notify('domain_update',CAST(NEW.domain_id AS text));
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
@@ -775,6 +889,84 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_staticipaddress",
         "ipaddress_subnet_update_notify", "update")
+
+    # IP address domain notifications
+    register_procedure(
+        STATIC_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'ipaddress_domain_insert_notify', 'NEW.id'))
+    register_procedure(
+        STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY %
+        'ipaddress_domain_update_notify')
+    register_procedure(
+        STATIC_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'ipaddress_domain_delete_notify', 'OLD.id'))
+    register_trigger(
+        "maasserver_staticipaddress",
+        "ipaddress_domain_insert_notify", "insert")
+    register_trigger(
+        "maasserver_staticipaddress",
+        "ipaddress_domain_update_notify", "update")
+    register_trigger(
+        "maasserver_staticipaddress",
+        "ipaddress_domain_delete_notify", "delete")
+
+    # DNSData table
+    register_procedure(
+        DNSDATA_DOMAIN_NOTIFY % (
+            'dnsdata_domain_insert_notify', 'NEW.dnsresource_id'))
+    register_procedure(
+        DNSDATA_DOMAIN_NOTIFY % (
+            'dnsdata_domain_update_notify',
+            'NEW.dnsresource_id OR '
+            'dnsdata.dnsresource_id = OLD.dnsresource_id'))
+    register_procedure(
+        DNSDATA_DOMAIN_NOTIFY % (
+            'dnsdata_domain_delete_notify', 'OLD.dnsresource_id'))
+    register_trigger(
+        "maasserver_dnsdata",
+        "dnsdata_domain_insert_notify", "insert")
+    register_trigger(
+        "maasserver_dnsdata",
+        "dnsdata_domain_update_notify", "update")
+    register_trigger(
+        "maasserver_dnsdata",
+        "dnsdata_domain_delete_notify", "delete")
+
+    # DNSResource table
+    register_procedure(
+        DNSRESOURCE_DOMAIN_NOTIFY % (
+            'dnsresource_domain_insert_notify', 'NEW'))
+    register_procedure(
+        DNSRESOURCE_DOMAIN_UPDATE_NOTIFY % 'dnsresource_domain_update_notify')
+    register_procedure(
+        DNSRESOURCE_DOMAIN_NOTIFY % (
+            'dnsresource_domain_delete_notify', 'OLD'))
+    register_trigger(
+        "maasserver_dnsresource",
+        "dnsresource_domain_insert_notify", "insert")
+    register_trigger(
+        "maasserver_dnsresource",
+        "dnsresource_domain_update_notify", "update")
+    register_trigger(
+        "maasserver_dnsresource",
+        "dnsresource_domain_delete_notify", "delete")
+
+    # Domain table
+    register_procedure(
+        render_notification_procedure(
+            'domain_create_notify', 'domain_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'domain_update_notify', 'domain_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'domain_delete_notify', 'domain_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_domain", "domain_create_notify", "insert")
+    register_trigger(
+        "maasserver_domain", "domain_update_notify", "update")
+    register_trigger(
+        "maasserver_domain", "domain_delete_notify", "delete")
 
     # Zone table
     register_procedure(
