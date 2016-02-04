@@ -283,7 +283,14 @@
                 <div class="twelve-col">
                     <h2 class="title">Power</h2>
                 </div>
-                <div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
+                <div class="twelve-col ng-hide info" data-ng-show="power.type.name == 'manual'">
+		    <ul class="flash-messages">
+		        <li class="flash-messages__item info">
+		            Power control for this power type will need to be handled manually.
+		        </li>
+		    </ul>
+		</div>
+		<div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
                     <ul class="flash-messages">
                         <li class="flash-messages__item error">
                             Power control software for this power type is missing from the

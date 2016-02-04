@@ -147,7 +147,7 @@ JSON_POWER_TYPE_SCHEMA = {
             },
             'ip_extractor': IP_EXTRACTOR_SCHEMA,
         },
-        'required': ['name', 'description', 'fields'],
+        'required': ['name', 'description'],
     },
 }
 
@@ -213,6 +213,10 @@ def make_json_field(
 
 
 JSON_POWER_TYPE_PARAMETERS = [
+    {
+        'name': 'manual',
+        'description': 'Manual',
+    },
     {
         'name': 'ether_wake',
         'description': 'Wake-on-LAN',
@@ -426,6 +430,7 @@ POWER_TYPE_PARAMETERS_BY_NAME = {
 POWER_FIELDS_BY_TYPE = {}
 for power_type in JSON_POWER_TYPE_PARAMETERS:
     power_fields = {}
-    for field in power_type.get('fields'):
-        power_fields[field['name']] = field
-    POWER_FIELDS_BY_TYPE[power_type['name']] = power_fields
+    if power_type.get('name') != 'manual':
+        for field in power_type.get('fields'):
+            power_fields[field['name']] = field
+        POWER_FIELDS_BY_TYPE[power_type['name']] = power_fields

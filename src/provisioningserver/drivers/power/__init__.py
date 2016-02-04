@@ -320,6 +320,7 @@ from provisioningserver.drivers.power.ether_wake import EtherWakePowerDriver
 from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
+from provisioningserver.drivers.power.manual import ManualPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
@@ -335,6 +336,7 @@ registered_power_drivers = [
     FenceCDUPowerDriver(),
     HMCPowerDriver(),
     IPMIPowerDriver(),
+    ManualPowerDriver(),
     MicrosoftOCSPowerDriver(),
     MoonshotIPMIPowerDriver(),
     MSCMPowerDriver(),

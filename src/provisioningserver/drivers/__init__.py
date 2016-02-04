@@ -77,7 +77,7 @@ JSON_SETTING_SCHEMA = {
             'items': SETTING_PARAMETER_FIELD_SCHEMA,
         },
     },
-    'required': ['name', 'description', 'fields'],
+    'required': ['name', 'description'],
 }
 
 
