@@ -24,6 +24,11 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_iprange_sys_dhcp_iprange_insert",
             "maasserver_iprange_sys_dhcp_iprange_update",
             "maasserver_iprange_sys_dhcp_iprange_delete",
+            "maasserver_staticipaddress_sys_dhcp_staticipaddress_insert",
+            "maasserver_staticipaddress_sys_dhcp_staticipaddress_update",
+            "maasserver_staticipaddress_sys_dhcp_staticipaddress_delete",
+            "maasserver_interface_sys_dhcp_interface_update",
+            "maasserver_node_sys_dhcp_node_update",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
