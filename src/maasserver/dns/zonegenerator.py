@@ -215,9 +215,7 @@ class ZoneGenerator:
                     # We loop through the whole set so the prefetch above works
                     # in one query.
                     for ip_range in subnet.iprange_set.all():
-                        if ip_range.type in [
-                                IPRANGE_TYPE.MANAGED_DHCP,
-                                IPRANGE_TYPE.UNMANAGED_DHCP]:
+                        if ip_range.type == IPRANGE_TYPE.DYNAMIC:
                             dynamic_ranges.append(ip_range.get_MAASIPRange())
 
             yield DNSForwardZoneConfig(

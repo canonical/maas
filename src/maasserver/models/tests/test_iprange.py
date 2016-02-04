@@ -19,7 +19,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.USER_RESERVED, user=factory.make_User(),
+            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
             comment="The quick brown fox jumps over the lazy dog.",
             subnet=subnet)
         iprange.save()
@@ -28,7 +28,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='x192.x168.x0.x1', end_ip='y192.y168.y0.y254',
-            type=IPRANGE_TYPE.USER_RESERVED, user=factory.make_User(),
+            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
             comment="The quick brown fox jumps over the lazy dog.",
             subnet=subnet)
         with ExpectedException(ValidationError, '.*Enter a valid.*'):
@@ -37,7 +37,7 @@ class IPRangeTest(MAASServerTestCase):
     def test__requires_start_ip_address(self):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
-            start_ip='192.168.0.1', type=IPRANGE_TYPE.USER_RESERVED,
+            start_ip='192.168.0.1', type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(), subnet=subnet,
             comment="The quick brown fox jumps over the lazy dog.")
         with ExpectedException(ValidationError, '.*both required.*'):
@@ -46,7 +46,7 @@ class IPRangeTest(MAASServerTestCase):
     def test__requires_end_ip_address(self):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
-            end_ip='192.168.0.1', type=IPRANGE_TYPE.USER_RESERVED,
+            end_ip='192.168.0.1', type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(), subnet=subnet,
             comment="The quick brown fox jumps over the lazy dog.")
         with ExpectedException(ValidationError, '.*both required.*'):
@@ -56,7 +56,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='2001:db8::1',
-            type=IPRANGE_TYPE.USER_RESERVED,
+            type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(), subnet=subnet,
             comment="The quick brown fox jumps over the lazy dog.")
         with ExpectedException(ValidationError, '.*same address family.*'):
@@ -65,7 +65,7 @@ class IPRangeTest(MAASServerTestCase):
     def test__requires_subnet(self):
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.USER_RESERVED, user=factory.make_User(),
+            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
             comment="The quick brown weasel jumps over the lazy elephant.")
         with ExpectedException(ValidationError):
             iprange.save()
@@ -73,7 +73,7 @@ class IPRangeTest(MAASServerTestCase):
     def test__requires_start_ip_and_end_ip(self):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
-            subnet=subnet, type=IPRANGE_TYPE.USER_RESERVED,
+            subnet=subnet, type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.")
         with ExpectedException(ValidationError, '.*are both required.*'):
@@ -83,7 +83,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.1.1', end_ip='192.168.1.254', subnet=subnet,
-            type=IPRANGE_TYPE.USER_RESERVED, user=factory.make_User(),
+            type=IPRANGE_TYPE.RESERVED, user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.")
         with ExpectedException(
                 ValidationError, '.*addresses must be within subnet.*'):
@@ -93,7 +93,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='19.168.0.1', end_ip='192.168.0.254', subnet=subnet,
-            type=IPRANGE_TYPE.MANAGED_DHCP, user=factory.make_User(),
+            type=IPRANGE_TYPE.DYNAMIC, user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.")
         with ExpectedException(
                 ValidationError, '.*Start IP address must be within subnet.*'):
@@ -103,7 +103,7 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='193.168.0.254',
-            subnet=subnet, type=IPRANGE_TYPE.MANAGED_DHCP,
+            subnet=subnet, type=IPRANGE_TYPE.DYNAMIC,
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.")
         with ExpectedException(
@@ -115,7 +115,7 @@ class IPRangeTest(MAASServerTestCase):
         iprange = IPRange(
             start_ip='192.168.0.2', end_ip='192.168.0.1',
             user=factory.make_User(), subnet=subnet,
-            type=IPRANGE_TYPE.MANAGED_DHCP,
+            type=IPRANGE_TYPE.DYNAMIC,
             comment="The quick brown cow jumps over the lazy moon.")
         with ExpectedException(
                 ValidationError, '.*End IP address must not be less than.*'):
@@ -134,23 +134,13 @@ class IPRangeTest(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.MANAGED_DHCP, subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC, subnet=subnet,
             comment="The quick brown owl jumps over the lazy alligator.")
         iprange.save()
-
-    def test__user_required_for_user_reserved(self):
-        subnet = factory.make_Subnet(cidr='192.168.0.0/24')
-        iprange = IPRange(
-            start_ip='192.168.0.1', end_ip='192.168.0.254',
-            type=IPRANGE_TYPE.USER_RESERVED, subnet=subnet,
-            comment="The quick brown owl jumps over the lazy alligator.")
-        with ExpectedException(
-                ValidationError, '.*must specify a user.*'):
-            iprange.save()
 
     def test__comment_optional(self):
         subnet = factory.make_Subnet(cidr='192.168.0.0/24')
         iprange = IPRange(
             start_ip='192.168.0.1', end_ip='192.168.0.254', subnet=subnet,
-            type=IPRANGE_TYPE.USER_RESERVED, user=factory.make_User())
+            type=IPRANGE_TYPE.RESERVED, user=factory.make_User())
         iprange.save()

@@ -80,6 +80,11 @@ rsync -${rsync_options} etc/maas/ \
     && echo "Success." || die "Syncrhonization failed."
 $ssh_run "chown -R maas:maas /etc/maas"
 
+echo "Updating /usr/share/maas/maas..."
+rsync -${rsync_options} src/maas/ \
+    root@${hostname}:/usr/share/maas/maas \
+    && echo "Success." || die "Syncrhonization failed."
+
 echo ""
 echo "Restarting services and ensuring migrations are up to date..."
 $ssh_run service maas-regiond stop

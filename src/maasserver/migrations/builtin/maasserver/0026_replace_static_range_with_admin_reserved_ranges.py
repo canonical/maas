@@ -18,18 +18,17 @@ from provisioningserver.utils.network import (
 class IPRANGE_TYPE:
     """The vocabulary of possible types of `IPRange` objects."""
 
+    # Dynamic IP range.
+    DYNAMIC = 'dynamic'
+
     # Managed by MAAS DHCP.
     MANAGED_DHCP = 'managed_dhcp'
 
     # Managed by an external DHCP server.
     UNMANAGED_DHCP = 'unmanaged_dhcp'
 
-    # Reserved administratively. This is like an "inverse static range";
-    # IP addresses that MAAS is specifically not allowed to touch.
-    ADMIN_RESERVED = 'admin_reserved'
-
-    # Reserved for exclusive use by a particular user.
-    USER_RESERVED = 'user_reserved'
+    # Reserved for exclusive use by MAAS (and possibly a particular user).
+    RESERVED = 'reserved'
 
     # MAAS-managed static IP address range.
     MANAGED_STATIC = 'managed_static'
@@ -46,7 +45,7 @@ def convert_static_ipranges_to_reserved(
         IPRange.objects.get_or_create(
             created=created_time, updated=datetime.now(),
             subnet=subnet, start_ip=start_ip, end_ip=end_ip,
-            type=IPRANGE_TYPE.ADMIN_RESERVED,
+            type=IPRANGE_TYPE.RESERVED,
             comment="Migrated from static range: %s on %s." %
                     (range_description, subnet.cidr))
 
@@ -65,6 +64,7 @@ def migrate_static_ranges_to_admin_reserved(apps, schema_editor):
             for iprange in
             subnet.iprange_set.filter(
                 type__in=[IPRANGE_TYPE.MANAGED_STATIC,
+                          IPRANGE_TYPE.DYNAMIC,
                           IPRANGE_TYPE.MANAGED_DHCP,
                           IPRANGE_TYPE.UNMANAGED_DHCP])
         ]

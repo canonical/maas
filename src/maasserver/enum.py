@@ -241,33 +241,16 @@ IPADDRESS_TYPE_CHOICES_DICT = OrderedDict(IPADDRESS_TYPE_CHOICES)
 class IPRANGE_TYPE:
     """The vocabulary of possible types of `IPRange` objects."""
 
-    # Managed by MAAS DHCP.
-    MANAGED_DHCP = 'managed_dhcp'
+    # Dynamic IP Range.
+    DYNAMIC = 'dynamic'
 
-    # Managed by an external DHCP server.
-    UNMANAGED_DHCP = 'unmanaged_dhcp'
-
-    # Reserved administratively. This is like an "inverse static range";
-    # IP addresses that MAAS is specifically not allowed to touch.
-    ADMIN_RESERVED = 'admin_reserved'
-
-    # Reserved for exclusive use by a particular user.
-    USER_RESERVED = 'user_reserved'
-
-    # MAAS-managed static IP address range.
-    # XXX mpontillo 2015-12-21: This is deprecated, and will be removed in the
-    # near future. (This is the pre-2.0 concept of a "static range".) We're
-    # keeping it in the short term, to reduce the amount of code change
-    # necessary to implement IP ranges.
-    MANAGED_STATIC = 'managed_static'
+    # Reserved for exclusive use by MAAS (and possibly a particular user).
+    RESERVED = 'reserved'
 
 
 IPRANGE_TYPE_CHOICES = (
-    (IPRANGE_TYPE.MANAGED_DHCP, "MAAS Managed DHCP"),
-    (IPRANGE_TYPE.UNMANAGED_DHCP, "Non-MAAS DHCP"),
-    (IPRANGE_TYPE.ADMIN_RESERVED, "Administratively Reserved"),
-    (IPRANGE_TYPE.USER_RESERVED, "User Reserved"),
-    (IPRANGE_TYPE.MANAGED_STATIC, "MAAS Managed Static IP Addresses"),
+    (IPRANGE_TYPE.DYNAMIC, "Dynamic IP Range"),
+    (IPRANGE_TYPE.RESERVED, "Reserved IP Range"),
 )
 
 

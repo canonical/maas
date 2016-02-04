@@ -351,7 +351,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             last_address = inet_ntop(network.last - 1)
         factory.make_IPRange(
             subnet, first_address, last_address,
-            type=IPRANGE_TYPE.MANAGED_DHCP)
+            type=IPRANGE_TYPE.DYNAMIC)
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'unreserved_ip_ranges'})

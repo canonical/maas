@@ -824,7 +824,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_IPRange(
             self, subnet, start_ip, end_ip, comment=None, user=None,
-            type=None):
+            type=IPRANGE_TYPE.DYNAMIC):
         iprange = IPRange(
             subnet=subnet, start_ip=start_ip, end_ip=end_ip, type=type,
             comment=comment, user=user)
@@ -853,18 +853,20 @@ class Factory(maastesting.factory.Factory):
         # Create a "dynamic range" for this Subnet.
         if with_dynamic_range:
             if unmanaged:
-                range_type = IPRANGE_TYPE.UNMANAGED_DHCP
+                subnet.vlan.dhcp_on = False
+                subnet.vlan.save()
             else:
-                range_type = IPRANGE_TYPE.MANAGED_DHCP
+                subnet.vlan.dhcp_on = True
+                subnet.vlan.save()
             self.make_IPRange(
-                subnet, type=range_type,
+                subnet, type=IPRANGE_TYPE.DYNAMIC,
                 start_ip=str(IPAddress(network.first + 2)),
                 end_ip=str(IPAddress(network.first + range_size + 2)))
             # Create a "static range" for this Subnet.
         if with_static_range:
             # XXX mpontillo 2016-01-07: Convert this to ADMIN_RESERVED.
             self.make_IPRange(
-                subnet, type=IPRANGE_TYPE.MANAGED_STATIC,
+                subnet, type=IPRANGE_TYPE.RESERVED,
                 start_ip=str(IPAddress(network.last - range_size - 2)),
                 end_ip=str(IPAddress(network.last - 2)))
         return subnet

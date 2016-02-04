@@ -2,6 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
+from maasserver.api.ipranges import (
+    IPRangeHandler,
+    IPRangesHandler,
+)
+
 
 __all__ = []
 
@@ -251,6 +256,8 @@ space_handler = RestrictedResource(SpaceHandler, authentication=api_auth)
 spaces_handler = RestrictedResource(SpacesHandler, authentication=api_auth)
 subnet_handler = RestrictedResource(SubnetHandler, authentication=api_auth)
 subnets_handler = RestrictedResource(SubnetsHandler, authentication=api_auth)
+iprange_handler = RestrictedResource(IPRangeHandler, authentication=api_auth)
+ipranges_handler = RestrictedResource(IPRangesHandler, authentication=api_auth)
 
 
 # Admin handlers.
@@ -413,6 +420,12 @@ urlpatterns += patterns(
         r'^subnets/(?P<subnet_id>[.: \w-]+(?:/\d\d\d?)?)/$',
         subnet_handler, name='subnet_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
+    url(
+        r'^ipranges/$',
+        ipranges_handler, name='ipranges_handler'),
+    url(
+        r'^ipranges/(?P<iprange_id>[^/]+)/$',
+        iprange_handler, name='iprange_handler'),
     url(
         r'^dnsresourcerecords/$', dnsresourcerecords_handler,
         name='dnsresourcerecords_handler'),

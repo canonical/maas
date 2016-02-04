@@ -81,11 +81,7 @@ def create_ipranges_from_nodegroupinterfaces(apps, schema_editor):
     Subnet = apps.get_model("maasserver", "Subnet")
     for ngi in NodeGroupInterface.objects.all():
         low, high = get_valid_ip_range(ngi.ip_range_low, ngi.ip_range_high)
-        if ngi.management > 0:
-            type = 'managed_dhcp'
-        else:
-            type = 'unmanaged_dhcp'
-        add_ip_range(IPRange, Subnet, type, low, high, ngi)
+        add_ip_range(IPRange, Subnet, 'dynamic', low, high, ngi)
         low, high = get_valid_ip_range(
             ngi.static_ip_range_low, ngi.static_ip_range_high)
         add_ip_range(

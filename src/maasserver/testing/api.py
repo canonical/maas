@@ -2,6 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helpers for API testing."""
+from maasserver.testing.testclient import MAASSensibleClient
+
 
 __all__ = [
     'APITestCase',
@@ -86,6 +88,12 @@ class APITestCaseBase(MAASTestCase):
         """Promote the logged-in user to admin."""
         self.logged_in_user.is_superuser = True
         self.logged_in_user.save()
+
+    @transactional
+    def logout(self):
+        """Promote the logged-in user to admin."""
+        self.logged_in_user = None
+        self.client = MAASSensibleClient()
 
     def assertResponseCode(self, expected_code, response):
         if response.status_code != expected_code:

@@ -150,7 +150,7 @@ DHCP_IPRANGE_INSERT = dedent("""\
       vlan maasserver_vlan;
     BEGIN
       -- Update VLAN if DHCP is enabled and a dynamic range.
-      IF NEW.type = 'managed_dhcp' THEN
+      IF NEW.type = 'dynamic' THEN
         SELECT maasserver_vlan.* INTO vlan
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
@@ -173,7 +173,7 @@ DHCP_IPRANGE_UPDATE = dedent("""\
       vlan maasserver_vlan;
     BEGIN
       -- Update VLAN if DHCP is enabled and was or is now a dynamic range.
-      IF OLD.type = 'managed_dhcp' OR NEW.type = 'managed_dhcp' THEN
+      IF OLD.type = 'dynamic' OR NEW.type = 'dynamic' THEN
         SELECT maasserver_vlan.* INTO vlan
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = NEW.subnet_id AND
@@ -196,7 +196,7 @@ DHCP_IPRANGE_DELETE = dedent("""\
       vlan maasserver_vlan;
     BEGIN
       -- Update VLAN if DHCP is enabled and was dynamic range.
-      IF OLD.type = 'managed_dhcp' THEN
+      IF OLD.type = 'dynamic' THEN
         SELECT maasserver_vlan.* INTO vlan
         FROM maasserver_vlan, maasserver_subnet
         WHERE maasserver_subnet.id = OLD.subnet_id AND

@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
+    operation,
     OperationsHandler,
 )
 from maasserver.api.utils import (
@@ -37,6 +38,11 @@ class UsersHandler(OperationsHandler):
     def read(self, request):
         """List users."""
         return User.objects.all().order_by('username')
+
+    @operation(idempotent=True)
+    def whoami(self, request):
+        """Returns the currently logged in user."""
+        return request.user
 
     @admin_method
     def create(self, request):

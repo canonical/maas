@@ -21,7 +21,10 @@ from maasserver.models import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    ContainsAll,
+    Equals,
+)
 
 
 class TestUsers(APITestCase):
@@ -103,6 +106,26 @@ class TestUsers(APITestCase):
         self.assertThat(
             [user['username'] for user in listing],
             ContainsAll([user.username for user in users]))
+
+    def test__whoami_returns_logged_in_user(self):
+        factory.make_User()
+        response = self.client.get(reverse('users_handler'), {
+            'op': 'whoami'
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(
+            result['username'], Equals(self.logged_in_user.username))
+
+    def test__whoami_returns_forbidden_if_not_logged_in(self):
+        self.logout()
+        factory.make_User()
+        response = self.client.get(reverse('users_handler'), {
+            'op': 'whoami'
+        })
+        self.assertEqual(
+            http.client.UNAUTHORIZED, response.status_code, response.content)
 
     def test_GET_orders_by_name(self):
         # Create some users.  Give them lower-case names, because collation

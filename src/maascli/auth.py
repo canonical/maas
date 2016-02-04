@@ -54,9 +54,14 @@ def check_valid_apikey(url, credentials, insecure=False):
 
     :param credentials: A 3-tuple of credentials.
     """
-    url_nodegroups = urljoin(url, "nodegroups/")
-    uri, body, headers = Action.prepare_payload(
-        op="list", method="GET", uri=url_nodegroups, data=[])
+    if '/api/1.0' in url:
+        check_url = urljoin(url, "nodegroups/")
+        uri, body, headers = Action.prepare_payload(
+            op="list", method="GET", uri=check_url, data=[])
+    else:
+        check_url = urljoin(url, "users/")
+        uri, body, headers = Action.prepare_payload(
+            op="whoami", method="GET", uri=check_url, data=[])
 
     # Headers are returned as a list, but they must be a dict for
     # the signing machinery.

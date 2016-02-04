@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(primary_key=True, verbose_name='ID', serialize=False, auto_created=True)),
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
-                ('type', models.CharField(max_length=20, choices=[('managed_dhcp', 'MAAS Managed DHCP'), ('unmanaged_dhcp', 'Non-MAAS DHCP'), ('admin_reserved', 'Administratively Reserved'), ('user_reserved', 'User Reserved'), ('managed_static', 'MAAS Managed Static IP Addresses')])),
+                ('type', models.CharField(max_length=20, choices=[('dynamic', 'Dynamic IP Range'), ('reserved', 'Reserved'), ('managed_static', 'MAAS Managed Static IP Addresses')])),
                 ('start_ip', maasserver.fields.MAASIPAddressField(verbose_name='Start IP', editable=False)),
                 ('end_ip', maasserver.fields.MAASIPAddressField(verbose_name='End IP', editable=False)),
                 ('comment', models.CharField(max_length=255, null=True, blank=True)),

@@ -434,46 +434,21 @@ class Subnet(CleanSave, TimestampedModel):
             ], key=lambda json: IPAddress(json['ip']))
 
     def get_dynamic_ranges(self):
-        return self.iprange_set.filter(
-            type__in=[IPRANGE_TYPE.MANAGED_DHCP, IPRANGE_TYPE.UNMANAGED_DHCP])
+        return self.iprange_set.filter(type=IPRANGE_TYPE.DYNAMIC)
 
-    def get_static_ranges(self):
-        # XXX mpontillo 2016-01-07: this needs to be deprecated in favor of
-        # assuming the entire range is static
-        return self.iprange_set.filter(type=IPRANGE_TYPE.MANAGED_STATIC)
-
-    def get_admin_reserved_ranges(self):
-        return self.iprange_set.filter(type=IPRANGE_TYPE.ADMIN_RESERVED)
-
-    def get_user_reserved_ranges(self):
-        return self.iprange_set.filter(type=IPRANGE_TYPE.USER_RESERVED)
+    def get_reserved_ranges(self):
+        return self.iprange_set.filter(type=IPRANGE_TYPE.RESERVED)
 
     def is_valid_static_ip(self, ip):
-        for iprange in self.get_static_ranges():
-            if ip in iprange.netaddr_iprange:
-                return True
-        return False
+        for iprange in self.get_reserved_maasipset():
+            if ip in iprange:
+                return False
+        return True
 
     def get_reserved_maasipset(self):
-        # XXX mpontillo 2016-01-21: migrate static ranges to their opposite
-        # admin-reserved so this is no longer necessary.
-        static_ranges = set(
+        reserved_ranges = MAASIPSet(
             iprange.get_MAASIPRange()
-            for iprange in self.get_static_ranges())
-        if len(static_ranges) > 0:
-            reserved_ranges = MAASIPSet(static_ranges).get_unused_ranges(
-                self.cidr, comment="reserved")
-        else:
-            reserved_ranges = MAASIPSet([])
-        reserved_ranges |= MAASIPSet(
-            iprange.get_MAASIPRange()
-            for iprange in self.get_admin_reserved_ranges()
-        )
-        # XXX mpontillo 2016-01-21: need to determine how to deal with user
-        # reserved ranges. For now, exclude them all.
-        reserved_ranges |= MAASIPSet(
-            iprange.get_MAASIPRange()
-            for iprange in self.get_user_reserved_ranges()
+            for iprange in self.get_reserved_ranges()
         )
         return reserved_ranges
 

@@ -6,6 +6,7 @@
 Specifies all types of IP address ranges MAAS can work with, such as
 DHCP ranges and user-reserved ranges.
 """
+from maasserver.utils.orm import MAASQueriesMixin
 import netaddr
 from provisioningserver.utils.network import make_iprange
 
@@ -20,11 +21,8 @@ from django.db.models import (
     CharField,
     ForeignKey,
     PROTECT,
-)
-from maasserver.enum import (
-    IPRANGE_TYPE,
-    IPRANGE_TYPE_CHOICES,
-)
+    QuerySet, Manager)
+from maasserver.enum import IPRANGE_TYPE_CHOICES
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -39,9 +37,62 @@ from provisioningserver.logger import get_maas_logger
 maaslog = get_maas_logger("iprange")
 
 
+class IPRangeQueriesMixin(MAASQueriesMixin):
+
+    def get_specifiers_q(self, specifiers, separator=':', **kwargs):
+        # Circular imports.
+
+        # This dict is used by the constraints code to identify objects
+        # with particular properties. Please note that changing the keys here
+        # can impact backward compatibility, so use caution.
+        specifier_types = {
+            None: self._add_default_query,
+            'type': "__type",
+            'start_ip': "__start_ip",
+            'end_ip': "__end_ip",
+        }
+        return super(IPRangeQueriesMixin, self).get_specifiers_q(
+            specifiers, specifier_types=specifier_types, separator=separator,
+            **kwargs)
+
+
+class IPRangeQuerySet(IPRangeQueriesMixin, QuerySet):
+    """Custom QuerySet which mixes in some additional queries specific to
+    subnets. This needs to be a mixin because an identical method is needed on
+    both the Manager and all QuerySets which result from calling the manager.
+    """
+
+
+class IPRangeManager(Manager, IPRangeQueriesMixin):
+    def get_queryset(self):
+        queryset = IPRangeQuerySet(self.model, using=self._db)
+        return queryset
+
+    def get_iprange_or_404(self, specifiers):
+        """Fetch a `Interface` by its `Node`'s system_id and its id.  Raise
+        exceptions if no `Interface` with this id exist, if the `Node` with
+        system_id doesn't exist, if the `Interface` doesn't exist on the
+        `Node`, or if the provided user has not the required permission on
+        this `Node` and `Interface`.
+
+        :param specifiers: The interface specifier.
+        :type specifiers: str
+        :raises: django.http.Http404_,
+            :class:`maasserver.exceptions.PermissionDenied`.
+
+        .. _django.http.Http404: https://
+           docs.djangoproject.com/en/dev/topics/http/views/
+           #the-http404-exception
+        """
+        iprange = self.get_object_by_specifiers_or_raise(specifiers)
+        return iprange
+
+
 class IPRange(CleanSave, TimestampedModel):
     """Represents a range of IP addresses used for a particular purpose in
     MAAS, such as a DHCP range or a range of reserved addresses."""
+
+    objects = IPRangeManager()
 
     subnet = ForeignKey('Subnet', editable=True, blank=False, null=False)
 
@@ -50,13 +101,13 @@ class IPRange(CleanSave, TimestampedModel):
         null=False, blank=False)
 
     start_ip = MAASIPAddressField(
-        null=False, editable=False, blank=False, verbose_name='Start IP')
+        null=False, editable=True, blank=False, verbose_name='Start IP')
 
     end_ip = MAASIPAddressField(
-        null=False, editable=False, blank=False, verbose_name='End IP')
+        null=False, editable=True, blank=False, verbose_name='End IP')
 
     user = ForeignKey(
-        User, default=None, blank=True, null=True, editable=False,
+        User, default=None, blank=True, null=True, editable=True,
         on_delete=PROTECT)
 
     comment = CharField(
@@ -71,8 +122,6 @@ class IPRange(CleanSave, TimestampedModel):
 
     def clean(self):
         super().clean()
-        if self.user_id is None and self.type == IPRANGE_TYPE.USER_RESERVED:
-            raise ValidationError("User-reserved range must specify a user.")
         try:
             # XXX mpontillo 2015-12-22: I would rather the Django model field
             # just give me back an IPAddress, but changing it to do this was

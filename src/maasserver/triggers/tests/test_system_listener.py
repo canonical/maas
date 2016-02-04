@@ -473,7 +473,7 @@ class TestDHCPIPRangeListener(
             end_ip = str(IPAddress(network.first + 3))
             yield deferToDatabase(self.create_iprange, {
                 "subnet": subnet,
-                "type": IPRANGE_TYPE.MANAGED_DHCP,
+                "type": IPRANGE_TYPE.DYNAMIC,
                 "start_ip": start_ip,
                 "end_ip": end_ip,
             })
@@ -503,7 +503,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.MANAGED_DHCP,
+            "type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -549,7 +549,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.MANAGED_DHCP,
+            "type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -566,7 +566,7 @@ class TestDHCPIPRangeListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.update_iprange, ip_range.id, {
-                "type": IPRANGE_TYPE.ADMIN_RESERVED,
+                "type": IPRANGE_TYPE.RESERVED,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -594,7 +594,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.ADMIN_RESERVED,
+            "type": IPRANGE_TYPE.RESERVED,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })
@@ -611,7 +611,7 @@ class TestDHCPIPRangeListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.update_iprange, ip_range.id, {
-                "type": IPRANGE_TYPE.MANAGED_DHCP,
+                "type": IPRANGE_TYPE.DYNAMIC,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -639,7 +639,7 @@ class TestDHCPIPRangeListener(
         end_ip = str(IPAddress(network.first + 3))
         ip_range = yield deferToDatabase(self.create_iprange, {
             "subnet": subnet,
-            "type": IPRANGE_TYPE.MANAGED_DHCP,
+            "type": IPRANGE_TYPE.DYNAMIC,
             "start_ip": start_ip,
             "end_ip": end_ip,
         })

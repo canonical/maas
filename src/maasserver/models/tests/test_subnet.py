@@ -571,7 +571,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
         self.assertThat(ranges, HasLength(1))
-        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.MANAGED_DHCP))
+        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.DYNAMIC))
 
     def test__get_dynamic_ranges_returns_unmanaged_dynamic_range_filter(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -580,15 +580,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
         self.assertThat(ranges, HasLength(1))
-        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.UNMANAGED_DHCP))
-
-    def test__get_dynamic_ranges_returns_static_range_filter(self):
-        subnet = factory.make_ipv4_Subnet_with_IPRanges(
-            with_dynamic_range=True, with_static_range=True)
-        static_ranges = subnet.get_static_ranges()
-        ranges = list(static_ranges)
-        self.assertThat(ranges, HasLength(1))
-        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.MANAGED_STATIC))
+        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.DYNAMIC))
 
     def test__get_dynamic_range_for_ip(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
