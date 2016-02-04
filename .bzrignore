@@ -25,7 +25,7 @@
 ./docs/_build
 ./docs/api.rst
 ./eggs
-./etc/maas/clusterd.conf
+./etc/maas/rackd.conf
 ./etc/maas/regiond.conf
 ./include
 ./lib

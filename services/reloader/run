@@ -73,7 +73,7 @@ def handle_maas_change(event):
 
 def handle_pserv_change(event):
     if is_interesting_python_change(event.name):
-        handle_python_change(event, "clusterd", "regiond", "regiond2")
+        handle_python_change(event, "rackd", "regiond", "regiond2")
 
 
 class TestReloader(unittest.TestCase):

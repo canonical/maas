@@ -35,7 +35,7 @@ of their implementations.
 .. note::
 
   Only MAAS's region — a.k.a. ``regiond`` — connects to the PostgreSQL
-  database. MAAS's clusters — ``clusterd`` — are not directly relevant
+  database. MAAS's clusters — ``rackd`` — are not directly relevant
   here.
 
 

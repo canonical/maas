@@ -25,7 +25,7 @@
 /docs/_build
 /docs/api.rst
 /eggs
-/etc/maas/clusterd.conf
+/etc/maas/rackd.conf
 /etc/maas/regiond.conf
 /include
 /lib
@@ -35,9 +35,13 @@
 /media/demo/*
 /media/development
 /parts
+/provisioningserver.twisted.proto
 /run/*
 /run/etc/*
 /run/etc/maas/*
+/run-e2e/*
+/run-e2e/etc/*
+/run-e2e/etc/maas/*
 /services/*/supervise
 /src/maasserver/static/js/enums.js
 /TAGS

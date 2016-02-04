@@ -52,15 +52,15 @@ build: \
     bin/maas-probe-dhcp \
     bin/maas-provision \
     bin/maas-region-admin \
-    bin/twistd.cluster \
+    bin/twistd.rack \
     bin/twistd.region \
     bin/test.cli \
-    bin/test.cluster \
+    bin/test.rack \
     bin/test.config \
     bin/test.region \
     bin/test.testing \
-		bin/test.js \
-		bin/test.e2e \
+    bin/test.js \
+    bin/test.e2e \
     bin/py bin/ipy \
     $(js_enums)
 
@@ -127,14 +127,14 @@ bin/test.testing: \
 	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-probe-dhcp bin/maas-provision bin/twistd.cluster: \
+bin/maas-probe-dhcp bin/maas-provision bin/twistd.rack: \
     bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install cluster
+	$(buildout) install rack
 	@touch --no-create $@
 
-bin/test.cluster: \
+bin/test.rack: \
 	  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-provision
-	$(buildout) install cluster-test
+	$(buildout) install rack-test
 	@touch --no-create $@
 
 bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
@@ -186,7 +186,7 @@ bin/sass:
 
 define test-scripts
   bin/test.cli
-  bin/test.cluster
+  bin/test.rack
   bin/test.config
   bin/test.region
   bin/test.testing
@@ -391,21 +391,21 @@ endef
 #
 
 service_names_region := database dns regiond regiond2 reloader
-service_names_cluster := clusterd reloader
-service_names_all := $(service_names_region) $(service_names_cluster)
+service_names_rack := rackd reloader
+service_names_all := $(service_names_region) $(service_names_rack)
 
 # The following template is intended to be used with `call`, and it
 # accepts a single argument: a target name. The target name must
-# correspond to a service action (see "Pseudo-magic targets" below).
-# A region- and cluster-specific variant of the target will be
-# created, in addition to the target itself. These can be used to
-# apply the service action to the region services, the cluster
-# services, or all services, at the same time.
+# correspond to a service action (see "Pseudo-magic targets" below). A
+# region- and rack-specific variant of the target will be created, in
+# addition to the target itself. These can be used to apply the service
+# action to the region services, the rack services, or all services, at
+# the same time.
 define service_template
 $(1)-region: $(patsubst %,services/%/@$(1),$(service_names_region))
-$(1)-cluster: $(patsubst %,services/%/@$(1),$(service_names_cluster))
-$(1): $(1)-region $(1)-cluster
-phony_services_targets += $(1)-region $(1)-cluster $(1)
+$(1)-rack: $(patsubst %,services/%/@$(1),$(service_names_rack))
+$(1): $(1)-region $(1)-rack
+phony_services_targets += $(1)-region $(1)-rack $(1)
 endef
 
 # Expand out aggregate service targets using `service_template`.
@@ -419,12 +419,12 @@ $(eval $(call service_template,supervise))
 # The `run` targets do not fit into the mould of the others.
 run-region:
 	@services/run $(service_names_region)
-run-cluster:
-	@services/run $(service_names_cluster)
+run-rack:
+	@services/run $(service_names_rack)
 run:
 	@services/run $(service_names_all)
 
-phony_services_targets += run-region run-cluster run
+phony_services_targets += run-region run-rack run
 
 # This one's for the rapper, yo. Don't run the load-balancing regiond2.
 run+regiond:
@@ -477,7 +477,7 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/clusterd/@deps: bin/twistd.cluster
+services/rackd/@deps: bin/twistd.rack
 
 services/reloader/@deps:
 

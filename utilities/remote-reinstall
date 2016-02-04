@@ -91,4 +91,4 @@ $ssh_run service maas-regiond stop
 $ssh_run maas-region-admin migrate
 $ssh_run service maas-regiond start
 $ssh_run service apache2 restart
-$ssh_run service maas-clusterd restart
+$ssh_run service maas-rackd restart

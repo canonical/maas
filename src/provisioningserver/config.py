@@ -745,7 +745,7 @@ class ClusterConfigurationMeta(ConfigurationMeta):
     """Local meta-configuration for the MAAS cluster."""
 
     envvar = "MAAS_CLUSTER_CONFIG"
-    default = "/etc/maas/clusterd.conf"
+    default = "/etc/maas/rackd.conf"
     backend = ConfigurationFile
 
 

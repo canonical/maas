@@ -22,7 +22,7 @@ Region Controller Location
 --------------------------
 
 The cluster obviously needs to know where the region controller is, and
-this is configured in a file ``/etc/maas/clusterd.conf``. This should
+this is configured in a file ``/etc/maas/rackd.conf``. This should
 only ever be modified via the ``maas-provision`` command.
 
 .. _first-cluster:

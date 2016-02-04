@@ -312,8 +312,8 @@ def is_true(value):
 
 
 def in_develop_mode():
-    """Return True if `MAAS_CLUSTER_DEVELOP` environment variable is true."""
-    return is_true(os.getenv('MAAS_CLUSTER_DEVELOP', None))
+    """Return True if `MAAS_RACK_DEVELOP` environment variable is true."""
+    return is_true(os.getenv('MAAS_RACK_DEVELOP', None))
 
 
 def sudo(command_args):

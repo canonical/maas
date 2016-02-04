@@ -324,7 +324,7 @@ everything.
 
 Individual services can be manipulated too::
 
-  $ make services/clusterd/@start
+  $ make services/rackd/@start
 
 The ``@<action>`` pattern works for any of the services.
 

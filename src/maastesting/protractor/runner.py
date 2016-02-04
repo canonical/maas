@@ -153,21 +153,21 @@ class MAASClusterServiceFixture(Fixture):
     """Starts and stops the MAAS cluster service."""
 
     def setUp(self):
-        """Start the clusterd service."""
+        """Start the rackd service."""
         super(MAASClusterServiceFixture, self).setUp()
         self.useFixture(ClusterConfigurationFixture(
             cluster_uuid="adfd3977-f251-4f2c-8d61-745dbd690bf2",
             maas_url="http://0.0.0.0:5253/MAAS/",
             tftp_port=5255))
 
-        # Fork the process to have clusterd run in its own process.
+        # Fork the process to have rackd run in its own process.
         twistd_pid = os.fork()
         if twistd_pid == 0:
             # Redirect all output to /dev/null
             redirect_to_devnull()
 
             # Add command line options to start twistd.
-            sys.argv[1:] = ["--nodaemon", "--pidfile", "", "maas-clusterd"]
+            sys.argv[1:] = ["--nodaemon", "--pidfile", "", "maas-rackd"]
 
             # Start twistd.
             try:
@@ -190,31 +190,31 @@ class MAASClusterServiceFixture(Fixture):
             except OSError:
                 # Not running.
                 raise ServiceError(
-                    "Failed to start clusterd. Check that another test is "
+                    "Failed to start rackd. Check that another test is "
                     "not running at the same time.")
 
     def stop_twistd(self, twistd_pid):
-        """Stop the clusterd service."""
+        """Stop the rackd service."""
         try:
             os.kill(twistd_pid, signal.SIGINT)
             _, return_code = os.waitpid(twistd_pid, 0)
             if return_code != 0:
-                print("WARN: clusterd didn't stop cleanly (%d)" % return_code)
+                print("WARN: rackd didn't stop cleanly (%d)" % return_code)
         except OSError:
-            print("WARN: clusterd already died.")
+            print("WARN: rackd already died.")
 
 
 def run_protractor():
     """Start Protractor with the MAAS JS E2E testing configuration.
 
     1. Start regiond.
-    2. Start clusterd.
+    2. Start rackd.
     3. Start xvfb.
     4. Start chromium webdriver.
     5. Run protractor.
     6. Stop chromium webdriver.
     7. Stop xvfb.
-    8. Stop clusterd.
+    8. Stop rackd.
     9. Stop regiond.
     """
     with MAASRegionServiceFixture(), MAASClusterServiceFixture():
