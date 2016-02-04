@@ -19,7 +19,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
-from maasserver.models.dnsresource import DNSResource
+from maasserver.models.dnsdata import DNSData
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
 from maasserver.models.staticipaddress import (
@@ -76,6 +76,14 @@ def get_hostname_ip_mapping(domain_or_subnet):
     `domain` or `subnet`.  Info contains: ttl, ips, system_id.
     """
     return StaticIPAddress.objects.get_hostname_ip_mapping(domain_or_subnet)
+
+
+def get_hostname_dnsdata_mapping(domain):
+    """Return a mapping {hostnames -> info} for the allocated nodes in
+    `domain`.  Info contains: system_id and rrsets (which contain (ttl, rrtype,
+    rrdata) tuples.
+    """
+    return DNSData.objects.get_hostname_dnsdata_mapping(domain)
 
 
 class DNSException(MAASException):
@@ -166,7 +174,13 @@ class ZoneGenerator:
         return lazydict(get_hostname_ip_mapping)
 
     @staticmethod
-    def _gen_forward_zones(domains, serial, mappings, default_ttl):
+    def _get_rrset_mappings():
+        """Return a lazily evaluated mapping dict."""
+        return lazydict(get_hostname_dnsdata_mapping)
+
+    @staticmethod
+    def _gen_forward_zones(
+            domains, serial, mappings, rrset_mappings, default_ttl):
         """Generator of forward zones, collated by domain name."""
         dns_ip = get_dns_server_address()
         domains = set(domains)
@@ -186,25 +200,7 @@ class ZoneGenerator:
             }
             # 2. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
-            other_mapping = {}
-            for dnsrr in DNSResource.objects.filter(domain=domain):
-                dataset = dnsrr.dnsdata_set.all()
-                for rrtype in set(data.rrtype for data in dataset):
-                    # Start at 2^31-1, and then select the minimum ttl found in
-                    # the RRset.
-                    ttl = (1 << 31) - 1
-                    if rrtype != 'CNAME' or dnsrr.name not in mapping:
-                        values = [
-                            str(data)
-                            for data in dataset
-                            if data.rrtype == rrtype]
-                        if dataset.first().ttl is not None:
-                            ttl = min(ttl, dataset.first().ttl)
-                        elif dnsrr.domain.ttl is not None:
-                            ttl = min(ttl, dnsrr.domain.ttl)
-                        else:
-                            ttl = min(ttl, default_ttl)
-                        other_mapping[dnsrr.name] = (ttl, values)
+            other_mapping = rrset_mappings[domain]
 
             # 3. Default domain we place all forward entries for the managed
             # and unmanaged dynamic ranges in this domain.
@@ -276,8 +272,9 @@ class ZoneGenerator:
             # This will also include any discovered addresses on such
             # interfaces.
             nodes = Node.objects.filter(
-                interface__ip_addresses__subnet=subnet,
-                interface__ip_addresses__ip__isnull=False)
+                interface__ip_addresses__subnet_id=subnet.id,
+                interface__ip_addresses__ip__isnull=False).prefetch_related(
+                "interface_set__ip_addresses")
             for node in nodes:
                 if node.address_ttl is not None:
                     ttl = node.address_ttl
@@ -285,18 +282,18 @@ class ZoneGenerator:
                     ttl = node.domain.ttl
                 else:
                     ttl = default_ttl
-                interfaces = node.interface_set.filter(
-                    ip_addresses__subnet=subnet,
-                    ip_addresses__ip__isnull=False)
-                mapping.update({
-                    "%s.%s" % (
-                        interface.name, interface.node.fqdn):
-                    HostnameIPMapping(
+                for iface in node.interface_set.all():
+                    iface_map = HostnameIPMapping(
                         node.system_id, ttl, {
-                            ip.ip for ip in interface.ip_addresses.exclude(
-                                ip__isnull=True)})
-                    for interface in interfaces
-                })
+                            ip.ip
+                            for ip in iface.ip_addresses.all()
+                            if (
+                                ip.ip is not None and
+                                ip.subnet_id == subnet.id)})
+                    if len(iface_map.ips) > 0:
+                        mapping.update({
+                            "%s.%s" % (iface.name, iface.node.fqdn): iface_map
+                        })
 
             # Use the default_domain as the name for the NS host in the reverse
             # zones.  If this network is actually a parent rfc2317 glue
@@ -333,11 +330,12 @@ class ZoneGenerator:
             "No serial number or serial number generator specified.")
 
         mappings = self._get_mappings()
+        rrset_mappings = self._get_rrset_mappings()
         serial = self.serial or self.serial_generator()
         default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(
-                self.domains, serial, mappings, default_ttl),
+                self.domains, serial, mappings, rrset_mappings, default_ttl),
             self._gen_reverse_zones(
                 self.subnets, serial, mappings, default_ttl),
             )

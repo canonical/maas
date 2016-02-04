@@ -16,12 +16,14 @@ __all__ = [
     "DNSData",
     ]
 
+from collections import defaultdict
 import re
 
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db import connection
 from django.db.models import (
     CASCADE,
     CharField,
@@ -33,6 +35,7 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import validate_domain_name
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -64,6 +67,21 @@ def validate_rrtype(value):
         raise ValidationError(
             "%s is not one of %s." %
             (value.upper(), " ".join(SUPPORTED_RRTYPES)))
+
+
+class HostnameRRsetMapping:
+    """This is used to return non-address information for a hostname in a way
+       that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
+       rrdata) tuples."""
+    def __init__(self, system_id=None, rrset=set()):
+        self.system_id = system_id
+        self.rrset = rrset.copy()
+
+    def __repr__(self):
+        return "%s:%s" % (self.system_id, self.rrset)
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 
 class DNSDataQueriesMixin(MAASQueriesMixin):
@@ -115,6 +133,45 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
             return dnsdata
         else:
             raise PermissionDenied()
+
+    def get_hostname_dnsdata_mapping(self, domain):
+        """Return hostname to RRset mapping for this domain."""
+        cursor = connection.cursor()
+        default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        sql_query = """
+            SELECT
+                dnsresource.name,
+                node.system_id,
+                COALESCE(
+                    dnsdata.ttl,
+                    domain.ttl,
+                    """ + default_ttl + """) AS ttl,
+                dnsdata.rrtype,
+                dnsdata.rrdata
+            FROM maasserver_dnsdata AS dnsdata
+            JOIN maasserver_dnsresource AS dnsresource ON
+                dnsdata.dnsresource_id = dnsresource.id
+            JOIN maasserver_domain as domain ON
+                dnsresource.domain_id = domain.id
+            LEFT JOIN maasserver_node AS node ON
+                node.hostname = dnsresource.name
+            WHERE
+                dnsresource.domain_id = %s AND (
+                    dnsdata.rrtype != 'CNAME' OR node.hostname IS NULL)
+            ORDER BY
+                dnsresource.name,
+                dnsdata.rrtype,
+                dnsdata.rrdata
+            """
+        # N.B.: The "node.hostname IS NULL" above is actually checking that
+        # no node exists with the same name, in order to make sure that we do
+        # not spill CNAME and other data.
+        mapping = defaultdict(HostnameRRsetMapping)
+        cursor.execute(sql_query, (domain.id,))
+        for (name, system_id, ttl, rrtype, rrdata) in cursor.fetchall():
+            mapping[name].system_id = system_id
+            mapping[name].rrset.add((ttl, rrtype, rrdata))
+        return mapping
 
 
 class DNSData(CleanSave, TimestampedModel):

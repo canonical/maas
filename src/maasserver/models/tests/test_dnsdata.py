@@ -14,7 +14,13 @@ from django.core.exceptions import (
     ValidationError,
 )
 from maasserver.enum import NODE_PERMISSION
-from maasserver.models.dnsdata import DNSData
+from maasserver.models.config import Config
+from maasserver.models.dnsdata import (
+    DNSData,
+    HostnameRRsetMapping,
+)
+from maasserver.models.domain import Domain
+from maasserver.models.node import Node
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
@@ -215,3 +221,61 @@ class DNSDataTest(MAASServerTestCase):
                 rrtype=dnsdata.rrtype)
             self.assertEqual(2, DNSData.objects.filter(
                 dnsresource=dnsdata.dnsresource).count())
+
+
+class TestDNSDataMapping(MAASServerTestCase):
+    """Tests for get_hostname_dnsdata_mapping()."""
+
+    def make_mapping(self, dnsresource):
+        nodes = Node.objects.filter(
+            hostname=dnsresource.name, domain=dnsresource.domain)
+        if nodes.count() > 0:
+            system_id = nodes.first().system_id
+        else:
+            system_id = None
+        mapping = HostnameRRsetMapping(system_id)
+        for data in dnsresource.dnsdata_set.all():
+            if data.ttl is not None:
+                ttl = data.ttl
+            elif dnsresource.domain.ttl is not None:
+                ttl = dnsresource.domain.ttl
+            else:
+                ttl = Config.objects.get_config('default_dns_ttl')
+            mapping.rrset.add((ttl, data.rrtype, data.rrdata))
+        return {dnsresource.name: mapping}
+
+    def test_get_hostname_dnsdata_mapping_returns_mapping(self):
+        domain = Domain.objects.get_default_domain()
+        expected_mapping = {}
+        # Create 3 labels with 0-5 resources each, verify that they
+        # Come back correctly.
+        for _ in range(3):
+            name = factory.make_name('label')
+            dnsrr = factory.make_DNSResource(
+                name=name, domain=domain, no_ip_addresses=True)
+            for count in range(random.randint(1, 5)):
+                data = factory.make_DNSData(
+                    dnsresource=dnsrr, ip_addresses=True)
+            expected_mapping.update(self.make_mapping(data.dnsresource))
+        # Add one resource to the domain which has no data, so it should not be
+        # in the returned mapping.
+        factory.make_DNSResource(domain=domain, no_ip_addresses=True)
+        actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        self.assertItemsEqual(expected_mapping, actual)
+
+    def test_get_hostname_dnsdata_mapping_handles_ttl(self):
+        # We create 2 domains, one with a ttl, one withoout.
+        # Within each domain, create an RRset with and without ttl.
+        global_ttl = random.randint(1, 99)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        domains = [
+            factory.make_Domain(),
+            factory.make_Domain(ttl=random.randint(100, 199))]
+        for dom in domains:
+            factory.make_DNSData(domain=dom)
+            factory.make_DNSData(domain=dom, ttl=random.randint(200, 299))
+            expected_mapping = {}
+            for dnsrr in dom.dnsresource_set.all():
+                expected_mapping.update(self.make_mapping(dnsrr))
+            actual = DNSData.objects.get_hostname_dnsdata_mapping(dom)
+            self.assertItemsEqual(expected_mapping, actual)

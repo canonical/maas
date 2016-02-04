@@ -50,6 +50,21 @@ class HostnameIPMapping:
         return self.__dict__ == other.__dict__
 
 
+class HostnameRRsetMapping:
+    """This is used to return non-address information for a hostname in a way
+       that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
+       rrdata) tuples."""
+    def __init__(self, system_id=None, rrset=set()):
+        self.system_id = system_id
+        self.rrset = rrset.copy()
+
+    def __repr__(self):
+        return "%s:%s" % (self.system_id, self.rrset)
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+
 class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
@@ -156,7 +171,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         }
         expected_generate_directives = (
             DNSForwardZoneConfig.get_GENERATE_directives(network))
-        other_mapping = {ipv4_hostname: (ttl, ['MX 10 bar'])}
+        other_mapping = {ipv4_hostname: HostnameRRsetMapping(
+            None, {(ttl, 'MX', '10 bar')})}
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
             other_mapping=other_mapping, default_ttl=ttl,

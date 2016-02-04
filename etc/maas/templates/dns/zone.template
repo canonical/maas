@@ -24,6 +24,6 @@ $GENERATE {{iterator_values}} {{rdns}} IN {{type}} {{hostname}}
 {{endfor}}
 {{endfor}}
 
-{{for item_from, rrttl, item_to in other_mapping}}
-{{item_from}} {{rrttl}} IN {{item_to}}
+{{for item_from, rrttl, rrtype, rrdata in other_mapping}}
+{{item_from}} {{rrttl}} IN {{rrtype}} {{rrdata}}
 {{endfor}}

@@ -39,18 +39,7 @@ def get_fqdn_or_ip_address(target):
         return target.rstrip('.') + '.'
 
 
-def enumerate_tuple_map(mapping):
-    """Generate `(hostname, ttl, value)` tuples from `mapping`.
-
-    :param mapping: A dict mapping host names to lists of (ttl, [values]).
-        Values may be ips or "RRTYPE RRDATA."
-    """
-    for hostname, (ttl, values) in mapping.items():
-        for value in values:
-            yield hostname, ttl, value
-
-
-def enumerate_mapping(mapping):
+def enumerate_ip_mapping(mapping):
     """Generate `(hostname, ttl, value)` tuples from `mapping`.
 
     :param mapping: A dict mapping host names to info about the host:
@@ -59,6 +48,17 @@ def enumerate_mapping(mapping):
     for hostname, info in mapping.items():
         for value in info.ips:
             yield hostname, info.ttl, value
+
+
+def enumerate_rrset_mapping(mapping):
+    """Generate `(hostname, ttl, value)` tuples from `mapping`.
+
+    :param mapping: A dict mapping host names to info about the host:
+        .rrset: list of (ttl, rrtype, rrdata) tuples.
+    """
+    for hostname, info in mapping.items():
+        for value in info.rrset:
+            yield hostname, value[0], value[1], value[2]
 
 
 def get_details_for_ip_range(ip_range):
@@ -220,7 +220,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
         """
         return chain(
             [('@', addr_ttl, dns_ip)],
-            enumerate_mapping(mapping))
+            enumerate_ip_mapping(mapping))
 
     @classmethod
     def get_A_mapping(cls, mapping, addr_ttl, dns_ip):
@@ -312,7 +312,8 @@ class DNSForwardZoneConfig(DomainConfigBase):
                         'AAAA': self.get_AAAA_mapping(
                             self._mapping, self._ipv6_ttl, self._dns_ip),
                     },
-                    'other_mapping': enumerate_tuple_map(self._other_mapping),
+                    'other_mapping': enumerate_rrset_mapping(
+                        self._other_mapping),
                     'generate_directives': {
                         'A': generate_directives,
                     }
@@ -460,7 +461,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
             return ()
         return (
             (short_name(ip, network), ttl, '%s.' % (hostname))
-            for hostname, ttl, ip in enumerate_mapping(mapping)
+            for hostname, ttl, ip in enumerate_ip_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.
             if IPAddress(ip) in network
         )
