@@ -7,6 +7,7 @@ __all__ = [
     "GeneralHandler",
     ]
 
+from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
@@ -44,6 +45,7 @@ class GeneralHandler(Handler):
             'random_hostname',
             'bond_options',
             'version',
+            'power_types',
             ]
 
     def architectures(self, params):
@@ -131,3 +133,7 @@ class GeneralHandler(Handler):
     def version(self, params):
         """Return the MAAS version."""
         return get_maas_version_ui()
+
+    def power_types(self, params):
+        """Return all power types."""
+        return get_power_types()

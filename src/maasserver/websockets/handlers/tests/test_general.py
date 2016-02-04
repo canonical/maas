@@ -152,3 +152,9 @@ class TestGeneralHandler(MAASServerTestCase):
         self.patch_autospec(
             general, "get_maas_version_ui").return_value = sentinel.version
         self.assertEqual(sentinel.version, handler.version({}))
+
+    def test_power_types(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.patch_autospec(
+            general, "get_power_types").return_value = sentinel.types
+        self.assertEqual(sentinel.types, handler.power_types({}))
