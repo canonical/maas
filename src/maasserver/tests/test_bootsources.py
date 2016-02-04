@@ -210,7 +210,9 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         cache_boot_sources()
         self.assertEqual(
             ("", ""),
-            (capture.env['http_proxy'], capture.env['https_proxy']))
+            (
+                capture.env.get('http_proxy', ''),
+                capture.env.get('https_proxy', '')))
 
     def test__returns_clears_entire_cache(self):
         source = factory.make_BootSource(keyring_data=b'1234')

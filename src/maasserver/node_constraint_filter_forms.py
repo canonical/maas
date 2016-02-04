@@ -796,7 +796,7 @@ class AcquireNodeForm(RenamableFieldsForm):
         # on the machine's cost when multiple machines match the
         # constraints.
         filtered_nodes = filtered_nodes.distinct().extra(
-            select={'cost': "cpu_count + memory / 1024"})
+            select={'cost': "cpu_count + memory / 1024."})
         return (
             filtered_nodes.order_by("cost"), compatible_nodes,
             compatible_interfaces
