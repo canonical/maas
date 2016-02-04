@@ -296,7 +296,7 @@ class AMTPowerDriver(PowerDriver):
             stdout = stdout.decode('utf-8')
         version = stdout.split(
             'AMT version:')[1].split()[0].split('.')[0]
-        if version > '8':
+        if int(version) > int(8):
             return 'wsman'
         else:
             return 'amttool'
