@@ -76,7 +76,7 @@ class IPMIPowerDriver(PowerDriver):
         env = shell.select_c_utf8_locale()
         command = tuple(command)  # For consistency when testing.
         try:
-            output = call_and_check(command, env=env)
+            output = call_and_check(command, env=env).decode("utf-8")
         except ExternalProcessError as e:
             raise PowerFatalError(
                 "Failed to power %s %s: %s" % (
