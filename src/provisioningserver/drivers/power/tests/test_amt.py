@@ -559,9 +559,16 @@ class TestAMTPowerDriver(MAASTestCase):
         self.expectThat(popen_mock.communicate, MockCalledOnceWith())
         self.expectThat(result, Equals('wsman'))
 
-    def test__get_amt_command_crashes_when_amttool_exits_nonzero(self):
+    def test__get_amt_command_crashes_when_amttool_has_no_output(self):
         amt_power_driver = AMTPowerDriver()
-        self.patch_popen(return_value=(b'', b''), returncode=1)
+        self.patch_popen(return_value=(b'', b''))
+        self.assertRaises(
+            PowerFatalError, amt_power_driver._get_amt_command,
+            sentinel.ip_address, sentinel.power_pass)
+
+    def test__get_amt_command_crashes_when_no_version_found(self):
+        amt_power_driver = AMTPowerDriver()
+        self.patch_popen(return_value=(b'No match here', b''))
         self.assertRaises(
             PowerFatalError, amt_power_driver._get_amt_command,
             sentinel.ip_address, sentinel.power_pass)

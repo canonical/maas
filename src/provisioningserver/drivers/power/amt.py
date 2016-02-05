@@ -284,22 +284,23 @@ class AMTPowerDriver(PowerDriver):
         process = Popen(
             ('amttool', ip_address, 'info'), stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate()
-        stderr = stderr.strip()
-        # Need to check for both because querying normally gives
-        # stdout and returncode !=0.  Only when both conditions are met
-        # do we know that we should raise an exception.
-        if process.returncode != 0 and not stdout:
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
+        if stdout == "" or stdout.isspace():
             raise PowerFatalError(
                 "Unable to retrieve AMT version: %s" % stderr)
-        # Note: we set the encoding to UTF-8 when we initialize `env`.
-        if stdout is not None:
-            stdout = stdout.decode('utf-8')
-        version = stdout.split(
-            'AMT version:')[1].split()[0].split('.')[0]
-        if int(version) > int(8):
-            return 'wsman'
         else:
-            return 'amttool'
+            match = re.search("AMT version:\s*([0-9]+)", stdout)
+            if match is None:
+                raise PowerFatalError(
+                    "Unable to extract AMT version from "
+                    "amttool output: %s" % stdout)
+            else:
+                version = match.group(1)
+                if int(version) > int(8):
+                    return 'wsman'
+                else:
+                    return 'amttool'
 
     def _get_amttool_boot_mode(self, boot_mode):
         """Set amttool boot mode."""
