@@ -122,13 +122,15 @@ class DNSResourceRecordsHandler(OperationsHandler):
                     "name:%s" % domainname, user=request.user,
                     perm=NODE_PERMISSION.VIEW)
             data['domain'] = domain.id
-        form = DNSResourceForm(data=request.data)
-        if form.is_valid():
-            form.save()
-        else:
-            raise MAASAPIValidationError(form.errors)
-        # Fetch the (possibly just created) dnsresource.
-        dnsrr = DNSResource.objects.get(name=name, domain__id=domain.id).id
+        # Do we already have a DNSResource for this fqdn?
+        dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
+        if not dnsrr.exists():
+            form = DNSResourceForm(data=request.data)
+            if form.is_valid():
+                form.save()
+            else:
+                raise MAASAPIValidationError(form.errors)
+            dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         data['dnsresource'] = dnsrr
         form = DNSDataForm(data=request.data)
         if form.is_valid():

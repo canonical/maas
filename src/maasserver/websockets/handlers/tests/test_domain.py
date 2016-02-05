@@ -27,28 +27,36 @@ class TestDomainHandler(MAASServerTestCase):
             "updated": dehydrate_datetime(domain.updated),
             "created": dehydrate_datetime(domain.created),
             }
+        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        domainname_len = len(domain.name)
+        ip_addresses = [
+            {
+                # strip off the domain name.
+                'hostname': hostname[:-domainname_len - 1],
+                'system_id': info.system_id,
+                'ttl': info.ttl,
+                'ips': info.ips}
+            for hostname, info in ip_map.items()
+        ]
+        rrsets = [
+            {
+                'hostname': hostname,
+                'system_id': info.system_id,
+                'rrsets': info.rrset,
+            }
+            for hostname, info in rr_map.items()
+        ]
+        count = 0
+        for record in ip_addresses:
+            count += len(record['ips'])
+        for record in rrsets:
+            count += len(record['rrsets'])
+        data['resource_count'] = count
         if not for_list:
-            ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-            rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
-            domainname_len = len(domain.name)
             data.update({
-                "ip_addresses": sorted([
-                    {
-                        # strip off the domain name.
-                        'hostname': hostname[:-domainname_len - 1],
-                        'system_id': info.system_id,
-                        'ttl': info.ttl,
-                        'ips': info.ips}
-                    for hostname, info in ip_map.items()
-                ], key=lambda json: json['hostname']),
-                "rrsets": sorted([
-                    {
-                        'hostname': hostname,
-                        'system_id': info.system_id,
-                        'rrsets': info.rrset,
-                    }
-                    for hostname, info in rr_map.items()
-                ], key=lambda json: json['hostname']),
+                "ip_addresses": ip_addresses,
+                "rrsets": rrsets,
             })
         return data
 

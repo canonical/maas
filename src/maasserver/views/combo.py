@@ -60,6 +60,7 @@ MERGE_VIEWS = {
             "js/angular/factories/events.js",
             "js/angular/factories/tags.js",
             "js/angular/factories/subnets.js",
+            "js/angular/factories/domains.js",
             "js/angular/factories/spaces.js",
             "js/angular/factories/vlans.js",
             "js/angular/factories/fabrics.js",
@@ -98,6 +99,7 @@ MERGE_VIEWS = {
             "js/angular/controllers/node_details_storage.js",
             "js/angular/controllers/node_result.js",
             "js/angular/controllers/node_events.js",
+            "js/angular/controllers/domains_list.js",
             "js/angular/controllers/subnets_list.js",
             "js/angular/controllers/subnet_details.js",
         ]

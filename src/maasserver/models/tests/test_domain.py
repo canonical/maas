@@ -20,6 +20,7 @@ from maasserver.models.domain import (
     DEFAULT_DOMAIN_NAME,
     Domain,
 )
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import MatchesStructure
@@ -210,3 +211,68 @@ class DomainTest(MAASServerTestCase):
                 rrtype='SRV', dnsresource__name="_vlmcs._tcp",
                 dnsresource__domain_id=domain.id)
             self.assertEqual("0 0 1688 %s." % target, srvrr.rrdata)
+
+    def render_ipaddresses(self, domain, for_list=False):
+        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        ip_addresses = [
+            {
+                # strip off the domain name.
+                'hostname': hostname[:-len(domain.name) - 1],
+                'system_id': info.system_id,
+                'ttl': info.ttl,
+                'ips': info.ips}
+            for hostname, info in ip_map.items()
+        ]
+        count = 0
+        for record in ip_addresses:
+            count += len(record['ips'])
+        if for_list:
+            ip_addresses = []
+        return (ip_addresses, count)
+
+    def render_rrdata(self, domain, for_list=False):
+        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        rrsets = [
+            {
+                'hostname': hostname,
+                'system_id': info.system_id,
+                'rrsets': info.rrset,
+            }
+            for hostname, info in rr_map.items()
+        ]
+        count = 0
+        for record in rrsets:
+            count += len(record['rrsets'])
+        if for_list:
+            rrsets = []
+        return (rrsets, count)
+
+    def test_render_json_for_related_ips_returns_correct_values(self):
+        domain = factory.make_Domain()
+        factory.make_DNSData(domain=domain)
+        dnsdata = factory.make_DNSData(domain=domain, rrtype='TXT')
+        factory.make_DNSData(dnsresource=dnsdata.dnsresource, rrtype='TXT')
+        factory.make_DNSResource(domain=domain)
+        node = factory.make_Node_with_Interface_on_Subnet(domain=domain)
+        factory.make_DNSResource(name=node.hostname, domain=domain)
+        self.assertItemsEqual(
+            self.render_ipaddresses(domain, for_list=True),
+            domain.render_json_for_related_ips(for_list=True))
+        self.assertItemsEqual(
+            self.render_ipaddresses(domain, for_list=False),
+            domain.render_json_for_related_ips(for_list=False))
+
+    def test_render_json_for_related_rrdata_returns_correct_values(self):
+        domain = factory.make_Domain()
+        factory.make_DNSData(domain=domain)
+        dnsdata = factory.make_DNSData(domain=domain, rrtype='TXT')
+        factory.make_DNSData(dnsresource=dnsdata.dnsresource, rrtype='TXT')
+        factory.make_DNSResource(domain=domain)
+        node = factory.make_Node_with_Interface_on_Subnet(domain=domain)
+        factory.make_DNSResource(name=node.hostname, domain=domain)
+        self.assertItemsEqual(
+            self.render_rrdata(domain, for_list=True),
+            domain.render_json_for_related_rrdata(for_list=True))
+        self.assertItemsEqual(
+            self.render_rrdata(domain, for_list=False),
+            domain.render_json_for_related_rrdata(for_list=False))

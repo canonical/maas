@@ -16,12 +16,7 @@ from maasserver.websockets.handlers.timestampedmodel import (
 class DomainHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = (
-            Domain.objects.all()
-                  .prefetch_related('node_set')
-                  .prefetch_related('dnsresource_set__dnsdata_set')
-                  .prefetch_related('dnsresource_set__staticipaddress_set')
-                  .prefetch_related('node_set__staticipaddress_set'))
+        queryset = Domain.objects.all()
         pk = 'id'
         allowed_methods = ['list', 'get', 'set_active']
         listen_channels = [
@@ -29,7 +24,10 @@ class DomainHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, domain, data, for_list=False):
+        ip_addresses, ipcount = domain.render_json_for_related_ips(for_list)
+        rrsets, rrcount = domain.render_json_for_related_rrdata(for_list)
         if not for_list:
-            data["ip_addresses"] = domain.render_json_for_related_ips()
-            data["rrsets"] = domain.render_json_for_related_rrdata()
+            data["ip_addresses"] = ip_addresses
+            data["rrsets"] = rrsets
+        data["resource_count"] = ipcount + rrcount
         return data

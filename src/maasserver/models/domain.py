@@ -272,36 +272,44 @@ class Domain(CleanSave, TimestampedModel):
         super(Domain, self).clean(*args, **kwargs)
         self.clean_name()
 
-    def render_json_for_related_ips(self):
+    def render_json_for_related_ips(self, for_list=False):
         """Render a representation of this domain's related IP addresses,
-        suitable for converting to JSON."""
+        suitable for converting to JSON.
+
+        :return: (data, address_count)"""
         from maasserver.models import StaticIPAddress
         # Get all of the address mappings.
         ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(self)
         domainname_len = len(self.name)
-        data = [
-            {
-                # strip off the domain name.
-                'hostname': hostname[:-domainname_len - 1],
-                'system_id': info.system_id,
-                'ttl': info.ttl,
-                'ips': info.ips,
-            }
-            for hostname, info in ip_mapping.items()
-        ]
-        return sorted(data, key=lambda json: json['hostname'])
+        data = []
+        count = 0
+        for hostname, info in ip_mapping.items():
+            if not for_list:
+                data.append({
+                    # strip off the domain name.
+                    'hostname': hostname[:-domainname_len - 1],
+                    'system_id': info.system_id,
+                    'ttl': info.ttl,
+                    'ips': info.ips,
+                })
+            count += len(info.ips)
+        return (data, count)
 
-    def render_json_for_related_rrdata(self):
+    def render_json_for_related_rrdata(self, for_list=False):
         """Render a representation of this domain's related non-IP data,
-        suitable for converting to JSON."""
+        suitable for converting to JSON.
+
+        :return: (data, record_count)"""
         from maasserver.models import DNSData
         rr_mapping = DNSData.objects.get_hostname_dnsdata_mapping(self)
-        data = [
-            {
-                'hostname': hostname,
-                'system_id': info.system_id,
-                'rrsets': info.rrset,
-            }
-            for hostname, info in rr_mapping.items()
-        ]
-        return sorted(data, key=lambda json: json['hostname'])
+        data = []
+        count = 0
+        for hostname, info in rr_mapping.items():
+            if not for_list:
+                data.append({
+                    'hostname': hostname,
+                    'system_id': info.system_id,
+                    'rrsets': info.rrset,
+                })
+            count += len(info.rrset)
+        return (data, count)

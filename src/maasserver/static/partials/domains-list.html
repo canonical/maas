@@ -1,0 +1,42 @@
+<header class="page-header margin-bottom" data-maas-sticky-header>
+    <div class="inner-wrapper">
+        <h1 class="page-header__title eight-col">
+            <ng-pluralize data-ng-hide="loading" count="domains.length"
+                          when="{'one': '{$ domains.length $} domain in ', 'other': '{$ domains.length $} domains in '}"></ng-pluralize>
+            {$ $parent.site $} MAAS
+            <span class="page-header__title--identicator" id="bulk-actions">
+                <span class="power-status--power" data-ng-show="loading">
+                    <span class="loader"></span>
+                    Loading...
+                </span>
+            </span>
+        </h1>
+    </div>
+</header>
+<div data-ng-show="!loading">
+    <section class="row">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--70" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</div>
+                            <div class="table__header table__column--15" data-ng-click="predicate='authoritative'; reverse = !reverse"
+                                 data-ng-class="{sort: predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</div>
+                            <div class="table__header table__column--15" data-ng-click="predicate='resource_count'; reverse = !reverse"
+                                 data-ng-class="{sort: predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Resource Count</div>
+                        </div>
+                    </header>
+                    <main class="table-body">
+                        <div class="table__row table__row--no-hover"
+                             data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
+                            <div class="table__data table__column--70">{$ row.name $}</div>
+                            <div class="table__data table__column--15">{$ row.authoritative $}</div>
+                            <div class="table__data table__column--15">{$ row.resource_count $}</div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
