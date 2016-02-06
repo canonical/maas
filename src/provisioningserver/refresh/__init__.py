@@ -55,15 +55,9 @@ def get_os_release():
     return os_release
 
 
-def get_region_url(system_id):
-    """Return the URL for the given system_id using the configured maas_url."""
-    with ClusterConfiguration.open() as config:
-        url = config.maas_url
-
-    return "%s/metadata/status/%s/latest" % (url, system_id)
-
-
-def signal(url, creds, status, message, files={}, script_result=None):
+def signal(
+        url, creds, status, message, files={}, script_result=None,
+        extra_headers=None):
     """Send a node signal to a given maas_url."""
     if isinstance(status, int):
         status = str(status)
@@ -79,6 +73,8 @@ def signal(url, creds, status, message, files={}, script_result=None):
 
     data, headers = encode_multipart_data(params, files)
 
+    if extra_headers is not None:
+        headers.update(extra_headers)
     try:
         payload = geturl(url, creds=creds, headers=headers, data=data)
         if payload != b"OK":
@@ -102,7 +98,10 @@ def refresh(system_id, consumer_key, token_key, token_secret):
     maaslog.info("Refreshing rack controller hardware and networking "
                  "information")
 
-    url = get_region_url(system_id)
+    with ClusterConfiguration.open() as config:
+        url = "%s/metadata/status/%s/latest" % (config.maas_url, system_id)
+        nodegroup_uuid = config.cluster_uuid
+
     creds = {
         'consumer_key': consumer_key,
         'token_key': token_key,
@@ -151,8 +150,13 @@ def refresh(system_id, consumer_key, token_key, token_secret):
     shutil.rmtree(tmpdir)
     fail_count = len(failed_scripts)
     if fail_count == 0:
+        if nodegroup_uuid is not None:
+            extra_headers = {'X-NodeGroup-UUID': nodegroup_uuid}
+        else:
+            extra_headers = None
         signal(
-            url, creds, "OK", "Finished refreshing %s" % system_id)
+            url, creds, "OK", "Finished refreshing %s" % system_id,
+            extra_headers=extra_headers)
     else:
         signal(
             url, creds, "FAILED", "Failed refreshing %s" % system_id)

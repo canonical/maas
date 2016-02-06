@@ -136,9 +136,10 @@ class MachineHandler(NodeHandler):
             "skip_networking",
             "skip_storage",
             "instance_power_parameters",
-            "dns_process",
             "address_ttl",
             "url",
+            "dns_process",
+            "managing_process",
         ]
         list_fields = [
             "system_id",

@@ -227,6 +227,17 @@ class RegionEventLoop:
             self.populateService(name)
 
     @asynchronous
+    def prepare(self):
+        """Perform start_up of the region process."""
+        from maasserver.start_up import start_up
+        return start_up()
+
+    @asynchronous
+    def startMultiService(self, result):
+        """Start the multi service."""
+        self.services.startService()
+
+    @asynchronous
     def start(self):
         """start()
 
@@ -235,7 +246,8 @@ class RegionEventLoop:
         self.populate()
         self.handle = reactor.addSystemEventTrigger(
             'before', 'shutdown', self.services.stopService)
-        return self.services.startService()
+        return self.prepare().addCallback(
+            self.startMultiService)
 
     @asynchronous
     def stop(self):

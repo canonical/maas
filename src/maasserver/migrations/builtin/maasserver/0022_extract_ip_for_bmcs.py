@@ -96,7 +96,7 @@ def create_staticipaddresses_for_bmcs(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0020_nodegroupinterface_to_iprange'),
+        ('maasserver', '0021_nodegroupinterface_to_iprange'),
     ]
 
     operations = [

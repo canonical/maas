@@ -31,7 +31,11 @@ def register_procedure(procedure):
 
 def register_trigger(table, procedure, event, params=None, when="after"):
     """Register `trigger` on `table` if it doesn't exist."""
-    trigger_name = "%s_%s" % (table, procedure)
+    # Strip the "maasserver_" off the front of the table name.
+    table_name = table
+    if table.startswith("maasserver_"):
+        table_name = table_name[11:]
+    trigger_name = "%s_%s" % (table_name, procedure)
     if params is not None:
         filter = 'WHEN (' + ''.join(
             [

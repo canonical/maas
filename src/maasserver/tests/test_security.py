@@ -13,8 +13,10 @@ from os import unlink
 from fixtures import EnvironmentVariableFixture
 from maasserver import security
 from maasserver.models.config import Config
-from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.djangotestcase import DjangoTransactionTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.fs import write_text_file
@@ -101,7 +103,7 @@ is_valid_secret = MatchesAll(
         len, MatchesAny(Equals(16), GreaterThan(16))))
 
 
-class TestGetSharedSecret(DjangoTransactionTestCase):
+class TestGetSharedSecret(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestGetSharedSecret, self).setUp()
@@ -155,5 +157,5 @@ class TestGetSharedSecret(DjangoTransactionTestCase):
         # runs in a separate thread. However, Django thinks that transaction
         # management means AUTOCOMMIT, which spares us this diabolical chore.
         # This is not unique to this test method; it comes from using Django's
-        # DjangoTransactionTestCase, which also has a misleading name.
+        # MAASTransactionServerTestCase, which also has a misleading name.
         self.assertEqual(b"foo", security.get_shared_secret())

@@ -27,7 +27,7 @@ bin/maas-provision config \
 until bin/maas-provision check-for-shared-secret; do sleep 2; done
 
 # Exec the Provisioning Server.
-script="$(readlink -f bin/twistd.cluster)"
+script="$(readlink -f bin/twistd.rack)"
 
 exec $(command -v authbind && echo --deep) \
     "${script}" --nodaemon --pidfile="" maas-rackd

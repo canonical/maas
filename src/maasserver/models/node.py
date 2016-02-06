@@ -717,6 +717,12 @@ class Node(CleanSave, TimestampedModel):
         "RegionControllerProcess", null=True, editable=False, unique=True,
         related_name="+")
 
+    # Used only by a RackController to mark which RegionControllerProcess is
+    # handling system level events for this rack controller.
+    managing_process = ForeignKey(
+        "RegionControllerProcess", null=True, editable=False,
+        related_name="+")
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default

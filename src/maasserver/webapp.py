@@ -25,8 +25,14 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
 )
 from twisted.application.internet import StreamServerEndpointService
-from twisted.internet import reactor
-from twisted.python import log
+from twisted.internet import (
+    defer,
+    reactor,
+)
+from twisted.python import (
+    failure,
+    log,
+)
 from twisted.web.resource import (
     ErrorPage,
     Resource,
@@ -128,20 +134,17 @@ class WebApplicationService(StreamServerEndpointService):
             reactor.threadpoolForDatabase, concurrency.webapp)
 
     def prepareApplication(self):
-        """Perform start-up tasks and return the WSGI application.
+        """Return the WSGI application.
 
         If we run servers on multiple endpoints this ought to be extracted
         into a separate function, so that each server uses the same
         application.
         """
-        from maasserver.start_up import start_up
-        return start_up().addCallback(
-            lambda _: WebApplicationHandler())
+        return WebApplicationHandler()
 
-    def startWebsocket(self, application):
+    def startWebsocket(self):
         """Start the websocket factory for the `WebSocketsResource`."""
         self.websocket.startFactory()
-        return application
 
     def installApplication(self, application):
         """Install the WSGI application into the Twisted site.
@@ -171,11 +174,13 @@ class WebApplicationService(StreamServerEndpointService):
 
     def startApplication(self):
         """Start the Django application, and install it."""
-        d = self.prepareApplication()
-        d.addCallback(self.startWebsocket)
-        d.addCallback(self.installApplication)
-        d.addErrback(self.installFailed)
-        return d
+        try:
+            application = self.prepareApplication()
+            self.startWebsocket()
+            self.installApplication(application)
+        except:
+            self.installFailed(failure.Failure())
+        return defer.succeed(None)
 
     @asynchronous(timeout=30)
     def startService(self):

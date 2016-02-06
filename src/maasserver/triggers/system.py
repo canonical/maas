@@ -27,6 +27,240 @@ from maasserver.utils.orm import transactional
 # because the asynchronous nature of the PG events makes it easier to seperate
 # the tests.
 
+# Helper that returns the number of rack controllers that region process is
+# currently managing.
+CORE_GET_MANAGING_COUNT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_get_managing_count(
+      process maasserver_regioncontrollerprocess)
+    RETURNS integer as $$
+    BEGIN
+      RETURN (SELECT count(*)
+        FROM maasserver_node
+        WHERE maasserver_node.managing_process_id = process.id);
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Helper that returns the total number of RPC connections for the
+# rack controller.
+CORE_GET_NUMBER_OF_CONN = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_get_num_conn(rack maasserver_node)
+    RETURNS integer as $$
+    BEGIN
+      RETURN (
+        SELECT count(*)
+        FROM
+          maasserver_regionrackrpcconnection AS connection
+        WHERE connection.rack_controller_id = rack.id);
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Helper that returns the total number of region processes.
+CORE_GET_NUMBER_OF_PROCESSES = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_get_num_processes()
+    RETURNS integer as $$
+    BEGIN
+      RETURN (
+        SELECT count(*) FROM maasserver_regioncontrollerprocess);
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Helper that picks a new region process that can manage the given
+# rack controller.
+CORE_PICK_NEW_REGION = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_pick_new_region(rack maasserver_node)
+    RETURNS maasserver_regioncontrollerprocess as $$
+    DECLARE
+      selected_managing integer;
+      number_managing integer;
+      selected_process maasserver_regioncontrollerprocess;
+      process maasserver_regioncontrollerprocess;
+    BEGIN
+      -- Get best region controller that can manage this rack controller.
+      -- This is identified by picking a region controller process that
+      -- at least has a connection to the rack controller and managing the
+      -- least number of rack controllers.
+      FOR process IN (
+        SELECT DISTINCT ON (maasserver_regioncontrollerprocess.id)
+          maasserver_regioncontrollerprocess.*
+        FROM
+          maasserver_regioncontrollerprocess,
+          maasserver_regioncontrollerprocessendpoint,
+          maasserver_regionrackrpcconnection
+        WHERE maasserver_regionrackrpcconnection.rack_controller_id = rack.id
+          AND maasserver_regionrackrpcconnection.endpoint_id =
+            maasserver_regioncontrollerprocessendpoint.id
+          AND maasserver_regioncontrollerprocessendpoint.process_id =
+            maasserver_regioncontrollerprocess.id)
+      LOOP
+        IF selected_process IS NULL THEN
+          -- First time through the loop so set the default.
+          selected_process = process;
+          selected_managing = sys_core_get_managing_count(process);
+        ELSE
+          -- See if the current process is managing less then the currently
+          -- selected process.
+          number_managing = sys_core_get_managing_count(process);
+          IF number_managing = 0 THEN
+            -- This process is managing zero so its the best, so we exit the
+            -- loop now to return the selected.
+            selected_process = process;
+            EXIT;
+          ELSIF number_managing < selected_managing THEN
+            -- Managing less than the currently selected; select this process
+            -- instead.
+            selected_process = process;
+            selected_managing = number_managing;
+          END IF;
+        END IF;
+      END LOOP;
+      RETURN selected_process;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Helper that picks and sets a new region process to manage this rack
+# controller.
+CORE_SET_NEW_REGION = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_set_new_region(rack maasserver_node)
+    RETURNS void as $$
+    DECLARE
+      region_process maasserver_regioncontrollerprocess;
+    BEGIN
+      -- Pick the new region process to manage this rack controller.
+      region_process = sys_core_pick_new_region(rack);
+
+      -- Update the rack controller and alert the region controller.
+      UPDATE maasserver_node SET managing_process_id = region_process.id
+      WHERE maasserver_node.id = rack.id;
+      PERFORM pg_notify(
+        CONCAT('sys_core_', region_process.id),
+        CONCAT('watch_', CAST(rack.system_id AS text)));
+      RETURN;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Triggered when a new region <-> rack RPC connection is made. This provides
+# the logic to select the region controller that should manage this rack
+# controller. Balancing of managed rack controllers is also done by this
+# trigger.
+CORE_REGIONRACKRPCONNECTION_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_rpc_insert()
+    RETURNS trigger as $$
+    DECLARE
+      rack_controller maasserver_node;
+      region_process maasserver_regioncontrollerprocess;
+    BEGIN
+      -- New connection from region <-> rack, check that the rack controller
+      -- has a managing region controller.
+      SELECT maasserver_node.* INTO rack_controller
+      FROM maasserver_node
+      WHERE maasserver_node.id = NEW.rack_controller_id;
+
+      IF rack_controller.managing_process_id IS NULL THEN
+        -- No managing region process for this rack controller.
+        PERFORM sys_core_set_new_region(rack_controller);
+      ELSE
+        -- Currently managed check that the managing process is not dead.
+        SELECT maasserver_regioncontrollerprocess.* INTO region_process
+        FROM maasserver_regioncontrollerprocess
+        WHERE maasserver_regioncontrollerprocess.id =
+          rack_controller.managing_process_id;
+        IF EXTRACT(EPOCH FROM region_process.updated) -
+          EXTRACT(EPOCH FROM now()) > 90 THEN
+          -- Region controller process is dead. A new region process needs to
+          -- be selected for this rack controller.
+          UPDATE maasserver_node SET managing_process_id = NULL
+          WHERE maasserver_node.id = NEW.rack_controller_id;
+          NEW.rack_controller_id = NULL;
+          PERFORM sys_core_set_new_region(rack_controller);
+        ELSE
+          -- Currently being managed but lets see if we can re-balance the
+          -- managing processes better. We only do the re-balance once the
+          -- rack controller is connected to more than half of the running
+          -- processes.
+          IF sys_core_get_num_conn(rack_controller) /
+            sys_core_get_num_processes() > 0.5 THEN
+            -- Pick a new region process for this rack controller. Only update
+            -- and perform the notification if the selection is different.
+            region_process = sys_core_pick_new_region(rack_controller);
+            IF region_process.id != rack_controller.managing_process_id THEN
+              -- Alter the old process that its no longer responsable for
+              -- this rack controller.
+              PERFORM pg_notify(
+                CONCAT('sys_core_', rack_controller.managing_process_id),
+                CONCAT('unwatch_', CAST(rack_controller.system_id AS text)));
+              -- Update the rack controller and alert the region controller.
+              UPDATE maasserver_node
+              SET managing_process_id = region_process.id
+              WHERE maasserver_node.id = rack_controller.id;
+              PERFORM pg_notify(
+                CONCAT('sys_core_', region_process.id),
+                CONCAT('watch_', CAST(rack_controller.system_id AS text)));
+            END IF;
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Triggered when a region <-> rack connection is delete. When the managing
+# region process is the one that loses its connection it will find a
+# new region process to manage the rack controller.
+CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_core_rpc_delete()
+    RETURNS trigger as $$
+    DECLARE
+      rack_controller maasserver_node;
+      region_process maasserver_regioncontrollerprocess;
+    BEGIN
+      -- Connection from region <-> rack, has been removed. If that region
+      -- process was managing that rack controller then a new one needs to
+      -- be selected.
+      SELECT maasserver_node.* INTO rack_controller
+      FROM maasserver_node
+      WHERE maasserver_node.id = OLD.rack_controller_id;
+
+      -- Get the region process from the endpoint.
+      SELECT
+        process.* INTO region_process
+      FROM
+        maasserver_regioncontrollerprocess AS process,
+        maasserver_regioncontrollerprocessendpoint AS endpoint
+      WHERE process.id = endpoint.process_id
+        AND endpoint.id = OLD.endpoint_id;
+
+      -- Only perform an action if processes equal.
+      IF rack_controller.managing_process_id = region_process.id THEN
+        -- Region process was managing this rack controller. Tell it to stop
+        -- watching the rack controller.
+        PERFORM pg_notify(
+          CONCAT('sys_core_', region_process.id),
+          CONCAT('unwatch_', CAST(rack_controller.system_id AS text)));
+
+        -- Pick a new region process for this rack controller.
+        region_process = sys_core_pick_new_region(rack_controller);
+
+        -- Update the rack controller and inform the new process.
+        UPDATE maasserver_node
+        SET managing_process_id = region_process.id
+        WHERE maasserver_node.id = rack_controller.id;
+        IF region_process.id IS NOT NULL THEN
+          PERFORM pg_notify(
+            CONCAT('sys_core_', region_process.id),
+            CONCAT('watch_', CAST(rack_controller.system_id AS text)));
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
 # Triggered when the VLAN is modified. When DHCP is turned off/on it will alert
 # the primary/secondary rack controller to update. If the primary rack or
 # secondary rack is changed it will alert the previous and new rack controller.
@@ -390,19 +624,39 @@ DHCP_NODE_UPDATE = dedent("""\
 @transactional
 def register_system_triggers():
     """Register all system triggers into the database."""
+    # Core
+    register_procedure(CORE_GET_MANAGING_COUNT)
+    register_procedure(CORE_GET_NUMBER_OF_CONN)
+    register_procedure(CORE_GET_NUMBER_OF_PROCESSES)
+    register_procedure(CORE_PICK_NEW_REGION)
+    register_procedure(CORE_SET_NEW_REGION)
+
+    # RegionRackRPCConnection
+    register_procedure(CORE_REGIONRACKRPCONNECTION_INSERT)
+    register_trigger(
+        "maasserver_regionrackrpcconnection",
+        "sys_core_rpc_insert",
+        "insert")
+    register_procedure(CORE_REGIONRACKRPCONNECTION_DELETE)
+    register_trigger(
+        "maasserver_regionrackrpcconnection",
+        "sys_core_rpc_delete",
+        "delete")
+
+    # DHCP
     register_procedure(DHCP_ALERT)
 
-    # VLAN
+    ## VLAN
     register_procedure(DHCP_VLAN_UPDATE)
     register_trigger("maasserver_vlan", "sys_dhcp_vlan_update", "update")
 
-    # Subnet
+    ## Subnet
     register_procedure(DHCP_SUBNET_UPDATE)
     register_trigger("maasserver_subnet", "sys_dhcp_subnet_update", "update")
     register_procedure(DHCP_SUBNET_DELETE)
     register_trigger("maasserver_subnet", "sys_dhcp_subnet_delete", "delete")
 
-    # IPRange
+    ## IPRange
     register_procedure(DHCP_IPRANGE_INSERT)
     register_trigger("maasserver_iprange", "sys_dhcp_iprange_insert", "insert")
     register_procedure(DHCP_IPRANGE_UPDATE)
@@ -410,7 +664,7 @@ def register_system_triggers():
     register_procedure(DHCP_IPRANGE_DELETE)
     register_trigger("maasserver_iprange", "sys_dhcp_iprange_delete", "delete")
 
-    # StaticIPAddress
+    ## StaticIPAddress
     register_procedure(DHCP_STATICIPADDRESS_INSERT)
     register_trigger(
         "maasserver_staticipaddress",
@@ -427,14 +681,14 @@ def register_system_triggers():
         "sys_dhcp_staticipaddress_delete",
         "delete")
 
-    # Interface
+    ## Interface
     register_procedure(DHCP_INTERFACE_UPDATE)
     register_trigger(
         "maasserver_interface",
         "sys_dhcp_interface_update",
         "update")
 
-    # Node
+    ## Node
     register_procedure(DHCP_NODE_UPDATE)
     register_trigger(
         "maasserver_node",

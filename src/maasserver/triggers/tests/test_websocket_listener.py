@@ -15,10 +15,10 @@ from maasserver.enum import (
 )
 from maasserver.listener import PostgresListenerService
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.tests.helper import TransactionalHelpersMixin
 from maasserver.triggers.websocket import register_websocket_triggers
 from maasserver.utils.threads import deferToDatabase
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet.defer import inlineCallbacks
 
@@ -26,7 +26,8 @@ from twisted.internet.defer import inlineCallbacks
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+class TestNodeListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers code."""
 
     scenarios = (
@@ -92,7 +93,7 @@ class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
 
 
 class TestDeviceWithParentListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers code."""
 
     @wait_for_reactor
@@ -151,7 +152,8 @@ class TestDeviceWithParentListener(
             yield listener.stopService()
 
 
-class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+class TestZoneListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the zone
     triggers code."""
 
@@ -207,7 +209,8 @@ class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield listener.stopService()
 
 
-class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+class TestTagListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the tag
     triggers code."""
 
@@ -264,7 +267,7 @@ class TestTagListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
 
 
 class TestNodeTagListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_node_tags table."""
 
@@ -337,7 +340,7 @@ class TestNodeTagListener(
 
 
 class TestDeviceWithParentTagListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_node_tags table."""
 
@@ -398,7 +401,8 @@ class TestDeviceWithParentTagListener(
             yield listener.stopService()
 
 
-class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+class TestUserListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the user
     triggers code."""
 
@@ -454,7 +458,8 @@ class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
             yield listener.stopService()
 
 
-class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+class TestEventListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the event
     triggers code."""
 
@@ -511,7 +516,7 @@ class TestEventListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
 
 
 class TestNodeEventListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_event table that notifies its node."""
 
@@ -545,7 +550,7 @@ class TestNodeEventListener(
 
 
 class TestDeviceWithParentEventListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_event table that notifies its node."""
 
@@ -568,7 +573,7 @@ class TestDeviceWithParentEventListener(
 
 
 class TestNodeStaticIPAddressListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_interfacestaticipaddresslink table that notifies its node."""
 
@@ -626,7 +631,7 @@ class TestNodeStaticIPAddressListener(
 
 
 class TestDeviceWithParentStaticIPAddressListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_interfacestaticipaddresslink table that notifies its node."""
 
@@ -675,7 +680,7 @@ class TestDeviceWithParentStaticIPAddressListener(
 
 
 class TestNodeNodeResultListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     metadataserver_noderesult table that notifies its node."""
 
@@ -727,7 +732,7 @@ class TestNodeNodeResultListener(
 
 
 class TestDeviceWithParentNodeResultListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     metadataserver_noderesult table that notifies its node."""
 
@@ -769,7 +774,7 @@ class TestDeviceWithParentNodeResultListener(
 
 
 class TestNodeInterfaceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_interface table that notifies its node."""
 
@@ -875,7 +880,7 @@ class TestNodeInterfaceListener(
 
 
 class TestDeviceWithParentInterfaceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_interface table that notifies its node."""
 
@@ -972,7 +977,7 @@ class TestDeviceWithParentInterfaceListener(
 
 
 class TestFabricListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
 
@@ -1029,7 +1034,7 @@ class TestFabricListener(
 
 
 class TestVLANListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
 
@@ -1089,7 +1094,7 @@ class TestVLANListener(
 
 
 class TestSubnetListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
 
@@ -1146,7 +1151,7 @@ class TestSubnetListener(
 
 
 class TestSpaceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
 
@@ -1203,7 +1208,7 @@ class TestSpaceListener(
 
 
 class TestNodeNetworkListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_fabric, maasserver_space, maasserver_subnet, and
     maasserver_vlan tables that notifies affected nodes."""
@@ -1347,7 +1352,7 @@ class TestNodeNetworkListener(
 
 
 class TestDeviceWithParentNetworkListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_fabric, maasserver_space, maasserver_subnet, and
     maasserver_vlan tables that notifies affected nodes."""
@@ -1485,7 +1490,7 @@ class TestDeviceWithParentNetworkListener(
 
 
 class TestStaticIPAddressSubnetListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_staticipaddress tables that notifies affected subnets."""
 
@@ -1555,7 +1560,7 @@ class TestStaticIPAddressSubnetListener(
 
 
 class TestMachineBlockDeviceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_blockdevice, maasserver_physicalblockdevice, and
     maasserver_virtualblockdevice tables that notifies its machine."""
@@ -1670,7 +1675,7 @@ class TestMachineBlockDeviceListener(
 
 
 class TestMachinePartitionTableListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_partitiontable tables that notifies its machine."""
 
@@ -1742,7 +1747,7 @@ class TestMachinePartitionTableListener(
 
 
 class TestMachinePartitionListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_partition tables that notifies its machine."""
 
@@ -1815,7 +1820,7 @@ class TestMachinePartitionListener(
 
 
 class TestMachineFilesystemListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_filesystem tables that notifies its machine."""
 
@@ -1892,7 +1897,7 @@ class TestMachineFilesystemListener(
 
 
 class TestMachineFilesystemgroupListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_filesystemgroup tables that notifies its machine."""
 
@@ -1969,7 +1974,7 @@ class TestMachineFilesystemgroupListener(
 
 
 class TestMachineCachesetListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the triggers on
     maasserver_cacheset tables that notifies its machine."""
 
@@ -2046,7 +2051,7 @@ class TestMachineCachesetListener(
 
 
 class TestUserSSHKeyListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the maasserver_sshkey
     table that notifies its user."""
 
@@ -2087,7 +2092,7 @@ class TestUserSSHKeyListener(
 
 
 class TestUserSSLKeyListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the maasserver_sslkey
     table that notifies its user."""
 

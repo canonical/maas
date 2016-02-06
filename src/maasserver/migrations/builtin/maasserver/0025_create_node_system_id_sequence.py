@@ -32,7 +32,7 @@ sequence_drop = (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0023_remove_nodegroupinterface'),
+        ('maasserver', '0024_remove_nodegroupinterface'),
     ]
 
     operations = [

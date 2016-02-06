@@ -132,15 +132,13 @@ class TestClusterProtocol_Identify(MAASTestCase):
         responder = protocol.locateResponder(cluster.Identify.commandName)
         self.assertIsNotNone(responder)
 
-    def test_identify_reports_cluster_uuid(self):
-        example_uuid = factory.make_UUID()
-        self.useFixture(ClusterConfigurationFixture(
-            cluster_uuid=example_uuid))
-
+    def test_identify_reports_system_id(self):
+        system_id = factory.make_name("id")
+        self.patch(clusterservice, "get_maas_id").return_value = system_id
         d = call_responder(Cluster(), cluster.Identify, {})
 
         def check(response):
-            self.assertEqual({"ident": example_uuid}, response)
+            self.assertEqual({"ident": system_id}, response)
         return d.addCallback(check)
 
 
@@ -807,6 +805,19 @@ class TestClusterClient(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture(
             maas_url=factory.make_simple_http_url(),
             cluster_uuid=factory.make_UUID()))
+        self.maas_id = None
+
+        def set_maas_id(maas_id):
+            self.maas_id = maas_id
+
+        self.set_maas_id = self.patch(clusterservice, "set_maas_id")
+        self.set_maas_id.side_effect = set_maas_id
+
+        def get_maas_id():
+            return self.maas_id
+
+        self.get_maas_id = self.patch(clusterservice, "get_maas_id")
+        self.get_maas_id.side_effect = get_maas_id
 
     def make_running_client(self):
         client = clusterservice.ClusterClient(
@@ -1221,7 +1232,7 @@ class TestClusterClient(MAASTestCase):
         yield getRegionClient()
         self.assertThat(
             protocol.RegisterRackController, MockCalledOnceWith(
-                protocol, system_id=None, hostname=hostname,
+                protocol, system_id='', hostname=hostname,
                 mac_addresses=mac_addresses, url=urlparse(maas_url)))
 
 

@@ -656,7 +656,7 @@ class TestClusterConfiguration(MAASTestCase):
 
     def test_default_cluster_uuid(self):
         config = ClusterConfiguration({})
-        self.assertEqual("** UUID NOT SET **", config.cluster_uuid)
+        self.assertIsNone(config.cluster_uuid)
 
     def test_set_and_get_cluster_uuid(self):
         example_uuid = uuid4()

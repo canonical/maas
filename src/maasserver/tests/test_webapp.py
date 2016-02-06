@@ -13,7 +13,6 @@ from django.core.handlers.wsgi import WSGIHandler
 from lxml import html
 from maasserver import (
     eventloop,
-    start_up,
     webapp,
 )
 from maasserver.testing.listener import FakePostgresListenerService
@@ -33,10 +32,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.web.resource import Resource
 from twisted.web.server import Site
@@ -142,23 +138,16 @@ class TestWebApplicationService(MAASTestCase):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
-        # start_up() isn't safe to call right now, but we only really care
-        # that it is called.
-        self.patch_autospec(start_up, "start_up")
-        start_up.start_up.return_value = defer.succeed(None)
-
         service.startService()
 
         self.assertTrue(service.running)
-        self.assertThat(start_up.start_up, MockCalledOnceWith())
 
     def test__error_when_starting_is_logged(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
-        start_up_error = factory.make_exception()
-        self.patch_autospec(start_up, "start_up")
-        start_up.start_up.return_value = defer.fail(start_up_error)
+        mock_prepare = self.patch_autospec(service, "prepareApplication")
+        mock_prepare.side_effect = factory.make_exception()
 
         # The failure is logged.
         with TwistedLoggerFixture() as logger:
@@ -179,11 +168,8 @@ class TestWebApplicationService(MAASTestCase):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
-        # start_up() isn't safe to call right now, but we only really care
-        # that it is called.
-        start_up_error = factory.make_exception()
-        self.patch_autospec(start_up, "start_up")
-        start_up.start_up.return_value = defer.fail(start_up_error)
+        mock_prepare = self.patch_autospec(service, "prepareApplication")
+        mock_prepare.side_effect = factory.make_exception()
 
         # No error is returned.
         service.startService()
@@ -210,8 +196,6 @@ class TestWebApplicationService(MAASTestCase):
     def test__successful_start_installs_wsgi_resource(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
-        self.patch_autospec(start_up, "start_up")
-        start_up.start_up.return_value = defer.succeed(None)
 
         service.startService()
 
@@ -225,8 +209,6 @@ class TestWebApplicationService(MAASTestCase):
 
     def test__stopService_stops_the_service(self):
         service = self.make_webapp()
-        self.patch_autospec(start_up, "start_up")
-        start_up.start_up.return_value = defer.succeed(None)
 
         with TwistedLoggerFixture() as logger:
             service.startService()

@@ -13,7 +13,7 @@ import maasserver.models.node
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0021_extract_ip_for_bmcs'),
+        ('maasserver', '0022_extract_ip_for_bmcs'),
     ]
 
     operations = [

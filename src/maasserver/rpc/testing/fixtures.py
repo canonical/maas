@@ -15,6 +15,7 @@ from os import (
     path,
     urandom,
 )
+from urllib.parse import urlparse
 from warnings import warn
 
 from crochet import run_in_reactor
@@ -24,7 +25,10 @@ from maasserver import (
     security,
 )
 from maasserver.models.node import RackController
-from maasserver.rpc import getClientFor
+from maasserver.rpc import (
+    getClientFor,
+    rackcontrollers,
+)
 from maasserver.rpc.regionservice import RegionServer
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -33,6 +37,7 @@ from maasserver.testing.eventloop import (
 from provisioningserver.rpc import (
     cluster,
     clusterservice,
+    region,
 )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
@@ -301,7 +306,8 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         self.start()
 
     @asynchronous
-    def addCluster(self, protocol):
+    @defer.inlineCallbacks
+    def addCluster(self, protocol, rack_controller):
         """Add a new stub cluster using the given `protocol`.
 
         The `protocol` should be an instance of `amp.AMP`.
@@ -310,37 +316,52 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             instance.
         """
         endpoint = endpoints.UNIXClientEndpoint(reactor, self.sockfile)
-        return endpoints.connectProtocol(endpoint, protocol)
+        protocol = yield endpoints.connectProtocol(endpoint, protocol)
+
+        # Mock the registration into the database, as the rack controller is
+        # already created. We reset this once registration is complete so not
+        # to interfer with other tests.
+        original_func = rackcontrollers.register_rackcontroller
+        rackcontrollers.register_rackcontroller = (
+            lambda *args, **kwargs: rack_controller)
+
+        # Register the rack controller with the region.
+        try:
+            yield protocol.callRemote(
+                region.RegisterRackController,
+                system_id=rack_controller.system_id,
+                hostname=rack_controller.hostname, mac_addresses=[],
+                url=urlparse(""))
+        finally:
+            # Restore the original function.
+            rackcontrollers.register_rackcontroller = original_func
+
+        defer.returnValue(protocol)
 
     @synchronous
-    def makeCluster(self, controller, *commands):
+    def makeCluster(self, rack_controller, *commands):
         """Make and add a new stub cluster connection with the `commands`.
 
         See `make_amp_protocol_factory` for details.
 
-        Note that if the ``Identify`` call is not amongst `commands`, it will
-        be added. In addition, its return value is also set to return the UUID
-        of `controller`. There's a good reason: the first thing that
-        `RegionServer` does when a connection is made is call `Identify`. This
-        has to succeed or the connection will never been added to the RPC
-        service's list of connections.
+        Note that if the ``Authenticate`` call is not amongst `commands`,
+        it will be added. In addition, its action is to call
+        ``RegisterRackController`` so the connction is fully made and the
+        connection wil be added to the RPC service's list of connections.
 
         :return: The protocol instance created.
         """
-        if cluster.Identify not in commands:
-            commands = commands + (cluster.Identify,)
         if cluster.Authenticate not in commands:
             commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
-        ident_response = {"ident": controller.system_id}
-        protocol.Identify.side_effect = (
-            lambda protocol: defer.succeed(ident_response.copy()))
+
         protocol.Authenticate.side_effect = (
             lambda _, message: authenticate_with_secret(self.secret, message))
-        self.addCluster(protocol).wait(10)
-        # The connection is now established, but there is a brief handshake
-        # that takes place immediately upon connection.  We wait for that to
-        # finish before returning.
-        getClientFor(controller.system_id, timeout=5)
+        self.addCluster(
+            protocol, rack_controller).wait(5)
+        # The connection is now established, but there is a brief
+        # handshake that takes place immediately upon connection.  We
+        # wait for that to finish before returning.
+        getClientFor(rack_controller.system_id, timeout=5)
         return protocol

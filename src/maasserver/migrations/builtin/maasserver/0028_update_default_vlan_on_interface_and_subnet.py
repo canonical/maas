@@ -13,7 +13,7 @@ import maasserver.models.subnet
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0026_replace_static_range_with_admin_reserved_ranges'),
+        ('maasserver', '0027_replace_static_range_with_admin_reserved_ranges'),
     ]
 
     operations = [

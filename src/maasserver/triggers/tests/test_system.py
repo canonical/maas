@@ -18,24 +18,25 @@ class TestTriggers(MAASServerTestCase):
     def test_register_system_triggers(self):
         register_system_triggers()
         triggers = [
-            "maasserver_vlan_sys_dhcp_vlan_update",
-            "maasserver_subnet_sys_dhcp_subnet_update",
-            "maasserver_subnet_sys_dhcp_subnet_delete",
-            "maasserver_iprange_sys_dhcp_iprange_insert",
-            "maasserver_iprange_sys_dhcp_iprange_update",
-            "maasserver_iprange_sys_dhcp_iprange_delete",
-            "maasserver_staticipaddress_sys_dhcp_staticipaddress_insert",
-            "maasserver_staticipaddress_sys_dhcp_staticipaddress_update",
-            "maasserver_staticipaddress_sys_dhcp_staticipaddress_delete",
-            "maasserver_interface_sys_dhcp_interface_update",
-            "maasserver_node_sys_dhcp_node_update",
+            "regionrackrpcconnection_sys_core_rpc_insert",
+            "regionrackrpcconnection_sys_core_rpc_delete",
+            "vlan_sys_dhcp_vlan_update",
+            "subnet_sys_dhcp_subnet_update",
+            "subnet_sys_dhcp_subnet_delete",
+            "iprange_sys_dhcp_iprange_insert",
+            "iprange_sys_dhcp_iprange_update",
+            "iprange_sys_dhcp_iprange_delete",
+            "staticipaddress_sys_dhcp_staticipaddress_insert",
+            "staticipaddress_sys_dhcp_staticipaddress_update",
+            "staticipaddress_sys_dhcp_staticipaddress_delete",
+            "interface_sys_dhcp_interface_update",
+            "node_sys_dhcp_node_update",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "SELECT tgname::text FROM pg_trigger WHERE "
-                "tgname::text = ANY(%s) "
-                "OR tgname::text SIMILAR TO 'maasserver.*'" % sql, args)
+                "tgname::text = ANY(%s)" % sql, args)
             db_triggers = cursor.fetchall()
 
         # Note: if this test fails, a trigger may have been added, but not

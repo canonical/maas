@@ -70,7 +70,6 @@ from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,
 )
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -456,7 +455,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         self.assertIsInstance(response, StreamingHttpResponse)
 
 
-class TestConnectionWrapper(DjangoTransactionTestCase):
+class TestConnectionWrapper(MAASTransactionServerTestCase):
     """Tests the use of StreamingHttpResponse(ConnectionWrapper(stream)).
 
     We do not run this inside of `MAASServerTestCase` as that wraps a
@@ -847,10 +846,10 @@ class TestBootResourceStore(MAASServerTestCase):
         self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
 
 
-class TestBootResourceTransactional(DjangoTransactionTestCase):
+class TestBootResourceTransactional(MAASTransactionServerTestCase):
     """Test methods on `BootResourceStore` that manage their own transactions.
 
-    This is done using `DjangoTransactionTestCase` so the database is
+    This is done using `MAASTransactionServerTestCase` so the database is
     flushed after each test run.
     """
 

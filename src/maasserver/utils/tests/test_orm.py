@@ -24,6 +24,7 @@ from django.db.utils import OperationalError
 from maasserver.models import Node
 from maasserver.testing.testcase import (
     MAASServerTestCase,
+    MAASTransactionServerTestCase,
     SerializationFailureTestCase,
 )
 from maasserver.utils import orm
@@ -51,7 +52,6 @@ from maasserver.utils.orm import (
     TotallyDisconnected,
     validate_in_transaction,
 )
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.doubles import StubContext
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -531,7 +531,7 @@ class TestPostCommitDo(MAASTestCase):
         self.assertRaises(AssertionError, post_commit_do, sentinel.hook)
 
 
-class TestConnected(DjangoTransactionTestCase):
+class TestConnected(MAASTransactionServerTestCase):
     """Tests for the `orm.connected` context manager."""
 
     def test__ensures_connection(self):
@@ -556,7 +556,7 @@ class TestConnected(DjangoTransactionTestCase):
         self.assertThat(connection.connection, Is(preexisting_connection))
 
 
-class TestWithConnection(DjangoTransactionTestCase):
+class TestWithConnection(MAASTransactionServerTestCase):
     """Tests for the `orm.with_connection` decorator."""
 
     def test__exposes_original_function(self):
@@ -580,7 +580,7 @@ class TestWithConnection(DjangoTransactionTestCase):
         self.assertTrue(context.used)
 
 
-class TestTransactional(DjangoTransactionTestCase):
+class TestTransactional(MAASTransactionServerTestCase):
 
     def test__exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
@@ -718,7 +718,7 @@ class TestTransactionalRetries(SerializationFailureTestCase):
         self.assertThat(reset, MockCallsMatch(*expected_reset_calls))
 
 
-class TestSavepoint(DjangoTransactionTestCase):
+class TestSavepoint(MAASTransactionServerTestCase):
     """Tests for `savepoint`."""
 
     def test__crashes_if_not_already_within_transaction(self):
@@ -738,7 +738,7 @@ class TestSavepoint(DjangoTransactionTestCase):
             self.expectThat(connection.savepoint_ids, HasLength(0))
 
 
-class TestInTransaction(DjangoTransactionTestCase):
+class TestInTransaction(MAASTransactionServerTestCase):
     """Tests for `in_transaction`."""
 
     def test__true_within_atomic_block(self):
@@ -749,7 +749,7 @@ class TestInTransaction(DjangoTransactionTestCase):
         self.assertFalse(in_transaction())
 
 
-class TestValidateInTransaction(DjangoTransactionTestCase):
+class TestValidateInTransaction(MAASTransactionServerTestCase):
     """Tests for `validate_in_transaction`."""
 
     def test__does_nothing_within_atomic_block(self):
@@ -781,7 +781,7 @@ class TestPsqlArray(MAASTestCase):
             ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer"))
 
 
-class TestDisablingDatabaseConnections(DjangoTransactionTestCase):
+class TestDisablingDatabaseConnections(MAASTransactionServerTestCase):
 
     def assertConnectionsEnabled(self):
         for alias in connections:
@@ -824,7 +824,7 @@ class TestDisablingDatabaseConnections(DjangoTransactionTestCase):
         self.assertRaises(RuntimeError, delattr, connection, "baz")
 
 
-class TestTotallyDisconnected(DjangoTransactionTestCase):
+class TestTotallyDisconnected(MAASTransactionServerTestCase):
     """Tests for `TotallyDisconnected`."""
 
     def test__enter_closes_open_connections_and_disables_new_ones(self):
@@ -840,7 +840,7 @@ class TestTotallyDisconnected(DjangoTransactionTestCase):
         connection.ensure_connection()
 
 
-class TestExclusivelyConnected(DjangoTransactionTestCase):
+class TestExclusivelyConnected(MAASTransactionServerTestCase):
     """Tests for `ExclusivelyConnected`."""
 
     def test__enter_blows_up_if_there_are_open_connections(self):
@@ -863,7 +863,7 @@ class TestExclusivelyConnected(DjangoTransactionTestCase):
         self.assertThat(connection.connection, Is(None))
 
 
-class TestFullyConnected(DjangoTransactionTestCase):
+class TestFullyConnected(MAASTransactionServerTestCase):
     """Tests for `FullyConnected`."""
 
     def assertOpen(self, alias):

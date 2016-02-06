@@ -23,10 +23,12 @@ from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from mock import Mock
 from testtools.matchers import (
     Contains,
@@ -437,7 +439,7 @@ class MAASAPITest(APITestCase):
             (response.status_code, json_load_bytes(response.content)))
 
 
-class APIErrorsTest(DjangoTransactionTestCase):
+class APIErrorsTest(MAASTransactionServerTestCase):
 
     def test_internal_error_generates_proper_api_response(self):
         error_message = factory.make_string()

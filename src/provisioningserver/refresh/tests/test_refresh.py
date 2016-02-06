@@ -54,15 +54,6 @@ class TestHelpers(MAASTestCase):
         self.assertIn('UBUNTU_CODENAME', os_release)
         self.assertIn('VERSION_ID', os_release)
 
-    def test_get_region_url(self):
-        maas_url = "http://%s" % factory.make_hostname()
-        system_id = factory.make_name('system_id')
-        self.useFixture(ClusterConfigurationFixture(maas_url=maas_url))
-
-        self.assertEquals(
-            "%s/metadata/status/%s/latest" % (maas_url, system_id),
-            refresh.get_region_url(system_id))
-
 
 class TestSignal(MAASTestCase):
     def test_signal_formats_params(self):
@@ -252,6 +243,34 @@ class TestRefresh(MAASTestCase):
             'OK',
             "Finished refreshing %s" % system_id],
             signal.call_args_list[2][0])
+
+    def test_refresh_signals_nodegroup_to_rack(self):
+        signal = self.patch(refresh, 'signal')
+        self.patch_scripts_success()
+        cluster_uuid = factory.make_UUID()
+        self.useFixture(ClusterConfigurationFixture(cluster_uuid=cluster_uuid))
+
+        system_id = factory.make_name('system_id')
+        consumer_key = factory.make_name('consumer_key')
+        token_key = factory.make_name('token_key')
+        token_secret = factory.make_name('token_secret')
+
+        refresh.refresh(system_id, consumer_key, token_key, token_secret)
+        self.assertItemsEqual([
+            "http://localhost:5240/MAAS/metadata/status/%s/latest" % system_id,
+            {
+                'consumer_secret': '',
+                'consumer_key': consumer_key,
+                'token_key': token_key,
+                'token_secret': token_secret,
+            },
+            'OK',
+            "Finished refreshing %s" % system_id],
+            signal.call_args_list[2][0])
+        self.assertItemsEqual(
+            {'extra_headers': {'X-NodeGroup-UUID': cluster_uuid}},
+            signal.call_args_list[2][1]
+        )
 
     def test_refresh_signals_failure(self):
         signal = self.patch(refresh, 'signal')

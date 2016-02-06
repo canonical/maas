@@ -160,7 +160,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # Default result for cluster UUID if not set
-UUID_NOT_SET = '** UUID NOT SET **'
+UUID_NOT_SET = None
 
 
 class BootSourceSelection(Schema):
@@ -779,7 +779,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "The root directory for GRUB resources."
         return os.path.join(self.tftp_root, "grub")
 
-    # Cluster UUID Option
+    # NodeGroup UUID Option, used for migrating to rack controller
     cluster_uuid = ConfigurationOption(
         "cluster_uuid", "The UUID for this cluster controller",
         UUIDString(if_missing=UUID_NOT_SET))

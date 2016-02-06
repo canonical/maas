@@ -35,7 +35,10 @@ from provisioningserver.utils.twisted import (
     deferred,
     synchronous,
 )
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+)
 from twisted.internet.protocol import (
     Factory,
     Protocol,
@@ -442,7 +445,7 @@ class WebSocketFactory(Factory):
         This is hard-coded to call the `ControllerHandler` as at the moment
         it is the only handler that needs this event.
         """
-        d = deferToDatabase(self.sendOnNotifyToController, ident)
+        d = self.sendOnNotifyToController(ident)
         d.addErrback(
             log.err,
             "Failed to send 'update' notification for rack controller(%s) "
@@ -453,7 +456,7 @@ class WebSocketFactory(Factory):
         """Send onNotify to the `ControllerHandler` for `system_id`."""
         rack_handler = self.getHandler("controller")
         if rack_handler is None:
-            return
+            return fail("Unable to get the 'controller' handler.")
         else:
             return self.onNotify(
                 rack_handler, "controller", "update", system_id)

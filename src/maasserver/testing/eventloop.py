@@ -13,6 +13,7 @@ from fixtures import Fixture
 from maasserver import eventloop
 from maasserver.eventloop import loop
 from twisted.application.service import Service
+from twisted.internet import defer
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -47,14 +48,22 @@ class RegionEventLoopFixture(Fixture):
                 "The services are: %s."
                 % ', '.join(service.name for service in services))
 
+    def resetStartUp(self):
+        eventloop.loop.prepare = self.original_prepare
+
     def setUp(self):
         super(RegionEventLoopFixture, self).setUp()
+        # Patch start_up in the eventloop.
+        self.original_prepare = eventloop.loop.prepare
+        eventloop.loop.prepare = lambda: defer.succeed(None)
         # Check that the event-loop is dormant and clean.
         self.checkEventLoopClean()
         # Ensure the event-loop will be left in a consistent state.
         self.addCleanup(self.checkEventLoopClean)
         # Restore the current `factories` tuple on exit.
         self.addCleanup(setattr, loop, "factories", loop.factories)
+        # Stop the event-loop on exit.
+        self.addCleanup(self.resetStartUp)
         # Set the new `factories` tuple, with all factories stubbed-out
         # except those in `self.services`.
         fakeFactoryInfo = {
@@ -90,13 +99,21 @@ class RunningEventLoopFixture(Fixture):
                 "The event-loop has been left running; this fixture cannot "
                 "make a reasonable decision about what to do next.")
 
+    def resetStartUp(self):
+        eventloop.loop.prepare = self.original_prepare
+
     def setUp(self):
         super(RunningEventLoopFixture, self).setUp()
+        # Patch start_up in the eventloop.
+        self.original_prepare = eventloop.loop.prepare
+        eventloop.loop.prepare = lambda: defer.succeed(None)
         # Check that the event-loop is dormant and clean.
         self.checkEventLoopClean()
         # Check that the event-loop will be left dormant and clean.
         self.addCleanup(self.checkEventLoopClean)
         # Stop the event-loop on exit.
         self.addCleanup(self.stop)
+        # Stop the event-loop on exit.
+        self.addCleanup(self.resetStartUp)
         # Start the event-loop.
         self.start()

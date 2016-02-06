@@ -32,7 +32,10 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
-from twisted.internet import reactor
+from twisted.internet import (
+    defer,
+    reactor,
+)
 from twisted.python.threadable import isInIOThread
 
 
@@ -74,6 +77,9 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual(
             set(eventloop.loop.services),
             set())
+        # Patch prepare so it's not actually run.
+        self.patch(eventloop.loop, "prepare").return_value = (
+            defer.succeed(None))
         # After starting the loop, the services list is populated, and
         # the services are started too.
         eventloop.loop.start().wait(5)
@@ -104,6 +110,9 @@ class TestRegionEventLoop(MAASTestCase):
         # dummies to avoid bringing up real services here, and ensure
         # that the services list is empty.
         self.useFixture(RegionEventLoopFixture())
+        # Patch prepare so it's not actually run.
+        self.patch(eventloop.loop, "prepare").return_value = (
+            defer.succeed(None))
         eventloop.loop.start().wait(5)
         eventloop.loop.reset().wait(5)
         # After stopping the loop, the services list is also emptied.

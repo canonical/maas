@@ -24,9 +24,9 @@ class TestTriggers(MAASServerTestCase):
         register_procedure(NODE_CREATE_PROCEDURE)
         with closing(connection.cursor()) as cursor:
             cursor.execute(
-                "DROP TRIGGER IF EXISTS maasserver_node_node_create_notify ON "
+                "DROP TRIGGER IF EXISTS node_node_create_notify ON "
                 "maasserver_node;"
-                "CREATE TRIGGER maasserver_node_node_create_notify "
+                "CREATE TRIGGER node_node_create_notify "
                 "AFTER INSERT ON maasserver_node "
                 "FOR EACH ROW EXECUTE PROCEDURE node_create_notify();")
 
@@ -42,7 +42,7 @@ class TestTriggers(MAASServerTestCase):
         with closing(connection.cursor()) as cursor:
             cursor.execute(
                 "SELECT * FROM pg_trigger WHERE "
-                "tgname = 'maasserver_node_node_create_notify'")
+                "tgname = 'node_node_create_notify'")
             triggers = cursor.fetchall()
 
         self.assertEqual(1, len(triggers), "Trigger was not created.")

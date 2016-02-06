@@ -43,6 +43,7 @@ __all__ = [
     'RegionController',
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
+    'RegionRackRPCConnection',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -111,6 +112,9 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.nodegroup_to_rackcontroller import (
+    NodeGroupToRackController,
+)
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -118,6 +122,7 @@ from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
+from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -155,6 +160,7 @@ ignore_unused(
     LargeFile,
     LicenseKey,
     logger,
+    NodeGroupToRackController,
     Partition,
     PartitionTable,
     RAID,

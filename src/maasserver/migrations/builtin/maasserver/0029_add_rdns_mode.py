@@ -10,7 +10,7 @@ from django.db import (
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0027_update_default_vlan_on_interface_and_subnet'),
+        ('maasserver', '0028_update_default_vlan_on_interface_and_subnet'),
     ]
 
     operations = [

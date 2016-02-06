@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -44,6 +44,7 @@ from maasserver.exceptions import (
 from maasserver.models import (
     Interface,
     Node,
+    NodeGroupToRackController,
     SSHKey,
     SSLKey,
 )
@@ -491,7 +492,10 @@ class VersionIndexHandler(MetadataViewHandler):
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
 
-        if node.status == NODE_STATUS.COMMISSIONING:
+        if (node.status == NODE_STATUS.COMMISSIONING or
+            node.node_type in (
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER)):
 
             # Store the commissioning results.
             self._store_commissioning_results(node, request)
@@ -499,6 +503,20 @@ class VersionIndexHandler(MetadataViewHandler):
             # Commissioning was successful setup the default storage layout
             # and the initial networking configuration for the node.
             if status == SIGNAL_STATUS.OK:
+                ng_uuid = request.META.get('HTTP_X_NODEGROUP_UUID')
+                if ng_uuid is not None:
+                    ng_to_racks = NodeGroupToRackController.objects.filter(
+                        uuid=ng_uuid)
+                    vlans = [
+                        ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks
+                    ]
+                    for nic in node.interface_set.all():
+                        if nic.vlan in vlans:
+                            nic.vlan.primary_rack = node
+                            nic.vlan.save()
+                    for ng_to_rack in ng_to_racks:
+                        ng_to_rack.delete()
+
                 node.set_default_storage_layout()
                 node.set_initial_networking_configuration()
 

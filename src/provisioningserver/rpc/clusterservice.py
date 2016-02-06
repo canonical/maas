@@ -10,9 +10,9 @@ __all__ = [
 from functools import partial
 import json
 from os import urandom
-import platform
 import random
 import re
+from socket import gethostname
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
@@ -71,6 +71,10 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
 )
 from provisioningserver.twisted.protocols import amp
+from provisioningserver.utils.env import (
+    get_maas_id,
+    set_maas_id,
+)
 from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import DeferredValue
@@ -121,7 +125,6 @@ class Cluster(RPCProtocol):
     connection is established, AMP is symmetric.
     """
 
-    # XXX ltrager 2016-01-09 remove with NodeGroup
     @cluster.Identify.responder
     def identify(self):
         """identify()
@@ -129,8 +132,10 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
-        with ClusterConfiguration.open() as config:
-            return {"ident": config.cluster_uuid}
+        ident = get_maas_id()
+        if ident is None:
+            ident = ""
+        return {"ident": ident}
 
     @cluster.Authenticate.responder
     def authenticate(self, message):
@@ -511,29 +516,38 @@ class ClusterClient(Cluster):
         returnValue(digest == digest_local)
 
     def registerRackWithRegion(self):
-        # XXX ltrager 2015-12-22 ClusterConfiguration needs to be updated for
-        # rack controllers. The UUID stored here will be the node ID given by
-        # the region
+        # Grab the URL the rack uses to communicate to the region API.
         with ClusterConfiguration.open() as config:
-            #uuid = config.cluster_uuid
             url = config.maas_url
-        system_id = None
 
-        ip_addr = None
+        # Grab the set system_id if already set for this controller.
+        system_id = get_maas_id()
+        if system_id is None:
+            # Cannot send None over RPC when the system_id is not set.
+            system_id = ''
+
+        # Gather the mac addresses for this rack controller.
+        mac_addresses = []
         try:
             ip_addr = get_ip_addr()
+            mac_addresses = [
+                iface['mac']
+                for iface in ip_addr.values()
+                if 'mac' in iface.keys()
+            ]
         except ExternalProcessError as epe:
             log.msg(
                 "Warning: Could not gather IP address information: %s" % epe)
-        mac_addresses = [iface['mac'] for iface in ip_addr.values()
-                         if 'mac' in iface.keys()]
-        # Make sure we don't accidentally include the domain name
-        hostname = platform.node().split('.')[0]
+
+        # Gather only the hostname for this rack controller.
+        hostname = gethostname().split('.')[0]
 
         def cb_register(data):
+            maas_id = data["system_id"]
+            set_maas_id(maas_id)
             log.msg(
                 "Rack controller '%s' registered (via %s)."
-                % (data['system_id'], self.eventloop))
+                % (maas_id, self.eventloop))
             return True
 
         def eb_register(failure):

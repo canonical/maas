@@ -71,6 +71,9 @@ from maasserver.models import (
     PhysicalBlockDevice,
     RackController,
     RegionController,
+    RegionControllerProcess,
+    RegionControllerProcessEndpoint,
+    RegionRackRPCConnection,
     Space,
     SSHKey,
     SSLKey,
@@ -279,6 +282,41 @@ class Factory(maastesting.factory.Factory):
         region = RegionController(hostname=hostname)
         region.save()
         return region
+
+    def make_RegionControllerProcess(
+            self, region=None, pid=None, updated=None):
+        if region is None:
+            region = self.make_RegionController()
+        if pid is None:
+            pid = random.randint(1, 10000)
+        process = RegionControllerProcess(
+            region=region, pid=pid, updated=updated)
+        process.save()
+        return process
+
+    def make_RegionControllerProcessEndpoint(
+            self, process=None, address=None, port=None):
+        if process is None:
+            process = self.make_RegionControllerEndpoint()
+        if address is None:
+            address = self.make_ip_address()
+        if port is None:
+            port = random.randint(1, 10000)
+        endpoint = RegionControllerProcessEndpoint(
+            process=process, address=address, port=port)
+        endpoint.save()
+        return endpoint
+
+    def make_RegionRackRPCConnection(
+            self, rack_controller=None, endpoint=None):
+        if rack_controller is None:
+            rack_controller = self.make_RackController()
+        if endpoint is None:
+            endpoint = self.make_RegionControllerProcessEndpoint()
+        conn = RegionRackRPCConnection(
+            rack_controller=rack_controller, endpoint=endpoint)
+        conn.save()
+        return conn
 
     def make_Node(
             self, interface=False, hostname=None, domain=None, status=None,

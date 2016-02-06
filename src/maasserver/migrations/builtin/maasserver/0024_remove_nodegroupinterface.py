@@ -11,7 +11,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('maasserver', '0022_add_ttl_field'),
+        ('maasserver', '0023_add_ttl_field'),
     ]
 
     operations = [

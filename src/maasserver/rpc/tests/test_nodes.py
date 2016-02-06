@@ -340,8 +340,6 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         system_ids = [params["system_id"] for params in power_parameters]
 
         # The unchecked node is always the first out.
-        #import pdb
-        #pdb.set_trace()
         self.assertEqual(node_unchecked.system_id, system_ids[0])
 
     def test__excludes_recently_checked_nodes(self):

@@ -97,6 +97,7 @@ class DeviceHandler(NodeHandler):
             "skip_storage",
             "instance_power_parameters",
             "dns_process",
+            "managing_process",
             "address_ttl",
             "url",
             ]

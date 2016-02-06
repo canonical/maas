@@ -23,7 +23,7 @@ from socket import (
 )
 import threading
 
-from django.db import IntegrityError
+from django.db.models import Q
 from maasserver import (
     eventloop,
     locks,
@@ -32,12 +32,14 @@ from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import NODE_TYPE
 from maasserver.models.node import (
     Node,
+    RackController,
     RegionController,
 )
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
+from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     configuration,
@@ -61,7 +63,6 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
 from provisioningserver.network import get_mac_addresses
-from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -73,8 +74,11 @@ from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.twisted.protocols import amp
+from provisioningserver.utils.env import (
+    get_maas_id,
+    set_maas_id,
+)
 from provisioningserver.utils.events import EventGroup
-from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -89,6 +93,10 @@ from twisted.application.internet import TimerService
 from twisted.internet import (
     defer,
     reactor,
+)
+from twisted.internet.address import (
+    IPv4Address,
+    IPv6Address,
 )
 from twisted.internet.defer import (
     CancelledError,
@@ -112,7 +120,6 @@ class Region(RPCProtocol):
     connection is established, AMP is symmetric.
     """
 
-    # XXX ltrager 2016-01-09 remove with NodeGroup
     @region.Identify.responder
     def identify(self):
         """identify()
@@ -132,27 +139,6 @@ class Region(RPCProtocol):
             return {"digest": digest, "salt": salt}
 
         return d.addCallback(got_secret)
-
-    @region.RegisterRackController.responder
-    def register_rackcontroller(self, system_id, hostname, mac_addresses, url):
-        d = deferToDatabase(
-            rackcontrollers.register_rackcontroller, system_id=system_id,
-            hostname=hostname, mac_addresses=mac_addresses, url=url)
-
-        def cb_registered(rackcontroller):
-            self.factory.service._addConnectionFor(
-                rackcontroller.system_id, self)
-            if rackcontroller.needs_refresh:
-                deferToDatabase(rackcontroller.refresh)
-            return {'system_id': rackcontroller.system_id}
-
-        def eb_registered(failure):
-            failure.trap(IntegrityError)
-            raise exceptions.CannotRegisterRackController(
-                "Unable to find existing node or create a new one with "
-                "hostname '%s'." % hostname)
-
-        return d.addCallbacks(cb_registered, eb_registered)
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):
@@ -408,30 +394,32 @@ class Region(RPCProtocol):
 
 
 @transactional
-def configureCluster(ident):
-    """Configure the cluster.
+def registerConnection(rack_controller, host):
+    """Register the connection into the database."""
+    maas_id = eventloop.services.getServiceNamed(
+        "rpc-advertise").getRegionID()
+    region = RegionController.objects.get(system_id=maas_id)
+    process = RegionControllerProcess.objects.get(
+        region=region, pid=os.getpid())
+    endpoint = RegionControllerProcessEndpoint.objects.get(
+        process=process, address=host.host, port=host.port)
+    RegionRackRPCConnection.objects.create(
+        endpoint=endpoint, rack_controller=rack_controller)
 
-    Typically this is called once, as soon as a successful handshake is made
-    between the region and cluster. After that configuration can be done at
-    the moment the change is made. In essence, this is "catches-up" the
-    cluster with the region's current idea of how it should be.
 
-    Don't do anything particularly energetic in here because it will be called
-    once for each region<-->cluster connection, of which each cluster can have
-    many.
-
-    :param ident: The cluster's UUID.
-    """
-    # NODE_GROUP_REMOVAL - blake_r - Fix.
-    #try:
-    #    cluster = NodeGroup.objects.get(uuid=ident)
-    #except NodeGroup.DoesNotExist:
-    #    log.msg("Cluster '%s' is not recognised; cannot configure." % (
-    #       ident,))
-    #else:
-    #    configure_dhcp_now(cluster)
-    #    log.msg("Cluster %s (%s) has been configured." % (
-    #        cluster.cluster_name, cluster.uuid))
+@transactional
+def unregisterConnection(ident, host):
+    """Unregister the connection into the database."""
+    maas_id = eventloop.services.getServiceNamed(
+        "rpc-advertise").getRegionID()
+    region = RegionController.objects.get(system_id=maas_id)
+    process = RegionControllerProcess.objects.get(
+        region=region, pid=os.getpid())
+    endpoint = RegionControllerProcessEndpoint.objects.get(
+        process=process, address=host.host, port=host.port)
+    rack_controller = RackController.objects.get(system_id=ident)
+    RegionRackRPCConnection.objects.filter(
+        endpoint=endpoint, rack_controller=rack_controller).delete()
 
 
 @implementer(IConnection)
@@ -450,11 +438,8 @@ class RegionServer(Region):
 
     factory = None
     ident = None
-
-    @inlineCallbacks
-    def identifyCluster(self):
-        response = yield self.callRemote(cluster.Identify)
-        self.ident = response.get("ident")
+    host = None
+    hostIsRemote = False
 
     @inlineCallbacks
     def authenticateCluster(self):
@@ -467,59 +452,100 @@ class RegionServer(Region):
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
 
+    @region.RegisterRackController.responder
+    @inlineCallbacks
+    def register(self, system_id, hostname, mac_addresses, url):
+        try:
+            rack_controller = yield deferToDatabase(
+                rackcontrollers.register_rackcontroller, system_id=system_id,
+                hostname=hostname, mac_addresses=mac_addresses, url=url)
+
+            # Set the identifier and add the connection into the service
+            # and into the database.
+            self.ident = rack_controller.system_id
+            self.factory.service._addConnectionFor(self.ident, self)
+            self.host = self.transport.getHost()
+            self.hostIsRemote = isinstance(
+                self.host, (IPv4Address, IPv6Address))
+
+            # Only register the connection into the database when its a valid
+            # IPv4 and IPv6. Only time it is not an IPv4 or IPv6 address is
+            # when mocking a connection.
+            if self.hostIsRemote:
+                yield deferToDatabase(
+                    registerConnection, rack_controller, self.host)
+
+            # Rack controller is now registered. Log this status and refresh
+            # the information about the rack controller if needed.
+            log.msg(
+                "Rack controller '%s' has been registered." % self.ident)
+            if self.hostIsRemote and rack_controller.needs_refresh:
+                # Needs to be refresh. Perform this operation in a thread but
+                # we ignore when it is done.
+                log.msg(
+                    "Rack controller '%s' needs to be refreshed; "
+                    "performing the refresh operation." % self.ident)
+                deferToDatabase(rack_controller.performRefresh)
+
+            # Done registering the rack controller and connection.
+            return {'system_id': self.ident}
+        except Exception as exc:
+            # Some error occurred here. Remove the connection in the database,
+            # log the error and alert the connected rack controller. The
+            # connected rack controller will drop the connection.
+            if (self.ident is not None and self.hostIsRemote):
+                yield deferToDatabase(
+                    unregisterConnection, self.ident, self.host)
+            msg = (
+                "Failed to register rack controller '%s' into the "
+                "database. Connection has been dropped." % (
+                    self.ident))
+            log.err(exc, msg)
+            raise exceptions.CannotRegisterRackController(msg)
+
     @inlineCallbacks
     def performHandshake(self):
-        yield self.identifyCluster()
         authenticated = yield self.authenticateCluster()
+        peer = self.transport.getPeer()
+        if isinstance(peer, (IPv4Address, IPv6Address)):
+            client = "%s:%s" % (peer.host, peer.port)
+        else:
+            client = peer.name
         if authenticated:
-            log.msg("Cluster '%s' authenticated." % self.ident)
-            self.factory.service._addConnectionFor(self.ident, self)
+            log.msg(
+                "Rack controller authenticated from '%s'." % client)
         else:
             log.msg(
-                "Cluster '%s' FAILED authentication; "
-                "dropping connection." % self.ident)
+                "Rack controller FAILED authentication from '%s'; "
+                "dropping connection." % client)
             yield self.transport.loseConnection()
         returnValue(authenticated)
 
-    def handshakeSucceeded(self, authenticated):
-        """The handshake (identify and authenticate) succeeded.
-
-        :param authenticated: True if the remote cluster has successfully
-            authenticated.
-        :type authenticated: bool
-        """
-        if authenticated:
-            return deferToDatabase(configureCluster, self.ident).addErrback(
-                log.err, "Failed to configure DHCP on %s." % (self.ident,))
-
     def handshakeFailed(self, failure):
-        """The handshake (identify and authenticate) failed."""
+        """The authenticate handshake failed."""
         if failure.check(ConnectionClosed):
             # There has been a disconnection, clean or otherwise. There's
             # nothing we can do now, so do nothing. The reason will have been
             # logged elsewhere.
             return
-        elif self.ident is None:
-            log.err(
-                failure, "Cluster could not be identified; "
-                "dropping connection.")
-            return self.transport.loseConnection()
         else:
             log.err(
-                failure, "Cluster '%s' could not be authenticated; "
+                failure, "Rack controller '%s' could not be authenticated; "
                 "dropping connection." % self.ident)
             return self.transport.loseConnection()
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
         if self.factory.service.running:
-            return self.performHandshake().addCallbacks(
-                self.handshakeSucceeded, self.handshakeFailed)
+            return self.performHandshake().addErrback(self.handshakeFailed)
         else:
             self.transport.loseConnection()
 
     def connectionLost(self, reason):
+        if self.hostIsRemote:
+            deferToDatabase(unregisterConnection, self.ident, self.host)
         self.factory.service._removeConnectionFor(self.ident, self)
+        log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
 
 
@@ -823,6 +849,12 @@ class RegionAdvertisingService(TimerService, object):
 
     """
 
+    # Interval for this service when the rpc service has not started.
+    INTERVAL_NO_ENDPOINTS = 2  # seconds.
+
+    # Interval for this service when the rpc service has started.
+    INTERVAL_WITH_ENDPOINTS = 60  # seconds.
+
     # Django defaults to read committed isolation, but this is not
     # enough for `update()`. Writing a decent wrapper to get it to use
     # serializable isolation for a single transaction is difficult; it
@@ -835,14 +867,22 @@ class RegionAdvertisingService(TimerService, object):
     starting = None
     stopping = None
 
-    def __init__(self, interval=60):
+    def __init__(self):
         super(RegionAdvertisingService, self).__init__(
-            interval, self.try_update)
+            self.INTERVAL_NO_ENDPOINTS, self.try_update)
 
     def try_update(self):
         return deferToDatabase(self.update).addErrback(
             log.err, "Failed to update this region's process and endpoints; "
             "%s record's may be out of date" % (eventloop.loop.name,))
+
+    def getRegionID(self):
+        """Return the system_id for this running region controller."""
+        return self.maas_id
+
+    def _update_interval(self, seconds):
+        """Change the update interval."""
+        self._loop.interval = self.step = seconds
 
     @asynchronous
     def startService(self):
@@ -906,33 +946,35 @@ class RegionAdvertisingService(TimerService, object):
     @synchronised(locks.eventloop)
     @transactional
     def prepare(self, mac_addresses):
-        """Ensure that the RegionController` exists.
+        """Ensure that the `RegionController` exists.
 
         If not, create it. On first creation the `system_id` of the
-        `RegionController` is written to /var/lib/maas/region_id. That file
+        `RegionController` is written to /var/lib/maas/maas_id. That file
         is used by the other `RegionControllerProcess` on this region to use
         the same `RegionController`.
         """
-        self.region_id = self._get_region_id()
-        if self.region_id is None:
+        self.maas_id = get_maas_id()
+        if self.maas_id is None:
             # See if any other nodes is this node, by checkin interfaces on
             # this node.
+            hostname = gethostname()
             region_obj = get_one(Node.objects.filter(
-                interface__mac_address__in=mac_addresses))
+                Q(hostname=hostname) |
+                Q(interface__mac_address__in=mac_addresses)))
             if region_obj is not None:
                 # Already a node with a MAC address that matches this machine.
                 # Convert that into a region.
                 region_obj = self._fix_node_for_region(region_obj)
             else:
                 # This is the first time MAAS has ran on this node. Create a
-                # new `RegionController` and save the region_id.
+                # new `RegionController` and save the maas_id.
                 region_obj = RegionController.objects.create(
-                    hostname=gethostname())
-            self.region_id = region_obj.system_id
-            self._write_region_id(self.region_id)
+                    hostname=hostname)
+            self.maas_id = region_obj.system_id
+            set_maas_id(self.maas_id)
         else:
             # Region already exists load it from the database.
-            region_obj = Node.objects.get(system_id=self.region_id)
+            region_obj = Node.objects.get(system_id=self.maas_id)
             self._fix_node_for_region(region_obj)
 
     @synchronous
@@ -948,7 +990,7 @@ class RegionAdvertisingService(TimerService, object):
         """
         # Get the region controller and update its hostname and last
         # updated time.
-        region_obj = Node.objects.get(system_id=self.region_id)
+        region_obj = RegionController.objects.get(system_id=self.maas_id)
         update_fields = ["updated"]
         hostname = gethostname()
         if region_obj.hostname != hostname:
@@ -974,12 +1016,20 @@ class RegionAdvertisingService(TimerService, object):
             RegionControllerProcessEndpoint.objects.filter(
                 process=process).values_list("id", flat=True))
         addresses = frozenset(self._get_addresses())
-        for addr, port in addresses:
-            endpoint, created = (
-                RegionControllerProcessEndpoint.objects.get_or_create(
-                    process=process, address=addr, port=port))
-            if not created:
-                previous_endpoint_ids.remove(endpoint.id)
+        if len(addresses) == 0:
+            # No endpoints; set the interval so it updates quickly.
+            self._update_interval(self.INTERVAL_NO_ENDPOINTS)
+        else:
+            # Has endpoints; update less frequent.
+            self._update_interval(self.INTERVAL_WITH_ENDPOINTS)
+            for addr, port in addresses:
+                endpoint, created = (
+                    RegionControllerProcessEndpoint.objects.get_or_create(
+                        process=process, address=addr, port=port))
+                if not created:
+                    previous_endpoint_ids.remove(endpoint.id)
+
+        # Remove any previous endpoints.
         RegionControllerProcessEndpoint.objects.filter(
             id__in=previous_endpoint_ids).delete()
 
@@ -1014,7 +1064,7 @@ class RegionAdvertisingService(TimerService, object):
         hence calling this while this service is started won't be
         terribly efficacious.
         """
-        region_obj = Node.objects.get(system_id=self.region_id)
+        region_obj = Node.objects.get(system_id=self.maas_id)
         RegionControllerProcess.objects.get(
             region=region_obj, pid=os.getpid()).delete()
 
@@ -1042,30 +1092,6 @@ class RegionAdvertisingService(TimerService, object):
                     if ipaddr.version != 4:
                         continue  # Only advertise IPv4 for now.
                     yield addr, port
-
-    @classmethod
-    def _get_path_to_region_id(cls):
-        """Return the path to '/var/lib/maas/region_id'.
-
-        Help's with testing as this method is mocked.
-        """
-        return get_path('/var/lib/maas/region_id')
-
-    def _get_region_id(self):
-        """Return the `RegionController` system_id from
-        '/var/lib/maas/region_id'."""
-        region_id_path = RegionAdvertisingService._get_path_to_region_id()
-        if os.path.exists(region_id_path):
-            with open(region_id_path, "r", encoding="ascii") as fp:
-                return fp.read().strip()
-        else:
-            return None
-
-    def _write_region_id(self, system_id):
-        """Return the `RegionController` system_id from
-        '/var/lib/maas/region_id'."""
-        region_id_path = RegionAdvertisingService._get_path_to_region_id()
-        atomic_write(system_id.encode("ascii"), region_id_path)
 
     def _fix_node_for_region(self, region_obj):
         """Fix the `node_type` and `hostname` on `region_obj`.

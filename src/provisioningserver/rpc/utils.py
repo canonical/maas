@@ -67,8 +67,12 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     from provisioningserver.rpc.region import CreateNode
     from provisioningserver.config import ClusterConfiguration
 
+    # XXX ltrager 04-02-2016 - Remove when rackd.conf lands
     with ClusterConfiguration.open() as config:
         cluster_uuid = config.cluster_uuid
+
+    if cluster_uuid is None:
+        cluster_uuid = 'None'
 
     if hostname is not None:
         hostname = coerce_to_valid_hostname(hostname)

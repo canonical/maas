@@ -6,16 +6,23 @@
 
 __all__ = []
 
+from datetime import (
+    datetime,
+    timedelta,
+)
+
 from crochet import wait_for
+from django.db import connection as db_connection
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.tests.helper import TransactionalHelpersMixin
+from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from netaddr import IPAddress
 from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet.defer import inlineCallbacks
@@ -24,8 +31,472 @@ from twisted.internet.defer import inlineCallbacks
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
+class TestCoreRegionRackRPCConnectionInsertListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test for the core triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_alerts_region_process_and_sets_managing_process(self):
+        yield deferToDatabase(register_system_triggers)
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(self.create_rack_controller)
+
+        process_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_core_%s" % region_process.id,
+            lambda *args: process_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+            yield process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "watch_%s" % rack_controller.system_id),
+                process_dv.value)
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller)
+            self.assertEqual(
+                region_process.id, rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_picks_region_process_managing_the_least_num_of_racks(self):
+        region = yield deferToDatabase(self.create_region_controller)
+        # Create region process that has a connection to a rack controller
+        # and is already managing it.
+        managing_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        managing_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": managing_region_process,
+            })
+        rack_controller_connected = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": managing_region_process
+            })
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": managing_region_process_endpoint,
+            "rack_controller": rack_controller_connected,
+        })
+
+        # Create a region process that is not managing a rack controller but
+        # has connections to both rack controllers. When the trigger is create
+        # and the last connection is added it will select the region process
+        # with no connections.
+        not_managing_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        not_managing_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": not_managing_region_process,
+            })
+        not_managed_rack_controller = yield deferToDatabase(
+            self.create_rack_controller)
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": managing_region_process_endpoint,
+            "rack_controller": not_managed_rack_controller,
+        })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+        process_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_core_%s" % not_managing_region_process.id,
+            lambda *args: process_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": not_managing_region_process_endpoint,
+                "rack_controller": not_managed_rack_controller,
+            })
+            yield process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "watch_%s" % not_managed_rack_controller.system_id),
+                process_dv.value)
+            not_managed_rack_controller = yield deferToDatabase(
+                self.reload_object, not_managed_rack_controller)
+            self.assertEqual(
+                not_managing_region_process.id,
+                not_managed_rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_selectes_new_region_process_when_managing_one_is_dead(self):
+        region = yield deferToDatabase(self.create_region_controller)
+        # Create region process that has a connection to a rack controller
+        # and is already managing it.
+        managing_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        managing_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": managing_region_process,
+            })
+        rack_controller_connected = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": managing_region_process
+            })
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": managing_region_process_endpoint,
+            "rack_controller": rack_controller_connected,
+        })
+
+        # Create a dead region process that is managing a rack controller but
+        # has connections to both rack controllers. When the trigger is create
+        # and the last connection is added it will select the region process
+        # with no connections.
+        dead_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+                "updated": datetime.now() - timedelta(seconds=90),
+            })
+        dead_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": dead_region_process,
+            })
+        dead_managed_rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": dead_region_process,
+            })
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": managing_region_process_endpoint,
+            "rack_controller": dead_managed_rack_controller,
+        })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+        process_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_core_%s" % managing_region_process.id,
+            lambda *args: process_dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": dead_region_process_endpoint,
+                "rack_controller": dead_managed_rack_controller,
+            })
+            yield process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "watch_%s" % dead_managed_rack_controller.system_id),
+                process_dv.value)
+            dead_managed_rack_controller = yield deferToDatabase(
+                self.reload_object, dead_managed_rack_controller)
+            self.assertEqual(
+                managing_region_process.id,
+                dead_managed_rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_rebalance_the_managing_process_for_the_rack_controller(self):
+        region = yield deferToDatabase(self.create_region_controller)
+        # Create a region process that is managing 5 rack controllers.
+        overloaded_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        for _ in range(5):
+            yield deferToDatabase(
+                self.create_rack_controller, {
+                    "managing_process": overloaded_region_process
+                })
+
+        # Create region process that has no managing rack controllers.
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+
+        # Create the rack controller connected to the overloaded region
+        # process.
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": overloaded_region_process,
+            })
+        overloaded_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": overloaded_region_process,
+            })
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": overloaded_region_process_endpoint,
+            "rack_controller": rack_controller,
+        })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+
+        # Catch that unwatch is called on the overloaded region process and
+        # watch is called on the other region process.
+        listener = self.make_listener_without_delay()
+        overloaded_dv = DeferredValue()
+        listener.register(
+            "sys_core_%s" % overloaded_region_process.id,
+            lambda *args: overloaded_dv.set(args))
+        process_dv = DeferredValue()
+        listener.register(
+            "sys_core_%s" % region_process.id,
+            lambda *args: process_dv.set(args))
+        yield listener.startService()
+        try:
+            # Create the connection that will balance the connection for
+            # the client.
+            yield deferToDatabase(self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+            yield overloaded_dv.get(timeout=2)
+            yield process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "unwatch_%s" % rack_controller.system_id),
+                overloaded_dv.value)
+            self.assertEqual(
+                (None, "watch_%s" % rack_controller.system_id),
+                process_dv.value)
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller)
+            self.assertEqual(
+                region_process.id,
+                rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_rebalance_doesnt_happen_when_less_than_half_conn(self):
+        region = yield deferToDatabase(self.create_region_controller)
+        # Create a region process that is managing 5 rack controllers.
+        overloaded_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        for _ in range(5):
+            yield deferToDatabase(
+                self.create_rack_controller, {
+                    "managing_process": overloaded_region_process
+                })
+
+        # Create the rack controller connected to the overloaded region
+        # process.
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": overloaded_region_process,
+            })
+        overloaded_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": overloaded_region_process,
+            })
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": overloaded_region_process_endpoint,
+            "rack_controller": rack_controller,
+        })
+
+        # Create many more region processes where the rack controller is
+        # not connected.
+        region_processes = []
+        region_process_endpoints = []
+        for _ in range(4):
+            process = yield deferToDatabase(
+                self.create_region_controller_process, {
+                    "region": region,
+                })
+            region_processes.append(process)
+            endpoint = yield deferToDatabase(
+                self.create_region_controller_process_endpoint, {
+                    "process": process,
+                })
+            region_process_endpoints.append(endpoint)
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+
+        # Create a new connection between the rack controller and the first
+        # un-used region process. The managing rack controller should not
+        # change because the rack controller is not connected to at least
+        # half of the region processes.
+        yield deferToDatabase(self.create_region_rack_rpc_connection, {
+            "endpoint": region_process_endpoints[0],
+            "rack_controller": rack_controller,
+        })
+        rack_controller = yield deferToDatabase(
+            self.reload_object, rack_controller)
+        self.assertEqual(
+            overloaded_region_process.id,
+            rack_controller.managing_process_id)
+
+
+class TestCoreRegionRackRPCConnectionDeleteListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test for the core triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_picks_new_region_process_when_connection_is_removed(self):
+        # This test is very picky and no trigger on the RegionRackRPCConnection
+        # can already exists or it will break the test. We forcibly remove
+        # that trigger, just for this test. MAASTransactionServerTestCase does
+        # not clear the triggeres between test runs. This test will pass
+        # in isolation but will fail otherwise without this initial operation.
+        @transactional
+        def drop_sys_core_rpc_insert_trigger():
+            with db_connection.cursor() as cursor:
+                cursor.execute(
+                    "DROP TRIGGER IF EXISTS "
+                    "regionrackrpcconnection_sys_core_rpc_insert ON "
+                    "maasserver_regionrackrpcconnection")
+
+        yield deferToDatabase(drop_sys_core_rpc_insert_trigger)
+
+        # Create a region process that is managing for a rack controller.
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": region_process
+            })
+        connection = yield deferToDatabase(
+            self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+
+        # Create another process that has a connection to the rack controller.
+        other_region = yield deferToDatabase(self.create_region_controller)
+        other_region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": other_region,
+            })
+        other_region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": other_region_process,
+            })
+        yield deferToDatabase(
+            self.create_region_rack_rpc_connection, {
+                "endpoint": other_region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+
+        # Catch that unwatch is called on the region process and
+        # watch is called on the other region process.
+        listener = self.make_listener_without_delay()
+        process_dv = DeferredValue()
+        listener.register(
+            "sys_core_%s" % region_process.id,
+            lambda *args: process_dv.set(args))
+        other_process_dv = DeferredValue()
+        listener.register(
+            "sys_core_%s" % other_region_process.id,
+            lambda *args: other_process_dv.set(args))
+        yield listener.startService()
+        try:
+            # Remove the connection on the region process causing it to
+            # set the other region process as the manager.
+            yield deferToDatabase(
+                self.delete_region_rack_rpc_connection, connection.id)
+            yield process_dv.get(timeout=2)
+            yield other_process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "unwatch_%s" % rack_controller.system_id),
+                process_dv.value)
+            self.assertEqual(
+                (None, "watch_%s" % rack_controller.system_id),
+                other_process_dv.value)
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller)
+            self.assertEqual(
+                other_region_process.id,
+                rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_clears_region_process_when_no_connections(self):
+        # Create a region process that is managing for a rack controller.
+        region = yield deferToDatabase(self.create_region_controller)
+        region_process = yield deferToDatabase(
+            self.create_region_controller_process, {
+                "region": region,
+            })
+        region_process_endpoint = yield deferToDatabase(
+            self.create_region_controller_process_endpoint, {
+                "process": region_process,
+            })
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller, {
+                "managing_process": region_process
+            })
+        connection = yield deferToDatabase(
+            self.create_region_rack_rpc_connection, {
+                "endpoint": region_process_endpoint,
+                "rack_controller": rack_controller,
+            })
+
+        # Now create the trigger so that it is actually ran.
+        yield deferToDatabase(register_system_triggers)
+
+        # Catch that unwatch is called on the region process and
+        # watch is called on the other region process.
+        listener = self.make_listener_without_delay()
+        process_dv = DeferredValue()
+        listener.register(
+            "sys_core_%s" % region_process.id,
+            lambda *args: process_dv.set(args))
+        yield listener.startService()
+        try:
+            # Remove the connection on the region process causing it to
+            # notify unwatch and remove the managing process.
+            yield deferToDatabase(
+                self.delete_region_rack_rpc_connection, connection.id)
+            yield process_dv.get(timeout=2)
+            self.assertEqual(
+                (None, "unwatch_%s" % rack_controller.system_id),
+                process_dv.value)
+            rack_controller = yield deferToDatabase(
+                self.reload_object, rack_controller)
+            self.assertIsNone(rack_controller.managing_process_id)
+        finally:
+            yield listener.stopService()
+
+
 class TestDHCPVLANListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -243,7 +714,7 @@ class TestDHCPVLANListener(
 
 
 class TestDHCPSubnetListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -437,7 +908,7 @@ class TestDHCPSubnetListener(
 
 
 class TestDHCPIPRangeListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -663,7 +1134,7 @@ class TestDHCPIPRangeListener(
 
 
 class TestDHCPStaticIPAddressListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -992,7 +1463,7 @@ class TestDHCPStaticIPAddressListener(
 
 
 class TestDHCPInterfaceListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor
@@ -1085,7 +1556,7 @@ class TestDHCPInterfaceListener(
 
 
 class TestDHCPNodeListener(
-        DjangoTransactionTestCase, TransactionalHelpersMixin):
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test for the DHCP triggers code."""
 
     @wait_for_reactor

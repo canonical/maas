@@ -44,6 +44,7 @@ from maasserver.models import (
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
+    RegionRackRPCConnection,
     timestampedmodel,
 )
 from maasserver.models.interface import PhysicalInterface
@@ -58,15 +59,13 @@ from maasserver.rpc.regionservice import (
     RegionAdvertisingService,
     RegionServer,
     RegionService,
+    registerConnection,
+    unregisterConnection,
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
-from maasserver.testing.eventloop import (
-    RegionEventLoopFixture,
-    RunningEventLoopFixture,
-)
+from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
@@ -76,11 +75,10 @@ from maasserver.testing.testcase import (
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
+    MockAnyCall,
     MockCalledOnceWith,
     MockCallsMatch,
-    MockNotCalled,
     Provides,
 )
 from maastesting.testcase import MAASTestCase
@@ -92,12 +90,12 @@ from maastesting.twisted import (
 from mock import (
     ANY,
     call,
+    MagicMock,
     Mock,
     sentinel,
 )
 import netaddr
 from provisioningserver.rpc import (
-    cluster,
     common,
     exceptions,
 )
@@ -158,6 +156,7 @@ from twisted.internet import (
     reactor,
     tcp,
 )
+from twisted.internet.address import IPv4Address
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
@@ -223,53 +222,6 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         expected_digest = HMAC(secret, message + salt, sha256).digest()
         self.assertEqual(expected_digest, digest)
         self.assertThat(salt, HasLength(16))
-
-
-class TestRegionProtocol_RegisterRackController(MAASTestCase):
-
-    def make_Region(self):
-        patched_region = Region()
-        patched_region.factory = Factory.forProtocol(RegionServer)
-        patched_region.factory.service = RegionService()
-        return patched_region
-
-    def test_register_rack_controllers_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(
-            RegisterRackController.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_register_rackcontroller_returns_system_id(self):
-        yield deferToDatabase(factory.make_RackController)
-        hostname = factory.make_name("hostname")
-        mac = factory.make_MAC().raw
-        response = yield call_responder(
-            self.make_Region(), RegisterRackController,
-            {"system_id": None, "hostname": hostname, "mac_addresses": [mac]})
-        self.assertIn("system_id", response)
-        rackcontroller = yield deferToDatabase(
-            RackController.objects.get, system_id=response['system_id'])
-        self.assertEquals(hostname, rackcontroller.hostname)
-        nic = yield deferToDatabase(rackcontroller.interface_set.first)
-        self.assertEquals(mac, nic.mac_address.raw)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_raises_CannotRegisterRackController_when_it_cant(self):
-        patched_create = self.patch(RackController.objects, 'create')
-        patched_create.side_effect = IntegrityError()
-        hostname = factory.make_name("hostname")
-        error = yield assert_fails_with(
-            call_responder(self.make_Region(), RegisterRackController,
-                           {"system_id": None,
-                            "hostname": hostname,
-                            "mac_addresses": []}),
-            CannotRegisterRackController)
-        self.assertEquals(
-            ("Unable to find existing node or create a new one with hostname "
-             "'%s'." % hostname,), error.args)
 
 
 class TestRegionProtocol_StartTLS(MAASTestCase):
@@ -366,7 +318,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_UpdateLease(DjangoTransactionTestCase):
+class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionProtocol_UpdateLease, self).setUp()
@@ -404,7 +356,7 @@ class TestRegionProtocol_UpdateLease(DjangoTransactionTestCase):
         # works as expected.
 
 
-class TestRegionProtocol_GetBootSources(DjangoTransactionTestCase):
+class TestRegionProtocol_GetBootSources(MAASTransactionServerTestCase):
 
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
@@ -425,7 +377,7 @@ class TestRegionProtocol_GetBootSources(DjangoTransactionTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetBootSourcesV2(DjangoTransactionTestCase):
+class TestRegionProtocol_GetBootSourcesV2(MAASTransactionServerTestCase):
 
     def test_get_boot_sources_v2_is_registered(self):
         protocol = Region()
@@ -446,7 +398,7 @@ class TestRegionProtocol_GetBootSourcesV2(DjangoTransactionTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
+class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
 
     def test_get_archive_mirrors_is_registered(self):
         protocol = Region()
@@ -502,7 +454,7 @@ class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
             response)
 
 
-class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
+class TestRegionProtocol_GetProxies(MAASTransactionServerTestCase):
 
     def test_get_proxies_is_registered(self):
         protocol = Region()
@@ -537,7 +489,7 @@ class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
             response)
 
 
-class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
+class TestRegionProtocol_MarkNodeFailed(MAASTransactionServerTestCase):
 
     def test_mark_failed_is_registered(self):
         protocol = Region()
@@ -595,7 +547,8 @@ class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
         return d.addErrback(check)
 
 
-class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
+class TestRegionProtocol_ListNodePowerParameters(
+        MAASTransactionServerTestCase):
 
     @transactional
     def create_node(self, **kwargs):
@@ -663,7 +616,7 @@ class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
         return assert_fails_with(d, NoSuchCluster)
 
 
-class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
+class TestRegionProtocol_UpdateNodePowerState(MAASTransactionServerTestCase):
 
     @transactional
     def create_node(self, power_state):
@@ -713,7 +666,7 @@ class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
         return d.addErrback(check)
 
 
-class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
+class TestRegionProtocol_RegisterEventType(MAASTransactionServerTestCase):
 
     def test_register_event_type_is_registered(self):
         protocol = Region()
@@ -763,7 +716,7 @@ class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
         self.assertEqual({}, response)
 
 
-class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
+class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionProtocol_SendEvent, self).setUp()
@@ -908,7 +861,7 @@ class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
                 name, event_description, system_id))
 
 
-class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
+class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionProtocol_SendEventMACAddress, self).setUp()
@@ -1058,38 +1011,40 @@ class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
                 "'%s'.", name, event_description, mac_address))
 
 
-# NODE_GROUP_REMOVAL - blake_r - Fix.
-#class TestConfigureCluster(MAASServerTestCase):
-#    """Tests for the `configureCluster` function."""
-#
-#    def test__logs_when_cluster_is_not_known(self):
-#        ident = factory.make_UUID()
-#        with TwistedLoggerFixture() as logger:
-#            regionservice.configureCluster(ident)
-#        self.assertDocTestMatches(
-#            "Cluster '...' is not recognised; cannot configure.",
-#            logger.output)
-#
-#    def test__logs_when_cluster_has_been_configured(self):
-#        ident = factory.make_NodeGroup().uuid
-#        with TwistedLoggerFixture() as logger:
-#            regionservice.configureCluster(ident)
-#        self.assertDocTestMatches(
-#            "Cluster ... (...) has been configured.",
-#            logger.output)
-#
-#    def test__configures_dhcp(self):
-#        ident = factory.make_NodeGroup().uuid
-#        self.patch_autospec(regionservice, "configure_dhcp_now")
-#        regionservice.configureCluster(ident)
-#        self.assertThat(
-#            regionservice.configure_dhcp_now,
-#            MockCalledOnceWith(ANY))
-#        [cluster] = regionservice.configure_dhcp_now.call_args[0]
-#        self.assertThat(cluster.uuid, Equals(ident))
+class TestRegisterAndUnregisterConnection(MAASServerTestCase):
+    """Tests for the `registerConnection` and `unregisterConnection`
+    function."""
+
+    def test__adds_connection_and_removes_connection(self):
+        region = factory.make_RegionController()
+        process = factory.make_RegionControllerProcess(region=region)
+        endpoint = factory.make_RegionControllerProcessEndpoint(
+            process=process)
+
+        advertising_service = MagicMock()
+        advertising_service.getRegionID.return_value = region.system_id
+        mock_getServiceNamed = self.patch(
+            eventloop.services, "getServiceNamed")
+        mock_getServiceNamed.return_value = advertising_service
+        self.patch(os, "getpid").return_value = process.pid
+
+        host = MagicMock()
+        host.host = endpoint.address
+        host.port = endpoint.port
+        rack_controller = factory.make_RackController()
+
+        registerConnection(rack_controller, host)
+        self.assertIsNotNone(
+            RegionRackRPCConnection.objects.filter(
+                endpoint=endpoint, rack_controller=rack_controller).first())
+
+        unregisterConnection(rack_controller.system_id, host)
+        self.assertIsNone(
+            RegionRackRPCConnection.objects.filter(
+                endpoint=endpoint, rack_controller=rack_controller).first())
 
 
-class TestRegionServer(MAASServerTestCase):
+class TestRegionServer(MAASTransactionServerTestCase):
 
     def test_interfaces(self):
         protocol = RegionServer()
@@ -1098,56 +1053,14 @@ class TestRegionServer(MAASServerTestCase):
         self.patch(protocol, "transport")
         verifyObject(IConnection, protocol)
 
-    def test_connectionMade_identifies_the_remote_cluster(self):
-        service = RegionService()
-        service.running = True  # Pretend it's running.
-        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        example_uuid = factory.make_UUID()
-        callRemote = self.patch(protocol, "callRemote")
-        callRemote.return_value = succeed({"ident": example_uuid})
-        protocol.connectionMade()
-        # The Identify command was called on the cluster. Authenticate too,
-        # but we're not looking at that right now.
-        self.assertThat(callRemote, MockCallsMatch(
-            call(cluster.Identify),
-            call(cluster.Authenticate, message=ANY),
-        ))
-        # The UUID has been saved on the protocol instance.
-        self.assertThat(protocol.ident, Equals(example_uuid))
-
-    def test_connectionMade_drops_the_connection_on_ident_failure(self):
-        service = RegionService()
-        service.running = True  # Pretend it's running.
-        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        callRemote = self.patch(protocol, "callRemote")
-        callRemote.return_value = fail(OSError("no paddle"))
-        transport = self.patch(protocol, "transport")
-        logger = self.useFixture(TwistedLoggerFixture())
-        protocol.connectionMade()
-        # The transport is instructed to lose the connection.
-        self.assertThat(transport.loseConnection, MockCalledOnceWith())
-        # The connection is not in the service's connection map.
-        self.assertDictEqual({}, service.connections)
-        # The error is logged.
-        self.assertDocTestMatches(
-            """\
-            Cluster could not be identified; dropping connection.
-            Traceback (most recent call last):
-            ...
-            builtins.OSError: no paddle
-            """,
-            logger.dump())
-
-    def test_connectionMade_updates_services_connection_set(self):
+    def test_connectionMade_does_not_update_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         self.assertDictEqual({}, service.connections)
         protocol.connectionMade()
-        self.assertDictEqual(
-            {protocol.ident: {protocol}},
-            service.connections)
+        self.assertDictEqual({}, service.connections)
 
     def test_connectionMade_drops_connection_if_service_not_running(self):
         service = RegionService()
@@ -1167,12 +1080,33 @@ class TestRegionServer(MAASServerTestCase):
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        protocol.connectionMade()
+        protocol.ident = factory.make_name("node")
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
-        self.assertDictEqual(
-            {protocol.ident: {protocol}},
-            service.connections)
+        service.connections[protocol.ident] = {protocol}
+
         protocol.connectionLost(reason=None)
+        # The connection is removed from the set, but the key remains.
+        self.assertDictEqual({protocol.ident: set()}, service.connections)
+        # connectionLost() is called on the superclass.
+        self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
+
+    def test_connectionLost_calls_unregisterDatabase_in_thread(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        service.factory.protocol = HandshakingRegionServer
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        protocol.ident = factory.make_name("node")
+        protocol.host = sentinel.host
+        protocol.hostIsRemote = True
+        connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
+        service.connections[protocol.ident] = {protocol}
+
+        mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
+        protocol.connectionLost(reason=None)
+        self.assertThat(
+            mock_deferToDatabase,
+            MockCalledOnceWith(
+                unregisterConnection, protocol.ident, protocol.host))
         # The connection is removed from the set, but the key remains.
         self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
@@ -1207,20 +1141,25 @@ class TestRegionServer(MAASServerTestCase):
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        protocol.transport = MagicMock()
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_error(protocol, exception_type())
-        transport = self.patch(protocol, "transport")
         self.assertDictEqual({}, service.connections)
-        protocol.connectionMade()
+
+        connectionMade = wait_for_reactor(protocol.connectionMade)
+        connectionMade()
+
         # The protocol is not added to the connection set.
         self.assertDictEqual({}, service.connections)
         # The transport is instructed to lose the connection.
-        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+        self.assertThat(
+            protocol.transport.loseConnection, MockCalledOnceWith())
 
         # The log was written to.
         self.assertDocTestMatches(
             """\
-            Cluster '...' could not be authenticated; dropping connection.
+            Rack controller '...' could not be authenticated; dropping
+            connection.
             Traceback (most recent call last):...
             """,
             logger.dump())
@@ -1237,46 +1176,6 @@ class TestRegionServer(MAASServerTestCase):
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         return service.factory.buildProtocol(addr=None)  # addr is unused.
-
-    def test_connectionMade_configures_cluster_if_auth_succeeds(self):
-        self.patch_autospec(regionservice, "configureCluster")
-        protocol = self.make_handshaking_server()
-
-        connectionMade = wait_for_reactor(protocol.connectionMade)
-        connectionMade()
-
-        self.assertThat(
-            regionservice.configureCluster,
-            MockCalledOnceWith(protocol.ident))
-
-    def test_connectionMade_does_not_configure_cluster_if_auth_fails(self):
-        self.patch_autospec(regionservice, "configureCluster")
-        protocol = self.make_handshaking_server()
-        self.patch_authenticate_for_failure(protocol)
-        self.patch(protocol, "transport")
-
-        connectionMade = wait_for_reactor(protocol.connectionMade)
-        connectionMade()
-
-        self.assertThat(regionservice.configureCluster, MockNotCalled())
-
-    def test_connectionMade_logs_cluster_configuration_failure(self):
-        self.patch_autospec(regionservice, "configureCluster")
-        regionservice.configureCluster.side_effect = ZeroDivisionError
-        protocol = self.make_handshaking_server()
-
-        with TwistedLoggerFixture() as logger:
-            connectionMade = wait_for_reactor(protocol.connectionMade)
-            connectionMade()
-
-        self.assertDocTestMatches(
-            """\
-            ...
-            ---
-            Failed to configure DHCP on ...
-            Traceback (most recent call last): ...
-            """,
-            logger.output)
 
     def make_running_server(self):
         service = RegionService()
@@ -1324,14 +1223,117 @@ class TestRegionServer(MAASServerTestCase):
         d = server.authenticateCluster()
         self.assertRaises(exception_type, extract_result, d)
 
-    def test_authenticateCluster_end_to_end(self):
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        server = rpc_fixture.makeCluster(factory.make_RackController())
+    def make_Region(self):
+        patched_region = RegionServer()
+        patched_region.factory = Factory.forProtocol(RegionServer)
+        patched_region.factory.service = RegionService()
+        return patched_region
+
+    def test_register_is_registered(self):
+        protocol = RegionServer()
+        responder = protocol.locateResponder(
+            RegisterRackController.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_returns_system_id(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        response = yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "mac_addresses": [],
+            })
+        self.assertEquals(
+            {"system_id": rack_controller.system_id}, response)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_sets_ident(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "mac_addresses": [],
+            })
+        self.assertEquals(rack_controller.system_id, protocol.ident)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_calls_addConnectionFor(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        mock_addConnectionFor = self.patch(
+            protocol.factory.service, "_addConnectionFor")
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "mac_addresses": [],
+            })
         self.assertThat(
-            server.Authenticate,
-            MockCalledOnceWith(server, message=ANY))
+            mock_addConnectionFor,
+            MockCalledOnceWith(rack_controller.system_id, protocol))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_sets_hosts(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        protocol.transport.getHost.return_value = sentinel.host
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "mac_addresses": [],
+            })
+        self.assertEquals(sentinel.host, protocol.host)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_sets_hostIsRemote_calls_registerConnection(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        host = IPv4Address(
+            type='TCP', host=factory.make_ipv4_address(),
+            port=random.randint(1, 400))
+        protocol.transport.getHost.return_value = host
+        mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "mac_addresses": [],
+            })
+        self.assertTrue(sentinel.host, protocol.hostIsRemote)
+        self.assertThat(
+            mock_deferToDatabase,
+            MockAnyCall(registerConnection, ANY, host))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_raises_CannotRegisterRackController_when_it_cant(self):
+        patched_create = self.patch(RackController.objects, 'create')
+        patched_create.side_effect = IntegrityError()
+        hostname = factory.make_name("hostname")
+        error = yield assert_fails_with(
+            call_responder(self.make_Region(), RegisterRackController,
+                           {"system_id": None,
+                            "hostname": hostname,
+                            "mac_addresses": []}),
+            CannotRegisterRackController)
+        self.assertEquals((
+            "Failed to register rack controller 'None' into the database. "
+            "Connection has been dropped.",), error.args)
 
 
 class TestRegionService(MAASTestCase):
@@ -1827,18 +1829,24 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(TestRegionAdvertisingService, self).setUp()
-        self.region_id_path = os.path.join(self.make_dir(), "region_id")
-        self.patch(
-            RegionAdvertisingService,
-            "_get_path_to_region_id").return_value = self.region_id_path
+        self.patch(RegionAdvertisingService, "_update_interval")
+        self.maas_id = None
 
-    def get_region_id_contents(self):
-        with open(self.region_id_path, "r", encoding="ascii") as fp:
-            return fp.read().strip()
+        def set_maas_id(maas_id):
+            self.maas_id = maas_id
+
+        self.set_maas_id = self.patch(regionservice, "set_maas_id")
+        self.set_maas_id.side_effect = set_maas_id
+
+        def get_maas_id():
+            return self.maas_id
+
+        self.get_maas_id = self.patch(regionservice, "get_maas_id")
+        self.get_maas_id.side_effect = get_maas_id
 
     def test_init(self):
         ras = RegionAdvertisingService()
-        self.assertEqual(60, ras.step)
+        self.assertEqual(2, ras.step)
         self.assertEqual((ras.try_update, (), {}), ras.call)
 
     @wait_for_reactor
@@ -1976,7 +1984,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         # RegionController exists for with hostname and region_id written to.
         region = RegionController.objects.get(hostname=gethostname())
-        self.assertEquals(region.system_id, self.get_region_id_contents())
+        self.assertThat(self.set_maas_id, MockCalledOnceWith(region.system_id))
 
     def test_prepare_new_region_converts_from_node(self):
         service = RegionAdvertisingService()
@@ -2009,8 +2017,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service = RegionAdvertisingService()
 
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        with open(self.region_id_path, "wb") as fp:
-            fp.write(node.system_id.encode("ascii"))
+        self.maas_id = node.system_id
 
         service.prepare([])
 
@@ -2032,12 +2039,12 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # patched-in _do_create() is called.
         locked = []
 
-        def _get_region_id():
+        def get_maas_id():
             locked.append(locks.eventloop.is_locked())
-            return None
+            return self.maas_id
 
         service = RegionAdvertisingService()
-        self.patch(service, "_get_region_id").side_effect = _get_region_id
+        self.get_maas_id.side_effect = get_maas_id
 
         # The lock is not held before and after prepare() is called.
         self.assertFalse(locks.eventloop.is_locked())
@@ -2052,8 +2059,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service._get_addresses = lambda: []
         service.prepare([])
 
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         region.hostname = factory.make_name("host")
         region.save()
 
@@ -2069,8 +2075,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.prepare([])
         service.update()
 
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         [process] = region.processes.all()
         self.assertEquals(process.pid, os.getpid())
 
@@ -2080,8 +2085,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.prepare([])
 
         old_time = now() - timedelta(seconds=90)
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         other_region = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         old_region_process = RegionControllerProcess.objects.create(
             region=region, pid=randint(1, 1000),
@@ -2104,8 +2108,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service.prepare([])
 
         old_time = current_time - timedelta(seconds=90)
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         region.created = old_time
         region.updated = old_time
         region.save()
@@ -2132,8 +2135,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service.update()
 
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         [process] = region.processes.all()
         saved_endpoints = [
             (endpoint.address, endpoint.port)
@@ -2149,8 +2151,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service.update()
 
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         [process] = region.processes.all()
         saved_endpoints = [
             (endpoint.address, endpoint.port)
@@ -2163,8 +2164,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service = RegionAdvertisingService()
         service.prepare([])
 
-        region = RegionController.objects.get(
-            system_id=self.get_region_id_contents())
+        region = RegionController.objects.get(system_id=self.maas_id)
         process = RegionControllerProcess.objects.create(
             region=region, pid=os.getpid())
         for _ in range(3):
@@ -2296,7 +2296,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         self.assertItemsEqual([], service._get_addresses())
 
 # NODE_GROUP_REMOVAL - blake_r - Fix.
-#class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
+#class TestRegionProtocol_ReportForeignDHCPServer(
+#        MAASTransactionServerTestCase):
 #
 #    def test_create_node_is_registered(self):
 #        protocol = Region()
@@ -2354,7 +2355,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 #        self.assertThat(configure_dhcp, MockNotCalled())
 
 
-class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
+class TestRegionProtocol_GetClusterInterfaces(MAASTransactionServerTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -2391,7 +2392,7 @@ class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
             expected_interfaces, response["interfaces"])
 
 
-class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
+class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -2434,7 +2435,7 @@ class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
             response['system_id'])
 
 
-class TestRegionProtocol_CommissionNode(DjangoTransactionTestCase):
+class TestRegionProtocol_CommissionNode(MAASTransactionServerTestCase):
 
     def test_commission_node_is_registered(self):
         protocol = Region()
@@ -2463,7 +2464,7 @@ class TestRegionProtocol_CommissionNode(DjangoTransactionTestCase):
 
 
 class TestRegionProtocol_RequestNodeInforByMACAddress(
-        DjangoTransactionTestCase):
+        MAASTransactionServerTestCase):
 
     def test_request_node_info_by_mac_address_is_registered(self):
         protocol = Region()

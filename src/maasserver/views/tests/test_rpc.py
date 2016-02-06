@@ -6,15 +6,14 @@
 __all__ = []
 
 import json
-import os
 
 from crochet import wait_for
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
-from maasserver.rpc.regionservice import RegionAdvertisingService
+from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
 from testtools.matchers import (
@@ -35,14 +34,23 @@ is_valid_port = MatchesAll(
     IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 
 
-class RPCViewTest(DjangoTransactionTestCase):
+class RPCViewTest(MAASTransactionServerTestCase):
 
     def setUp(self):
         super(RPCViewTest, self).setUp()
-        self.region_id_path = os.path.join(self.make_dir(), "region_id")
-        self.patch(
-            RegionAdvertisingService,
-            "_get_path_to_region_id").return_value = self.region_id_path
+        self.maas_id = None
+
+        def set_maas_id(maas_id):
+            self.maas_id = maas_id
+
+        self.set_maas_id = self.patch(regionservice, "set_maas_id")
+        self.set_maas_id.side_effect = set_maas_id
+
+        def get_maas_id():
+            return self.maas_id
+
+        self.get_maas_id = self.patch(regionservice, "get_maas_id")
+        self.get_maas_id.side_effect = get_maas_id
 
     def test_rpc_info_when_rpc_advertise_not_present(self):
         getServiceNamed = self.patch_autospec(

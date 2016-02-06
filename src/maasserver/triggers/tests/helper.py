@@ -24,10 +24,16 @@ from maasserver.models.iprange import IPRange
 from maasserver.models.node import (
     Node,
     RackController,
+    RegionController,
 )
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.regioncontrollerprocess import RegionControllerProcess
+from maasserver.models.regioncontrollerprocessendpoint import (
+    RegionControllerProcessEndpoint,
+)
+from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -38,6 +44,7 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.utils.orm import transactional
 from metadataserver.models import NodeResult
 
@@ -515,3 +522,79 @@ class TransactionalHelpersMixin:
     def delete_iprange(self, id):
         ipr = IPRange.objects.get(id=id)
         ipr.delete()
+
+    @transactional
+    def create_region_controller(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_RegionController(**params)
+
+    @transactional
+    def update_region_controller(self, id, params):
+        region = RegionController.objects.get(id=id)
+        for key, value in params.items():
+            setattr(region, key, value)
+        return region.save()
+
+    @transactional
+    def delete_region_controller(self, id):
+        region = RegionController.objects.get(id=id)
+        region.delete()
+
+    @transactional
+    def create_region_controller_process(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_RegionControllerProcess(**params)
+
+    @transactional
+    def update_region_controller_process(self, id, params):
+        process = RegionControllerProcess.objects.get(id=id)
+        for key, value in params.items():
+            setattr(process, key, value)
+        return process.save()
+
+    @transactional
+    def delete_region_controller_process(self, id):
+        process = RegionControllerProcess.objects.get(id=id)
+        process.delete()
+
+    @transactional
+    def create_region_controller_process_endpoint(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_RegionControllerProcessEndpoint(**params)
+
+    @transactional
+    def update_region_controller_process_endpoint(self, id, params):
+        process = RegionControllerProcessEndpoint.objects.get(id=id)
+        for key, value in params.items():
+            setattr(process, key, value)
+        return process.save()
+
+    @transactional
+    def delete_region_controller_process_endpoint(self, id):
+        process = RegionControllerProcessEndpoint.objects.get(id=id)
+        process.delete()
+
+    @transactional
+    def create_region_rack_rpc_connection(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_RegionRackRPCConnection(**params)
+
+    @transactional
+    def update_region_rack_rpc_connection(self, id, params):
+        process = RegionRackRPCConnection.objects.get(id=id)
+        for key, value in params.items():
+            setattr(process, key, value)
+        return process.save()
+
+    @transactional
+    def delete_region_rack_rpc_connection(self, id):
+        process = RegionRackRPCConnection.objects.get(id=id)
+        process.delete()
+
+    @transactional
+    def reload_object(self, obj):
+        return reload_object(obj)
