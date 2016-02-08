@@ -297,7 +297,7 @@ class AMTPowerDriver(PowerDriver):
                     "amttool output: %s" % stdout)
             else:
                 version = match.group(1)
-                if int(version) > int(8):
+                if int(version) > 8:
                     return 'wsman'
                 else:
                     return 'amttool'

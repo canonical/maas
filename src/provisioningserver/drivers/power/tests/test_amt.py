@@ -550,7 +550,7 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver, '_get_amt_environment')
         amt_environment_mock.return_value = None
         popen_mock = self.patch_popen(return_value=(
-            AMTTOOL_OUTPUT % (b'9', b''), b'stderr'))
+            AMTTOOL_OUTPUT % (b'10.0.47', b''), b'stderr'))
 
         result = amt_power_driver._get_amt_command(ip_address, power_pass)
 
