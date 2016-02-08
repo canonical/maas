@@ -22,6 +22,12 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import round_size_to_nearest_block
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    Is,
+    MatchesStructure,
+)
 
 
 def get_partitions_uri(block_device):
@@ -449,16 +455,27 @@ class TestPartitions(APITestCase):
             partition=partition)
         uri = get_partition_uri(partition)
         mount_point = '/mnt'
-        response = self.client.post(
-            uri, {'op': 'mount', 'mount_point': mount_point})
+        mount_params = factory.make_name("mount-params")
+        response = self.client.post(uri, {
+            'op': 'mount', 'mount_point': mount_point,
+            'mount_params': mount_params,
+        })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_device = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(
-            mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEqual(
-            mount_point, reload_object(filesystem).mount_point)
+        self.assertThat(
+            parsed_device["filesystem"],
+            ContainsDict({
+                "mount_point": Equals(mount_point),
+                "mount_params": Equals(mount_params),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Equals(mount_point),
+                mount_params=Equals(mount_params),
+            ))
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
         node = factory.make_Node(
@@ -471,16 +488,27 @@ class TestPartitions(APITestCase):
             partition=partition, acquired=True)
         uri = get_partition_uri(partition)
         mount_point = '/mnt'
-        response = self.client.post(
-            uri, {'op': 'mount', 'mount_point': mount_point})
+        mount_params = factory.make_name("mount-params")
+        response = self.client.post(uri, {
+            'op': 'mount', 'mount_point': mount_point,
+            'mount_params': mount_params,
+        })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_device = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(
-            mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEqual(
-            mount_point, reload_object(filesystem).mount_point)
+        self.assertThat(
+            parsed_device["filesystem"],
+            ContainsDict({
+                "mount_point": Equals(mount_point),
+                "mount_params": Equals(mount_params),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Equals(mount_point),
+                mount_params=Equals(mount_params),
+            ))
 
     def test_mount_returns_400_on_missing_mount_point(self):
         self.become_admin()
@@ -553,15 +581,20 @@ class TestPartitions(APITestCase):
             partition=partition, mount_point="/mnt")
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unmount'})
-        self.assertEqual(
-            http.client.OK, response.status_code,
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertIsNone(
-            json.loads(
-                response.content.decode(
-                    settings.DEFAULT_CHARSET))['filesystem']['mount_point'])
-        self.assertIsNone(
-            reload_object(filesystem).mount_point)
+        content = response.content.decode(settings.DEFAULT_CHARSET)
+        self.assertEqual(http.client.OK, response.status_code, content)
+        self.assertThat(
+            json.loads(content)["filesystem"],
+            ContainsDict({
+                "mount_point": Is(None),
+                "mount_params": Is(None),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Is(None),
+                mount_params=Is(None),
+            ))
 
     def test_unmount_unmounts_filesystem_as_user(self):
         node = factory.make_Node(
@@ -571,11 +604,17 @@ class TestPartitions(APITestCase):
             partition=partition, mount_point="/mnt", acquired=True)
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {'op': 'unmount'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        self.assertIsNone(
-            json.loads(
-                response.content.decode(
-                    settings.DEFAULT_CHARSET))['filesystem']['mount_point'])
-        self.assertIsNone(
-            reload_object(filesystem).mount_point)
+        content = response.content.decode(settings.DEFAULT_CHARSET)
+        self.assertEqual(http.client.OK, response.status_code, content)
+        self.assertThat(
+            json.loads(content)["filesystem"],
+            ContainsDict({
+                "mount_point": Is(None),
+                "mount_params": Is(None),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Is(None),
+                mount_params=Is(None),
+            ))

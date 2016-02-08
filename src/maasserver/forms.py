@@ -2279,6 +2279,7 @@ class MountBlockDeviceForm(Form):
     """Form used to mount a block device."""
 
     mount_point = AbsolutePathField(required=True)
+    mount_params = StrippedCharField(required=False)
 
     def __init__(self, block_device, *args, **kwargs):
         super(MountBlockDeviceForm, self).__init__(*args, **kwargs)
@@ -2308,6 +2309,7 @@ class MountBlockDeviceForm(Form):
         """
         filesystem = self.block_device.get_effective_filesystem()
         filesystem.mount_point = self.cleaned_data['mount_point']
+        filesystem.mount_params = self.cleaned_data['mount_params']
         filesystem.save()
         return self.block_device
 
@@ -2379,6 +2381,7 @@ class MountPartitionForm(Form):
     """Form used to mount a partition."""
 
     mount_point = AbsolutePathField(required=True)
+    mount_params = StrippedCharField(required=False)
 
     def __init__(self, partition, *args, **kwargs):
         super(MountPartitionForm, self).__init__(*args, **kwargs)
@@ -2408,6 +2411,7 @@ class MountPartitionForm(Form):
         """
         filesystem = self.partition.get_effective_filesystem()
         filesystem.mount_point = self.cleaned_data['mount_point']
+        filesystem.mount_params = self.cleaned_data['mount_params']
         filesystem.save()
         return self.partition
 

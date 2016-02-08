@@ -24,6 +24,8 @@ from maasserver.utils.converters import json_load_bytes
 from testtools.matchers import (
     ContainsDict,
     Equals,
+    Is,
+    MatchesStructure,
 )
 
 
@@ -312,6 +314,7 @@ class TestBlockDeviceAPI(APITestCase):
             "fstype": filesystem.fstype,
             "uuid": filesystem.uuid,
             "mount_point": filesystem.mount_point,
+            "mount_params": filesystem.mount_params,
             }, parsed_device['filesystem'])
 
     def test_read_returns_partitions(self):
@@ -371,12 +374,14 @@ class TestBlockDeviceAPI(APITestCase):
             "label": filesystem1.label,
             "uuid": filesystem1.uuid,
             "mount_point": filesystem1.mount_point,
+            "mount_params": filesystem1.mount_params,
             }, parsed_device['partitions'][0]['filesystem'])
         self.assertEqual({
             "fstype": filesystem2.fstype,
             "label": filesystem2.label,
             "uuid": filesystem2.uuid,
             "mount_point": filesystem2.mount_point,
+            "mount_params": filesystem2.mount_params,
             }, parsed_device['partitions'][1]['filesystem'])
 
     def test_delete_returns_403_when_not_admin(self):
@@ -702,42 +707,62 @@ class TestBlockDeviceAPI(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_mount_sets_mount_path_on_filesystem_as_admin(self):
+    def test_mount_sets_mount_path_and_params_on_filesystem_as_admin(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(block_device=block_device)
         mount_point = factory.make_absolute_path()
+        mount_params = factory.make_name("mount-params")
         uri = get_blockdevice_uri(block_device)
-        response = self.client.post(
-            uri, {'op': 'mount', 'mount_point': mount_point})
+        response = self.client.post(uri, {
+            'op': 'mount', 'mount_point': mount_point,
+            'mount_params': mount_params})
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_device = json_load_bytes(response.content)
-        self.assertEqual(
-            mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEqual(
-            mount_point, reload_object(filesystem).mount_point)
+        self.assertThat(
+            parsed_device["filesystem"],
+            ContainsDict({
+                "mount_point": Equals(mount_point),
+                "mount_params": Equals(mount_params),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Equals(mount_point),
+                mount_params=Equals(mount_params),
+            ))
 
-    def test_mount_sets_mount_path_on_filesystem_as_user(self):
+    def test_mount_sets_mount_path_and_params_on_filesystem_as_user(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
             block_device=block_device, acquired=True)
         mount_point = factory.make_absolute_path()
+        mount_params = factory.make_name("mount-params")
         uri = get_blockdevice_uri(block_device)
-        response = self.client.post(
-            uri, {'op': 'mount', 'mount_point': mount_point})
+        response = self.client.post(uri, {
+            'op': 'mount', 'mount_point': mount_point,
+            'mount_params': mount_params})
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_device = json_load_bytes(response.content)
-        self.assertEqual(
-            mount_point, parsed_device['filesystem']['mount_point'])
-        self.assertEqual(
-            mount_point, reload_object(filesystem).mount_point)
+        self.assertThat(
+            parsed_device["filesystem"],
+            ContainsDict({
+                "mount_point": Equals(mount_point),
+                "mount_params": Equals(mount_params),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Equals(mount_point),
+                mount_params=Equals(mount_params),
+            ))
 
     def test_unmount_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
@@ -816,10 +841,18 @@ class TestBlockDeviceAPI(APITestCase):
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertIsNone(
-            json_load_bytes(response.content)['filesystem']['mount_point'])
-        self.assertIsNone(
-            reload_object(filesystem).mount_point)
+        self.assertThat(
+            json_load_bytes(response.content)['filesystem'],
+            ContainsDict({
+                "mount_point": Is(None),
+                "mount_params": Is(None),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Is(None),
+                mount_params=Is(None),
+            ))
 
     def test_unmount_unmounts_filesystem_as_user(self):
         node = factory.make_Node(
@@ -833,10 +866,18 @@ class TestBlockDeviceAPI(APITestCase):
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertIsNone(
-            json_load_bytes(response.content)['filesystem']['mount_point'])
-        self.assertIsNone(
-            reload_object(filesystem).mount_point)
+        self.assertThat(
+            json_load_bytes(response.content)['filesystem'],
+            ContainsDict({
+                "mount_point": Is(None),
+                "mount_params": Is(None),
+            }))
+        self.assertThat(
+            reload_object(filesystem),
+            MatchesStructure(
+                mount_point=Is(None),
+                mount_params=Is(None),
+            ))
 
     def test_update_physical_block_device_as_admin(self):
         """Check update block device with a physical one.

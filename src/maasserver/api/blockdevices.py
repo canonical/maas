@@ -167,6 +167,8 @@ class BlockDeviceHandler(OperationsHandler):
 
     @classmethod
     def filesystem(cls, block_device):
+        # XXX: This is almost the same as
+        # m.api.partitions.PartitionHandler.filesystem.
         block_device = block_device.actual_instance
         filesystem = block_device.get_effective_filesystem()
         if filesystem is not None:
@@ -175,6 +177,7 @@ class BlockDeviceHandler(OperationsHandler):
                 'label': filesystem.label,
                 'uuid': filesystem.uuid,
                 'mount_point': filesystem.mount_point,
+                'mount_params': filesystem.mount_params,
             }
         else:
             return None
@@ -404,6 +407,7 @@ class BlockDeviceHandler(OperationsHandler):
         if not filesystem.mount_point:
             raise MAASAPIBadRequest("Filesystem is already unmounted.")
         filesystem.mount_point = None
+        filesystem.mount_parmas = None
         filesystem.save()
         return device
 
