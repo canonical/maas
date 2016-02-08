@@ -197,7 +197,7 @@ def main():
                 power_address=address,
                 power_driver=driver
                 )
-        params[b"power_parameters"] = json.dumps(power_parms)
+        params[b"power_parameters"] = json.dumps(power_parms).encode()
 
     files = {}
     for fpath in args.files:
