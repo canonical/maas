@@ -129,7 +129,7 @@ def get_power_type_parameters_from_json(json_power_type_parameters):
     }
     for power_type in json_power_type_parameters:
         fields = []
-        for json_field in power_type.get('fields', []):
+        for json_field in power_type['fields']:
             fields.append((
                 json_field['name'], make_form_field(json_field)))
         params = DictCharField(fields, required=False, skip_check=True)
@@ -188,10 +188,7 @@ def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
         power_types = response['power_types']
         for power_type in power_types:
             name = power_type['name']
-            if name == 'manual':
-                fields = []
-            else:
-                fields = power_type['fields']
+            fields = power_type['fields']
             description = power_type['description']
             missing_packages = power_type['missing_packages']
             add_power_type_parameters(

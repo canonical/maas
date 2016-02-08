@@ -99,7 +99,7 @@ def generate_power_types_doc():
         line('')
         line("Power parameters:")
         line('')
-        for field in item.get('fields', []):
+        for field in item['fields']:
             field_description = []
             field_description.append(
                 "* %s (%s)." % (field['name'], field['label']))
