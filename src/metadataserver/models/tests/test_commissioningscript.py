@@ -534,7 +534,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device(self):
         name = factory.make_name('name')
         id_path = '/dev/disk/by-id/deviceid'
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
@@ -552,7 +552,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test__creates_physical_block_device_with_path(self):
         name = factory.make_name('name')
-        size = random.randint(3000 * 1000, 1000 * 1000 * 1000)
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
         serial = factory.make_name('serial')
