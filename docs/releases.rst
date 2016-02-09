@@ -12,7 +12,7 @@ MAAS currently has the following releases:
  * Support:
    * Release has been deprecated.
    * No longer providing updates.
-   * Users need to upgrade to 1.7 or 1.8.
+   * Users need to upgrade to 1.7 or 1.9.
 
 1.7
 ---
@@ -22,29 +22,29 @@ MAAS currently has the following releases:
  * Location: ubuntu/trusty-updates
  * Support:
    * It is currently only supported on Ubuntu trusty-updates.
-   * It will be supported until 1.8 series is SRU'd into Trusty.
-   * It will be deprecated once supreseeded by 1.8 around
-     November / December 2015.
+   * It will be supported until 1.9 series is SRU'd into Trusty.
+   * It will be deprecated once supreseeded by 1.9 around
+     February 2016
 
 1.8
 ---
 
- * Status: Current Latest Stable Release
+ * Status: Deprecated
  * Initial release data: June 2015
  * Current release: 1.8.3
- * Location: ppa:maas/stable
+ * Location: No longer available
  * Support:
-   * It is currently supported on the above PPA.
-   * It will be SRU'd into Ubuntu Trusty on November/December 2015.
-   * It will be supported in Ubuntu Trusty until January / February 2015.
+   * Release has been deprecated.
+   * No longer providing updates.
+   * Users need to upgrade to 1.9.
 
 1.9
 ---
 
- * Status: Current Development Release
- * Initial Release date: November or December 2015
- * Current release: 1.9.0~rc
- * Location: ppa:maas/next
+ * Status: Current Stable Release
+ * Initial Release date: November 2015
+ * Current release: 1.9.0
+ * Location: ppa:maas/stable
  * Support: This will be an LTS release.
 
 2.0
