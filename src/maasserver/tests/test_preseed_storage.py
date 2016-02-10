@@ -114,10 +114,12 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
           - id: sda-part3_mount
             type: mount
             path: /
+            options: rw,relatime,errors=remount-ro,data=ordered
             device: sda-part3_format
           - id: sda-part2_mount
             type: mount
             path: /boot
+            options: rw,relatime,block_validity,barrier,user_xattr,acl
             device: sda-part2_format
           - id: sda-part1_mount
             type: mount
@@ -152,15 +154,17 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
         factory.make_Filesystem(
             partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
             uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7", label="efi",
-            mount_point="/boot/efi")
+            mount_point="/boot/efi", mount_params=None)
         factory.make_Filesystem(
             partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
-            mount_point="/boot")
+            mount_point="/boot", mount_params=(
+                "rw,relatime,block_validity,barrier,user_xattr,acl"))
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
-            mount_point="/")
+            mount_point="/", mount_params=(
+                "rw,relatime,errors=remount-ro,data=ordered"))
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
@@ -265,18 +269,22 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
           - id: sda-part5_mount
             type: mount
             path: /srv
+            options: rw,nosuid,nodev,noexec,relatime
             device: sda-part5_format
           - id: sda-part2_mount
             type: mount
             path: /boot
+            options: rw,relatime,block_validity,barrier,acl
             device: sda-part2_format
           - id: sda-part1_mount
             type: mount
             path: /boot/efi
+            options: rw,nosuid,nodev
             device: sda-part1_format
           - id: sda-part6_mount
             type: mount
             path: /srv/data
+            options: rw,nosuid,nodev,noexec,relatime
             device: sda-part6_format
         """)
 
@@ -316,23 +324,25 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
         factory.make_Filesystem(
             partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
             uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7", label="efi",
-            mount_point="/boot/efi")
+            mount_point="/boot/efi", mount_params="rw,nosuid,nodev")
         factory.make_Filesystem(
             partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
-            mount_point="/boot")
+            mount_point="/boot", mount_params=(
+                "rw,relatime,block_validity,barrier,acl"))
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
-            mount_point="/")
+            mount_point="/", mount_params=None)
         factory.make_Filesystem(
             partition=partition_five, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="9c1764f0-2b48-4127-b719-ec61ac7d5f4c", label="srv",
-            mount_point="/srv")
+            mount_point="/srv", mount_params="rw,nosuid,nodev,noexec,relatime")
         factory.make_Filesystem(
             partition=partition_six, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="bcac8449-3a45-4586-bdfb-c21e6ba47902", label="srv-data",
-            mount_point="/srv/data")
+            mount_point="/srv/data", mount_params=(
+                "rw,nosuid,nodev,noexec,relatime"))
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
@@ -374,6 +384,7 @@ class TestSimpleWithEmptyDiskLayout(
           - id: sda-part1_mount
             type: mount
             path: /
+            options: rw,relatime,errors=remount-ro,data=writeback
             device: sda-part1_format
         """)
 
@@ -396,7 +407,8 @@ class TestSimpleWithEmptyDiskLayout(
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
-            mount_point="/")
+            mount_point="/", mount_params=(
+                "rw,relatime,errors=remount-ro,data=writeback"))
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
@@ -439,6 +451,7 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
           - id: sda-part1_mount
             type: mount
             path: /
+            options: rw,relatime,errors=remount-ro,data=journal
             device: sda-part1_format
         """)
 
@@ -463,7 +476,8 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
-            mount_point="/")
+            mount_point="/", mount_params=(
+                "rw,relatime,errors=remount-ro,data=journal"))
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
@@ -633,14 +647,17 @@ class TestComplexDiskLayout(
           - id: vgroot-lvroot_mount
             type: mount
             path: /
+            options: rw,relatime,errors=remount-ro,data=random
             device: vgroot-lvroot_format
           - id: sda-part2_mount
             type: mount
             path: /boot
+            options: rw,relatime,block_invalidity,barrier,user_xattr,acl
             device: sda-part2_format
           - id: sda-part1_mount
             type: mount
             path: /boot/efi
+            options: rw,relatime,pids
             device: sda-part1_format
           - id: md0-part1_mount
             type: mount
@@ -693,11 +710,12 @@ class TestComplexDiskLayout(
         factory.make_Filesystem(
             partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
             uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7", label="efi",
-            mount_point="/boot/efi")
+            mount_point="/boot/efi", mount_params="rw,relatime,pids")
         factory.make_Filesystem(
             partition=boot_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
-            mount_point="/boot")
+            mount_point="/boot", mount_params=(
+                "rw,relatime,block_invalidity,barrier,user_xattr,acl"))
         ssd_partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.GPT, block_device=ssd_disk)
         cache_partition = factory.make_Partition(
@@ -725,9 +743,9 @@ class TestComplexDiskLayout(
             name="lvextra", uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
             size=2 * 1024 ** 3)
         factory.make_Filesystem(
-            block_device=lvroot, fstype=FILESYSTEM_TYPE.EXT4,
-            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
-            mount_point="/")
+            block_device=lvroot, fstype=FILESYSTEM_TYPE.EXT4, label="root",
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", mount_point="/",
+            mount_params="rw,relatime,errors=remount-ro,data=random")
         raid_5 = RAID.objects.create_raid(
             level=FILESYSTEM_GROUP_TYPE.RAID_5,
             name="md0", uuid="ec7816a7-129e-471e-9735-4e27c36fa10b",
@@ -744,7 +762,7 @@ class TestComplexDiskLayout(
         factory.make_Filesystem(
             partition=raid_5_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="a8ad29a3-6083-45af-af8b-06ead59f108b", label="data",
-            mount_point="/srv/data")
+            mount_point="/srv/data", mount_params=None)
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)

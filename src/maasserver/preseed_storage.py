@@ -4,9 +4,8 @@
 """Preseed generation for curtin storage."""
 
 __all__ = [
-    ]
-
-from operator import attrgetter
+    "compose_curtin_storage_config",
+]
 
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
@@ -451,15 +450,12 @@ class CurtinStorageGenerator:
 
     def _generate_mount_operations(self):
         """Generate all mount operations."""
-        # Sort the mounts in alphabetical order followed by the shortest path
-        # first. This will ensure that the mount operations are in correct
-        # order. Without this curtin will mount the filesystems out of order
-        # preventing installation from working correctly.
+        # Sort the mounts, shortest path first. This will ensure that the
+        # mount operations are in correct order. Without this curtin will
+        # mount the filesystems out of order preventing installation from
+        # working correctly.
         def sort_by_mount_length(filesystem):
             return len(filesystem.mount_point)
-
-        mount_operations = sorted(
-            self.operations["mount"], key=attrgetter("mount_point"))
         mount_operations = sorted(
             self.operations["mount"], key=sort_by_mount_length)
         for filesystem in mount_operations:
@@ -469,12 +465,15 @@ class CurtinStorageGenerator:
         """Generate mount operation for `filesystem` and place in
         `storage_config`."""
         device_or_partition = filesystem.get_parent()
-        self.storage_config.append({
+        stanza = {
             "id": "%s_mount" % device_or_partition.get_name(),
             "type": "mount",
             "path": filesystem.mount_point,
             "device": "%s_format" % device_or_partition.get_name(),
-        })
+        }
+        if filesystem.mount_params is not None:
+            stanza["options"] = filesystem.mount_params
+        self.storage_config.append(stanza)
 
 
 def compose_curtin_storage_config(node):
