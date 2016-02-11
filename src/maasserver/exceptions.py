@@ -18,15 +18,14 @@ __all__ = [
     "UnresolvableHost",
     ]
 
-
 import http.client
+import json
 
 from django.core.exceptions import ValidationError
 from django.http import (
     HttpResponse,
     HttpResponseRedirect,
 )
-import simplejson as json
 
 
 class MAASException(Exception):

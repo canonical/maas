@@ -7,6 +7,7 @@ __all__ = []
 
 from datetime import timedelta
 import json
+from json import dumps
 from operator import attrgetter
 import random
 from random import randint
@@ -44,7 +45,6 @@ from provisioningserver.rpc.exceptions import (
     NodeStateViolation,
     NoSuchNode,
 )
-from simplejson import dumps
 from testtools import ExpectedException
 from testtools.matchers import (
     GreaterThan,

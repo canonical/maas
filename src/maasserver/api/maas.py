@@ -7,6 +7,7 @@ __all__ = [
     'MaasHandler',
     ]
 
+import json
 
 from django.http import HttpResponse
 from formencode import validators
@@ -23,7 +24,6 @@ from maasserver.forms_settings import (
 )
 from maasserver.models import Config
 from piston3.utils import rc
-import simplejson as json
 
 
 class MaasHandler(OperationsHandler):
@@ -36,9 +36,7 @@ class MaasHandler(OperationsHandler):
         """Set a config value.
 
         :param name: The name of the config item to be set.
-        :type name: unicode
         :param value: The value of the config item to be set.
-        :type value: json object
 
         %s
         """
@@ -60,7 +58,6 @@ class MaasHandler(OperationsHandler):
         """Get a config value.
 
         :param name: The name of the config item to be retrieved.
-        :type name: unicode
 
         %s
         """

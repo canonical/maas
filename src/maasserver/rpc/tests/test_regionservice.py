@@ -13,6 +13,7 @@ from datetime import (
 from hashlib import sha256
 from hmac import HMAC
 from itertools import product
+from json import dumps
 from operator import attrgetter
 import os.path
 import random
@@ -134,7 +135,6 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import events
-from simplejson import dumps
 from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,

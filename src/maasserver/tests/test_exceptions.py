@@ -6,6 +6,7 @@
 __all__ = []
 
 import http.client
+import json
 
 from django.conf import settings
 from maasserver.exceptions import (
@@ -16,7 +17,6 @@ from maasserver.exceptions import (
 from maasserver.testing import extract_redirect
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import simplejson as json
 from testtools.matchers import Equals
 
 

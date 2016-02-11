@@ -56,6 +56,7 @@ __all__ = [
 from functools import partial
 from inspect import getdoc
 from io import StringIO
+import json
 import sys
 from textwrap import dedent
 
@@ -71,7 +72,6 @@ from maasserver.api.doc import (
     get_api_description_hash,
 )
 from maasserver.utils import build_absolute_uri
-import simplejson as json
 
 # Title section for the API documentation.  Matches in style, format,
 # etc. whatever render_api_docs() produces, so that you can concatenate

@@ -8,6 +8,8 @@ __all__ = [
     "store_node_power_parameters",
 ]
 
+import json
+
 import bson
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -41,7 +43,6 @@ from maasserver.models import (
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from piston3.utils import rc
 from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
-import simplejson as json
 
 # Node's fields exposed on the API.
 DISPLAYED_NODE_FIELDS = (

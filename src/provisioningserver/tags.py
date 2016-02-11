@@ -9,10 +9,10 @@ __all__ = [
     'process_node_tags',
     ]
 
-
 from collections import OrderedDict
 from functools import partial
 import http.client
+import json
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,7 +22,6 @@ from lxml import etree
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
-import simplejson as json
 
 
 maaslog = get_maas_logger("tag_processing")
@@ -36,22 +35,18 @@ maaslog = get_maas_logger("tag_processing")
 DEFAULT_BATCH_SIZE = 100
 
 
-# A content-type: function mapping that can decode data of that type.
-decoders = {
-    "application/json": lambda data: json.loads(data),
-    "application/bson": lambda data: bson.BSON(data).decode(),
-}
-
-
 def process_response(response):
     """All responses should be httplib.OK.
 
-    Additionally, `decoders` will be consulted in an attempt to decode
-    the content. If it can't be decoded it will be returned as bytes.
+    The response should contain a BSON document (content-type
+    application/bson) or a JSON document (content-type application/json). If
+    so, the document will be decoded and the result returned, otherwise the
+    raw binary content will be returned.
 
     :param response: The result of MAASClient.get/post/etc.
     :type response: urllib.request.addinfourl (a file-like object that has a
         .code attribute.)
+
     """
     if response.code != http.client.OK:
         text_status = http.client.responses.get(response.code, '<unknown>')
@@ -61,9 +56,12 @@ def process_response(response):
             response.headers, response.fp)
     content = response.read()
     content_type = response.headers.get_content_type()
-    if content_type in decoders:
-        decode = decoders[content_type]
-        return decode(content)
+    if content_type == "application/bson":
+        return bson.BSON(content).decode()
+    elif content_type == "application/json":
+        content_charset = response.headers.get_content_charset()
+        return json.loads(content.decode(
+            "utf-8" if content_charset is None else content_charset))
     else:
         return content
 

@@ -7,8 +7,8 @@ __all__ = [
     'pxeconfig',
     ]
 
-
 import http.client
+import json
 
 from crochet import TimeoutError
 from django.http import HttpResponse
@@ -40,7 +40,6 @@ from maasserver.utils.orm import get_one
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-import simplejson as json
 
 
 def find_rack_controller_for_pxeconfig_request(request):
@@ -222,7 +221,7 @@ def pxeconfig(request):
         preseed_url = compose_enlistment_preseed_url(
             rack_controller=rack_controller)
         hostname = 'maas-enlist'
-        domain = b'local'
+        domain = 'local'
 
         arch = get_optional_param(request.GET, 'arch')
         if arch is None:

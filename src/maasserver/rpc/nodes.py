@@ -12,6 +12,7 @@ __all__ = [
 
 from datetime import timedelta
 from itertools import chain
+import json
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -34,7 +35,6 @@ from provisioningserver.rpc.exceptions import (
     NoSuchNode,
 )
 from provisioningserver.utils.twisted import synchronous
-import simplejson as json
 
 
 @synchronous
