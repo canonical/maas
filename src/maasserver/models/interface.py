@@ -58,9 +58,6 @@ from netaddr import (
     IPNetwork,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.ipaddr import (
-    get_first_and_last_usable_host_in_network,
-)
 from provisioningserver.utils.network import parse_integer
 
 
@@ -503,28 +500,6 @@ class Interface(CleanSave, TimestampedModel):
             new_address.save()
             self.ip_addresses.add(new_address)
 
-    def _allocate_static_address(
-            self, cluster_interface, alloc_type, requested_address=None,
-            user=None):
-        """Allocate a `StaticIPAddress` for this MAC."""
-        # Avoid circular imports.
-        from maasserver.models import StaticIPAddress
-
-        # If the this interface already has a DHCP IP address assigned we
-        # delete it and assign the static ip address.
-        self.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.DHCP).delete()
-
-        new_sip = StaticIPAddress.objects.allocate_new(
-            cluster_interface.network,
-            cluster_interface.static_ip_range_low,
-            cluster_interface.static_ip_range_high,
-            cluster_interface.ip_range_low,
-            cluster_interface.ip_range_high,
-            alloc_type, requested_address=requested_address,
-            user=user, subnet=cluster_interface.subnet)
-        new_sip.interface_set.add(self)
-        return new_sip
-
     def _update_dns_zones(self, subnets=[], ipaddresses=[]):
         """Updates DNS for the list of `subnets` and `ipaddresses`
         for the node attached to this interface."""
@@ -622,14 +597,8 @@ class Interface(CleanSave, TimestampedModel):
                 self.ip_addresses.add(static_ip)
                 self.save()
         else:
-            network = subnet.get_ipnetwork()
-            ip_range_low, ip_range_high = (
-                get_first_and_last_usable_host_in_network(network))
-            in_use_ipset = subnet.get_ipranges_in_use()
             static_ip = StaticIPAddress.objects.allocate_new(
-                network, ip_range_low, ip_range_high,
-                None, None, alloc_type=alloc_type, subnet=subnet, user=user,
-                in_use_ipset=in_use_ipset)
+                subnet, alloc_type=alloc_type, user=user)
             self.ip_addresses.add(static_ip)
 
         # Swap the ID's that way it keeps the same ID as the swap object.
@@ -837,7 +806,7 @@ class Interface(CleanSave, TimestampedModel):
                 alloc_type=IPADDRESS_TYPE.AUTO):
             if not auto_ip.ip:
                 assigned_ip = self._claim_auto_ip(
-                    auto_ip, exclude_addresses)
+                    auto_ip, exclude_addresses=exclude_addresses)
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
@@ -857,15 +826,9 @@ class Interface(CleanSave, TimestampedModel):
 
         # Allocate a new IP address from the entire subnet, excluding already
         # allocated addresses and ranges.
-        network = subnet.get_ipnetwork()
-        ip_range_low, ip_range_high = (
-            get_first_and_last_usable_host_in_network(network))
-        in_use_ipset = subnet.get_ipranges_in_use()
         new_ip = StaticIPAddress.objects.allocate_new(
-            network, ip_range_low, ip_range_high,
-            None, None, alloc_type=IPADDRESS_TYPE.AUTO,
-            subnet=subnet, exclude_addresses=exclude_addresses,
-            in_use_ipset=in_use_ipset)
+            subnet=subnet, alloc_type=IPADDRESS_TYPE.AUTO,
+            exclude_addresses=exclude_addresses)
         self.ip_addresses.add(new_ip)
         maaslog.info("Allocated automatic IP address %s for %s." % (
             new_ip.ip,

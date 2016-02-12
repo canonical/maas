@@ -871,7 +871,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_ipv4_Subnet_with_IPRanges(
             self, cidr=None, unmanaged=False, with_dynamic_range=True,
-            with_static_range=True, **kwargs):
+            with_static_range=True, dns_servers=None, with_router=True,
+            **kwargs):
         if cidr is not None:
             network = IPNetwork(cidr)
             slash = network.prefixlen
@@ -882,9 +883,14 @@ class Factory(maastesting.factory.Factory):
         host_bits = 32 - slash
         # Use at most 25% of the subnet per range type.
         range_size = 2 ** (host_bits - 2)
-        router_address = IPAddress(network.first + 1)
-        dns_servers = random.choice([
-            [], ['8.8.8.8', '8.8.4.4'], [str(IPAddress(network.last - 1))]])
+        if with_router:
+            router_address = IPAddress(network.first + 1)
+        else:
+            router_address = ''
+        if dns_servers is None:
+            dns_servers = random.choice([
+                [], ['8.8.8.8', '8.8.4.4'], [str(IPAddress(network.last - 1))]
+            ])
         subnet = self.make_Subnet(
             cidr=str(network), gateway_ip=str(router_address),
             dns_servers=dns_servers, **kwargs)
@@ -900,14 +906,39 @@ class Factory(maastesting.factory.Factory):
                 subnet, type=IPRANGE_TYPE.DYNAMIC,
                 start_ip=str(IPAddress(network.first + 2)),
                 end_ip=str(IPAddress(network.first + range_size + 2)))
-            # Create a "static range" for this Subnet.
-        if with_static_range:
-            # XXX mpontillo 2016-01-07: Convert this to ADMIN_RESERVED.
+        # Create a "static range" for this Subnet.
+        if not with_static_range:
             self.make_IPRange(
                 subnet, type=IPRANGE_TYPE.RESERVED,
                 start_ip=str(IPAddress(network.last - range_size - 2)),
                 end_ip=str(IPAddress(network.last - 2)))
+        return reload_object(subnet)
+
+    def make_managed_ipv6_Subnet(self, cidr=None, dhcp=True, **kwargs):
+        if cidr is not None:
+            network = IPNetwork(cidr)
+        else:
+            network = factory.make_ipv6_network(slash=64)
+        router_address = IPAddress(network.first + 1)
+        dns_servers = random.choice([
+            [], ['8.8.8.8', '8.8.4.4'], [str(IPAddress(network.last - 1))]])
+        subnet = self.make_Subnet(
+            cidr=str(network), gateway_ip=str(router_address),
+            dns_servers=dns_servers, **kwargs)
+        if dhcp:
+            subnet.vlan.dhcp_on = True
+            subnet.vlan.save()
+        else:
+            subnet.vlan.dhcp_on = False
+            subnet.vlan.save()
         return subnet
+
+    def make_managed_Subnet(self, *args, **kwargs):
+        ipv6 = random.choice([True, False])
+        if ipv6:
+            return self.make_managed_ipv6_Subnet()
+        else:
+            return self.make_ipv4_Subnet_with_IPRanges()
 
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):

@@ -1464,11 +1464,11 @@ class TestMachineAPITransactional(APITransactionTestCase):
         # Pre-claim the only addresses.
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.1", "10.0.0.1", "", "")
+                requested_address="10.0.0.1")
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.2", "10.0.0.2", "", "")
+                requested_address="10.0.0.2")
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.3", "10.0.0.3", "", "")
+                requested_address="10.0.0.3")
 
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']

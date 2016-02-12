@@ -512,10 +512,10 @@ class TestDeployAction(MAASServerTestCase):
 
 
 class TestDeployActionTransactional(MAASTransactionServerTestCase):
-    '''The following TestDeployAction tests require
+    """The following TestDeployAction tests require
         MAASTransactionServerTestCase, and thus, have been separated
         from the TestDeployAction above.
-    '''
+    """
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
@@ -537,11 +537,11 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         # Pre-claim the only addresses.
         with transaction.atomic():
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.1", "10.0.0.1", "", "")
+                subnet, requested_address="10.0.0.1")
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.2", "10.0.0.2", "", "")
+                subnet, requested_address="10.0.0.2")
             StaticIPAddress.objects.allocate_new(
-                network, "10.0.0.3", "10.0.0.3", "", "")
+                subnet, requested_address="10.0.0.3")
 
         e = self.assertRaises(NodeActionError, Deploy(node, user).execute)
         self.expectThat(

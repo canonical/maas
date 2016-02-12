@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for subnets."""
-from maasserver.enum import IPRANGE_TYPE
-
 
 __all__ = [
     'create_cidr',
@@ -29,8 +27,14 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    IPRANGE_TYPE,
     RDNS_MODE,
     RDNS_MODE_CHOICES,
+)
+from maasserver.exceptions import (
+    MAASAPIException,
+    StaticIPAddressOutOfRange,
+    StaticIPAddressUnavailable,
 )
 from maasserver.fields import (
     CIDRField,
@@ -391,25 +395,59 @@ class Subnet(CleanSave, TimestampedModel):
             for ip in self.staticipaddress_set.all()
             if ip.ip)
 
-    def get_ipranges_in_use(self):
+    def get_ipranges_in_use(self, exclude_addresses=[]):
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
-        in use on this `Subnet`."""
+        in use on this `Subnet`.
+
+        :param exclude_addresses: Additional addresses to consider "in use".
+        """
         ranges = set()
+        network = self.get_ipnetwork()
+        if network.version == 6 and network.prefixlen == 64:
+            # For most IPv6 networks, automatically reserve the range:
+            #     ::0 - ::ffff:ffff
+            # We expect the administrator will be using ::0 through ::ffff.
+            # We plan to reserve ::1:0 through ::ffff:ffff for use by MAAS,
+            # so that we can allocate addresses in the form:
+            #     ::<node>:<child>
+            # For now, just make sure IPv6 addresses are allocated from
+            # *outside* both ranges, so that they won't conflict with addresses
+            # reserved from this scheme in the future.
+            first = str(IPAddress(network.first))
+            second = str(IPAddress(network.first + 0xFFFFFFFF))
+            ranges |= {make_iprange(first, second, purpose="reserved")}
+        ipnetwork = self.get_ipnetwork()
         assigned_ip_addresses = self.get_staticipaddresses_in_use()
+        if self.gateway_ip is not None and self.gateway_ip != '':
+            ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
+        if self.dns_servers is not None:
+            ranges |= set(
+                make_iprange(server, purpose="dns-server")
+                for server in self.dns_servers
+                if server in ipnetwork
+            )
         ranges |= set(
             make_iprange(ip, purpose="assigned-ip")
             for ip in assigned_ip_addresses
         )
-        for iprange in self.get_dynamic_ranges():
-            ranges |= set(iprange.get_MAASIPRange())
+        ranges |= set(
+            make_iprange(address, purpose="excluded")
+            for address in exclude_addresses
+            if address in network
+        )
         ranges |= self.get_reserved_maasipset()
+        ranges |= self.get_dynamic_maasipset()
         return MAASIPSet(ranges)
 
-    def get_ipranges_not_in_use(self):
+    def get_ipranges_not_in_use(self, exclude_addresses=[]):
         """Returns a `MAASIPSet` of ranges which are currently free on this
-        `Subnet`."""
-        ranges = self.get_ipranges_in_use()
-        return ranges.get_unused_ranges(self.get_ipnetwork())
+        `Subnet`.
+
+        :param exclude_addresses: An iterable of addresses not to use.
+        """
+        ranges = self.get_ipranges_in_use(exclude_addresses=exclude_addresses)
+        unused = ranges.get_unused_ranges(self.get_ipnetwork())
+        return unused
 
     def get_iprange_usage(self):
         """Returns both the reserved and unreserved IP ranges in this Subnet.
@@ -439,11 +477,48 @@ class Subnet(CleanSave, TimestampedModel):
     def get_reserved_ranges(self):
         return self.iprange_set.filter(type=IPRANGE_TYPE.RESERVED)
 
-    def is_valid_static_ip(self, ip):
+    def is_valid_static_ip(self, *args, **kwargs):
+        """Validates that the requested IP address is acceptable for allocation
+        in this `Subnet` (assuming it has not already been allocated).
+
+        Returns `True` if the IP address is acceptable, and `False` if not.
+
+        Does not consider whether or not the IP address is already allocated,
+        only whether or not it is in the proper network and range.
+
+        :return: bool
+        """
+        try:
+            self.validate_static_ip(*args, **kwargs)
+        except MAASAPIException:
+            return False
+        return True
+
+    def validate_static_ip(self, ip):
+        """Validates that the requested IP address is acceptable for allocation
+        in this `Subnet` (assuming it has not already been allocated).
+
+        Raises `StaticIPAddressUnavailable` if the address is not acceptable.
+
+        Does not consider whether or not the IP address is already allocated,
+        only whether or not it is in the proper network and range.
+
+        :raises StaticIPAddressUnavailable: If the IP address specified is not
+            available for allocation.
+        """
+        if ip not in self.get_ipnetwork():
+            raise StaticIPAddressOutOfRange(
+                "%s is not within subnet CIDR: %s" % (ip, self.cidr))
         for iprange in self.get_reserved_maasipset():
             if ip in iprange:
-                return False
-        return True
+                raise StaticIPAddressUnavailable(
+                    "%s is within the reserved range from %s to %s" % (
+                        ip, IPAddress(iprange.first), IPAddress(iprange.last)))
+        for iprange in self.get_dynamic_maasipset():
+            if ip in iprange:
+                raise StaticIPAddressUnavailable(
+                    "%s is within the dynamic range from %s to %s" % (
+                        ip, IPAddress(iprange.first), IPAddress(iprange.last)))
 
     def get_reserved_maasipset(self):
         reserved_ranges = MAASIPSet(
@@ -451,6 +526,13 @@ class Subnet(CleanSave, TimestampedModel):
             for iprange in self.get_reserved_ranges()
         )
         return reserved_ranges
+
+    def get_dynamic_maasipset(self):
+        dynamic_ranges = MAASIPSet(
+            iprange.get_MAASIPRange()
+            for iprange in self.get_dynamic_ranges()
+        )
+        return dynamic_ranges
 
     def get_dynamic_range_for_ip(self, ip):
         """Return `IPRange` for the provided `ip`."""

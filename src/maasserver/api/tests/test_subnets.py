@@ -281,7 +281,7 @@ class TestSubnetAPIAuth(MAASServerTestCase):
 class TestSubnetReservedIPRangesAPI(APITestCase):
 
     def test__returns_empty_list_for_empty_subnet(self):
-        subnet = factory.make_Subnet()
+        subnet = factory.make_Subnet(dns_servers=[], gateway_ip='')
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'reserved_ip_ranges'})
@@ -292,7 +292,7 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
         self.assertThat(result, Equals([]))
 
     def test__accounts_for_reserved_ip_address(self):
-        subnet = factory.make_Subnet()
+        subnet = factory.make_Subnet(dns_servers=[], gateway_ip='')
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         factory.make_StaticIPAddress(
             ip=ip, alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet)
@@ -315,7 +315,8 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
 class TestSubnetUnreservedIPRangesAPI(APITestCase):
 
     def test__returns_full_list_for_empty_subnet(self):
-        subnet = factory.make_Subnet()
+        subnet = factory.make_Subnet(
+            cidr=factory.make_ipv4_network(), dns_servers=[], gateway_ip='')
         network = subnet.get_ipnetwork()
         response = self.client.get(
             get_subnet_uri(subnet),
@@ -363,7 +364,8 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             result, Equals([]), str(subnet.get_ipranges_in_use()))
 
     def test__accounts_for_reserved_ip_address(self):
-        subnet = factory.make_Subnet()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            with_dynamic_range=False, dns_servers=[], with_router=False)
         network = subnet.get_ipnetwork()
         # Pick an address in the middle of the range. (that way we'll always
         # expect there to be two unreserved ranges, arranged around the
@@ -406,7 +408,9 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
                 "start": second_range_start,
                 "end": expected_last_address,
                 "num_addresses": second_range_size,
-            }]))
+            }]),
+            "Reserved ranges: %s" % (subnet.get_ipranges_in_use())
+            )
 
 
 class TestSubnetStatisticsAPI(APITestCase):

@@ -16,6 +16,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
 )
 from maasserver.exceptions import (
     StaticIPAddressExhaustion,
@@ -28,6 +29,7 @@ from maasserver.models.staticipaddress import (
     StaticIPAddress,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -41,10 +43,8 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from mock import sentinel
-from netaddr import (
-    IPAddress,
-    IPRange,
-)
+from netaddr import IPAddress
+from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
@@ -127,60 +127,40 @@ class TestStaticIPAddressManager(MAASServerTestCase):
 
 
 class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
-    '''The following TestStaticIPAddressManager tests require
+    """The following TestStaticIPAddressManager tests require
         MAASTransactionServerTestCase, and thus have been separated
         from the TestStaticIPAddressManager above.
-    '''
+    """
 
-    def make_ip_ranges(self, network=None):
-        if network is None:
-            network = factory.make_ip4_or_6_network()
-        middle = network.size // 2
-        dynamic_range = IPRange(network.first, network[middle])
-        static_range = IPRange(network[middle + 1], network.last)
-        return (
-            network,
-            str(IPAddress(static_range.first)),
-            str(IPAddress(static_range.last)),
-            str(IPAddress(dynamic_range.first)),
-            str(IPAddress(dynamic_range.last)),
-        )
-
-    @transactional
     def test_allocate_new_returns_ip_in_correct_range(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high)
+        with transaction.atomic():
+            subnet = factory.make_managed_Subnet()
+        with transaction.atomic():
+            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
-        iprange = IPRange(static_low, static_high)
-        self.assertIn(IPAddress(ipaddress.ip), iprange)
+        self.assertTrue(
+            subnet.is_valid_static_ip(ipaddress.ip),
+            "%s: not valid for subnet with reserved IPs: %r" % (
+                ipaddress.ip, subnet.get_ipranges_in_use()))
 
     @transactional
     def test_allocate_new_allocates_IPv6_address(self):
-        network = factory.make_ipv6_network()
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges(network))
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high)
+        subnet = factory.make_managed_ipv6_Subnet()
+        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
-        self.assertIn(
-            IPAddress(ipaddress.ip), IPRange(static_low, static_high))
+        self.assertTrue(subnet.is_valid_static_ip(ipaddress.ip))
 
     @transactional
     def test_allocate_new_sets_user(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
+        subnet = factory.make_managed_Subnet()
         user = factory.make_User()
         ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user)
+            subnet=subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user)
         self.assertEqual(user, ipaddress.user)
 
     @transactional
     def test_allocate_new_with_user_disallows_wrong_alloc_types(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
+        subnet = factory.make_managed_Subnet()
         user = factory.make_User()
         alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[
@@ -188,82 +168,69 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
                 IPADDRESS_TYPE.DISCOVERED,
                 IPADDRESS_TYPE.USER_RESERVED,
             ])
-        self.assertRaises(
-            AssertionError, StaticIPAddress.objects.allocate_new, network,
-            static_low, static_high, dynamic_low, dynamic_high,
-            user=user, alloc_type=alloc_type)
+        with ExpectedException(AssertionError):
+            StaticIPAddress.objects.allocate_new(
+                subnet, user=user, alloc_type=alloc_type)
 
     @transactional
     def test_allocate_new_with_reserved_type_requires_a_user(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        self.assertRaises(
-            AssertionError, StaticIPAddress.objects.allocate_new, network,
-            static_low, static_high, dynamic_low, dynamic_high,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        subnet = factory.make_managed_Subnet()
+        with ExpectedException(AssertionError):
+            StaticIPAddress.objects.allocate_new(
+                subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
 
-    @transactional
     def test_allocate_new_compares_by_IP_not_alphabetically(self):
         # Django has a bug that casts IP addresses with HOST(), which
         # results in alphabetical comparisons of strings instead of IP
         # addresses.  See https://bugs.launchpad.net/maas/+bug/1338452
-        network = "10.0.0.0/8"
-        static_low = "10.0.0.98"
-        static_high = "10.0.0.100"
-        dynamic_low = "10.0.0.101"
-        dynamic_high = "10.0.0.105"
-        subnet = factory.make_Subnet(cidr=network)
-        factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            subnet=subnet)
-        self.assertEqual(ipaddress.ip, "10.0.0.98")
+        with transaction.atomic():
+            subnet = factory.make_Subnet(
+                cidr='10.0.0.0/24', gateway_ip='10.0.0.1')
+            factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.97')
+            factory.make_IPRange(subnet, '10.0.0.101', '10.0.0.254')
+            factory.make_StaticIPAddress("10.0.0.99", subnet=subnet)
+            subnet = reload_object(subnet)
+        with transaction.atomic():
+            ipaddress = StaticIPAddress.objects.allocate_new(subnet)
+            self.assertEqual(ipaddress.ip, "10.0.0.98")
 
     @transactional
     def test_allocate_new_returns_requested_IP_if_available(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        requested_address = str(IPAddress(static_low) + 1)
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
         ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            factory.pick_enum(
+            subnet, factory.pick_enum(
                 IPADDRESS_TYPE, but_not=[
                     IPADDRESS_TYPE.DHCP,
                     IPADDRESS_TYPE.DISCOVERED,
                     IPADDRESS_TYPE.USER_RESERVED,
                 ]),
-            requested_address=requested_address)
-        self.assertEqual(requested_address.format(), ipaddress.ip)
+            requested_address='10.0.0.1')
+        self.assertEqual('10.0.0.1', ipaddress.ip)
 
     @transactional
     def test_allocate_new_raises_when_requested_IP_unavailable(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
         requested_address = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high,
+            subnet,
             factory.pick_enum(
                 IPADDRESS_TYPE, but_not=[
                     IPADDRESS_TYPE.DHCP,
                     IPADDRESS_TYPE.DISCOVERED,
                     IPADDRESS_TYPE.USER_RESERVED,
                 ])).ip
-        self.assertRaises(
-            StaticIPAddressUnavailable, StaticIPAddress.objects.allocate_new,
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            requested_address=requested_address)
+        with ExpectedException(StaticIPAddressUnavailable):
+            StaticIPAddress.objects.allocate_new(
+                subnet, requested_address=requested_address)
 
     @transactional
     def test_allocate_new_raises_serialization_error_if_ip_taken(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
         # Simulate a "IP already taken" error.
         mock_attempt_allocation = self.patch(
             StaticIPAddress.objects, '_attempt_allocation')
         mock_attempt_allocation.side_effect = StaticIPAddressUnavailable()
-
         error = self.assertRaises(
-            Exception, StaticIPAddress.objects.allocate_new,
-            network, static_low, static_high, dynamic_low, dynamic_high)
+            Exception, StaticIPAddress.objects.allocate_new, subnet)
         self.assertTrue(is_serialization_failure(error))
 
     @transactional
@@ -271,25 +238,19 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
         # When requesting a specific IP address, there's no need to
         # acquire the lock.
         lock = self.patch(locks, 'staticip_acquire')
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        requested_address = str(IPAddress(static_low) + 1)
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
         ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            requested_address=requested_address)
+            subnet, requested_address='10.0.0.1')
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertThat(lock.__enter__, MockNotCalled())
 
     @transactional
     def test_allocate_new_raises_when_requested_IP_out_of_network(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        other_network = factory.make_ipv4_network(but_not=network)
-        requested_address = factory.pick_ip_in_network(other_network)
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        requested_address = '10.0.1.1'
         e = self.assertRaises(
             StaticIPAddressOutOfRange, StaticIPAddress.objects.allocate_new,
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            factory.pick_enum(
+            subnet, factory.pick_enum(
                 IPADDRESS_TYPE, but_not=[
                     IPADDRESS_TYPE.DHCP,
                     IPADDRESS_TYPE.DISCOVERED,
@@ -297,37 +258,40 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
                 ]),
             requested_address=requested_address)
         self.assertEqual(
-            "%s is not inside the network %s" % (
-                requested_address, network),
+            "%s is not within subnet CIDR: %s" % (
+                requested_address, str(subnet.get_ipnetwork())),
             str(e))
 
-    @transactional
     def test_allocate_new_raises_when_requested_IP_in_dynamic_range(self):
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        requested_address = dynamic_low
-        e = self.assertRaises(
-            StaticIPAddressOutOfRange, StaticIPAddress.objects.allocate_new,
-            network, static_low, static_high, dynamic_low, dynamic_high,
-            factory.pick_enum(
-                IPADDRESS_TYPE, but_not=[
-                    IPADDRESS_TYPE.DHCP,
-                    IPADDRESS_TYPE.DISCOVERED,
-                    IPADDRESS_TYPE.USER_RESERVED,
-                ]),
-            requested_address=requested_address)
-        self.assertEqual(
-            "%s is inside the dynamic range %s to %s" % (
-                requested_address, dynamic_low, dynamic_high),
-            str(e))
+        with transaction.atomic():
+            subnet = factory.make_ipv4_Subnet_with_IPRanges()
+            dynamic_range = subnet.get_dynamic_ranges().first()
+            requested_address = str(IPAddress(
+                dynamic_range.netaddr_iprange.first))
+            dynamic_range_end = str(IPAddress(
+                dynamic_range.netaddr_iprange.last))
+            subnet = reload_object(subnet)
+        with transaction.atomic():
+            e = self.assertRaises(
+                StaticIPAddressUnavailable,
+                StaticIPAddress.objects.allocate_new,
+                subnet, factory.pick_enum(
+                    IPADDRESS_TYPE, but_not=[
+                        IPADDRESS_TYPE.DHCP,
+                        IPADDRESS_TYPE.DISCOVERED,
+                        IPADDRESS_TYPE.USER_RESERVED,
+                    ]),
+                requested_address=requested_address)
+            self.assertEqual(
+                "%s is within the dynamic range from %s to %s" % (
+                    requested_address, requested_address, dynamic_range_end),
+                str(e))
 
     @transactional
     def test_allocate_new_raises_when_alloc_type_is_None(self):
         error = self.assertRaises(
             ValueError, StaticIPAddress.objects.allocate_new,
-            sentinel.network, sentinel.static_range_low,
-            sentinel.static_range_low, sentinel.dynamic_range_low,
-            sentinel.dynamic_range_high, alloc_type=None)
+            sentinel.subnet, alloc_type=None)
         self.assertEqual(
             "IP address type None is not allowed to use allocate_new.",
             str(error))
@@ -336,9 +300,7 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
     def test_allocate_new_raises_when_alloc_type_is_not_allowed(self):
         error = self.assertRaises(
             ValueError, StaticIPAddress.objects.allocate_new,
-            sentinel.network, sentinel.static_range_low,
-            sentinel.static_range_low, sentinel.dynamic_range_low,
-            sentinel.dynamic_range_high, alloc_type=IPADDRESS_TYPE.DHCP)
+            sentinel.subnet, alloc_type=IPADDRESS_TYPE.DHCP)
         self.assertEqual(
             "IP address type 5 is not allowed to use allocate_new.",
             str(error))
@@ -346,10 +308,8 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
     @transactional
     def test_allocate_new_uses_staticip_acquire_lock(self):
         lock = self.patch(locks, 'staticip_acquire')
-        network, static_low, static_high, dynamic_low, dynamic_high = (
-            self.make_ip_ranges())
-        ipaddress = StaticIPAddress.objects.allocate_new(
-            network, static_low, static_high, dynamic_low, dynamic_high)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        ipaddress = StaticIPAddress.objects.allocate_new(subnet)
         self.assertIsInstance(ipaddress, StaticIPAddress)
         self.assertThat(lock.__enter__, MockCalledOnceWith())
         self.assertThat(
@@ -357,21 +317,18 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
 
     def test_allocate_new_raises_when_addresses_exhausted(self):
         network = "192.168.230.0/24"
-        static_low = static_high = "192.168.230.1"
-        dynamic_low = dynamic_high = "192.168.230.2"
-        subnet = factory.make_Subnet(cidr=network)
         with transaction.atomic():
-            StaticIPAddress.objects.allocate_new(
-                network, static_low, static_high, dynamic_low, dynamic_high,
-                subnet=subnet)
+            subnet = factory.make_Subnet(cidr=network)
+            factory.make_IPRange(
+                subnet, '192.168.230.0', '192.168.230.255',
+                type=IPRANGE_TYPE.RESERVED)
         with transaction.atomic():
             e = self.assertRaises(
                 StaticIPAddressExhaustion,
                 StaticIPAddress.objects.allocate_new,
-                network, static_low, static_high, dynamic_low, dynamic_high,
-                subnet=subnet)
+                subnet)
         self.assertEqual(
-            "No more IPs available in range %s-%s" % (static_low, static_high),
+            "No more IPs available in subnet: %s" % subnet.cidr,
             str(e))
 
 

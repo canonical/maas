@@ -120,6 +120,9 @@ class IPRange(CleanSave, TimestampedModel):
             self.subnet_id, self.start_ip, self.end_ip, self.type,
             self.user_id, self.comment)
 
+    def __contains__(self, item):
+        return item in self.netaddr_iprange
+
     def clean(self):
         super().clean()
         try:

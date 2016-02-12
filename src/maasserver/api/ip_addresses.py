@@ -38,9 +38,6 @@ from maasserver.models import (
 )
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.ipaddr import (
-    get_first_and_last_usable_host_in_network,
-)
 
 
 maaslog = get_maas_logger("ip_addresses")
@@ -78,19 +75,7 @@ class IPAddressesHandler(OperationsHandler):
         if domain is None:
             domain = Domain.objects.get_default_domain()
         if mac is None:
-            # XXX bug=1539248 2016-01-28 blake_r: We need to take into account
-            # all dynamic ranges inside the subnet. allocate_new needs to be
-            # fixed to just take a subnet instead of all the range information.
-            # For now ignoring even one dynamic range is skipped.
-            network = subnet.get_ipnetwork()
-            ip_range_low, ip_range_high = (
-                get_first_and_last_usable_host_in_network(network))
             sip = StaticIPAddress.objects.allocate_new(
-                network=network,
-                static_range_low=ip_range_low,
-                static_range_high=ip_range_high,
-                dynamic_range_low=None,
-                dynamic_range_high=None,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=ip_address,
                 subnet=subnet,

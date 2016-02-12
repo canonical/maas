@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for StaticIPAddress.
@@ -58,10 +58,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
-from netaddr import (
-    IPAddress,
-    IPRange,
-)
+from netaddr import IPAddress
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import asynchronous
@@ -167,24 +164,11 @@ class StaticIPAddressManager(Manager):
             return ipaddress
 
     def allocate_new(
-            self, network, static_range_low, static_range_high,
-            dynamic_range_low, dynamic_range_high,
-            alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-            requested_address=None, subnet=None,
-            exclude_addresses=[], in_use_ipset=set()):
+            self, subnet=None, alloc_type=IPADDRESS_TYPE.AUTO, user=None,
+            requested_address=None, exclude_addresses=[]):
         """Return a new StaticIPAddress.
 
-        :param network: The network the address should be allocated in.
-        :param static_range_low: The lowest static address to allocate in a
-            range. Used if `requested_address` is not passed.
-        :param static_range_high: The highest static address to allocate in a
-            range. Used if `requested_address` is not passed.
-        :param dynamic_range_low: The lowest dynamic address. Used if
-            `requested_address` is passed, check that its not inside the
-            dynamic range.
-        :param dynamic_range_high: The highest dynamic address. Used if
-            `requested_address` is passed, check that its not inside the
-            dynamic range.
+        :param subnet: The subnet from which to allocate the address.
         :param alloc_type: What sort of IP address to allocate in the
             range of choice in IPADDRESS_TYPE.
         :param user: If providing a user, the alloc_type must be
@@ -193,6 +177,7 @@ class StaticIPAddressManager(Manager):
             AssertionError is raised if these conditions are not met.
         :param requested_address: Optional IP address that the caller wishes
             to use instead of being allocated one at random.
+        :param exclude_addresses: A list of addresses which MUST NOT be used.
 
         All IP parameters can be strings or netaddr.IPAddress.
 
@@ -204,39 +189,18 @@ class StaticIPAddressManager(Manager):
         # taken, and so we must first eliminate all other possible causes.
         self._verify_alloc_type(alloc_type, user)
 
-        # XXX 2015-09-01 mpontillo: We added a subnet= parameter to this
-        # method, but overlooked the fact that a 'network' is passed in.
-        # This was possibly done because a Subnet is less ambiguous, but
-        # it still needs to be cleaned up.
-        # XXX:fabric - this method has problems with overlapping subnets.
-        # If the user didn't specify a Subnet, look for the best possible
-        # match. First start with any explicitly-requested address. Then
-        # fall back to looking at the ranges (if specified).
         if subnet is None:
             if requested_address:
                 subnet = Subnet.objects.get_best_subnet_for_ip(
                     requested_address)
-            elif static_range_low:
-                subnet = Subnet.objects.get_best_subnet_for_ip(
-                    static_range_low)
-            elif dynamic_range_low:
-                subnet = Subnet.objects.get_best_subnet_for_ip(
-                    dynamic_range_low)
             else:
                 raise StaticIPAddressOutOfRange(
                     "Could not find an appropriate subnet.")
 
         if requested_address is None:
-            static_range_low = IPAddress(static_range_low)
-            static_range_high = IPAddress(static_range_high)
-            static_range = IPRange(static_range_low, static_range_high)
-
             with locks.staticip_acquire:
                 requested_address = self._async_find_free_ip(
-                    static_range_low, static_range_high, static_range,
-                    alloc_type, user,
-                    exclude_addresses=exclude_addresses,
-                    in_use_ipset=in_use_ipset).wait(30)
+                    subnet, exclude_addresses=exclude_addresses).wait(30)
                 try:
                     return self._attempt_allocation(
                         requested_address, alloc_type, user,
@@ -248,22 +212,7 @@ class StaticIPAddressManager(Manager):
                     raise make_serialization_failure()
         else:
             requested_address = IPAddress(requested_address)
-            if requested_address not in network:
-                raise StaticIPAddressOutOfRange(
-                    "%s is not inside the network %s" % (
-                        requested_address.format(), network))
-
-            if (dynamic_range_low is not None and
-                    dynamic_range_high is not None):
-                dynamic_range_low = IPAddress(dynamic_range_low)
-                dynamic_range_high = IPAddress(dynamic_range_high)
-                dynamic_range = IPRange(dynamic_range_low, dynamic_range_high)
-                if requested_address in dynamic_range:
-                    raise StaticIPAddressOutOfRange(
-                        "%s is inside the dynamic range %s to %s" % (
-                            requested_address.format(),
-                            dynamic_range_low.format(),
-                            dynamic_range_high.format()))
+            subnet.validate_static_ip(requested_address)
             return self._attempt_allocation(
                 requested_address, alloc_type,
                 user=user, subnet=subnet)
@@ -317,40 +266,20 @@ class StaticIPAddressManager(Manager):
         return deferToDatabase(
             transactional(self._find_free_ip), *args, **kwargs)
 
-    def _find_free_ip(
-            self, range_low, range_high, static_range, alloc_type,
-            user, exclude_addresses, in_use_ipset=set()):
+    def _find_free_ip(self, subnet, exclude_addresses=[]):
         """Helper function that finds a free IP address using a lock."""
-        # The set of _allocated_ addresses in the range is going to be
-        # smaller or at least no bigger than the set of addresses in the
-        # whole range, so we materialise a Python set of only allocated
-        # addreses. We can iterate through `static_range` without
-        # materialising every address within. This is critical for IPv6,
-        # where ranges may contain 2^64 addresses without blinking.
-        existing = self.filter(
-            ip__gte=range_low.format(),
-            ip__lte=range_high.format(),
-        )
-        # We might consider limiting this query, but that's premature. If
-        # MAAS is managing even as many as 10k nodes in a single network
-        # then my hat is most certainly on the menu. However, we do care
-        # only about the IP address field here.
-        existing = existing.values_list("ip", flat=True)
-        # Now materialise the set.
-        existing = {IPAddress(ip) for ip in existing}
-        existing = existing.union({
-            IPAddress(exclude)
-            for exclude in exclude_addresses
-            })
-        # Now find the first free address in the range.
-        for requested_address in static_range:
-            if (requested_address not in existing and
-                    requested_address not in in_use_ipset):
-                return requested_address
-        else:
+        # The purpose of sorting here is so that we ensure we always get an
+        # IP address from the *smallest* free contiguous range. This way,
+        # larger ranges can be preserved in case they need to be used for
+        # applications requiring them.
+        free_ranges = sorted(list(
+            subnet.get_ipranges_not_in_use(
+                exclude_addresses=exclude_addresses)
+            ), key=lambda x: x.num_addresses)
+        if len(free_ranges) == 0:
             raise StaticIPAddressExhaustion(
-                "No more IPs available in range %s-%s" % (
-                    range_low.format(), range_high.format()))
+                "No more IPs available in subnet: %s" % subnet.cidr)
+        return str(IPAddress(free_ranges[0].first))
 
     def get_hostname_ip_mapping(self, domain_or_subnet):
         """Return hostname mappings for `StaticIPAddress` entries.

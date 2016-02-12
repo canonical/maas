@@ -11,6 +11,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db import transaction
 from django.http import Http404
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -42,7 +43,10 @@ from maasserver.testing.orm import (
     reload_object,
     reload_objects,
 )
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import get_one
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -1861,20 +1865,22 @@ class TestUpdateLinkById(MAASServerTestCase):
             static_ip, INTERFACE_LINK_TYPE.AUTO, subnet, ip_address=None))
 
 
-class TestClaimAutoIPs(MAASServerTestCase):
+class TestClaimAutoIPs(MAASTransactionServerTestCase):
     """Tests for `Interface.claim_auto_ips`."""
 
     def test__claims_all_auto_ip_addresses(self):
         from maasserver.dns import config
         self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        for _ in range(3):
-            subnet = factory.make_Subnet(vlan=interface.vlan)
-            factory.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-                subnet=subnet, interface=interface)
-        observed = interface.claim_auto_ips()
-
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3):
+                subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                    vlan=interface.vlan)
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                    subnet=subnet, interface=interface)
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
         # Should now have 3 AUTO with IP addresses assigned.
         interface = reload_object(interface)
         assigned_addresses = interface.ip_addresses.filter(
@@ -1892,18 +1898,20 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_all_missing_assigned_auto_ip_addresses(self):
         from maasserver.dns import config
         self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        for _ in range(3):
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            for _ in range(3):
+                subnet = factory.make_Subnet(vlan=interface.vlan)
+                ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
+                    subnet=subnet, interface=interface)
             subnet = factory.make_Subnet(vlan=interface.vlan)
-            ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
             factory.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
                 subnet=subnet, interface=interface)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        observed = interface.claim_auto_ips()
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
         self.assertEqual(
             1, len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.")
@@ -1915,12 +1923,15 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_ip_address_not_in_dynamic_ip_range(self):
         from maasserver.dns import config
         self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=interface.vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        observed = interface.claim_auto_ips()
+        with transaction.atomic():
+            subnet = factory.make_ipv4_Subnet_with_IPRanges()
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, vlan=subnet.vlan)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
         self.assertEqual(
             1, len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.")
@@ -1932,21 +1943,23 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
         from maasserver.dns import config
         self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        network = factory.make_ipv4_network(slash=30)
-        subnet = factory.make_Subnet(
-            vlan=interface.vlan, cidr=str(network.cidr))
-        # Make it so only one IP is available.
-        subnet.gateway_ip = str(IPAddress(network.first))
-        subnet.save()
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            ip=str(IPAddress(network.first + 1)),
-            subnet=subnet, interface=interface)
-        observed = interface.claim_auto_ips()
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            network = factory.make_ipv4_network(slash=30)
+            subnet = factory.make_Subnet(
+                vlan=interface.vlan, cidr=str(network.cidr))
+            # Make it so only one IP is available.
+            subnet.gateway_ip = str(IPAddress(network.first))
+            subnet.save()
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                ip=str(IPAddress(network.first + 1)),
+                subnet=subnet, interface=interface)
+        with transaction.atomic():
+            observed = interface.claim_auto_ips()
         self.assertEquals(
             1, len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.")
@@ -1957,16 +1970,18 @@ class TestClaimAutoIPs(MAASServerTestCase):
     def test__claim_fails_if_subnet_missing(self):
         from maasserver.dns import config
         self.patch_autospec(config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        ip.subnet = None
-        ip.save()
-        maaslog = self.patch_autospec(interface_module, "maaslog")
-        with ExpectedException(StaticIPAddressUnavailable):
-            interface.claim_auto_ips()
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_Subnet(vlan=interface.vlan)
+            ip = factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+            ip.subnet = None
+            ip.save()
+            maaslog = self.patch_autospec(interface_module, "maaslog")
+        with transaction.atomic():
+            with ExpectedException(StaticIPAddressUnavailable):
+                interface.claim_auto_ips()
         self.expectThat(maaslog.error, MockCalledOnceWith(
             "Could not find subnet for interface %s." %
             interface.get_log_string()))
@@ -1975,40 +1990,48 @@ class TestClaimAutoIPs(MAASServerTestCase):
         from maasserver.dns import config
         mock_dns_update_by_node = self.patch_autospec(
             config, "dns_update_by_node")
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        interface.claim_auto_ips()
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_Subnet(vlan=interface.vlan)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+        with transaction.atomic():
+            interface.claim_auto_ips()
         self.assertThat(
             mock_dns_update_by_node,
             MockCalledOnceWith(interface.node))
 
     def test__excludes_ip_addresses_in_exclude_addresses(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        exclude = get_first_and_last_usable_host_in_network(
-            subnet.get_ipnetwork())[0]
-        interface.claim_auto_ips(exclude_addresses=set([str(exclude)]))
-        auto_ip = interface.ip_addresses.get(alloc_type=IPADDRESS_TYPE.AUTO)
-        self.assertEqual(IPAddress(exclude) + 1, IPAddress(auto_ip.ip))
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_Subnet(vlan=interface.vlan)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+            exclude = get_first_and_last_usable_host_in_network(
+                subnet.get_ipnetwork())[0]
+        with transaction.atomic():
+            interface.claim_auto_ips(exclude_addresses=set([str(exclude)]))
+            auto_ip = interface.ip_addresses.get(
+                alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertNotEqual(IPAddress(exclude), IPAddress(auto_ip.ip))
 
     def test__can_acquire_multiple_address_from_the_same_subnet(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        subnet = factory.make_Subnet(vlan=interface.vlan)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
-            subnet=subnet, interface=interface)
-        interface.claim_auto_ips()
-        auto_ips = interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.AUTO).order_by('id')
+        with transaction.atomic():
+            interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+            subnet = factory.make_ipv4_Subnet_with_IPRanges(
+                vlan=interface.vlan)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+                subnet=subnet, interface=interface)
+        with transaction.atomic():
+            interface.claim_auto_ips()
+            auto_ips = interface.ip_addresses.filter(
+                alloc_type=IPADDRESS_TYPE.AUTO).order_by('id')
         self.assertEqual(
             IPAddress(auto_ips[0].ip) + 1, IPAddress(auto_ips[1].ip))
 
