@@ -18,7 +18,6 @@ from django.db.models import (
     ForeignKey,
     IntegerField,
     Manager,
-    PROTECT,
     Q,
 )
 from django.db.models.query import QuerySet
@@ -158,11 +157,11 @@ class VLAN(CleanSave, TimestampedModel):
     dhcp_on = BooleanField(default=False, editable=True)
 
     primary_rack = ForeignKey(
-        'Node', on_delete=PROTECT, null=True, blank=True, editable=True,
+        'RackController', null=True, blank=True, editable=True,
         related_name='+')
 
     secondary_rack = ForeignKey(
-        'Node', on_delete=PROTECT, null=True, blank=True, editable=True,
+        'RackController', null=True, blank=True, editable=True,
         related_name='+')
 
     def __str__(self):

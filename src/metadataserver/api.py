@@ -45,6 +45,7 @@ from maasserver.models import (
     Interface,
     Node,
     NodeGroupToRackController,
+    RackController,
     SSHKey,
     SSLKey,
 )
@@ -510,9 +511,11 @@ class VersionIndexHandler(MetadataViewHandler):
                     vlans = [
                         ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks
                     ]
-                    for nic in node.interface_set.all():
+                    # The VLAN object can only be related to a RackController
+                    rack = RackController.objects.get(system_id=node.system_id)
+                    for nic in rack.interface_set.all():
                         if nic.vlan in vlans:
-                            nic.vlan.primary_rack = node
+                            nic.vlan.primary_rack = rack
                             nic.vlan.save()
                     for ng_to_rack in ng_to_racks:
                         ng_to_rack.delete()

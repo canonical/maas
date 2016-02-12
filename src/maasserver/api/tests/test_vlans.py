@@ -214,6 +214,28 @@ class TestVlanAPI(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
+    def test_update_400_when_bad_primary_rack(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        uri = get_vlan_uri(vlan)
+        response = self.client.put(uri, {
+            "primary_rack": factory.make_name("primary_rack"),
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_update_400_when_bad_secondary_rack(self):
+        self.become_admin()
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric)
+        uri = get_vlan_uri(vlan)
+        response = self.client.put(uri, {
+            "secondary_rack": factory.make_name("secondary_rack"),
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
     def test_delete_deletes_vlan(self):
         self.become_admin()
         vlan = factory.make_VLAN()

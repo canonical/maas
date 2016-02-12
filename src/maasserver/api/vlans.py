@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `VLAN`."""
@@ -22,6 +22,9 @@ DISPLAYED_VLAN_FIELDS = (
     'vid',
     'fabric',
     'mtu',
+    'primary_rack',
+    'secondary_rack',
+    'dhcp_on',
 )
 
 
@@ -35,6 +38,20 @@ class VlansHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         # See the comment in NodeHandler.resource_uri.
         return ('vlans_handler', ["fabric_id"])
+
+    @classmethod
+    def primary_rack(handler, vlan):
+        if vlan.primary_rack:
+            return vlan.primary_rack.system_id
+        else:
+            return None
+
+    @classmethod
+    def secondary_rack(handler, vlan):
+        if vlan.secondary_rack:
+            return vlan.secondary_rack.system_id
+        else:
+            return None
 
     def read(self, request, fabric_id):
         """List all VLANs belonging to fabric.
@@ -77,6 +94,20 @@ class VlanHandler(OperationsHandler):
             # For context help, we want to document the user-friendly (two
             # parameter) way to access the VLAN API.
             return ('vlan_handler', ["fabric_id", "vid"])
+
+    @classmethod
+    def primary_rack(handler, vlan):
+        if vlan.primary_rack:
+            return vlan.primary_rack.system_id
+        else:
+            return None
+
+    @classmethod
+    def secondary_rack(handler, vlan):
+        if vlan.secondary_rack:
+            return vlan.secondary_rack.system_id
+        else:
+            return None
 
     @classmethod
     def fabric(cls, vlan):
@@ -125,7 +156,17 @@ class VlanHandler(OperationsHandler):
         """Update VLAN.
 
         :param name: Name of the VLAN.
+        :type name: unicode
         :param vid: VLAN ID of the VLAN.
+        :type vid: integer
+        :param mtu: The MTU to use on the VLAN.
+        :type mtu: integer
+        :Param dhcp_on: Whether or not DHCP should be managed on the VLAN.
+        :type dhcp_on: boolean
+        :param primary_rack: The primary rack controller managing the VLAN.
+        :type primary_rack: system_id
+        :param secondary_rack: The secondary rack controller manging the VLAN.
+        :type secondary_rack: system_id
 
         Returns 404 if the fabric or VLAN is not found.
         """
