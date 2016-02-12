@@ -34,14 +34,15 @@ describe("NodesListController", function() {
         $routeParams = {};
     }));
 
-    // Load the MachinesManager, DevicesManager, GeneralManager,
-    // MachinesManager, RegionConnection, SearchService and mock the
-    // websocket connection.
-    var MachinesManager, DevicesManager, GeneralManager;
+    // Load the MachinesManager, DevicesManager, ControllersManager,
+    // GeneralManager, MachinesManager, RegionConnection, SearchService and
+    // mock the websocket connection.
+    var MachinesManager, DevicesManager, ControllersManager, GeneralManager;
     var ManagerHelperService, SearchService;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
         DevicesManager = $injector.get("DevicesManager");
+        ControllersManager = $injector.get("ControllersManager");
         GeneralManager = $injector.get("GeneralManager");
         ZonesManager = $injector.get("ZonesManager");
         UsersManager = $injector.get("UsersManager");
@@ -86,6 +87,7 @@ describe("NodesListController", function() {
             $routeParams: $routeParams,
             MachinesManager: MachinesManager,
             DevicesManager: DevicesManager,
+            ControllersManager: ControllersManager,
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
         });
@@ -116,6 +118,14 @@ describe("NodesListController", function() {
             DevicesManager._items.push(device);
             return device;
         }
+        else if (tab === 'controllers') {
+            var controller = {
+                system_id: makeName("system_id"),
+                $selected: false
+            };
+            ControllersManager._items.push(controller);
+            return controller;
+        }
         return null;
     }
 
@@ -130,6 +140,7 @@ describe("NodesListController", function() {
         var controller = makeController();
         expect($scope.nodes).toBe(MachinesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
+        expect($scope.controllers).toBe(ControllersManager.getItems());
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.addHardwareOption).toBeNull();
         expect($scope.addHardwareOptions).toEqual([
@@ -157,22 +168,27 @@ describe("NodesListController", function() {
     it("saves current filters for nodes and devices when scope destroyed",
         function() {
             var controller = makeController();
-            var nodesFilters = {}, devicesFilters = {};
+            var nodesFilters = {};
+            var devicesFilters = {};
+            var controllersFilters = {};
             $scope.tabs.nodes.filters = nodesFilters;
             $scope.tabs.devices.filters = devicesFilters;
+            $scope.tabs.controllers.filters = controllersFilters;
             $scope.$destroy();
             expect(SearchService.retrieveFilters("nodes")).toBe(nodesFilters);
             expect(SearchService.retrieveFilters("devices")).toBe(
                 devicesFilters);
+            expect(SearchService.retrieveFilters("controllers")).toBe(
+                controllersFilters);
         });
 
     it("calls loadManagers with MachinesManager, DevicesManager," +
-        "GeneralManager, UsersManager",
+        "ControllersManager, GeneralManager, UsersManager",
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [MachinesManager, DevicesManager, GeneralManager,
-                 ZonesManager, UsersManager]);
+                [MachinesManager, DevicesManager, ControllersManager,
+                GeneralManager, ZonesManager, UsersManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -199,6 +215,15 @@ describe("NodesListController", function() {
                 "devices", SearchService.getCurrentFilters(query));
             var controller = makeController();
             expect($scope.tabs.devices.search).toBe(query);
+        });
+
+    it("sets controllers search from SearchService",
+        function() {
+            var query = makeName("query");
+            SearchService.storeFilters(
+                "controllers", SearchService.getCurrentFilters(query));
+            var controller = makeController();
+            expect($scope.tabs.controllers.search).toBe(query);
         });
 
     it("sets nodes search from $routeParams.query",
@@ -236,7 +261,7 @@ describe("NodesListController", function() {
         });
     });
 
-    angular.forEach(["nodes", "devices"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -246,6 +271,8 @@ describe("NodesListController", function() {
                     manager = MachinesManager;
                 } else if(tab === "devices") {
                     manager = DevicesManager;
+                } else if(tab === "controllers") {
+                    manager = ControllersManager;
                 } else {
                     throw new Error("Unknown manager for tab: " + tab);
                 }
@@ -347,7 +374,7 @@ describe("NodesListController", function() {
 
     });
 
-    angular.forEach(["nodes", "devices"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -377,6 +404,7 @@ describe("NodesListController", function() {
                     tabObj = $scope.tabs[tab];
                     $scope.tabs.nodes.filtered_items = $scope.nodes;
                     $scope.tabs.devices.filtered_items = $scope.devices;
+                    $scope.tabs.controllers.filtered_items = $scope.controllers;
                 });
 
                 it("selects object", function() {
@@ -457,6 +485,7 @@ describe("NodesListController", function() {
                     tabObj = $scope.tabs[tab];
                     $scope.tabs.nodes.filtered_items = $scope.nodes;
                     $scope.tabs.devices.filtered_items = $scope.devices;
+                    $scope.tabs.controllers.filtered_items = $scope.controllers;
                 });
 
                 it("selects all objects", function() {
@@ -683,7 +712,7 @@ describe("NodesListController", function() {
 
     });
 
-    angular.forEach(["nodes", "devices"], function(tab) {
+    angular.forEach(["nodes", "devices", "controllers"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
@@ -914,6 +943,13 @@ describe("NodesListController", function() {
                     $scope.tabs.devices.search = "in:(Selected)";
                     $scope.actionCancel('devices');
                     expect($scope.tabs.devices.search).toBe("");
+                });
+
+                it("clears search if in:selected (controller)", function() {
+                    var controller = makeController();
+                    $scope.tabs.controllers.search = "in:(Selected)";
+                    $scope.actionCancel('controllers');
+                    expect($scope.tabs.controllers.search).toBe("");
                 });
 
                 it("doesnt clear search if not in:Selected", function() {

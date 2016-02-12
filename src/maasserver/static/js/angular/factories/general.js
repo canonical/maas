@@ -35,6 +35,13 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
+                controller_actions: {
+                    method: "general.controller_actions",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
                 architectures: {
                     method: "general.architectures",
                     data: [],

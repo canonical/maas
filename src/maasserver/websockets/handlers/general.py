@@ -42,6 +42,7 @@ class GeneralHandler(Handler):
             'osinfo',
             'node_actions',
             'device_actions',
+            'controller_actions',
             'random_hostname',
             'bond_options',
             'version',
@@ -103,6 +104,16 @@ class GeneralHandler(Handler):
         return self.dehydrate_actions(actions)
 
     def device_actions(self, params):
+        """Return all possible device actions."""
+        # Remove the actions that can only be performed on nodes.
+        actions = {
+            name: action
+            for name, action in ACTIONS_DICT.items()
+            if not action.node_only
+            }
+        return self.dehydrate_actions(actions)
+
+    def controller_actions(self, params):
         """Return all possible device actions."""
         # Remove the actions that can only be performed on nodes.
         actions = {

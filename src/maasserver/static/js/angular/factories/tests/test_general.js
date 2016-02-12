@@ -50,9 +50,9 @@ describe("GeneralManager", function() {
 
     it("_data has expected keys", function() {
         expect(Object.keys(GeneralManager._data)).toEqual(
-            ["node_actions", "device_actions", "architectures", "hwe_kernels",
-             "default_min_hwe_kernel", "osinfo", "bond_options", "version",
-             "power_types"]);
+            ["node_actions", "device_actions", "controller_actions",
+            "architectures", "hwe_kernels", "default_min_hwe_kernel", "osinfo",
+            "bond_options", "version", "power_types"]);
     });
 
     it("_data.node_actions has correct data", function() {
@@ -71,6 +71,15 @@ describe("GeneralManager", function() {
         expect(device_actions.loaded).toBe(false);
         expect(device_actions.polling).toBe(false);
         expect(device_actions.nextPromise).toBeNull();
+    });
+
+    it("_data.controller_actions has correct data", function() {
+        var controller_actions = GeneralManager._data.controller_actions;
+        expect(controller_actions.method).toBe("general.controller_actions");
+        expect(controller_actions.data).toEqual([]);
+        expect(controller_actions.loaded).toBe(false);
+        expect(controller_actions.polling).toBe(false);
+        expect(controller_actions.nextPromise).toBeNull();
     });
 
     it("_data.architectures has correct data", function() {
@@ -165,6 +174,7 @@ describe("GeneralManager", function() {
         it("returns false if one false", function() {
             GeneralManager._data.node_actions.loaded = true;
             GeneralManager._data.device_actions.loaded = true;
+            GeneralManager._data.controller_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.osinfo.loaded = true;
@@ -176,6 +186,7 @@ describe("GeneralManager", function() {
         it("returns true if all true", function() {
             GeneralManager._data.node_actions.loaded = true;
             GeneralManager._data.device_actions.loaded = true;
+            GeneralManager._data.controller_actions.loaded = true;
             GeneralManager._data.architectures.loaded = true;
             GeneralManager._data.hwe_kernels.loaded = true;
             GeneralManager._data.default_min_hwe_kernel.loaded = true;
@@ -430,11 +441,12 @@ describe("GeneralManager", function() {
             spyOn(GeneralManager, "_loadData").and.returnValue(
                 $q.defer().promise);
             GeneralManager.loadItems();
-            expect(GeneralManager._loadData.calls.count()).toBe(9);
+            expect(GeneralManager._loadData.calls.count()).toBe(10);
         });
 
         it("resolve defer once all resolve", function(done) {
             var defers = [
+                $q.defer(),
                 $q.defer(),
                 $q.defer(),
                 $q.defer(),

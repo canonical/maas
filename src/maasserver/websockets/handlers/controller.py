@@ -8,54 +8,49 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.node import Node
-from maasserver.websockets.handlers.node import (
-    node_prefetch,
-    NodeHandler,
-)
+from maasserver.websockets.handlers.machine import MachineHandler
+from maasserver.websockets.handlers.node import node_prefetch
 
 
-class ControllerHandler(NodeHandler):
+class ControllerHandler(MachineHandler):
 
-    class Meta(NodeHandler.Meta):
+    class Meta(MachineHandler.Meta):
         abstract = False
         queryset = node_prefetch(Node.controllers.all())
         allowed_methods = [
             'list',
             'get',
+            'create',
+            'update',
+            'action',
+            'set_active',
+            'check_power',
+            'create_physical',
+            'create_vlan',
+            'create_bond',
+            'update_interface',
+            'delete_interface',
+            'link_subnet',
+            'unlink_subnet',
         ]
-        exclude = [
-            "parent",
-            "boot_interface",
-            "boot_cluster_ip",
-            "token",
-            "netboot",
-            "agent_name",
-            "power_state_updated",
-            "gateway_link_ipv4",
-            "gateway_link_ipv6",
-            "enable_ssh",
-            "skip_networking",
-            "skip_storage",
-            "instance_power_parameters",
-            "dns_process",
-        ]
+        form = AdminNodeWithMACAddressesForm
+        # Exclude list comes from MachineHandler.Meta.
         list_fields = [
             "system_id",
             "hostname",
-            "owner",
-            "cpu_count",
-            "memory",
-            "power_state",
-            "domain",
-            "zone",
-        ]
+            "node_type",
+            "status",
+            "updated",
+            ]
+        # Controller data rides on the machine channel.
         listen_channels = [
-            "controller",
+            "machine",
         ]
 
     def get_queryset(self):
-        """Return `QuerySet` for devices only viewable by `user`."""
+        """Return `QuerySet` for controllers only viewable by `user`."""
         controllers = super(ControllerHandler, self).get_queryset()
         return Node.controllers.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=controllers)

@@ -5,12 +5,12 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$routeParams', 'MachinesManager', 'DevicesManager',
-    'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
-    'UsersManager',
-    function($scope, $rootScope, $routeParams, MachinesManager, DevicesManager,
-        GeneralManager, ManagerHelperService, SearchService, ZonesManager,
-        UsersManager) {
+    '$scope', '$rootScope', '$routeParams', 'MachinesManager',
+    'DevicesManager', 'ControllersManager', 'GeneralManager',
+    'ManagerHelperService', 'SearchService', 'ZonesManager', 'UsersManager',
+    function($scope, $rootScope, $routeParams, MachinesManager,
+        DevicesManager, ControllersManager, GeneralManager,
+        ManagerHelperService, SearchService, ZonesManager, UsersManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -27,6 +27,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.nodes = MachinesManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.devices = DevicesManager.getItems();
+        $scope.controllers = ControllersManager.getItems();
         $scope.currentpage = "nodes";
         $scope.osinfo = GeneralManager.getData("osinfo");
         $scope.loading = true;
@@ -93,6 +94,33 @@ angular.module('MAAS').controller('NodesListController', [
             errors: {}
         };
         $scope.tabs.devices.zoneSelection = null;
+
+        // Controller tab.
+        $scope.tabs.controllers = {};
+        $scope.tabs.controllers.pagetitle = "Controllers";
+        $scope.tabs.controllers.currentpage = "controllers";
+        $scope.tabs.controllers.manager = ControllersManager;
+        $scope.tabs.controllers.previous_search = "";
+        $scope.tabs.controllers.search = "";
+        $scope.tabs.controllers.searchValid = true;
+        $scope.tabs.controllers.selectedItems =
+            ControllersManager.getSelectedItems();
+        $scope.tabs.controllers.filtered_items = [];
+        $scope.tabs.controllers.predicate = 'fqdn';
+        $scope.tabs.controllers.allViewableChecked = false;
+        $scope.tabs.controllers.metadata = ControllersManager.getMetadata();
+        $scope.tabs.controllers.filters = SearchService.getEmptyFilter();
+        $scope.tabs.controllers.column = 'fqdn';
+        $scope.tabs.controllers.actionOption = null;
+        $scope.tabs.controllers.takeActionOptions = GeneralManager.getData(
+            "controller_actions");
+        $scope.tabs.controllers.actionErrorCount = 0;
+        $scope.tabs.controllers.actionProgress = {
+            total: 0,
+            completed: 0,
+            errors: {}
+        };
+        $scope.tabs.controllers.zoneSelection = null;
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = null;
@@ -306,6 +334,10 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.$watchCollection("tabs.devices.filtered_items", function() {
             updateAllViewableChecked("devices");
             removeEmptyFilter("devices");
+        });
+        $scope.$watchCollection("tabs.controllers.filtered_items", function() {
+            updateAllViewableChecked("controllers");
+            removeEmptyFilter("controllers");
         });
 
         // Shows the current selection.
@@ -537,8 +569,8 @@ angular.module('MAAS').controller('NodesListController', [
         // Load MachinesManager, DevicesManager, GeneralManager and
         // ZonesManager.
         ManagerHelperService.loadManagers(
-            [MachinesManager, DevicesManager, GeneralManager, ZonesManager,
-            UsersManager]).then(
+            [MachinesManager, DevicesManager, ControllersManager,
+            GeneralManager, ZonesManager, UsersManager]).then(
             function() {
                 $scope.loading = false;
             });
@@ -548,6 +580,8 @@ angular.module('MAAS').controller('NodesListController', [
             GeneralManager.stopPolling("osinfo");
             SearchService.storeFilters("nodes", $scope.tabs.nodes.filters);
             SearchService.storeFilters("devices", $scope.tabs.devices.filters);
+            SearchService.storeFilters(
+                "controllers", $scope.tabs.controllers.filters);
         });
 
         // Restore the filters if any saved.
@@ -563,9 +597,16 @@ angular.module('MAAS').controller('NodesListController', [
                 devicesFilter);
             $scope.updateFilters("devices");
         }
+        var controllersFilter = SearchService.retrieveFilters("controllers");
+        if(angular.isObject(controllersFilter)) {
+            $scope.tabs.controllers.search = SearchService.filtersToString(
+                controllersFilter);
+            $scope.updateFilters("controllers");
+        }
 
         // Switch to the specified tab, if specified.
-        if($routeParams.tab === "nodes" || $routeParams.tab === "devices") {
+        if($routeParams.tab === "nodes" || $routeParams.tab === "devices" ||
+                $routeParams.tab === "controllers") {
             $scope.toggleTab($routeParams.tab);
         }
 

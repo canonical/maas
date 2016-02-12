@@ -131,6 +131,15 @@ class TestGeneralHandler(MAASServerTestCase):
             })
         self.assertItemsEqual(actions_expected, handler.device_actions({}))
 
+    def test_controller_actions_for_non_admin(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        actions_expected = self.dehydrate_actions({
+            name: action
+            for name, action in ACTIONS_DICT.items()
+            if not action.node_only
+            })
+        self.assertItemsEqual(actions_expected, handler.controller_actions({}))
+
     def test_random_hostname_checks_hostname_existence(self):
         existing_node = factory.make_Node(hostname="hostname")
         hostnames = [existing_node.hostname, "new-hostname"]

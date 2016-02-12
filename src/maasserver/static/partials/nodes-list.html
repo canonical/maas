@@ -11,6 +11,11 @@
                     data-ng-class="{ active: currentpage === 'devices' }"
                     data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
                 </a>
+                <span class="divide"></span>
+                <a href=""
+                    data-ng-class="{ active: currentpage === 'controllers' }"
+                    data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize>
+                </a>
                 <span class="power-status--power" data-ng-show="loading">
                     <span class="loader"></span>
                     Loading...
@@ -366,6 +371,66 @@
                 </div>
             </div>
         </div>
+        <div data-ng-show="currentpage === 'controllers'">
+            <div class="page-header__actions">
+                <div class="page-header__cta ng-hide" data-ng-show="tabs.controllers.selectedItems.length">
+                    <span class="page-header__cta-feedback" data-ng-click="showSelected('controllers')">
+                        {$ tabs.controllers.selectedItems.length $} Selected
+                    </span>
+                    <div data-maas-cta="tabs.controllers.takeActionOptions"
+                        data-ng-model="tabs.controllers.actionOption"
+                        data-ng-change="actionOptionSelected('controllers')">
+                    </div>
+                </div>
+            </div>
+            <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
+            <div class="page-header__dropdown ng-hide" data-ng-show="tabs.controllers.actionOption">
+                <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-hide="isActionError('controllers') || hasActionsInProgress('controllers')">
+                     <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
+                    <form class="form-inline">
+                        <span class="ng-hide" data-ng-show="tabs.controllers.actionOption.name === 'set-zone'">
+                            <label for="zone">Select Zone</label>
+                            <select name="zone" id="zone" placeholder="Choose a zone"
+                                data-ng-model="tabs.controllers.zoneSelection"
+                                data-ng-options="zone as zone.name for zone in zones">
+                                <option value="" disabled="disabled">Choose a zone</option>
+                            </select>
+                        </span>
+                        <div class="right">
+                            <a href="" class="margin-right" data-ng-click="actionCancel('controllers')">Cancel</a>
+                            <button class="cta-ubuntu" data-ng-click="actionGo('controllers')">Go</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- XXX blake_r 2015-04-02 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-show="isActionError('controllers')">
+                    <p class="page-header__feedback-message info">
+                        {$ tabs.controllers.actionErrorCount $}
+                        <span data-ng-pluralize count="tabs.controllers.selectedItems.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        cannot be {$ tabs.controllers.actionOption.sentence $}. To proceed, update your selection.
+                    </p>
+                </div>
+
+                <!-- XXX blake_r 2015-05-07 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-show="hasActionsInProgress('controllers') || hasActionsFailed('controllers')">
+                    <p class="page-header__feedback-message" data-ng-show="hasActionsInProgress('controllers')">
+                        <span class="power-status--power checking">
+                            <span class="loader"></span>
+                            {$ tabs.controllers.actionProgress.completed $} of {$ tabs.controllers.actionProgress.total $}
+                            controllers have been {$ tabs.controllers.actionOption.sentence $}.
+                        </span>
+                    </p>
+                    <p class="page-header__feedback-message info"
+                        data-ng-repeat="(error, controllers) in tabs.controllers.actionProgress.errors">
+                        The {$ tabs.controllers.actionOption.title.toLowerCase() $} action for {$ controllers.length $}
+                        <span data-ng-pluralize count="controllers.length" when="{'one': 'controller', 'other': 'controllers'}"></span>
+                        failed with error: {$ error $}
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 
@@ -659,6 +724,65 @@
                     <td class="t15 table-listing__cell">{$ getDeviceIPAssignment(device.ip_assignment) $}</td>
                     <td class="t20 table-listing__cell">{$ device.ip_address $}</td>
                     <td class="t15 table-listing__cell">{$ device.owner $}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="twelve-col last-col" class="ng-hide" data-ng-show="currentpage === 'controllers'">
+        <div class="search">
+            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+            <input
+                type="search" placeholder="Search controllers" class="search__input"
+                data-ng-model="tabs.controllers.search" data-ng-change="updateFilters('controllers')"
+                data-ng-class="{ error: !tabs.controllers.searchValid }"
+                data-ng-disabled="tabs.controllers.actionOption" />
+            <input type="submit" class="search__submit"
+                data-ng-class="{ close: tabs.controllers.search.length > 0 }"
+                data-ng-click="clearSearch('controllers')" />
+        </div>
+        <table class="table-listing" id="nodes-listing">
+            <thead>
+                <tr class="table-listing__row">
+                    <th class="table-listing__header t1">
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('controllers')" data-ng-model="tabs.controllers.allViewableChecked" id="check-all-controllers" data-ng-disabled="hasActionsInProgress('controllers')" />
+                        <label for="check-all-controllers" class="checkbox-label"></label>
+                    </th>
+                    <th class="table-listing__header t24">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('fqdn', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'fqdn', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
+                            <span title="Fully Qualified Domain Name">Name</span>
+                        </a>
+                    </th>
+                    <th class="table-listing__header t15">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('node_type', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'node_type', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
+                            <span title="Controller Type">Type</span>
+                        </a>
+                    </th>
+                    <th class="table-listing__header t15">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('status', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'status', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Status</a>
+                    </th>
+                    <th class="table-listing__header t25">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}"><span title="TODO: currently last update time">Last Image Sync</span></a>
+                    </th>
+                    <th class="table-listing__header t15">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('ha_status', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'ha_status', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">HA</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                <tr class="table-listing__row"
+                    data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
+                    data-ng-class="{ error: !supportsAction(controller, 'controllers'), selected: controller.$selected }">
+                    <td class="t1 table-listing__cell">
+                        <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-model="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
+                        <label for="{$ controller.fqdn $}" class="checkbox-label"></label>
+                    </td>
+                    <td class="t24 table-listing__cell">{$ controller.fqdn $}</td>
+                    <td class="t15 table-listing__cell">{$ controller.node_type $}</td>
+                    <td class="t15 table-listing__cell">{$ controller.status $}</td>
+                    <td class="t15 table-listing__cell">{$ controller.updated $}</td>
+                    <td class="t15 table-listing__cell"></td>
                 </tr>
             </tbody>
         </table>
