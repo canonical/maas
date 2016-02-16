@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import random
 from textwrap import dedent
 
 from maasserver.enum import (
@@ -266,11 +267,6 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             type: mount
             path: /
             device: sda-part3_format
-          - id: sda-part5_mount
-            type: mount
-            path: /srv
-            options: rw,nosuid,nodev,noexec,relatime
-            device: sda-part5_format
           - id: sda-part2_mount
             type: mount
             path: /boot
@@ -281,6 +277,11 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
             path: /boot/efi
             options: rw,nosuid,nodev
             device: sda-part1_format
+          - id: sda-part5_mount
+            type: mount
+            path: /srv
+            options: rw,nosuid,nodev,noexec,relatime
+            device: sda-part5_format
           - id: sda-part6_mount
             type: mount
             path: /srv/data
@@ -766,3 +767,58 @@ class TestComplexDiskLayout(
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+def shuffled(things):
+    things = list(things)
+    random.shuffle(things)
+    return things
+
+
+class TestMountOrdering(MAASServerTestCase):
+
+    def test__mounts_are_sorted_lexically_by_path(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=True)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        # Expected mount points, in expected final (lexical) order.
+        mount_points = [
+            "/a",
+            "/a/a",
+            "/a/a/a",
+            "/a/a/b",
+            "/a/b",
+            "/b",
+            "/b/a",
+            "/b/a/a",
+            "/b/a/b",
+            "/b/b",
+        ]
+        # Create enough partitions for all the mount points.
+        partitions = [
+            factory.make_Partition(partition_table=partition_table)
+            for _ in mount_points
+        ]
+        # Create filesystems on each partition for each mount point, but
+        # shuffle the lists of partitions and mount points to eliminate
+        # implicit ordering.
+        filesystems = [  # noqa
+            factory.make_Filesystem(
+                partition=partition, mount_point=mount_point)
+            for mount_point, partition in zip(
+                shuffled(mount_points), shuffled(partitions))
+        ]
+        node._create_acquired_filesystems()
+        [config] = compose_curtin_storage_config(node)
+        devices = yaml.safe_load(config)["storage"]["config"]
+        mounts = [
+            element for element in devices
+            if element["type"] == "mount"
+        ]
+        self.assertThat(
+            [mount["path"] for mount in mounts],
+            Equals(["/"] + mount_points))

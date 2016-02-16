@@ -7,6 +7,8 @@ __all__ = [
     "compose_curtin_storage_config",
 ]
 
+from operator import attrgetter
+
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
@@ -450,14 +452,12 @@ class CurtinStorageGenerator:
 
     def _generate_mount_operations(self):
         """Generate all mount operations."""
-        # Sort the mounts, shortest path first. This will ensure that the
-        # mount operations are in correct order. Without this curtin will
+        # Sort the mounts lexically. This will ensure that the mount
+        # operations are performed in a sane order. Without this curtin will
         # mount the filesystems out of order preventing installation from
         # working correctly.
-        def sort_by_mount_length(filesystem):
-            return len(filesystem.mount_point)
         mount_operations = sorted(
-            self.operations["mount"], key=sort_by_mount_length)
+            self.operations["mount"], key=attrgetter("mount_point"))
         for filesystem in mount_operations:
             self._generate_mount_operation(filesystem)
 
