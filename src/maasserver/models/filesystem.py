@@ -105,7 +105,7 @@ class Filesystem(CleanSave, TimestampedModel):
     # with mountable filesystems will be duplicated with this field set to
     # True. This allows a standard user to change this object as they want
     # and format other free devices. Once the node is released these objects
-    # will be delete.
+    # will be deleted.
     acquired = BooleanField(default=False)
 
     def get_node(self):

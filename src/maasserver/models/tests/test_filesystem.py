@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from copy import copy
 import re
 from uuid import uuid4
 
@@ -13,6 +14,7 @@ from maasserver.models.filesystem import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestFilesystemManager(MAASServerTestCase):
@@ -139,3 +141,63 @@ class TestFilesystem(MAASServerTestCase):
         partition = factory.make_Partition(partition_table=partition_table)
         # Test is that an error is not raised.
         factory.make_Filesystem(partition=partition)
+
+    def test_unique_on_partition_and_acquired(self):
+        # For any given partition, at most one unacquired and one acquired
+        # filesystem record may exist.
+        partition = factory.make_Partition()
+        filesystem = factory.make_Filesystem(partition=partition)
+        self.assertIsNone(filesystem.block_device)
+
+        # XXX: Why no Filesystem.acquire() method?
+        filesystem_acquired = copy(filesystem)
+        filesystem_acquired.id = None  # Force INSERT.
+        filesystem_acquired.acquired = True
+        filesystem_acquired.save()
+
+        # Create a duplicate.
+        filesystem_dupe = copy(filesystem)
+        filesystem_dupe.id = None  # Force INSERT.
+
+        error_messages_expected = Equals(
+            ['Filesystem with this Partition and Acquired already exists.'])
+
+        # Saving an unacquired duplicate fails.
+        filesystem_dupe.acquired = False
+        error = self.assertRaises(ValidationError, filesystem_dupe.save)
+        self.assertThat(error.messages, error_messages_expected)
+
+        # Saving an acquired duplicate fails.
+        filesystem_dupe.acquired = True
+        error = self.assertRaises(ValidationError, filesystem_dupe.save)
+        self.assertThat(error.messages, error_messages_expected)
+
+    def test_unique_on_block_device_and_acquired(self):
+        # For any given block device, at most one unacquired and one acquired
+        # filesystem record may exist.
+        block_device = factory.make_BlockDevice()
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        self.assertIsNone(filesystem.partition)
+
+        # XXX: Why no Filesystem.acquire() method?
+        filesystem_acquired = copy(filesystem)
+        filesystem_acquired.id = None  # Force INSERT.
+        filesystem_acquired.acquired = True
+        filesystem_acquired.save()
+
+        # Create a duplicate.
+        filesystem_dupe = copy(filesystem)
+        filesystem_dupe.id = None  # Force INSERT.
+
+        error_messages_expected = Equals(
+            ['Filesystem with this Block device and Acquired already exists.'])
+
+        # Saving an unacquired duplicate fails.
+        filesystem_dupe.acquired = False
+        error = self.assertRaises(ValidationError, filesystem_dupe.save)
+        self.assertThat(error.messages, error_messages_expected)
+
+        # Saving an acquired duplicate fails.
+        filesystem_dupe.acquired = True
+        error = self.assertRaises(ValidationError, filesystem_dupe.save)
+        self.assertThat(error.messages, error_messages_expected)
