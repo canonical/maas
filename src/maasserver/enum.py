@@ -374,6 +374,9 @@ class FILESYSTEM_TYPE:
     #: Fourth extended filesystem.
     EXT4 = 'ext4'
 
+    #: XFS
+    XFS = 'xfs'
+
     #: FAT32
     FAT32 = 'fat32'
 
@@ -401,6 +404,9 @@ class FILESYSTEM_TYPE:
 FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.EXT2, "ext2"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
+    # XFS, FAT32, and VFAT are typically written all-caps. However, the UI/UX
+    # team want them displayed lower-case to fit with the style guidelines.
+    (FILESYSTEM_TYPE.XFS, "xfs"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
     (FILESYSTEM_TYPE.VFAT, "vfat"),
     (FILESYSTEM_TYPE.LVM_PV, "lvm"),
@@ -417,6 +423,9 @@ FILESYSTEM_TYPE_CHOICES = (
 FILESYSTEM_FORMAT_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.EXT2, "ext2"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
+    # XFS, FAT32, and VFAT are typically written all-caps. However, the UI/UX
+    # team want them displayed lower-case to fit with the style guidelines.
+    (FILESYSTEM_TYPE.XFS, "xfs"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
     (FILESYSTEM_TYPE.VFAT, "vfat"),
     )

@@ -107,7 +107,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             volume: sda-part2
           - id: sda-part3_format
             type: format
-            fstype: ext4
+            fstype: xfs
             label: root
             uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
             volume: sda-part3
@@ -161,7 +161,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             mount_point="/boot", mount_params=(
                 "rw,relatime,block_validity,barrier,user_xattr,acl"))
         factory.make_Filesystem(
-            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            partition=root_partition, fstype=FILESYSTEM_TYPE.XFS,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
             mount_point="/", mount_params=(
                 "rw,relatime,errors=remount-ro,data=ordered"))

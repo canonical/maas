@@ -10,11 +10,16 @@ import re
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
+from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
 from maasserver.models.filesystem import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    Is,
+    IsInstance,
+)
 
 
 class TestFilesystemManager(MAASServerTestCase):
@@ -201,3 +206,17 @@ class TestFilesystem(MAASServerTestCase):
         filesystem_dupe.acquired = True
         error = self.assertRaises(ValidationError, filesystem_dupe.save)
         self.assertThat(error.messages, error_messages_expected)
+
+
+class TestFilesystemMountableTypes(MAASServerTestCase):
+    """Tests the `Filesystem` model with mountable filesystems."""
+
+    scenarios = tuple(
+        (displayname, {"fstype": name}) for name, displayname in
+        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+
+    def test_can_create_mountable_filesystem(self):
+        filesystem = factory.make_Filesystem(fstype=self.fstype)
+        self.assertThat(filesystem, IsInstance(Filesystem))
+        self.assertThat(filesystem.fstype, Equals(self.fstype))
+        self.assertThat(filesystem.is_mountable(), Is(True))
