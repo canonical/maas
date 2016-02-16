@@ -108,6 +108,11 @@ def make_PostgresListenerService():
     return PostgresListenerService()
 
 
+def make_SystemControllerService(postgresListener, advertisingService):
+    from maasserver.system_controller import SystemControllerService
+    return SystemControllerService(postgresListener, advertisingService)
+
+
 def make_WebApplicationService(postgresListener):
     from maasserver.webapp import WebApplicationService
     site_port = DEFAULT_PORT  # config["port"]
@@ -194,6 +199,10 @@ class RegionEventLoop:
         "web": {
             "factory": make_WebApplicationService,
             "requires": ["postgres-listener"],
+        },
+        "system-controller": {
+            "factory": make_SystemControllerService,
+            "requires": ["postgres-listener", "rpc-advertise"],
         },
     }
 

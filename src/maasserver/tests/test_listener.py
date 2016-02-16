@@ -13,7 +13,9 @@ from django.db import connection
 from maasserver import listener as listener_module
 from maasserver.listener import (
     PostgresListenerNotifyError,
+    PostgresListenerRegistrationError,
     PostgresListenerService,
+    PostgresListenerUnregistrationError,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -22,10 +24,13 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from mock import (
     ANY,
+    call,
+    MagicMock,
     sentinel,
 )
 from provisioningserver.utils.twisted import DeferredValue
@@ -62,6 +67,41 @@ class TestPostgresListenerService(MAASServerTestCase):
         cursor = connection.cursor()
         cursor.execute("NOTIFY %s, '%s';" % (event, obj_id))
         cursor.close()
+
+    def test_isSystemChannel_returns_true_for_channel_starting_with_sys(self):
+        channel = factory.make_name("sys_", sep="")
+        listener = PostgresListenerService()
+        self.assertTrue(listener.isSystemChannel(channel))
+
+    def test_isSystemChannel_returns_false_for_channel_not__sys(self):
+        channel = factory.make_name("node_", sep="")
+        listener = PostgresListenerService()
+        self.assertFalse(listener.isSystemChannel(channel))
+
+    def test__raises_error_if_system_handler_registered_more_than_once(self):
+        channel = factory.make_name("sys_", sep="")
+        listener = PostgresListenerService()
+        listener.register(channel, lambda *args: None)
+        with ExpectedException(PostgresListenerRegistrationError):
+            listener.register(channel, lambda *args: None)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_system_handler_on_notification(self):
+        listener = PostgresListenerService()
+        # Change notifications to a frozenset. This makes sure that
+        # the system message does not go into the queue. Instead if should
+        # call the handler directly in `doRead`.
+        listener.notifications = frozenset()
+        dv = DeferredValue()
+        listener.register("sys_test", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.send_notification, "sys_test", 1)
+            yield dv.get(timeout=2)
+            self.assertEqual(('sys_test', '1'), dv.value)
+        finally:
+            yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -301,11 +341,6 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.assertEqual(
             [sentinel.handler], listener.listeners[channel])
 
-    def test__convertChannel_doesnt_split_system_channel(self):
-        listener = PostgresListenerService()
-        channel = "sys_testing_channel"
-        self.assertEquals((channel, None), listener.convertChannel(channel))
-
     def test__convertChannel_raises_exception_if_not_valid_channel(self):
         listener = PostgresListenerService()
         self.assertRaises(
@@ -399,3 +434,91 @@ class TestPostgresListenerService(MAASServerTestCase):
         finally:
             yield listener.stopService()
             self.assertFalse(listener.notifier.running)
+
+    def test_unregister_raises_error_if_channel_not_registered(self):
+        listener = PostgresListenerService()
+        with ExpectedException(PostgresListenerUnregistrationError):
+            listener.unregister(factory.make_name("channel"), sentinel.handler)
+
+    def test_unregister_raises_error_if_handler_does_not_match(self):
+        listener = PostgresListenerService()
+        channel = factory.make_name("channel")
+        listener.register(channel, sentinel.handler)
+        with ExpectedException(PostgresListenerUnregistrationError):
+            listener.unregister(channel, sentinel.other_handler)
+
+    def test_unregister_removes_handler(self):
+        listener = PostgresListenerService()
+        channel = factory.make_name("channel")
+        listener.register(channel, sentinel.handler)
+        listener.unregister(channel, sentinel.handler)
+        self.assertEquals({
+            channel: []
+        }, listener.listeners)
+
+    def test_unregister_calls_unregisterChannel_when_connected(self):
+        listener = PostgresListenerService()
+        channel = factory.make_name("channel")
+        listener.register(channel, sentinel.handler)
+        listener.registeredChannels = True
+        listener.connection = sentinel.connection
+        mock_unregisterChannel = self.patch(listener, "unregisterChannel")
+        listener.unregister(channel, sentinel.handler)
+        self.assertThat(mock_unregisterChannel, MockCalledOnceWith(channel))
+
+    def test_unregister_doesnt_call_unregisterChannel_multi_handlers(self):
+        listener = PostgresListenerService()
+        channel = factory.make_name("channel")
+        listener.register(channel, sentinel.handler)
+        listener.register(channel, sentinel.other_handler)
+        listener.registeredChannels = True
+        listener.connection = sentinel.connection
+        mock_unregisterChannel = self.patch(listener, "unregisterChannel")
+        listener.unregister(channel, sentinel.handler)
+        self.assertThat(mock_unregisterChannel, MockNotCalled())
+
+    def test_registerChannel_calls_listen_once_for_system_channel(self):
+        listener = PostgresListenerService()
+        listener.connection = MagicMock()
+        cursor = MagicMock()
+        listener.connection.cursor.return_value = cursor
+        channel = factory.make_name("sys_")
+        listener.registerChannel(channel)
+        self.assertThat(
+            cursor.execute, MockCalledOnceWith("LISTEN %s;" % channel))
+
+    def test_registerChannel_calls_listen_per_action_for_channel(self):
+        listener = PostgresListenerService()
+        listener.connection = MagicMock()
+        cursor = MagicMock()
+        listener.connection.cursor.return_value = cursor
+        channel = factory.make_name("node")
+        listener.registerChannel(channel)
+        self.assertThat(
+            cursor.execute, MockCallsMatch(
+                call("LISTEN %s_create;" % channel),
+                call("LISTEN %s_delete;" % channel),
+                call("LISTEN %s_update;" % channel)))
+
+    def test_unregisterChannel_calls_unlisten_once_for_system_channel(self):
+        listener = PostgresListenerService()
+        listener.connection = MagicMock()
+        cursor = MagicMock()
+        listener.connection.cursor.return_value = cursor
+        channel = factory.make_name("sys_")
+        listener.unregisterChannel(channel)
+        self.assertThat(
+            cursor.execute, MockCalledOnceWith("UNLISTEN %s;" % channel))
+
+    def test_unregisterChannel_calls_unlisten_per_action_for_channel(self):
+        listener = PostgresListenerService()
+        listener.connection = MagicMock()
+        cursor = MagicMock()
+        listener.connection.cursor.return_value = cursor
+        channel = factory.make_name("node")
+        listener.unregisterChannel(channel)
+        self.assertThat(
+            cursor.execute, MockCallsMatch(
+                call("UNLISTEN %s_create;" % channel),
+                call("UNLISTEN %s_delete;" % channel),
+                call("UNLISTEN %s_update;" % channel)))

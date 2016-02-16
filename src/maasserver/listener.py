@@ -52,6 +52,14 @@ class PostgresListenerNotifyError(Exception):
     decoded or is not being handled."""
 
 
+class PostgresListenerRegistrationError(Exception):
+    """Error raised when registering a handler fails."""
+
+
+class PostgresListenerUnregistrationError(Exception):
+    """Error raised when unregistering a handler fails."""
+
+
 @implementer(interfaces.IReadDescriptor)
 class PostgresListenerService(Service, object):
     """Listens for NOTIFY messages from postgres.
@@ -122,6 +130,10 @@ class PostgresListenerService(Service, object):
         kwargs['system'] = self.logPrefix()
         log.err(*args, **kwargs)
 
+    def isSystemChannel(self, channel):
+        """Return True if channel is a system channel."""
+        return channel.startswith("sys_")
+
     def doRead(self):
         """Poll the connection and process any notifications."""
         try:
@@ -149,7 +161,16 @@ class PostgresListenerService(Service, object):
             notifies = self.connection.connection.notifies
             if len(notifies) != 0:
                 for notify in notifies:
-                    self.notifications.add((notify.channel, notify.payload))
+                    if self.isSystemChannel(notify.channel):
+                        # System level message; pass it to the registered
+                        # handler immediately.
+                        handler = self.listeners[notify.channel][0]
+                        handler(notify.channel, notify.payload)
+                    else:
+                        # Place non-system messages into the queue to be
+                        # processed.
+                        self.notifications.add(
+                            (notify.channel, notify.payload))
                 # Delete the contents of the connection's notifies list so
                 # that we don't process them a second time.
                 del notifies[:]
@@ -182,11 +203,39 @@ class PostgresListenerService(Service, object):
         When a notification is received for that `channel` the `handler` will
         be called with the action and object id.
         """
-        self.listeners[channel].append(handler)
+        handlers = self.listeners[channel]
+        if self.isSystemChannel(channel) and len(handlers) > 0:
+            # A system can only be registered once. This is because the
+            # message is passed directly to the handler and the `doRead`
+            # method does not wait for it to finish if its a defer. This is
+            # different from normal handlers where we will call each and wait
+            # for all to resolve before continuing to the next event.
+            raise PostgresListenerRegistrationError(
+                "System channel '%s' has already been registered." % channel)
+        else:
+            handlers.append(handler)
         if self.registeredChannels and self.connection:
             # Channels have already been registered. Register the
             # new channel on the already existing connection.
             self.registerChannel(channel)
+
+    def unregister(self, channel, handler):
+        """Unregister listening for notifications from a channel.
+
+        `handler` needs to be same handler that was registered.
+        """
+        if channel not in self.listeners:
+            raise PostgresListenerUnregistrationError(
+                "Channel '%s' is not registered with the listener." % channel)
+        handlers = self.listeners[channel]
+        if handler in handlers:
+            handlers.remove(handler)
+        else:
+            raise PostgresListenerUnregistrationError(
+                "Handler is not registered on that channel '%s'." % channel)
+        if self.registeredChannels and self.connection and len(handlers) == 0:
+            # Channels have already been registered. Unregister the channel.
+            self.unregisterChannel(channel)
 
     @synchronous
     def createConnection(self):
@@ -295,14 +344,24 @@ class PostgresListenerService(Service, object):
     def registerChannel(self, channel):
         """Register the channel."""
         with closing(self.connection.cursor()) as cursor:
-            if channel.startswith("sys"):
-                # This is a system channel so register it only once not one
-                # for each action.
+            if self.isSystemChannel(channel):
+                # This is a system channel so listen only called once.
                 cursor.execute("LISTEN %s;" % channel)
             else:
-                # Not a system channel so register one for each action.
-                for action in map_enum(ACTIONS).values():
+                # Not a system channel so listen called once for each action.
+                for action in sorted(map_enum(ACTIONS).values()):
                     cursor.execute("LISTEN %s_%s;" % (channel, action))
+
+    def unregisterChannel(self, channel):
+        """Unregister the channel."""
+        with closing(self.connection.cursor()) as cursor:
+            if self.isSystemChannel(channel):
+                # This is a system channel so unlisten only called once.
+                cursor.execute("UNLISTEN %s;" % channel)
+            else:
+                # Not a system channel so unlisten called once for each action.
+                for action in sorted(map_enum(ACTIONS).values()):
+                    cursor.execute("UNLISTEN %s_%s;" % (channel, action))
 
     def registerChannels(self):
         """Register the all the channels."""
@@ -313,24 +372,17 @@ class PostgresListenerService(Service, object):
     def convertChannel(self, channel):
         """Convert the postgres channel to a registered channel and action.
 
-        When the channel starts with "sys" then it is a system channel, when
-        not a system channel its structured as {channel}_{action}. This is
-        split to match the correct handler and action for that handler.
-
         :raise PostgresListenerNotifyError: When {channel} is not registered or
             {action} is not in `ACTIONS`.
         """
-        if channel.startswith("sys"):
-            return channel, None
-        else:
-            channel, action = channel.split('_', 1)
-            if channel not in self.listeners:
-                raise PostgresListenerNotifyError(
-                    "%s is not a registered channel." % channel)
-            if action not in map_enum(ACTIONS).values():
-                raise PostgresListenerNotifyError(
-                    "%s action is not supported." % action)
-            return channel, action
+        channel, action = channel.split('_', 1)
+        if channel not in self.listeners:
+            raise PostgresListenerNotifyError(
+                "%s is not a registered channel." % channel)
+        if action not in map_enum(ACTIONS).values():
+            raise PostgresListenerNotifyError(
+                "%s action is not supported." % action)
+        return channel, action
 
     def runHandleNotify(self, delay=0, clock=reactor):
         """Defer later the `handleNotify`."""

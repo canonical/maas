@@ -14,6 +14,7 @@ from maasserver import (
     eventloop,
     nonces_cleanup,
     status_monitor,
+    system_controller,
     webapp,
 )
 from maasserver.eventloop import DEFAULT_PORT
@@ -27,6 +28,7 @@ from maasserver.utils.orm import (
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -217,6 +219,20 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["postgres-listener"],
             eventloop.loop.factories["web"]["requires"])
+
+    def test_make_SystemControllerService(self):
+        service = eventloop.make_SystemControllerService(
+            FakePostgresListenerService(), sentinel.rpc_advertise)
+        self.assertThat(service, IsInstance(
+            system_controller.SystemControllerService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_SystemControllerService,
+            eventloop.loop.factories["system-controller"]["factory"])
+        # Has a dependency of postgres-listener and rpc-advertise.
+        self.assertEquals(
+            ["postgres-listener", "rpc-advertise"],
+            eventloop.loop.factories["system-controller"]["requires"])
 
 
 class TestDisablingDatabaseConnections(MAASTestCase):

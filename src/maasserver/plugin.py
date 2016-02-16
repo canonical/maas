@@ -68,6 +68,10 @@ class RegionServiceMaker:
         import crochet
         crochet.no_setup()
 
+    def _performStartUp(self):
+        from maasserver.start_up import start_up
+        start_up()
+
     def makeService(self, options):
         """Construct the MAAS Region service."""
         register_sigusr2_thread_dump_handler()
@@ -77,6 +81,7 @@ class RegionServiceMaker:
         self._configureDjango()
         self._configureReactor()
         self._configureCrochet()
+        self._performStartUp()
 
         # Populate the region's event-loop with services.
         from maasserver import eventloop

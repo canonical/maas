@@ -137,7 +137,7 @@ CORE_SET_NEW_REGION = dedent("""\
       WHERE maasserver_node.id = rack.id;
       PERFORM pg_notify(
         CONCAT('sys_core_', region_process.id),
-        CONCAT('watch_', CAST(rack.system_id AS text)));
+        CONCAT('watch_', CAST(rack.id AS text)));
       RETURN;
     END;
     $$ LANGUAGE plpgsql;
@@ -192,14 +192,14 @@ CORE_REGIONRACKRPCONNECTION_INSERT = dedent("""\
               -- this rack controller.
               PERFORM pg_notify(
                 CONCAT('sys_core_', rack_controller.managing_process_id),
-                CONCAT('unwatch_', CAST(rack_controller.system_id AS text)));
+                CONCAT('unwatch_', CAST(rack_controller.id AS text)));
               -- Update the rack controller and alert the region controller.
               UPDATE maasserver_node
               SET managing_process_id = region_process.id
               WHERE maasserver_node.id = rack_controller.id;
               PERFORM pg_notify(
                 CONCAT('sys_core_', region_process.id),
-                CONCAT('watch_', CAST(rack_controller.system_id AS text)));
+                CONCAT('watch_', CAST(rack_controller.id AS text)));
             END IF;
           END IF;
         END IF;
@@ -241,7 +241,7 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
         -- watching the rack controller.
         PERFORM pg_notify(
           CONCAT('sys_core_', region_process.id),
-          CONCAT('unwatch_', CAST(rack_controller.system_id AS text)));
+          CONCAT('unwatch_', CAST(rack_controller.id AS text)));
 
         -- Pick a new region process for this rack controller.
         region_process = sys_core_pick_new_region(rack_controller);
@@ -253,7 +253,7 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent("""\
         IF region_process.id IS NOT NULL THEN
           PERFORM pg_notify(
             CONCAT('sys_core_', region_process.id),
-            CONCAT('watch_', CAST(rack_controller.system_id AS text)));
+            CONCAT('watch_', CAST(rack_controller.id AS text)));
         END IF;
       END IF;
       RETURN NEW;

@@ -83,6 +83,7 @@ from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
+    DeferredValue,
     deferWithTimeout,
     FOREVER,
     pause,
@@ -870,6 +871,8 @@ class RegionAdvertisingService(TimerService, object):
     def __init__(self):
         super(RegionAdvertisingService, self).__init__(
             self.INTERVAL_NO_ENDPOINTS, self.try_update)
+        self.maas_id = None
+        self.processId = DeferredValue()
 
     def try_update(self):
         return deferToDatabase(self.update).addErrback(
@@ -977,6 +980,13 @@ class RegionAdvertisingService(TimerService, object):
             region_obj = Node.objects.get(system_id=self.maas_id)
             self._fix_node_for_region(region_obj)
 
+        # Create the process for this region. This process object will
+        # continuously be updated in the database in the `update` loop. The
+        # `update` loop also removes the old processes from the database.
+        process, _ = RegionControllerProcess.objects.get_or_create(
+            region=region_obj, pid=os.getpid())
+        self.processId.set(process.id)
+
     @synchronous
     @synchronised(lock)
     @transactional
@@ -998,13 +1008,10 @@ class RegionAdvertisingService(TimerService, object):
             update_fields.append("hostname")
         region_obj.save(update_fields=update_fields)
 
-        # Get or create the process for this region and update its last updated
-        # time.
-        process, created = RegionControllerProcess.objects.get_or_create(
-            region=region_obj, pid=os.getpid())
-        if not created:
-            # Update its latest updated time.
-            process.save(update_fields=["updated"])
+        # Update the updated time for this process. This prevents other
+        # region process from removing this process.
+        process = RegionControllerProcess.objects.get(id=self.processId.value)
+        process.save(update_fields=["updated"])
 
         # Remove any old processes that are older than 90 seconds.
         remove_before_time = now() - timedelta(seconds=90)

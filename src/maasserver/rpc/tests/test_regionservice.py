@@ -2112,9 +2112,10 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         region.created = old_time
         region.updated = old_time
         region.save()
-        region_process = RegionControllerProcess.objects.create(
-            region=region, pid=os.getpid(),
-            created=old_time, updated=old_time)
+        region_process = RegionControllerProcess.objects.get(
+            id=service.processId.value)
+        region_process.created = region_process.updated = old_time
+        region_process.save()
 
         service.update()
 
@@ -2164,9 +2165,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service = RegionAdvertisingService()
         service.prepare([])
 
-        region = RegionController.objects.get(system_id=self.maas_id)
-        process = RegionControllerProcess.objects.create(
-            region=region, pid=os.getpid())
+        process = RegionControllerProcess.objects.get(
+            id=service.processId.value)
         for _ in range(3):
             RegionControllerProcessEndpoint.objects.create(
                 process=process, address=factory.make_ip_address(),

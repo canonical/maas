@@ -62,8 +62,9 @@ class TestCoreRegionRackRPCConnectionInsertListener(
                 "rack_controller": rack_controller,
             })
             yield process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "watch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % region_process.id,
+                "watch_%s" % rack_controller.id),
                 process_dv.value)
             rack_controller = yield deferToDatabase(
                 self.reload_object, rack_controller)
@@ -128,8 +129,9 @@ class TestCoreRegionRackRPCConnectionInsertListener(
                 "rack_controller": not_managed_rack_controller,
             })
             yield process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "watch_%s" % not_managed_rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % not_managing_region_process.id,
+                "watch_%s" % not_managed_rack_controller.id),
                 process_dv.value)
             not_managed_rack_controller = yield deferToDatabase(
                 self.reload_object, not_managed_rack_controller)
@@ -198,8 +200,9 @@ class TestCoreRegionRackRPCConnectionInsertListener(
                 "rack_controller": dead_managed_rack_controller,
             })
             yield process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "watch_%s" % dead_managed_rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % managing_region_process.id,
+                "watch_%s" % dead_managed_rack_controller.id),
                 process_dv.value)
             dead_managed_rack_controller = yield deferToDatabase(
                 self.reload_object, dead_managed_rack_controller)
@@ -273,11 +276,13 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             })
             yield overloaded_dv.get(timeout=2)
             yield process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "unwatch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % overloaded_region_process.id,
+                "unwatch_%s" % rack_controller.id),
                 overloaded_dv.value)
-            self.assertEqual(
-                (None, "watch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % region_process.id,
+                "watch_%s" % rack_controller.id),
                 process_dv.value)
             rack_controller = yield deferToDatabase(
                 self.reload_object, rack_controller)
@@ -431,11 +436,13 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
                 self.delete_region_rack_rpc_connection, connection.id)
             yield process_dv.get(timeout=2)
             yield other_process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "unwatch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % region_process.id,
+                "unwatch_%s" % rack_controller.id),
                 process_dv.value)
-            self.assertEqual(
-                (None, "watch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % other_region_process.id,
+                "watch_%s" % rack_controller.id),
                 other_process_dv.value)
             rack_controller = yield deferToDatabase(
                 self.reload_object, rack_controller)
@@ -485,8 +492,9 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
             yield deferToDatabase(
                 self.delete_region_rack_rpc_connection, connection.id)
             yield process_dv.get(timeout=2)
-            self.assertEqual(
-                (None, "unwatch_%s" % rack_controller.system_id),
+            self.assertEqual((
+                "sys_core_%s" % region_process.id,
+                "unwatch_%s" % rack_controller.id),
                 process_dv.value)
             rack_controller = yield deferToDatabase(
                 self.reload_object, rack_controller)
