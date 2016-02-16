@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for ControllersManager.
@@ -48,21 +48,6 @@ describe("ControllersManager", function() {
         expect(ControllersManager._handler).toBe("controller");
         expect(Object.keys(ControllersManager._metadataAttributes)).toEqual([]);
     });
-
-    describe("create", function() {
-
-        it("calls controller.create with controller", function(done) {
-            var controller = makecontroller();
-            webSocket.returnData.push(makeFakeResponse(controller));
-            ControllersManager.create(controller).then(function() {
-                var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("controller.create");
-                expect(sentObject.params).toEqual(controller);
-                done();
-            });
-        });
-    });
-
     describe("performAction", function() {
 
         it("calls controller.action with system_id and action", function(done) {
@@ -96,47 +81,6 @@ describe("ControllersManager", function() {
                     done();
                 });
         });
-    });
-
-    describe("checkPowerState", function() {
-
-        it("calls controller.check_power with system_id", function(done) {
-            var controller = makecontroller();
-            webSocket.returnData.push(makeFakeResponse("on"));
-            ControllersManager.checkPowerState(controller).then(function() {
-                var sentObject = angular.fromJson(webSocket.sentData[0]);
-                expect(sentObject.method).toBe("controller.check_power");
-                expect(sentObject.params.system_id).toBe(controller.system_id);
-                done();
-            });
-        });
-
-        it("sets power_state to results", function(done) {
-            var controller = makecontroller();
-            var power_state = makeName("state");
-            webSocket.returnData.push(makeFakeResponse(power_state));
-            ControllersManager.checkPowerState(
-                    controller).then(function(state) {
-                expect(controller.power_state).toBe(power_state);
-                expect(state).toBe(power_state);
-                done();
-            });
-        });
-
-        it("sets power_state to error on error and logs error",
-            function(done) {
-                var controller = makecontroller();
-                var error = makeName("error");
-                spyOn(console, "log");
-                webSocket.returnData.push(makeFakeResponse(error, true));
-                ControllersManager.checkPowerState(
-                        controller).then(function(state) {
-                    expect(controller.power_state).toBe("error");
-                    expect(state).toBe("error");
-                    expect(console.log).toHaveBeenCalledWith(error);
-                    done();
-                });
-            });
     });
 
     describe("createPhysicalInterface", function() {

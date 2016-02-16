@@ -778,7 +778,9 @@
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-model="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
                         <label for="{$ controller.fqdn $}" class="checkbox-label"></label>
                     </td>
-                    <td class="t24 table-listing__cell">{$ controller.fqdn $}</td>
+                    <td class="t24 table-listing__cell">
+                        <a href="#/controller/{$ controller.system_id $}">{$ controller.fqdn $}</a>
+                    </td>
                     <td class="t15 table-listing__cell">{$ controller.node_type $}</td>
                     <td class="t15 table-listing__cell">{$ controller.status $}</td>
                     <td class="t15 table-listing__cell">{$ controller.updated $}</td>

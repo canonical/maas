@@ -9,6 +9,17 @@
  *
  */
 
+.color {
+
+  &--success {
+    color: #38B44A;
+  }
+
+  &--error {
+    color: #D83832;
+  }
+}
+
 .icon {
     margin-left: 5px;
     width: 16px;
@@ -18,6 +29,8 @@
     background-repeat: no-repeat;
     background-size: 16px 16px;
     vertical-align: middle;
+    margin-top: -3px;
+    position: relative;
 
     &.info {
         background-image: url('../img/icons/info.png');
@@ -54,6 +67,10 @@
         background-image: url('../img/icons/success.svg'), none;
     }
 
+    &.simple-tick {
+      background-image: url('../img/icons/green-tick.svg');
+    }
+
     &.error {
         background-image: url('../img/icons/error.png');
         background-image: url('../img/icons/error.svg'), none;
@@ -77,6 +94,12 @@
 
     &.unmount {
       background-image: url('../img/icons/unmount.svg');
+    }
+
+    &.notification-error {
+      background-image: url('../img/icons/notification-error.png');
+      background-size: 12px 11px;
+      background-position: top 1px center;
     }
 }
 

@@ -31,6 +31,10 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: 'static/partials/node-details.html',
                     controller: 'NodeDetailsController'
                 }).
+                when('/controller/:system_id', {
+                    templateUrl: 'static/partials/controller-details.html',
+                    controller: 'ControllerDetailsController'
+                }).
                 when('/node/:system_id/result/:filename', {
                     templateUrl: 'static/partials/node-result.html',
                     controller: 'NodeResultController'

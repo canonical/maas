@@ -63,6 +63,16 @@ a.alt {
     }
 }
 
+a.link--alt {
+  color: #333;
+  border-bottom: 1px solid #CDCDCD;
+
+  &:hover {
+    color: $ubuntu-orange;
+    text-decoration: none;
+  }
+}
+
 a:active,
 a:focus {
     outline: none;

@@ -94,107 +94,107 @@ form {
         color: #333;
     }
 
-    input {
-
-        &[type='text'],
-        &[type='number'],
-        &[type='search'],
-        &[type='password'],
-        &[type='email'],
-        &[type='url'] {
-            @extend %input--styles;
-            padding: 7px 10px;
-
-            &::-webkit-input-placeholder {
-               color: #888;
-            }
-
-            &:-moz-placeholder { /* Firefox 18- */
-               color: #888;
-            }
-
-            &::-moz-placeholder {  /* Firefox 19+ */
-               color: #888;
-            }
-
-            &:-ms-input-placeholder {
-               color: #888;
-            }
-        }
-
-        &[type='number'] {
-            padding-right: 15px;
-        }
-
-        &[type='search'] {
-            -webkit-appearance: textfield;
-        }
-
-        &[type='search']::-webkit-search-decoration,
-        &[type='search']::-webkit-search-cancel-button {
-            -webkit-appearance: none;
-        }
-
-        &[type='radio'],
-        &[type='image'] {
-            display: inline-block;
-            margin-right: 10px;
-        }
-    }
-
-    textarea {
-        @extend %input--styles;
-        overflow: auto;
-        height: auto;
-        min-height: 175px;
-        padding: 7px 10px;
-
-        vertical-align: top;
-    }
-
-    select {
-        @extend %input--styles;
-        display: block;
-        clear: both;
-        cursor: pointer;
-        margin: 0;
-        background-image: url('../img/icons/accordion-open.svg');
-        background-repeat: no-repeat;
-        background-position: top 16px right 10px;
-        padding: 6px 30px 6px 10px;
-
-        /* Removes firefox select styles & arrow */
-        -moz-appearance: none;
-        text-indent: 0.01px;
-        text-overflow: '';
-
-        &[multiple],
-        &[size] {
-            height: auto;
-            background-image: none;
-            padding-top: 10px;
-        }
-
-        /* Removes firefox dotted outline focusing */
-        &:-moz-focusring  {
-            color: transparent;
-            text-shadow: 0 0 0 #000;
-        }
-
-        &[disabled] {
-            color: #888;
-            background-image: none;
-        }
-
-        &::-ms-expand {
-            display: none;
-        }
-    }
-
     fieldset {
         background: none;
         margin-left: 0;
         padding: 0;
+    }
+}
+
+input {
+
+    &[type='text'],
+    &[type='number'],
+    &[type='search'],
+    &[type='password'],
+    &[type='email'],
+    &[type='url'] {
+        @extend %input--styles;
+        padding: 7px 10px;
+
+        &::-webkit-input-placeholder {
+           color: #888;
+        }
+
+        &:-moz-placeholder { /* Firefox 18- */
+           color: #888;
+        }
+
+        &::-moz-placeholder {  /* Firefox 19+ */
+           color: #888;
+        }
+
+        &:-ms-input-placeholder {
+           color: #888;
+        }
+    }
+
+    &[type='number'] {
+        padding-right: 15px;
+    }
+
+    &[type='search'] {
+        -webkit-appearance: textfield;
+    }
+
+    &[type='search']::-webkit-search-decoration,
+    &[type='search']::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+    }
+
+    &[type='radio'],
+    &[type='image'] {
+        display: inline-block;
+        margin-right: 10px;
+    }
+}
+
+textarea {
+    @extend %input--styles;
+    overflow: auto;
+    height: auto;
+    min-height: 175px;
+    padding: 7px 10px;
+
+    vertical-align: top;
+}
+
+select {
+    @extend %input--styles;
+    display: block;
+    clear: both;
+    cursor: pointer;
+    margin: 0;
+    background-image: url('../img/icons/accordion-open.svg');
+    background-repeat: no-repeat;
+    background-position: top 16px right 10px;
+    padding: 6px 30px 6px 10px;
+
+    /* Removes firefox select styles & arrow */
+    -moz-appearance: none;
+    text-indent: 0.01px;
+    text-overflow: '';
+
+    &[multiple],
+    &[size] {
+        height: auto;
+        background-image: none;
+        padding-top: 10px;
+    }
+
+    /* Removes firefox dotted outline focusing */
+    &:-moz-focusring  {
+        color: transparent;
+        text-shadow: 0 0 0 #000;
+    }
+
+    &[disabled] {
+        color: #888;
+        background-image: none;
+    }
+
+    &::-ms-expand {
+        display: none;
     }
 }
 

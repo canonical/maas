@@ -30,14 +30,6 @@ angular.module('MAAS').factory(
 
         ControllersManager.prototype = new Manager();
 
-        // Create a controller.
-        ControllersManager.prototype.create = function(controller) {
-            // We don't add the item to the list because a NOTIFY event will
-            // add the controller to the list. Adding it here will cause angular
-            // to complain because the same object exist in the list.
-            return RegionConnection.callMethod("controller.create", controller);
-        };
-
         // Perform the action on the controller.
         ControllersManager.prototype.performAction = function(
             controller, action, extra) {
@@ -48,25 +40,6 @@ angular.module('MAAS').factory(
                 "system_id": controller.system_id,
                 "action": action,
                 "extra": extra
-                });
-        };
-
-        // Check the power state for the controller.
-        ControllersManager.prototype.checkPowerState = function(controller) {
-            return RegionConnection.callMethod("controller.check_power", {
-                "system_id": controller.system_id
-                }).then(function(state) {
-                    controller.power_state = state;
-                    return state;
-                }, function(error) {
-                    controller.power_state = "error";
-
-                    // Already been logged server side, but log it client
-                    // side so if they really care they can see why.
-                    console.log(error);
-
-                    // Return the state as error to the remaining callbacks.
-                    return "error";
                 });
         };
 

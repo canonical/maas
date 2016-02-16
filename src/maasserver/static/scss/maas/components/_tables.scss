@@ -51,6 +51,17 @@ table {
             border-bottom: 1px dotted #B2B2B2;
             position: relative;
 
+            a:link,
+            a:visited {
+              color: #333;
+              border-bottom: 1px solid #CDCDCD;
+
+              &:hover {
+                color: $ubuntu-orange;
+                text-decoration: none;
+              }
+            }
+
             &.icon-controls {
                 text-align: right;
 
@@ -225,6 +236,16 @@ table {
   margin-bottom: 20px;
   margin: 0 0 2.5em;
   width: 100%;
+
+  a {
+    color: #333;
+    border-bottom: 1px solid #CDCDCD;
+
+    &:hover {
+      color: $ubuntu-orange;
+      text-decoration: none;
+    }
+  }
 
   .table__row {
     float: left;
@@ -448,20 +469,21 @@ table {
     border: 0;
     text-align: left;
     float: left;
-
-    a {
-      color: $ubuntu-orange;
-
-      &:hover {
-        cursor: pointer;
-      }
-    }
   }
 
   .table__head {
     display: table-head;
     width: 100%;
     box-sizing: border-box;
+
+    a {
+      color: $ubuntu-orange;
+      border: 0;
+
+      &:hover {
+        cursor: pointer;
+      }
+    }
 
     .table__row {
       border-bottom: 1px solid #B2B2B2;
