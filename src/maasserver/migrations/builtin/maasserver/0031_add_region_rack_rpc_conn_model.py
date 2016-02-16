@@ -5,6 +5,7 @@ from django.db import (
     migrations,
     models,
 )
+import django.db.models.deletion
 import maasserver.models.cleansave
 
 
@@ -29,7 +30,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='managing_process',
-            field=models.ForeignKey(editable=False, null=True, related_name='+', to='maasserver.RegionControllerProcess'),
+            field=models.ForeignKey(editable=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='maasserver.RegionControllerProcess'),
         ),
         migrations.AlterUniqueTogether(
             name='regionrackrpcconnection',

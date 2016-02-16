@@ -715,13 +715,13 @@ class Node(CleanSave, TimestampedModel):
     # Used only by `REGION_CONTROLLER` all other types this should be NULL.
     dns_process = OneToOneField(
         "RegionControllerProcess", null=True, editable=False, unique=True,
-        related_name="+")
+        on_delete=SET_NULL, related_name="+")
 
     # Used only by a RackController to mark which RegionControllerProcess is
     # handling system level events for this rack controller.
     managing_process = ForeignKey(
         "RegionControllerProcess", null=True, editable=False,
-        related_name="+")
+        on_delete=SET_NULL, related_name="+")
 
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see

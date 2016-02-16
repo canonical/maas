@@ -6,6 +6,7 @@ from django.db import (
     migrations,
     models,
 )
+import django.db.models.deletion
 import maasserver.fields
 import maasserver.models.cleansave
 import maasserver.models.node
@@ -70,7 +71,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='node',
             name='dns_process',
-            field=models.OneToOneField(editable=False, to='maasserver.RegionControllerProcess', null=True, related_name='+'),
+            field=models.OneToOneField(editable=False, to='maasserver.RegionControllerProcess', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+'),
         ),
         migrations.AlterUniqueTogether(
             name='regioncontrollerprocessendpoint',
