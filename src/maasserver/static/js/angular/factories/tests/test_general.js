@@ -142,6 +142,71 @@ describe("GeneralManager", function() {
         expect(angular.isFunction(version.replaceData)).toBe(true);
     });
 
+    it("_data.power_types has correct data", function() {
+        var power_types = GeneralManager._data.power_types;
+        expect(power_types.method).toBe("general.power_types");
+        expect(power_types.data).toEqual([]);
+        expect(power_types.loaded).toBe(false);
+        expect(power_types.polling).toBe(false);
+        expect(power_types.nextPromise).toBeNull();
+        expect(angular.isFunction(power_types.replaceData)).toBe(true);
+    });
+
+    describe("_data.power_types.replaceData", function() {
+
+        var power_types, data, replaceData;
+        beforeEach(function() {
+           power_types = GeneralManager._data.power_types;
+           data = power_types.data;
+           replaceData = power_types.replaceData;
+        });
+
+        it("adds new power_type to array", function() {
+            var newPowerType = {
+                name: makeName("power")
+            };
+            replaceData(data, [newPowerType]);
+            expect(data).toEqual([newPowerType]);
+        });
+
+        it("updates power_type in array to be same object", function() {
+            var oldPowerType = {
+                name: makeName("power"),
+                fields: [
+                    {
+                        name: makeName("field")
+                    }
+                ]
+            };
+            replaceData(data, [oldPowerType]);
+            var newPowerType = {
+                name: oldPowerType.name,
+                fields: [
+                    {
+                        name: makeName("field")
+                    }
+                ]
+            };
+            replaceData(data, [newPowerType]);
+            expect(data).toEqual([newPowerType]);
+            expect(data[0]).toBe(oldPowerType);
+        });
+
+        it("removes missing power_types from array", function() {
+            var oldPowerType = {
+                name: makeName("power"),
+                fields: [
+                    {
+                        name: makeName("field")
+                    }
+                ]
+            };
+            replaceData(data, [oldPowerType]);
+            replaceData(data, []);
+            expect(data).toEqual([]);
+        });
+    });
+
     describe("_getInternalData", function() {
 
         it("raises error for unknown data", function() {

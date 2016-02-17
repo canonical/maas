@@ -106,7 +106,49 @@ angular.module('MAAS').factory(
                     data: [],
                     loaded: false,
                     polling: false,
-                    nextPromise: null
+                    nextPromise: null,
+                    replaceData: function(oldData, newData) {
+                        // Update or add new power types.
+                        var i, j, newPowerType, oldPowerType;
+                        for(i = 0; i < newData.length; i++) {
+                            newPowerType = newData[i];
+                            var newItem = true;
+                            for(j = 0; j < oldData.length; j++) {
+                                oldPowerType = oldData[j];
+                                if(newPowerType.name === oldPowerType.name) {
+                                    angular.copy(newPowerType, oldPowerType);
+                                    newItem = false;
+                                    break;
+                                }
+                            }
+
+                            // Item was previously not in the list so it is
+                            // inserted into the array.
+                            if(newItem) {
+                                oldData.push(newPowerType);
+                            }
+                        }
+
+                        // Remove any power types that are not included in
+                        // the newData.
+                        for(i = oldData.length - 1; i >= 0; i--) {
+                            oldPowerType = oldData[i];
+                            var found = false;
+                            for(j = 0; j < newData.length; j++) {
+                                newPowerType = newData[j];
+                                if(newPowerType.name === oldPowerType.name) {
+                                    found = true;
+                                    break;
+                                }
+                            }
+
+                            // Item was previously not in the list so it is
+                            // inserted into the array.
+                            if(!found) {
+                                oldData.splice(i, 1);
+                            }
+                        }
+                    }
                 }
             };
 

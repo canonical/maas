@@ -1193,6 +1193,28 @@ class TestClusterClient(MAASTestCase):
             "Rack controller '...' registered (via eventloop:pid=12345).",
             logger.output)
 
+    def test_registerRackWithRegion_sets_localIdent(self):
+        client = self.make_running_client()
+
+        system_id = factory.make_name("id")
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with({"system_id": system_id})
+
+        d = client.registerRackWithRegion()
+        self.assertTrue(extract_result(d))
+        self.assertEqual(system_id, client.localIdent)
+
+    def test_registerRackWithRegion_calls_set_maas_id(self):
+        client = self.make_running_client()
+
+        system_id = factory.make_name("id")
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with({"system_id": system_id})
+
+        d = client.registerRackWithRegion()
+        self.assertTrue(extract_result(d))
+        self.assertThat(self.set_maas_id, MockCalledOnceWith(system_id))
+
     def test_registerRackWithRegion_returns_False_when_rejected(self):
         client = self.make_running_client()
 

@@ -36,10 +36,6 @@ class TestDHCPProbeService(PservTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def setUp(self):
-        super(TestDHCPProbeService, self).setUp()
-        self.cluster_uuid = factory.make_UUID()
-
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
@@ -59,7 +55,7 @@ class TestDHCPProbeService(PservTestCase):
     def test_is_called_every_interval(self):
         clock = Clock()
         service = DHCPProbeService(
-            sentinel.service, clock, self.cluster_uuid)
+            sentinel.service, clock)
 
         # Avoid actually probing
         probe_dhcp = self.patch(service, 'probe_dhcp')
@@ -101,7 +97,7 @@ class TestDHCPProbeService(PservTestCase):
         deferToThread = self.patch(dhcp_probe_service, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
         service = DHCPProbeService(
-            rpc_service, clock, self.cluster_uuid)
+            rpc_service, clock)
         service.startService()
         self.assertThat(
             deferToThread, MockCalledOnceWith(
@@ -121,7 +117,7 @@ class TestDHCPProbeService(PservTestCase):
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
         service = DHCPProbeService(
-            rpc_service, clock, self.cluster_uuid)
+            rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -151,7 +147,7 @@ class TestDHCPProbeService(PservTestCase):
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
         service = DHCPProbeService(
-            rpc_service, clock, self.cluster_uuid)
+            rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -165,7 +161,7 @@ class TestDHCPProbeService(PservTestCase):
         clock = Clock()
         maaslog = self.patch(dhcp_probe_service, 'maaslog')
         service = DHCPProbeService(
-            sentinel.service, clock, self.cluster_uuid)
+            sentinel.service, clock)
         error_message = factory.make_string()
         self.patch(service, 'probe_dhcp').side_effect = Exception(
             error_message)
@@ -192,10 +188,12 @@ class TestDHCPProbeService(PservTestCase):
             'interfaces': [interface],
             }
 
+        client = getRegionClient()
         rpc_service = Mock()
-        rpc_service.getClient.return_value = getRegionClient()
+        rpc_service.getClient.return_value = client
+
         service = DHCPProbeService(
-            rpc_service, clock, self.cluster_uuid)
+            rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -203,7 +201,7 @@ class TestDHCPProbeService(PservTestCase):
             protocol.ReportForeignDHCPServer,
             MockCalledOnceWith(
                 protocol,
-                cluster_uuid=self.cluster_uuid,
+                cluster_uuid=client.localIdent,
                 interface_name=interface['name'],
                 foreign_dhcp_ip=foreign_dhcp_ip))
 
@@ -222,10 +220,11 @@ class TestDHCPProbeService(PservTestCase):
             'interfaces': [interface],
             }
 
+        client = getRegionClient()
         rpc_service = Mock()
-        rpc_service.getClient.return_value = getRegionClient()
+        rpc_service.getClient.return_value = client
         service = DHCPProbeService(
-            rpc_service, clock, self.cluster_uuid)
+            rpc_service, clock)
         yield service.startService()
         yield service.stopService()
 
@@ -233,6 +232,6 @@ class TestDHCPProbeService(PservTestCase):
             protocol.ReportForeignDHCPServer,
             MockCalledOnceWith(
                 protocol,
-                cluster_uuid=self.cluster_uuid,
+                cluster_uuid=client.localIdent,
                 interface_name=interface['name'],
                 foreign_dhcp_ip=None))

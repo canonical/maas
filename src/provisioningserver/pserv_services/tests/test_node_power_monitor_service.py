@@ -41,19 +41,17 @@ class TestNodePowerMonitorService(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_init_sets_up_timer_correctly(self):
-        cluster_uuid = factory.make_UUID()
-        service = npms.NodePowerMonitorService(cluster_uuid)
+        service = npms.NodePowerMonitorService()
         self.assertThat(service, MatchesStructure.byEquality(
-            call=(service.try_query_nodes, (cluster_uuid,), {}),
+            call=(service.try_query_nodes, tuple(), {}),
             step=15, clock=None))
 
     def make_monitor_service(self):
-        cluster_uuid = factory.make_UUID()
-        service = npms.NodePowerMonitorService(cluster_uuid, Clock())
-        return cluster_uuid, service
+        service = npms.NodePowerMonitorService(Clock())
+        return service
 
     def test_query_nodes_calls_the_region(self):
-        cluster_uuid, service = self.make_monitor_service()
+        service = self.make_monitor_service()
 
         rpc_fixture = self.useFixture(MockClusterToRegionRPCFixture())
         proto_region, io = rpc_fixture.makeEventLoop(
@@ -61,16 +59,17 @@ class TestNodePowerMonitorService(MAASTestCase):
         proto_region.ListNodePowerParameters.return_value = succeed(
             {"nodes": []})
 
-        d = service.query_nodes(getRegionClient(), cluster_uuid)
+        client = getRegionClient()
+        d = service.query_nodes(client)
         io.flush()
 
         self.assertEqual(None, extract_result(d))
         self.assertThat(
             proto_region.ListNodePowerParameters,
-            MockCalledOnceWith(ANY, uuid=cluster_uuid))
+            MockCalledOnceWith(ANY, uuid=client.localIdent))
 
     def test_query_nodes_calls_query_all_nodes(self):
-        cluster_uuid, service = self.make_monitor_service()
+        service = self.make_monitor_service()
         service.max_nodes_at_once = sentinel.max_nodes_at_once
 
         example_power_parameters = {
@@ -91,7 +90,7 @@ class TestNodePowerMonitorService(MAASTestCase):
 
         query_all_nodes = self.patch(npms, "query_all_nodes")
 
-        d = service.query_nodes(getRegionClient(), cluster_uuid)
+        d = service.query_nodes(getRegionClient())
         io.flush()
 
         self.assertEqual(None, extract_result(d))
@@ -103,33 +102,35 @@ class TestNodePowerMonitorService(MAASTestCase):
                 clock=service.clock))
 
     def test_query_nodes_copes_with_NoSuchCluster(self):
-        cluster_uuid, service = self.make_monitor_service()
+        service = self.make_monitor_service()
 
         rpc_fixture = self.useFixture(MockClusterToRegionRPCFixture())
         proto_region, io = rpc_fixture.makeEventLoop(
             region.ListNodePowerParameters)
+        client = getRegionClient()
         proto_region.ListNodePowerParameters.return_value = fail(
-            exceptions.NoSuchCluster.from_uuid(cluster_uuid))
+            exceptions.NoSuchCluster.from_uuid(client.localIdent))
 
-        d = service.query_nodes(getRegionClient(), cluster_uuid)
-        d.addErrback(service.query_nodes_failed, cluster_uuid)
+        d = service.query_nodes(client)
+        d.addErrback(service.query_nodes_failed, client.localIdent)
         with FakeLogger("maas") as maaslog:
             io.flush()
 
         self.assertEqual(None, extract_result(d))
         self.assertDocTestMatches(
-            "Cluster ... is not recognised.", maaslog.output)
+            "Rack controller '...' is not recognised.", maaslog.output)
 
     def test_try_query_nodes_logs_other_errors(self):
-        cluster_uuid, service = self.make_monitor_service()
+        service = self.make_monitor_service()
         self.patch(npms, "getRegionClient").return_value = sentinel.client
+        sentinel.client.localIdent = factory.make_UUID()
 
         query_nodes = self.patch(service, "query_nodes")
         query_nodes.return_value = fail(
             ZeroDivisionError("Such a shame I can't divide by zero"))
 
         with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
-            d = service.try_query_nodes(cluster_uuid)
+            d = service.try_query_nodes()
 
         self.assertEqual(None, extract_result(d))
         self.assertDocTestMatches(

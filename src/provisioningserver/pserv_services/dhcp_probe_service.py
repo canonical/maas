@@ -45,12 +45,11 @@ class DHCPProbeService(TimerService, object):
 
     check_interval = timedelta(minutes=10).total_seconds()
 
-    def __init__(self, client_service, reactor, cluster_uuid):
+    def __init__(self, client_service, reactor):
         # Call self.try_probe_dhcp() every self.check_interval.
         super(DHCPProbeService, self).__init__(
             self.check_interval, self.try_probe_dhcp)
         self.clock = reactor
-        self.uuid = cluster_uuid
         self.client_service = client_service
 
     @inlineCallbacks
@@ -58,7 +57,7 @@ class DHCPProbeService(TimerService, object):
         """Return the interfaces for this cluster."""
         try:
             response = yield client(
-                GetClusterInterfaces, cluster_uuid=self.uuid)
+                GetClusterInterfaces, cluster_uuid=client.localIdent)
         except UnhandledCommand:
             # The region hasn't been upgraded to support this method
             # yet, so give up. Returning an empty dict means that this
@@ -82,7 +81,7 @@ class DHCPProbeService(TimerService, object):
         """
         try:
             yield client(
-                ReportForeignDHCPServer, cluster_uuid=self.uuid,
+                ReportForeignDHCPServer, cluster_uuid=client.localIdent,
                 interface_name=name, foreign_dhcp_ip=foreign_dhcp_ip)
         except UnhandledCommand:
             # Not a lot we can do here... The region doesn't support

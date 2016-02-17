@@ -40,18 +40,16 @@ class ImageDownloadService(TimerService, object):
 
     check_interval = timedelta(minutes=5).total_seconds()
 
-    def __init__(self, client_service, cluster_uuid, tftp_root, reactor):
+    def __init__(self, client_service, tftp_root, reactor):
         """Twisted service to periodically refresh ephemeral images.
 
         :param client_service: A `ClusterClientService` instance.
-        :param cluster_uuid: The UUID for this cluster, as a string.
         :param tftp_root: The path to the TFTP root directory.
         :param reactor: An `IReactor` instance.
         """
         super(ImageDownloadService, self).__init__(
             self.check_interval, self.try_download)
         self.client_service = client_service
-        self.uuid = cluster_uuid
         self.tftp_root = tftp_root
         self.clock = reactor
 
@@ -72,13 +70,13 @@ class ImageDownloadService(TimerService, object):
     def _get_boot_sources(self, client):
         """Gets the boot sources from the region."""
         try:
-            sources = yield client(GetBootSourcesV2, uuid=self.uuid)
+            sources = yield client(GetBootSourcesV2, uuid=client.localIdent)
         except UnhandledCommand:
             # Region has not been upgraded to support the new call, use the
             # old call. The old call did not provide the new os selection
             # parameter. Region does not support boot source selection by os,
             # so its set too allow all operating systems.
-            sources = yield client(GetBootSources, uuid=self.uuid)
+            sources = yield client(GetBootSources, uuid=client.localIdent)
             for source in sources['sources']:
                 for selection in source['selections']:
                     selection['os'] = '*'

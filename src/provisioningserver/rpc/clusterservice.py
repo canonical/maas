@@ -500,6 +500,7 @@ class ClusterClient(Cluster):
         # Events for this protocol's life-cycle.
         self.authenticated = DeferredValue()
         self.ready = DeferredValue()
+        self.localIdent = None
 
     @property
     def ident(self):
@@ -545,11 +546,11 @@ class ClusterClient(Cluster):
         hostname = gethostname().split('.')[0]
 
         def cb_register(data):
-            maas_id = data["system_id"]
-            set_maas_id(maas_id)
+            self.localIdent = data["system_id"]
+            set_maas_id(self.localIdent)
             log.msg(
                 "Rack controller '%s' registered (via %s)."
-                % (maas_id, self.eventloop))
+                % (self.localIdent, self.eventloop))
             return True
 
         def eb_register(failure):

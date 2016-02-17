@@ -25,6 +25,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
         $scope.default_min_hwe_kernel = GeneralManager.getData(
             "default_min_hwe_kernel");
+        $scope.power_types = GeneralManager.getData("power_types");
         $scope.error = null;
 
         // Input values.
@@ -352,6 +353,9 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Start the polling of hwe_kernels.
             GeneralManager.startPolling("hwe_kernels");
+
+            // Start the polling of power_types.
+            GeneralManager.startPolling("power_types");
         };
 
         // Called by the parent scope when this controller is hidden.
@@ -363,6 +367,9 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Stop the polling of hwe_kernels.
             GeneralManager.stopPolling("hwe_kernels");
+
+            // Stop the polling of power_types.
+            GeneralManager.stopPolling("power_types");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');

@@ -44,7 +44,7 @@ class TestDHCPNotify(PservTestCase):
     def catch_packet_on_socket(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         dv = DeferredValue()
 
         def mock_processNotification(*args, **kwargs):

@@ -68,18 +68,17 @@ class TestLeaseSocketService(PservTestCase):
     def test_init(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, sentinel.reactor)
+            sentinel.service, sentinel.reactor)
         self.assertIsInstance(service, Service)
         self.assertIsInstance(service, DatagramProtocol)
         self.assertIs(service.reactor, sentinel.reactor)
-        self.assertIs(service.uuid, sentinel.uuid)
         self.assertIs(service.client_service, sentinel.service)
         self.assertEquals(socket_path, service.address)
 
     def test_startService_creates_socket(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         service.startService()
         self.addCleanup(service.stopService)
         self.assertThat(socket_path, PathExists())
@@ -88,7 +87,7 @@ class TestLeaseSocketService(PservTestCase):
     def test_stopService_deletes_socket(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         service.startService()
         yield service.stopService()
         self.assertThat(socket_path, Not(PathExists()))
@@ -97,7 +96,7 @@ class TestLeaseSocketService(PservTestCase):
     def test_notification_gets_added_to_notifications(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         service.startService()
         self.addCleanup(service.stopService)
 
@@ -130,7 +129,7 @@ class TestLeaseSocketService(PservTestCase):
     def test_processNotification_gets_called_with_notification(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         dv = DeferredValue()
 
         # Mock processNotifcation to catch the call.
@@ -158,7 +157,7 @@ class TestLeaseSocketService(PservTestCase):
     def test_processNotification_gets_called_multiple_times(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(
-            sentinel.service, sentinel.uuid, reactor)
+            sentinel.service, reactor)
         dvs = [
             DeferredValue(),
             DeferredValue(),
@@ -200,11 +199,11 @@ class TestLeaseSocketService(PservTestCase):
         protocol, connecting = self.patch_rpc_UpdateLease()
         self.addCleanup((yield connecting))
 
-        uuid = factory.make_UUID()
+        client = getRegionClient()
         rpc_service = MagicMock()
-        rpc_service.getClient.return_value = getRegionClient()
+        rpc_service.getClient.return_value = client
         service = LeaseSocketService(
-            rpc_service, uuid, reactor)
+            rpc_service, reactor)
 
         # Notification to region.
         packet = {
@@ -221,7 +220,7 @@ class TestLeaseSocketService(PservTestCase):
             protocol.UpdateLease,
             MockCalledOnceWith(
                 protocol,
-                cluster_uuid=uuid,
+                cluster_uuid=client.localIdent,
                 action=packet["action"],
                 mac=packet["mac"],
                 ip_family=packet["ip_family"],

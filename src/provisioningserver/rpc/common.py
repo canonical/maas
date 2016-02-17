@@ -87,6 +87,11 @@ class Client:
         """Something that identifies the far end of the connection."""
         return self._conn.ident
 
+    @property
+    def localIdent(self):
+        """Something that identifies this end of the connection."""
+        return self._conn.localIdent
+
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):
         """Call a remote RPC method.

@@ -39,9 +39,8 @@ def get_socket_path():
 class LeaseSocketService(Service, DatagramProtocol):
     """Service for recieving lease information over MAAS dhcpd.sock."""
 
-    def __init__(self, client_service, cluster_uuid, reactor):
+    def __init__(self, client_service, reactor):
         self.client_service = client_service
-        self.uuid = cluster_uuid
         self.reactor = reactor
         self.address = get_socket_path()
         self.notifications = deque()
@@ -117,5 +116,5 @@ class LeaseSocketService(Service, DatagramProtocol):
         # Notification contains all the required data except for the cluster
         # UUID. Add that into the notification and send the information to
         # the region for processing.
-        notification["cluster_uuid"] = self.uuid
+        notification["cluster_uuid"] = client.localIdent
         yield client(UpdateLease, **notification)

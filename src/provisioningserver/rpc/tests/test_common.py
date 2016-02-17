@@ -61,6 +61,11 @@ class TestClient(MAASTestCase):
         conn.ident = self.getUniqueString()
         self.assertThat(client.ident, Equals(conn.ident))
 
+    def test_localIdent(self):
+        conn, client = self.make_connection_and_client()
+        conn.localIdent = self.getUniqueString()
+        self.assertThat(client.localIdent, Equals(conn.localIdent))
+
     def test_call(self):
         conn, client = self.make_connection_and_client()
         conn.callRemote.return_value = sentinel.response

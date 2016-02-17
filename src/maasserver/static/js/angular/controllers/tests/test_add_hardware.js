@@ -96,6 +96,7 @@ describe("AddHardwareController", function() {
         expect($scope.zones).toBe(ZonesManager.getItems());
         expect($scope.architectures).toEqual([]);
         expect($scope.hwe_kernels).toEqual([]);
+        expect($scope.power_types).toEqual([]);
         expect($scope.error).toBeNull();
         expect($scope.machine).toBeNull();
         expect($scope.chassis).toBeNull();
@@ -225,6 +226,14 @@ describe("AddHardwareController", function() {
             expect(GeneralManager.startPolling).toHaveBeenCalledWith(
                 "hwe_kernels");
         });
+
+        it("calls startPolling for power_types", function() {
+            var controller = makeController();
+            spyOn(GeneralManager, "startPolling");
+            $scope.show();
+            expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+                "power_types");
+        });
     });
 
     describe("hide", function() {
@@ -250,6 +259,14 @@ describe("AddHardwareController", function() {
             $scope.hide();
             expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
                 "hwe_kernels");
+        });
+
+        it("calls stopPolling for power_types", function() {
+            var controller = makeController();
+            spyOn(GeneralManager, "stopPolling");
+            $scope.hide();
+            expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+                "power_types");
         });
 
         it("emits addHardwareHidden event", function(done) {

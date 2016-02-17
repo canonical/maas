@@ -44,7 +44,6 @@ from netaddr.ip import (
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.pserv_services import tftp as tftp_module
 from provisioningserver.pserv_services.tftp import (
@@ -62,7 +61,6 @@ from testtools.matchers import (
     AllMatch,
     Equals,
     HasLength,
-    Is,
     IsInstance,
     MatchesAll,
     MatchesStructure,
@@ -129,11 +127,10 @@ class TestTFTPBackend(MAASTestCase):
         temp_dir = self.make_dir()
         generator_url = "http://%s.example.com/%s" % (
             factory.make_name("domain"), factory.make_name("path"))
-        backend = TFTPBackend(temp_dir, generator_url, sentinel.uuid)
+        backend = TFTPBackend(temp_dir, generator_url)
         self.assertEqual((True, False), (backend.can_read, backend.can_write))
         self.assertEqual(temp_dir, backend.base.path)
         self.assertEqual(generator_url, backend.generator_url.geturl())
-        self.assertIs(backend.cluster_uuid, sentinel.uuid)
 
     def test_get_generator_url(self):
         # get_generator_url() merges the parameters obtained from the request
@@ -141,7 +138,7 @@ class TestTFTPBackend(MAASTestCase):
         mac = factory.make_mac_address("-")
         dummy = factory.make_name("dummy")
         backend_url = "http://example.com/?" + urlencode({"dummy": dummy})
-        backend = TFTPBackend(self.make_dir(), backend_url, sentinel.uuid)
+        backend = TFTPBackend(self.make_dir(), backend_url)
         # params is an example of the parameters obtained from a request.
         params = {"mac": mac}
         generator_url = urlparse(backend.get_generator_url(params))
@@ -157,7 +154,7 @@ class TestTFTPBackend(MAASTestCase):
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = os.path.dirname(temp_file)
         backend = TFTPBackend(
-            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
+            temp_dir, "http://nowhere.example.com/")
         return backend.get_reader(b"example")
 
     @inlineCallbacks
@@ -185,7 +182,7 @@ class TestTFTPBackend(MAASTestCase):
 
         path = ('\\%s\\%s' % (subdir, filename)).encode("ascii")
         backend = TFTPBackend(
-            temp_dir, "http://nowhere.example.com/", sentinel.uuid)
+            temp_dir, "http://nowhere.example.com/")
         reader = yield backend.get_reader(path)
 
         self.addCleanup(reader.finish)
@@ -216,11 +213,8 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_converts_404s_to_tftp_error(self):
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = factory.make_UUID()
-
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/", sentinel.uuid)
+            self.make_dir(), "http://example.com/")
         get_page = self.patch(backend, 'get_page')
         get_page.side_effect = twisted.web.error.Error(http.client.NOT_FOUND)
 
@@ -229,13 +223,10 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_reader_converts_other_exceptions_to_tftp_error(self):
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = factory.make_UUID()
-
         exception_type = factory.make_exception_type()
         exception_message = factory.make_string()
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/", sentinel.uuid)
+            self.make_dir(), "http://example.com/")
         get_page = self.patch(backend, 'get_page')
         get_page.side_effect = exception_type(exception_message)
 
@@ -257,13 +248,10 @@ class TestTFTPBackend(MAASTestCase):
     def _test_get_render_file(self, local, remote):
         # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
         # returns a Deferred that will yield a BytesReader.
-        cluster_uuid = factory.make_UUID()
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = cluster_uuid
         mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(
-            self.make_dir(), b"http://example.com/", cluster_uuid)
+            self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
         # more about the environment in which they're running.
         call_context = {"local": local, "remote": remote}
@@ -274,6 +262,9 @@ class TestTFTPBackend(MAASTestCase):
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
 
+        maas_id = factory.make_UUID()
+        self.patch(tftp_module, "get_maas_id").return_value = maas_id
+
         reader = yield context.call(
             call_context, backend.get_reader, config_path)
         output = reader.read(10000).decode("ascii")
@@ -283,7 +274,7 @@ class TestTFTPBackend(MAASTestCase):
             "mac": mac,
             "local": call_context["local"][0],  # address only.
             "remote": call_context["remote"][0],  # address only.
-            "cluster_uuid": cluster_uuid,
+            "rackcontroller_id": maas_id,
             "bios_boot_method": "pxe",
             }
         observed_params = json.loads(output)
@@ -322,7 +313,7 @@ class TestTFTPBackend(MAASTestCase):
         # `IReader` of a PXE configuration, rendered by
         # `PXEBootMethod.get_reader`.
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/", sentinel.uuid)
+            self.make_dir(), "http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
         fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the API call.
@@ -360,12 +351,9 @@ class TestTFTPBackend(MAASTestCase):
         # get_config_reader() should substitute "arm" for "armhf" in the
         # arch field of the parameters (mapping from pxe to maas
         # namespace).
-        cluster_uuid = factory.make_UUID()
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = cluster_uuid
         config_path = b"pxelinux.cfg/default-arm"
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/", cluster_uuid)
+            self.make_dir(), "http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
         # more about the environment in which they're running.
         call_context = {
@@ -408,7 +396,7 @@ class TestTFTPService(MAASTestCase):
         example_port = factory.pick_port()
         tftp_service = TFTPService(
             resource_root=example_root, generator=example_generator,
-            port=example_port, uuid=sentinel.uuid)
+            port=example_port)
         tftp_service.updateServers()
         # The "tftp" service is a multi-service containing UDP servers for
         # each interface defined by get_all_interface_addresses().
@@ -426,10 +414,7 @@ class TestTFTPService(MAASTestCase):
                 Equals(example_root)),
             AfterPreprocessing(
                 lambda backend: backend.generator_url.geturl(),
-                Equals(example_generator)),
-            AfterPreprocessing(
-                lambda backend: backend.cluster_uuid,
-                Is(sentinel.uuid)))
+                Equals(example_generator)))
         expected_protocol = MatchesAll(
             IsInstance(TFTP),
             AfterPreprocessing(
@@ -463,7 +448,7 @@ class TestTFTPService(MAASTestCase):
 
         tftp_service = TFTPService(
             resource_root=self.make_dir(), generator="http://mighty/wind",
-            port=factory.pick_port(), uuid=sentinel.uuid)
+            port=factory.pick_port())
         tftp_service.updateServers()
 
         # The child services of tftp_services are named after the
@@ -505,7 +490,7 @@ class TestTFTPService(MAASTestCase):
 
         tftp_service = TFTPService(
             resource_root=self.make_dir(), generator="http://mighty/wind",
-            port=factory.pick_port(), uuid=sentinel.uuid)
+            port=factory.pick_port())
         tftp_service.updateServers()
 
         # Only the "normal" addresses have been used.

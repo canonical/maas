@@ -7,7 +7,9 @@ __all__ = [
     "GeneralHandler",
     ]
 
-from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.clusterrpc.power_parameters import (
+    get_all_power_types_from_clusters,
+)
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
     BOND_MODE_CHOICES,
@@ -147,4 +149,4 @@ class GeneralHandler(Handler):
 
     def power_types(self, params):
         """Return all power types."""
-        return get_power_types()
+        return get_all_power_types_from_clusters()

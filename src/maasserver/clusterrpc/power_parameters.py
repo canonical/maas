@@ -188,7 +188,7 @@ def get_all_power_types_from_clusters(controllers=None, ignore_errors=True):
         power_types = response['power_types']
         for power_type in power_types:
             name = power_type['name']
-            fields = power_type['fields']
+            fields = power_type.get('fields', [])
             description = power_type['description']
             missing_packages = power_type['missing_packages']
             add_power_type_parameters(

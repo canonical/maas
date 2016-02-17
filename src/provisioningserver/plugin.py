@@ -87,35 +87,34 @@ class ProvisioningServiceMaker:
         return image_service
 
     def _makeTFTPService(
-            self, cluster_uuid, tftp_root, tftp_port, tftp_generator):
+            self, tftp_root, tftp_port, tftp_generator):
         """Create the dynamic TFTP service."""
         from provisioningserver.pserv_services.tftp import TFTPService
         tftp_service = TFTPService(
-            resource_root=tftp_root, port=tftp_port, generator=tftp_generator,
-            uuid=cluster_uuid)
+            resource_root=tftp_root, port=tftp_port, generator=tftp_generator)
         tftp_service.setName("tftp")
         return tftp_service
 
-    def _makeImageDownloadService(self, rpc_service, cluster_uuid, tftp_root):
+    def _makeImageDownloadService(self, rpc_service, tftp_root):
         from provisioningserver.pserv_services.image_download_service \
             import ImageDownloadService
         image_download_service = ImageDownloadService(
-            rpc_service, cluster_uuid, tftp_root, reactor)
+            rpc_service, tftp_root, reactor)
         image_download_service.setName("image_download")
         return image_download_service
 
-    def _makeLeaseSocketService(self, rpc_service, cluster_uuid):
+    def _makeLeaseSocketService(self, rpc_service):
         from provisioningserver.pserv_services.lease_socket_service import (
             LeaseSocketService)
         lease_socket_service = LeaseSocketService(
-            rpc_service, cluster_uuid, reactor)
+            rpc_service, reactor)
         lease_socket_service.setName("lease_socket_service")
         return lease_socket_service
 
-    def _makeNodePowerMonitorService(self, cluster_uuid):
+    def _makeNodePowerMonitorService(self):
         from provisioningserver.pserv_services.node_power_monitor_service \
             import NodePowerMonitorService
-        node_monitor = NodePowerMonitorService(cluster_uuid, reactor)
+        node_monitor = NodePowerMonitorService(reactor)
         node_monitor.setName("node_monitor")
         return node_monitor
 
@@ -125,11 +124,11 @@ class ProvisioningServiceMaker:
         rpc_service.setName("rpc")
         return rpc_service
 
-    def _makeDHCPProbeService(self, rpc_service, cluster_uuid):
+    def _makeDHCPProbeService(self, rpc_service):
         from provisioningserver.pserv_services.dhcp_probe_service \
             import DHCPProbeService
         dhcp_probe_service = DHCPProbeService(
-            rpc_service, reactor, cluster_uuid)
+            rpc_service, reactor)
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
@@ -145,16 +144,16 @@ class ProvisioningServiceMaker:
         rpc_service = self._makeRPCService()
         yield rpc_service
         # Other services that make up the MAAS Region Controller.
-        yield self._makeDHCPProbeService(rpc_service, config.cluster_uuid)
-        yield self._makeLeaseSocketService(rpc_service, config.cluster_uuid)
-        yield self._makeNodePowerMonitorService(config.cluster_uuid)
+        yield self._makeDHCPProbeService(rpc_service)
+        yield self._makeLeaseSocketService(rpc_service)
+        yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService()
         yield self._makeImageDownloadService(
-            rpc_service, config.cluster_uuid, config.tftp_root)
+            rpc_service, config.tftp_root)
         # The following are network-accessible services.
         yield self._makeImageService(config.tftp_root)
         yield self._makeTFTPService(
-            config.cluster_uuid, config.tftp_root, config.tftp_port,
+            config.tftp_root, config.tftp_port,
             config.tftp_generator_url)
 
     def _configureCrochet(self):

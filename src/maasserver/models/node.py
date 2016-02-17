@@ -146,7 +146,10 @@ from provisioningserver.utils.twisted import (
     callOut,
 )
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import (
+    Deferred,
+    inlineCallbacks,
+)
 
 
 maaslog = get_maas_logger("node")
@@ -1729,8 +1732,10 @@ class Node(CleanSave, TimestampedModel):
             )
 
     @staticmethod
+    @asynchronous
+    @inlineCallbacks
     def confirm_power_driver_operable(client, power_type, conn_ident):
-        missing_packages = power_driver_check(client, power_type)
+        missing_packages = yield power_driver_check(client, power_type)
         if len(missing_packages) > 0:
             missing_packages = sorted(missing_packages)
             if len(missing_packages) > 2:
@@ -2751,9 +2756,10 @@ class Node(CleanSave, TimestampedModel):
             return getClientFromIdentifiers(fallback_idents)
 
         def cb_check_power_driver(client, power_info):
-            Node.confirm_power_driver_operable(
+            d = Node.confirm_power_driver_operable(
                 client, power_info.power_type, client.ident)
-            return client
+            d.addCallback(lambda _: client)
+            return d
 
         d = getClientFromIdentifiers(client_idents)
         d.addErrback(eb_fallback_clients)
