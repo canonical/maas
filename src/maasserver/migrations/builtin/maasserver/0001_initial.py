@@ -263,7 +263,7 @@ class Migration(migrations.Migration):
                 ('created', models.DateTimeField(editable=False)),
                 ('updated', models.DateTimeField(editable=False)),
                 ('uuid', models.CharField(max_length=36, editable=False)),
-                ('fstype', models.CharField(default='ext4', max_length=20, choices=[('ext2', 'ext2'), ('ext4', 'ext4'), ('fat32', 'fat32'), ('vfat', 'vfat'), ('lvm-pv', 'lvm'), ('raid', 'raid'), ('raid-spare', 'raid-spare'), ('bcache-cache', 'bcache-cache'), ('bcache-backing', 'bcache-backing')])),
+                ('fstype', models.CharField(default='ext4', max_length=20, choices=[('ext2', 'ext2'), ('ext4', 'ext4'), ('xfs', 'xfs'), ('fat32', 'fat32'), ('vfat', 'vfat'), ('lvm-pv', 'lvm'), ('raid', 'raid'), ('raid-spare', 'raid-spare'), ('bcache-cache', 'bcache-cache'), ('bcache-backing', 'bcache-backing')])),
                 ('label', models.CharField(max_length=255, null=True, blank=True)),
                 ('create_params', models.CharField(max_length=255, null=True, blank=True)),
                 ('mount_point', models.CharField(max_length=255, null=True, blank=True)),
