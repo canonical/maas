@@ -84,7 +84,7 @@ describe("maasDblClickOverlay", function() {
             done();
         });
         var overlay = directive.find('div.maas-dbl-overlay--overlay');
-        overlay.click();
+        overlay.triggerHandler('click');
     });
 
     it("sets focus on input when overlay clicked", function(done) {
@@ -95,7 +95,7 @@ describe("maasDblClickOverlay", function() {
             done();
         });
         var overlay = directive.find('div.maas-dbl-overlay--overlay');
-        overlay.click();
+        overlay.triggerHandler('click');
     });
 
     it("triggers click on div when overlay clicked", function(done) {
@@ -106,7 +106,7 @@ describe("maasDblClickOverlay", function() {
             done();
         });
         var overlay = directive.find('div.maas-dbl-overlay--overlay');
-        overlay.click();
+        overlay.triggerHandler('click');
     });
 
     it("calls double click handler when the overlay is double clicked",
@@ -117,7 +117,7 @@ describe("maasDblClickOverlay", function() {
             };
             var directive = compileDirective("div", "doubleClick()");
             var overlay = directive.find('div.maas-dbl-overlay--overlay');
-            overlay.dblclick();
+            overlay.triggerHandler('dblclick');
         });
 
     it("removes all click handlers on $destroy", function() {

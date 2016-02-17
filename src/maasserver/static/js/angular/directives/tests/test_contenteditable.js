@@ -44,7 +44,7 @@ describe("contenteditable", function() {
         $scope.name = makeName("name");
         var directive = compileDirective("name");
         directive.text(name);
-        directive.change();
+        directive.triggerHandler('change');
         $scope.$digest();
         expect($scope.name).toBe(name);
     });
@@ -54,7 +54,7 @@ describe("contenteditable", function() {
         $scope.name = makeName("name");
         var directive = compileDirective("name");
         directive.text(name);
-        directive.blur();
+        directive.triggerHandler('blur');
         $scope.$digest();
         expect($scope.name).toBe(name);
     });
@@ -75,7 +75,7 @@ describe("contenteditable", function() {
             return true;
         };
         var directive = compileDirective("name", "disabled()");
-        directive.focus();
+        directive.triggerHandler('focus');
         $scope.$digest();
         expect(directive.is(":focus")).toBe(false);
     });
@@ -87,7 +87,7 @@ describe("contenteditable", function() {
         };
         $scope.nowEditing = jasmine.createSpy("nowEditing");
         var directive = compileDirective("name", "disabled()", "nowEditing()");
-        directive.focus();
+        directive.triggerHandler('focus');
         $scope.$digest();
         expect($scope.nowEditing).toHaveBeenCalled();
     });

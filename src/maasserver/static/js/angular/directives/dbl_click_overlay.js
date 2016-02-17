@@ -79,7 +79,7 @@ angular.module('MAAS').directive('maasDblClickOverlay', ['BrowserService',
                 } else if(transclude.tagName === "INPUT") {
                     clickElement = function() {
                         // An input will become in focus when clicked.
-                        angular.element(transclude).focus();
+                        angular.element(transclude).triggerHandler('focus');
                     };
 
                     // Inputs use a text for the cursor.
@@ -87,7 +87,7 @@ angular.module('MAAS').directive('maasDblClickOverlay', ['BrowserService',
                 } else {
                     clickElement = function() {
                         // Standard element just call click on that element.
-                        angular.element(transclude).click();
+                        angular.element(transclude).triggerHandler('click');
                     };
 
                     // Don't set cursor on other element types.
