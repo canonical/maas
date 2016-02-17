@@ -18,24 +18,19 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Event,
-    Node,
     Tag,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-)
+from maastesting.matchers import MockNotCalled
 from metadataserver import api
 from metadataserver.models import (
     NodeKey,
     NodeResult,
 )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import ANY
 from provisioningserver.utils import typed
 
 
@@ -137,62 +132,6 @@ class TestStatusAPI(MAASServerTestCase):
             url, content_type='application/json',
             data=urllib.parse.urlencode(payload))
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-
-    def test_status_comissioning_success_populates_tags(self):
-        populate_tags_for_single_node = self.patch(
-            api, "populate_tags_for_single_node")
-        node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
-        client = make_node_client(node=node)
-        payload = {
-            'event_type': 'finish',
-            'result': 'SUCCESS',
-            'origin': 'curtin',
-            'name': 'cmd-install',
-            'description': 'Command Install',
-        }
-        response = call_status(client, node, payload)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(
-            populate_tags_for_single_node,
-            MockCalledOnceWith(ANY, node))
-
-    def test_status_comissioning_success_sets_default_storage_layout(self):
-        node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
-        self.patch_autospec(Node, "set_default_storage_layout")
-        client = make_node_client(node=node)
-        payload = {
-            'event_type': 'finish',
-            'result': 'SUCCESS',
-            'origin': 'curtin',
-            'name': 'cmd-install',
-            'description': 'Command Install',
-        }
-        response = call_status(client, node, payload)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(
-            Node.set_default_storage_layout,
-            MockCalledOnceWith(node))
-
-    def test_status_comissioning_success_sets_node_network_configuration(self):
-        node = factory.make_Node(
-            interface=True, status=NODE_STATUS.COMMISSIONING)
-        mock_set_initial_networking_configuration = self.patch_autospec(
-            Node, "set_initial_networking_configuration")
-        client = make_node_client(node=node)
-        payload = {
-            'event_type': 'finish',
-            'result': 'SUCCESS',
-            'origin': 'curtin',
-            'name': 'cmd-install',
-            'description': 'Command Install',
-        }
-        response = call_status(client, node, payload)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(
-            mock_set_initial_networking_configuration,
-            MockCalledOnceWith(node))
 
     def test_status_commissioning_failure_leaves_node_failed(self):
         node = factory.make_Node(

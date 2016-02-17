@@ -666,24 +666,36 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         'eth2': MAC("00:00:00:00:00:03"),
     }
 
+    EXPECTED_INTERFACES_XENIAL = {
+        'ens3': MAC("52:54:00:2d:39:49"),
+        'ens10': MAC("52:54:00:e5:c6:6b"),
+        'ens11': MAC("52:54:00:ed:9f:9d"),
+    }
+
     IP_ADDR_OUTPUT_FILE = os.path.join(
         os.path.dirname(__file__), 'ip_addr_results.txt')
     with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
         IP_ADDR_OUTPUT = fd.read()
+    IP_ADDR_OUTPUT_FILE = os.path.join(
+        os.path.dirname(__file__), 'ip_addr_results_xenial.txt')
+    with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
+        IP_ADDR_OUTPUT_XENIAL = fd.read()
 
     def assert_expected_interfaces_and_macs_exist(
-            self, node_interfaces, additional_interfaces={}):
+            self, node_interfaces, additional_interfaces={},
+            expected_interfaces=EXPECTED_INTERFACES):
         """Asserts to ensure that the type, name, and MAC address are
         appropriate, given Node's interfaces. (and an optional list of
         additional interfaces which must exist)
         """
-        expected_interfaces = self.EXPECTED_INTERFACES.copy()
+        expected_interfaces = expected_interfaces.copy()
         expected_interfaces.update(additional_interfaces)
 
         self.assertThat(len(node_interfaces), Equals(len(expected_interfaces)))
 
         for interface in node_interfaces:
-            if interface.name.startswith('eth'):
+            if (interface.name.startswith('eth') or
+                    interface.name.startswith('ens')):
                 parts = interface.name.split('.')
                 if len(parts) == 2 and parts[1].isdigit():
                     iftype = INTERFACE_TYPE.VLAN
@@ -715,6 +727,23 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Makes sure all the test dataset MAC addresses were added to the node.
         node_interfaces = Interface.objects.filter(node=node)
         self.assert_expected_interfaces_and_macs_exist(node_interfaces)
+
+    def test__add_all_interfaces_xenial(self):
+        """Test a node that has no previously known interfaces on which we
+        need to add a series of interfaces.
+        """
+        node = factory.make_Node()
+
+        # Delete all Interfaces created by factory attached to this node.
+        Interface.objects.filter(node_id=node.id).delete()
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+
+        # Makes sure all the test dataset MAC addresses were added to the node.
+        node_interfaces = Interface.objects.filter(node=node)
+        self.assert_expected_interfaces_and_macs_exist(
+            node_interfaces,
+            expected_interfaces=self.EXPECTED_INTERFACES_XENIAL)
 
     def test__one_mac_missing(self):
         """Test whether we correctly detach a NIC that no longer appears to be
@@ -934,3 +963,20 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
                 ip=address))
+
+    def test__creates_discovered_ip_address_on_xenial(self):
+        node = factory.make_Node()
+        cidr = '172.16.100.108/24'
+        subnet = factory.make_Subnet(
+            cidr=cidr, vlan=VLAN.objects.get_default_vlan())
+
+        update_node_network_information(node, self.IP_ADDR_OUTPUT_XENIAL, 0)
+        eth0 = Interface.objects.get(node=node, name='ens3')
+        address = str(IPNetwork(cidr).ip)
+        ipv4_ip = eth0.ip_addresses.get(ip=address)
+        self.assertThat(
+            ipv4_ip,
+            MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet,
+                ip=address))
+        self.assertThat(eth0.ip_addresses.count(), Equals(1))

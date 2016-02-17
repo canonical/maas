@@ -349,17 +349,8 @@ class StatusHandler(MetadataViewHandler):
         # At the end of a top-level event, we change the node status.
         if _is_top_level(activity_name) and event_type == 'finish':
             if node.status == NODE_STATUS.COMMISSIONING:
-
                 node.status_expires = None
-                if result == 'SUCCESS':
-                    # Recalculate tags.
-                    populate_tags_for_single_node(Tag.objects.all(), node)
-
-                    # Setup the default storage layout and the initial
-                    # networking configuration for the node.
-                    node.set_default_storage_layout()
-                    node.set_initial_networking_configuration()
-                elif result in ['FAIL', 'FAILURE']:
+                if result in ['FAIL', 'FAILURE']:
                     node.status = NODE_STATUS.FAILED_COMMISSIONING
 
             elif node.status == NODE_STATUS.DEPLOYING:
@@ -369,6 +360,9 @@ class StatusHandler(MetadataViewHandler):
                         "Installation failed (refer to the "
                         "installation log for more information).")
             elif node.status == NODE_STATUS.DISK_ERASING:
+                # XXX mpontillo 2016-02-12 we need to check that
+                # only one "top level" event is sent during disk
+                # erasing.
                 if result == 'SUCCESS':
                     # disk erasing complete, release node.
                     node.release()
