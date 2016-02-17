@@ -87,7 +87,7 @@ describe("SubnetDetailsController", function() {
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("subnets");
+        expect($rootScope.page).toBe("networks");
     });
 
     it("calls loadManagers with SubnetsManager" +

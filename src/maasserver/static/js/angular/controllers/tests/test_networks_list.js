@@ -4,7 +4,7 @@
  * Unit tests for SubentsListController.
  */
 
-describe("SubentsListController", function() {
+describe("NetworksListController", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
@@ -40,7 +40,7 @@ describe("SubentsListController", function() {
         }
 
         // Create the controller.
-        var controller = $controller("SubnetsListController", {
+        var controller = $controller("NetworksListController", {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
@@ -57,7 +57,7 @@ describe("SubentsListController", function() {
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Fabrics");
-        expect($rootScope.page).toBe("subnets");
+        expect($rootScope.page).toBe("networks");
     });
 
     it("sets initial values on $scope", function() {

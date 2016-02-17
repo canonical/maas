@@ -16,7 +16,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
 
         // Note: this value must match the top-level tab, in order for
         // highlighting to occur properly.
-        $rootScope.page = "subnets";
+        $rootScope.page = "networks";
 
         // Initial values.
         $scope.loaded = false;

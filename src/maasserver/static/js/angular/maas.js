@@ -47,9 +47,9 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: 'static/partials/domains-list.html',
                     controller: 'DomainsListController'
                 }).
-                when('/subnets', {
-                    templateUrl: 'static/partials/subnets-list.html',
-                    controller: 'SubnetsListController'
+                when('/networks', {
+                    templateUrl: 'static/partials/networks-list.html',
+                    controller: 'NetworksListController'
                 }).
                 when('/subnet/:subnet_id', {
                     templateUrl: 'static/partials/subnet-details.html',

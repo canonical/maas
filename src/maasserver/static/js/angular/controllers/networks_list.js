@@ -4,7 +4,7 @@
  * MAAS Subnets List Controller
  */
 
-angular.module('MAAS').controller('SubnetsListController', [
+angular.module('MAAS').controller('NetworksListController', [
     '$scope', '$rootScope', '$routeParams', '$filter', 'SubnetsManager',
     'FabricsManager', 'SpacesManager', 'VLANsManager', 'ManagerHelperService',
     function($scope, $rootScope, $routeParams, $filter, SubnetsManager,
@@ -17,7 +17,7 @@ angular.module('MAAS').controller('SubnetsListController', [
 
         // Set title and page.
         $rootScope.title = "Fabrics";
-        $rootScope.page = "subnets";
+        $rootScope.page = "networks";
 
         // Set initial values.
         $scope.subnets = SubnetsManager.getItems();
