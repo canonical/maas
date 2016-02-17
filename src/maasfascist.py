@@ -31,6 +31,24 @@ from sys import (
 )
 
 
+def gen_frames(frame):
+    """Yield frames starting with `frame`, towards the bottom of the stack."""
+    while frame is not None:
+        yield frame
+        frame = frame.f_back
+
+
+def gen_modules(frames):
+    """Yield modules for the given frames, where set.
+
+    Python internals don't always declare a module name.
+    """
+    for frame in frames:
+        module = getmodule(frame)
+        if module is not None:
+            yield module
+
+
 class FascistFinder:
     """Provides the ``find_module`` method.
 
@@ -111,8 +129,7 @@ class FascistFinder:
         """
         forbidden = self.find_rule(fullname)
         if forbidden is not None:
-            origin_frame = getframe(1)
-            origin_module = getmodule(origin_frame)
+            origin_module = next(gen_modules(gen_frames(getframe(1))))
             if origin_module is not None:
                 origin_module_name = origin_module.__name__
                 if self.is_forbidden(forbidden, origin_module_name):
