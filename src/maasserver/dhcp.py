@@ -5,19 +5,16 @@
 
 __all__ = [
     'configure_dhcp',
-    'configure_dhcp_now',
     ]
 
 from collections import defaultdict
-import logging
 from operator import itemgetter
-import threading
 
 from django.conf import settings
+from django.db.models import Q
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODEGROUP_STATUS,
 )
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import (
@@ -26,25 +23,18 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.rpc import getClientFor
-from maasserver.utils.orm import (
-    post_commit,
-    transactional,
-)
-from maasserver.utils.threads import callOutToDatabase
-from netaddr import IPAddress
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
 )
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.twisted import (
-    callOut,
+    asynchronous,
     synchronous,
 )
-
-
-logger = logging.getLogger(__name__)
+from twisted.internet.defer import inlineCallbacks
 
 
 def get_omapi_key():
@@ -56,19 +46,100 @@ def get_omapi_key():
     return key
 
 
-def split_ipv4_ipv6_interfaces(interfaces):
-    """Divide `interfaces` into IPv4 ones and IPv6 ones.
+def split_ipv4_ipv6_subnets(subnets):
+    """Divide `subnets` into IPv4 ones and IPv6 ones.
 
-    :param interfaces: An iterable of rack controller interfaces.
-    :return: A tuple of two separate iterables: IPv4 cluster interfaces for
-        `nodegroup`, and its IPv6 cluster interfaces.
+    :param subnets: A sequence of subnets.
+    :return: A tuple of two separate sequences: IPv4 subnets and IPv6 subnets.
     """
     split = defaultdict(list)
-    for interface in interfaces:
-        split[interface.subnet.get_ipnetwork().version].append(interface)
+    for subnet in subnets:
+        split[subnet.get_ipnetwork().version].append(subnet)
     assert len(split) <= 2, (
         "Unexpected IP version(s): %s" % ', '.join(list(split.keys())))
     return split[4], split[6]
+
+
+def ip_is_sticky_or_auto(ip_address):
+    """Return True if the `ip_address` alloc_type is STICKY or AUTO."""
+    return ip_address.alloc_type in [
+        IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.AUTO]
+
+
+def get_best_interface(interfaces):
+    """Return `Interface` from `interfaces` that is the best.
+
+    This is used by `get_subnet_to_interface_mapping` to select the very best
+    interface on a `Subnet`. Bond interfaces are selected over physical/vlan
+    interfaces.
+    """
+    best_interface = None
+    for interface in interfaces:
+        if best_interface is None:
+            best_interface = interface
+        elif (best_interface.type == INTERFACE_TYPE.PHYSICAL and
+                interface.type == INTERFACE_TYPE.BOND):
+            best_interface = interface
+        elif (best_interface.type == INTERFACE_TYPE.VLAN and
+                interface.type == INTERFACE_TYPE.PHYSICAL):
+            best_interface = interface
+    return best_interface
+
+
+def get_best_interface_for_subnet(rack_controller, subnet):
+    """Return best `Interface` for `rack_controller` that has access to
+    `subnet`."""
+    return get_best_interface(
+        rack_controller.interface_set.filter(
+            vlan__subnet=subnet).order_by('id'))
+
+
+def get_managed_subnets_for(rack_controller):
+    """Return list of `Subnet` for the `rack_controller`."""
+    # Get all subnets that are managed by this rack controller.
+    interfaces = rack_controller.interface_set.filter(
+        Q(vlan__dhcp_on=True) & (
+            Q(vlan__primary_rack=rack_controller) |
+            Q(vlan__secondary_rack=rack_controller)))
+    interfaces = interfaces.prefetch_related("vlan__subnet_set")
+    return {
+        subnet
+        for interface in interfaces
+        for subnet in interface.vlan.subnet_set.all()
+    }
+
+
+def ip_is_on_vlan(ip_address, vlan):
+    """Return True if `ip_address` is on `vlan`."""
+    return (
+        ip_is_sticky_or_auto(ip_address) and
+        ip_address.subnet.vlan_id == vlan.id and
+        ip_address.ip is not None and
+        ip_address.ip != "")
+
+
+def get_ip_address_for_interface(interface, vlan):
+    """Return the IP address for `interface` on `vlan`."""
+    for ip_address in interface.ip_addresses.all():
+        if ip_is_on_vlan(ip_address, vlan):
+            return ip_address
+    return None
+
+
+def get_ip_address_for_rack_controller(rack_controller, vlan):
+    """Return the IP address for `rack_controller` on `vlan`."""
+    # First we build a list of all interfaces that have an IP address
+    # on that vlan. Then we pick the best interface for that vlan
+    # based on the `get_best_interface` function.
+    interfaces = rack_controller.interface_set.all().prefetch_related(
+        "ip_addresses__subnet")
+    matching_interfaces = set()
+    for interface in interfaces:
+        for ip_address in interface.ip_addresses.all():
+            if ip_is_on_vlan(ip_address, vlan):
+                matching_interfaces.add(interface)
+    interface = get_best_interface(matching_interfaces)
+    return get_ip_address_for_interface(interface, vlan)
 
 
 def make_interface_hostname(interface):
@@ -131,61 +202,68 @@ def make_hosts_for_subnet(subnet):
     return sorted(hosts, key=itemgetter('host'))
 
 
-def make_subnet_config(interface, dns_servers, ntp_server, default_domain):
-    """Return DHCP subnet configuration dict for a cluster interface."""
-    ip_network = interface.subnet.get_ipnetwork()
+def make_pools_for_subnet(subnet, failover_peer=None):
+    """Return list of pools to create in the DHCP config for `subnet`."""
+    pools = []
+    for ip_range in subnet.get_dynamic_ranges().order_by('id'):
+        pool = {
+            "ip_range_low": ip_range.start_ip,
+            "ip_range_high": ip_range.end_ip,
+        }
+        if failover_peer is not None:
+            pool["failover_peer"] = failover_peer
+        pools.append(pool)
+    return pools
+
+
+def make_subnet_config(
+        rack_controller, subnet, dns_servers, ntp_server, default_domain,
+        failover_peer=None):
+    """Return DHCP subnet configuration dict for a rack interface."""
+    ip_network = subnet.get_ipnetwork()
+    interface = get_best_interface_for_subnet(rack_controller, subnet)
     return {
-        'subnet': str(
-            IPAddress(interface.ip_range_low) &
-            IPAddress(ip_network.netmask)),
+        'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
-        'subnet_cidr': str(interface.subnet.cidr),
-        'broadcast_ip': interface.broadcast_ip,
-        'interface': interface.interface,
+        'subnet_cidr': str(ip_network.cidr),
+        'broadcast_ip': str(ip_network.broadcast),
+        'interface': interface.name,
         'router_ip': (
-            '' if not interface.subnet else
-            '' if not interface.subnet.gateway_ip
-            else str(interface.subnet.gateway_ip)),
+            '' if not subnet.gateway_ip
+            else str(subnet.gateway_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,
         'domain_name': default_domain.name,
-        'ip_range_low': interface.ip_range_low,
-        'ip_range_high': interface.ip_range_high,
-        'hosts': make_hosts_for_subnet(interface.subnet),
+        'pools': make_pools_for_subnet(subnet, failover_peer),
+        'hosts': make_hosts_for_subnet(subnet),
         }
 
 
-@synchronous
-def do_configure_dhcp(
-        ip_version, rack_controller, interfaces, ntp_server, client):
-    """Write DHCP configuration and restart the DHCP server.
+def make_failover_peer_config(vlan, rack_controller):
+    """Return DHCP failover peer configuration dict for a rack controller."""
+    is_primary = vlan.primary_rack_id == rack_controller.id
+    interface_ip_address = get_ip_address_for_rack_controller(
+        rack_controller, vlan)
+    if is_primary:
+        peer_address = get_ip_address_for_rack_controller(
+            vlan.secondary_rack, vlan)
+    else:
+        peer_address = get_ip_address_for_rack_controller(
+            vlan.primary_rack, vlan)
+    name = "failover-vlan-%d" % vlan.id
+    return name, {
+        "name": name,
+        "mode": "primary" if is_primary else "secondary",
+        "address": str(interface_ip_address.ip),
+        "peer_address": str(peer_address.ip),
+    }
 
-    Delegates the work to the rack controller, and waits for it
-    to complete.
 
-    :param ip_version: The IP version to configure for, either 4 or 6.
-    :param client: An RPC client for the given cluster.
-
-    :raise NoConnectionsAvailable: if the region controller could not get
-        an RPC connection to the cluster controller.
-    :raise CannotConfigureDHCP: if configuration could not be written, or
-        restart of the DHCP server fails.
-    """
-    # XXX jtv 2014-08-26 bug=1361590: UI/API requests to update cluster
-    # interfaces will block on this.  We may need an asynchronous error
-    # backchannel.
-
+def get_dhcp_configure_for(
+        ip_version, rack_controller, subnets, ntp_server, domain):
+    """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
-
-    if ip_version == 4:
-        command = ConfigureDHCPv4
-    elif ip_version == 6:
-        command = ConfigureDHCPv6
-    else:
-        raise AssertionError(
-            "Only IPv4 and IPv6 are supported, not IPv%s."
-            % (ip_version,))
 
     try:
         dns_servers = get_dns_server_address(
@@ -195,35 +273,56 @@ def do_configure_dhcp(
         # that becomes the empty string.
         dns_servers = ''
 
+    # Generate the failover peers and the subnet configuration.
+    failover_peers = {}
+    subnet_configs = []
+    for subnet in subnets:
+        peer_name = None
+        if subnet.vlan.secondary_rack_id is not None:
+            if subnet.vlan not in failover_peers:
+                peer_name, peer_config = make_failover_peer_config(
+                    subnet.vlan, rack_controller)
+                failover_peers[subnet.vlan] = (peer_name, peer_config)
+            else:
+                (peer_name, peer_config) = failover_peers[subnet.vlan]
+
+        subnet_config = make_subnet_config(
+            rack_controller, subnet, dns_servers, ntp_server,
+            domain, peer_name)
+        subnet_configs.append(subnet_config)
+    return [
+        config
+        for _, config in failover_peers.values()
+    ], subnet_configs
+
+
+@synchronous
+@transactional
+def get_dhcp_configuration(rack_controller):
+    """Return tuple with IPv4 and IPv6 configurations for the
+    rack controller."""
+    # Get list of all subnets that are being managed by the rack controller.
+    subnets = get_managed_subnets_for(rack_controller)
+
+    # Split the subnets into IPv4 and IPv6 subnets.
+    subnets_v4, subnets_v6 = split_ipv4_ipv6_subnets(subnets)
+
+    # Configure both DHCPv4 and DHCPv6 on the rack controller.
+    ntp_server = Config.objects.get_config("ntp_server")
     default_domain = Domain.objects.get_default_domain()
-    subnets = [
-        make_subnet_config(interface, dns_servers, ntp_server, default_domain)
-        for interface in interfaces
-        ]
-    # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
-    # needs to be reported gracefully to the caller.
-    client(command, omapi_key=get_omapi_key(), subnet_configs=subnets).wait(60)
+    failover_peers_v4, subnets_v4 = get_dhcp_configure_for(
+        4, rack_controller, subnets_v4, ntp_server, default_domain)
+    failover_peers_v6, subnets_v6 = get_dhcp_configure_for(
+        6, rack_controller, subnets_v6, ntp_server, default_domain)
+    return (
+        get_omapi_key(),
+        failover_peers_v4, subnets_v4,
+        failover_peers_v6, subnets_v6)
 
 
-def configure_dhcpv4(rack_controller, interfaces, ntp_server, client):
-    """Call `do_configure_dhcp` for IPv4.
-
-    This serves mainly as a convenience for testing.
-    """
-    return do_configure_dhcp(
-        4, rack_controller, interfaces, ntp_server, client)
-
-
-def configure_dhcpv6(rack_controller, interfaces, ntp_server, client):
-    """Call `do_configure_dhcp` for IPv6.
-
-    This serves mainly as a convenience for testing.
-    """
-    return do_configure_dhcp(
-        6, rack_controller, interfaces, ntp_server, client)
-
-
-def configure_dhcp_now(rack_controller):
+@asynchronous
+@inlineCallbacks
+def configure_dhcp(rack_controller):
     """Write the DHCP configuration files and restart the DHCP servers.
 
     :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
@@ -238,98 +337,17 @@ def configure_dhcp_now(rack_controller):
 
     # Get the client early; it's a cheap operation that may raise an
     # exception, meaning we can avoid some work if it fails.
-    client = getClientFor(rack_controller.system_id)
+    client = yield getClientFor(rack_controller.system_id)
 
-    if rack_controller.status == NODEGROUP_STATUS.ENABLED:
-        # Cluster is an accepted one.  Control DHCP for its managed interfaces.
-        interfaces = rack_controller.get_managed_interfaces()
-    else:
-        # Cluster isn't accepted.  Effectively, it manages no interfaces.
-        interfaces = []
+    # Get configuration for both IPv4 and IPv6.
+    omapi_key, failover_peers_v4, subnets_v4, failover_peers_v6, subnets_v6 = (
+        yield deferToDatabase(
+            get_dhcp_configuration, rack_controller))
 
-    # Make sure this rack_controller has a key to communicate with the dhcp
-    # server.
-    rack_controller.ensure_dhcp_key()
-
-    ntp_server = Config.objects.get_config("ntp_server")
-
-    ipv4_interfaces, ipv6_interfaces = split_ipv4_ipv6_interfaces(interfaces)
-
-    configure_dhcpv4(rack_controller, ipv4_interfaces, ntp_server, client)
-    configure_dhcpv6(rack_controller, ipv6_interfaces, ntp_server, client)
-
-
-class Changes:
-    """A record of pending DHCP changes, and the means to apply them."""
-
-    # FIXME: This has elements in common with the Changes class in
-    # maasserver.dns.config. Consider extracting the common parts into a
-    # shared superclass.
-
-    def __init__(self):
-        super(Changes, self).__init__()
-        self.reset()
-
-    def reset(self):
-        self.hook = None
-        self.clusters = []
-
-    def activate(self):
-        """Arrange for a post-commit hook to be called.
-
-        The hook will apply any pending changes and reset this object to a
-        pristine state.
-
-        Can be called multiple times; only one hook will be added.
-        """
-        if self.hook is None:
-            self.hook = post_commit()
-            self.hook.addCallback(callOutToDatabase, self.apply)
-            self.hook.addBoth(callOut, self.reset)
-        return self.hook
-
-    @transactional
-    def apply(self):
-        """Apply all requested changes."""
-        clusters = {cluster.id: cluster for cluster in self.clusters}
-        for cluster in clusters.values():
-            try:
-                configure_dhcp_now(cluster)
-            except NoConnectionsAvailable:
-                logger.info(
-                    "Cluster %s (%s) is not connected at present so cannot "
-                    "be configured; it will catch up when it next connects.",
-                    cluster.cluster_name, cluster.uuid)
-
-
-class ChangeConsolidator(threading.local):
-    """A singleton used to consolidate DHCP changes.
-
-    Maintains a thread-local `Changes` instance into which changes are
-    written. Requesting any change within a transaction automatically arranges
-    a post-commit call to apply those changes, after consolidation.
-    """
-
-    # FIXME: This has elements in common with the ChangeConsolidator class in
-    # maasserver.dns.config. Consider extracting the common parts into a
-    # shared superclass.
-
-    def __init__(self):
-        super(ChangeConsolidator, self).__init__()
-        self.changes = Changes()
-
-    def configure(self, cluster):
-        """Request that DHCP be configured for `cluster`.
-
-        This does nothing if `settings.DHCP_CONNECT` is `False`.
-        """
-        if settings.DHCP_CONNECT:
-            self.changes.clusters.append(cluster)
-            return self.changes.activate()
-
-
-# Singleton, for internal use only.
-consolidator = ChangeConsolidator()
-
-# The public API.
-configure_dhcp = consolidator.configure
+    # Configure both IPv4 and IPv6.
+    yield client(
+        ConfigureDHCPv4, omapi_key=omapi_key,
+        failover_peers=failover_peers_v4, subnet_configs=subnets_v4)
+    yield client(
+        ConfigureDHCPv6, omapi_key=omapi_key,
+        failover_peers=failover_peers_v6, subnet_configs=subnets_v6)

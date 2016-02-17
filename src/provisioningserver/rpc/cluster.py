@@ -280,10 +280,16 @@ class PowerQuery(_Power):
 class _ConfigureDHCP(amp.Command):
     """Configure a DHCP server.
 
-    :since: 1.7
+    :since: 2.0
     """
     arguments = [
         (b"omapi_key", amp.Unicode()),
+        (b"failover_peers", AmpList([
+            (b"name", amp.Unicode()),
+            (b"mode", amp.Unicode()),
+            (b"address", amp.Unicode()),
+            (b"peer_address", amp.Unicode()),
+            ])),
         (b"subnet_configs", AmpList([
             (b"subnet", amp.Unicode()),
             (b"subnet_mask", amp.Unicode()),
@@ -294,13 +300,16 @@ class _ConfigureDHCP(amp.Command):
             (b"dns_servers", amp.Unicode()),
             (b"ntp_server", amp.Unicode()),
             (b"domain_name", amp.Unicode()),
-            (b"ip_range_low", amp.Unicode()),
-            (b"ip_range_high", amp.Unicode()),
+            (b"pools", AmpList([
+                (b"ip_range_low", amp.Unicode()),
+                (b"ip_range_high", amp.Unicode()),
+                (b"failover_peer", amp.Unicode(optional=True)),
+                ])),
             (b"hosts", CompressedAmpList([
-                ("host", amp.Unicode()),
-                ("mac", amp.Unicode()),
-                ("ip", amp.Unicode()),
-                ], optional=True))
+                (b"host", amp.Unicode()),
+                (b"mac", amp.Unicode()),
+                (b"ip", amp.Unicode()),
+                ])),
             ])),
         ]
     response = []
@@ -310,32 +319,15 @@ class _ConfigureDHCP(amp.Command):
 class ConfigureDHCPv4(_ConfigureDHCP):
     """Configure the DHCPv4 server.
 
-    :since: 1.7
+    :since: 2.0
     """
 
 
 class ConfigureDHCPv6(_ConfigureDHCP):
     """Configure the DHCPv6 server.
 
-    :since: 1.7
+    :since: 2.0
     """
-
-
-class RemoveHostMaps(amp.Command):
-    """Remove host maps from the DHCP server's configuration.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"ip_addresses", amp.ListOf(amp.Unicode())),
-        (b"shared_key", amp.Unicode()),
-    ]
-    response = []
-    errors = {
-        exceptions.CannotRemoveHostMap: (
-            b"CannotRemoveHostMap"),
-    }
 
 
 class ImportBootImages(amp.Command):

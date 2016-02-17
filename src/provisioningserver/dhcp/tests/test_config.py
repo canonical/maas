@@ -17,6 +17,7 @@ from maastesting.factory import factory
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import (
+    make_failover_peer_config,
     make_subnet_config,
     make_subnet_host,
 )
@@ -31,6 +32,12 @@ from testtools.matchers import (
 # substitutions, but none that aren't also in the real template.
 sample_template = dedent("""\
     {{omapi_key}}
+    {{for failover_peer in failover_peers}}
+        {{failover_peer['name']}}
+        {{failover_peer['mode']}}
+        {{failover_peer['address']}}
+        {{failover_peer['peer_address']}}
+    {{endfor}}
     {{for dhcp_subnet in dhcp_subnets}}
         {{dhcp_subnet['subnet']}}
         {{dhcp_subnet['interface']}}
@@ -39,21 +46,36 @@ sample_template = dedent("""\
         {{dhcp_subnet['dns_servers']}}
         {{dhcp_subnet['domain_name']}}
         {{dhcp_subnet['router_ip']}}
-        {{dhcp_subnet['ip_range_low']}}
-        {{dhcp_subnet['ip_range_high']}}
+        {{for pool in dhcp_subnet['pools']}}
+            {{pool['ip_range_low']}}
+            {{pool['ip_range_high']}}
+            {{pool['failover_peer']}}
+        {{endfor}}
+        {{for host in dhcp_subnet['hosts']}}
+            {{host['host']}}
+            {{host['mac']}}
+            {{host['ip']}}
+        }
+        {{endfor}}
     {{endfor}}
 """)
 
 
-def make_sample_params(network=None, hosts=None):
+def make_sample_params(network=None, hosts=None, failover_peers=None):
     """Return a dict of arbitrary DHCP configuration parameters."""
     if network is None:
         if factory.pick_bool():
             network = factory.make_ipv4_network()
         else:
             network = factory.make_ipv6_network()
+    if failover_peers is None:
+        failover_peers = [
+            make_failover_peer_config()
+            for _ in range(3)
+        ]
     return {
         'omapi_key': factory.make_name('key'),
+        'failover_peers': failover_peers,
         'dhcp_subnets': [make_subnet_config(network, hosts=hosts)],
         }
 

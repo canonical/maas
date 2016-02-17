@@ -46,7 +46,10 @@ from provisioningserver import (
 )
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
-from provisioningserver.dhcp.testing.config import make_subnet_config
+from provisioningserver.dhcp.testing.config import (
+    make_failover_peer_config,
+    make_subnet_config,
+)
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
@@ -1639,22 +1642,24 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         configure = self.patch_autospec(dhcp, "configure")
 
         omapi_key = factory.make_name('key')
+        failover_peers = [make_failover_peer_config()]
         subnet_configs = [make_subnet_config()]
 
         yield call_responder(Cluster(), self.command, {
             'omapi_key': omapi_key,
+            'failover_peers': failover_peers,
             'subnet_configs': subnet_configs,
             })
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(configure, MockCalledOnceWith(
-            DHCPServer.return_value, subnet_configs))
+            DHCPServer.return_value, failover_peers, subnet_configs))
 
     @inlineCallbacks
     def test__limits_concurrency(self):
         self.patch_autospec(*self.dhcp_server)
 
-        def check_dhcp_locked(server, subnet_configs):
+        def check_dhcp_locked(server, failover_peers, subnet_configs):
             self.assertTrue(concurrency.dhcp.locked)
             # While we're here, check this is *not* the IO thread.
             self.expectThat(isInIOThread(), Is(False))
@@ -1664,6 +1669,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         self.assertFalse(concurrency.dhcp.locked)
         yield call_responder(Cluster(), self.command, {
             'omapi_key': factory.make_name('key'),
+            'failover_peers': [],
             'subnet_configs': [],
             })
         self.assertFalse(concurrency.dhcp.locked)
@@ -1676,11 +1682,13 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('key')
         network = self.make_network()
         ip_low, ip_high = factory.make_ip_range(network)
+        failover_peers = [make_failover_peer_config()]
         subnet_configs = [make_subnet_config()]
 
         with ExpectedException(exceptions.CannotConfigureDHCP):
             yield call_responder(Cluster(), self.command, {
                 'omapi_key': omapi_key,
+                'failover_peers': failover_peers,
                 'subnet_configs': subnet_configs,
                 })
 

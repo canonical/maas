@@ -15,7 +15,10 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from mock import ANY
-from provisioningserver.dhcp.testing.config import make_subnet_config
+from provisioningserver.dhcp.testing.config import (
+    make_failover_peer_config,
+    make_subnet_config,
+)
 from provisioningserver.drivers.service import ServiceRegistry
 from provisioningserver.rpc import (
     dhcp,
@@ -32,9 +35,9 @@ class TestConfigureDHCP(MAASTestCase):
         ("DHCPv6", {"server": dhcp.DHCPv6Server}),
     )
 
-    def configure(self, omapi_key, subnets):
+    def configure(self, omapi_key, failover_peers, subnets):
         server = self.server(omapi_key)
-        dhcp.configure(server, subnets)
+        dhcp.configure(server, failover_peers, subnets)
 
     def patch_os_exists(self):
         return self.patch_autospec(dhcp.os.path, "exists")
@@ -57,8 +60,9 @@ class TestConfigureDHCP(MAASTestCase):
     def test__extracts_interfaces(self):
         write_file = self.patch_sudo_write_file()
         self.patch_restart_service()
+        failover_peers = [make_failover_peer_config() for _ in range(3)]
         subnets = [make_subnet_config() for _ in range(3)]
-        self.configure(factory.make_name('key'), subnets)
+        self.configure(factory.make_name('key'), failover_peers, subnets)
         interfaces = ' '.join(
             sorted(subnet['interface'] for subnet in subnets))
         self.assertThat(
@@ -71,10 +75,11 @@ class TestConfigureDHCP(MAASTestCase):
         write_file = self.patch_sudo_write_file()
         self.patch_restart_service()
         interface = factory.make_name('interface')
+        failover_peers = [make_failover_peer_config() for _ in range(3)]
         subnets = [make_subnet_config() for _ in range(2)]
         for subnet in subnets:
             subnet['interface'] = interface
-        self.configure(factory.make_name('key'), subnets)
+        self.configure(factory.make_name('key'), failover_peers, subnets)
         self.assertThat(
             write_file, MockCalledWith(ANY, interface.encode("utf-8")))
 
@@ -83,23 +88,25 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_restart_service()
         get_config = self.patch_get_config()
         omapi_key = factory.make_name('key')
+        failover_peers = make_failover_peer_config()
         subnet = make_subnet_config()
-        self.configure(omapi_key, [subnet])
+        self.configure(omapi_key, [failover_peers], [subnet])
         self.assertThat(
             get_config,
             MockCalledOnceWith(
                 self.server.template_basename, omapi_key=omapi_key,
-                dhcp_subnets=[subnet]))
+                failover_peers=[failover_peers], dhcp_subnets=[subnet]))
 
     def test__writes_dhcp_config(self):
         write_file = self.patch_sudo_write_file()
         self.patch_restart_service()
 
         subnet = make_subnet_config()
+        failover_peers = make_failover_peer_config()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
-        self.configure(factory.make_name('key'), [subnet])
+        self.configure(factory.make_name('key'), [failover_peers], [subnet])
 
         self.assertThat(
             write_file,
@@ -109,7 +116,9 @@ class TestConfigureDHCP(MAASTestCase):
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
         self.patch_restart_service()
-        self.configure(factory.make_name('key'), [make_subnet_config()])
+        self.configure(
+            factory.make_name('key'),
+            [make_failover_peer_config()], [make_subnet_config()])
         self.assertThat(
             write_file,
             MockCalledWith(self.server.interfaces_filename, ANY))
@@ -119,7 +128,9 @@ class TestConfigureDHCP(MAASTestCase):
         dhcp_service = ServiceRegistry[self.server.dhcp_service]
         on = self.patch_autospec(dhcp_service, "on")
         restart_service = self.patch_restart_service()
-        self.configure(factory.make_name('key'), [make_subnet_config()])
+        self.configure(
+            factory.make_name('key'),
+            [make_failover_peer_config()], [make_subnet_config()])
         self.assertThat(on, MockCalledOnceWith())
         self.assertThat(
             restart_service, MockCalledOnceWith(self.server.dhcp_service))
@@ -132,7 +143,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_autospec(dhcp_service, "off")
         self.patch_restart_service()
         self.patch_ensure_service()
-        self.configure(factory.make_name('key'), [])
+        self.configure(factory.make_name('key'), [], [])
         self.assertThat(
             mock_sudo_delete, MockCalledOnceWith(self.server.config_filename))
 
@@ -143,7 +154,7 @@ class TestConfigureDHCP(MAASTestCase):
         off = self.patch_autospec(dhcp_service, "off")
         restart_service = self.patch_restart_service()
         ensure_service = self.patch_ensure_service()
-        self.configure(factory.make_name('key'), [])
+        self.configure(factory.make_name('key'), [], [])
         self.assertThat(off, MockCalledOnceWith())
         self.assertThat(
             ensure_service, MockCalledOnceWith(self.server.dhcp_service))
@@ -155,21 +166,23 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_restart_service()
         self.assertRaises(
             exceptions.CannotConfigureDHCP, self.configure,
-            factory.make_name('key'), [make_subnet_config()])
+            factory.make_name('key'),
+            [make_failover_peer_config()], [make_subnet_config()])
 
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
         self.patch_restart_service().side_effect = ServiceActionError()
         self.assertRaises(
             exceptions.CannotConfigureDHCP, self.configure,
-            factory.make_name('key'), [make_subnet_config()])
+            factory.make_name('key'),
+            [make_failover_peer_config()], [make_subnet_config()])
 
     def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
         self.patch_ensure_service().side_effect = ServiceActionError()
         self.assertRaises(
             exceptions.CannotConfigureDHCP, self.configure,
-            factory.make_name('key'), [])
+            factory.make_name('key'), [], [])
 
     def test__does_not_log_ServiceActionError(self):
         self.patch_sudo_write_file()
@@ -177,7 +190,7 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             self.assertRaises(
                 exceptions.CannotConfigureDHCP, self.configure,
-                factory.make_name('key'), [])
+                factory.make_name('key'), [], [])
         self.assertDocTestMatches("", logger.output)
 
     def test__does_log_other_exceptions(self):
@@ -187,7 +200,7 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             self.assertRaises(
                 exceptions.CannotConfigureDHCP, self.configure,
-                factory.make_name('key'), [])
+                factory.make_name('key'), [], [])
         self.assertDocTestMatches(
             "DHCPv... server failed to stop: DHCP is on strike today",
             logger.output)
@@ -198,7 +211,8 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             self.assertRaises(
                 exceptions.CannotConfigureDHCP, self.configure,
-                factory.make_name('key'), [make_subnet_config()])
+                factory.make_name('key'),
+                [make_failover_peer_config()], [make_subnet_config()])
         self.assertDocTestMatches("", logger.output)
 
     def test__does_log_other_exceptions_when_restarting(self):
@@ -208,7 +222,8 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             self.assertRaises(
                 exceptions.CannotConfigureDHCP, self.configure,
-                factory.make_name('key'), [make_subnet_config()])
+                factory.make_name('key'),
+                [make_failover_peer_config()], [make_subnet_config()])
         self.assertDocTestMatches(
             "DHCPv... server failed to restart (for network interfaces ...): "
             "DHCP is on strike today", logger.output)

@@ -1,37 +1,23 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
 
 __all__ = []
 
-"""
-For some reason unittest.skip is not working on the class level. To speed up
-removal of NodeGroup. This whole test case is commented out. Once wiring up
-the listener to enable new DHCP HA is performed this should be removed as some
-of this module will be used later.
-
 from operator import itemgetter
 import random
-import unittest
 
-from django.conf import settings
-from django.db import transaction
-from fixtures import LoggerFixture
+from crochet import wait_for
 from maasserver import dhcp
-from maasserver.dhcp import (
-    configure_dhcp,
-    consolidator,
-    do_configure_dhcp,
-    make_subnet_config,
-    split_ipv4_ipv6_interfaces,
-)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.models import Config
-from maasserver.rpc import getClientFor
+from maasserver.models import (
+    Config,
+    Domain,
+)
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -42,18 +28,14 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.twisted import always_succeed_with
-from mock import (
-    ANY,
-    call,
-    sentinel,
-)
+from mock import ANY
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -62,62 +44,396 @@ from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
 )
-from provisioningserver.utils.url import compose_URL
 from testtools.matchers import (
-    AllMatch,
     ContainsAll,
-    ContainsDict,
     Equals,
     IsInstance,
-    MatchesStructure,
-    Not,
 )
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
-class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
-    "Tests for `split_ipv4_ipv6_interfaces`.""
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
-    def make_ipv4_interface(self, nodegroup):
-        subnet = factory.make_Subnet(
-            cidr=str(factory.make_ipv4_network().cidr))
-        return factory.make_NodeGroupInterface(
-            nodegroup, subnet=subnet)
 
-    def make_ipv6_interface(self, nodegroup):
-        subnet = factory.make_Subnet(
-            cidr=str(factory.make_ipv6_network().cidr))
-        return factory.make_NodeGroupInterface(
-            nodegroup, subnet=subnet)
+class TestGetOMAPIKey(MAASServerTestCase):
+    """Tests for `get_omapi_key`."""
 
-    def test__separates_IPv4_from_IPv6_interfaces(self):
-        nodegroup = factory.make_NodeGroup()
-        # Create 0-2 IPv4 cluster interfaces and 0-2 IPv6 cluster interfaces.
-        ipv4_interfaces = [
-            self.make_ipv4_interface(nodegroup)
+    def test__returns_key_in_global_config(self):
+        key = factory.make_name("omapi")
+        Config.objects.set_config("omapi_key", key)
+        self.assertEqual(key, dhcp.get_omapi_key())
+
+    def test__sets_new_omapi_key_in_global_config(self):
+        key = factory.make_name("omapi")
+        mock_generate_omapi_key = self.patch(dhcp, "generate_omapi_key")
+        mock_generate_omapi_key.return_value = key
+        self.assertEqual(key, dhcp.get_omapi_key())
+        self.assertEqual(key, Config.objects.get_config("omapi_key"))
+        self.assertThat(mock_generate_omapi_key, MockCalledOnceWith())
+
+
+class TestSplitIPv4IPv6Subnets(MAASServerTestCase):
+    """Tests for `split_ipv4_ipv6_subnets`."""
+
+    def test__separates_IPv4_from_IPv6_subnets(self):
+        ipv4_subnets = [
+            factory.make_Subnet(cidr=str(factory.make_ipv4_network().cidr))
             for _ in range(random.randint(0, 2))
             ]
-        ipv6_interfaces = [
-            self.make_ipv6_interface(nodegroup)
+        ipv6_subnets = [
+            factory.make_Subnet(cidr=str(factory.make_ipv6_network().cidr))
             for _ in range(random.randint(0, 2))
             ]
-        interfaces = sorted(
-            ipv4_interfaces + ipv6_interfaces,
+        subnets = sorted(
+            ipv4_subnets + ipv6_subnets,
             key=lambda *args: random.randint(0, 10))
 
-        ipv4_result, ipv6_result = split_ipv4_ipv6_interfaces(interfaces)
+        ipv4_result, ipv6_result = dhcp.split_ipv4_ipv6_subnets(subnets)
 
-        self.assertItemsEqual(ipv4_interfaces, ipv4_result)
-        self.assertItemsEqual(ipv6_interfaces, ipv6_result)
+        self.assertItemsEqual(ipv4_subnets, ipv4_result)
+        self.assertItemsEqual(ipv6_subnets, ipv6_result)
+
+
+class TestIPIsStickyOrAuto(MAASServerTestCase):
+    """Tests for `ip_is_sticky_or_auto`."""
+
+    scenarios = (
+        ("sticky", {
+            "alloc_type": IPADDRESS_TYPE.STICKY,
+            "result": True,
+        }),
+        ("auto", {
+            "alloc_type": IPADDRESS_TYPE.AUTO,
+            "result": True,
+        }),
+        ("discovered", {
+            "alloc_type": IPADDRESS_TYPE.DISCOVERED,
+            "result": False,
+        }),
+        ("user_reserved", {
+            "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+            "result": False,
+        }),
+    )
+
+    def test__returns_correct_result(self):
+        ip_address = factory.make_StaticIPAddress(alloc_type=self.alloc_type)
+        self.assertEquals(self.result, dhcp.ip_is_sticky_or_auto(ip_address))
+
+
+class TestGetBestInterface(MAASServerTestCase):
+    """Tests for `get_best_interface`."""
+
+    def test__returns_bond_over_physical(self):
+        rack_controller = factory.make_RackController()
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        nic0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=rack_controller, parents=[nic0, nic1])
+        self.assertEquals(bond, dhcp.get_best_interface([physical, bond]))
+
+    def test__returns_physical_over_vlan(self):
+        rack_controller = factory.make_RackController()
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        vlan = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=rack_controller, parents=[physical])
+        self.assertEquals(physical, dhcp.get_best_interface([physical, vlan]))
+
+    def test__returns_first_interface_when_all_physical(self):
+        rack_controller = factory.make_RackController()
+        interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+            for _ in range(3)
+        ]
+        self.assertEquals(interfaces[0], dhcp.get_best_interface(interfaces))
+
+    def test__returns_first_interface_when_all_vlan(self):
+        rack_controller = factory.make_RackController()
+        physical = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.VLAN, node=rack_controller, parents=[physical])
+            for _ in range(3)
+        ]
+        self.assertEquals(interfaces[0], dhcp.get_best_interface(interfaces))
+
+
+class TestGetBestInterfaceForSubnet(MAASServerTestCase):
+    """Tests for `get_best_interface_for_subnet`."""
+
+    def test__returns_bond_over_physical(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        nic0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        nic1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=rack_controller, parents=[nic0, nic1],
+            vlan=vlan)
+        self.assertEquals(
+            bond, dhcp.get_best_interface_for_subnet(rack_controller, subnet))
+
+    def test__returns_first_interface_when_all_physical(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        interfaces = [
+            factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+            for _ in range(3)
+        ]
+        self.assertEquals(
+            interfaces[0],
+            dhcp.get_best_interface_for_subnet(rack_controller, subnet))
+
+
+class TestGetManagedSubnetsFor(MAASServerTestCase):
+    """Tests for `get_managed_subnets_for`."""
+
+    def test__returns_all_subnets(self):
+        rack_controller = factory.make_RackController()
+
+        # Two interfaces on one IPv4 and one IPv6 subnet where the VLAN is
+        # being managed by the rack controller as the primary.
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        bond_parent_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        bond_interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=rack_controller,
+            parents=[bond_parent_interface], vlan=vlan)
+        managed_ipv4_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=managed_ipv4_subnet,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=managed_ipv4_subnet,
+            interface=bond_interface)
+        managed_ipv6_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=managed_ipv6_subnet,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=managed_ipv6_subnet,
+            interface=bond_interface)
+
+        # Interface on one IPv4 and one IPv6 subnet where the VLAN is being
+        # managed by the rack controller as the secondary.
+        vlan = factory.make_VLAN(dhcp_on=True, secondary_rack=rack_controller)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        sec_managed_ipv4_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=sec_managed_ipv4_subnet,
+            interface=secondary_interface)
+        sec_managed_ipv6_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=sec_managed_ipv6_subnet,
+            interface=secondary_interface)
+
+        # Interface on one IPv4 and one IPv6 subnet where the VLAN is not
+        # managed by the rack controller.
+        vlan = factory.make_VLAN(dhcp_on=True)
+        not_managed_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        not_managed_ipv4_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=not_managed_ipv4_subnet,
+            interface=not_managed_interface)
+        not_managed_ipv6_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=not_managed_ipv6_subnet,
+            interface=not_managed_interface)
+
+        # Interface on one IPv4 and one IPv6 subnet where the VLAN dhcp is off.
+        vlan = factory.make_VLAN(dhcp_on=False)
+        dhcp_off_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        dhcp_off_ipv4_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv4_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=dhcp_off_ipv4_subnet,
+            interface=dhcp_off_interface)
+        dhcp_off_ipv6_subnet = factory.make_Subnet(
+            cidr=str(factory.make_ipv6_network().cidr), vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=dhcp_off_ipv6_subnet,
+            interface=dhcp_off_interface)
+
+        # One interface on on managed VLAN that has a subnet that the rack
+        # controller does not have an IP address.
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack_controller)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        no_ip_subnet = factory.make_Subnet(vlan=vlan)
+
+        # Should only contain the subnets that are managed by the rack
+        # controller and the best interface should have been selected.
+        self.assertEquals({
+            managed_ipv4_subnet,
+            managed_ipv6_subnet,
+            sec_managed_ipv4_subnet,
+            sec_managed_ipv6_subnet,
+            no_ip_subnet,
+        }, dhcp.get_managed_subnets_for(rack_controller))
+
+
+class TestIPIsOnVLAN(MAASServerTestCase):
+    """Tests for `ip_is_on_vlan`."""
+
+    scenarios = (
+        ("sticky_on_vlan_with_ip", {
+            "alloc_type": IPADDRESS_TYPE.STICKY,
+            "has_ip": True,
+            "on_vlan": True,
+            "result": True,
+        }),
+        ("sticky_not_on_vlan_with_ip", {
+            "alloc_type": IPADDRESS_TYPE.STICKY,
+            "has_ip": True,
+            "on_vlan": False,
+            "result": False,
+        }),
+        ("auto_on_vlan_with_ip", {
+            "alloc_type": IPADDRESS_TYPE.AUTO,
+            "has_ip": True,
+            "on_vlan": True,
+            "result": True,
+        }),
+        ("auto_on_vlan_without_ip", {
+            "alloc_type": IPADDRESS_TYPE.AUTO,
+            "has_ip": False,
+            "on_vlan": True,
+            "result": False,
+        }),
+        ("auto_not_on_vlan_with_ip", {
+            "alloc_type": IPADDRESS_TYPE.AUTO,
+            "has_ip": True,
+            "on_vlan": False,
+            "result": False,
+        }),
+        ("discovered", {
+            "alloc_type": IPADDRESS_TYPE.DISCOVERED,
+            "has_ip": True,
+            "on_vlan": True,
+            "result": False,
+        }),
+        ("user_reserved", {
+            "alloc_type": IPADDRESS_TYPE.USER_RESERVED,
+            "has_ip": True,
+            "on_vlan": True,
+            "result": False,
+        }),
+    )
+
+    def test__returns_correct_result(self):
+        expected_vlan = factory.make_VLAN()
+        set_vlan = expected_vlan
+        if not self.on_vlan:
+            set_vlan = factory.make_VLAN()
+        ip = ""
+        subnet = factory.make_Subnet(vlan=set_vlan)
+        if self.has_ip:
+            ip = factory.pick_ip_in_Subnet(subnet)
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=self.alloc_type, ip=ip, subnet=subnet)
+        self.assertEquals(
+            self.result,
+            dhcp.ip_is_on_vlan(ip_address, expected_vlan))
+
+
+class TestGetIPAddressForInterface(MAASServerTestCase):
+    """Tests for `get_ip_address_for_interface`."""
+
+    def test__returns_ip_address_on_vlan(self):
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface)
+        self.assertEquals(
+            ip_address, dhcp.get_ip_address_for_interface(interface, vlan))
+
+    def test__returns_None(self):
+        vlan = factory.make_VLAN()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface)
+        self.assertIsNone(
+            dhcp.get_ip_address_for_interface(
+                interface, factory.make_VLAN()))
+
+
+class TestGetIPAddressForRackController(MAASServerTestCase):
+    """Tests for `get_ip_address_for_rack_controller`."""
+
+    def test__returns_ip_address_for_rack_controller_on_vlan(self):
+        vlan = factory.make_VLAN()
+        rack_controller = factory.make_RackController()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface)
+        self.assertEquals(
+            ip_address,
+            dhcp.get_ip_address_for_rack_controller(rack_controller, vlan))
+
+    def test__returns_ip_address_from_best_interface_on_rack_controller(self):
+        vlan = factory.make_VLAN()
+        rack_controller = factory.make_RackController()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        parent_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        bond_interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=rack_controller,
+            parents=[parent_interface], vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface)
+        bond_ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=bond_interface)
+        self.assertEquals(
+            bond_ip_address,
+            dhcp.get_ip_address_for_rack_controller(rack_controller, vlan))
 
 
 class TestMakeSubnetConfig(MAASServerTestCase):
-    "Tests for `make_subnet_config`.""
+    """Tests for `make_subnet_config`."""
 
     def test__includes_all_parameters(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup())
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.assertIsInstance(config, dict)
         self.assertThat(
             config.keys(),
@@ -131,67 +447,103 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 'dns_servers',
                 'ntp_server',
                 'domain_name',
-                'ip_range_low',
-                'ip_range_high',
+                'pools',
                 'hosts',
                 ]))
 
     def test__sets_dns_and_ntp_from_arguments(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup())
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
         dns = '%s %s' % (
             factory.make_ipv4_address(),
             factory.make_ipv6_address(),
             )
         ntp = factory.make_name('ntp')
-        config = make_subnet_config(interface, dns_servers=dns, ntp_server=ntp)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet, dns, ntp, default_domain)
         self.expectThat(config['dns_servers'], Equals(dns))
         self.expectThat(config['ntp_server'], Equals(ntp))
 
-    def test__sets_domain_name_from_cluster(self):
-        nodegroup = factory.make_NodeGroup()
-        interface = factory.make_NodeGroupInterface(nodegroup)
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
-        self.expectThat(config['domain_name'], Equals(nodegroup.name))
+    def test__sets_domain_name_from_passed_domain(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
+        self.expectThat(config['domain_name'], Equals(default_domain.name))
 
-    def test__sets_other_items_from_interface(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup())
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
-        self.expectThat(config['broadcast_ip'], Equals(interface.broadcast_ip))
-        self.expectThat(config['interface'], Equals(interface.interface))
-        self.expectThat(config['router_ip'], Equals(interface.router_ip))
+    def test__sets_other_items_from_subnet_and_interface(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
+        self.expectThat(
+            config['broadcast_ip'],
+            Equals(str(subnet.get_ipnetwork().broadcast)))
+        self.expectThat(config['interface'], Equals(interface.name))
+        self.expectThat(config['router_ip'], Equals(subnet.gateway_ip))
 
     def test__passes_IP_addresses_as_strings(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup())
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.expectThat(config['subnet'], IsInstance(str))
         self.expectThat(config['subnet_mask'], IsInstance(str))
         self.expectThat(config['subnet_cidr'], IsInstance(str))
         self.expectThat(config['broadcast_ip'], IsInstance(str))
         self.expectThat(config['router_ip'], IsInstance(str))
-        self.expectThat(config['ip_range_low'], IsInstance(str))
-        self.expectThat(config['ip_range_high'], IsInstance(str))
 
     def test__defines_IPv4_subnet(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(), network=IPNetwork('10.9.8.7/24'))
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        network = IPNetwork('10.9.8.7/24')
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.expectThat(config['subnet'], Equals('10.9.8.0'))
         self.expectThat(config['subnet_mask'], Equals('255.255.255.0'))
         self.expectThat(config['subnet_cidr'], Equals('10.9.8.0/24'))
+        self.expectThat(config['broadcast_ip'], Equals('10.9.8.255'))
 
     def test__defines_IPv6_subnet(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(),
-            network=IPNetwork('fd38:c341:27da:c831::/64'))
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        network = IPNetwork('fd38:c341:27da:c831::/64')
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         # Don't expect a specific literal value, like we do for IPv4; there
         # are different spellings.
         self.expectThat(
@@ -202,29 +554,81 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             IPNetwork(config['subnet_cidr']),
             Equals(IPNetwork('fd38:c341:27da:c831::/64')))
 
-    def test__passes_dynamic_range(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup())
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
-        self.expectThat(
-            (config['ip_range_low'], config['ip_range_high']),
-            Equals((interface.ip_range_low, interface.ip_range_high)))
-        self.expectThat(
-            config['ip_range_low'], Not(Equals(interface.static_ip_range_low)))
+    def test__returns_multiple_pools(self):
+        network = IPNetwork('10.9.8.0/24')
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_IPRange(subnet, "10.9.8.11", "10.9.8.20")
+        factory.make_IPRange(subnet, "10.9.8.21", "10.9.8.30")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
+        self.assertEquals([
+            {
+                "ip_range_low": "10.9.8.11",
+                "ip_range_high": "10.9.8.20",
+            },
+            {
+                "ip_range_low": "10.9.8.21",
+                "ip_range_high": "10.9.8.30",
+            }
+        ], config["pools"])
+
+    def test__returns_multiple_pools_with_failover_peer(self):
+        network = IPNetwork('10.9.8.0/24')
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        factory.make_IPRange(subnet, "10.9.8.11", "10.9.8.20")
+        factory.make_IPRange(subnet, "10.9.8.21", "10.9.8.30")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        failover_peer = factory.make_name("peer")
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain, failover_peer)
+        self.assertEquals([
+            {
+                "ip_range_low": "10.9.8.11",
+                "ip_range_high": "10.9.8.20",
+                "failover_peer": failover_peer,
+            },
+            {
+                "ip_range_low": "10.9.8.21",
+                "ip_range_high": "10.9.8.30",
+                "failover_peer": failover_peer,
+            }
+        ], config["pools"])
 
     def test__doesnt_convert_None_router_ip(self):
-        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
-        interface.subnet.router_ip = None
-        interface.save()
-        post_commit_hooks.fire()
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
+        subnet.gateway_ip = None
+        subnet.save()
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.assertEqual('', config['router_ip'])
 
     def tests__passes_defined_hosts(self):
-        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
-        subnet = interface.subnet
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
         node = factory.make_Node(interface=False)
 
         # Make AUTO IP without an IP. Should not be in output.
@@ -294,27 +698,33 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             }
         ], key=itemgetter('host'))
 
-        post_commit_hooks.fire()
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.assertEqual(expected_hosts, config['hosts'])
 
     def tests__passes_defined_hosts_for_bond(self):
-        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
-        subnet = interface.subnet
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
         node = factory.make_Node(interface=False)
 
         # Create a bond with an IP address, to make sure all MAC address in
         # that bond get the same address.
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth0", vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1", vlan=vlan)
         eth2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node, name="eth2")
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth2", vlan=vlan)
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, name="bond0",
-            mac_address=eth2.mac_address, parents=[eth0, eth1, eth2])
+            mac_address=eth2.mac_address, parents=[eth0, eth1, eth2],
+            vlan=vlan)
         auto_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
             interface=bond0)
@@ -337,19 +747,24 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             },
         ]
 
-        post_commit_hooks.fire()
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.assertEqual(expected_hosts, config['hosts'])
 
     def tests__passes_defined_hosts_first_created_ip_address(self):
-        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
-        subnet = interface.subnet
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        default_domain = Domain.objects.get_default_domain()
         node = factory.make_Node(interface=False)
 
         # Add two IP address to interface. Only the first should be added.
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node)
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
         auto_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
             interface=eth0)
@@ -365,545 +780,435 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             },
         ]
 
-        post_commit_hooks.fire()
-        config = make_subnet_config(
-            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        config = dhcp.make_subnet_config(
+            rack_controller, subnet,
+            factory.make_name('dns'), factory.make_name('ntp'),
+            default_domain)
         self.assertEqual(expected_hosts, config['hosts'])
 
 
-class TestDoConfigureDHCP(MAASServerTestCase):
-    "Tests for `do_configure_dhcp`.""
+class TestMakeFailoverPeerConfig(MAASServerTestCase):
+    """Tests for `make_failover_peer_config`."""
 
-    scenarios = (
-        ("DHCPv4", {
-            "command": ConfigureDHCPv4,
-            "make_network": factory.make_ipv4_network,
-            "make_address": factory.make_ipv4_address,
-            "ip_version": 4,
-        }),
-        ("DHCPv6", {
-            "command": ConfigureDHCPv6,
-            "make_network": factory.make_ipv6_network,
-            "make_address": factory.make_ipv6_address,
-            "ip_version": 6,
-        }),
-    )
+    def test__renders_config_for_primary(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        subnet = factory.make_Subnet(vlan=vlan)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        primary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=primary_interface)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
+        secondary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=secondary_interface)
+        failover_peer_name = "failover-vlan-%d" % vlan.id
+        self.assertEquals((failover_peer_name, {
+            "name": failover_peer_name,
+            "mode": "primary",
+            "address": str(primary_ip.ip),
+            "peer_address": str(secondary_ip.ip),
+        }), dhcp.make_failover_peer_config(vlan, primary_rack))
 
-    def prepare_rpc(self, nodegroup):
-        ""Set up test case for speaking RPC to `nodegroup`.
+    def test__renders_config_for_secondary(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        subnet = factory.make_Subnet(vlan=vlan)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        primary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=primary_interface)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
+        secondary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=secondary_interface)
+        failover_peer_name = "failover-vlan-%d" % vlan.id
+        self.assertEquals((failover_peer_name, {
+            "name": failover_peer_name,
+            "mode": "secondary",
+            "address": str(secondary_ip.ip),
+            "peer_address": str(primary_ip.ip),
+        }), dhcp.make_failover_peer_config(vlan, secondary_rack))
 
-        :param nodegroup: A cluster.  It will "run" a mock RPC service.
-        :return: Protocol, Command stub
-        ""
+
+class TestGetDHCPConfigureFor(MAASServerTestCase):
+    """Tests for `get_dhcp_configure_for`."""
+
+    def test__returns_failover_peers_and_subnets_config_for_ipv4(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+
+        # VLAN for primary that has a secondary.
+        ha_vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
+        ha_network = ha_subnet.get_ipnetwork()
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
+        primary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=primary_interface)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=ha_vlan)
+        secondary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=secondary_interface)
+
+        # VLAN for primary that doesn't have a secondary.
+        not_ha_vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack)
+        not_ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(
+            vlan=not_ha_vlan)
+        not_ha_network = not_ha_subnet.get_ipnetwork()
+        not_ha_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=not_ha_vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=not_ha_subnet,
+            interface=not_ha_interface)
+
+        ntp_server = factory.make_name("ntp")
+        default_domain = Domain.objects.get_default_domain()
+        observed_failover, observed_subnets = dhcp.get_dhcp_configure_for(
+            4, primary_rack, [ha_subnet, not_ha_subnet],
+            ntp_server, default_domain)
+
+        self.assertEquals([
+            {
+                "name": "failover-vlan-%d" % ha_vlan.id,
+                "mode": "primary",
+                "address": str(primary_ip.ip),
+                "peer_address": str(secondary_ip.ip),
+            },
+        ], observed_failover)
+        self.assertItemsEqual([
+            {
+                "subnet": str(ha_network.network),
+                "subnet_mask": str(ha_network.netmask),
+                "subnet_cidr": str(ha_network.cidr),
+                "broadcast_ip": str(ha_network.broadcast),
+                "interface": primary_interface.name,
+                "router_ip": str(ha_subnet.gateway_ip),
+                "dns_servers": '127.0.0.1',
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                        "failover_peer": "failover-vlan-%d" % ha_vlan.id,
+                    }
+                    for ip_range in (
+                        ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(ha_subnet),
+            },
+            {
+                "subnet": str(not_ha_network.network),
+                "subnet_mask": str(not_ha_network.netmask),
+                "subnet_cidr": str(not_ha_network.cidr),
+                "broadcast_ip": str(not_ha_network.broadcast),
+                "interface": not_ha_interface.name,
+                "router_ip": str(not_ha_subnet.gateway_ip),
+                "dns_servers": '127.0.0.1',
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                    }
+                    for ip_range in (
+                        not_ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(not_ha_subnet),
+            },
+        ], observed_subnets)
+
+    def test__returns_failover_peers_and_subnets_config_for_ipv6(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+
+        # VLAN for primary that has a secondary.
+        ha_vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        ha_subnet = factory.make_Subnet(
+            vlan=ha_vlan, cidr="fd38:c341:27da:c831::/64")
+        ha_network = ha_subnet.get_ipnetwork()
+        factory.make_IPRange(
+            ha_subnet, "fd38:c341:27da:c831::0001:0000",
+            "fd38:c341:27da:c831::FFFF:0000")
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
+        primary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=primary_interface)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=ha_vlan)
+        secondary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=secondary_interface)
+
+        # VLAN for primary that doesn't have a secondary.
+        not_ha_vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack)
+        not_ha_subnet = factory.make_Subnet(
+            vlan=not_ha_vlan, cidr="fd38:c341:27da:c832::/64")
+        not_ha_network = not_ha_subnet.get_ipnetwork()
+        factory.make_IPRange(
+            not_ha_subnet, "fd38:c341:27da:c832::0001:0000",
+            "fd38:c341:27da:c832::FFFF:0000")
+        not_ha_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=not_ha_vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=not_ha_subnet,
+            interface=not_ha_interface)
+
+        ntp_server = factory.make_name("ntp")
+        default_domain = Domain.objects.get_default_domain()
+        observed_failover, observed_subnets = dhcp.get_dhcp_configure_for(
+            6, primary_rack, [ha_subnet, not_ha_subnet],
+            ntp_server, default_domain)
+
+        # Because developers running this unit test might not have an IPv6
+        # address configured we remove the dns_servers from the generated
+        # config.
+        for observed_subnet in observed_subnets:
+            del observed_subnet['dns_servers']
+
+        self.assertEquals([
+            {
+                "name": "failover-vlan-%d" % ha_vlan.id,
+                "mode": "primary",
+                "address": str(primary_ip.ip),
+                "peer_address": str(secondary_ip.ip),
+            },
+        ], observed_failover)
+        self.assertItemsEqual([
+            {
+                "subnet": str(ha_network.network),
+                "subnet_mask": str(ha_network.netmask),
+                "subnet_cidr": str(ha_network.cidr),
+                "broadcast_ip": str(ha_network.broadcast),
+                "interface": primary_interface.name,
+                "router_ip": str(ha_subnet.gateway_ip),
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                        "failover_peer": "failover-vlan-%d" % ha_vlan.id,
+                    }
+                    for ip_range in (
+                        ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(ha_subnet),
+            },
+            {
+                "subnet": str(not_ha_network.network),
+                "subnet_mask": str(not_ha_network.netmask),
+                "subnet_cidr": str(not_ha_network.cidr),
+                "broadcast_ip": str(not_ha_network.broadcast),
+                "interface": not_ha_interface.name,
+                "router_ip": str(not_ha_subnet.gateway_ip),
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                    }
+                    for ip_range in (
+                        not_ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(not_ha_subnet),
+            },
+        ], observed_subnets)
+
+    def test__returns_failover_peers_per_vlan(self):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+
+        # VLAN for primary that has a secondary.
+        ha_vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
+        ha_network = ha_subnet.get_ipnetwork()
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
+        primary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=primary_interface)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=ha_vlan)
+        secondary_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=ha_subnet,
+            interface=secondary_interface)
+
+        # Extra subnet on the VLAN.
+        other_ha_subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=ha_vlan)
+        other_ha_network = other_ha_subnet.get_ipnetwork()
+
+        ntp_server = factory.make_name("ntp")
+        default_domain = Domain.objects.get_default_domain()
+        observed_failover, observed_subnets = dhcp.get_dhcp_configure_for(
+            4, primary_rack, [ha_subnet, other_ha_subnet],
+            ntp_server, default_domain)
+
+        self.assertEquals([
+            {
+                "name": "failover-vlan-%d" % ha_vlan.id,
+                "mode": "primary",
+                "address": str(primary_ip.ip),
+                "peer_address": str(secondary_ip.ip),
+            },
+        ], observed_failover)
+        self.assertItemsEqual([
+            {
+                "subnet": str(ha_network.network),
+                "subnet_mask": str(ha_network.netmask),
+                "subnet_cidr": str(ha_network.cidr),
+                "broadcast_ip": str(ha_network.broadcast),
+                "interface": primary_interface.name,
+                "router_ip": str(ha_subnet.gateway_ip),
+                "dns_servers": '127.0.0.1',
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                        "failover_peer": "failover-vlan-%d" % ha_vlan.id,
+                    }
+                    for ip_range in (
+                        ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(ha_subnet),
+            },
+            {
+                "subnet": str(other_ha_network.network),
+                "subnet_mask": str(other_ha_network.netmask),
+                "subnet_cidr": str(other_ha_network.cidr),
+                "broadcast_ip": str(other_ha_network.broadcast),
+                "interface": primary_interface.name,
+                "router_ip": str(other_ha_subnet.gateway_ip),
+                "dns_servers": '127.0.0.1',
+                "ntp_server": ntp_server,
+                "domain_name": default_domain.name,
+                "pools": [
+                    {
+                        "ip_range_low": str(ip_range.start_ip),
+                        "ip_range_high": str(ip_range.end_ip),
+                        "failover_peer": "failover-vlan-%d" % ha_vlan.id,
+                    }
+                    for ip_range in (
+                        other_ha_subnet.get_dynamic_ranges().order_by('id'))
+                ],
+                "hosts": dhcp.make_hosts_for_subnet(other_ha_subnet),
+            },
+        ], observed_subnets)
+
+
+class TestConfigureDHCP(MAASTransactionServerTestCase):
+    """Tests for `configure_dhcp`."""
+
+    def prepare_rpc(self, rack_controller):
+        """"Set up test case for speaking RPC to `rack_controller`."""
         self.useFixture(RegionEventLoopFixture('rpc'))
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        cluster = fixture.makeCluster(nodegroup, self.command)
-        return cluster, getattr(
-            cluster, self.command.commandName.decode("ascii"))
+        cluster = fixture.makeCluster(
+            rack_controller, ConfigureDHCPv4, ConfigureDHCPv6)
+        return cluster, cluster.ConfigureDHCPv4, cluster.ConfigureDHCPv6
 
-    def test__configures_dhcp(self):
-        dns_server = self.make_address()
-        maas_url = compose_URL("http://", dns_server)
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            dhcp_key=factory.make_name('key'),
-            network=self.make_network(),
-            maas_url=maas_url)
-        ntp_server = factory.make_name('ntp')
+    @transactional
+    def create_rack_controller(self):
+        """Create a `rack_controller` in a state that will call both
+        `ConfigureDHCPv4` and `ConfigureDHCPv6` with data."""
+        primary_rack = factory.make_RackController(interface=False)
+        secondary_rack = factory.make_RackController(interface=False)
 
-        protocol, command_stub = self.prepare_rpc(nodegroup)
-        command_stub.side_effect = always_succeed_with({})
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
 
-        # Although the above nodegroup has managed interfaces, we pass the
-        # empty list here; do_configure_dhcp() dutifully believes us.
-        do_configure_dhcp(
-            self.ip_version, nodegroup, [], ntp_server,
-            getClientFor(nodegroup.uuid))
+        subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        subnet_v6 = factory.make_Subnet(
+            vlan=vlan, cidr="fd38:c341:27da:c831::/64")
+        factory.make_IPRange(
+            subnet_v6, "fd38:c341:27da:c831::0001:0000",
+            "fd38:c341:27da:c831::FFFF:0000")
+
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+            interface=secondary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+            interface=secondary_interface)
+
+        args = dhcp.get_dhcp_configuration(primary_rack)
+        return primary_rack, args
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_configure_for_both_ipv4_and_ipv6(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        rack_controller, args = yield deferToDatabase(
+            self.create_rack_controller)
+        omapi, failover_peers_v4, subnets_v4, failover_peers_v6, subnets_v6 = (
+            args)
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller)
+        ipv4_stub.side_effect = always_succeed_with({})
+        ipv6_stub.side_effect = always_succeed_with({})
+
+        yield dhcp.configure_dhcp(rack_controller)
 
         self.assertThat(
-            command_stub, MockCalledOnceWith(
-                ANY, omapi_key=nodegroup.dhcp_key, subnet_configs=[]))
-
-    def test__configures_dhcp_with_subnets(self):
-        dns_server = self.make_address()
-        maas_url = compose_URL("http://", dns_server)
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            dhcp_key=factory.make_string(),
-            interface=factory.make_name('eth'),
-            network=self.make_network(),
-            maas_url=maas_url)
-        # Create a second DHCP-managed interface.
-        factory.make_NodeGroupInterface(
-            nodegroup=nodegroup, interface=factory.make_name('eth'),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            network=self.make_network())
-        ntp_server = factory.make_name('ntp')
-        interfaces = nodegroup.get_managed_interfaces()
-
-        protocol, command_stub = self.prepare_rpc(nodegroup)
-        command_stub.side_effect = always_succeed_with({})
-
-        do_configure_dhcp(
-            self.ip_version, nodegroup, interfaces, ntp_server,
-            getClientFor(nodegroup.uuid))
-
-        expected_subnet_configs = [
-            make_subnet_config(interface, dns_server, ntp_server)
-            for interface in nodegroup.get_managed_interfaces()
-        ]
-
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4, subnet_configs=subnets_v4))
         self.assertThat(
-            command_stub, MockCalledOnceWith(
-                ANY, subnet_configs=expected_subnet_configs,
-                omapi_key=nodegroup.dhcp_key,
-            ))
-
-
-class TestDoConfigureDHCPWrappers(MAASServerTestCase):
-    "Tests for `do_configure_dhcp` wrapper functions.""
-
-    def test_configure_dhcpv4_calls_do_configure_dhcp(self):
-        do_configure_dhcp = self.patch_autospec(dhcp, "do_configure_dhcp")
-        dhcp.configure_dhcpv4(
-            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
-            sentinel.client)
-        self.assertThat(do_configure_dhcp, MockCalledOnceWith(
-            4, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
-            sentinel.client))
-
-    def test_configure_dhcpv6_calls_do_configure_dhcp(self):
-        do_configure_dhcp = self.patch_autospec(dhcp, "do_configure_dhcp")
-        dhcp.configure_dhcpv6(
-            sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
-            sentinel.client)
-        self.assertThat(do_configure_dhcp, MockCalledOnceWith(
-            6, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server,
-            sentinel.client))
-
-
-def patch_configure_funcs(test):
-    "Patch `configure_dhcpv4` and `configure_dhcpv6`.""
-    return (
-        test.patch(dhcp, 'configure_dhcpv4'),
-        test.patch(dhcp, 'configure_dhcpv6'),
-    )
-
-
-def make_cluster(test, status=None, omapi_key=None, **kwargs):
-    "Create a `NodeGroup` without interfaces.
-
-    Status defaults to `ACCEPTED`.
-    ""
-    if status is None:
-        status = NODEGROUP_STATUS.ENABLED
-    if omapi_key is None:
-        # Set an arbitrary OMAPI key, so that the cluster won't need to
-        # shell out to create one.
-        omapi_key = factory.make_name('key')
-    return factory.make_NodeGroup(
-        status=status, dhcp_key=omapi_key, **kwargs)
-
-
-def make_cluster_interface(
-        test, network, cluster=None, management=None, **kwargs):
-    if cluster is None:
-        cluster = test.make_cluster()
-    if management is None:
-        management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
-    return factory.make_NodeGroupInterface(
-        cluster, network=network, management=management, **kwargs)
-
-
-def make_ipv4_interface(test, cluster=None, **kwargs):
-    "Create an IPv4 `NodeGroupInterface` for `cluster`.
-
-    The interface defaults to being managed.
-    ""
-    return make_cluster_interface(
-        test, factory.make_ipv4_network(), cluster, **kwargs)
-
-
-def make_ipv6_interface(test, cluster=None, **kwargs):
-    ""Create an IPv6 `NodeGroupInterface` for `cluster`.
-
-    The interface defaults to being managed.
-    ""
-    return make_cluster_interface(
-        test, factory.make_ipv6_network(), cluster, **kwargs)
-
-
-class TestConfigureDHCP(MAASServerTestCase):
-    ""Tests for `configure_dhcp`.""
-
-    def setUp(self):
-        super(TestConfigureDHCP, self).setUp()
-        # Suppress checks for cluster availability.
-        self.patch_autospec(dhcp, "getClientFor")
-
-    def test__obeys_DHCP_CONNECT(self):
-        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
-        cluster = make_cluster(self)
-        make_ipv4_interface(self, cluster)
-        make_ipv6_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", False)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        self.expectThat(configure_dhcpv4, MockNotCalled())
-        self.expectThat(configure_dhcpv6, MockNotCalled())
-
-    def test__does_not_configure_interfaces_if_nodegroup_not_accepted(self):
-        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
-        cluster = make_cluster(self, status=NODEGROUP_STATUS.DISABLED)
-        make_ipv4_interface(self, cluster)
-        make_ipv6_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        self.expectThat(configure_dhcpv4, MockCalledOnceWith(
-            cluster, [], ANY, dhcp.getClientFor.return_value))
-        self.expectThat(configure_dhcpv6, MockCalledOnceWith(
-            cluster, [], ANY, dhcp.getClientFor.return_value))
-
-    def test__configures_dhcpv4(self):
-        ip = factory.make_ipv4_address()
-        cluster = make_cluster(self, maas_url='http://%s/' % ip)
-        make_ipv4_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        self.assertThat(dhcp.getClientFor, MockCalledOnceWith(cluster.uuid))
-        client = dhcp.getClientFor.return_value
-        self.assertThat(client, MockCallsMatch(
-            call(ANY, omapi_key=ANY, subnet_configs=ANY),
-            call(ANY, omapi_key=ANY, subnet_configs=ANY),
-        ))
-
-        subnet_configs = [
-            subnet_config
-            for call_args in client.call_args_list
-            for subnet_config in call_args[1]['subnet_configs']
-        ]
-        self.assertThat(
-            subnet_configs, AllMatch(
-                ContainsDict({"dns_servers": Equals(ip)})))
-
-    def test__uses_ntp_server_from_config(self):
-        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
-        cluster = make_cluster(self)
-        make_ipv4_interface(self, cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        ntp_server = Config.objects.get_config('ntp_server')
-        self.assertThat(
-            configure_dhcpv4, MockCalledOnceWith(
-                ANY, ANY, ntp_server, dhcp.getClientFor.return_value))
-        self.assertThat(
-            configure_dhcpv6, MockCalledOnceWith(
-                ANY, ANY, ntp_server, dhcp.getClientFor.return_value))
-
-
-class TestConfigureDHCPWithDisconnectedCluster(MAASServerTestCase):
-    ""Behaviour when the target cluster is not connected.""
-
-    def test__logs_about_disconnected_cluster(self):
-        cluster = make_cluster(self)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        with LoggerFixture(dhcp.__name__) as logger:
-            with post_commit_hooks:
-                configure_dhcp(cluster)
-
-        self.assertDocTestMatches(
-            ""\
-            Cluster ... (...) is not connected at present so cannot be
-            configured; it will catch up when it next connects.
-            "",
-            logger.output)
-
-
-class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
-    ""Tests for `configure_dhcp` that require transactions.
-
-    Specifically, post-commit hooks are run in a separate thread, so changes
-    must be committed to the database in order that they're visible elsewhere.
-    ""
-
-    def setUp(self):
-        super(TestConfigureDHCPTransactional, self).setUp()
-        # Suppress checks for cluster availability.
-        getClientFor = self.patch_autospec(dhcp, "getClientFor")
-        getClientFor.return_value = sentinel.client
-        # Connect DHCP changes.
-        self.patch(settings, "DHCP_CONNECT", True)
-
-    def test__passes_only_IPv4_interfaces_to_DHCPv4(self):
-        configure_dhcpv4, _ = patch_configure_funcs(self)
-
-        with transaction.atomic():
-            cluster = make_cluster(self)
-            ipv4_interface = make_ipv4_interface(self, cluster)
-            make_ipv6_interface(self, cluster)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        self.assertThat(configure_dhcpv4, MockCalledOnceWith(
-            cluster, [ipv4_interface], ANY, sentinel.client))
-
-    def test__passes_only_IPv6_interfaces_to_DHCPv6(self):
-        _, configure_dhcpv6 = patch_configure_funcs(self)
-
-        with transaction.atomic():
-            cluster = make_cluster(self)
-            ipv6_interface = make_ipv6_interface(self, cluster)
-            make_ipv4_interface(self, cluster)
-
-        with post_commit_hooks:
-            configure_dhcp(cluster)
-
-        self.assertThat(configure_dhcpv6, MockCalledOnceWith(
-            cluster, [ipv6_interface], ANY, sentinel.client))
-
-
-class TestDHCPConnect(MAASServerTestCase):
-    ""Tests for DHCP signals triggered when saving a cluster interface.""
-
-    def setUp(self):
-        super(TestDHCPConnect, self).setUp()
-        self.patch_autospec(dhcp, "configure_dhcp")
-
-    def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.DISABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        nodegroup.accept()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_nodegroup_name_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        nodegroup.name = factory.make_name('domain')
-        nodegroup.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_interface_IP_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.nodegroupinterface_set.all()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.ip = factory.pick_ip_in_network(
-            interface.network, but_not=[interface.ip])
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_interface_management_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        [interface] = nodegroup.nodegroupinterface_set.all()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_interface_name_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.interface = factory.make_name('itf')
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_netmask_changes(self):
-        network = factory.make_ipv4_network(slash='255.255.255.0')
-        subnet = factory.make_Subnet(cidr=str(network.cidr))
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED, subnet=subnet,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.subnet_mask = '255.255.0.0'
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_interface_router_ip_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.subnet.gateway_ip = factory.pick_ip_in_network(
-            interface.network, but_not=[interface.subnet.gateway_ip])
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_gets_written_when_ip_range_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.ip_range_low = str(
-            IPAddress(interface.ip_range_low) + 1)
-        interface.ip_range_high = str(
-            IPAddress(interface.ip_range_high) - 1)
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
-
-    def test_dhcp_config_is_not_written_when_foreign_dhcp_changes(self):
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ENABLED,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        [interface] = nodegroup.get_managed_interfaces()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.foreign_dhcp = factory.pick_ip_in_network(interface.network)
-        interface.save()
-
-        self.assertThat(dhcp.configure_dhcp, MockNotCalled())
-
-    def test_dhcp_config_gets_written_when_ntp_server_changes(self):
-        # When the "ntp_server" Config item is changed, check that all
-        # nodegroups get their DHCP config re-written.
-
-        # XXX 2015-09-17 blake_r: Isolation issue where an extra NodeGroup
-        # already exists. So we remove all the nodegroup's before performing
-        # this test.
-        NodeGroup.objects.all().delete()
-
-        num_active_nodegroups = random.randint(1, 10)
-        num_inactive_nodegroups = random.randint(1, 10)
-        for _ in range(num_active_nodegroups):
-            factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.ENABLED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        for _ in range(num_inactive_nodegroups):
-            factory.make_NodeGroup(
-                status=NODEGROUP_STATUS.DISABLED,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        Config.objects.set_config("ntp_server", factory.make_ipv4_address())
-
-        # Every nodegroup is updated, including those that are PENDING.
-        expected_call_one_nodegroup = [call(ANY)]
-        expected_calls = expected_call_one_nodegroup * (
-            num_active_nodegroups + num_inactive_nodegroups)
-        self.assertThat(dhcp.configure_dhcp, MockCallsMatch(*expected_calls))
-
-    def test_dhcp_config_gets_written_when_managed_interface_is_deleted(self):
-        interface = factory.make_NodeGroupInterface(
-            factory.make_NodeGroup(status=NODEGROUP_STATUS.ENABLED),
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        interface.delete()
-
-        self.assertThat(
-            dhcp.configure_dhcp, MockCalledOnceWith(interface.nodegroup))
-
-
-# Matchers to check that a `Changes` object is empty, or not.
-changes_are_empty = MatchesStructure.byEquality(hook=None, clusters=[])
-changes_are_not_empty = Not(changes_are_empty)
-
-
-class TestConsolidatingChangesWhenDisconnected(MAASServerTestCase):
-    ""Tests for `Changes` and `ChangeConsolidator` when disconnected.
-
-    Where "disconnected" means where `settings.DHCP_CONNECT` is `False`.
-    ""
-
-    def test__does_nothing(self):
-        self.patch(settings, "DHCP_CONNECT", False)
-        consolidator.configure(sentinel.cluster)
-        self.assertThat(consolidator.changes, changes_are_empty)
-
-
-class TestConsolidatingChanges(MAASServerTestCase):
-    ""Tests for `Changes` and `ChangeConsolidator`.""
-
-    def setUp(self):
-        super(TestConsolidatingChanges, self).setUp()
-        self.patch(settings, "DHCP_CONNECT", True)
-
-    def test__added_clusters_applied_post_commit(self):
-        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
-        cluster = make_cluster(self)
-        consolidator.configure(cluster)
-        self.assertThat(configure_dhcp_now, MockNotCalled())
-        post_commit_hooks.fire()
-        self.assertThat(configure_dhcp_now, MockCalledOnceWith(cluster))
-
-    def test__added_clusters_are_consolidated(self):
-        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
-        cluster = make_cluster(self)
-        consolidator.configure(cluster)
-        consolidator.configure(cluster)
-        post_commit_hooks.fire()
-        self.assertThat(configure_dhcp_now, MockCalledOnceWith(cluster))
-
-    def test__changes_are_reset_post_commit(self):
-        self.patch_autospec(dhcp, "configure_dhcp_now")
-
-        # The changes start empty.
-        self.assertThat(consolidator.changes, changes_are_empty)
-
-        cluster = make_cluster(self)
-        consolidator.configure(cluster)
-
-        # The changes are not empty now.
-        self.assertThat(consolidator.changes, changes_are_not_empty)
-
-        # They are once again empty after the post-commit hook fires.
-        post_commit_hooks.fire()
-        self.assertThat(consolidator.changes, changes_are_empty)
-
-    def test__changes_are_reset_post_commit_on_failure(self):
-        exception_type = factory.make_exception_type()
-
-        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
-        configure_dhcp_now.side_effect = exception_type
-
-        # This is going to crash later.
-        consolidator.configure(make_cluster(self))
-
-        # The changes are empty after the post-commit hook fires.
-        self.assertRaises(exception_type, post_commit_hooks.fire)
-        self.assertThat(consolidator.changes, changes_are_empty)
-"""
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6, subnet_configs=subnets_v6))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__doesnt_call_configure_for_both_ipv4_and_ipv6(self):
+        rack_controller, args = yield deferToDatabase(
+            self.create_rack_controller)
+        omapi, failover_peers_v4, subnets_v4, failover_peers_v6, subnets_v6 = (
+            args)
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller)
+        ipv4_stub.side_effect = always_succeed_with({})
+        ipv6_stub.side_effect = always_succeed_with({})
+
+        yield dhcp.configure_dhcp(rack_controller)
+
+        self.assertThat(ipv4_stub, MockNotCalled())
+        self.assertThat(ipv6_stub, MockNotCalled())

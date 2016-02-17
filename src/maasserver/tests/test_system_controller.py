@@ -8,6 +8,7 @@ __all__ = []
 import random
 
 from crochet import wait_for
+from maasserver import system_controller
 from maasserver.system_controller import SystemControllerService
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -29,6 +30,7 @@ from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    fail,
     inlineCallbacks,
     succeed,
 )
@@ -347,3 +349,56 @@ class TestSystemControllerService(MAASServerTestCase):
             yield service.processing.deferred
         for rack_id in rack_ids:
             self.assertThat(mock_processDHCP, MockAnyCall(rack_id))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_calls_configure_dhcp(self):
+        rack_controller = yield deferToDatabase(
+            transactional(factory.make_RackController))
+        service = SystemControllerService(
+            sentinel.listener, sentinel.advertiser)
+        mock_configure_dhcp = self.patch(
+            system_controller.dhcp, "configure_dhcp")
+        mock_configure_dhcp.return_value = succeed(None)
+        yield service.processDHCP(rack_controller.id)
+        self.assertThat(
+            mock_configure_dhcp, MockCalledOnceWith(rack_controller))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_logs_success(self):
+        rack_controller = yield deferToDatabase(
+            transactional(factory.make_RackController))
+        service = SystemControllerService(
+            sentinel.listener, sentinel.advertiser)
+        mock_msg = self.patch(
+            system_controller.log, "msg")
+        mock_configure_dhcp = self.patch(
+            system_controller.dhcp, "configure_dhcp")
+        mock_configure_dhcp.return_value = succeed(None)
+        yield service.processDHCP(rack_controller.id)
+        self.assertThat(
+            mock_msg,
+            MockCalledOnceWith(
+                "Successfully configured DHCP on rack controller '%s'." % (
+                    rack_controller.system_id)))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_logs_failure(self):
+        rack_controller = yield deferToDatabase(
+            transactional(factory.make_RackController))
+        service = SystemControllerService(
+            sentinel.listener, sentinel.advertiser)
+        mock_err = self.patch(
+            system_controller.log, "err")
+        mock_configure_dhcp = self.patch(
+            system_controller.dhcp, "configure_dhcp")
+        exc = factory.make_exception()
+        mock_configure_dhcp.return_value = fail(exc)
+        yield service.processDHCP(rack_controller.id)
+        self.assertThat(
+            mock_err,
+            MockCalledOnceWith(
+                "Error configuring DHCP on rack controller '%s': %s" % (
+                    rack_controller.system_id, exc)))

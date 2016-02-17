@@ -57,6 +57,7 @@ from maasserver.security import get_shared_secret
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_one,
+    post_commit,
     transactional,
     with_connection,
 )
@@ -206,7 +207,9 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        return {"sources": [get_simplestream_endpoint()]}
+        d = deferToDatabase(get_simplestream_endpoint)
+        d.addCallback(lambda source: {"sources": [source]})
+        return d
 
     @region.GetBootSourcesV2.responder
     def get_boot_sources_v2(self, uuid):
@@ -215,7 +218,9 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        return {"sources": [get_simplestream_endpoint()]}
+        d = deferToDatabase(get_simplestream_endpoint)
+        d.addCallback(lambda source: {"sources": [source]})
+        return d
 
     @region.GetArchiveMirrors.responder
     def get_archive_mirrors(self):
@@ -985,7 +990,7 @@ class RegionAdvertisingService(TimerService, object):
         # `update` loop also removes the old processes from the database.
         process, _ = RegionControllerProcess.objects.get_or_create(
             region=region_obj, pid=os.getpid())
-        self.processId.set(process.id)
+        post_commit().addCallback(callOut, self.processId.set, process.id)
 
     @synchronous
     @synchronised(lock)

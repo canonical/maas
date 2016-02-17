@@ -35,10 +35,12 @@ maaslog = get_maas_logger("dhcp")
 
 
 @synchronous
-def configure(server, subnet_configs):
+def configure(server, failover_peers, subnet_configs):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
     :param server: A `DHCPServer` instance.
+    :param failover_peers: List of dicts with failover parameters for each
+        subnet where HA is enabled.
     :param subnet_configs: List of dicts with subnet parameters for each
         subnet for which the DHCP server should serve DHCP. If no subnets
         are defined, the DHCP server will be stopped.
@@ -69,7 +71,7 @@ def configure(server, subnet_configs):
     else:
         dhcpd_config = get_config(
             server.template_basename, omapi_key=server.omapi_key,
-            dhcp_subnets=subnet_configs)
+            failover_peers=failover_peers, dhcp_subnets=subnet_configs)
         interfaces = {subnet['interface'] for subnet in subnet_configs}
         interfaces_config = ' '.join(sorted(interfaces))
         try:

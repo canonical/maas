@@ -281,18 +281,20 @@ class Cluster(RPCProtocol):
         return {"missing_packages": driver.detect_missing_packages()}
 
     @cluster.ConfigureDHCPv4.responder
-    def configure_dhcpv4(self, omapi_key, subnet_configs):
+    def configure_dhcpv4(self, omapi_key, failover_peers, subnet_configs):
         server = dhcp.DHCPv4Server(omapi_key)
         d = concurrency.dhcp.run(
-            deferToThread, dhcp.configure, server, subnet_configs)
+            deferToThread, dhcp.configure, server,
+            failover_peers, subnet_configs)
         d.addCallback(lambda _: {})
         return d
 
     @cluster.ConfigureDHCPv6.responder
-    def configure_dhcpv6(self, omapi_key, subnet_configs):
+    def configure_dhcpv6(self, omapi_key, failover_peers, subnet_configs):
         server = dhcp.DHCPv6Server(omapi_key)
         d = concurrency.dhcp.run(
-            deferToThread, dhcp.configure, server, subnet_configs)
+            deferToThread, dhcp.configure, server,
+            failover_peers, subnet_configs)
         d.addCallback(lambda _: {})
         return d
 

@@ -38,6 +38,7 @@ __all__ = [
 
 from functools import partial
 
+from maasserver import dhcp
 from maasserver.listener import PostgresListenerUnregistrationError
 from maasserver.models.node import RackController
 from maasserver.utils.orm import transactional
@@ -51,6 +52,7 @@ from twisted.application.service import Service
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
+    inlineCallbacks,
     maybeDeferred,
 )
 from twisted.internet.task import LoopingCall
@@ -211,10 +213,24 @@ class SystemControllerService(Service):
             rack_id = self.needsDHCPUpdate.pop()
             d = maybeDeferred(self.processDHCP, rack_id)
             d.addErrback(
-                log.err, "Failed processing DHCP for a rack ID: %s." % rack_id)
+                log.err,
+                "Failed configuring DHCP on rack controller 'id:%d'." % (
+                    rack_id))
             return d
 
+    @inlineCallbacks
     def processDHCP(self, rack_id):
         """Process DHCP for the rack controller."""
-        # TODO 2016-02-08 blake_r: Process DHCP for this rack controller.
-        log.msg("Process DHCP for: %s." % rack_id)
+        rack_controller = yield deferToDatabase(
+            transactional(RackController.objects.get), id=rack_id)
+
+        try:
+            yield dhcp.configure_dhcp(rack_controller)
+        except Exception as exc:
+            log.err(
+                "Error configuring DHCP on rack controller '%s': %s" % (
+                    rack_controller.system_id, exc))
+        else:
+            log.msg(
+                "Successfully configured DHCP on rack controller '%s'." % (
+                    rack_controller.system_id))
