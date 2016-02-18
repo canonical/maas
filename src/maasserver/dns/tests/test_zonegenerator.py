@@ -384,6 +384,35 @@ class TestZoneGenerator(MAASServerTestCase):
             return net
         return None
 
+    def test_supernet_inherits_rfc2317_net(self):
+        domain = Domain.objects.get_default_domain()
+        subnet1 = factory.make_Subnet(host_bits=2)
+        net = IPNetwork(subnet1.cidr)
+        if net.version == 6:
+            prefixlen = random.randint(121, 124)
+        else:
+            prefixlen = random.randint(22, 24)
+        parent = IPNetwork("%s/%d" % (net.network, prefixlen))
+        parent = IPNetwork("%s/%d" % (parent.network, prefixlen))
+        subnet2 = factory.make_Subnet(cidr=parent)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet1, vlan=subnet1.vlan, fabric=subnet1.vlan.fabric,
+            domain=domain, disable_ipv4=False)
+        boot_iface = node.boot_interface
+        factory.make_StaticIPAddress(interface=boot_iface, subnet=subnet1)
+        default_ttl = random.randint(10, 300)
+        Config.objects.set_config('default_dns_ttl', default_ttl)
+        zones = ZoneGenerator(
+            domain, [subnet1, subnet2], default_ttl=default_ttl,
+            serial_generator=Mock()).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone(domain.name),
+                reverse_zone(domain.name, subnet1.cidr),
+                reverse_zone(domain.name, subnet2.cidr)))
+        self.assertItemsEqual({}, zones[1]._rfc2317_ranges)
+        self.assertItemsEqual({net}, zones[2]._rfc2317_ranges)
+
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain()

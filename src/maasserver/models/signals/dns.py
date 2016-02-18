@@ -11,6 +11,7 @@ from django.db.models.signals import (
     post_delete,
     post_save,
 )
+from maasserver.enum import RDNS_MODE
 from maasserver.models import (
     DNSData,
     DNSResource,
@@ -19,6 +20,7 @@ from maasserver.models import (
     Subnet,
 )
 from maasserver.utils.signals import SignalsManager
+from netaddr import IPNetwork
 
 
 signals = SignalsManager()
@@ -82,12 +84,21 @@ def dns_post_save_Subnet(sender, instance, created, **kwargs):
     from maasserver.dns.config import (
         dns_update_all_zones,
         dns_add_subnets,
+        dns_update_subnets,
         )
-    # We don't know but what the admin moved a subnet, so we need to regenerate
-    # the world.
-    # if we created it, just add it.  Otherwise, rebuild the world.
+    # If we created it, just add the zone for the subnet, and update the parent
+    # subnet if this is a subnet requiring rfc2317 glue and we have a parent
+    # subnet.
+    # Otherwise, rebuild the world, since we don't know but what the admin
+    # moved a subnet.
     if created:
         dns_add_subnets([instance])
+        net = IPNetwork(instance.cidr)
+        if ((net.version == 4 and net.prefixlen > 24 or net.prefixlen > 124)
+                and instance.rdns_mode == RDNS_MODE.RFC2317):
+            parent = instance.get_smallest_enclosing_sane_subnet()
+            if parent is not None:
+                dns_update_subnets([parent])
     else:
         dns_update_all_zones()
 

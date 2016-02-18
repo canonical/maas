@@ -230,12 +230,9 @@ class ZoneGenerator:
         """Generator of reverse zones, sorted by network."""
 
         subnets = set(subnets)
-        # For each of the zones that we are generating (one or more per
-        # subnet), compile the zone from:
-        # 1. Dynamic ranges on this subnet.
-        # 2. Node: ip mapping(subnet), including DNSResource records for
-        #    StaticIPAddresses in this subnet.
-        # 3. Interfaces on any node that have IP addresses in this subnet.
+        # Generate the list of parent networks for rfc2317 glue.  Note that we
+        # need to handle the case where we are controlling both the small net
+        # and a bigger network containing the /24, not just a /24 network.
         rfc2317_glue = {}
         for subnet in subnets:
             network = IPNetwork(subnet.cidr)
@@ -255,7 +252,23 @@ class ZoneGenerator:
                         "%s/124" %
                         IPNetwork("%s/124" % network.network).network)
                     rfc2317_glue.setdefault(basenet, set()).add(network)
-            elif subnet.rdns_mode == RDNS_MODE.DISABLED:
+
+        # For each of the zones that we are generating (one or more per
+        # subnet), compile the zone from:
+        # 1. Dynamic ranges on this subnet.
+        # 2. Node: ip mapping(subnet), including DNSResource records for
+        #    StaticIPAddresses in this subnet.
+        # 3. Interfaces on any node that have IP addresses in this subnet.
+        # All of this needs to be done smallest to largest so that we can
+        # correctly gather the rfc2317 glue that we need.  Failure to sort
+        # means that we wind up grabbing (and deleting) the rfc2317 glue info
+        # while processing the wrong network.
+        for subnet in sorted(
+                subnets,
+                key=lambda subnet: IPNetwork(subnet.cidr).prefixlen,
+                reverse=True):
+            network = IPNetwork(subnet.cidr)
+            if subnet.rdns_mode == RDNS_MODE.DISABLED:
                 # If we are not doing reverse dns for this subnet, then just
                 # skip to the next subnet.
                 logger.debug(
@@ -304,7 +317,18 @@ class ZoneGenerator:
             # Use the default_domain as the name for the NS host in the reverse
             # zones.  If this network is actually a parent rfc2317 glue
             # network, then we need to generate the glue records.
-            if network in rfc2317_glue:
+            # We need to detect the need for glue in our networks that are
+            # big.
+            if ((network.version == 6 and network.prefixlen < 124) or
+                    network.prefixlen < 24):
+                glue = set()
+                # This is the reason for needing the subnets sorted in
+                # increasing order of size.
+                for net in rfc2317_glue.copy().keys():
+                    if net in network:
+                        glue.update(rfc2317_glue[net])
+                        del(rfc2317_glue[net])
+            elif network in rfc2317_glue:
                 glue = rfc2317_glue[network]
                 del(rfc2317_glue[network])
             else:

@@ -481,6 +481,46 @@ class SubnetTest(MAASServerTestCase):
         self.assertIPBestMatchesSubnet(network.first - 1, None)
         self.assertIPBestMatchesSubnet(network.first + 1, None)
 
+    def make_random_parent(self, net, bits=None):
+        if bits is None:
+            bits = random.randint(1, 3)
+        net = IPNetwork(net)
+        if net.version == 6 and net.prefixlen - bits > 124:
+            bits = 124 - net.prefixlen
+        elif net.version == 4 and net.prefixlen - bits > 24:
+            bits = 24 - net.prefixlen
+        parent = IPNetwork("%s/%d" % (net.network, net.prefixlen - bits))
+        parent = IPNetwork("%s/%d" % (parent.network, parent.prefixlen))
+        return parent
+
+    def test_get_smallest_enclosing_sane_subnet_returns_none_when_none(self):
+        subnet = factory.make_Subnet()
+        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+
+    def test_get_smallest_enclosing_sane_subnet_finds_parent(self):
+        subnet = factory.make_Subnet()
+        net = IPNetwork(subnet.cidr)
+        parent = self.make_random_parent(net, bits=random.randint(5, 10))
+        parent = factory.make_Subnet(cidr=parent.cidr)
+        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
+
+    def test_get_smallest_enclosing_sane_subnet_handles_ipv4(self):
+        subnet = factory.make_Subnet('192.168.0.0/%d' % random.randint(25, 29))
+        net = IPNetwork(subnet.cidr)
+        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+        parent = self.make_random_parent(net, bits=random.randint(2, 5))
+        parent = factory.make_Subnet(cidr=parent.cidr)
+        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
+
+    def test_get_smallest_enclosing_sane_subnet_handles_ipv6(self):
+        subnet = factory.make_Subnet(
+            '2001:db8::d0/%d' % random.randint(100, 126))
+        net = IPNetwork(subnet.cidr)
+        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+        parent = self.make_random_parent(net, bits=random.randint(2, 20))
+        parent = factory.make_Subnet(cidr=parent.cidr)
+        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
+
 
 class SubnetIPRangeTest(MAASServerTestCase):
 

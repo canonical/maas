@@ -547,3 +547,24 @@ class Subnet(CleanSave, TimestampedModel):
             if ip in iprange.netaddr_iprange:
                 return iprange
         return None
+
+    def get_smallest_enclosing_sane_subnet(self):
+        """Return the subnet that includes this subnet and is:
+        1) Larger than this subnet,
+        2) at least big enough to be a parent in the RFC2317 world
+            (/24 in IPv4, /124 in IPv6).
+        If no such subnet exists, return None."""
+
+        find_rfc2137_parent_query = """
+            SELECT * FROM maasserver_subnet
+            WHERE
+                %s << cidr AND (
+                    (family(cidr) = 6 and masklen(cidr) <= 124) OR
+                    (family(cidr) = 4 and masklen(cidr) <= 24))
+            ORDER BY
+                masklen(cidr) DESC
+            LIMIT 1
+            """
+        for s in Subnet.objects.raw(find_rfc2137_parent_query, (self.cidr,)):
+            return s
+        return None

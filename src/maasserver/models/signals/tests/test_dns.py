@@ -17,6 +17,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
+from netaddr import IPNetwork
 
 
 class TestDNSSignals(MAASServerTestCase):
@@ -96,6 +97,32 @@ class TestDNSSignals(MAASServerTestCase):
             dns_config_module, "dns_update_all_zones")
         subnet = factory.make_Subnet()
         self.assertThat(dns_add_subnets, MockCalledOnceWith(subnets=[subnet]))
+        subnet.name = factory.make_name("subnet")
+        subnet.save()
+        self.assertThat(dns_update_all_zones, MockCalledOnceWith())
+
+    def test_saving_subnet_with_parent_triggers_update(self):
+        self.patch(settings, "DNS_CONNECT", False)
+        dns_add_subnets = self.patch_autospec(
+            dns_config_module, "dns_add_subnets")
+        dns_update_subnets = self.patch_autospec(
+            dns_config_module, "dns_update_subnets")
+        dns_update_all_zones = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones")
+        net = factory.make_ip4_or_6_network(host_bits=random.randint(2, 3))
+        if net.version == 6:
+            prefixlen = random.randint(121, 124)
+        else:
+            prefixlen = random.randint(20, 24)
+        parent = IPNetwork("%s/%d" % (net.network, prefixlen))
+        parent = IPNetwork("%s/%d" % (parent.network, prefixlen))
+        parent_subnet = factory.make_Subnet(cidr=parent.cidr)
+        self.assertThat(dns_add_subnets, MockCalledOnceWith(
+            subnets=[parent_subnet]))
+        subnet = factory.make_Subnet(cidr=net.cidr)
+        self.assertEqual(2, dns_add_subnets.call_count)
+        self.assertThat(dns_update_subnets, MockCalledOnceWith(
+            [parent_subnet]))
         subnet.name = factory.make_name("subnet")
         subnet.save()
         self.assertThat(dns_update_all_zones, MockCalledOnceWith())
