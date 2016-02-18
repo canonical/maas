@@ -27,6 +27,7 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    Not,
 )
 
 
@@ -304,6 +305,40 @@ mode DORMANT group default qlen 1000
              '2001:db8:85a3:8d3::1111/64',
              '2620:1:260::1/64'],
             ip_link['eth1']['inet6'])
+
+    def test_parses_xenial_interfaces(self):
+        testdata = dedent("""
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN \
+group default
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+2: ens3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP \
+group default qlen 1000
+    link/ether 52:54:00:2d:39:49 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.100.108/24 brd 172.16.100.255 scope global ens3
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5054:ff:fe2d:3949/64 scope link
+       valid_lft forever preferred_lft forever
+3: ens10: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN \
+group default qlen 1000
+    link/ether 52:54:00:e5:c6:6b brd ff:ff:ff:ff:ff:ff
+4: ens11: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN \
+group default qlen 1000
+    link/ether 52:54:00:ed:9f:9d brd ff:ff:ff:ff:ff:ff
+       """)
+        ip_link = parse_ip_addr(testdata)
+        self.assertEqual(2, ip_link['ens3']['index'])
+        self.assertEqual('52:54:00:2d:39:49', ip_link['ens3']['mac'])
+        self.assertEqual(['172.16.100.108/24'], ip_link['ens3']['inet'])
+        self.assertEqual(3, ip_link['ens10']['index'])
+        self.assertEqual('52:54:00:e5:c6:6b', ip_link['ens10']['mac'])
+        self.assertThat(ip_link['ens10'], Not(Contains('inet')))
+        self.assertEqual(4, ip_link['ens11']['index'])
+        self.assertEqual('52:54:00:ed:9f:9d', ip_link['ens11']['mac'])
+        self.assertThat(ip_link['ens11'], Not(Contains('inet')))
 
 
 class TestGetInterfaceType(MAASTestCase):
