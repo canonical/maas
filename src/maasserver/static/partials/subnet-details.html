@@ -54,7 +54,8 @@
                             <div class="table__header table__column--15">Owner</div>
                             <div class="table__header table__column--20">Usage</div>
                             <div class="table__header table__column--15">Usage type</div>
-                            <div class="table__header table__column--35">Allocation type</div>
+                            <div class="table__header table__column--15">Allocation type</div>
+                            <div class="table__header table__column--20">Fully Qualified Name</div>
                         </div>
                     </header>
                     <section class="table__body">
@@ -70,13 +71,17 @@
 			      <span data-ng-if="ip.node_summary.node_type == 1">{$ ip.node_summary.hostname $}</span>
 			    </div>
                             <div class="table__data table__column--15">{$ ip.node_summary.node_type == 0 ? "Node" : "Device" $}</div>
-                            <div class="table__data table__column--35" data-ng-switch="ip.alloc_type">
+                            <div class="table__data table__column--15" data-ng-switch="ip.alloc_type">
                                 <span data-ng-switch-when="0">Automatic</span>
                                 <span data-ng-switch-when="1">Sticky</span>
                                 <span data-ng-switch-when="4">User reserved</span>
                                 <span data-ng-switch-when="5">DHCP</span>
                                 <span data-ng-switch-when="6">Observed</span>
                                 <span data-ng-switch-default>Unknown</span>
+                            </div>
+                            <div class="table__data table__column--20">
+			      <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.fqdn $}.</a>
+			      <span data-ng-if="ip.node_summary.node_type != 0">{$ ip.node_summary.fqdn $}.</span>
                             </div>
                         </div>
                     </section>

@@ -94,6 +94,7 @@ class DNSResourceRecordsHandler(OperationsHandler):
             resource type.)
         """
         data = request.data
+        domain = None
         fqdn = data.get('fqdn', None)
         name = data.get('name', None)
         domainname = data.get('domain', None)
@@ -122,6 +123,9 @@ class DNSResourceRecordsHandler(OperationsHandler):
                     "name:%s" % domainname, user=request.user,
                     perm=NODE_PERMISSION.VIEW)
             data['domain'] = domain.id
+        if domain is None or name is None:
+            raise MAASAPIValidationError(
+                "Either name and domain (or fqdn) must be specified")
         # Do we already have a DNSResource for this fqdn?
         dnsrr = DNSResource.objects.filter(name=name, domain__id=domain.id)
         if not dnsrr.exists():

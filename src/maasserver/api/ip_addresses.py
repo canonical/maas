@@ -20,6 +20,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_PERMISSION,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -56,8 +57,7 @@ class IPAddressesHandler(OperationsHandler):
 
     @transactional
     def _claim_ip(
-            self, user, subnet, ip_address, mac=None,
-            hostname=None, domain=None):
+            self, user, subnet, ip_address, mac=None, hostname=None):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user`.
 
         :param subnet: Subnet to use use for claiming the IP.
@@ -72,7 +72,11 @@ class IPAddressesHandler(OperationsHandler):
         :type domain: Domain
         :raises StaticIPAddressExhaustion: If no IPs available.
         """
-        if domain is None:
+        if hostname is not None and hostname.find('.') > 0:
+            hostname, domain = hostname.split('.', 1)
+            domain = Domain.objects.get_domain_or_404(
+                "name:%s" % domain, user, NODE_PERMISSION.VIEW)
+        else:
             domain = Domain.objects.get_default_domain()
         if mac is None:
             sip = StaticIPAddress.objects.allocate_new(
@@ -141,7 +145,8 @@ class IPAddressesHandler(OperationsHandler):
             reservation is required. e.g. 10.1.2.0/24
         :param ip_address: The IP address, which must be within
             a known subnet.
-        :param hostname: The hostname to use for the specified IP address
+        :param hostname: The hostname to use for the specified IP address.  If
+            no domain component is given, the default domain will be used.
         :param mac: The MAC address that should be linked to this reservation.
 
         Returns 400 if there is no subnet in MAAS matching the provided one,

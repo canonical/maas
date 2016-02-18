@@ -23,7 +23,7 @@ angular.module('MAAS').controller('DomainsListController', [
         $scope.reverse = false;
         $scope.loading = true;
 
-        ManagerHelperService.loadManagers([DomainsManager]).then(
+        ManagerHelperService.loadManager(DomainsManager).then(
             function() {
                 $scope.loading = false;
             });

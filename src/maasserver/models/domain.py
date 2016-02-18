@@ -42,6 +42,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
+from netaddr import IPAddress
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r'[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}'
@@ -272,44 +273,41 @@ class Domain(CleanSave, TimestampedModel):
         super(Domain, self).clean(*args, **kwargs)
         self.clean_name()
 
-    def render_json_for_related_ips(self, for_list=False):
-        """Render a representation of this domain's related IP addresses,
-        suitable for converting to JSON.
-
-        :return: (data, address_count)"""
-        from maasserver.models import StaticIPAddress
-        # Get all of the address mappings.
-        ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(self)
-        domainname_len = len(self.name)
-        data = []
-        count = 0
-        for hostname, info in ip_mapping.items():
-            if not for_list:
-                data.append({
-                    # strip off the domain name.
-                    'hostname': hostname[:-domainname_len - 1],
-                    'system_id': info.system_id,
-                    'ttl': info.ttl,
-                    'ips': info.ips,
-                })
-            count += len(info.ips)
-        return (data, count)
-
     def render_json_for_related_rrdata(self, for_list=False):
         """Render a representation of this domain's related non-IP data,
         suitable for converting to JSON.
 
-        :return: (data, record_count)"""
-        from maasserver.models import DNSData
-        rr_mapping = DNSData.objects.get_hostname_dnsdata_mapping(self)
+        :return: data"""
+        from maasserver.models import (
+            DNSData,
+            StaticIPAddress,
+        )
+        rr_mapping = DNSData.objects.get_hostname_dnsdata_mapping(
+            self, raw_ttl=True)
+        # Smash the IP Addresses in the rrset mapping, so that the far end
+        # only needs to worry about one thing.
+        ip_mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            self, raw_ttl=True)
+        for hostname, info in ip_mapping.items():
+            hostname = hostname[:-len(self.name) - 1]
+            if info.system_id is not None:
+                rr_mapping[hostname].system_id = info.system_id
+                rr_mapping[hostname].node_type = info.node_type
+            for ip in info.ips:
+                if IPAddress(ip).version == 6:
+                    rr_mapping[hostname].rrset.add((info.ttl, 'AAAA', ip))
+                else:
+                    rr_mapping[hostname].rrset.add((info.ttl, 'A', ip))
         data = []
-        count = 0
         for hostname, info in rr_mapping.items():
-            if not for_list:
-                data.append({
-                    'hostname': hostname,
-                    'system_id': info.system_id,
-                    'rrsets': info.rrset,
-                })
-            count += len(info.rrset)
-        return (data, count)
+            data += [{
+                'name': hostname,
+                'system_id': info.system_id,
+                'node_type': info.node_type,
+                'ttl': ttl,
+                'rrtype': rrtype,
+                'rrdata': rrdata
+                }
+                for ttl, rrtype, rrdata in info.rrset
+                ]
+        return data

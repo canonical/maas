@@ -23,6 +23,7 @@ from maasserver.models.domain import (
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from netaddr import IPAddress
 from testtools.matchers import MatchesStructure
 from testtools.testcase import ExpectedException
 
@@ -212,67 +213,45 @@ class DomainTest(MAASServerTestCase):
                 dnsresource__domain_id=domain.id)
             self.assertEqual("0 0 1688 %s." % target, srvrr.rrdata)
 
-    def render_ipaddresses(self, domain, for_list=False):
-        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-        ip_addresses = [
-            {
-                # strip off the domain name.
-                'hostname': hostname[:-len(domain.name) - 1],
-                'system_id': info.system_id,
-                'ttl': info.ttl,
-                'ips': info.ips}
-            for hostname, info in ip_map.items()
-        ]
-        count = 0
-        for record in ip_addresses:
-            count += len(record['ips'])
-        if for_list:
-            ip_addresses = []
-        return (ip_addresses, count)
-
     def render_rrdata(self, domain, for_list=False):
-        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        rr_map = DNSData.objects.get_hostname_dnsdata_mapping(
+            domain, raw_ttl=True)
+        ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(
+            domain, raw_ttl=True)
+        for hostname, info in ip_map.items():
+            hostname = hostname[:-len(domain.name) - 1]
+            if info.system_id is not None:
+                rr_map[hostname].system_id = info.system_id
+            for ip in info.ips:
+                if IPAddress(ip).version == 4:
+                    rr_map[hostname].rrset.add((info.ttl, 'A', ip))
+                else:
+                    rr_map[hostname].rrset.add((info.ttl, 'AAAA', ip))
         rrsets = [
             {
-                'hostname': hostname,
+                'name': name,
                 'system_id': info.system_id,
-                'rrsets': info.rrset,
+                'node_type': info.node_type,
+                'ttl': ttl,
+                'rrtype': rrtype,
+                'rrdata': rrdata,
             }
-            for hostname, info in rr_map.items()
+            for name, info in rr_map.items()
+            for ttl, rrtype, rrdata in info.rrset
         ]
-        count = 0
-        for record in rrsets:
-            count += len(record['rrsets'])
-        if for_list:
-            rrsets = []
-        return (rrsets, count)
-
-    def test_render_json_for_related_ips_returns_correct_values(self):
-        domain = factory.make_Domain()
-        factory.make_DNSData(domain=domain)
-        dnsdata = factory.make_DNSData(domain=domain, rrtype='TXT')
-        factory.make_DNSData(dnsresource=dnsdata.dnsresource, rrtype='TXT')
-        factory.make_DNSResource(domain=domain)
-        node = factory.make_Node_with_Interface_on_Subnet(domain=domain)
-        factory.make_DNSResource(name=node.hostname, domain=domain)
-        self.assertItemsEqual(
-            self.render_ipaddresses(domain, for_list=True),
-            domain.render_json_for_related_ips(for_list=True))
-        self.assertItemsEqual(
-            self.render_ipaddresses(domain, for_list=False),
-            domain.render_json_for_related_ips(for_list=False))
+        return (rrsets)
 
     def test_render_json_for_related_rrdata_returns_correct_values(self):
         domain = factory.make_Domain()
-        factory.make_DNSData(domain=domain)
-        dnsdata = factory.make_DNSData(domain=domain, rrtype='TXT')
-        factory.make_DNSData(dnsresource=dnsdata.dnsresource, rrtype='TXT')
+        factory.make_DNSData(domain=domain, rrtype='NS')
+        dnsdata = factory.make_DNSData(domain=domain, rrtype='MX')
+        factory.make_DNSData(dnsresource=dnsdata.dnsresource, rrtype='MX')
         factory.make_DNSResource(domain=domain)
         node = factory.make_Node_with_Interface_on_Subnet(domain=domain)
         factory.make_DNSResource(name=node.hostname, domain=domain)
-        self.assertItemsEqual(
-            self.render_rrdata(domain, for_list=True),
-            domain.render_json_for_related_rrdata(for_list=True))
-        self.assertItemsEqual(
-            self.render_rrdata(domain, for_list=False),
-            domain.render_json_for_related_rrdata(for_list=False))
+        expected = self.render_rrdata(domain, for_list=True)
+        actual = domain.render_json_for_related_rrdata(for_list=True)
+        self.assertItemsEqual(expected, actual)
+        expected = self.render_rrdata(domain, for_list=False)
+        actual = domain.render_json_for_related_rrdata(for_list=False)
+        self.assertItemsEqual(expected, actual)

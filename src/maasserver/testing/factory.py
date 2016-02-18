@@ -692,10 +692,16 @@ class Factory(maastesting.factory.Factory):
             interface.save()
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
-                hostname = (hostname)
+                hostname = [hostname]
             for name in hostname:
-                ipaddress.dnsresource_set.add(
-                    DNSResource.objects.create(name=name))
+                if name.find('.') > 0:
+                    name, domain = name.split('.', 1)
+                    domain = Domain.objects.get(name=domain)
+                else:
+                    domain = None
+                dnsrr, created = DNSResource.objects.get_or_create(
+                    name=name, domain=domain)
+                ipaddress.dnsresource_set.add(dnsrr)
         return reload_object(ipaddress)
 
     def make_email(self):

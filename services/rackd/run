@@ -17,7 +17,7 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-# Configure the cluster's UUID to match sampledata, and also use a high
+# Configure the rack's UUID to match sampledata, and also use a high
 # port for TFTP to match this branch's etc/services.
 bin/maas-provision config \
     --uuid adfd3977-f251-4f2c-8d61-745dbd690bf2 \

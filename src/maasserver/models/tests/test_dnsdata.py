@@ -226,7 +226,7 @@ class DNSDataTest(MAASServerTestCase):
 class TestDNSDataMapping(MAASServerTestCase):
     """Tests for get_hostname_dnsdata_mapping()."""
 
-    def make_mapping(self, dnsresource):
+    def make_mapping(self, dnsresource, raw_ttl=False):
         nodes = Node.objects.filter(
             hostname=dnsresource.name, domain=dnsresource.domain)
         if nodes.count() > 0:
@@ -235,7 +235,7 @@ class TestDNSDataMapping(MAASServerTestCase):
             system_id = None
         mapping = HostnameRRsetMapping(system_id)
         for data in dnsresource.dnsdata_set.all():
-            if data.ttl is not None:
+            if raw_ttl or data.ttl is not None:
                 ttl = data.ttl
             elif dnsresource.domain.ttl is not None:
                 ttl = dnsresource.domain.ttl
@@ -278,4 +278,25 @@ class TestDNSDataMapping(MAASServerTestCase):
             for dnsrr in dom.dnsresource_set.all():
                 expected_mapping.update(self.make_mapping(dnsrr))
             actual = DNSData.objects.get_hostname_dnsdata_mapping(dom)
+            self.assertItemsEqual(expected_mapping, actual)
+
+    def test_get_hostname_dnsdata_mapping_returns_raw_ttl(self):
+        # We create 2 domains, one with a ttl, one withoout.
+        # Within each domain, create an RRset with and without ttl.
+        # We then query with raw_ttl=True, and confirm that nothing is
+        # inherited.
+        global_ttl = random.randint(1, 99)
+        Config.objects.set_config('default_dns_ttl', global_ttl)
+        domains = [
+            factory.make_Domain(),
+            factory.make_Domain(ttl=random.randint(100, 199))]
+        for dom in domains:
+            factory.make_DNSData(domain=dom)
+            factory.make_DNSData(domain=dom, ttl=random.randint(200, 299))
+            expected_mapping = {}
+            for dnsrr in dom.dnsresource_set.all():
+                expected_mapping.update(self.make_mapping(
+                    dnsrr, raw_ttl=True))
+            actual = DNSData.objects.get_hostname_dnsdata_mapping(
+                dom, raw_ttl=True)
             self.assertItemsEqual(expected_mapping, actual)

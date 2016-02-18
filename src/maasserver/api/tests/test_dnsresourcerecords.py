@@ -196,6 +196,30 @@ class TestDNSResourceRecordsAPI(APITestCase):
                 response.content.decode(
                     settings.DEFAULT_CHARSET))['rrdata'])
 
+    def test_create_fails_with_no_name(self):
+        self.become_admin()
+        domain = factory.make_Domain()
+        uri = get_dnsresourcerecords_uri()
+        response = self.client.post(uri, {
+            "domain": domain.name,
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_create_fails_with_no_domain(self):
+        self.become_admin()
+        dnsresource_name = factory.make_name("dnsresource")
+        uri = get_dnsresourcerecords_uri()
+        response = self.client.post(uri, {
+            "name": dnsresource_name,
+            "rrtype": "TXT",
+            "rrdata": "Sample Text.",
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
     def test_create_admin_only(self):
         dnsresource_name = factory.make_name("dnsresource")
         uri = get_dnsresourcerecords_uri()

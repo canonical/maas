@@ -14,6 +14,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from netaddr import IPAddress
 
 
 class TestDomainHandler(MAASServerTestCase):
@@ -30,32 +31,35 @@ class TestDomainHandler(MAASServerTestCase):
         ip_map = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
         rr_map = DNSData.objects.get_hostname_dnsdata_mapping(domain)
         domainname_len = len(domain.name)
-        ip_addresses = [
-            {
-                # strip off the domain name.
-                'hostname': hostname[:-domainname_len - 1],
-                'system_id': info.system_id,
-                'ttl': info.ttl,
-                'ips': info.ips}
-            for hostname, info in ip_map.items()
-        ]
+        for name, info in ip_map.items():
+            name = name[:-domainname_len - 1]
+            if info.system_id is not None:
+                rr_map[name].system_id = info.system_id
+            for ip in info.ips:
+                if IPAddress(ip).version == 4:
+                    rr_map[name].rrset.add((info.ttl, 'A', ip))
+                else:
+                    rr_map[name].rrset.add((info.ttl, 'AAAA', ip))
         rrsets = [
             {
-                'hostname': hostname,
+                'name': hostname,
                 'system_id': info.system_id,
-                'rrsets': info.rrset,
+                'node_type': info.node_type,
+                'ttl': ttl,
+                'rrtype': rrtype,
+                'rrdata': rrdata,
             }
             for hostname, info in rr_map.items()
+            for ttl, rrtype, rrdata in info.rrset
         ]
-        count = 0
-        for record in ip_addresses:
-            count += len(record['ips'])
+        data['resource_count'] = len(rrsets)
+        hosts = set()
         for record in rrsets:
-            count += len(record['rrsets'])
-        data['resource_count'] = count
+            if record['system_id'] is not None:
+                hosts.add(record['system_id'])
+        data['hosts'] = len(hosts)
         if not for_list:
             data.update({
-                "ip_addresses": ip_addresses,
                 "rrsets": rrsets,
             })
         return data
@@ -66,7 +70,7 @@ class TestDomainHandler(MAASServerTestCase):
         domain = factory.make_Domain()
         factory.make_DNSData(domain=domain)
         factory.make_DNSResource(domain=domain)
-        self.assertEqual(
+        self.assertItemsEqual(
             self.dehydrate_domain(domain),
             handler.get({"id": domain.id}))
 

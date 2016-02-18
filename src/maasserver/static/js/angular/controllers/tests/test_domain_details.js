@@ -1,23 +1,23 @@
 /* Copyright 2015 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * Unit tests for SubnetsListController.
+ * Unit tests for DomainsListController.
  */
 
-describe("SubnetDetailsController", function() {
+describe("DomainDetailsController", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
-    // Make a fake subnet
-    function makeSubnet() {
-        var subnet = {
+    // Make a fake domain
+    function makeDomain() {
+        var domain = {
             id: makeInteger(1, 10000),
-            cidr: '169.254.0.0/24',
-            name: 'Link Local'
+            name: 'example.com',
+            authoritative: true
         };
-        SubnetsManager._items.push(subnet);
-        return subnet;
+        DomainsManager._items.push(domain);
+        return domain;
     }
 
     // Grab the needed angular pieces.
@@ -32,34 +32,34 @@ describe("SubnetDetailsController", function() {
     }));
 
     // Load any injected managers and services.
-    var SubnetsManager, ManagerHelperService, ErrorService;
+    var DomainsManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
-        SubnetsManager = $injector.get("SubnetsManager");
+        DomainsManager = $injector.get("DomainsManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
 
-    var subnet;
+    var domain;
     beforeEach(function() {
-        subnet = makeSubnet();
+        domain = makeDomain();
     });
 
     // Makes the NodesListController
-    function makeController(loadManagersDefer) {
-        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
-        if(angular.isObject(loadManagersDefer)) {
-            loadManagers.and.returnValue(loadManagersDefer.promise);
+    function makeController(loadManagerDefer) {
+        var loadManager = spyOn(ManagerHelperService, "loadManager");
+        if(angular.isObject(loadManagerDefer)) {
+            loadManager.and.returnValue(loadManagerDefer.promise);
         } else {
-            loadManagers.and.returnValue($q.defer().promise);
+            loadManager.and.returnValue($q.defer().promise);
         }
 
         // Create the controller.
-        var controller = $controller("SubnetDetailsController", {
+        var controller = $controller("DomainDetailsController", {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
             $location: $location,
-            SubnetsManager: SubnetsManager,
+            DomainsManager: DomainsManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -70,15 +70,15 @@ describe("SubnetDetailsController", function() {
     // Make the controller and resolve the setActiveItem call.
     function makeControllerResolveSetActiveItem() {
         var setActiveDefer = $q.defer();
-        spyOn(SubnetsManager, "setActiveItem").and.returnValue(
+        spyOn(DomainsManager, "setActiveItem").and.returnValue(
             setActiveDefer.promise);
         var defer = $q.defer();
         var controller = makeController(defer);
-        $routeParams.subnet_id = subnet.id;
+        $routeParams.domain_id = domain.id;
 
         defer.resolve();
         $rootScope.$digest();
-        setActiveDefer.resolve(subnet);
+        setActiveDefer.resolve(domain);
         $rootScope.$digest();
 
         return controller;
@@ -87,72 +87,72 @@ describe("SubnetDetailsController", function() {
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("networks");
+        expect($rootScope.page).toBe("domains");
     });
 
-    it("calls loadManagers with SubnetsManager" +
+    it("calls loadManager with DomainsManager" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [SubnetsManager]);
+            expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
+                DomainsManager);
     });
 
-    it("raises error if subnet identifier is invalid", function() {
-        spyOn(SubnetsManager, "setActiveItem").and.returnValue(
+    it("raises error if domain identifier is invalid", function() {
+        spyOn(DomainsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         spyOn(ErrorService, "raiseError").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
         var controller = makeController(defer);
-        $routeParams.subnet_id = 'xyzzy';
+        $routeParams.domain_id = 'xyzzy';
 
         defer.resolve();
         $rootScope.$digest();
 
-        expect($scope.subnet).toBe(null);
+        expect($scope.domain).toBe(null);
         expect($scope.loaded).toBe(false);
-        expect(SubnetsManager.setActiveItem).not.toHaveBeenCalled();
+        expect(DomainsManager.setActiveItem).not.toHaveBeenCalled();
         expect(ErrorService.raiseError).toHaveBeenCalled();
     });
 
-    it("doesn't call setActiveItem if subnet is loaded", function() {
-        spyOn(SubnetsManager, "setActiveItem").and.returnValue(
+    it("doesn't call setActiveItem if domain is loaded", function() {
+        spyOn(DomainsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
         var controller = makeController(defer);
-        SubnetsManager._activeItem = subnet;
-        $routeParams.subnet_id = subnet.id;
+        DomainsManager._activeItem = domain;
+        $routeParams.domain_id = domain.id;
 
         defer.resolve();
         $rootScope.$digest();
 
-        expect($scope.subnet).toBe(subnet);
+        expect($scope.domain).toBe(domain);
         expect($scope.loaded).toBe(true);
-        expect(SubnetsManager.setActiveItem).not.toHaveBeenCalled();
+        expect(DomainsManager.setActiveItem).not.toHaveBeenCalled();
     });
 
-    it("calls setActiveItem if subnet is not active", function() {
-        spyOn(SubnetsManager, "setActiveItem").and.returnValue(
+    it("calls setActiveItem if domain is not active", function() {
+        spyOn(DomainsManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         var defer = $q.defer();
         var controller = makeController(defer);
-        $routeParams.subnet_id = subnet.id;
+        $routeParams.domain_id = domain.id;
 
         defer.resolve();
         $rootScope.$digest();
 
-        expect(SubnetsManager.setActiveItem).toHaveBeenCalledWith(
-            subnet.id);
+        expect(DomainsManager.setActiveItem).toHaveBeenCalledWith(
+            domain.id);
     });
 
-    it("sets subnet and loaded once setActiveItem resolves", function() {
+    it("sets domain and loaded once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect($scope.subnet).toBe(subnet);
+        expect($scope.domain).toBe(domain);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect($rootScope.title).toBe(subnet.cidr + " (" + subnet.name + ")");
+        expect($rootScope.title).toBe(domain.name);
     });
 });

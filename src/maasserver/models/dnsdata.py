@@ -73,12 +73,14 @@ class HostnameRRsetMapping:
     """This is used to return non-address information for a hostname in a way
        that keeps life simple for the allers.  Rrset is a set of (ttl, rrtype,
        rrdata) tuples."""
-    def __init__(self, system_id=None, rrset=set()):
+    def __init__(self, system_id=None, rrset=set(), node_type=None):
         self.system_id = system_id
+        self.node_type = node_type
         self.rrset = rrset.copy()
 
     def __repr__(self):
-        return "%s:%s" % (self.system_id, self.rrset)
+        return "HostnameRRSetMapping(%r, %r, %r)" % (
+            self.system_id, self.rrset, self.node_type)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -134,18 +136,24 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         else:
             raise PermissionDenied()
 
-    def get_hostname_dnsdata_mapping(self, domain):
+    def get_hostname_dnsdata_mapping(self, domain, raw_ttl=False):
         """Return hostname to RRset mapping for this domain."""
         cursor = connection.cursor()
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        if raw_ttl:
+            ttl_clause = """dnsdata.ttl"""
+        else:
+            ttl_clause = """
+                COALESCE(
+                    dnsdata.ttl,
+                    domain.ttl,
+                    %s)""" % default_ttl
         sql_query = """
             SELECT
                 dnsresource.name,
                 node.system_id,
-                COALESCE(
-                    dnsdata.ttl,
-                    domain.ttl,
-                    """ + default_ttl + """) AS ttl,
+                node.node_type,
+                """ + ttl_clause + """ AS ttl,
                 dnsdata.rrtype,
                 dnsdata.rrdata
             FROM maasserver_dnsdata AS dnsdata
@@ -168,7 +176,9 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         # not spill CNAME and other data.
         mapping = defaultdict(HostnameRRsetMapping)
         cursor.execute(sql_query, (domain.id,))
-        for (name, system_id, ttl, rrtype, rrdata) in cursor.fetchall():
+        for (name, system_id, node_type,
+                ttl, rrtype, rrdata) in cursor.fetchall():
+            mapping[name].node_type = node_type
             mapping[name].system_id = system_id
             mapping[name].rrset.add((ttl, rrtype, rrdata))
         return mapping

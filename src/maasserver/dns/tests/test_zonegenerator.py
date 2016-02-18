@@ -222,9 +222,9 @@ class TestGetHostnameMapping(MAASServerTestCase):
         Config.objects.set_config('default_dns_ttl', ttl)
         expected_mapping = {
             "%s.maas" % node1.hostname: HostnameIPMapping(
-                node1.system_id, ttl, {static_ip.ip}),
+                node1.system_id, ttl, {static_ip.ip}, node1.node_type),
             "%s.maas" % node2.hostname: HostnameIPMapping(
-                node2.system_id, ttl, {dynamic_ip.ip}),
+                node2.system_id, ttl, {dynamic_ip.ip}, node2.node_type),
         }
         actual = get_hostname_ip_mapping(Domain.objects.get_default_domain())
         self.assertItemsEqual(
@@ -240,9 +240,10 @@ class TestGetHostnameMapping(MAASServerTestCase):
         Config.objects.set_config('default_dns_ttl', ttl)
         expected_mapping = {
             dnsdata1.dnsresource.name: HostnameRRsetMapping(
-                node.system_id, {(ttl, dnsdata1.rrtype, dnsdata1.rrdata)}),
+                node.system_id, {(ttl, dnsdata1.rrtype, dnsdata1.rrdata)},
+                node.node_type),
             dnsdata2.dnsresource.name: HostnameRRsetMapping(
-                None, {(ttl, dnsdata2.rrtype, dnsdata2.rrdata)}),
+                None, {(ttl, dnsdata2.rrtype, dnsdata2.rrdata)}, None),
         }
         actual = get_hostname_dnsdata_mapping(node.domain)
         self.assertItemsEqual(
@@ -355,7 +356,7 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertEqual(
             {node.hostname: HostnameIPMapping(
                 node.system_id, default_ttl,
-                {'%s' % boot_ip.ip})}, zones[0]._mapping)
+                {'%s' % boot_ip.ip}, node.node_type)}, zones[0]._mapping)
         self.assertEqual(
             {dnsdata.dnsresource.name: HostnameRRsetMapping(
                 None,
@@ -363,11 +364,11 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[0]._other_mapping.items())
         self.assertItemsEqual({
             node.fqdn: HostnameIPMapping(
-                node.system_id, 30, {'%s' % boot_ip.ip}),
+                node.system_id, 30, {'%s' % boot_ip.ip}, node.node_type),
             '%s.%s' % (interfaces[0].name, node.fqdn): HostnameIPMapping(
-                None, default_ttl, {'%s' % sip.ip}),
+                None, default_ttl, {'%s' % sip.ip}, None),
             '%s.%s' % (boot_iface.name, node.fqdn): HostnameIPMapping(
-                None, default_ttl, {'%s' % boot_ip.ip})},
+                None, default_ttl, {'%s' % boot_ip.ip}, None)},
             zones[1]._mapping)
 
     def rfc2317_network(self, network):
@@ -464,12 +465,12 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
-                node.system_id, domain.ttl, {boot_ip.ip})}
+                node.system_id, domain.ttl, {boot_ip.ip}, node.node_type)}
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, domain.ttl, {boot_ip.ip}),
+                node.system_id, domain.ttl, {boot_ip.ip}, node.node_type),
             "%s.%s" % (boot_iface.name, node.fqdn): HostnameIPMapping(
-                node.system_id, domain.ttl, {boot_ip.ip})}
+                node.system_id, domain.ttl, {boot_ip.ip}, node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial_generator=Mock()).as_list()
@@ -490,12 +491,16 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
         [boot_ip] = boot_iface.claim_auto_ips()
         expected_forward = {
             node.hostname: HostnameIPMapping(
-                node.system_id, node.address_ttl, {boot_ip.ip})}
+                node.system_id, node.address_ttl, {boot_ip.ip},
+                node.node_type)}
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, {boot_ip.ip}),
+                node.system_id, node.address_ttl, {boot_ip.ip},
+                node.node_type),
             "%s.%s" % (boot_iface.name, node.fqdn):
-            HostnameIPMapping(node.system_id, node.address_ttl, {boot_ip.ip})}
+            HostnameIPMapping(
+                node.system_id, node.address_ttl, {boot_ip.ip},
+                node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial_generator=Mock()).as_list()
@@ -524,13 +529,14 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
             ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None}
         ips.add(boot_ip.ip)
         expected_forward = {node.hostname: HostnameIPMapping(
-            node.system_id, node.address_ttl, ips)}
+            node.system_id, node.address_ttl, ips, node.node_type)}
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, ips),
+                node.system_id, node.address_ttl, ips, node.node_type),
             "%s.%s" % (boot_iface.name, node.fqdn):
             HostnameIPMapping(
-                node.system_id, node.address_ttl, {boot_ip.ip})}
+                node.system_id, node.address_ttl, {boot_ip.ip},
+                node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial_generator=Mock()).as_list()
@@ -558,17 +564,19 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
             ip.ip for ip in dnsrr.ip_addresses.all() if ip is not None}
         expected_forward = {
             node.hostname: HostnameIPMapping(
-                node.system_id, node.address_ttl, node_ips),
+                node.system_id, node.address_ttl, node_ips, node.node_type),
             dnsrr.name: HostnameIPMapping(
-                None, dnsrr.address_ttl, dnsrr_ips),
+                None, dnsrr.address_ttl, dnsrr_ips, None),
             }
         expected_reverse = {
             node.fqdn: HostnameIPMapping(
-                node.system_id, node.address_ttl, node_ips),
+                node.system_id, node.address_ttl, node_ips, node.node_type),
             dnsrr.fqdn: HostnameIPMapping(
-                None, dnsrr.address_ttl, dnsrr_ips),
+                None, dnsrr.address_ttl, dnsrr_ips, None),
             "%s.%s" % (boot_iface.name, node.fqdn):
-            HostnameIPMapping(node.system_id, node.address_ttl, {boot_ip.ip})}
+            HostnameIPMapping(
+                node.system_id, node.address_ttl, {boot_ip.ip},
+                node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
             serial_generator=Mock()).as_list()

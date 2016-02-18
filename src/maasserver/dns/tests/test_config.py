@@ -34,6 +34,8 @@ from maasserver.dns.config import (
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
+    RDNS_MODE,
+    RDNS_MODE_CHOICES,
 )
 from maasserver.models import (
     Config,
@@ -111,6 +113,18 @@ class TestDNSUtilities(MAASServerTestCase):
             [next_zone_serial() for _ in range(initial, initial + 10)])
 
 
+class ReverseThing:
+    def __init__(self, id, rdns_mode):
+        self.id = id
+        self.rdns_mode = rdns_mode
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __hash__(self):
+        return hash(self.id)
+
+
 class Thing:
     def __init__(self, id, authoritative):
         self.id = id
@@ -140,8 +154,8 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         ("dns_add_subnets", {
             "now_function": dns_add_zones_now,
             "calling_function": dns_add_subnets,
-            "args": [[Thing(555, True)]],
-            "now_args": [[], [Thing(555, True)]],
+            "args": [[ReverseThing(555, True)]],
+            "now_args": [[], [ReverseThing(555, True)]],
             "kwargs": {},
         }),
         ("dns_update_domains", {
@@ -154,8 +168,8 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         ("dns_update_subnets", {
             "now_function": dns_update_zones_now,
             "calling_function": dns_update_subnets,
-            "args": [[Thing(555, True)]],
-            "now_args": [[], [Thing(555, True)]],
+            "args": [[ReverseThing(555, True)]],
+            "now_args": [[], [ReverseThing(555, True)]],
             "kwargs": {},
         }),
         ("dns_update_all_zones", {
@@ -559,6 +573,52 @@ class TestDNSConfigModifications(TestDNSServer):
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
+
+    def test_subnets_correctly_added_to_config(self):
+        # We choose 3 sizes of subnets (big, /24, and small), and all 3
+        # RDNS_MODE values, for a total of 9 subnets that we will check.
+        subnets = [
+            factory.make_Subnet(
+                cidr='%d.%d.12.64/%d' % (
+                    random.randint(1, 223), random.randint(0, 255), prefix),
+                rdns_mode=choice[0])
+            for prefix in [random.randint(17, 23), 24, random.randint(25, 29)]
+            for choice in RDNS_MODE_CHOICES
+        ]
+        for subnet in subnets:
+            node, static = self.create_node_with_static_ip(
+                subnet=subnet)
+        self.patch(settings, 'DNS_CONNECT', True)
+        dns_add_zones_now([node.domain], subnets)
+        for subnet in subnets:
+            net = IPNetwork(subnet.cidr)
+            # Generate the reverse zone name for the /24.
+            last, rname = IPAddress(net).reverse_dns[:-1].split('.', 1)
+            # RFC2317 zones look different.
+            if net.prefixlen > 24:
+                rname = '%s-%d.%s' % (last, net.prefixlen, rname)
+            # If we're supposed to generate reverse DNS, make sure there is a
+            # zone declaration in the written config.
+            if subnet.rdns_mode != RDNS_MODE.DISABLED:
+                matcher = Contains('zone "%s"' % rname)
+            else:
+                matcher = Not(Contains('zone "%s"' % rname))
+            self.assertThat(
+                compose_config_path(DNSConfig.target_file_name),
+                FileContains(
+                    matcher=matcher))
+            # If this is an RFC2317 zone, make sure that the glue is (or is
+            # not) present, dpeending on the configuration setting for this
+            # subnet.
+            if net.prefixlen > 24:
+                _, rname = rname.split('.', 1)
+                if subnet.rdns_mode != RDNS_MODE.RFC2317:
+                    matcher = Not(Contains('zone "%s"' % rname))
+                else:
+                    matcher = Contains('zone "%s"' % rname)
+                self.assertThat(
+                    compose_config_path(DNSConfig.target_file_name),
+                    FileContains(matcher=matcher))
 
     def test_dns_update_zones_now_changes_dns_zone(self):
         node, static = self.create_node_with_static_ip()

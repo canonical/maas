@@ -21,6 +21,7 @@ from maasserver.dns.zonegenerator import (
     sequence,
     ZoneGenerator,
 )
+from maasserver.enum import RDNS_MODE
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
@@ -109,6 +110,10 @@ def dns_add_subnets(subnets):
     :return: The post-commit `Deferred`.
     """
     if is_dns_enabled():
+        subnets = [
+            net
+            for net in subnets
+            if net.rdns_mode != RDNS_MODE.DISABLED]
         if DNS_DEFER_UPDATES:
             return consolidator.add_subnets(subnets)
         else:
@@ -160,6 +165,10 @@ def dns_update_subnets(subnets):
     :return: The post-commit `Deferred`.
     """
     if is_dns_enabled():
+        subnets = [
+            net
+            for net in subnets
+            if net.rdns_mode != RDNS_MODE.DISABLED]
         if DNS_DEFER_UPDATES:
             return consolidator.update_subnets(subnets)
         else:
@@ -193,7 +202,9 @@ def dns_update_by_node(node):
         if node.domain.authoritative is True:
             auth_domains.append(node.domain)
         # What subnets may be affected by this node being updated?
-        subnets = Subnet.objects.filter(staticipaddress__interface__node=node)
+        subnets = Subnet.objects.filter(
+            staticipaddress__interface__node=node).exclude(
+            rdns_mode=RDNS_MODE.DISABLED)
         if DNS_DEFER_UPDATES:
             return consolidator.update_zones(auth_domains, subnets)
         else:
@@ -219,7 +230,7 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
         return
 
     domains = Domain.objects.filter(authoritative=True)
-    subnets = Subnet.objects.all()
+    subnets = Subnet.objects.exclude(rdns_mode=RDNS_MODE.DISABLED)
     default_ttl = Config.objects.get_config('default_dns_ttl')
     zones = ZoneGenerator(
         domains, subnets, default_ttl,

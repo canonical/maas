@@ -1,0 +1,56 @@
+<header class="page-header margin-bottom" data-maas-sticky-header>
+    <div class="inner-wrapper">
+	<h1 class="page-header__title twelvel-col">
+	    {$ domain.name $}:
+            <ng-pluralize data-ng-hide="loading" count="domain.hosts"
+                          when="{'one': '{$ domain.hosts $} host,', 'other': '{$ domain.hosts $} hosts,'}"></ng-pluralize>
+            <ng-pluralize data-ng-hide="loading" count="domain.resource_count"
+                          when="{'one': ' {$ domain.resource_count $} record total', 'other': ' {$ domain.resource_count $} records total'}"></ng-pluralize>
+            <span class="page-header__title--identicator" id="bulk-actions">
+                <span class="power-status--power" data-ng-show="loading">
+                    <span class="loader"></span>
+                    Loading...
+                </span>
+            </span>
+	</h1>
+    </div>
+</header>
+<div data-ng-show="!loading">
+    <section class="row">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--20" data-ng-click="predicate='name'; reverse = !reverse"
+				data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
+                            <div class="table__header table__column--5" data-ng-click="predicate='rrtype'; reverse = !reverse"
+                                 data-ng-class="{sort: predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
+                            <div class="table__header table__column--75" data-ng-click="predicate='rrdata'; reverse = !reverse"
+                                 data-ng-class="{sort: predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</div>
+                        </div>
+                    </header>
+                    <main class="table-body">
+                        <div class="table__row table__row--no-hover" data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
+                          <div class="table__data table__column--20">
+                            <span data-ng-if="row.system_id == null">{$ row.name $}</span>
+                            <span data-ng-if="row.system_id !== null">
+                                <div data-ng-switch="row.node_type">
+                                  <!--
+                                      XXX lamont 2016-02-10
+                                      Node type is an enum (see node-details.html) and the comment therein.
+                                  -->
+                                  <span data-ng-switch-when="0"><a href="#/node/{$ row.system_id $}">{$ row.name $}</a></span>
+                                  <span data-ng-switch-default>{$ row.name $}</span>
+                                </div>
+                            </span>
+                          </div>
+                          <div class="table__data table__column--5">{$ row.rrtype $}</div>
+                          <div class="table__data table__column--75">{$ row.rrdata $}</div>
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>

@@ -19,7 +19,7 @@ describe("NetworksListController", function() {
         $routeParams = {};
     }));
 
-    // Load the manages and services.
+    // Load the managers and services.
     var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
     var ManagerHelperService, RegionConnection;
     beforeEach(inject(function($injector) {
@@ -30,7 +30,7 @@ describe("NetworksListController", function() {
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
-    // Makes the NodesListController
+    // Makes the SubnetsListController
     function makeController(loadManagersDefer, defaultConnectDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagersDefer)) {

@@ -70,13 +70,15 @@ maaslog = get_maas_logger("node")
 class HostnameIPMapping:
     """This is used to return address information for a host in a way that
        keeps life simple for the callers."""
-    def __init__(self, system_id=None, ttl=None, ips=set()):
+    def __init__(self, system_id=None, ttl=None, ips=set(), node_type=None):
         self.system_id = system_id
+        self.node_type = node_type
         self.ttl = ttl
         self.ips = ips.copy()
 
     def __repr__(self):
-        return "%s:%s:%s" % (self.system_id, self.ttl, self.ips)
+        return "HostnameIPMapping(%r, %r, %r, %r)" % (
+            self.system_id, self.ttl, self.ips, self.node_type)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -217,13 +219,18 @@ class StaticIPAddressManager(Manager):
                 requested_address, alloc_type,
                 user=user, subnet=subnet)
 
-    def _get_user_reserved_mappings(self):
+    def _get_user_reserved_mappings(self, domain_or_subnet, raw_ttl=False):
         # A poorly named routine these days, since it actually returns
         # addresses for anything with any DNSResource records as well.
         default_ttl = Config.objects.get_config('default_dns_ttl')
         qs = self.filter(
             Q(alloc_type=IPADDRESS_TYPE.USER_RESERVED) |
             Q(dnsresource__isnull=False))
+        if isinstance(domain_or_subnet, Subnet):
+            qs = qs.filter(subnet_id=domain_or_subnet.id)
+        elif isinstance(domain_or_subnet, Domain):
+            qs = qs.filter(dnsresource__domain_id=domain_or_subnet.id)
+        qs = qs.prefetch_related("dnsresource_set")
         mappings = defaultdict(HostnameIPMapping)
         for instance in qs:
             ip = instance.ip
@@ -241,7 +248,7 @@ class StaticIPAddressManager(Manager):
                             Domain.objects.get_default_domain().name)
                     else:
                         hostname = '%s.%s' % (dnsrr.name, dnsrr.domain.name)
-                    if dnsrr.address_ttl is not None:
+                    if raw_ttl or dnsrr.address_ttl is not None:
                         ttl = dnsrr.address_ttl
                     elif dnsrr.domain.ttl is not None:
                         ttl = dnsrr.domain.ttl
@@ -253,7 +260,7 @@ class StaticIPAddressManager(Manager):
                 # No DNSResource, but it's USER_RESERVED.
                 domain = Domain.objects.get_default_domain()
                 hostname = "%s.%s" % (get_ip_based_hostname(ip), domain.name)
-                if domain.ttl is not None:
+                if raw_ttl or domain.ttl is not None:
                     ttl = domain.ttl
                 else:
                     ttl = default_ttl
@@ -281,7 +288,7 @@ class StaticIPAddressManager(Manager):
                 "No more IPs available in subnet: %s" % subnet.cidr)
         return str(IPAddress(free_ranges[0].first))
 
-    def get_hostname_ip_mapping(self, domain_or_subnet):
+    def get_hostname_ip_mapping(self, domain_or_subnet, raw_ttl=False):
         """Return hostname mappings for `StaticIPAddress` entries.
 
         Returns a mapping `{hostnames -> (ttl, [ips])}` corresponding to
@@ -308,14 +315,20 @@ class StaticIPAddressManager(Manager):
             raise ValueError('bad object passed to get_hostname_ip_mapping')
 
         default_ttl = "%d" % Config.objects.get_config('default_dns_ttl')
+        if raw_ttl:
+            ttl_clause = """node.address_ttl"""
+        else:
+            ttl_clause = """
+                COALESCE(
+                    node.address_ttl,
+                    domain.ttl,
+                    %s)""" % default_ttl
         sql_query = """
             SELECT DISTINCT ON (node.hostname, family(staticip.ip))
                 node.hostname,
                 node.system_id,
-                COALESCE(
-                    node.address_ttl,
-                    domain.ttl,
-                    """ + default_ttl + """) AS ttl,
+                node.node_type,
+                """ + ttl_clause + """ AS ttl,
                 domain.name, staticip.ip
             FROM
                 maasserver_interface AS interface
@@ -375,10 +388,12 @@ class StaticIPAddressManager(Manager):
             """
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
-        mapping = self._get_user_reserved_mappings()
+        mapping = self._get_user_reserved_mappings(domain_or_subnet)
         cursor.execute(sql_query, (domain_or_subnet.id,))
-        for (node_name, system_id, ttl, domain_name, ip) in cursor.fetchall():
+        for (node_name, system_id, node_type,
+                ttl, domain_name, ip) in cursor.fetchall():
             hostname = "%s.%s" % (strip_domain(node_name), domain_name)
+            mapping[hostname].node_type = node_type
             mapping[hostname].system_id = system_id
             mapping[hostname].ttl = ttl
             mapping[hostname].ips.add(ip)
@@ -621,6 +636,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 data["node_summary"] = {
                     "system_id": node.system_id,
                     "node_type": node.node_type,
+                    "fqdn": node.fqdn,
                 }
                 if (with_username and
                         self.alloc_type != IPADDRESS_TYPE.DISCOVERED):

@@ -177,6 +177,20 @@ class TestIPAddressesAPI(APITestCase):
         # We expect 1 call from the Subnet creation.
         self.expectThat(dns_update_subnets.call_count, Equals(1))
 
+    def test_POST_reserve_with_bad_fqdn_fails(self):
+        from maasserver.dns import config as dns_config_module
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
+        subnet = factory.make_Subnet()
+        hostname = factory.make_hostname()
+        domainname = factory.make_name('domain')
+        fqdn = "%s.%s" % (hostname, domainname)
+        response = self.post_reservation_request(
+            subnet=subnet, hostname=fqdn)
+        self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        # We expect no calls
+        self.expectThat(dns_update_subnets.call_count, Equals(0))
+
     def test_POST_reserve_with_hostname_creates_ip_with_hostname(self):
         from maasserver.dns import config as dns_config_module
         dns_update_subnets = self.patch(
@@ -212,6 +226,51 @@ class TestIPAddressesAPI(APITestCase):
         self.expectThat(staticipaddress.ip, Equals(ip_in_network))
         self.expectThat(
             staticipaddress.dnsresource_set.first().name, Equals(hostname))
+        # We expect one from the Subnet.
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
+
+    def test_POST_reserve_with_fqdn_creates_ip_with_hostname(self):
+        from maasserver.dns import config as dns_config_module
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
+        subnet = factory.make_Subnet()
+        hostname = factory.make_hostname()
+        domainname = factory.make_Domain().name
+        fqdn = "%s.%s" % (hostname, domainname)
+        response = self.post_reservation_request(
+            subnet=subnet, hostname="%s.%s" % (hostname, domainname))
+        self.assertEqual(http.client.OK, response.status_code)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            staticipaddress.dnsresource_set.first().name, Equals(hostname))
+        self.expectThat(
+            staticipaddress.dnsresource_set.first().fqdn, Equals(fqdn))
+        # We expect one from the Subnet.
+        self.expectThat(dns_update_subnets.call_count, Equals(1))
+
+    def test_POST_reserve_with_fqdn_and_ip_creates_ip_with_hostname(self):
+        from maasserver.dns import config as dns_config_module
+        dns_update_subnets = self.patch(
+            dns_config_module, 'dns_update_subnets')
+        subnet = factory.make_Subnet()
+        hostname = factory.make_hostname()
+        domainname = factory.make_Domain().name
+        fqdn = "%s.%s" % (hostname, domainname)
+        ip_in_network = factory.pick_ip_in_Subnet(subnet)
+        response = self.post_reservation_request(
+            subnet=subnet, ip_address=ip_in_network,
+            hostname="%s.%s" % (hostname, domainname))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        returned_address = json_load_bytes(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            returned_address["alloc_type"],
+            Equals(IPADDRESS_TYPE.USER_RESERVED))
+        self.expectThat(returned_address["ip"], Equals(ip_in_network))
+        self.expectThat(staticipaddress.ip, Equals(ip_in_network))
+        self.expectThat(
+            staticipaddress.dnsresource_set.first().fqdn, Equals(fqdn))
         # We expect one from the Subnet.
         self.expectThat(dns_update_subnets.call_count, Equals(1))
 

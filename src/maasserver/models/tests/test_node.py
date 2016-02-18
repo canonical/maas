@@ -3102,7 +3102,8 @@ class TestNodeNetworking(MAASServerTestCase):
                 INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
             for _ in range(3)
         ]
-        subnet = factory.make_Subnet(vlan=vlan)
+        subnet = factory.make_Subnet(
+            vlan=vlan, host_bits=random.randint(4, 12))
         for interface in interfaces:
             for _ in range(2):
                 factory.make_StaticIPAddress(

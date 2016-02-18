@@ -44,7 +44,8 @@ class HostnameIPMapping:
         self.ips = ips.copy()
 
     def __repr__(self):
-        return "%s:%s:%s" % (self.system_id, self.ttl, self.ips)
+        return "HostnameIPMapping(%r, %r, %r, %r)" % (
+            self.system_id, self.ttl, self.ips, self.node_type)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -59,7 +60,8 @@ class HostnameRRsetMapping:
         self.rrset = rrset.copy()
 
     def __repr__(self):
-        return "%s:%s" % (self.system_id, self.rrset)
+        return "HostnameRRSetMapping(%r, %r, %r)" % (
+            self.system_id, self.rrset, self.node_type)
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__

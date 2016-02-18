@@ -24,10 +24,10 @@ class DomainHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, domain, data, for_list=False):
-        ip_addresses, ipcount = domain.render_json_for_related_ips(for_list)
-        rrsets, rrcount = domain.render_json_for_related_rrdata(for_list)
+        rrsets = domain.render_json_for_related_rrdata(for_list=for_list)
         if not for_list:
-            data["ip_addresses"] = ip_addresses
             data["rrsets"] = rrsets
-        data["resource_count"] = ipcount + rrcount
+        data["hosts"] = len({
+            rr['system_id'] for rr in rrsets if rr['system_id'] is not None})
+        data["resource_count"] = len(rrsets)
         return data

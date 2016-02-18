@@ -239,10 +239,11 @@ class ZoneGenerator:
         rfc2317_glue = {}
         for subnet in subnets:
             network = IPNetwork(subnet.cidr)
-            # If this is a small subnet and  we are doing RFC2317 glue for it,
-            # then we need to combine that with any other such subnets
-            # We need to know this before we start creating reverse DNS zones.
             if subnet.rdns_mode == RDNS_MODE.RFC2317:
+                # If this is a small subnet and  we are doing RFC2317 glue for
+                # it, then we need to combine that with any other such subnets
+                # We need to know this before we start creating reverse DNS
+                # zones.
                 if network.version == 4 and network.prefixlen > 24:
                     # Turn 192.168.99.32/29 into 192.168.99.0/24
                     basenet = IPNetwork(
@@ -254,6 +255,12 @@ class ZoneGenerator:
                         "%s/124" %
                         IPNetwork("%s/124" % network.network).network)
                     rfc2317_glue.setdefault(basenet, set()).add(network)
+            elif subnet.rdns_mode == RDNS_MODE.DISABLED:
+                # If we are not doing reverse dns for this subnet, then just
+                # skip to the next subnet.
+                logger.debug(
+                    "%s disabled subnet in DNS config list" % subnet.cidr)
+                continue
 
             # 1. Figure out the dynamic ranges.
             dynamic_ranges = [
@@ -283,14 +290,13 @@ class ZoneGenerator:
                 else:
                     ttl = default_ttl
                 for iface in node.interface_set.all():
-                    iface_map = HostnameIPMapping(
-                        node.system_id, ttl, {
-                            ip.ip
-                            for ip in iface.ip_addresses.all()
-                            if (
-                                ip.ip is not None and
-                                ip.subnet_id == subnet.id)})
-                    if len(iface_map.ips) > 0:
+                    ips_in_subnet = {
+                        ip.ip
+                        for ip in iface.ip_addresses.all()
+                        if (ip.ip is not None and ip.subnet_id == subnet.id)}
+                    if len(ips_in_subnet) > 0:
+                        iface_map = HostnameIPMapping(
+                            node.system_id, ttl, ips_in_subnet, node.node_type)
                         mapping.update({
                             "%s.%s" % (iface.name, iface.node.fqdn): iface_map
                         })
