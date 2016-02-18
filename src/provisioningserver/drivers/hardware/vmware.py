@@ -29,7 +29,7 @@ maaslog = get_maas_logger("drivers.vmware")
 
 def try_pyvmomi_import():
     """Attempt to import the pyVmomi API. This API is provided by the
-    python-pyvmomi package; if it doesn't work out, we need to notify
+    python3-pyvmomi package; if it doesn't work out, we need to notify
     the user so they can install it.
     """
     global vim
@@ -333,7 +333,7 @@ def _get_vmware_api(
             host, username, password, port=port, protocol=protocol)
     else:
         raise VMwareClientNotFound(
-            "Could not find a suitable VMware API (install python-pyvmomi)")
+            "Could not find a suitable VMware API (install python3-pyvmomi)")
 
 
 def get_vmware_servers(
@@ -396,7 +396,7 @@ def _probe_and_enlist_vmware_servers(
         # Note: the system name is URL encoded, so before we go to log
         # and/or create the node, we need to unquote it.
         # Otherwise we might pass in names like "Ubuntu%20(64-bit)"
-        system_name = unquote(system_name).decode('utf8')
+        system_name = unquote(system_name)
         maaslog.info(
             "Creating VMware node with MACs: %s (%s)",
             properties['macs'], system_name)

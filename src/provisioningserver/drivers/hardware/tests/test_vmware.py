@@ -199,7 +199,7 @@ class FakeVmomiServiceInstance(object):
 
 class TestVMwarePyvmomi(MAASTestCase):
     """Tests for VMware probe-and-enlist, and power query/control using
-    the python-pyvmomi API."""
+    the python3-pyvmomi API."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -214,7 +214,7 @@ class TestVMwarePyvmomi(MAASTestCase):
     def setUp(self):
         super(TestVMwarePyvmomi, self).setUp()
         if vmware.try_pyvmomi_import() is False:
-            self.skipTest('cannot test VMware without python-pyvmomi')
+            self.skipTest('cannot test VMware without python3-pyvmomi')
 
     def test_api_connection(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=0)

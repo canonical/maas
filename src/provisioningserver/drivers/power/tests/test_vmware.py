@@ -24,7 +24,7 @@ class TestVMwarePowerDriver(MAASTestCase):
         mock.return_value = False
         driver = vmware_module.VMwarePowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["python-pyvmomi"], missing)
+        self.assertItemsEqual(["python3-pyvmomi"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(try_pyvmomi_import)

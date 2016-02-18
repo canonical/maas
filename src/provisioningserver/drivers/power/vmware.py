@@ -32,7 +32,7 @@ class VMwarePowerDriver(PowerDriver):
 
     def detect_missing_packages(self):
         if not vmware.try_pyvmomi_import():
-            return ["python-pyvmomi"]
+            return ["python3-pyvmomi"]
         return []
 
     def power_on(self, system_id, context):
