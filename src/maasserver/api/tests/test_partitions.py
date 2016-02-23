@@ -455,10 +455,10 @@ class TestPartitions(APITestCase):
             partition=partition)
         uri = get_partition_uri(partition)
         mount_point = '/mnt'
-        mount_params = factory.make_name("mount-params")
+        mount_options = factory.make_name("mount-options")
         response = self.client.post(uri, {
             'op': 'mount', 'mount_point': mount_point,
-            'mount_params': mount_params,
+            'mount_options': mount_options,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -468,13 +468,13 @@ class TestPartitions(APITestCase):
             parsed_device["filesystem"],
             ContainsDict({
                 "mount_point": Equals(mount_point),
-                "mount_params": Equals(mount_params),
+                "mount_options": Equals(mount_options),
             }))
         self.assertThat(
             reload_object(filesystem),
             MatchesStructure(
                 mount_point=Equals(mount_point),
-                mount_params=Equals(mount_params),
+                mount_options=Equals(mount_options),
             ))
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
@@ -488,10 +488,10 @@ class TestPartitions(APITestCase):
             partition=partition, acquired=True)
         uri = get_partition_uri(partition)
         mount_point = '/mnt'
-        mount_params = factory.make_name("mount-params")
+        mount_options = factory.make_name("mount-options")
         response = self.client.post(uri, {
             'op': 'mount', 'mount_point': mount_point,
-            'mount_params': mount_params,
+            'mount_options': mount_options,
         })
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -501,13 +501,13 @@ class TestPartitions(APITestCase):
             parsed_device["filesystem"],
             ContainsDict({
                 "mount_point": Equals(mount_point),
-                "mount_params": Equals(mount_params),
+                "mount_options": Equals(mount_options),
             }))
         self.assertThat(
             reload_object(filesystem),
             MatchesStructure(
                 mount_point=Equals(mount_point),
-                mount_params=Equals(mount_params),
+                mount_options=Equals(mount_options),
             ))
 
     def test_mount_returns_400_on_missing_mount_point(self):
@@ -587,13 +587,13 @@ class TestPartitions(APITestCase):
             json.loads(content)["filesystem"],
             ContainsDict({
                 "mount_point": Is(None),
-                "mount_params": Is(None),
+                "mount_options": Is(None),
             }))
         self.assertThat(
             reload_object(filesystem),
             MatchesStructure(
                 mount_point=Is(None),
-                mount_params=Is(None),
+                mount_options=Is(None),
             ))
 
     def test_unmount_unmounts_filesystem_as_user(self):
@@ -610,11 +610,11 @@ class TestPartitions(APITestCase):
             json.loads(content)["filesystem"],
             ContainsDict({
                 "mount_point": Is(None),
-                "mount_params": Is(None),
+                "mount_options": Is(None),
             }))
         self.assertThat(
             reload_object(filesystem),
             MatchesStructure(
                 mount_point=Is(None),
-                mount_params=Is(None),
+                mount_options=Is(None),
             ))

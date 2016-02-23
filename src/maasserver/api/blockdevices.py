@@ -177,7 +177,7 @@ class BlockDeviceHandler(OperationsHandler):
                 'label': filesystem.label,
                 'uuid': filesystem.uuid,
                 'mount_point': filesystem.mount_point,
-                'mount_params': filesystem.mount_params,
+                'mount_options': filesystem.mount_options,
             }
         else:
             return None
@@ -407,7 +407,7 @@ class BlockDeviceHandler(OperationsHandler):
         if not filesystem.mount_point:
             raise MAASAPIBadRequest("Filesystem is already unmounted.")
         filesystem.mount_point = None
-        filesystem.mount_params = None
+        filesystem.mount_options = None
         filesystem.save()
         return device
 

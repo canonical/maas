@@ -780,42 +780,42 @@
   model: maasserver.partition
   pk: 4
 - fields: {block_device: null, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:33:21.359401', filesystem_group: 1, fstype: lvm-pv, label: null, mount_params: null,
+      15:33:21.359401', filesystem_group: 1, fstype: lvm-pv, label: null, mount_options: null,
     mount_point: null, partition: 1, updated: ! '2015-09-18 15:33:21.359401', uuid: e841b5d0-4506-4bc1-96cd-b0340995d7bf}
   model: maasserver.filesystem
   pk: 1
 - fields: {block_device: 9, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:33:21.359401', filesystem_group: null, fstype: ext4, label: root, mount_params: null,
+      15:33:21.359401', filesystem_group: null, fstype: ext4, label: root, mount_options: null,
     mount_point: /, partition: null, updated: ! '2015-09-18 15:33:21.359401', uuid: c33f7bf3-2750-4df5-9042-1aa82f7c0c83}
   model: maasserver.filesystem
   pk: 2
 - fields: {block_device: null, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:33:40.934618', filesystem_group: 2, fstype: lvm-pv, label: null, mount_params: null,
+      15:33:40.934618', filesystem_group: 2, fstype: lvm-pv, label: null, mount_options: null,
     mount_point: null, partition: 2, updated: ! '2015-09-18 15:33:40.934618', uuid: 67a5a0fd-a5c8-4ad8-9732-5e2d4f68e55a}
   model: maasserver.filesystem
   pk: 3
 - fields: {block_device: 10, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:33:40.934618', filesystem_group: null, fstype: ext4, label: root, mount_params: null,
+      15:33:40.934618', filesystem_group: null, fstype: ext4, label: root, mount_options: null,
     mount_point: /, partition: null, updated: ! '2015-09-18 15:33:40.934618', uuid: ac811290-2390-433d-88bb-b25491753293}
   model: maasserver.filesystem
   pk: 4
 - fields: {block_device: null, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:34:53.090702', filesystem_group: 3, fstype: lvm-pv, label: null, mount_params: null,
+      15:34:53.090702', filesystem_group: 3, fstype: lvm-pv, label: null, mount_options: null,
     mount_point: null, partition: 3, updated: ! '2015-09-18 15:34:53.090702', uuid: a5eedd2a-a783-4995-ab1c-a5fd4f8f9f79}
   model: maasserver.filesystem
   pk: 5
 - fields: {block_device: 11, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:34:53.090702', filesystem_group: null, fstype: ext4, label: root, mount_params: null,
+      15:34:53.090702', filesystem_group: null, fstype: ext4, label: root, mount_options: null,
     mount_point: /, partition: null, updated: ! '2015-09-18 15:34:53.090702', uuid: 0109c9e5-7cc7-4465-80b6-05549938573a}
   model: maasserver.filesystem
   pk: 6
 - fields: {block_device: null, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:36:18.364611', filesystem_group: 4, fstype: lvm-pv, label: null, mount_params: null,
+      15:36:18.364611', filesystem_group: 4, fstype: lvm-pv, label: null, mount_options: null,
     mount_point: null, partition: 4, updated: ! '2015-09-18 15:36:18.364611', uuid: 6985281f-d19d-4626-abf2-3d50c8370482}
   model: maasserver.filesystem
   pk: 7
 - fields: {block_device: 12, cache_set: null, create_params: null, created: ! '2015-09-18
-      15:36:18.364611', filesystem_group: null, fstype: ext4, label: root, mount_params: null,
+      15:36:18.364611', filesystem_group: null, fstype: ext4, label: root, mount_options: null,
     mount_point: /, partition: null, updated: ! '2015-09-18 15:36:18.364611', uuid: 6e21ac05-b4f1-4d02-8bbc-48e423026252}
   model: maasserver.filesystem
   pk: 8

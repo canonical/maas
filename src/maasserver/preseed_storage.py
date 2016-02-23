@@ -471,8 +471,8 @@ class CurtinStorageGenerator:
             "path": filesystem.mount_point,
             "device": "%s_format" % device_or_partition.get_name(),
         }
-        if filesystem.mount_params is not None:
-            stanza["options"] = filesystem.mount_params
+        if filesystem.mount_options is not None:
+            stanza["options"] = filesystem.mount_options
         self.storage_config.append(stanza)
 
 

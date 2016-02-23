@@ -57,7 +57,7 @@ class Filesystem(CleanSave, TimestampedModel):
         command when the filesystem is created.
     :ivar mount_point: Path to where this filesystem is mounted on the deployed
         operating system.
-    :ivar mount_params: Parameters that are used to mount this filesystem
+    :ivar mount_options: Parameters that are used to mount this filesystem
         on the deployed operating system.
     """
 
@@ -95,7 +95,7 @@ class Filesystem(CleanSave, TimestampedModel):
     mount_point = CharField(
         max_length=255, null=True, blank=True)
 
-    mount_params = CharField(
+    mount_options = CharField(
         max_length=255, null=True, blank=True)
 
     cache_set = ForeignKey(
