@@ -4,7 +4,7 @@
 """Utilities for the provisioning server."""
 
 __all__ = [
-    "coerce_to_valid_hostname",
+    "CircularDependency",
     "filter_dict",
     "flatten",
     "import_settings",
@@ -12,6 +12,7 @@ __all__ = [
     "locate_config",
     "parse_key_value_file",
     "ShellTemplate",
+    "sorttop",
     "sudo",
     "typed",
     "warn_deprecated",
@@ -19,6 +20,7 @@ __all__ = [
 ]
 
 from collections import Iterable
+from functools import reduce
 from itertools import chain
 import os
 from pipes import quote
@@ -333,3 +335,44 @@ def get_init_system():
         return 'systemd'
     else:
         return 'upstart'
+
+
+class CircularDependency(ValueError):
+    """A circular dependency has been found."""
+
+
+def sorttop(data):
+    """Sort `data` topologically.
+
+    `data` should be a `dict`, where each entry maps a "thing" to a `set` of
+    other things they depend on, or should be sorted after. For example:
+
+      >>> list(sorttop({1: {2}, 2: {3, 4}}))
+      [{3, 4}, {2}, {1}]
+
+    :raises CircularDependency: If two or more things depend on one another,
+        making it impossible to resolve their relative ordering.
+    """
+    empty = frozenset()
+
+    # Copy data and discard self-referential dependencies.
+    data = {thing: set(deps) for thing, deps in data.items()}
+    for thing, deps in data.items():
+        deps.discard(thing)
+
+    # Find ghost dependencies and add them as "things".
+    ghosts = reduce(set.union, data.values(), set()).difference(data)
+    for ghost in ghosts:
+        data[ghost] = empty
+
+    # Skim batches off the top until we're done.
+    while len(data) != 0:
+        batch = {thing for thing, deps in data.items() if deps == empty}
+        if len(batch) == 0:
+            raise CircularDependency(data)
+        else:
+            for thing in batch:
+                del data[thing]
+            for deps in data.values():
+                deps.difference_update(batch)
+            yield batch

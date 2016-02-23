@@ -8,6 +8,7 @@
 __all__ = []
 
 from collections import Iterator
+from copy import deepcopy
 import os
 from textwrap import dedent
 
@@ -23,23 +24,26 @@ from mock import (
 import provisioningserver
 import provisioningserver.utils
 from provisioningserver.utils import (
+    CircularDependency,
     classify,
     escape_py_literal,
     filter_dict,
     flatten,
     get_init_system,
+    in_develop_mode,
     locate_config,
     maas_custom_config_markers,
     parse_key_value_file,
     Safe,
     ShellTemplate,
-    write_custom_config_section,
-    in_develop_mode,
+    sorttop,
     sudo,
+    write_custom_config_section,
 )
 from testtools.matchers import (
     DirExists,
     EndsWith,
+    Equals,
     IsInstance,
 )
 
@@ -462,3 +466,61 @@ class TestGetInitSystem(MAASTestCase):
         dirname = self.make_dir()
         self.patch(provisioningserver.utils, 'SYSTEMD_RUN_PATH', dirname)
         self.assertEqual('systemd', get_init_system())
+
+
+EMPTY = frozenset()
+
+
+class TestSortTop(MAASTestCase):
+    """Tests for `sorttop`."""
+
+    def assertSort(self, data, *batches):
+        self.assertThat(tuple(sorttop(data)), Equals(batches))
+
+    def test_empty_yields_no_batches(self):
+        self.assertSort({})
+
+    def test_single_thing_without_dep_yields_single_batch(self):
+        self.assertSort({7: EMPTY}, {7})
+
+    def test_single_thing_referring_to_self_yields_single_batch(self):
+        self.assertSort({7: {7}}, {7})
+
+    def test_multiple_things_without_dep_yields_single_batch(self):
+        self.assertSort({4: EMPTY, 5: EMPTY}, {4, 5})
+
+    def test_multiple_things_with_deps_yields_multiple_batches(self):
+        self.assertSort({1: {2}, 2: {3}, 3: EMPTY}, {3}, {2}, {1})
+
+    def test_ghost_dependencies_appear_in_first_batch(self):
+        # A "ghost" is a dependency that doesn't appear as a "thing", i.e. as
+        # a key in the dict passed in to sorttop.
+        self.assertSort({1: {2}, 3: EMPTY}, {2, 3}, {1})
+
+    def test_circular_dependency_results_in_an_exception(self):
+        self.assertRaises(CircularDependency, list, sorttop({1: {2}, 2: {1}}))
+
+    def test_input_not_modified(self):
+        data = {1: {2, 5}, 2: {3, 4, 5}, 6: {2}}
+        orig = deepcopy(data)
+        self.assertSort(data, {3, 4, 5}, {2}, {1, 6})
+        self.assertThat(data, Equals(orig))
+
+    def test_can_sort_non_numeric_things_too(self):
+        computers = object()
+        books = object()
+        paper = object()
+        silicon = object()
+        data = {
+            "alice": {"bob", "carol"},
+            "bob": {"carol", "dave"},
+            "carol": {computers, books},
+            "dave": {books},
+            books: {paper},
+            computers: {books, silicon},
+            True: {False},
+        }
+        self.assertSort(
+            data, {silicon, paper, False}, {books, True},
+            {computers, "dave"}, {"carol"}, {"bob"}, {"alice"},
+        )
