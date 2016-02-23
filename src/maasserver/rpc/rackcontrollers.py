@@ -20,6 +20,7 @@ from maasserver.models import (
     Node,
     RackController,
 )
+from maasserver.models.node import typecast_node
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import synchronous
@@ -78,7 +79,7 @@ def find_and_register_existing(system_id, hostname, mac_addresses):
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 
-    rackcontroller = RackController.objects.get(system_id=node.system_id)
+    rackcontroller = typecast_node(node, RackController)
     # Tell register RPC call a refresh isn't needed
     rackcontroller.needs_refresh = False
     return rackcontroller

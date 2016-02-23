@@ -12,6 +12,7 @@ __all__ = [
 import http.client
 import os
 
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -221,7 +222,7 @@ class BootResourcesHandler(OperationsHandler):
         import_resources()
         return HttpResponse(
             "Import of boot resources started",
-            status=int(http.client.OK))
+            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

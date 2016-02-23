@@ -155,7 +155,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             factory.make_NodeResult_for_commissioning()
             for counter in range(3)]
         url = reverse('node_results_handler')
-        response = self.client.get(url, {'op': 'list'})
+        response = self.client.get(url)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_results = json_load_bytes(response.content)
@@ -188,7 +188,6 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         response = self.client.get(
             url,
             {
-                'op': 'list',
                 'system_id': [
                     commissioning_results[0].node.system_id,
                     commissioning_results[1].node.system_id,
@@ -211,7 +210,6 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         response = self.client.get(
             url,
             {
-                'op': 'list',
                 'name': commissioning_results[0].name
             }
         )
@@ -226,7 +224,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
         node = factory.make_Node(owner=factory.make_User())
         factory.make_NodeResult_for_commissioning(node)
         url = reverse('node_results_handler')
-        response = self.client.get(url, {'op': 'list'})
+        response = self.client.get(url)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         parsed_results = json_load_bytes(response.content)

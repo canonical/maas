@@ -195,9 +195,7 @@ class TestSSHKeyHandlers(APITestCase):
 
     def test_list_works(self):
         _, keys = factory.make_user_with_keys(user=self.logged_in_user)
-        params = dict(op="list")
-        response = self.client.get(
-            reverse('sshkeys_handler'), params)
+        response = self.client.get(reverse('sshkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json_load_bytes(response.content)
         expected_result = [
@@ -250,8 +248,7 @@ class TestSSHKeyHandlers(APITestCase):
     def test_adding_works(self):
         key_string = get_data('data/test_rsa0.pub')
         response = self.client.post(
-            reverse('sshkeys_handler'),
-            data=dict(op="new", key=key_string))
+            reverse('sshkeys_handler'), data=dict(key=key_string))
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_response = json_load_bytes(response.content)
         self.assertEqual(key_string, parsed_response["key"])
@@ -261,16 +258,13 @@ class TestSSHKeyHandlers(APITestCase):
     def test_adding_catches_key_validation_errors(self):
         key_string = factory.make_string()
         response = self.client.post(
-            reverse('sshkeys_handler'),
-            data=dict(op='new', key=key_string))
+            reverse('sshkeys_handler'), data=dict(key=key_string))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response)
         self.assertIn(b"Invalid", response.content)
 
     def test_adding_returns_badrequest_when_key_not_in_form(self):
-        response = self.client.post(
-            reverse('sshkeys_handler'),
-            data=dict(op='new'))
+        response = self.client.post(reverse('sshkeys_handler'))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response)
         self.assertEqual(

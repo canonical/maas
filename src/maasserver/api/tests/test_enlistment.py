@@ -402,9 +402,9 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
-                'substatus_name',
-                'substatus_message',
-                'substatus_action',
+                'status_name',
+                'status_message',
+                'status_action',
             ],
             list(parsed_result))
 
@@ -491,6 +491,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'node_type',
+                'node_type_name',
                 'power_type',
                 'power_state',
                 'resource_uri',
@@ -505,12 +506,13 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'disable_ipv4',
                 'address_ttl',
                 'boot_disk',
+                'boot_interface',
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
-                'substatus_action',
-                'substatus_message',
-                'substatus_name',
+                'status_action',
+                'status_message',
+                'status_name',
             ],
             list(parsed_result))
 
@@ -643,6 +645,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'node_type',
+                'node_type_name',
                 'power_type',
                 'power_state',
                 'resource_uri',
@@ -657,12 +660,13 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'disable_ipv4',
                 'address_ttl',
                 'boot_disk',
+                'boot_interface',
                 'blockdevice_set',
                 'physicalblockdevice_set',
                 'virtualblockdevice_set',
-                'substatus_name',
-                'substatus_message',
-                'substatus_action'
+                'status_name',
+                'status_message',
+                'status_action'
             ],
             list(parsed_result))
 

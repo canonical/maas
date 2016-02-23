@@ -238,9 +238,9 @@ class TestNodeAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
 
-    def test_GET_returns_substatus_message_with_most_recent_event(self):
+    def test_GET_returns_status_message_with_most_recent_event(self):
         """Makes sure the most recent event from this node is shown in the
-        substatus_message attribute."""
+        status_message attribute."""
         # The first event won't be returned.
         event = factory.make_Event(description="Uninteresting event")
         node = event.node
@@ -249,31 +249,60 @@ class TestNodeAPI(APITestCase):
         factory.make_Event(description=message, node=node)
         response = self.client.get(self.get_node_uri(node))
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(message, parsed_result['substatus_message'])
+        self.assertEqual(message, parsed_result['status_message'])
 
-    def test_GET_returns_substatus_name(self):
+    def test_GET_returns_status_name(self):
         """GET should display the node status as a user-friendly string."""
         for status in NODE_STATUS_CHOICES_DICT:
             node = factory.make_Node(status=status)
             response = self.client.get(self.get_node_uri(node))
             parsed_result = json_load_bytes(response.content)
             self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
-                             parsed_result['substatus_name'])
+                             parsed_result['status_name'])
 
-    def test_resource_uri_points_back_at_node(self):
+    def test_resource_uri_points_back_at_machine(self):
         self.become_admin()
-        # When a Node is returned by the API, the field 'resource_uri'
-        # provides the URI for this Node.
-        node = factory.make_Node(
+        # When a Machine is returned by the API, the field 'resource_uri'
+        # provides the URI for this Machine.
+        machine = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'mark_broken'})
+        response = self.client.get(self.get_node_uri(machine))
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            reverse('node_handler', args=[parsed_result['system_id']]),
+            reverse('machine_handler', args=[parsed_result['system_id']]),
+            parsed_result['resource_uri'])
+
+    def test_resource_uri_points_back_at_device(self):
+        self.become_admin()
+        # When a Device is returned by the API, the field 'resource_uri'
+        # provides the URI for this Device.
+        device = factory.make_Device(
+            hostname='diane', owner=self.logged_in_user)
+        response = self.client.get(self.get_node_uri(device))
+        parsed_result = json_load_bytes(response.content)
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            reverse('device_handler', args=[parsed_result['system_id']]),
+            parsed_result['resource_uri'])
+
+    def test_resource_uri_points_back_at_rack_controller(self):
+        self.become_admin()
+        # When a Device is returned by the API, the field 'resource_uri'
+        # provides the URI for this Device.
+        rack = factory.make_RackController(
+            hostname='diane', owner=self.logged_in_user)
+        response = self.client.get(self.get_node_uri(rack))
+        parsed_result = json_load_bytes(response.content)
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            reverse(
+                'rackcontroller_handler',
+                args=[parsed_result['system_id']]),
             parsed_result['resource_uri'])
 
     def test_DELETE_deletes_node(self):

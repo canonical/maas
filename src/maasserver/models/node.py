@@ -6,6 +6,7 @@
 __all__ = [
     "Device",
     "Node",
+    "Machine",
     "RackController",
     "RegionController",
     ]
@@ -185,6 +186,32 @@ def generate_node_system_ids():
 def generate_node_system_id():
     """Return the next short system ID."""
     return next(generate_node_system_ids())
+
+
+def typecast_node(node, model):
+    """Typecast a node object into a node type object."""
+    assert(isinstance(node, Node))
+    assert(issubclass(model, Node))
+    node.__class__ = model
+    return node
+
+
+def typecast_to_node_type(node):
+    """Typecast a node object to what the node_type is set to."""
+    if node.node_type == NODE_TYPE.MACHINE:
+        return typecast_node(node, Machine)
+    elif node.node_type in (
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+        # XXX ltrager 18-02-2016 - Currently only rack controllers have
+        # unique functionality so when combined return a rack controller
+        return typecast_node(node, RackController)
+    elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
+        return typecast_node(node, RegionController)
+    elif node.node_type == NODE_TYPE.DEVICE:
+        return typecast_node(node, Device)
+    else:
+        raise NotImplementedError("Unknown node type %d" % node.node_type)
 
 
 class NodeQueriesMixin(MAASQueriesMixin):
@@ -2060,15 +2087,6 @@ class Node(CleanSave, TimestampedModel):
         self.netboot = on
         self.save()
 
-    def get_deployment_status(self):
-        """Return a string repr of the deployment status of this node."""
-        mapping = {
-            NODE_STATUS.DEPLOYED: "Deployed",
-            NODE_STATUS.DEPLOYING: "Deploying",
-            NODE_STATUS.FAILED_DEPLOYMENT: "Failed deployment",
-        }
-        return mapping.get(self.status, "Not in deployment")
-
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
         arch, subarch = self.architecture.split('/')
@@ -2556,7 +2574,7 @@ class Node(CleanSave, TimestampedModel):
                 interface.type == INTERFACE_TYPE.PHYSICAL)
         ]
 
-    def substatus_message(self):
+    def status_message(self):
         """Returns a string representation of the most recent event description
         (supplied through the status API) associated with this node, None if
         there are no events."""
@@ -2566,7 +2584,7 @@ class Node(CleanSave, TimestampedModel):
         event = Event.objects.filter(node=self).order_by('-id').first()
         return event.description if event is not None else None
 
-    def substatus_action(self):
+    def status_action(self):
         """Returns a string representation of the most recent event action name
         (supplied through the status API) associated with this node, None if
         there are no events."""
@@ -2577,8 +2595,8 @@ class Node(CleanSave, TimestampedModel):
         return event.action if event is not None else None
 
     @property
-    def substatus_name(self):
-        """Returns the subtatus of the nome as a user-friendly string."""
+    def status_name(self):
+        """Returns the status of the nome as a user-friendly string."""
         return NODE_STATUS_CHOICES_DICT[self.status]
 
     @transactional

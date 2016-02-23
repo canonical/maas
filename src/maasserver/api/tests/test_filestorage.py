@@ -135,13 +135,13 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_add_file_succeeds(self):
         response = self.make_API_POST_request(
-            "add", factory.make_name('upload'), factory.make_file_upload())
+            None, factory.make_name('upload'), factory.make_file_upload())
         self.assertEqual(http.client.CREATED, response.status_code)
 
     def test_add_file_with_slashes_in_name_succeeds(self):
         filename = "filename/with/slashes/in/it"
         response = self.make_API_POST_request(
-            "add", filename, factory.make_file_upload())
+            None, filename, factory.make_file_upload())
         self.assertEqual(http.client.CREATED, response.status_code)
         self.assertItemsEqual(
             [filename],
@@ -150,7 +150,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_add_file_fails_with_no_filename(self):
         response = self.make_API_POST_request(
-            "add", fileObj=factory.make_file_upload())
+            None, fileObj=factory.make_file_upload())
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(b"Filename not supplied", response.content)
@@ -158,7 +158,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
     def test_add_empty_file(self):
         filename = "filename"
         response = self.make_API_POST_request(
-            "add", filename=filename,
+            None, filename=filename,
             fileObj=factory.make_file_upload(content=b''))
         self.assertEqual(http.client.CREATED, response.status_code)
         self.assertItemsEqual(
@@ -167,7 +167,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 filename=filename).values_list('filename', flat=True))
 
     def test_add_file_fails_with_no_file_attached(self):
-        response = self.make_API_POST_request("add", "foo")
+        response = self.make_API_POST_request(None, "foo")
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
@@ -180,7 +180,6 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         response = self.client.post(
             reverse('files_handler'),
             {
-                "op": "add",
                 "filename": "foo",
                 "file": foo,
                 "file2": foo2,
@@ -194,12 +193,12 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
     def test_add_file_can_overwrite_existing_file_of_same_name(self):
         # Write file one.
         response = self.make_API_POST_request(
-            "add", "foo", factory.make_file_upload(content=b"file one"))
+            None, "foo", factory.make_file_upload(content=b"file one"))
         self.assertEqual(http.client.CREATED, response.status_code)
 
         # Write file two with the same name but different contents.
         response = self.make_API_POST_request(
-            "add", "foo", factory.make_file_upload(content=b"file two"))
+            None, "foo", factory.make_file_upload(content=b"file two"))
         self.assertEqual(http.client.CREATED, response.status_code)
 
         # Retrieve the file and check its contents are the new contents.
@@ -234,7 +233,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
             factory.make_FileStorage(
                 filename=filename, content=b"test content",
                 owner=self.logged_in_user)
-        response = self.make_API_GET_request("list")
+        response = self.make_API_GET_request()
         self.assertEqual(http.client.OK, response.status_code)
         parsed_results = json_load_bytes(response.content)
         filenames = [result['filename'] for result in parsed_results]
@@ -242,7 +241,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
 
     def test_list_files_filters_by_owner(self):
         factory.make_FileStorage(owner=factory.make_User())
-        response = self.make_API_GET_request("list")
+        response = self.make_API_GET_request()
         self.assertEqual(http.client.OK, response.status_code)
         parsed_results = json_load_bytes(response.content)
         self.assertEqual([], parsed_results)
@@ -255,7 +254,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
                 filename=filename, content=b"test content",
                 owner=self.logged_in_user)
         response = self.client.get(
-            reverse('files_handler'), {"op": "list", "prefix": "prefix-"})
+            reverse('files_handler'), {"prefix": "prefix-"})
         self.assertEqual(http.client.OK, response.status_code)
         parsed_results = json_load_bytes(response.content)
         filenames = [result['filename'] for result in parsed_results]
@@ -265,7 +264,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         factory.make_FileStorage(
             filename="filename", content=b"test content",
             owner=self.logged_in_user)
-        response = self.make_API_GET_request("list")
+        response = self.make_API_GET_request()
         parsed_results = json_load_bytes(response.content)
         self.assertNotIn('content', parsed_results[0])
 
@@ -274,7 +273,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         factory.make_FileStorage(
             filename=filename, content=b"test content",
             owner=self.logged_in_user)
-        response = self.make_API_GET_request("list")
+        response = self.make_API_GET_request()
         parsed_results = json_load_bytes(response.content)
         resource_uri = parsed_results[0]['resource_uri']
         expected_uri = reverse('file_handler', args=[filename])
@@ -284,8 +283,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         # Do a roundtrip (upload a file then get it) for a file with a
         # name that contains slashes.
         filename = "filename/with/slashes/in/it"
-        self.make_API_POST_request(
-            "add", filename, factory.make_file_upload())
+        self.make_API_POST_request(None, filename, factory.make_file_upload())
         file_url = reverse('file_handler', args=[filename])
         # The file url contains the filename without any kind of
         # escaping.

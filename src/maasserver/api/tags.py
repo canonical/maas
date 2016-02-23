@@ -11,6 +11,7 @@ __all__ = [
 
 import http.client
 
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
@@ -33,6 +34,7 @@ from maasserver.models import (
     RackController,
     Tag,
 )
+from maasserver.models.node import typecast_to_node_type
 from maasserver.utils.orm import get_one
 from metadataserver.models.nodekey import NodeKey
 from piston3.utils import rc
@@ -131,8 +133,12 @@ class TagHandler(OperationsHandler):
         # and not a list of tags as this handler is defined to return.
         self.fields = None
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
-        return Node.objects.get_nodes(
-            request.user, NODE_PERMISSION.VIEW, from_nodes=tag.node_set.all())
+        return [
+            typecast_to_node_type(node)
+            for node in Node.objects.get_nodes(
+                request.user, NODE_PERMISSION.VIEW,
+                from_nodes=tag.node_set.all())
+        ]
 
     def _get_nodes_for(self, request, param):
         system_ids = get_list_from_dict_or_multidict(request.data, param)
@@ -192,6 +198,8 @@ class TagHandler(OperationsHandler):
                 "Definition supplied '%s' "
                 "doesn't match current definition '%s'"
                 % (definition, tag.definition),
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET),
                 status=int(http.client.CONFLICT))
         nodes_to_add = self._get_nodes_for(request, 'add')
         tag.node_set.add(*nodes_to_add)
@@ -214,10 +222,10 @@ class TagHandler(OperationsHandler):
 class TagsHandler(OperationsHandler):
     """Manage the collection of all the Tags in this MAAS."""
     api_doc_section_name = "Tags"
-    create = read = update = delete = None
+    update = delete = None
 
     @operation(idempotent=False)
-    def new(self, request):
+    def create(self, request):
         """Create a new Tag.
 
         :param name: The name of the Tag to be created. This should be a short
@@ -243,7 +251,7 @@ class TagsHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=True)
-    def list(self, request):
+    def read(self, request):
         """List Tags.
 
         Get a listing of all tags that are currently defined.

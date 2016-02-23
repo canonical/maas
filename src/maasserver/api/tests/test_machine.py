@@ -293,9 +293,9 @@ class TestMachineAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
 
-    def test_GET_returns_substatus_message_with_most_recent_event(self):
+    def test_GET_returns_status_message_with_most_recent_event(self):
         """Makes sure the most recent event from this machine is shown in the
-        substatus_message attribute."""
+        status_message attribute."""
         # The first event won't be returned.
         event = factory.make_Event(description="Uninteresting event")
         machine = event.node
@@ -304,16 +304,16 @@ class TestMachineAPI(APITestCase):
         factory.make_Event(description=message, node=machine)
         response = self.client.get(self.get_machine_uri(machine))
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(message, parsed_result['substatus_message'])
+        self.assertEqual(message, parsed_result['status_message'])
 
-    def test_GET_returns_substatus_name(self):
+    def test_GET_returns_status_name(self):
         """GET should display the machine status as a user-friendly string."""
         for status in NODE_STATUS_CHOICES_DICT:
             machine = factory.make_Node(status=status)
             response = self.client.get(self.get_machine_uri(machine))
             parsed_result = json_load_bytes(response.content)
             self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
-                             parsed_result['substatus_name'])
+                             parsed_result['status_name'])
 
     def test_POST_power_off_checks_permission(self):
         machine = factory.make_Node()

@@ -159,7 +159,7 @@ class FileHandler(OperationsHandler):
 class FilesHandler(OperationsHandler):
     """Manage the collection of all the files in this MAAS."""
     api_doc_section_name = "Files"
-    create = read = update = delete = None
+    update = delete = None
     anonymous = AnonFilesHandler
 
     get_by_name = operation(
@@ -168,7 +168,7 @@ class FilesHandler(OperationsHandler):
         idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
     @operation(idempotent=False)
-    def add(self, request):
+    def create(self, request):
         """Add a new file to the file storage.
 
         :param filename: The file name to use in the storage.
@@ -198,7 +198,7 @@ class FilesHandler(OperationsHandler):
         return HttpResponse('', status=int(http.client.CREATED))
 
     @operation(idempotent=True)
-    def list(self, request):
+    def read(self, request):
         """List the files from the file storage.
 
         The returned files are ordered by file name and the content is

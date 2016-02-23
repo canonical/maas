@@ -12,7 +12,10 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.api.utils import get_optional_list
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    NODE_PERMISSION,
+    NODE_TYPE_CHOICES,
+)
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.fields import MAC_RE
 from maasserver.forms import (
@@ -32,6 +35,8 @@ DISPLAYED_DEVICE_FIELDS = (
     'tag_names',
     'ip_addresses',
     'zone',
+    'node_type',
+    'node_type_name',
     )
 
 
@@ -74,6 +79,10 @@ class DeviceHandler(OperationsHandler):
             for interface in device.interface_set.all()
             if interface.mac_address
         ]
+
+    @classmethod
+    def node_type_name(handler, node):
+        return NODE_TYPE_CHOICES[node.node_type][1]
 
     def read(self, request, system_id):
         """Read a specific device.

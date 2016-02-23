@@ -10,6 +10,7 @@ __all__ = [
 
 import http.client
 
+from django.conf import settings
 from django.http import (
     HttpResponse,
     HttpResponseForbidden,
@@ -34,15 +35,15 @@ class SSLKeysHandler(OperationsHandler):
     """Operations on multiple keys."""
     api_doc_section_name = "SSL Keys"
 
-    create = read = update = delete = None
+    update = delete = None
 
     @operation(idempotent=True)
-    def list(self, request):
+    def read(self, request):
         """List all keys belonging to the requesting user."""
         return SSLKey.objects.filter(user=request.user).order_by('id')
 
     @operation(idempotent=False)
-    def new(self, request):
+    def create(self, request):
         """Add a new SSL key to the requesting user's account.
 
         The request payload should contain the SSL key data in form
@@ -98,7 +99,10 @@ class SSLKeyHandler(OperationsHandler):
         key = get_object_or_404(SSLKey, id=keyid)
         if key.user != request.user:
             return HttpResponseForbidden(
-                "Can't delete a key you don't own.")
+                "Can't delete a key you don't own.",
+                content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET)
+            )
         key.delete()
         return rc.DELETED
 

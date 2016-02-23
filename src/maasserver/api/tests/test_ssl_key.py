@@ -31,9 +31,7 @@ class TestSSLKeyHandlers(APITestCase):
     def test_list_works(self):
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.logged_in_user)
-        params = dict(op="list")
-        response = self.client.get(
-            reverse('sslkeys_handler'), params)
+        response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -47,9 +45,7 @@ class TestSSLKeyHandlers(APITestCase):
     def test_list_sorts_output(self):
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.logged_in_user)
-        params = dict(op="list")
-        response = self.client.get(
-            reverse('sslkeys_handler'), params)
+        response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -65,9 +61,7 @@ class TestSSLKeyHandlers(APITestCase):
         factory.make_user_with_ssl_keys(n_keys=2)
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.logged_in_user)
-        params = dict(op="list")
-        response = self.client.get(
-            reverse('sslkeys_handler'), params)
+        response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -84,9 +78,7 @@ class TestSSLKeyHandlers(APITestCase):
         _, keys = factory.make_user_with_ssl_keys(
             n_keys=2, user=self.logged_in_user)
         self.become_admin()
-        params = dict(op="list")
-        response = self.client.get(
-            reverse('sslkeys_handler'), params)
+        response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -153,8 +145,7 @@ class TestSSLKeyHandlers(APITestCase):
     def test_adding_works(self):
         key_string = get_data('data/test_x509_0.pem')
         response = self.client.post(
-            reverse('sslkeys_handler'),
-            data=dict(op="new", key=key_string))
+            reverse('sslkeys_handler'), data=dict(key=key_string))
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_response = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -165,17 +156,14 @@ class TestSSLKeyHandlers(APITestCase):
     def test_adding_catches_key_validation_errors(self):
         key_string = factory.make_string()
         response = self.client.post(
-            reverse('sslkeys_handler'),
-            data=dict(op='new', key=key_string))
+            reverse('sslkeys_handler'), data=dict(key=key_string))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response)
         self.assertIn(
             "Invalid", response.content.decode(settings.DEFAULT_CHARSET))
 
     def test_adding_returns_badrequest_when_key_not_in_form(self):
-        response = self.client.post(
-            reverse('sslkeys_handler'),
-            data=dict(op='new'))
+        response = self.client.post(reverse('sslkeys_handler'))
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response)
         self.assertEqual(

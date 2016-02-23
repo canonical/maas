@@ -371,7 +371,7 @@ class TestTagsAPI(APITestCase):
             '/api/2.0/tags/', reverse('tags_handler'))
 
     def test_GET_list_without_tags_returns_empty_list(self):
-        response = self.client.get(reverse('tags_handler'), {'op': 'list'})
+        response = self.client.get(reverse('tags_handler'))
         self.assertItemsEqual([], json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)))
 
@@ -380,7 +380,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': name,
                 'comment': factory.make_string(),
                 'definition': factory.make_string(),
@@ -396,7 +395,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': name,
                 'comment': comment,
                 'definition': definition,
@@ -416,7 +414,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': name,
                 'comment': comment,
             })
@@ -439,7 +436,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': invalid,
                 'comment': comment,
                 'definition': definition,
@@ -459,7 +455,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': name,
                 'comment': comment,
                 'definition': definition,
@@ -484,7 +479,6 @@ class TestTagsAPI(APITestCase):
         response = self.client.post(
             reverse('tags_handler'),
             {
-                'op': 'new',
                 'name': name,
                 'comment': comment,
                 'definition': definition,

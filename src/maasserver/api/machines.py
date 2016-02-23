@@ -83,6 +83,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'system_id',
     'hostname',
     'owner',
+    'macaddress_set',
     'boot_interface',
     'architecture',
     'min_hwe_kernel',
@@ -123,10 +124,11 @@ DISPLAYED_MACHINE_FIELDS = (
     'blockdevice_set',
     'physicalblockdevice_set',
     'virtualblockdevice_set',
-    'substatus_action',
-    'substatus_message',
-    'substatus_name',
+    'status_action',
+    'status_message',
+    'status_name',
     'node_type',
+    'node_type_name',
 )
 
 
@@ -374,7 +376,7 @@ class MachineHandler(NodeHandler):
 
     @operation(idempotent=False)
     def release(self, request, system_id):
-        """Release a node.  Opposite of `MachinesHandler.acquire`.
+        """Release a node. Opposite of `Machines.allocate`.
 
         :param comment: Optional comment for the event log.
         :type comment: unicode
@@ -776,6 +778,7 @@ class MachinesHandler(NodesHandler):
     api_doc_section_name = "Machines"
     anonymous = AnonMachinesHandler
     base_model = Machine
+    fields = DISPLAYED_MACHINE_FIELDS
 
     @operation(idempotent=False)
     def create(self, request):
@@ -1090,35 +1093,6 @@ class MachinesHandler(NodesHandler):
                 machine.constraints_by_type['verbose_storage'] = storage
                 machine.constraints_by_type['verbose_interfaces'] = interfaces
             return machine
-
-    @operation(idempotent=True)
-    def deployment_status(self, request):
-        """Retrieve deployment status for multiple machines.
-
-        :param machines: Mandatory list of system IDs for machines whose status
-            you wish to check.
-
-        Returns 400 if mandatory parameters are missing.
-        Returns 403 if the user has no permission to view any of the machines.
-        """
-        system_ids = set(request.GET.getlist('machines'))
-        # Check the existence of these nodes first.
-        self._check_system_ids_exist(system_ids)
-        # Make sure that the user has the required permission.
-        machines = self.base_model.objects.get_nodes(
-            request.user, perm=NODE_PERMISSION.VIEW, ids=system_ids)
-        permitted_ids = set(machine.system_id for machine in machines)
-        if len(machines) != len(system_ids):
-            raise PermissionDenied(
-                "You don't have the required permission to view the "
-                "following machine(s): %s." % (
-                    ', '.join(system_ids - permitted_ids)))
-
-        # Create a dict of system_id to status.
-        response = dict()
-        for machine in machines:
-            response[machine.system_id] = machine.get_deployment_status()
-        return response
 
     @admin_method
     @operation(idempotent=True)

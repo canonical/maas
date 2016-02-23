@@ -96,6 +96,7 @@ from maasserver.models.interface import (
     Interface,
     InterfaceRelationship,
 )
+from maasserver.models.node import typecast_node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
@@ -438,7 +439,7 @@ class Factory(maastesting.factory.Factory):
             node_type=NODE_TYPE.RACK_CONTROLLER,
             with_dhcp_rack_primary=False, with_dhcp_rack_secondary=False,
             **kwargs)
-        return RackController.objects.get(system_id=node.system_id)
+        return typecast_node(node, RackController)
 
     def make_BMC(
             self, power_type=None, power_parameters=None, ip_address=None,

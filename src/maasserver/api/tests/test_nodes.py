@@ -517,7 +517,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(
+        self.assertItemsEqual(
             [node.system_id for node in machines + devices + rack_controllers],
             extract_system_ids(parsed_result),
             "Node listing doesn't contain all node types.")

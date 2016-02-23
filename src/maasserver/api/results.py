@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handler: `CommissioningResult`."""
@@ -17,13 +17,14 @@ from maasserver.api.utils import (
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models import Node
+from maasserver.models.node import typecast_to_node_type
 from metadataserver.models import NodeResult
 
 
 class NodeResultsHandler(OperationsHandler):
     """Read the collection of NodeResult in the MAAS."""
     api_doc_section_name = "Commissioning results"
-    create = read = update = delete = None
+    create = update = delete = None
 
     model = NodeResult
     fields = (
@@ -31,7 +32,7 @@ class NodeResultsHandler(OperationsHandler):
         'node', 'data')
 
     @operation(idempotent=True)
-    def list(self, request):
+    def read(self, request):
         """List NodeResult visible to the user, optionally filtered.
 
         :param system_id: An optional list of system ids.  Only the
@@ -56,6 +57,10 @@ class NodeResultsHandler(OperationsHandler):
             results = results.filter(name__in=names)
         if result_type is not None:
             results = results.filter(result_type__in=result_type)
+        # Convert the node objects into typed node objects so we get the
+        # proper listing
+        for result in results:
+            result.node = typecast_to_node_type(result.node)
         return results
 
     @classmethod

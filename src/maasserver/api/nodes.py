@@ -8,6 +8,7 @@ __all__ = [
     "store_node_power_parameters",
 ]
 
+from itertools import chain
 import json
 
 import bson
@@ -29,6 +30,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -40,60 +42,10 @@ from maasserver.models import (
     Interface,
     Node,
 )
+from maasserver.models.node import typecast_to_node_type
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from piston3.utils import rc
 from provisioningserver.power.schema import UNKNOWN_POWER_TYPE
-
-# Node's fields exposed on the API.
-DISPLAYED_NODE_FIELDS = (
-    'system_id',
-    'hostname',
-    'owner',
-    'macaddress_set',
-    'architecture',
-    'min_hwe_kernel',
-    'hwe_kernel',
-    'cpu_count',
-    'memory',
-    'swap_size',
-    'storage',
-    'status',
-    'osystem',
-    'distro_series',
-    'netboot',
-    'power_type',
-    'power_state',
-    'tag_names',
-    'address_ttl',
-    'ip_addresses',
-    ('interface_set', (
-        'id',
-        'name',
-        'type',
-        'vlan',
-        'mac_address',
-        'parents',
-        'children',
-        'tags',
-        'enabled',
-        'links',
-        'params',
-        'discovered',
-        'effective_mtu',
-        )),
-    'zone',
-    'disable_ipv4',
-    'constraint_map',
-    'constraints_by_type',
-    'boot_disk',
-    'blockdevice_set',
-    'physicalblockdevice_set',
-    'virtualblockdevice_set',
-    'substatus_action',
-    'substatus_message',
-    'substatus_name',
-    'node_type',
-)
 
 
 def store_node_power_parameters(node, request):
@@ -186,7 +138,6 @@ class NodeHandler(OperationsHandler):
 
     create = None  # Disable create.
     model = Node
-    fields = DISPLAYED_NODE_FIELDS
 
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.
@@ -210,13 +161,23 @@ class NodeHandler(OperationsHandler):
             if interface.mac_address
         ]
 
+    @classmethod
+    def node_type_name(handler, node):
+        return NODE_TYPE_CHOICES[node.node_type][1]
+
     def read(self, request, system_id):
         """Read a specific Node.
 
         Returns 404 if the node is not found.
         """
-        return self.model.objects.get_node_or_404(
+        node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+        if self.model != Node:
+            return node
+        else:
+            # Return the specific node type object so we get the correct
+            # listing
+            return typecast_to_node_type(node)
 
     def delete(self, request, system_id):
         """Delete a specific Node.
@@ -317,7 +278,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
     create = update = delete = None
     model = Node
-    fields = DISPLAYED_NODE_FIELDS
 
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.
@@ -356,15 +316,26 @@ class NodesHandler(OperationsHandler):
 
     def read(self, request):
         """List all nodes."""
-        nodes = filtered_nodes_list_from_request(request, self.base_model)
-
-        # Prefetch related objects that are needed for rendering the result.
-        nodes = nodes.prefetch_related('interface_set__node')
-        nodes = nodes.prefetch_related(
-            'interface_set__ip_addresses')
-        nodes = nodes.prefetch_related('tags')
-        nodes = nodes.prefetch_related('zone')
-        return nodes.order_by('id')
+        if self.base_model == Node:
+            # Avoid circular dependencies
+            from maasserver.api.devices import DevicesHandler
+            from maasserver.api.machines import MachinesHandler
+            from maasserver.api.rackcontrollers import RackControllersHandler
+            nodes = list(chain(
+                DevicesHandler().read(request).order_by("id"),
+                MachinesHandler().read(request).order_by("id"),
+                RackControllersHandler().read(request).order_by("id"),
+            ))
+            return nodes
+        else:
+            nodes = filtered_nodes_list_from_request(request, self.base_model)
+            # Prefetch related objects that are needed for rendering the
+            # result.
+            nodes = nodes.prefetch_related('interface_set__node')
+            nodes = nodes.prefetch_related('interface_set__ip_addresses')
+            nodes = nodes.prefetch_related('tags')
+            nodes = nodes.prefetch_related('zone')
+            return nodes.order_by('id')
 
     @admin_method
     @operation(idempotent=False)

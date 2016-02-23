@@ -50,6 +50,7 @@ from maasserver.models import (
     SSLKey,
 )
 from maasserver.models.event import Event
+from maasserver.models.node import typecast_node
 from maasserver.models.tag import Tag
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
@@ -506,7 +507,7 @@ class VersionIndexHandler(MetadataViewHandler):
                         ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks
                     ]
                     # The VLAN object can only be related to a RackController
-                    rack = RackController.objects.get(system_id=node.system_id)
+                    rack = typecast_node(node, RackController)
                     for nic in rack.interface_set.all():
                         if nic.vlan in vlans:
                             nic.vlan.primary_rack = rack

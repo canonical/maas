@@ -45,11 +45,16 @@ from maasserver.models import (
     node as node_module,
     PhysicalInterface,
     RackController,
+    RegionController,
     UnknownInterface,
 )
 from maasserver.models.bmc import BMC
 from maasserver.models.event import Event
-from maasserver.models.node import PowerInfo
+from maasserver.models.node import (
+    PowerInfo,
+    typecast_node,
+    typecast_to_node_type,
+)
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.models.user import create_auth_token
@@ -127,6 +132,57 @@ from twisted.internet import (
     defer,
     reactor,
 )
+
+
+class TestTypeCastNode(MAASServerTestCase):
+    def test_all_node_types_can_be_casted(self):
+        node = factory.make_Node()
+        cast_to = random.choice(
+            [Device, Machine, Node, RackController, RegionController])
+        typecast_node(node, cast_to)
+        self.assertIsInstance(node, cast_to)
+
+    def test_rejects_casting_to_non_node_type_objects(self):
+        node = factory.make_Node()
+        self.assertRaises(AssertionError, typecast_node, node, object)
+
+    def test_rejects_casting_non_node_type(self):
+        node = object()
+        cast_to = random.choice(
+            [Device, Machine, Node, RackController, RegionController])
+        self.assertRaises(AssertionError, typecast_node, node, cast_to)
+
+
+class TestTypeCastToNodeType(MAASServerTestCase):
+    def test_cast_to_machine(self):
+        node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
+        machine = typecast_to_node_type(node)
+        self.assertIsInstance(machine, Machine)
+
+    def test_cast_to_rack_controller(self):
+        node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+        rack = typecast_to_node_type(node)
+        self.assertIsInstance(rack, RackController)
+
+    def test_cast_to_region_and_rack_controller(self):
+        node = factory.make_Node(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        rack = typecast_to_node_type(node)
+        self.assertIsInstance(rack, RackController)
+
+    def test_cast_to_region_controller(self):
+        node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
+        region = typecast_to_node_type(node)
+        self.assertIsInstance(region, RegionController)
+
+    def test_cast_to_device(self):
+        node = factory.make_Node(node_type=NODE_TYPE.DEVICE)
+        device = typecast_to_node_type(node)
+        self.assertIsInstance(device, Device)
+
+    def test_throws_exception_on_unknown_type(self):
+        node = factory.make_Node(node_type=random.randint(10, 10000))
+        self.assertRaises(NotImplementedError, typecast_to_node_type, node)
 
 
 class TestNodeManager(MAASServerTestCase):
@@ -1950,7 +2006,7 @@ class TestNode(MAASServerTestCase):
     def test_full_clean_checks_architecture_for_installable_nodes(self):
         device = factory.make_Device(architecture='')
         # Set type here so we don't cause exception while creating object
-        node = Node.objects.get(system_id=device.system_id)
+        node = typecast_node(device, Node)
         node.node_type = factory.pick_enum(
             NODE_TYPE, but_not=[NODE_TYPE.DEVICE])
         exception = self.assertRaises(ValidationError, node.full_clean)
@@ -2491,18 +2547,18 @@ class TestNode(MAASServerTestCase):
         node._register_request_event(None, event_name, comment)
         self.assertThat(log_mock, MockNotCalled())
 
-    def test__substatus_message_returns_most_recent_event(self):
+    def test__status_message_returns_most_recent_event(self):
         # The first event won't be returned.
         event = factory.make_Event(description="Uninteresting event")
         node = event.node
         # The second (and last) event will be returned.
         message = "Interesting event"
         factory.make_Event(description=message, node=node)
-        self.assertEqual(message, node.substatus_message())
+        self.assertEqual(message, node.status_message())
 
-    def test__substatus_message_returns_none_for_new_node(self):
+    def test__status_message_returns_none_for_new_node(self):
         node = factory.make_Node()
-        self.assertIsNone(node.substatus_message())
+        self.assertIsNone(node.status_message())
 
 
 class TestNodePowerParameters(MAASServerTestCase):
@@ -3572,32 +3628,6 @@ class TestGetDefaultGateways(MAASServerTestCase):
             (interface.id, subnet_v4.id, subnet_v4.gateway_ip),
             (interface.id, subnet_v6.id, subnet_v6.gateway_ip),
             ), node.get_default_gateways())
-
-
-class TestDeploymentStatus(MAASServerTestCase):
-    """Tests for node.get_deployment_status."""
-
-    def test_returns_deploying_when_deploying(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        self.assertEqual("Deploying", node.get_deployment_status())
-
-    def test_returns_deployed_when_deployed(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.assertEqual("Deployed", node.get_deployment_status())
-
-    def test_returns_failed_deployment_when_failed_deployment(self):
-        node = factory.make_Node(status=NODE_STATUS.FAILED_DEPLOYMENT)
-        self.assertEqual("Failed deployment", node.get_deployment_status())
-
-    def test_returns_not_deploying_otherwise(self):
-        status = factory.pick_enum(
-            NODE_STATUS, but_not=[
-                NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED,
-                NODE_STATUS.FAILED_DEPLOYMENT
-            ]
-        )
-        node = factory.make_Node(status=status)
-        self.assertEqual("Not in deployment", node.get_deployment_status())
 
 
 class TestNode_Start(MAASServerTestCase):
