@@ -27,7 +27,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from mock import sentinel
 from testtools.matchers import (
-    ContainsDict,
     Equals,
     Is,
     IsInstance,
@@ -134,9 +133,9 @@ class TestWebApplicationService(MAASTestCase):
         self.expectThat(
             page.find(".//p").text_content(),
             Equals("Please try again in a few seconds."))
-        self.expectThat(
-            request.outgoingHeaders,
-            ContainsDict({b"retry-after": Equals(b"5")}))
+        self.assertEqual(
+            ['5'],
+            request.responseHeaders.getRawHeaders("retry-after"))
 
     def test__startService_starts_application(self):
         service = self.make_webapp()

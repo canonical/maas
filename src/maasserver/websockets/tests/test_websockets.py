@@ -551,9 +551,15 @@ class WebSocketsResourceTest(MAASTestCase):
         """
         result = self.resource.render(request)
         self.assertEqual(b"", result)
-        self.assertEqual({}, request.outgoingHeaders)
+        self.assertEqual(
+            {}, {name: value for name, value in
+                 request.responseHeaders.getAllRawHeaders()})
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
+
+    def update_headers(self, request, headers):
+        for name, value in headers.items():
+            request.requestHeaders.addRawHeader(name=name, value=value)
 
     def test_getChildWithDefault(self):
         """
@@ -589,7 +595,7 @@ class WebSocketsResourceTest(MAASTestCase):
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
@@ -597,10 +603,11 @@ class WebSocketsResourceTest(MAASTestCase):
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
         self.assertEqual(
-            {b"connection": b"Upgrade",
-             b"upgrade": b"WebSocket",
-             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
-            request.outgoingHeaders)
+            {b"Connection": [b"Upgrade"],
+             b"Upgrade": [b"WebSocket"],
+             b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
+            {name: value
+             for name, value in request.responseHeaders.getAllRawHeaders()})
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
@@ -629,19 +636,20 @@ class WebSocketsResourceTest(MAASTestCase):
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
-        self.assertEqual(
-            {b"connection": b"Upgrade",
-             b"upgrade": b"WebSocket",
-             b"sec-websocket-protocol": b"bar",
-             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
-            request.outgoingHeaders)
+        self.assertEqual({
+            b"Connection": [b"Upgrade"],
+            b"Upgrade": [b"WebSocket"],
+            b"Sec-Websocket-Protocol": [b"bar"],
+            b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
+            {name: value for name, value in
+                request.responseHeaders.getAllRawHeaders()})
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
 
@@ -651,7 +659,7 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"wrong",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
@@ -664,7 +672,7 @@ class WebSocketsResourceTest(MAASTestCase):
         failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+        self.update_headers(request, headers={
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13"})
@@ -677,7 +685,7 @@ class WebSocketsResourceTest(MAASTestCase):
         """
         request = DummyRequest(b"/")
         request.method = b"POST"
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
@@ -690,7 +698,7 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Wrong",
             b"sec-websocket-key": b"secure",
@@ -703,7 +711,7 @@ class WebSocketsResourceTest(MAASTestCase):
         failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13"})
@@ -715,7 +723,7 @@ class WebSocketsResourceTest(MAASTestCase):
         returns a failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-version": b"13"})
@@ -727,15 +735,17 @@ class WebSocketsResourceTest(MAASTestCase):
         L{WebSocketsResource} returns a failed request.
         """
         request = DummyRequest(b"/")
-        request.headers.update({
+
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"11"})
         result = self.resource.render(request)
         self.assertEqual(b"", result)
-        self.assertEqual({b"sec-websocket-version": b"13"},
-                         request.outgoingHeaders)
+        self.assertEqual(
+            ['13'],
+            request.responseHeaders.getRawHeaders("sec-websocket-version"))
         self.assertEqual([], request.written)
         self.assertEqual(400, request.responseCode)
 
@@ -748,14 +758,16 @@ class WebSocketsResourceTest(MAASTestCase):
         request.requestHeaders = Headers()
         request.transport = StringTransportWithDisconnection()
         self.echoProtocol = None
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(b"", result)
-        self.assertEqual({}, request.outgoingHeaders)
+        self.assertEqual(
+            {}, {name: value for name, value in
+                 request.responseHeaders.getAllRawHeaders()})
         self.assertEqual([], request.written)
         self.assertEqual(502, request.responseCode)
 
@@ -770,18 +782,19 @@ class WebSocketsResourceTest(MAASTestCase):
         secureProtocol = TLSMemoryBIOProtocol(Factory(), Protocol())
         transport.protocol = secureProtocol
         request.transport = transport
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
             b"sec-websocket-version": b"13"})
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
-        self.assertEqual(
-            {b"connection": b"Upgrade",
-             b"upgrade": b"WebSocket",
-             b"sec-websocket-accept": b"oYBv54i42V5dw6KnZqOFroecUTc="},
-            request.outgoingHeaders)
+        self.assertEqual({
+            b"Connection": [b"Upgrade"],
+            b"Upgrade": [b"WebSocket"],
+            b"Sec-Websocket-Accept": [b"oYBv54i42V5dw6KnZqOFroecUTc="]},
+            {name: value for name, value in
+             request.responseHeaders.getAllRawHeaders()})
         self.assertEqual([b""], request.written)
         self.assertEqual(101, request.responseCode)
         self.assertIdentical(None, request.transport)
@@ -840,7 +853,7 @@ class WebSocketsResourceTest(MAASTestCase):
         transport = StringTransportWithDisconnection()
         transport.protocol = Protocol()
         request.transport = transport
-        request.headers.update({
+        self.update_headers(request, headers={
             b"upgrade": b"Websocket",
             b"connection": b"Upgrade",
             b"sec-websocket-key": b"secure",
