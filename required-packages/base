@@ -47,6 +47,7 @@ python3-mock
 python3-netaddr
 python3-netifaces
 python3-oauth
+python3-oauthlib
 python3-openssl
 python3-paramiko
 python3-pexpect
