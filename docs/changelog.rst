@@ -15,8 +15,6 @@ Bug Fix Update
 
 #1526542    Skip block devices with duplicate serial numbers to fix multipath issue.
 
-#1536754    Upgrade from 1.8 to 1.9 lost connected macs in all but one network.
-
 #1532262    Fix failure to power query requests for SM15K servers.
 
 #1484696    Fix bug in apache2 maas config where it will reuse websocket connections
