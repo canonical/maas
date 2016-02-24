@@ -28,7 +28,10 @@ from maasserver.models.filesystemgroup import (
     RAID,
     VolumeGroup,
 )
-from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
+from maasserver.models.partitiontable import (
+    PARTITION_TABLE_EXTRA_SPACE,
+    PREP_PARTITION_SIZE,
+)
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -754,6 +757,217 @@ class TestComplexDiskLayout(
             partition=raid_5_partition, fstype=FILESYSTEM_TYPE.EXT4,
             uuid="a8ad29a3-6083-45af-af8b-06ead59f108b", label="data",
             mount_point="/srv/data")
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            offset: 4194304B
+            size: 8388608B
+            device: sda
+            wipe: zero
+            flag: prep
+            grub_device: True
+          - id: sda-part2
+            name: sda-part2
+            type: partition
+            number: 2
+            uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
+            size: 8573157376B
+            wipe: superblock
+            device: sda
+          - id: sda-part2_format
+            type: format
+            fstype: ext4
+            label: root
+            uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
+            volume: sda-part2
+          - id: sda-part2_mount
+            type: mount
+            path: /
+            device: sda-part2_format
+        """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="ppc64el/generic",
+            bios_boot_method="uefi", with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=(
+                (8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE -
+                PREP_PARTITION_SIZE),
+            bootable=False)
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/")
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestPower8ExtraSpaceLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            offset: 4194304B
+            size: 8388608B
+            device: sda
+            wipe: zero
+            flag: prep
+            grub_device: True
+          - id: sda-part2
+            name: sda-part2
+            type: partition
+            number: 2
+            uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
+            size: 7507804160B
+            wipe: superblock
+            device: sda
+          - id: sda-part2_format
+            type: format
+            fstype: ext4
+            label: root
+            uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
+            volume: sda-part2
+          - id: sda-part2_mount
+            type: mount
+            path: /
+            device: sda-part2_format
+        """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="ppc64el/generic",
+            bios_boot_method="uefi", with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk)
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=(7 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False)
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/")
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestPower8NoPartitionTableLayout(
+        MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent("""\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+          - id: sdb
+            name: sdb
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00002
+          - id: sdb-part1
+            name: sdb-part1
+            type: partition
+            number: 1
+            offset: 4194304B
+            size: 8388608B
+            device: sdb
+            wipe: zero
+            flag: prep
+            grub_device: True
+          - id: sda-part1
+            name: sda-part1
+            type: partition
+            number: 1
+            uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
+            offset: 4194304B
+            size: 8573157376B
+            wipe: superblock
+            device: sda
+          - id: sda-part1_format
+            type: format
+            fstype: ext4
+            label: root
+            uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
+            volume: sda-part1
+          - id: sda-part1_mount
+            type: mount
+            path: /
+            device: sda-part1_format
+        """)
+
+    def test__renders_expected_output(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, architecture="ppc64el/generic",
+            bios_boot_method="uefi", with_boot_disk=False)
+        root_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sda",
+            model="QEMU HARDDISK", serial="QM00001")  # 8 GiB
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=root_disk)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=8 * 1024 ** 3, name="sdb",
+            model="QEMU HARDDISK", serial="QM00002")  # 8 GiB
+        node.boot_disk = boot_disk
+        node.save()
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=(
+                (8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE -
+                PREP_PARTITION_SIZE),
+            bootable=False)
+        factory.make_Filesystem(
+            partition=root_partition, fstype=FILESYSTEM_TYPE.EXT4,
+            uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",
+            mount_point="/")
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
         self.assertStorageConfig(self.STORAGE_CONFIG, config)

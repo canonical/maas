@@ -49,6 +49,13 @@ END_OF_PARTITION_TABLE_SPACE = 1 * 1024 * 1024
 PARTITION_TABLE_EXTRA_SPACE = (
     INITIAL_PARTITION_OFFSET + END_OF_PARTITION_TABLE_SPACE)
 
+# The amount of space required to be reserved for the prep partition. Prep
+# partition is required by all ppc64el architectures. Because of the way the
+# system boots it requires that a 8MiB prep partition exist with grub installed
+# on that partition. Without this partition the installation of grub will fail
+# on ppc64el and will fail to boot.
+PREP_PARTITION_SIZE = 8 * 1024 * 1024  # 8MiB
+
 
 class PartitionTable(CleanSave, TimestampedModel):
     """A partition table on a block device.
@@ -73,13 +80,22 @@ class PartitionTable(CleanSave, TimestampedModel):
     def get_size(self):
         """Total usable size of partition table."""
         return round_size_to_nearest_block(
-            self.block_device.size - PARTITION_TABLE_EXTRA_SPACE,
+            self.block_device.size - self.get_overhead_size(),
             PARTITION_ALIGNMENT_SIZE,
             False)
 
     def get_block_size(self):
         """Block size of partition table."""
         return self.block_device.block_size
+
+    def get_overhead_size(self):
+        """Return the total amount of extra space this partition table
+        requires."""
+        extra_space = PARTITION_TABLE_EXTRA_SPACE
+        node_arch, _ = self.block_device.node.split_arch()
+        if node_arch == "ppc64el":
+            extra_space += PREP_PARTITION_SIZE
+        return extra_space
 
     def get_used_size(self, ignore_partitions=[]):
         """Return the used size of partitions on the table."""
@@ -93,7 +109,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         if used_size is None:
             used_size = 0
         # The extra space taken by the partition table header is used space.
-        return used_size + PARTITION_TABLE_EXTRA_SPACE
+        return used_size + self.get_overhead_size()
 
     def get_available_size(self, ignore_partitions=[]):
         """Return the remaining size available for partitions."""
@@ -143,8 +159,8 @@ class PartitionTable(CleanSave, TimestampedModel):
             # placed on the boot disk.
             if boot_disk is not None and self.block_device.id == boot_disk.id:
                 bios_boot_method = node.get_bios_boot_method()
-                if bios_boot_method == "uefi":
-                    # UEFI must always use a GPT table.
+                if bios_boot_method in ["uefi", "powernv", "powerkvm"]:
+                    # UEFI, PowerNV, or PowerKVM must always use a GPT table.
                     if not self.table_type:
                         self.table_type = PARTITION_TABLE_TYPE.GPT
                     elif self.table_type != PARTITION_TABLE_TYPE.GPT:
