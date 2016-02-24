@@ -75,7 +75,7 @@ from metadataserver.models import (
 )
 from metadataserver.models.commissioningscript import NODE_INFO_SCRIPTS
 from metadataserver.user_data import poweroff
-from piston.utils import rc
+from piston3.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,

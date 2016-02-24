@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 import json
+from unittest import skip
 
 from crochet import TimeoutError
 from django.conf import settings
@@ -168,6 +169,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         response = self.client.get(reverse('pxeconfig'), params)
         return json.loads(response.content.decode(settings.DEFAULT_CHARSET))
 
+    @skip("XXX: GavinPanella 2016-02-24 bug=1549206: Fails spuriously.")
     def test_pxeconfig_returns_json(self):
         params = self.get_default_params()
         response = self.client.get(

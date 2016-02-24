@@ -5,8 +5,8 @@
 
 __all__ = []
 
-
 from random import randint
+from unittest import skip
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -411,6 +411,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             actual = StaticIPAddress.objects.get_hostname_ip_mapping(dom)
             self.assertItemsEqual(expected_mapping, actual)
 
+    @skip("XXX: GavinPanella 2016-02-24 bug=1549397: Fails spuriously.")
     def test_get_hostname_ip_mapping_returns_raw_ttl(self):
         # We create 2 domains, one with a ttl, one withoout.
         # Within each domain, create a node with an address_ttl, and one
