@@ -63,6 +63,10 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: 'static/partials/subnet-details.html',
                     controller: 'SubnetDetailsController'
                 }).
+                when('/vlan/:vlan_id', {
+                    templateUrl: 'static/partials/vlan-details.html',
+                    controller: 'VLANDetailsController'
+                }).
                 otherwise({
                     redirectTo: '/nodes'
                 });

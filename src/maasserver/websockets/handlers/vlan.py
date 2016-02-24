@@ -27,14 +27,20 @@ class VLANHandler(TimestampedModelHandler):
             ]
 
     def dehydrate(self, obj, data, for_list=False):
-        data["name"] = obj.get_name()
-        data["subnet_ids"] = [
+        data["subnet_ids"] = sorted([
             subnet.id
             for subnet in obj.subnet_set.all()
-        ]
-        data["nodes_count"] = len({
+        ])
+        node_ids = {
             interface.node_id
             for interface in obj.interface_set.all()
             if interface.node_id is not None
-        })
+        }
+        data["nodes_count"] = len(node_ids)
+        if not for_list:
+            data["node_ids"] = sorted(list(node_ids))
+            data["space_ids"] = sorted(list({
+                subnet.space_id
+                for subnet in obj.subnet_set.all()
+            }))
         return data

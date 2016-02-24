@@ -49,7 +49,7 @@
                     <main class="table-body">
                         <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['vlan.vid','space.name','subnet.cidr'])">
-                            <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
+                            <div class="table__data table__column--20"><a href="#/vlan/{$ row.vlan.id $}">{$ getVLANName(row, data.sortedData) $}</a></div>
                             <div class="table__data table__column--15">{$ getSpaceName(row, data.sortedData) $}</div>
                             <div class="table__data table__column--45"><a href="#/subnet/{$ row.subnet.id $}">{$ getSubnetName(row.subnet) $}</a></div>
                             <div class="table__data table__column--20">{$ row.subnet.statistics.available_string $}</div>

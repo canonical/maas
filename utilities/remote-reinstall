@@ -91,6 +91,7 @@ $ssh_run rm -rf /usr/share/maas/web/static/*
 $ssh_run mv /usr/lib/python3/dist-packages/maasserver/static/* /usr/share/maas/web/static/
 $ssh_run service maas-regiond stop
 $ssh_run maas-region-admin migrate
+sleep 1
 $ssh_run service maas-regiond start
 $ssh_run service apache2 restart
 $ssh_run service maas-rackd restart

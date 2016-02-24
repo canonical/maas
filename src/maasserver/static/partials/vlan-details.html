@@ -1,0 +1,46 @@
+<div data-ng-if="loaded">
+    <header class="page-header margin-bottom" data-maas-sticky-header>
+        <div class="inner-wrapper">
+            <h1 class="page-header__title twelvel-col">
+                {$ vlan.title $}
+            </h1>
+        </div>
+    </header>
+    <section class="row">
+        <div class="inner-wrapper">
+           <dl class="six-col">
+                <!-- The user can't change the VID of the default VLAN -->
+               <dt class="two-col">VID</dt><dd class="four-col last-col">{$ vlan.vid != 0 ? vlan.vid : "n/a" $}</dd>
+               <dt class="two-col">Name</dt><dd class="four-col last-col">{$ vlan.name $}</dd>
+               <dt class="two-col">MTU</dt><dd class="four-col last-col">{$ vlan.mtu $}</dd>
+               <dt class="two-col">Fabric</dt><dd class="four-col last-col">{$ fabric.name $}</dd>
+               <dt class="two-col">Spaces</dt><dd class="four-col last-col"><span data-ng-repeat="space in related_spaces">{$ space.name $} </span></dd>
+           </dl>
+            <dl class="six-col last-col">
+                <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlan.dhcp_on $}</dd>
+                <dt class="two-col">Rack&nbsp;controllers</dt><dd class="four-col last-col"><span data-ng-repeat="controller in related_controllers">{$ controller.hostname $} </span></dd>
+            </dl>
+            <div class="twelve-col">
+                <h1>Subnets on this VLAN</h1>
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--25">Subnet</div>
+                            <div class="table__header table__column--10">Used</div>
+                            <div class="table__header table__column--25">Space</div>
+                            <div class="table__header table__column--40">Fabric</div>
+                        </div>
+                    </header>
+                    <section class="table__body">
+                        <div class="table__row" data-ng-repeat="row in related_subnets">
+                            <div class="table__data table__column--25"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
+                            <div class="table__data table__column--10">{$ row.subnet.statistics.usage_string $}</div>
+                            <div class="table__data table__column--25">{$ row.space.name $}</div>
+                            <div class="table__data table__column--40">{$ row.fabric.name $}</div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </section>
+    </div>

@@ -57,8 +57,8 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                 subnetLoaded(activeSubnet);
             } else {
                 SubnetsManager.setActiveItem(
-                    requestedSubnet).then(function(node) {
-                        subnetLoaded(node);
+                    requestedSubnet).then(function(subnet) {
+                        subnetLoaded(subnet);
                     }, function(error) {
                         ErrorService.raiseError(error);
                     });

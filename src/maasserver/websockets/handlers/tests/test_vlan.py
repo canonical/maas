@@ -14,10 +14,10 @@ from maasserver.websockets.handlers.vlan import VLANHandler
 
 class TestVLANHandler(MAASServerTestCase):
 
-    def dehydrate_vlan(self, vlan):
+    def dehydrate_vlan(self, vlan, for_list=False):
         data = {
             "id": vlan.id,
-            "name": vlan.get_name(),
+            "name": vlan.name,
             "vid": vlan.vid,
             "mtu": vlan.mtu,
             "fabric": vlan.fabric_id,
@@ -26,16 +26,26 @@ class TestVLANHandler(MAASServerTestCase):
             "dhcp_on": vlan.dhcp_on,
             "primary_rack": vlan.primary_rack,
             "secondary_rack": vlan.secondary_rack,
-            "subnet_ids": [
+            "subnet_ids": sorted([
                 subnet.id
                 for subnet in vlan.subnet_set.all()
-            ],
+            ]),
             "nodes_count": len({
                 interface.node_id
                 for interface in vlan.interface_set.all()
                 if interface.node_id is not None
             }),
         }
+        if not for_list:
+            data['node_ids'] = sorted(list({
+                interface.node_id
+                for interface in vlan.interface_set.all()
+                if interface.node_id is not None
+            }))
+            data['space_ids'] = sorted([
+                subnet.space.id
+                for subnet in vlan.subnet_set.all()
+                ])
         return data
 
     def test_get(self):
@@ -58,7 +68,7 @@ class TestVLANHandler(MAASServerTestCase):
         handler = VLANHandler(user, {})
         factory.make_VLAN()
         expected_vlans = [
-            self.dehydrate_vlan(vlan)
+            self.dehydrate_vlan(vlan, for_list=True)
             for vlan in VLAN.objects.all()
             ]
         self.assertItemsEqual(

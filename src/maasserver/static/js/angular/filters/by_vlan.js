@@ -18,3 +18,35 @@ angular.module('MAAS').filter('filterByVLAN', function() {
         return filtered;
     };
 });
+
+angular.module('MAAS').filter('filterSpacesByVLAN', function() {
+    return function(spaces, vlan) {
+        var filtered = [];
+        if(!angular.isObject(vlan)) {
+            return filtered;
+        }
+        angular.forEach(spaces, function(space) {
+            if(vlan.space_ids.indexOf(space.id) !== -1) {
+                filtered.push(space);
+            }
+        });
+        return filtered;
+    };
+});
+
+angular.module('MAAS').filter('filterControllersByVLAN', function() {
+    return function(controllers, vlan) {
+        var filtered = [];
+        if(!angular.isObject(vlan)) {
+            return filtered;
+        }
+        angular.forEach(controllers, function(controller) {
+            // XXX mpontillo hack since controllers lack interfaces for now
+            // if(controller.vlan_ids.indexOf(vlan.id) != -1) {
+                filtered.push(controller);
+            //}
+        }
+        );
+        return filtered;
+    };
+});
