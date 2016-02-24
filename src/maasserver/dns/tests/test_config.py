@@ -7,7 +7,10 @@ __all__ = []
 
 import random
 import time
-from unittest import skip
+from unittest import (
+    skip,
+    SkipTest,
+)
 
 from django.conf import settings
 from django.core.management import call_command
@@ -82,6 +85,11 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import Deferred
+
+
+def setUp():
+    raise SkipTest(
+        "XXX: GavinPanella 2016-02-24 bug=1549230: Fails spuriously.")
 
 
 def get_expected_names(node, ip):
@@ -731,6 +739,7 @@ class TestDNSConfigModifications(TestDNSServer):
         domain.delete()
         self.assertEqual([''], self.dig_reverse_resolve(ip))
 
+    @skip("XXX: GavinPanella 2016-02-24 bug=1549206: Fails spuriously.")
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -743,6 +752,7 @@ class TestDNSConfigModifications(TestDNSServer):
         fqdn = "%s.%s" % (node.hostname, node.domain.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
 
+    @skip("XXX: GavinPanella 2016-02-24 bug=1549206: Fails spuriously.")
     def test_change_node_hostname_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -765,6 +775,7 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
     record.
     """
 
+    @skip("XXX: GavinPanella 2016-02-24 bug=1549174: Fails spuriously.")
     def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
         self.patch(settings, "DNS_CONNECT", True)
         subnet = factory.make_ipv4_Subnet_with_IPRanges()

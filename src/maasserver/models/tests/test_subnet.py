@@ -12,6 +12,8 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from hypothesis import given
+from hypothesis.strategies import integers
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -23,6 +25,7 @@ from maasserver.models.subnet import (
     Subnet,
 )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import (
     AddrFormatError,
@@ -486,9 +489,9 @@ class SubnetTest(MAASServerTestCase):
             bits = random.randint(1, 3)
         net = IPNetwork(net)
         if net.version == 6 and net.prefixlen - bits > 124:
-            bits = 124 - net.prefixlen
+            bits = net.prefixlen - 124
         elif net.version == 4 and net.prefixlen - bits > 24:
-            bits = 24 - net.prefixlen
+            bits = net.prefixlen - 24
         parent = IPNetwork("%s/%d" % (net.network, net.prefixlen - bits))
         parent = IPNetwork("%s/%d" % (parent.network, parent.prefixlen))
         return parent
@@ -497,29 +500,29 @@ class SubnetTest(MAASServerTestCase):
         subnet = factory.make_Subnet()
         self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
 
-    def test_get_smallest_enclosing_sane_subnet_finds_parent(self):
-        subnet = factory.make_Subnet()
-        net = IPNetwork(subnet.cidr)
-        parent = self.make_random_parent(net, bits=random.randint(5, 10))
-        parent = factory.make_Subnet(cidr=parent.cidr)
-        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
+    @given(integers(25, 29), integers(2, 5))
+    def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv4(
+            self, subnet_mask, parent_bits):
+        with rollback():  # Needed when using `hypothesis`.
+            subnet = factory.make_Subnet(cidr='192.168.0.0/%d' % subnet_mask)
+            net = IPNetwork(subnet.cidr)
+            self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+            parent = self.make_random_parent(net, bits=parent_bits)
+            parent = factory.make_Subnet(cidr=parent.cidr)
+            self.assertEqual(
+                parent, subnet.get_smallest_enclosing_sane_subnet())
 
-    def test_get_smallest_enclosing_sane_subnet_handles_ipv4(self):
-        subnet = factory.make_Subnet('192.168.0.0/%d' % random.randint(25, 29))
-        net = IPNetwork(subnet.cidr)
-        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
-        parent = self.make_random_parent(net, bits=random.randint(2, 5))
-        parent = factory.make_Subnet(cidr=parent.cidr)
-        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
-
-    def test_get_smallest_enclosing_sane_subnet_handles_ipv6(self):
-        subnet = factory.make_Subnet(
-            '2001:db8::d0/%d' % random.randint(100, 126))
-        net = IPNetwork(subnet.cidr)
-        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
-        parent = self.make_random_parent(net, bits=random.randint(2, 20))
-        parent = factory.make_Subnet(cidr=parent.cidr)
-        self.assertEqual(parent, subnet.get_smallest_enclosing_sane_subnet())
+    @given(integers(100, 126), integers(2, 20))
+    def test_get_smallest_enclosing_sane_subnet_finds_parent_ipv6(
+            self, subnet_mask, parent_bits):
+        with rollback():  # Needed when using `hypothesis`.
+            subnet = factory.make_Subnet(cidr='2001:db8::d0/%d' % subnet_mask)
+            net = IPNetwork(subnet.cidr)
+            self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+            parent = self.make_random_parent(net, bits=parent_bits)
+            parent = factory.make_Subnet(cidr=parent.cidr)
+            self.assertEqual(
+                parent, subnet.get_smallest_enclosing_sane_subnet())
 
 
 class SubnetIPRangeTest(MAASServerTestCase):

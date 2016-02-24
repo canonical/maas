@@ -7,8 +7,12 @@ __all__ = [
     'PostCommitHooksTestMixin',
     'reload_object',
     'reload_objects',
-    ]
+    'rollback',
+]
 
+from contextlib import contextmanager
+
+from django.db import transaction
 from maasserver.utils.orm import (
     gen_description_of_hooks,
     get_one,
@@ -93,3 +97,17 @@ class PostCommitHooksTestMixin(testtools.TestCase):
             # tasks, so always reset them; we don't want to report them again,
             # and we don't want to execute them.
             post_commit_hooks.reset()
+
+
+@contextmanager
+def rollback():
+    """Context manager that always rolls back to a savepoint.
+
+    This is useful when using hypothesis (https://hypothesis.readthedocs.org/)
+    which repeatedly runs tests to discover edge cases.
+    """
+    sid = transaction.savepoint()
+    try:
+        yield
+    finally:
+        transaction.savepoint_rollback(sid)
