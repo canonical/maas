@@ -6,11 +6,11 @@
 
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
-    'MachinesManager', 'ZonesManager', 'GeneralManager',
+    'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
     'UsersManager', 'TagsManager', 'ManagerHelperService', 'ErrorService',
     'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
-        MachinesManager, ZonesManager, GeneralManager,
+        MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, ManagerHelperService, ErrorService,
         ValidationService) {
 
@@ -126,21 +126,23 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Update the shown errors based on the status of the node.
         function updateErrors() {
-            // Check if the nodes power type is null, if so then show the
-            // missing_power error.
-            if($scope.node.power_type === "") {
-                showError("missing_power");
-            } else {
-                hideError("missing_power");
-            }
+            if('controller' !== $routeParams.type) {
+                // Check if the nodes power type is null, if so then show the
+                // missing_power error.
+                if($scope.node.power_type === "") {
+                    showError("missing_power");
+                } else {
+                    hideError("missing_power");
+                }
 
-            // Show architecture error if the node doesn't have an architecture
-            // or if the current architecture is not in the available
-            // architectures.
-            if(hasInvalidArchitecture($scope.node)) {
-                showError("invalid_arch");
-            } else {
-                hideError("invalid_arch");
+                // Show architecture error if the node has no architecture
+                // or if the current architecture is not in the available
+                // architectures.
+                if(hasInvalidArchitecture($scope.node)) {
+                    showError("invalid_arch");
+                } else {
+                    hideError("invalid_arch");
+                }
             }
         }
 
@@ -231,6 +233,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.summary.architecture.selected = $scope.node.architecture;
             $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
             $scope.summary.tags = angular.copy($scope.node.tags);
+
+            var nodeTypeMapping = {
+                0: "Machine",
+                1: "Device",
+                2: "Rack Controller",
+                3: "Region Controller",
+                4: "Rack and Region Controller"
+            };
+            $scope.summary.node_type = nodeTypeMapping[$scope.node.node_type];
 
             // Force editing mode on, if the architecture is invalid. This is
             // placed at the bottom because we wanted the selected items to
@@ -388,6 +399,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watchCollection(
                 $scope.summary.min_hwe_kernel.options, updateSummary);
 
+            // Update the summary when the node type is updated.
+            $scope.$watch("node.node_type", updateSummary);
+
             // Update the summary when the node or zone list is
             // updated.
             $scope.$watch("node.zone.id", updateSummary);
@@ -410,7 +424,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Update the node with new data on the region.
         $scope.updateNode = function(node) {
-            return MachinesManager.updateItem(node).then(function(node) {
+            return $scope.nodesManager.updateItem(node).then(function(node) {
                 updateName();
                 updateSummary();
             }, function(error) {
@@ -495,7 +509,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Check the power state of the node.
         $scope.checkPowerState = function() {
             $scope.checkingPower = true;
-            MachinesManager.checkPowerState($scope.node).then(function() {
+            $scope.nodesManager.checkPowerState($scope.node).then(function() {
                 $scope.checkingPower = false;
             });
         };
@@ -620,7 +634,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 extra.skip_storage = $scope.commissionOptions.skipStorage;
             }
 
-            MachinesManager.performAction(
+            $scope.nodesManager.performAction(
                 $scope.node, $scope.actionOption.name, extra).then(function() {
                     // If the action was delete, then go back to listing.
                     if($scope.actionOption.name === "delete") {
@@ -927,6 +941,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             MachinesManager,
+            ControllersManager,
             ZonesManager,
             GeneralManager,
             UsersManager,
@@ -935,12 +950,18 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already
             // the activeItem.
-            var activeNode = MachinesManager.getActiveItem();
+            $scope.nodesManager = MachinesManager;
+            $scope.isController = false;
+            if('controller' === $routeParams.type) {
+                $scope.nodesManager = ControllersManager;
+                $scope.isController = true;
+            }
+            var activeNode = $scope.nodesManager.getActiveItem();
             if(angular.isObject(activeNode) &&
                 activeNode.system_id === $routeParams.system_id) {
                 nodeLoaded(activeNode);
             } else {
-                MachinesManager.setActiveItem(
+                $scope.nodesManager.setActiveItem(
                     $routeParams.system_id).then(function(node) {
                         nodeLoaded(node);
                     }, function(error) {

@@ -36,11 +36,13 @@ describe("NodeDetailsController", function() {
 
     // Load the required dependencies for the NodeDetails controller and
     // mock the websocket connection.
-    var MachinesManager, DevicesManager, GeneralManager, UsersManager;
+    var MachinesManager, ControllersManager;
+    var DevicesManager, GeneralManager, UsersManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
     var webSocket;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
+        ControllersManager = $injector.get("ControllersManager");
         ZonesManager = $injector.get("ZonesManager");
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
@@ -132,6 +134,7 @@ describe("NodeDetailsController", function() {
             $routeParams: $routeParams,
             $location: $location,
             MachinesManager: MachinesManager,
+            ControllersManager: ControllersManager,
             ZonesManager: ZonesManager,
             GeneralManager: GeneralManager,
             UsersManager: UsersManager,
@@ -139,6 +142,8 @@ describe("NodeDetailsController", function() {
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
+
+        $scope.nodesManager = MachinesManager;
 
         // Since the osSelection directive is not used in this test the
         // osSelection item on the model needs to have $reset function added
@@ -249,7 +254,7 @@ describe("NodeDetailsController", function() {
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            MachinesManager, ZonesManager, GeneralManager,
+            MachinesManager, ControllersManager, ZonesManager, GeneralManager,
             UsersManager, TagsManager]);
     });
 
@@ -337,6 +342,15 @@ describe("NodeDetailsController", function() {
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
         expect($scope.summary.tags).toEqual(node.tags);
+        var nodeTypeMapping = {
+            0: "Machine",
+            1: "Device",
+            2: "Rack Controller",
+            3: "Region Controller",
+            4: "Rack and Region Controller"
+        };
+        expect($scope.summary.node_type).toEqual(
+            nodeTypeMapping[$scope.node.node_type]);
     });
 
     it("missing_power error visible if node power_type empty", function() {
@@ -516,6 +530,7 @@ describe("NodeDetailsController", function() {
             "node.actions",
             "node.architecture",
             "node.min_hwe_kernel",
+            "node.node_type",
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",

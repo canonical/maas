@@ -14,7 +14,7 @@
                     data-ng-model="nameHeader.value"
                     data-ng-disabled="!canEdit()"
                     data-maas-editing="editName()"></span>
-                <span class="page-header__title--identicator" id="bulk-actions" data-ng-hide="nameHeader.editing">
+                <span class="page-header__title--identicator" id="bulk-actions" data-ng-hide="isController || nameHeader.editing">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <span class="power-status">{$ node.status $}</span>
                     <span class="power-status--power {$ getPowerStateClass() $}">
@@ -33,8 +33,16 @@
                     data-ng-class="{ secondary: editNameInvalid() }"
                     data-ng-click="saveEditName()">Save</a>
             </h1>
+            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+            <div class="page-header__actions four-col last-col" data-ng-show="false && isController">
+                 <div class="page-header__cta two-col no-margin-bottom last-col">
+                    <div class="two-col no-margin-bottom last-col">
+                        <a href="#" class="link-cta-ubuntu right">Remove</a>
+                    </div>
+                </div>
+            </div>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <div data-ng-show="!nameHeader.editing && availableActionOptions.length">
+            <div data-ng-show="!isController && !nameHeader.editing && availableActionOptions.length">
                 <div class="page-header__actions four-col last-col">
                      <div class="page-header__cta two-col no-margin-bottom last-col">
                         <div class="two-col no-margin-bottom last-col">
@@ -134,10 +142,11 @@
         <div class="inner-wrapper">
             <form>
                 <div class="twelve-col">
-                    <h2 class="title">Machine summary</h2>
+                    <h2 class="title" data-ng-hide="isController">Machine summary</h2>
+                    <h2 class="title" data-ng-show="isController">Controller summary</h2>
                 </div>
                 <fieldset class="six-col">
-                    <div class="ng-hide" data-ng-show="isSuperUser()">
+                    <div class="ng-hide" data-ng-show="isSuperUser() && !isController">
                         <div class="inline">
                             <label for="zone" class="two-col">Zone</label>
                             <div class="three-col">
@@ -192,7 +201,7 @@
                                 </dd>
                         </dl>
                     </div>
-                    <div data-ng-hide="isSuperUser()">
+                    <div data-ng-hide="isSuperUser() || isController">
                         <dl>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
@@ -210,6 +219,38 @@
                                 <dd class="four-col last-col">
                                     {$ node.tags.join(', ') $}
                                 </dd>
+                        </dl>
+                    </div>
+                    <div data-ng-show="isController">
+                        <dl>
+                            <dt class="two-col">Type</dt>
+                                <dd class="four-col last-col">
+                                    {$ summary.node_type $}
+                                </dd>
+                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+                            <span class="ng-hide">
+                            <dt class="two-col">Last image sync</dt>
+                                <dd class="four-col last-col">
+                                    <time datetime="2015-08-29T13:58Z">
+                                        August 29th, 2015 at 13:58
+                                    </time>
+                                </dd>
+                            </span>
+                            <dt class="two-col">Zone</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.zone.name $}
+                                </dd>
+                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+                            <span class="ng-hide">
+                            <dt class="two-col">Fabrics</dt>
+                                <dd class="four-col last-col">
+                                    <a href="#" class="link--alt">Fabric 1</a>, <a href="#" class="link--alt">Fabric 2</a>, <a href="#" class="link--alt">Fabric 3</a>, <a href="#" class="link--alt">Fabric 4</a>
+                                </dd>
+                            <dt class="two-col">DHCP</dt>
+                                <dd class="four-col last-col">
+                                    <a href="#" class="link--alt">View compiled configuration</a>
+                                </dd>
+                            </span>
                         </dl>
                     </div>
                 </fieldset>
@@ -235,24 +276,33 @@
                             <dd class="four-col last-col ng-hide" data-ng-show="node.show_os_info && node.third_party_driver">
                                 {$ node.third_party_driver.module $} "{$ node.third_party_driver.comment $}"
                             </dd>
+                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+                            <span data-ng-show="false && isController">
+                                <dt class="two-col">MAAS version</dt>
+                                    <dd class="four-col last-col">
+                                        1.10
+                                    </dd>
+                            </span>
                     </dl>
                 </div>
-                <div class="controls" data-ng-hide="summary.editing">
-                    <a href="" class="link-cta-ubuntu secondary"
-                        data-ng-show="canEdit()"
-                        data-ng-click="editSummary()">Edit</a>
-                </div>
-                <div class="controls ng-hide" data-ng-show="summary.editing">
-                        <a href="" class="link-cta-ubuntu clear"
-                           data-ng-click="cancelEditSummary()">Cancel</a>
-                        <button class="cta-ubuntu right"
-                            data-ng-class="{ secondary: invalidArchitecture() }"
-                            data-ng-click="saveEditSummary()">Save changes</button>
-                </div>
+                <span data-ng-hide="isController">
+                    <div class="controls" data-ng-hide="summary.editing">
+                        <a href="" class="link-cta-ubuntu secondary"
+                            data-ng-show="canEdit()"
+                            data-ng-click="editSummary()">Edit</a>
+                    </div>
+                    <div class="controls ng-hide" data-ng-show="summary.editing">
+                            <a href="" class="link-cta-ubuntu clear"
+                               data-ng-click="cancelEditSummary()">Cancel</a>
+                            <button class="cta-ubuntu right"
+                                data-ng-class="{ secondary: invalidArchitecture() }"
+                                data-ng-click="saveEditSummary()">Save changes</button>
+                    </div>
+                </span>
             </form>
         </div>
     </div>
-    <div class="row" data-ng-show="devices.length">
+    <div class="row" data-ng-show="!isController && devices.length">
         <div class="inner-wrapper">
             <div class="twelve-col">
                 <h2 class="title">Containers and VMs</h2>
@@ -277,7 +327,7 @@
             </div>
         </div>
     </div>
-    <div class="row ng-hide" data-ng-show="isSuperUser()">
+    <div class="row ng-hide" data-ng-show="!isController && isSuperUser()">
         <div class="inner-wrapper">
             <form class="disabled">
                 <div class="twelve-col">
@@ -327,6 +377,128 @@
                     </ul>
                 </div>
             </form>
+        </div>
+    </div>
+    <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+    <div class="row" data-ng-show="false && isController">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <h2>Services</h2>
+            </div>
+            <div class="twelve-col">
+                <ul class="list__tree no-bullets">
+                    <li class="list__item">
+                        Cluster D
+                        <ul class="list__tree list__tree--sub-level">
+                            <li class="list__item">TFTP</li>
+                            <li class="list__item">HTTP</li>
+                        </ul>
+                    </li>
+                    <li class="list__item">
+                        <span class="color--error"><span class="icon error"></span>&nbsp;DHCP 4</span> <div class="list__item-feedback">DHCP 4 cannot be provided due to reset</div>
+                    </li>
+                    <li class="list__item">
+                        <span class="color--error"><span class="icon error"></span>&nbsp;DHCP 6</span> <div class="list__item-feedback">DHCP 6 cannot be provided due to reset</div>
+                    </li>
+                    <li class="list__item">ISCSI</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
+    <div class="row" data-ng-show="false && isController">
+        <div class="inner-wrapper">
+            <div class="twelve-col">
+                <h2>Served VLANs</h2>
+            </div>
+            <div class="twelve-col">
+                <form class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <div class="table__header table__column--10">VLAN</div>
+                            <div class="table__header table__column--10">Fabric</div>
+                            <div class="table__header table__column--30">Subnet</div>
+                            <div class="table__header table__column--20">Primary rack</div>
+                            <div class="table__header table__column--20">Secondary rack</div>
+                            <div class="table__header table__column--10">HA</div>
+                        </div>
+                    </header>
+                    <main class="table__body">
+                        <div class="table__row">
+                            <div class="table__data table__column--10"><a href="#">10</a></div>
+                            <div class="table__data table__column--10"><a href="#">Fabric-1</a></div>
+                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2">rack-controller-2</option>
+                                    <option value="3" selected="selected">rack-controller-3</option>
+                                    <option value="4">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled" selected="selected">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2">rack-controller-2</option>
+                                    <option value="3">rack-controller-3</option>
+                                    <option value="4">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__header table__column--10"></div>
+                        </div>
+                        <div class="table__row">
+                            <div class="table__data table__column--10"><a href="#">Untagged</a></div>
+                            <div class="table__data table__column--10"><a href="#">Fabric-2</a></div>
+                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2">rack-controller-2</option>
+                                    <option value="3" selected="selected">rack-controller-3</option>
+                                    <option value="4">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2">rack-controller-2</option>
+                                    <option value="3">rack-controller-3</option>
+                                    <option value="4" selected="selected">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__header table__column--10"><span class="icon simple-tick"></span></div>
+                        </div>
+                        <div class="table__row">
+                            <div class="table__data table__column--10"><a href="#">Untagged</a></div>
+                            <div class="table__data table__column--10"><a href="#">Fabric-3</a></div>
+                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2" selected="selected">rack-controller-2</option>
+                                    <option value="3">rack-controller-3</option>
+                                    <option value="4">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__data table__column--20">
+                                <select name="rackCtrlr" id="rackCtrlr" class="table__input">
+                                    <option value="" disabled="disabled">Choose rack controller...</option>
+                                    <option value="1">rack-controller-1</option>
+                                    <option value="2">rack-controller-2</option>
+                                    <option value="3" selected="selected">rack-controller-3</option>
+                                    <option value="4">rack-controller-4</option>
+                                </select>
+                            </div>
+                            <div class="table__header table__column--10"><span class="icon simple-tick"></span></div>
+                        </div>
+                    </main>
+                </form>
+            </div>
         </div>
     </div>
     <div class="row">
@@ -744,7 +916,7 @@
             </form>
         </div>
     </div>
-    <div class="row" id="storage">
+    <div class="row" id="storage" data-ng-hide="isController">
         <div class="inner-wrapper" ng-controller="NodeStorageController">
             <form>
                 <div class="twleve-col">
@@ -1549,7 +1721,7 @@
             </form>
         </div>
     </div>
-    <div class="row">
+    <div class="row" data-ng-hide="isController">
         <div class="inner-wrapper">
             <div class="twelve-col">
                 <h2 class="title">Latest machine events</h2>
@@ -1585,7 +1757,7 @@
             </div>
         </div>
     </div>
-    <div class="row" data-ng-show="machine_output.viewable">
+    <div class="row" data-ng-show="!isController && machine_output.viewable">
         <div class="inner-wrapper">
             <div class="twelve-col">
                 <h2 class="title">Machine output

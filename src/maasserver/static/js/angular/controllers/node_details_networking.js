@@ -582,9 +582,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     "name": nic.name,
                     "vlan": nic.vlan.id
                 };
-                MachinesManager.updateInterface(
-                    $scope.node, nic.id, params).then(
-                    null, function(error) {
+                $scope.$parent.nodesManager.updateInterface(
+                    $scope.node, nic.id, params).then(null, function(error) {
                         // XXX blake_r: Just log the error in the console, but
                         // we need to expose this as a better message to the
                         // user.
@@ -665,8 +664,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if(nic.mode === LINK_MODE.STATIC && nic.ip_address.length > 0) {
                 params.ip_address = nic.ip_address;
             }
-            return MachinesManager.linkSubnet($scope.node, nic.id, params).then(
-                null, function(error) {
+            return $scope.$parent.nodesManager.linkSubnet(
+                $scope.node, nic.id, params).then(null, function(error) {
                     // XXX blake_r: Just log the error in the console, but
                     // we need to expose this as a better message to the
                     // user.
@@ -871,9 +870,11 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             $scope.selectedMode = SELECTION_MODE.NONE;
             $scope.selectedInterfaces = [];
             if(nic.type !== INTERFACE_TYPE.ALIAS) {
-                MachinesManager.deleteInterface($scope.node, nic.id);
+                $scope.$parent.nodesManager.deleteInterface(
+                    $scope.node, nic.id);
             } else {
-                MachinesManager.unlinkSubnet($scope.node, nic.id, nic.link_id);
+                $scope.$parent.nodesManager.unlinkSubnet(
+                    $scope.node, nic.id, nic.link_id);
             }
 
             // Remove the interface from available interfaces
@@ -991,8 +992,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 if(angular.isObject($scope.newInterface.subnet)) {
                     params.subnet = $scope.newInterface.subnet.id;
                 }
-                MachinesManager.createVLANInterface($scope.node, params).then(
-                    null, function(error) {
+                $scope.$parent.nodesManager.createVLANInterface(
+                    $scope.node, params).then(null, function(error) {
                         // Should do something better but for now just log
                         // the error.
                         console.log(error);
@@ -1148,8 +1149,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 bond_lacp_rate: $scope.newBondInterface.lacpRate,
                 bond_xmit_hash_policy: $scope.newBondInterface.xmitHashPolicy
             };
-            MachinesManager.createBondInterface($scope.node, params).then(
-                null, function(error) {
+            $scope.$parent.nodesManager.createBondInterface(
+                $scope.node, params).then(null, function(error) {
                     // Should do something better but for now just log
                     // the error.
                     console.log(error);
@@ -1232,8 +1233,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             }
             $scope.newInterface.macError = false;
             $scope.newInterface.errorMsg = null;
-            MachinesManager.createPhysicalInterface($scope.node, params).then(
-                function() {
+            $scope.$parent.nodesManager.createPhysicalInterface(
+                $scope.node, params).then(function() {
                     // Clear the interface and reset the mode.
                     $scope.newInterface = {};
                     $scope.selectedMode = SELECTION_MODE.NONE;
@@ -1254,7 +1255,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 });
         };
 
-        // Load all the required managers. MachinesManager and GeneralManager
+        // Load all the required managers. NodesManager and GeneralManager
         // are loaded by the parent controller "NodeDetailsController".
         ManagerHelperService.loadManagers([
             FabricsManager,

@@ -52,8 +52,9 @@ MERGE_VIEWS = {
         "files": [
             "js/angular/maas.js",
             "js/angular/factories/region.js",
-            "js/angular/factories/machines.js",
+            "js/angular/factories/nodes.js",
             "js/angular/factories/devices.js",
+            "js/angular/factories/machines.js",
             "js/angular/factories/controllers.js",
             "js/angular/factories/zones.js",
             "js/angular/factories/general.js",
@@ -95,7 +96,6 @@ MERGE_VIEWS = {
             "js/angular/controllers/nodes_list.js",
             "js/angular/controllers/add_hardware.js",
             "js/angular/controllers/add_device.js",
-            "js/angular/controllers/controller_details.js",
             "js/angular/controllers/node_details.js",
             "js/angular/controllers/node_details_networking.js",
             "js/angular/controllers/node_details_storage.js",

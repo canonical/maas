@@ -318,6 +318,8 @@ describe("NodeNetworkingController", function() {
             loadManagers.and.returnValue($q.defer().promise);
         }
 
+        $parentScope.nodesManager = MachinesManager;
+
         // Create the controller.
         var controller = $controller("NodeNetworkingController", {
             $scope: $scope,
