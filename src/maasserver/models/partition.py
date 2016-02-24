@@ -180,7 +180,17 @@ class Partition(CleanSave, TimestampedModel):
         partitions_in_table = sorted(partitions_in_table, key=attrgetter('id'))
         idx = partitions_in_table.index(self)
         if self.partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
-            return idx + 1
+            # ppc64el machines get part1 skipped when this partition is on
+            # the boot disk. This is because the prep partition is part1 and
+            # is added when the preseed for storage is generated.
+            node = self.get_node()
+            arch, _ = node.split_arch()
+            boot_disk = node.get_boot_disk()
+            if (arch == "ppc64el" and
+                    self.partition_table.block_device.id == boot_disk.id):
+                return idx + 2
+            else:
+                return idx + 1
         elif self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
             # If more than 4 partitions then the 4th partition number is
             # skipped because that is used for the extended partition.

@@ -169,7 +169,12 @@ class StorageLayoutBase(Form):
         from maasserver.models.partitiontable import PartitionTable
         boot_partition_table = PartitionTable.objects.create(
             block_device=self.boot_disk)
-        if boot_partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
+        bios_boot_method = self.node.get_bios_boot_method()
+        node_arch, _ = self.node.split_arch()
+        if (boot_partition_table.table_type == PARTITION_TABLE_TYPE.GPT and
+                bios_boot_method == "uefi" and node_arch != "ppc64el"):
+            # Add EFI partition only if booting UEFI and not a ppc64el
+            # architecture.
             efi_partition = boot_partition_table.add_partition(
                 size=EFI_PARTITION_SIZE, bootable=True)
             Filesystem.objects.create(

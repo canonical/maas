@@ -19,7 +19,10 @@ from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     PARTITION_ALIGNMENT_SIZE,
 )
-from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
+from maasserver.models.partitiontable import (
+    PARTITION_TABLE_EXTRA_SPACE,
+    PREP_PARTITION_SIZE,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
@@ -39,6 +42,19 @@ class TestPartitionTable(MAASServerTestCase):
             round_size_to_nearest_block(
                 partition_table.block_device.size -
                 PARTITION_TABLE_EXTRA_SPACE,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
+            partition_table.get_size())
+
+    def test_get_size_returns_block_device_size_minus_ppc64el(self):
+        node = factory.make_Node(architecture="ppc64el/generic")
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                partition_table.block_device.size -
+                PARTITION_TABLE_EXTRA_SPACE - PREP_PARTITION_SIZE,
                 PARTITION_ALIGNMENT_SIZE,
                 False),
             partition_table.get_size())
@@ -114,6 +130,24 @@ class TestPartitionTable(MAASServerTestCase):
         self.assertRaises(
             ValidationError, partition_table.add_partition)
 
+    def test_get_overhead_size(self):
+        node = factory.make_Node(bios_boot_method="pxe")
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        self.assertEquals(
+            PARTITION_TABLE_EXTRA_SPACE,
+            partition_table.get_overhead_size())
+
+    def test_get_overhead_size_for_ppc64el(self):
+        node = factory.make_Node(architecture="ppc64el/generic")
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(
+            block_device=block_device)
+        self.assertEquals(
+            PARTITION_TABLE_EXTRA_SPACE + PREP_PARTITION_SIZE,
+            partition_table.get_overhead_size())
+
     def test_get_available_size(self):
         block_size = 4096
         device = factory.make_BlockDevice(
@@ -149,6 +183,20 @@ class TestPartitionTable(MAASServerTestCase):
 
     def test_save_sets_table_type_to_gpt_for_uefi_boot(self):
         node = factory.make_Node(with_boot_disk=False, bios_boot_method="uefi")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+    def test_save_sets_table_type_to_gpt_for_powernv_boot(self):
+        node = factory.make_Node(
+            with_boot_disk=False, bios_boot_method="powernv")
+        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=boot_disk)
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+    def test_save_sets_table_type_to_gpt_for_powerkvm_boot(self):
+        node = factory.make_Node(
+            with_boot_disk=False, bios_boot_method="powerkvm")
         boot_disk = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=boot_disk)
         self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)

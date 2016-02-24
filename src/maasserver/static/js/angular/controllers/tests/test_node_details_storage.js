@@ -101,6 +101,7 @@ describe("NodeStorageController", function() {
     var node, updateNodeSpy, canEditSpy;
     beforeEach(function() {
         node = {
+            architecture: "amd64/generic",
             disks: []
         };
         updateNodeSpy = jasmine.createSpy("updateNode");
@@ -1455,6 +1456,25 @@ describe("NodeStorageController", function() {
                 expect($scope.canAddPartition(disk)).toBe(false);
             });
 
+        it("returns false if available_size is less than partition size " +
+           "when node is ppc64el architecture",
+            function() {
+                var controller = makeController();
+                var disk = {
+                    type: "physical",
+                    fstype: "",
+                    original: {
+                        partition_table_type: null,
+                        available_size: (2.5 * 1024 * 1024) + (8 * 1024 * 1024),
+                        block_size: 1024
+                    }
+                };
+                node.architecture = "ppc64el/generic";
+                spyOn($scope, "isAllStorageDisabled").and.returnValue(false);
+                $scope.isSuperUser = function() { return true; };
+                expect($scope.canAddPartition(disk)).toBe(false);
+            });
+
         it("returns false if not super user", function() {
             var controller = makeController();
             var disk = {
@@ -2348,6 +2368,37 @@ describe("NodeStorageController", function() {
             };
 
             expect($scope.getAddPartitionName(disk)).toBe(name + "-part3");
+        });
+
+        it("returns disk.name with -part2 for ppc64el", function() {
+            node.architecture = "ppc64el/generic";
+            var controller = makeController();
+            var name = makeName("sda");
+            var disk = {
+                name: name,
+                original: {
+                    is_boot: true,
+                    partition_table_type: "gpt"
+                }
+            };
+
+            expect($scope.getAddPartitionName(disk)).toBe(name + "-part2");
+        });
+
+        it("returns disk.name with -part4 for ppc64el", function() {
+            node.architecture = "ppc64el/generic";
+            var controller = makeController();
+            var name = makeName("sda");
+            var disk = {
+                name: name,
+                original: {
+                    is_boot: true,
+                    partition_table_type: "gpt",
+                    partitions: [{}, {}]
+                }
+            };
+
+            expect($scope.getAddPartitionName(disk)).toBe(name + "-part4");
         });
 
         it("returns disk.name with -part3 for MBR", function() {

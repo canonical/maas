@@ -14,7 +14,10 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models.partitiontable import INITIAL_PARTITION_OFFSET
+from maasserver.models.partitiontable import (
+    INITIAL_PARTITION_OFFSET,
+    PREP_PARTITION_SIZE,
+)
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 import yaml
@@ -26,6 +29,7 @@ class CurtinStorageGenerator:
     def __init__(self, node):
         self.node = node
         self.boot_disk = node.get_boot_disk()
+        self.boot_disk_first_partition = None
         self.operations = {
             "disk": [],
             "partition": [],
@@ -103,6 +107,13 @@ class CurtinStorageGenerator:
                 raise ValueError("Unknown block device instance: %s" % (
                     block_device.__class__.__name__))
 
+    def _requires_prep_partition(self, block_device):
+        """Return True if block device requires the prep partition."""
+        arch, _ = self.node.split_arch()
+        return (
+            self.boot_disk.id == block_device.id and
+            arch == "ppc64el")
+
     def _add_partition_operations(self):
         """Add all the partition operations.
 
@@ -110,9 +121,16 @@ class CurtinStorageGenerator:
         attached to the node.
         """
         for block_device in self.node.blockdevice_set.order_by('id'):
+            requires_prep = self._requires_prep_partition(block_device)
             partition_table = block_device.get_partitiontable()
             if partition_table is not None:
-                for partition in partition_table.partitions.order_by('id'):
+                partitions = list(partition_table.partitions.order_by('id'))
+                for idx, partition in enumerate(partitions):
+                    # If this is the last partition and prep partition is
+                    # required then set boot_disk_first_partition so extra
+                    # space can be removed.
+                    if requires_prep and idx == 0:
+                        self.boot_disk_first_partition = partition
                     self.operations["partition"].append(partition)
 
     def _add_format_and_mount_operations(self):
@@ -172,20 +190,34 @@ class CurtinStorageGenerator:
 
         # Set the partition table type if a partition table exists or if this
         # is the boot disk.
+        add_prep_partition = False
         partition_table = block_device.get_partitiontable()
         if partition_table is not None:
             disk_operation["ptable"] = self._get_ptable_type(
                 partition_table)
         elif block_device.id == self.boot_disk.id:
-            if self.node.get_bios_boot_method() == "uefi":
+            bios_boot_method = self.node.get_bios_boot_method()
+            node_arch, _ = self.node.split_arch()
+            if bios_boot_method in [
+                    "uefi", "powernv", "powerkvm"]:
                 disk_operation["ptable"] = "gpt"
+                if node_arch == "ppc64el":
+                    add_prep_partition = True
             else:
                 disk_operation["ptable"] = "msdos"
 
-        # Set this disk to be the grub device if its the boot disk.
-        if self.boot_disk == block_device:
+        # Set this disk to be the grub device if it's the boot disk and doesn't
+        # require a prep partition. When a prep partition is required grub
+        # must be installed on that partition and not in the partition header
+        # of that disk.
+        requires_prep = self._requires_prep_partition(block_device)
+        if self.boot_disk.id == block_device.id and not requires_prep:
             disk_operation["grub_device"] = True
         self.storage_config.append(disk_operation)
+
+        # Add the prep partition at the end of the disk when it is required.
+        if add_prep_partition:
+            self._generate_prep_partition(block_device.get_name())
 
     def _get_ptable_type(self, partition_table):
         """Return the value for the "ptable" entry in the physical operation.
@@ -199,12 +231,38 @@ class CurtinStorageGenerator:
                 "Unknown partition table type: %s" % (
                     partition_table.table_type))
 
+    def _generate_prep_partition(self, device_name):
+        """Generate the prep partition at the beginning of the block device."""
+        prep_part_name = "%s-part1" % (device_name)
+        partition_operation = {
+            "id": prep_part_name,
+            "name": prep_part_name,
+            "type": "partition",
+            "number": 1,
+            "offset": "%dB" % INITIAL_PARTITION_OFFSET,
+            "size": "%dB" % PREP_PARTITION_SIZE,
+            "device": device_name,
+            "wipe": "zero",
+            "flag": "prep",
+            "grub_device": True,
+        }
+        self.storage_config.append(partition_operation)
+
     def _generate_partition_operations(self):
         """Generate all partition operations."""
         for partition in self.operations["partition"]:
-            self._generate_partition_operation(partition)
+            if partition == self.boot_disk_first_partition:
+                # This is the first partition in the boot disk and add prep
+                # partition at the beginning of the partition table.
+                device_name = partition.partition_table.block_device.get_name()
+                self._generate_prep_partition(device_name)
+                self._generate_partition_operation(
+                    partition, include_initial=False)
+            else:
+                self._generate_partition_operation(
+                    partition, include_initial=True)
 
-    def _generate_partition_operation(self, partition):
+    def _generate_partition_operation(self, partition, include_initial):
         """Generate partition operation for `partition` and place in
         `storage_config`."""
         partition_table = partition.partition_table
@@ -221,7 +279,7 @@ class CurtinStorageGenerator:
             "wipe": "superblock",
         }
         # First partition always sets the initial offset.
-        if partition_number == 1:
+        if partition_number == 1 and include_initial:
             partition_operation["offset"] = "%sB" % INITIAL_PARTITION_OFFSET
         if partition.bootable:
             partition_operation["flag"] = "boot"

@@ -33,7 +33,7 @@ GRUB_CONFIG = dedent("""\
 class PowerKVMBootMethod(BootMethod):
 
     name = "powerkvm"
-    bios_boot_method = "pxe"
+    bios_boot_method = "powerkvm"
     template_subdir = None
     bootloader_path = "bootppc64.bin"
     bootloader_arches = ['ppc64el']

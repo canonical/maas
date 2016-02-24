@@ -158,7 +158,7 @@ maaslog = get_maas_logger("node")
 
 # Holds the known `bios_boot_methods`. If `bios_boot_method` is not in this
 # list then it will fallback to `DEFAULT_BIOS_BOOT_METHOD`.
-KNOWN_BIOS_BOOT_METHODS = ["pxe", "uefi"]
+KNOWN_BIOS_BOOT_METHODS = ["pxe", "uefi", "powernv", "powerkvm"]
 
 # Default `bios_boot_method`. See `KNOWN_BIOS_BOOT_METHOD` above for usage.
 DEFAULT_BIOS_BOOT_METHOD = "pxe"

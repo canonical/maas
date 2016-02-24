@@ -390,6 +390,14 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(bios_boot_method="uefi")
         self.assertEqual("uefi", node.get_bios_boot_method())
 
+    def test_get_bios_boot_method_returns_powernv(self):
+        node = factory.make_Node(bios_boot_method="powernv")
+        self.assertEqual("powernv", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_returns_powerkvm(self):
+        node = factory.make_Node(bios_boot_method="powerkvm")
+        self.assertEqual("powerkvm", node.get_bios_boot_method())
+
     def test_get_bios_boot_method_fallback_to_pxe(self):
         node = factory.make_Node(bios_boot_method=factory.make_name("boot"))
         self.assertEqual("pxe", node.get_bios_boot_method())

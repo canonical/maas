@@ -20,7 +20,10 @@ from maasserver.models.partition import (
     MAX_PARTITION_SIZE_FOR_MBR,
     PARTITION_ALIGNMENT_SIZE,
 )
-from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
+from maasserver.models.partitiontable import (
+    PARTITION_TABLE_EXTRA_SPACE,
+    PREP_PARTITION_SIZE,
+)
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BcacheStorageLayoutBase,
@@ -51,6 +54,20 @@ LARGE_BLOCK_DEVICE = 10 * 1024 * 1024 * 1024  # 10 GiB
 def make_Node_with_uefi_boot_method(*args, **kwargs):
     kwargs['bios_boot_method'] = "uefi"
     kwargs['with_boot_disk'] = False
+    return factory.make_Node(*args, **kwargs)
+
+
+def make_ppc64el_Node_with_powernv_boot_method(*args, **kwargs):
+    kwargs['bios_boot_method'] = "powernv"
+    kwargs['with_boot_disk'] = False
+    kwargs['architecture'] = "ppc64el/generic"
+    return factory.make_Node(*args, **kwargs)
+
+
+def make_ppc64el_Node_with_uefi_boot_method(*args, **kwargs):
+    kwargs['bios_boot_method'] = "powerkvm"
+    kwargs['with_boot_disk'] = False
+    kwargs['architecture'] = "ppc64el/generic"
     return factory.make_Node(*args, **kwargs)
 
 
@@ -494,6 +511,66 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEqual(
             round_size_to_nearest_block(
                 MAX_PARTITION_SIZE_FOR_MBR,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
+            root_partition.size)
+        self.assertThat(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+                ))
+
+    def test__creates_layout_for_powernv(self):
+        node = make_ppc64el_Node_with_powernv_boot_method()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = FlatStorageLayout(node)
+        layout.configure()
+
+        # Validate partition table.
+        partition_table = boot_disk.get_partitiontable()
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+        # Validate root partition.
+        partitions = partition_table.partitions.order_by('id').all()
+        root_partition = partitions[0]
+        self.assertIsNotNone(root_partition)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                boot_disk.size - PARTITION_TABLE_EXTRA_SPACE -
+                PREP_PARTITION_SIZE,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
+            root_partition.size)
+        self.assertThat(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+                ))
+
+    def test__creates_layout_for_powerkvm(self):
+        node = make_ppc64el_Node_with_uefi_boot_method()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = FlatStorageLayout(node)
+        layout.configure()
+
+        # Validate partition table.
+        partition_table = boot_disk.get_partitiontable()
+        self.assertEqual(PARTITION_TABLE_TYPE.GPT, partition_table.table_type)
+
+        # Validate root partition.
+        partitions = partition_table.partitions.order_by('id').all()
+        root_partition = partitions[0]
+        self.assertIsNotNone(root_partition)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                boot_disk.size - PARTITION_TABLE_EXTRA_SPACE -
+                PREP_PARTITION_SIZE,
                 PARTITION_ALIGNMENT_SIZE,
                 False),
             root_partition.size)

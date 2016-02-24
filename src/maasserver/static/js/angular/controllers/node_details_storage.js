@@ -51,6 +51,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         var END_OF_PARTITION_TABLE_SPACE = 1024 * 1024;
         var PARTITION_TABLE_EXTRA_SPACE = INITIAL_PARTITION_OFFSET +
             END_OF_PARTITION_TABLE_SPACE;
+        var PREP_PARTITION_SIZE = 8 * 1024 * 1024;
 
         // From models/partition.py - must be kept in sync.
         var PARTITION_ALIGNMENT_SIZE = 4 * 1024 * 1024;
@@ -855,6 +856,11 @@ angular.module('MAAS').controller('NodeStorageController', [
                 || disk.original.partition_table_type === "") {
                 // Disk has no partition table, so reserve space for it.
                 space_to_reserve = PARTITION_TABLE_EXTRA_SPACE;
+                // ppc64el node requires that space be saved for the prep
+                // partition.
+                if($scope.node.architecture.indexOf("ppc64el") === 0) {
+                    space_to_reserve += PREP_PARTITION_SIZE;
+                }
             }
             return ConverterService.roundByBlockSize(
                 disk.original.available_size - space_to_reserve,
@@ -1129,6 +1135,11 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
             if(disk.original.partition_table_type === "mbr" &&
                 length > 2) {
+                return disk.name + "-part" + (length + 2);
+            } else if($scope.node.architecture.indexOf("ppc64el") === 0 &&
+                disk.original.is_boot) {
+                // Boot disk on ppc64el machines skip the first partition as
+                // its reserved for the prep partition.
                 return disk.name + "-part" + (length + 2);
             } else {
                 return disk.name + "-part" + (length + 1);
