@@ -270,7 +270,7 @@ docs/api.rst: bin/maas-region-admin src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region-admin generate_api_doc > $@
 
 sampledata: bin/maas-region-admin bin/database syncdb
-	$(dbrun) bin/maas-region-admin loaddata src/maasserver/fixtures/dev_fixture.yaml
+	$(dbrun) bin/maas-region-admin generate_sample_data
 
 doc: bin/sphinx docs/api.rst
 	bin/sphinx

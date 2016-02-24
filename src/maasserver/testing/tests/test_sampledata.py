@@ -1,0 +1,16 @@
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for the `sampledata` module."""
+
+__all__ = []
+
+from maasserver.testing import sampledata
+from maastesting.testcase import MAASTestCase
+
+
+class TestPopulates(MAASTestCase):
+    """Tests for `sampledata.populate`."""
+
+    def test__runs(self):
+        sampledata.populate()

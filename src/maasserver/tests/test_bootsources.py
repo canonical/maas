@@ -6,6 +6,7 @@
 __all__ = []
 
 from os import environ
+from unittest import skip
 
 from maasserver import bootsources
 from maasserver.bootsources import (
@@ -200,6 +201,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['https_proxy']))
 
+    @skip("XXX: GavinPanella 2015-12-04 bug=1546235: Fails spuriously.")
     def test__doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
         proxy_address = factory.make_name('proxy')
         Config.objects.set_config('http_proxy', proxy_address)
