@@ -8,6 +8,7 @@ __all__ = []
 from io import StringIO
 from random import randint
 import re
+from socket import error as SOCKETError
 from textwrap import dedent
 
 from hypothesis import given
@@ -116,14 +117,15 @@ class TestMSCMPowerDriver(MAASTestCase):
                 password=context['power_pass']))
         self.expectThat(ssh_client.exec_command, MockCalledOnceWith(command))
 
-    def test_run_mscm_command_crashes_for_ssh_connection_error(self):
+    @given(sampled_from([SSHException, EOFError, SOCKETError]))
+    def test_run_mscm_command_crashes_for_ssh_connection_error(self, error):
         driver = MSCMPowerDriver()
         command = factory.make_name('command')
         context = make_context()
         self.patch(mscm_module, "AutoAddPolicy")
         SSHClient = self.patch(mscm_module, "SSHClient")
         ssh_client = SSHClient.return_value
-        ssh_client.connect.side_effect = SSHException("SSH Connection Error")
+        ssh_client.connect.side_effect = error
         self.assertRaises(
             PowerConnError, driver.run_mscm_command, command, **context)
 
