@@ -803,9 +803,11 @@ class TestDHCPSubnetListener(
         yield listener.startService()
         try:
             network = factory.make_ip4_or_6_network()
+            gateway_ip = yield deferToDatabase(
+                factory.pick_ip_in_network, network)
             yield deferToDatabase(self.update_subnet, subnet.id, {
                 "cidr": str(network.cidr),
-                "gateway_ip": factory.pick_ip_in_network(network),
+                "gateway_ip": gateway_ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -838,9 +840,11 @@ class TestDHCPSubnetListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            gateway_ip = yield deferToDatabase(
+                factory.pick_ip_in_network, subnet.get_ipnetwork(),
+                but_not=[subnet.gateway_ip])
             yield deferToDatabase(self.update_subnet, subnet.id, {
-                "gateway_ip": factory.pick_ip_in_network(
-                    subnet.get_ipnetwork(), but_not=[subnet.gateway_ip]),
+                "gateway_ip": gateway_ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -873,9 +877,11 @@ class TestDHCPSubnetListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            dns_server = yield deferToDatabase(
+                factory.pick_ip_in_network, subnet.get_ipnetwork(),
+                but_not=subnet.dns_servers)
             yield deferToDatabase(self.update_subnet, subnet.id, {
-                "dns_servers": [factory.pick_ip_in_network(
-                    subnet.get_ipnetwork(), but_not=subnet.dns_servers)],
+                "dns_servers": [dns_server],
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -1232,9 +1238,10 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv_2.set(args))
         yield listener.startService()
         try:
+            ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet_2)
             yield deferToDatabase(self.update_staticipaddress, staticip.id, {
                 "subnet": subnet_2,
-                "ip": factory.pick_ip_in_Subnet(subnet_2),
+                "ip": ip,
             })
             yield primary_dv_1.get(timeout=2)
             yield secondary_dv_1.get(timeout=2)
@@ -1279,9 +1286,10 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet_2)
             yield deferToDatabase(self.update_staticipaddress, staticip.id, {
                 "subnet": subnet_2,
-                "ip": factory.pick_ip_in_Subnet(subnet_2),
+                "ip": ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -1326,8 +1334,9 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            ip = yield deferToDatabase(factory.pick_ip_in_Subnet, subnet)
             yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": factory.pick_ip_in_Subnet(subnet),
+                "ip": ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -1416,8 +1425,10 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            ip = yield deferToDatabase(
+                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip])
             yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": factory.pick_ip_in_Subnet(subnet, but_not=[staticip.ip]),
+                "ip": ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
@@ -1461,8 +1472,10 @@ class TestDHCPStaticIPAddressListener(
             lambda *args: secondary_dv.set(args))
         yield listener.startService()
         try:
+            ip = yield deferToDatabase(
+                factory.pick_ip_in_Subnet, subnet, but_not=[staticip.ip])
             yield deferToDatabase(self.update_staticipaddress, staticip.id, {
-                "ip": factory.pick_ip_in_Subnet(subnet, but_not=[staticip.ip]),
+                "ip": ip,
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)

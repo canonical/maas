@@ -762,6 +762,10 @@ class Factory(maastesting.factory.Factory):
         return subnet
 
     def pick_ip_in_Subnet(self, subnet, but_not=[]):
+        # Exclude all addresses currently in use
+        for iprange in subnet.get_ipranges_in_use():
+            for i in range(iprange.num_addresses):
+                but_not.append(IPAddress(iprange.first + i).format())
         return self.pick_ip_in_network(IPNetwork(subnet.cidr), but_not=but_not)
 
     def pick_ip_in_IPRange(self, ip_range, but_not=[]):
