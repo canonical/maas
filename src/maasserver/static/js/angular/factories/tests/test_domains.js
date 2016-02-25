@@ -16,6 +16,18 @@ describe("DomainsManager", function() {
         DomainsManager = $injector.get("DomainsManager");
     }));
 
+    // Make a random domain.
+    function makeDomain(selected) {
+        var domain = {
+            name: makeName("name"),
+            authoritative: true
+        };
+        if(angular.isDefined(selected)) {
+            domain.$selected = selected;
+        }
+        return domain;
+    }
+
     it("set requires attributes", function() {
         expect(DomainsManager._pk).toBe("id");
         expect(DomainsManager._handler).toBe("domain");

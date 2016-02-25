@@ -29,5 +29,13 @@ angular.module('MAAS').factory(
 
         DomainsManager.prototype = new Manager();
 
+        // Create a domain.
+        DomainsManager.prototype.create = function(domain) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the domain to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("domain.create", domain);
+        };
+
         return new DomainsManager();
     }]);

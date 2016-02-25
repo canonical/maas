@@ -23,6 +23,21 @@ angular.module('MAAS').controller('DomainsListController', [
         $scope.reverse = false;
         $scope.loading = true;
 
+        // This will hold the AddDomainController once it's initialized.  The
+        // controller will set this variable as it's always a child of this
+        // scope.
+        $scope.addDomainScope = null;
+
+        // Called when the add domain button is pressed.
+        $scope.addDomain = function() {
+            $scope.addDomainScope.show();
+        };
+
+        // Called when the cancel add domain button is pressed.
+        $scope.cancelAddDomain = function() {
+            $scope.addDomainScope.cancel();
+        };
+
         ManagerHelperService.loadManager(DomainsManager).then(
             function() {
                 $scope.loading = false;

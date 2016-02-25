@@ -9,6 +9,49 @@
                 Loading...
             </span>
         </h1>
+        <div class="page-header__actions">
+            <div class="page-header__cta">
+                <div class="right">
+                    <button class="cta-ubuntu"
+                        data-ng-click="addDomain()"
+                        data-ng-hide="addDomainScope.viewable">Add Domain</button>
+                    <button class="cta-ubuntu secondary ng-hide"
+                        data-ng-click="cancelAddDomain()"
+                        data-ng-show="addDomainScope.viewable">Cancel add domain</button>
+                </div>
+            </div>
+        </div>
+        <div class="page-header__dropdown border ng-hide" data-ng-show="addDomainScope.viewable" data-ng-controller="AddDomainController">
+            <h3 class="padding-top--ten">Add domain</h3>
+            <form class="twelve-col">
+                <fieldset class="twelve-col last-col">
+                    <div class="inline">
+                        <label for="domain-name" class="two-col">Name</label>
+                        <input type="text" id="domain-name" class="three-col" placeholder="Name your domain"
+                            data-ng-model="domain.name"
+                            data-ng-class="{ invalid: nameHasError() }">
+                    </div>
+                    <div class="inline">
+                        <label for="domain-authoritative" class="two-col">Authoritative</label>
+                        <input type="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
+                    </div>
+                </fieldset>
+            </form>
+            <div class="page-header__feedback twelve-col no-margin-bottom">
+                <div class="twelve-col ng-hide" data-ng-show="error">
+                    <p class="page-header__feedback-message info">{$ error $}</p>
+                </div>
+                <div class="right align-right">
+                    <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                    <button class="cta-ubuntu secondary"
+                        data-ng-class="{ disabled: domainHasError() }"
+                        data-ng-click="save(true)">Save and add another</button>
+                    <button class="cta-ubuntu"
+                        data-ng-class="{ disabled: domainHasError() }"
+                        data-ng-click="save(false)">Save domain</button>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 <div data-ng-show="!loading">

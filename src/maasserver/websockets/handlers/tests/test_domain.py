@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from django.core.exceptions import ValidationError
 from maasserver.models import (
     DNSData,
     Domain,
@@ -15,6 +16,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from netaddr import IPAddress
+from testtools.matchers import Equals
 
 
 class TestDomainHandler(MAASServerTestCase):
@@ -85,3 +87,14 @@ class TestDomainHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_domains,
             handler.list({}))
+
+    def test_create_raises_validation_error_for_missing_name(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {})
+        params = {
+            "name": ""
+            }
+        error = self.assertRaises(
+            ValidationError, handler.create, params)
+        self.assertThat(error.message_dict, Equals(
+            {'name': ['This field cannot be blank.']}))

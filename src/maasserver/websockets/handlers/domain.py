@@ -18,7 +18,7 @@ class DomainHandler(TimestampedModelHandler):
     class Meta:
         queryset = Domain.objects.all()
         pk = 'id'
-        allowed_methods = ['list', 'get', 'set_active']
+        allowed_methods = ['list', 'get', 'create', 'set_active']
         listen_channels = [
             "domain",
             ]

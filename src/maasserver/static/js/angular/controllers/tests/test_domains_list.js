@@ -76,6 +76,30 @@ describe("DomainsListController", function() {
         expect($scope.loading).toBe(false);
     });
 
+    describe("addDomain", function() {
+
+        it("calls show in addDomainScope", function() {
+            var controller = makeController();
+            $scope.addDomainScope = {
+                show: jasmine.createSpy("show")
+            };
+            $scope.addDomain();
+            expect($scope.addDomainScope.show).toHaveBeenCalled();
+        });
+    });
+
+    describe("cancelAddDomain", function() {
+
+        it("calls cancel in addDomainScope", function() {
+            var controller = makeController();
+            $scope.addDomainScope = {
+                cancel: jasmine.createSpy("cancel")
+            };
+            $scope.cancelAddDomain();
+            expect($scope.addDomainScope.cancel).toHaveBeenCalled();
+        });
+    });
+
     setupController = function(domains) {
         var defer = $q.defer();
         var controller = makeController(defer);

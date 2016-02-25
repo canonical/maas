@@ -8,6 +8,12 @@
 
 angular.module('MAAS').service('ValidationService', function() {
 
+        // Pattern that matches a domainname.
+        // XXX 2016-02-24 lamont: This also matches "example.com.",
+        // which is wrong.
+        var domainnamePattern =
+            /^([a-z\d]|[a-z\d][a-z\d-.]*[a-z\d])*$/i;
+
         // Pattern that matches a hostname.
         var hostnamePattern =
             /^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])*$/;
@@ -84,6 +90,17 @@ angular.module('MAAS').service('ValidationService', function() {
             });
             return octets;
         }
+
+        // Return true if the domainname is valid, false otherwise.
+        this.validateDomainName = function(domainname) {
+            // Invalid if the domain is not a string, empty, or more than
+            // 253 characters.
+            if(!angular.isString(domainname) ||
+                domainname.length === 0 || domainname.length > 253) {
+                return false;
+            }
+            return domainnamePattern.test(domainname);
+        };
 
         // Return true if the hostname is valid, false otherwise.
         this.validateHostname = function(hostname) {

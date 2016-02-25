@@ -15,6 +15,65 @@ describe("ValidationService", function() {
         ValidationService = $injector.get("ValidationService");
     }));
 
+    describe("validateDomainName", function() {
+
+        var scenarios = [
+            {
+                input: null,
+                valid: false
+            },
+            {
+                input: "",
+                valid: false
+            },
+            {
+                input: "aB0-",
+                valid: false
+            },
+            {
+                input: "aB0-z",
+                valid: true
+            },
+            {
+                input: "aB0-z.",
+                valid: false
+            },
+            {
+                input: "abc_alpha",
+                valid: false
+            },
+            {
+                input: "abc^&alpha",
+                valid: false
+            },
+            {
+                input: "abcalpha",
+                valid: true
+            },
+            {
+                input: "aB0-z.local",
+                valid: true
+            },
+            {
+                input: "abc_alpha.local",
+                valid: false
+            },
+            {
+                input: "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+                    "abcdefghijk",
+                valid: true
+            }
+        ];
+
+        angular.forEach(scenarios, function(scenario) {
+            it("validates: " + scenario.input, function() {
+                var result = ValidationService.validateDomainName(
+                    scenario.input);
+                expect(result).toBe(scenario.valid);
+            });
+        });
+    });
+
     describe("validateHostname", function() {
 
         var scenarios = [
