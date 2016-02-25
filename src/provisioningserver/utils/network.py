@@ -25,13 +25,33 @@ from socket import (
     getaddrinfo,
 )
 
+from curtin.net import parse_deb_config
 from netaddr import (
     IPAddress,
     IPNetwork,
     IPRange,
 )
 import netifaces
+from provisioningserver.utils.ipaddr import (
+    get_interface_type,
+    parse_ip_addr,
+)
 from provisioningserver.utils.shell import call_and_check
+
+# Address families in /etc/network/interfaces that MAAS chooses to parse. All
+# other families are ignored.
+ENI_PARSED_ADDRESS_FAMILIES = [
+    "inet",
+    "inet6",
+]
+
+# Interface method in /etc/network/interfaces that MAAS chooses to parse. All
+# other methods are ignored.
+ENI_PARSED_METHODS = [
+    "static",
+    "manual",
+    "dhcp",
+]
 
 
 class MAASIPRange(IPRange):
@@ -519,3 +539,206 @@ def parse_integer(value_string):
         # When all else fails, assume decimal.
         base = 10
     return int(value_string, base)
+
+
+def extract_network_from_config(config):
+    """Extract `IPNetwork` from `config`.
+
+    :param config: Configuration entry from an interface definition that was
+        parsed from /etc/network/interfaces.
+    """
+    ip_network = IPNetwork(config["address"])
+    if ip_network.version == 4 and ip_network.prefixlen == 32:
+        # Missing the prefixlen in the address. It is not required for aliases
+        # but it normally will be set.
+        netmask = config.get("netmask", None)
+        if netmask is not None:
+            # The netmask can either be a dotted quad or a prefix length.
+            if "." in netmask:
+                ip_network.prefixlen = IPAddress(netmask).netmask_bits()
+            else:
+                ip_network.prefixlen = int(netmask)
+    elif ip_network.version == 6 and ip_network.prefixlen == 128:
+        # Missing the prefixlen in the address. It is not required for aliases
+        # but it normally will be set.
+        netmask = config.get("netmask", None)
+        if netmask is not None:
+            # In IPv6 the netmask is only the mask.
+            ip_network.prefixlen = int(netmask)
+    return ip_network
+
+
+def get_link_from_config(config):
+    """Return the link definition from `config`.
+
+    :param config: Configuration entry from an interface definition that was
+        parsed from /etc/network/interfaces.
+    """
+    if config["method"] == "dhcp":
+        return {
+            "mode": "dhcp",
+        }
+    elif config["method"] == "static":
+        link = {
+            "mode": "static",
+            "address": str(extract_network_from_config(config)),
+        }
+        if "gateway" in config:
+            link["gateway"] = str(IPAddress(config["gateway"]))
+        return link
+    else:
+        return None
+
+
+def get_primary_link_from_links(links):
+    """Return the primary link out of `links`."""
+    for link in links:
+        if link["mode"] == "static":
+            ip_addr = IPNetwork(link["address"])
+            if ip_addr.version == 4 and ip_addr.prefixlen != 32:
+                return link
+            elif ip_addr.version == 6 and ip_addr.prefixlen != 128:
+                return link
+    return None
+
+
+def get_bond_master(config):
+    """Return the name of the bond master for this interface from `config`."""
+    if "bond" in config and "master" in config["bond"]:
+        return config["bond"]["master"]
+    else:
+        return None
+
+
+def get_type_and_parent_from_name_and_config(name, config):
+    """Return the type of interface and parent interface from `config`.
+
+    :param name: Name of the entry in the configuration from
+        /etc/network/interfaces.
+    :param config: Configuration entry from an interface definition that was
+        parsed from /etc/network/interfaces.
+    """
+    if ":" in name:
+        return "alias", name.split(":", 1)[0], None
+    elif "." in name:
+        parent = name.split(".", 1)[0]
+        if "vlan-raw-device" in config:
+            parent = config["vlan-raw-device"]
+        return "vlan", parent, get_bond_master(config)
+    else:
+        if "vlan-raw-device" in config:
+            return "vlan", config["vlan-raw-device"], get_bond_master(config)
+        elif ("bond" in config and
+                "mode" in config["bond"] and
+                "master" not in config["bond"]):
+            # Since bond-mode is set and bond-master is missing then this
+            # is the bond master.
+            return "bond", None, None
+        else:
+            return "physical", None, get_bond_master(config)
+
+
+def get_eni_interfaces_definition(
+        eni_path="/etc/network/interfaces", include_other_interfaces=True):
+    """Return interfaces definition from `eni_path`.
+
+    The interfaces definition is defined as a contract between the region and
+    the rack controller. The region controller processes this resulting
+    dictionary to update the interfaces model for the rack controller.
+    `eni_path` should be `/etc/network/interfaces`.
+    """
+    parsed_config = parse_deb_config(eni_path)
+    ipaddr_info = call_and_check(["/sbin/ip", "addr", "show"])
+    ipaddr_info = parse_ip_addr(ipaddr_info)
+
+    # Filter dictionary for address families and interface methods that
+    # MAAS only cares about and interfaces that show up in "ip addr show".
+    parsed_config = {
+        name: config
+        for name, config in parsed_config.items()
+        if ":" in name or (
+            name in ipaddr_info and
+            config["family"] in ENI_PARSED_ADDRESS_FAMILIES and
+            config["method"] in ENI_PARSED_METHODS)
+    }
+
+    # Create all empty interface definitions from /etc/network/interfaces.
+    interfaces = {}
+    for name, _ in parsed_config.items():
+        # Aliases are skipped and performed in the following loop.
+        if ":" in name:
+            continue
+        interfaces[name] = {
+            "links": [],
+            "enabled": True,
+            "parents": [],
+        }
+
+    # Update the values in each interface dictionary.
+    for name, config in parsed_config.items():
+        iface_type, iface_parent, bond_master = (
+            get_type_and_parent_from_name_and_config(name, config))
+        if iface_type != "alias":
+            # Update the interface definition.
+            interfaces[name]["type"] = iface_type
+            if iface_type == "vlan":
+                interfaces[name]["parents"].append(iface_parent)
+                interfaces[name]["vid"] = int(name.split(".", 1)[1])
+            if iface_type in ["bond", "physical"]:
+                # Only set the MAC address for physical and bond interfaces.
+                # Other interface types it is infered from its relations.
+                interfaces[name]["mac_address"] = ipaddr_info[name]["mac"]
+            if "mtu" in config:
+                interfaces[name]["mtu"] = int(config["mtu"])
+
+            # Set interface as the parent of the bond.
+            if bond_master is not None and bond_master in interfaces:
+                interfaces[bond_master]["parents"].append(name)
+
+            # Add the link for this interface.
+            link = get_link_from_config(config)
+            if link is not None:
+                interfaces[name]["links"].append(link)
+        else:
+            # Add the link to the parent interface as this is an alias.
+            link = get_link_from_config(config)
+            if link is not None:
+                interfaces[iface_parent]["links"].append(link)
+
+    # Fix static mode links on interfaces so the prefixlen is matching. This
+    # occurs because on aliases the prefixlen can be a /32 when IPv4 or
+    # /128 when IPv6.
+    for config in interfaces.values():
+        if len(config["links"]) > 1:
+            # More than one link, fix prefixlen.
+            primary_link = get_primary_link_from_links(config["links"])
+            if primary_link is not None:
+                ip_addr = IPNetwork(primary_link["address"])
+                for link in config["links"]:
+                    if link != primary_link and link["mode"] == "static":
+                        link_addr = IPNetwork(link["address"])
+                        link_addr.prefixlen = ip_addr.prefixlen
+                        link["address"] = str(link_addr)
+
+    # Add the interfaces that are wireless or physical interfaces that are
+    # not represented in the interfaces dictionary. These interfaces are not
+    # enabled since they do not appear in /etc/network/interfaces.
+    if include_other_interfaces:
+        for name, ipaddr in ipaddr_info.items():
+            # Skip interfaces we already know about or those that are aliases.
+            if name in interfaces or ":" in name:
+                continue
+
+            # Only process physical or wireless interfaces.
+            iface_type = get_interface_type(name)
+            if iface_type not in ["ethernet.physical", "ethernet.wireless"]:
+                continue
+
+            interfaces[name] = {
+                "type": "physical",
+                "links": [],
+                "enabled": False,
+                "mac_address": ipaddr["mac"]
+            }
+
+    return interfaces
