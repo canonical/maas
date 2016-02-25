@@ -92,6 +92,7 @@ class NodeHandler(TimestampedModelHandler):
         data["status"] = obj.display_status()
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["memory"] = obj.display_memory()
+        data["node_type_display"] = obj.get_node_type_display()
 
         data["extra_macs"] = [
             "%s" % mac_address

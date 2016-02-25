@@ -180,6 +180,7 @@ class TestMachineHandler(MAASServerTestCase):
             "on_network": node.on_network(),
             "license_key": node.license_key,
             "memory": node.display_memory(),
+            "node_type_display": node.get_node_type_display(),
             "min_hwe_kernel": node.min_hwe_kernel,
             "osystem": node.get_osystem(),
             "owner": handler.dehydrate_owner(node.owner),
@@ -232,6 +233,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "physical_disk_count",
                 "storage",
                 "storage_tags",
+                "node_type_display",
             ]
             for key in list(data):
                 if key not in allowed_fields:

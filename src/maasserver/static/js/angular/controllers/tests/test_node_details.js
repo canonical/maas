@@ -342,15 +342,6 @@ describe("NodeDetailsController", function() {
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
         expect($scope.summary.tags).toEqual(node.tags);
-        var nodeTypeMapping = {
-            0: "Machine",
-            1: "Device",
-            2: "Rack Controller",
-            3: "Region Controller",
-            4: "Rack and Region Controller"
-        };
-        expect($scope.summary.node_type).toEqual(
-            nodeTypeMapping[$scope.node.node_type]);
     });
 
     it("missing_power error visible if node power_type empty", function() {
@@ -530,7 +521,6 @@ describe("NodeDetailsController", function() {
             "node.actions",
             "node.architecture",
             "node.min_hwe_kernel",
-            "node.node_type",
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",

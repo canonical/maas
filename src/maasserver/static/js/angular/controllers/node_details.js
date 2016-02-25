@@ -234,15 +234,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
             $scope.summary.tags = angular.copy($scope.node.tags);
 
-            var nodeTypeMapping = {
-                0: "Machine",
-                1: "Device",
-                2: "Rack Controller",
-                3: "Region Controller",
-                4: "Rack and Region Controller"
-            };
-            $scope.summary.node_type = nodeTypeMapping[$scope.node.node_type];
-
             // Force editing mode on, if the architecture is invalid. This is
             // placed at the bottom because we wanted the selected items to
             // be filled in at least once.
@@ -398,9 +389,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.min_hwe_kernel", updateSummary);
             $scope.$watchCollection(
                 $scope.summary.min_hwe_kernel.options, updateSummary);
-
-            // Update the summary when the node type is updated.
-            $scope.$watch("node.node_type", updateSummary);
 
             // Update the summary when the node or zone list is
             // updated.

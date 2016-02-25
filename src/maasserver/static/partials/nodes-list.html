@@ -753,19 +753,10 @@
                             <span title="Fully Qualified Domain Name">Name</span>
                         </a>
                     </th>
-                    <th class="table-listing__header t15">
-                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('node_type', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'node_type', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
+                    <th class="table-listing__header t25">
+                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('node_type_display', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'node_type_display', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">
                             <span title="Controller Type">Type</span>
                         </a>
-                    </th>
-                    <th class="table-listing__header t15">
-                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('status', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'status', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Status</a>
-                    </th>
-                    <th class="table-listing__header t25">
-                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}"><span title="TODO: currently last update time">Last Image Sync</span></a>
-                    </th>
-                    <th class="table-listing__header t15">
-                        <a href="" class="table-listing__header-link" data-ng-click="sortTable('ha_status', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'ha_status', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">HA</a>
                     </th>
                 </tr>
             </thead>
@@ -781,10 +772,7 @@
                     <td class="t24 table-listing__cell">
                         <a href="#/node/controller/{$ controller.system_id $}">{$ controller.fqdn $}</a>
                     </td>
-                    <td class="t15 table-listing__cell">{$ controller.node_type $}</td>
-                    <td class="t15 table-listing__cell">{$ controller.status $}</td>
-                    <td class="t15 table-listing__cell">{$ controller.updated $}</td>
-                    <td class="t15 table-listing__cell"></td>
+                    <td class="t25 table-listing__cell">{$ controller.node_type_display $}</td>
                 </tr>
             </tbody>
         </table>
