@@ -4,6 +4,7 @@ graft src/*/fixtures
 graft src/*/specs
 graft src/provisioningserver/*
 graft src/metadataserver/commissioning
+include src/maasserver/migrations/south/django16_south_maas19.tar.gz
 prune src/*/testing
 prune src/*/tests
 prune src/maastesting
