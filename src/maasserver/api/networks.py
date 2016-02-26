@@ -127,7 +127,7 @@ class NetworkHandler(OperationsHandler):
             request.user, NODE_PERMISSION.VIEW,
             from_nodes=Node.objects.all())
         interfaces = Interface.objects.filter(
-            node__in=visible_nodes, vlan__subnet=subnet)
+            node__in=visible_nodes, ip_addresses__subnet=subnet)
         existing_macs = set()
         unique_interfaces_by_mac = [
             interface

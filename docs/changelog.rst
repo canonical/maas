@@ -34,7 +34,6 @@ Important Announcements
 Minor bugs fixed in this release
 --------------------------------
 
-LP: #1536754    Upgrade from 1.8 to 1.9 lost connected macs in all but one network
 LP: #1540765    Fix unable to detect IPMI control settings during enlistment
 LP: #1541464    Fix comparison of AMT versions. Compare major version as integers.
 
