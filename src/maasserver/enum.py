@@ -589,3 +589,26 @@ BOND_XMIT_HASH_POLICY_CHOICES = (
     (BOND_XMIT_HASH_POLICY.ENCAP2_3, BOND_XMIT_HASH_POLICY.ENCAP2_3),
     (BOND_XMIT_HASH_POLICY.ENCAP3_4, BOND_XMIT_HASH_POLICY.ENCAP3_4),
 )
+
+
+class SERVICE_STATUS:
+    """Service statuses"""
+    #: Status of the service is not known.
+    UNKNOWN = 'unknown'
+    #: Service is running and operational.
+    RUNNING = 'running'
+    #: Service is running but is in a degraged state.
+    DEGRADED = 'degraged'
+    #: Service is dead. (Should be on but is off).
+    DEAD = 'dead'
+    #: Service is off. (Should be off and is off).
+    OFF = 'off'
+
+
+SERVICE_STATUS_CHOICES = (
+    (SERVICE_STATUS.UNKNOWN, "Unknown"),
+    (SERVICE_STATUS.RUNNING, "Running"),
+    (SERVICE_STATUS.DEGRADED, "Degraded"),
+    (SERVICE_STATUS.DEAD, "Dead"),
+    (SERVICE_STATUS.OFF, "Off"),
+)

@@ -5,12 +5,21 @@
 
 __all__ = []
 
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    NODE_TYPE,
+)
+from maasserver.models.service import (
+    RACK_SERVICES,
+    REGION_SERVICES,
+    Service,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models.nodekey import NodeKey
 from testtools.matchers import (
+    HasLength,
     Is,
     Not,
 )
@@ -63,3 +72,49 @@ class TestNodeKeyPolicy(MAASServerTestCase):
         # The token has been deleted.
         token = reload_object(token)
         self.assertThat(token, Is(None))
+
+
+class TestNodeCreateServices(MAASServerTestCase):
+    """Test that services are created when a node is created
+    or node_type changes.
+    """
+
+    def test_doesnt_create_services_for_machine(self):
+        machine = factory.make_Node()
+        self.assertThat(
+            Service.objects.filter(node=machine),
+            HasLength(0))
+
+    def test_doesnt_create_services_for_device(self):
+        device = factory.make_Device()
+        self.assertThat(
+            Service.objects.filter(node=device),
+            HasLength(0))
+
+    def test_creates_services_for_rack_controller(self):
+        rack_controller = factory.make_RackController()
+        self.assertThat(
+            Service.objects.filter(node=rack_controller),
+            HasLength(len(RACK_SERVICES)))
+
+    def test_creates_services_for_region_controller(self):
+        region_controller = factory.make_RegionController()
+        self.assertThat(
+            Service.objects.filter(node=region_controller),
+            HasLength(len(REGION_SERVICES)))
+
+    def test_creates_services_when_region_converts_to_region_rack(self):
+        controller = factory.make_RegionController()
+        controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        controller.save()
+        self.assertThat(
+            Service.objects.filter(node=controller),
+            HasLength(len(REGION_SERVICES + RACK_SERVICES)))
+
+    def test_creates_services_when_rack_controller_becomes_just_region(self):
+        controller = factory.make_RackController()
+        controller.node_type = NODE_TYPE.REGION_CONTROLLER
+        controller.save()
+        self.assertThat(
+            Service.objects.filter(node=controller),
+            HasLength(len(REGION_SERVICES)))

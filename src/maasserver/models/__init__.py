@@ -44,6 +44,7 @@ __all__ = [
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
+    'Service',
     'Space',
     'SSHKey',
     'SSLKey',
@@ -123,6 +124,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
@@ -168,6 +170,7 @@ ignore_unused(
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
+    Service,
     SSHKey,
     StaticIPAddress,
     Tag,
