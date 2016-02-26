@@ -201,7 +201,7 @@ def atomic_symlink(source, name):
         raise
 
 
-def pick_new_mtime(old_mtime=None, starting_age=1000):
+def pick_new_mtime(old_mtime=None):
     """Choose a new modification time for a file that needs it updated.
 
     This function is used to manage the modification time of files
@@ -216,29 +216,20 @@ def pick_new_mtime(old_mtime=None, starting_age=1000):
     time in the past when it is first written, and
     increment it by 1 second on each subsequent write.
 
-    However we also want to be careful not to set the modification time
-    in the future, mostly because BIND does not deal with that very
-    well.
-
     :param old_mtime: File's previous modification time, as a number
         with a unity of one second, or None if it did not previously
         exist.
-    :param starting_age: If the file did not exist previously, set its
-        modification time this many seconds in the past.
     """
     now = time()
-    if old_mtime is None:
+    if old_mtime is None or old_mtime + 1 < now:
         # File is new.  Set modification time in the past to have room for
         # sub-second modifications.
-        return now - starting_age
-    elif old_mtime + 1 <= now:
-        # There is room to increment the file's mtime by one second
-        # without ending up in the future.
-        return old_mtime + 1
+        return now
     else:
-        # We can't increase the file's modification time.  Give up and
-        # return the previous modification time.
-        return old_mtime
+        # Let the file timestamp march into the future, so that BIND will
+        # reload the zone.  Our future selves will notice that mtime is enough
+        # before the then-now to go back to having it match us.
+        return old_mtime + 1
 
 
 def incremental_write(content, filename, mode=0o600):

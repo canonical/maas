@@ -413,6 +413,8 @@ class TestDNSServer(MAASServerTestCase):
     def assertDNSMatches(self, hostname, domain, ip, version=4):
         # A forward lookup on the hostname returns the IP address.
         fqdn = "%s.%s" % (hostname, domain)
+        # Give BIND enough time to process the rndc request.
+        time.sleep(0.2)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.expectThat(
             forward_lookup_result, Contains(ip),
