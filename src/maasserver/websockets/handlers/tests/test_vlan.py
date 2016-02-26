@@ -5,11 +5,18 @@
 
 __all__ = []
 
+from django.core.exceptions import ValidationError
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maasserver.websockets.handlers.vlan import VLANHandler
+from testtools import ExpectedException
+from testtools.matchers import (
+    Equals,
+    Is,
+)
 
 
 class TestVLANHandler(MAASServerTestCase):
@@ -74,3 +81,116 @@ class TestVLANHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_vlans,
             handler.list({}))
+
+
+class TestVLANHandlerDelete(MAASServerTestCase):
+
+    def test__delete_as_admin_success(self):
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        handler.delete({
+            "id": vlan.id,
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan, Equals(None))
+
+    def test__delete_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": vlan.id,
+            })
+
+    def test__reloads_user(self):
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": vlan.id,
+            })
+
+
+class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
+
+    def test__configure_dhcp_with_one_parameter(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id]
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+
+    def test__configure_dhcp_with_two_parameters(self):
+        rack = factory.make_RackController()
+        rack2 = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id, rack2.system_id]
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+        self.assertThat(vlan.secondary_rack, Equals(rack2))
+
+    def test__configure_dhcp_with_duplicate_raises(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        with ExpectedException(ValidationError):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": [rack.system_id, rack.system_id]
+            })
+
+    def test__configure_dhcp_with_no_parameters_disables_dhcp(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": []
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.dhcp_on, Equals(False))
+        self.assertThat(vlan.primary_rack, Is(None))
+        self.assertThat(vlan.secondary_rack, Is(None))
+
+    def test__non_superuser_asserts(self):
+        rack = factory.make_RackController()
+        user = factory.make_User()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": []
+            })
+
+    def test__non_superuser_reloads_user(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        user.is_superuser = False
+        user.save()
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": []
+            })

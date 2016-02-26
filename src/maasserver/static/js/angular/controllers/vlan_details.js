@@ -7,11 +7,12 @@
 angular.module('MAAS').controller('VLANDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'VLANsManager', 'SubnetsManager', 'SpacesManager', 'FabricsManager',
-    'ControllersManager', 'ManagerHelperService', 'ErrorService',
-    function(
+    'ControllersManager', 'UsersManager', 'ManagerHelperService',
+    'ErrorService', function(
         $scope, $rootScope, $routeParams, $filter, $location,
         VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
-        ControllersManager, ManagerHelperService, ErrorService) {
+        ControllersManager, UsersManager, ManagerHelperService, ErrorService) {
+        var vm = this;
 
         var filterByVLAN = $filter('filterByVLAN');
         var filterSpacesByVLAN = $filter('filterSpacesByVLAN');
@@ -25,88 +26,203 @@ angular.module('MAAS').controller('VLANDetailsController', [
         $rootScope.page = "networks";
 
         // Initial values.
-        $scope.loaded = false;
-        $scope.vlan = null;
-        $scope.subnets = SubnetsManager.getItems();
-        $scope.spaces = SpacesManager.getItems();
-        $scope.fabrics = FabricsManager.getItems();
-        $scope.controllers = ControllersManager.getItems();
-        $scope.related_subnets = [];
-        $scope.related_spaces = [];
-        $scope.related_controllers = [];
+        vm.PROVIDE_DHCP_ACTION = {name:"provide_dhcp", title:"Provide DHCP"};
+        vm.DELETE_ACTION = {name:"delete", title:"Delete"};
+
+        vm.loaded = false;
+        vm.vlan = null;
+        vm.title = null;
+        vm.actionOption = null;
+        vm.actionOptions = [];
+        vm.subnets = SubnetsManager.getItems();
+        vm.spaces = SpacesManager.getItems();
+        vm.controllers = ControllersManager.getItems();
+        vm.actionError = null;
+        vm.relatedSubnets = [];
+        vm.relatedSpaces = [];
+        vm.relatedControllers = [];
+        vm.provideDHCPAction = {};
+        vm.primaryRack = null;
+        vm.secondaryRack = null;
+
+        vm.getActionByName = function(name) {
+            var i;
+            for(i = 0 ; i < vm.actionOptions.length ; i++) {
+                if(vm.actionOptions[i].name === name) {
+                    return vm.actionOptions[i];
+                }
+            }
+            return null;
+        };
+
+        // Called when the actionOption has changed.
+        vm.actionOptionChanged = function() {
+            if(vm.actionOption.name === "provide_dhcp") {
+                var dhcp = vm.provideDHCPAction;
+                if(angular.isObject(vm.primaryRack)) {
+                    dhcp.primaryRack = vm.primaryRack.system_id;
+                }
+                if(angular.isObject(vm.secondaryRack)) {
+                    dhcp.secondaryRack = vm.secondaryRack.system_id;
+                }
+            }
+            // Clear the action error.
+            vm.actionError = null;
+        };
+
+        // Cancel the action.
+        vm.actionCancel = function() {
+            // When the user wants to cancel an action, we need to clear out
+            // both the actionOption (so that the action screen will not be
+            // presented again) and the actionError (so that the error screen
+            // is hidden).
+            vm.actionOption = null;
+            vm.actionError = null;
+        };
+
+        vm.actionRetry = function() {
+            // When we clear actionError, the HTML will be re-rendered to
+            // hide the error message (and the user will be taken back to
+            // the previous action they were performing, since we reset
+            // the actionOption in the error handler.
+            vm.actionError = null;
+        };
+
+        // Perform the action.
+        vm.actionGo = function() {
+            if(vm.actionOption.name === "provide_dhcp") {
+                var dhcp = vm.provideDHCPAction;
+                var controllers = [];
+                if(angular.isString(dhcp.primaryRack)) {
+                    controllers.push(dhcp.primaryRack);
+                }
+                if(angular.isString(dhcp.secondaryRack)) {
+                    controllers.push(dhcp.secondaryRack);
+                }
+                VLANsManager.configureDHCP(
+                    vm.vlan, controllers).then(
+                    function() {
+                        vm.actionOption = null;
+                        vm.actionError = null;
+                    }, function(result) {
+                        vm.actionError = result.error;
+                        vm.actionOption = vm.PROVIDE_DHCP_ACTION;
+                    });
+
+            } else if(vm.actionOption.name === "delete") {
+                VLANsManager.deleteVLAN(vm.vlan).then(
+                    function() {
+                        $location.path("/networks");
+                        vm.actionOption = null;
+                        vm.actionError = null;
+                    }, function(result) {
+                        vm.actionError = result.error;
+                        vm.actionOption = vm.DELETE_ACTION;
+                    });
+            }
+        };
+
+        // Return true if there is an action error.
+        vm.isActionError = function() {
+            return vm.actionError !== null;
+        };
 
         // Updates the page title.
         function updateTitle() {
-            var vlan = $scope.vlan;
-            var fabric = $scope.fabric;
-            if(vlan) {
-                vlan.title = vlan.name;
-                if(vlan.vid !== 0 && vlan.name &&
-                        vlan.name !== "VLAN " + vlan.vid) {
-                    vlan.title += " (VLAN " + vlan.vid + ")";
-                } else if(vlan.vid === 0) {
-                    vlan.title = "Default VLAN";
-                } else if(vlan.vid !== 0) {
-                    vlan.title = "VLAN " + vlan.vid;
+            var vlan = vm.vlan;
+            var fabric = vm.fabric;
+            if(angular.isObject(vlan) && angular.isObject(fabric)) {
+                if (!vlan.name) {
+                    if(vlan.vid === 0) {
+                        vm.title = "Default VLAN";
+                    } else {
+                        vm.title = "VLAN " + vlan.vid;
+                    }
+                } else {
+                    vm.title = vlan.name;
                 }
+                vm.title += " in " + fabric.name;
+                $rootScope.title = vm.title;
             }
-            vlan.title += " in " + fabric.name;
-            $rootScope.title = vlan.title;
         }
 
-        function updateRelatedObjects() {
+        function updateManagementRacks() {
+            var vlan = vm.vlan;
+            if(!angular.isObject(vlan)) {
+                return;
+            }
+            if(vlan.primary_rack_sid) {
+                vm.primaryRack = ControllersManager.getItemFromList(
+                    vlan.primary_rack_sid);
+            } else {
+                vm.primaryRack = null;
+            }
+            if(vlan.secondary_rack_sid) {
+                vm.secondaryRack = ControllersManager.getItemFromList(
+                    vlan.secondary_rack_sid);
+            } else {
+                vm.secondaryRack = null;
+            }
+        }
+
+        function updateRelatedControllers() {
+            var vlan = vm.vlan;
+            if(!angular.isObject(vlan)) {
+                return;
+            }
+            vm.relatedControllers =
+                filterControllersByVLAN(vm.controllers, vlan);
+        }
+
+        function updateRelatedSubnetsAndSpaces() {
+            var vlan = vm.vlan;
+            if(!angular.isObject(vlan)) {
+                return;
+            }
             var subnets = [];
             var spaces = [];
-            var controllers = [];
-            var vlan = $scope.vlan;
             angular.forEach(
-                    filterSpacesByVLAN($scope.spaces, vlan), function(space) {
+                    filterSpacesByVLAN(vm.spaces, vlan),
+                    function(space) {
                 spaces.push(space);
             });
-            $scope.related_spaces = spaces;
+            vm.relatedSpaces = spaces;
             angular.forEach(
-                    filterControllersByVLAN($scope.controllers, vlan),
-                    function(controller) {
-                controllers.push(controller);
-            });
-            $scope.related_controllers = controllers;
-            angular.forEach(
-                    filterByVLAN($scope.subnets, vlan), function(subnet) {
+                    filterByVLAN(vm.subnets, vlan), function(subnet) {
                 var space = SpacesManager.getItemFromList(subnet.space);
-                // XXX mpontillo fabric is redundant here and should
-                // probably not be shown.
-                var fabric = FabricsManager.getItemFromList(vlan.fabric);
-                if(!space) {
-                    space = {name: ""};
-                }
-                if(!fabric) {
+                if(!angular.isObject(space)) {
                     space = {name: ""};
                 }
                 var row = {
                     subnet: subnet,
-                    space: space,
-                    fabric: fabric
+                    space: space
                 };
                 subnets.push(row);
             });
-            $scope.related_subnets = subnets;
+            vm.relatedSubnets = subnets;
         }
-
 
         // Called when the vlan has been loaded.
         function vlanLoaded(vlan) {
-            $scope.vlan = vlan;
-            $scope.fabric = FabricsManager.getItemFromList(vlan.fabric);
-            $scope.loaded = true;
+            vm.vlan = vlan;
+            vm.fabric = FabricsManager.getItemFromList(vlan.fabric);
+
+            if(UsersManager.isSuperUser()) {
+                vm.actionOptions = [vm.PROVIDE_DHCP_ACTION, vm.DELETE_ACTION];
+            }
+
+            vm.loaded = true;
 
             updateTitle();
-            updateRelatedObjects();
+            updateManagementRacks();
+            updateRelatedControllers();
+            updateRelatedSubnetsAndSpaces();
         }
 
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
-            ControllersManager
+            ControllersManager, UsersManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this vlan set to active. Only call setActiveItem if not
@@ -126,8 +242,20 @@ angular.module('MAAS').controller('VLANDetailsController', [
                         ErrorService.raiseError(error);
                     });
             }
-            $scope.$watchCollection("subnets", updateRelatedObjects);
-            $scope.$watchCollection("spaces", updateRelatedObjects);
-            $scope.$watchCollection("fabrics", updateRelatedObjects);
+
+            $scope.$watch("vlanDetails.vlan.name", updateTitle);
+            $scope.$watch("vlanDetails.vlan.vid", updateTitle);
+            $scope.$watch("vlanDetails.fabric.name", updateTitle);
+            $scope.$watch(
+                "vlanDetails.vlan.primary_rack", updateManagementRacks);
+            $scope.$watch(
+                "vlanDetails.vlan.secondary_rack", updateManagementRacks);
+
+            $scope.$watchCollection(
+                "vlanDetails.subnets", updateRelatedSubnetsAndSpaces);
+            $scope.$watchCollection(
+                "vlanDetails.spaces", updateRelatedSubnetsAndSpaces);
+            $scope.$watchCollection(
+                "vlanDetails.controllers", updateRelatedControllers);
         });
     }]);

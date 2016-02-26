@@ -474,6 +474,32 @@ describe("RegionConnection", function() {
             expect($rootScope.$apply).toHaveBeenCalled();
             expect(RegionConnection.callbacks[requestId]).toBeUndefined();
         });
+
+        it("rejects defer with original request if requested", function(done) {
+            var error = {};
+            var requestId = RegionConnection.newRequestId();
+            var defer = $q.defer();
+            defer.promise.then(null, function(result) {
+                expect(result.error).toBe(error);
+                expect(result.request).toBe("expectedRequest");
+                done();
+            });
+
+            spyOn($rootScope, "$apply").and.callThrough();
+
+            RegionConnection.callbacks[requestId] = defer;
+            RegionConnection.requests[requestId] = "expectedRequest";
+            RegionConnection.onResponse({
+                type: 1,
+                rtype: 1,
+                request_id: requestId,
+                error: error
+            });
+            expect($rootScope.$apply).toHaveBeenCalled();
+            expect(RegionConnection.callbacks[requestId]).toBeUndefined();
+            expect(RegionConnection.requests[requestId]).toBeUndefined();
+        });
+
     });
 
     describe("onNotify", function() {
@@ -531,6 +557,21 @@ describe("RegionConnection", function() {
             expect(
                 RegionConnection.callbacks[RegionConnection.requestId]).toBe(
                 defer);
+        });
+
+        it("remembers request if requested", function() {
+            var params = {foo: "bar"};
+            RegionConnection.callMethod("testing_method", params, true);
+            expect(
+                RegionConnection.callbacks[RegionConnection.requestId]).toBe(
+                defer);
+            var requests = RegionConnection.requests;
+            expect(
+                requests[RegionConnection.requestId].method).toBe(
+                "testing_method");
+            expect(
+                requests[RegionConnection.requestId].params).toBe(
+                params);
         });
 
         it("returns defer promise", function() {

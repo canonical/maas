@@ -310,10 +310,13 @@ class WebSocketProtocol(Protocol):
     def sendError(self, request_id, handler, method, failure):
         """Log and send error to client."""
         if isinstance(failure.value, ValidationError):
-            # When the error is a validation issue, send the error as a JSON
-            # object. The client will use this to JSON to render the error
-            # messages for the correct fields.
-            error = json.dumps(failure.value.message_dict)
+            try:
+                # When the error is a validation issue, send the error as a
+                # JSON object. The client will use this to JSON to render the
+                # error messages for the correct fields.
+                error = json.dumps(failure.value.message_dict)
+            except AttributeError:
+                error = failure.value.message
         else:
             error = failure.getErrorMessage()
         why = "Error on request (%s) %s.%s: %s" % (

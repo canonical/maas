@@ -311,7 +311,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 raise NotImplementedError(
                     'Invalid permission check (invalid permission name: %s).' %
                     perm)
-        elif isinstance(obj, (Fabric, FanNetwork, Subnet, Space)):
+        elif isinstance(obj, (Fabric, FanNetwork, Subnet, Space, VLAN)):
             if perm == NODE_PERMISSION.VIEW:
                 # Any registered user can view a fabric or interface regardless
                 # of its state.

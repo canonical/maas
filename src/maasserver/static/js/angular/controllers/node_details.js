@@ -641,11 +641,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
-            var authUser = UsersManager.getAuthUser();
-            if(!angular.isObject(authUser)) {
-                return false;
-            }
-            return authUser.is_superuser;
+            return UsersManager.isSuperUser();
         };
 
         // Return true if the current architecture selection is invalid.

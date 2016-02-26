@@ -65,7 +65,8 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                 }).
                 when('/vlan/:vlan_id', {
                     templateUrl: 'static/partials/vlan-details.html',
-                    controller: 'VLANDetailsController'
+                    controller: 'VLANDetailsController',
+                    controllerAs: 'vlanDetails'
                 }).
                 otherwise({
                     redirectTo: '/nodes'

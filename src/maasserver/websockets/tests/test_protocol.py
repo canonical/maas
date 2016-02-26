@@ -591,6 +591,34 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_handleRequest_sends_validation_error_without_error_dict(self):
+        node = yield deferToDatabase(self.make_node)
+        # Need to delete the node as the transaction is committed
+        self.addCleanup(self.clean_node, node)
+        protocol, factory = self.make_protocol()
+        protocol.user = MagicMock()
+
+        self.patch(Handler, "execute").return_value = fail(
+            ValidationError("bad"))
+
+        message = {
+            "type": MSG_TYPE.REQUEST,
+            "request_id": 1,
+            "method": "machine.get",
+            "params": {
+                "system_id": node.system_id,
+                }
+            }
+
+        yield protocol.handleRequest(message)
+        sent_obj = self.get_written_transport_message(protocol)
+        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
+        self.expectThat(sent_obj["request_id"], Equals(1))
+        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
+        self.expectThat(sent_obj["error"], Equals("bad"))
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_handleRequest_sends_error(self):
         node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed

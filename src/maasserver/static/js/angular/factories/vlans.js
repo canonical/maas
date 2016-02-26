@@ -43,5 +43,19 @@ angular.module('MAAS').factory(
             return subnets;
         };
 
+        // Delete the VLAN.
+        VLANsManager.prototype.deleteVLAN = function(vlan) {
+            return RegionConnection.callMethod(
+                "vlan.delete", { "id": vlan.id }, true);
+        };
+
+        // Configure DHCP on the VLAN
+        VLANsManager.prototype.configureDHCP = function(
+            vlan, controllers) {
+            return RegionConnection.callMethod(
+                "vlan.configure_dhcp",
+                { "id": vlan.id, "controllers": controllers }, true);
+        };
+
         return new VLANsManager();
     }]);

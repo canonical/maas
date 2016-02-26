@@ -28,6 +28,7 @@ angular.module('MAAS').factory(
         // Constructor
         function RegionConnection() {
             this.callbacks = {};
+            this.requests = {};
             this.requestId = 0;
             this.url = null;
             this.websocket = null;
@@ -261,6 +262,7 @@ angular.module('MAAS').factory(
         RegionConnection.prototype.onResponse = function(msg) {
             // Grab the registered defer from the callbacks list.
             var defer = this.callbacks[msg.request_id];
+            var remembered_request = this.requests[msg.request_id];
             if(angular.isDefined(defer)) {
                 if(msg.rtype === RESPONSE_TYPE.SUCCESS) {
                     // Resolve the defer inside of the digest cycle, so any
@@ -269,10 +271,18 @@ angular.module('MAAS').factory(
                     $rootScope.$apply(defer.resolve(msg.result));
                 } else if(msg.rtype === RESPONSE_TYPE.ERROR) {
                     // Reject the defer since an error occurred.
-                    $rootScope.$apply(defer.reject(msg.error));
+                    if(remembered_request) {
+                        $rootScope.$apply(defer.reject({
+                            "error": msg.error,
+                            "request": remembered_request
+                        }));
+                    } else {
+                        $rootScope.$apply(defer.reject(msg.error));
+                    }
                 }
                 // Remove the defer from the callback list.
                 delete this.callbacks[msg.request_id];
+                delete this.requests[msg.request_id];
             }
         };
 
@@ -287,7 +297,8 @@ angular.module('MAAS').factory(
         };
 
         // Call method on the region.
-        RegionConnection.prototype.callMethod = function(method, params) {
+        RegionConnection.prototype.callMethod = function(
+                method, params, remember) {
             var defer = $q.defer();
             var request_id = this.newRequestId();
             var request = {
@@ -297,6 +308,11 @@ angular.module('MAAS').factory(
                 params: params
             };
             this.callbacks[request_id] = defer;
+            // If requested, remember what the details of the request were,
+            // so that the controller can refresh its memory.
+            if (remember) {
+                this.requests[request_id] = request;
+            }
             this.websocket.send(angular.toJson(request));
             return defer.promise;
         };

@@ -9,13 +9,21 @@ describe("VLANDetailsController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
+    var VLAN_ID = makeInteger(5000, 6000);
+
     // Make a fake VLAN
     function makeVLAN() {
         var vlan = {
-            id: makeInteger(1, 10000),
-            vid: makeInteger(1, 4095),
+            id: VLAN_ID,
+            vid: makeInteger(1,4095),
             fabric: 1,
-            name: null
+            name: null,
+            dhcp_on: true,
+            space_ids: [2001],
+            primary_rack: primaryController.id,
+            secondary_rack: secondaryController.id,
+            primary_rack_sid: primaryController.system_id,
+            secondary_rack_sid: secondaryController.system_id
         };
         VLANsManager._items.push(vlan);
         return vlan;
@@ -31,6 +39,51 @@ describe("VLANDetailsController", function() {
         return fabric;
     }
 
+    // Make a fake space
+    function makeSpace(id) {
+        if(id === undefined) {
+            id = 2001;
+        }
+        var space = {
+            id: id,
+            name: 'space-' + id
+        };
+        SpacesManager._items.push(space);
+        return space;
+    }
+
+    // Make a fake subnet
+    function makeSubnet(id, spaceId) {
+        if(id === undefined) {
+            id = 6001;
+        }
+        if(!spaceId) {
+            spaceId = 2001;
+        }
+        var subnet = {
+            id: id,
+            name: null,
+            cidr: '192.168.0.1/24',
+            space: spaceId,
+            vlan: VLAN_ID
+        };
+        SubnetsManager._items.push(subnet);
+        return subnet;
+    }
+
+    // Make a fake controller
+    function makeRackController(id, name, sid) {
+        var rack = {
+            id: id,
+            system_id: sid,
+            hostname: name,
+            node_type: 2,
+            vlan_ids: [VLAN_ID]
+        };
+        ControllersManager._items.push(rack);
+        return rack;
+    }
+
     // Grab the needed angular pieces.
     var $controller, $rootScope, $filter, $location, $scope, $q;
     beforeEach(inject(function($injector) {
@@ -44,21 +97,27 @@ describe("VLANDetailsController", function() {
 
     // Load any injected managers and services.
     var VLANsManager, SubnetsManager, SpacesManager, FabricsManager;
-    var ControllersManager, ManagerHelperService, ErrorService;
+    var ControllersManager, UsersManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
         SpacesManager = $injector.get("SpacesManager");
         FabricsManager = $injector.get("FabricsManager");
         ControllersManager = $injector.get("ControllersManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
 
-    var vlan, fabric, $routeParams;
+    var vlan, fabric, primaryController, secondaryController, $routeParams;
+    var space, subnet;
     beforeEach(function() {
+        primaryController = makeRackController(1, "primary", "p1");
+        secondaryController = makeRackController(2, "secondary", "p2");
         vlan = makeVLAN();
         fabric = makeFabric();
+        space = makeSpace();
+        subnet = makeSubnet();
         $routeParams = {
             vlan_id: vlan.id
         };
@@ -73,7 +132,7 @@ describe("VLANDetailsController", function() {
         }
 
         // Create the controller.
-        var controller = $controller("VLANDetailsController", {
+        var controller = $controller("VLANDetailsController as vlanDetails", {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
@@ -84,6 +143,7 @@ describe("VLANDetailsController", function() {
             SpacesManager: SpacesManager,
             FabricsManager: FabricsManager,
             ControllersManager: ControllersManager,
+            UsersManager: UsersManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -117,7 +177,7 @@ describe("VLANDetailsController", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
             [VLANsManager, SubnetsManager, SpacesManager, FabricsManager,
-                ControllersManager]);
+            ControllersManager, UsersManager]);
     });
 
     it("raises error if vlan identifier is invalid", function() {
@@ -132,8 +192,8 @@ describe("VLANDetailsController", function() {
         defer.resolve();
         $rootScope.$digest();
 
-        expect($scope.vlan).toBe(null);
-        expect($scope.loaded).toBe(false);
+        expect(controller.vlan).toBe(null);
+        expect(controller.loaded).toBe(false);
         expect(VLANsManager.setActiveItem).not.toHaveBeenCalled();
         expect(ErrorService.raiseError).toHaveBeenCalled();
     });
@@ -149,8 +209,8 @@ describe("VLANDetailsController", function() {
         defer.resolve();
         $rootScope.$digest();
 
-        expect($scope.vlan).toBe(vlan);
-        expect($scope.loaded).toBe(true);
+        expect(controller.vlan).toBe(vlan);
+        expect(controller.loaded).toBe(true);
         expect(VLANsManager.setActiveItem).not.toHaveBeenCalled();
     });
 
@@ -170,12 +230,157 @@ describe("VLANDetailsController", function() {
 
     it("sets vlan and loaded once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect($scope.vlan).toBe(vlan);
-        expect($scope.loaded).toBe(true);
+        expect(controller.vlan).toBe(vlan);
+        expect(controller.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect(vlan.title).toBe("VLAN " + vlan.vid + " in " + fabric.name);
+        expect(controller.title).toBe(
+            "VLAN " + vlan.vid + " in " + fabric.name);
     });
+
+    it("default VLAN title is special", function() {
+        vlan.vid = 0;
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.title).toBe("Default VLAN in " + fabric.name);
+    });
+
+    it("custom VLAN name renders in title", function() {
+        vlan.name = "Super Awesome VLAN";
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.title).toBe("Super Awesome VLAN in " + fabric.name);
+    });
+
+    it("changes title when VLAN name changes", function() {
+        vlan.vid = 0;
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.title).toBe("Default VLAN in " + fabric.name);
+        vlan.name = "Super Awesome VLAN";
+        $scope.$digest();
+        expect(controller.title).toBe("Super Awesome VLAN in " + fabric.name);
+    });
+
+    it("changes title when fabric name changes", function() {
+        vlan.name = "Super Awesome VLAN";
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.title).toBe("Super Awesome VLAN in " + fabric.name);
+        fabric.name = "space";
+        $scope.$digest();
+        expect(controller.title).toBe("Super Awesome VLAN in space");
+    });
+
+    it("updates primaryRack variable when controller changes", function() {
+        vlan.primary_rack = 0;
+        vlan.primary_rack_sid = null;
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.primaryRack).toBe(null);
+        expect(controller.secondaryRack).toBe(secondaryController);
+        vlan.primary_rack = primaryController.id;
+        vlan.primary_rack_sid = primaryController.system_id;
+        $scope.$digest();
+        expect(controller.primaryRack).toBe(primaryController);
+    });
+
+    it("updates secondaryRack variable when controller changes", function() {
+        vlan.secondary_rack = 0;
+        vlan.secondary_rack_sid = null;
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.primaryRack).toBe(primaryController);
+        expect(controller.secondaryRack).toBe(null);
+        vlan.secondary_rack = secondaryController.id;
+        vlan.secondary_rack_sid = secondaryController.system_id;
+        $scope.$digest();
+        expect(controller.secondaryRack).toBe(secondaryController);
+    });
+
+    it("updates reatedControllers when controllers list changes", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.controllers.length).toBe(2);
+        expect(controller.relatedControllers.length).toBe(2);
+        makeRackController(3, "three", "t3");
+        expect(controller.relatedControllers.length).toBe(2);
+        expect(controller.controllers.length).toBe(3);
+        $scope.$digest();
+        expect(controller.relatedControllers.length).toBe(3);
+    });
+
+    it("updates relatedSubnets when subnets list changes", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        makeSubnet(6002);
+        expect(controller.relatedSubnets.length).toBe(1);
+        expect(controller.subnets.length).toBe(2);
+        $scope.$digest();
+        expect(controller.relatedSubnets.length).toBe(2);
+    });
+
+    it("updates relatedSpaces and relatedSubnets when spaces list changes",
+        function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect(controller.spaces.length).toBe(1);
+        expect(controller.relatedSpaces.length).toBe(1);
+        makeSpace(2002);
+        vlan.space_ids.push(2002);
+        makeSubnet(6002, 2002);
+        expect(controller.relatedSpaces.length).toBe(1);
+        expect(controller.controllers.length).toBe(2);
+        $scope.$digest();
+        expect(controller.relatedSpaces.length).toBe(2);
+    });
+
+    it("actionOption cleared on action success", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.DELETE_ACTION;
+        var defer = $q.defer();
+        spyOn(VLANsManager, "deleteVLAN").and.returnValue(
+            defer.promise);
+        controller.actionGo();
+        defer.resolve();
+        $scope.$digest();
+        expect(controller.actionOption).toBe(null);
+        expect(controller.actionError).toBe(null);
+    });
+
+    it("actionOption and actionError populated on action failure", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.PROVIDE_DHCP_ACTION;
+        var defer = $q.defer();
+        spyOn(VLANsManager, "configureDHCP").and.returnValue(
+            defer.promise);
+        controller.actionGo();
+        result = {error: 'errorString', request: {
+            params: {
+                action: 'provide_dhcp'
+            }
+        }};
+        controller.actionOption = null;
+        defer.reject(result);
+        $scope.$digest();
+        expect(controller.actionOption).toBe(controller.PROVIDE_DHCP_ACTION);
+        expect(controller.actionError).toBe('errorString');
+    });
+
+    it("performAction for provide_dhcp called correctly", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.PROVIDE_DHCP_ACTION;
+        // This will populate the default values for the racks with
+        // the current values from the mock objects.
+        controller.actionOptionChanged();
+        var defer = $q.defer();
+        spyOn(VLANsManager, "configureDHCP").and.returnValue(
+            defer.promise);
+        controller.actionGo();
+        defer.resolve();
+        $scope.$digest();
+        expect(VLANsManager.configureDHCP).toHaveBeenCalledWith(
+            controller.vlan,
+            [
+                controller.primaryRack.system_id,
+                controller.secondaryRack.system_id
+            ]
+        );
+        expect(controller.actionOption).toBe(null);
+        expect(controller.actionError).toBe(null);
+    });
+
 });

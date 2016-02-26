@@ -350,7 +350,10 @@ class Handler(metaclass=HandlerMetaclass):
                 try:
                     obj = form.save()
                 except ValidationError as e:
-                    raise HandlerValidationError(e.error_dict)
+                    try:
+                        raise HandlerValidationError(e.message_dict)
+                    except AttributeError:
+                        raise HandlerValidationError({"__all__": e.message})
                 return self.full_dehydrate(obj)
             else:
                 raise HandlerValidationError(form.errors)

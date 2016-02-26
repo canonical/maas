@@ -601,6 +601,8 @@ class Factory(maastesting.factory.Factory):
             iftype = kwargs['iftype']
             del kwargs['iftype']
         node = self.make_Node(fabric=fabric, **kwargs)
+        if vlan is None and subnet is not None:
+            vlan = subnet.vlan
         if vlan is None:
             dhcp_on = with_dhcp_rack_primary or with_dhcp_rack_secondary
             vlan = self.make_VLAN(fabric=fabric, dhcp_on=dhcp_on)
@@ -637,14 +639,20 @@ class Factory(maastesting.factory.Factory):
                     subnet=subnet, interface=interface)
         if with_dhcp_rack_primary:
             if primary_rack is None:
-                primary_rack = self.make_RackController(
-                    vlan=vlan, subnet=subnet)
+                if vlan.primary_rack is None:
+                    primary_rack = self.make_RackController(
+                        vlan=vlan, subnet=subnet)
+                else:
+                    primary_rack = vlan.primary_rack
             vlan.primary_rack = primary_rack
             vlan.save()
         if with_dhcp_rack_secondary:
             if secondary_rack is None:
-                secondary_rack = self.make_RackController(
-                    vlan=vlan, subnet=subnet)
+                if vlan.secondary_rack is None:
+                    secondary_rack = self.make_RackController(
+                        vlan=vlan, subnet=subnet)
+                else:
+                    secondary_rack = vlan.secondary_rack
             vlan.secondary_rack = secondary_rack
             vlan.save()
         return node

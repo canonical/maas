@@ -37,6 +37,15 @@ angular.module('MAAS').factory(
             return this._authUser;
         };
 
+        // Return true if the authenticated user is super user.
+        UsersManager.prototype.isSuperUser = function() {
+            var authUser = this.getAuthUser();
+            if(!angular.isObject(authUser)) {
+                return false;
+            }
+            return authUser.is_superuser;
+        };
+
         // Return true if the authenticated user has uploaded at
         // least one SSH key.
         UsersManager.prototype.getSSHKeyCount = function() {
@@ -47,7 +56,7 @@ angular.module('MAAS').factory(
             return authuser.sshkeys_count;
         };
 
-        // Load the authencticated user.
+        // Load the authenticated user.
         UsersManager.prototype._loadAuthUser = function() {
             var self = this;
             return RegionConnection.callMethod("user.auth_user", {}).then(

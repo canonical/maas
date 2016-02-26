@@ -134,6 +134,12 @@ class VLAN(CleanSave, TimestampedModel):
     :ivar fabric: The `Fabric` this VLAN belongs to.
     """
 
+    MUST_SPECIFY_LIST_ERROR = "Must specify a list of controllers."
+    DUPLICATE_CONTROLLER_ERROR = "Duplicate rack controller specified."
+    INVALID_NUMBER_OF_CONTROLLERS_ERROR = (
+        "Number of controllers must be zero, one, or two. (Got %d.)"
+    )
+
     objects = VLANManager()
 
     class Meta(DefaultMeta):
@@ -183,6 +189,47 @@ class VLAN(CleanSave, TimestampedModel):
     def clean(self):
         self.clean_vid()
         self.clean_mtu()
+
+    def configure_dhcp(self, controllers):
+        """Configures DHCP, based on the specified list of controllers.
+
+        If the list contains zero items, DHCP will be disabled and the primary
+        and secondary controllers will be cleared from this VLAN.
+
+        If the list contains one item, DHCP will be enabled and the primary
+        controller will be set on this VLAN. The secondary controller will be
+        cleared.
+
+        If the list contains two items, DHCP will be enabled and the primary
+        and secondary controllers will be set on this VLAN.
+
+        If the argument is not a list, a duplicate controller is specified,
+        or more than two controllers are specified, raises ValidationError.
+
+        Note that this method does not save the model object; that is left up
+        to the caller.
+
+        :param: controllers: list
+        :raises: ValidationError
+        """
+        assert isinstance(controllers, list), self.MUST_SPECIFY_LIST_ERROR
+        if len(controllers) == 0:
+            self.dhcp_on = False
+            self.primary_rack = None
+            self.secondary_rack = None
+        elif len(controllers) == 1:
+            self.dhcp_on = True
+            self.primary_rack = controllers[0]
+            self.secondary_rack = None
+        elif len(controllers) == 2:
+            if len(set(controllers)) != 2:
+                raise ValidationError(self.DUPLICATE_CONTROLLER_ERROR)
+            self.dhcp_on = True
+            self.primary_rack = controllers[0]
+            self.secondary_rack = controllers[1]
+        elif len(controllers) > 2:
+            raise ValueError(
+                self.INVALID_NUMBER_OF_CONTROLLERS_ERROR % (len(controllers)))
 
     def is_fabric_default(self):
         """Is this the default VLAN in the fabric?"""
