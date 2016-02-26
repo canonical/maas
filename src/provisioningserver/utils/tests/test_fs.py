@@ -258,8 +258,9 @@ class TestIncrementalWrite(MAASTestCase):
         old_mtime = os.stat(filename).st_mtime - 10
         os.utime(filename, (old_mtime, old_mtime))
         incremental_write(content, filename)
+        new_time = time.time()
         self.assertAlmostEqual(
-            os.stat(filename).st_mtime, old_mtime + 1, delta=0.01)
+            os.stat(filename).st_mtime, new_time, delta=0.01)
 
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
@@ -295,25 +296,16 @@ class TestGetMTime(MAASTestCase):
 class TestPickNewMTime(MAASTestCase):
     """Test `pick_new_mtime`."""
 
-    def test_pick_new_mtime_applies_starting_age_to_new_file(self):
-        before = time.time()
-        starting_age = randint(0, 5)
-        recommended_age = pick_new_mtime(None, starting_age=starting_age)
-        now = time.time()
-        self.assertAlmostEqual(
-            now - starting_age,
-            recommended_age,
-            delta=(now - before))
-
     def test_pick_new_mtime_increments_mtime_if_possible(self):
-        past = time.time() - 2
-        self.assertEqual(past + 1, pick_new_mtime(past))
+        now = time.time()
+        new_time = pick_new_mtime(now - 2)
+        self.assertAlmostEqual(new_time, now, delta=0.0001)
 
-    def test_pick_new_mtime_refuses_to_move_mtime_into_the_future(self):
+    def test_pick_new_mtime_happily_moves_mtime_into_the_future(self):
         # Race condition: this will fail if the test gets held up for
         # a second between readings of the clock.
         now = time.time()
-        self.assertEqual(now, pick_new_mtime(now))
+        self.assertEqual(now + 1, pick_new_mtime(now))
 
 
 class TestGetMAASProvisionCommand(MAASTestCase):

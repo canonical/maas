@@ -168,7 +168,8 @@ class TestHelpers(MAASTestCase):
 class TestRNDCUtilities(MAASTestCase):
 
     def test_generate_rndc_returns_configurations(self):
-        rndc_content, named_content = generate_rndc()
+        rndc_content, named_content = generate_rndc(
+            include_default_controls=False)
         # rndc_content and named_content look right.
         self.assertIn('# Start of rndc.conf', rndc_content)
         self.assertIn('controls {', named_content)

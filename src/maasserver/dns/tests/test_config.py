@@ -7,10 +7,6 @@ __all__ = []
 
 import random
 import time
-from unittest import (
-    skip,
-    SkipTest,
-)
 
 from django.conf import settings
 from django.core.management import call_command
@@ -85,11 +81,6 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import Deferred
-
-
-def setUp():
-    raise SkipTest(
-        "XXX: GavinPanella 2016-02-24 bug=1549230: Fails spuriously.")
 
 
 def get_expected_names(node, ip):
@@ -548,6 +539,8 @@ class TestDNSServer(MAASServerTestCase):
         if version == -1:
             version = IPAddress(ip).version
         fqdn = "%s.%s" % (hostname, domain)
+        # Give BIND enough time to process the rndc request.
+        time.sleep(0.2)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.assertThat(
             forward_lookup_result, Contains(ip),
@@ -739,7 +732,6 @@ class TestDNSConfigModifications(TestDNSServer):
         domain.delete()
         self.assertEqual([''], self.dig_reverse_resolve(ip))
 
-    @skip("XXX: GavinPanella 2016-02-24 bug=1549206: Fails spuriously.")
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -752,7 +744,6 @@ class TestDNSConfigModifications(TestDNSServer):
         fqdn = "%s.%s" % (node.hostname, node.domain.name)
         self.assertEqual([''], self.dig_resolve(fqdn))
 
-    @skip("XXX: GavinPanella 2016-02-24 bug=1549206: Fails spuriously.")
     def test_change_node_hostname_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
@@ -775,7 +766,6 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
     record.
     """
 
-    @skip("XXX: GavinPanella 2016-02-24 bug=1549174: Fails spuriously.")
     def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
         self.patch(settings, "DNS_CONNECT", True)
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
@@ -795,9 +785,6 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
 class TestDNSResource(TestDNSServer):
     """Tests for DNSResource records."""
 
-    @skip(
-        "XXX bug=1541268 2016-02-02 lamont: we need to figure out why the "
-        "data doesn't make it into the nameserver.")
     def test_dnsresources_are_in_the_dns(self):
         self.patch(settings, "DNS_CONNECT", True)
         domain = factory.make_Domain()
