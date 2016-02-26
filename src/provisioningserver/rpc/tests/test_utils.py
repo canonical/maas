@@ -25,7 +25,6 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
-from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from twisted.internet import defer
@@ -83,15 +82,12 @@ class TestCreateNode(PservTestCase):
             'power_control': None,
             'system_id': uuid
         }
-        test_uuid = factory.make_UUID()
-        self.useFixture(ClusterConfigurationFixture(cluster_uuid=test_uuid))
 
         yield create_node(
             macs, arch, power_type, power_parameters, hostname=hostname)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
-                protocol, cluster_uuid=test_uuid,
-                architecture=arch, power_type=power_type,
+                protocol, architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
                 mac_addresses=macs, hostname=hostname))
 
@@ -129,9 +125,6 @@ class TestCreateNode(PservTestCase):
         protocol.CreateNode.return_value = defer.succeed(
             {"system_id": system_id})
 
-        test_uuid = factory.make_UUID()
-        self.useFixture(ClusterConfigurationFixture(cluster_uuid=test_uuid))
-
         uuid = 'node-' + factory.make_UUID()
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
@@ -151,8 +144,7 @@ class TestCreateNode(PservTestCase):
             macs_with_duplicate, arch, power_type, power_parameters)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
-                protocol, cluster_uuid=test_uuid,
-                architecture=arch, power_type=power_type,
+                protocol, architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
                 mac_addresses=macs, hostname=None))
 

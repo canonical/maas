@@ -348,8 +348,8 @@ class Region(RPCProtocol):
         return d
 
     @region.CreateNode.responder
-    def create_node(self, cluster_uuid, architecture, power_type,
-                    power_parameters, mac_addresses, hostname=None):
+    def create_node(self, architecture, power_type, power_parameters,
+                    mac_addresses, hostname=None):
         """create_node()
 
         Implementation of

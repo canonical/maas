@@ -40,16 +40,13 @@ class VLANForm(MAASModelForm):
         self._set_up_rack_fields()
 
     def _set_up_rack_fields(self):
+        qs = RackController.objects.filter_by_vids([self.instance.vid])
         self.fields['primary_rack'] = forms.ModelChoiceField(
             required=False, initial=None, empty_label='No rack controller',
-            queryset=RackController.objects.filter_by_vids(
-                [self.instance.vid]),
-            to_field_name='system_id')
+            queryset=qs, to_field_name='system_id')
         self.fields['secondary_rack'] = forms.ModelChoiceField(
             required=False, initial=None, empty_label='No rack controller',
-            queryset=RackController.objects.filter_by_vids(
-                [self.instance.vid]),
-            to_field_name='system_id')
+            queryset=qs, to_field_name='system_id')
 
         # Convert the initial values pulled from the database from id to
         # system_id so form validation doesn't complain

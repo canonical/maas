@@ -731,11 +731,10 @@ describe("AddHardwareController", function() {
             $scope.saveChassis(false);
 
             var parameters = $scope.chassis.power.parameters;
-            parameters.model = $scope.chassis.power.type.name;
+            parameters.chassis_type = $scope.chassis.power.type.name;
             expect($http).toHaveBeenCalledWith({
                 method: 'POST',
-                url: 'api/1.0/nodegroups/' + $scope.chassis.cluster.uuid +
-                    '/?op=probe_and_enlist_hardware',
+                url: 'api/2.0/machines/?op=add_chassis',
                 data: $.param(parameters),
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             });

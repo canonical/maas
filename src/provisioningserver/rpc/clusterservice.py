@@ -75,7 +75,6 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
-from provisioningserver.utils.network import find_ip_via_arp
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import DeferredValue
 from twisted import web
@@ -331,103 +330,9 @@ class Cluster(RPCProtocol):
             convert_string_to_tuple(credentials))
         return d.addCallback(lambda _: {})
 
-    @cluster.AddVirsh.responder
-    def add_virsh(self, user, poweraddr, password, prefix_filter, accept_all):
-        """add_virsh()
-
-        Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
-        """
-        d = deferToThread(
-            probe_virsh_and_enlist,
-            user, poweraddr, password, prefix_filter, accept_all)
-        d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
-        return {}
-
-    @cluster.AddSeaMicro15k.responder
-    def add_seamicro15k(self, user, mac, username,
-                        password, power_control, accept_all):
-        """add_virsh()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.AddSeaMicro15k`.
-        """
-        ip = find_ip_via_arp(mac)
-        if ip is not None:
-            d = deferToThread(
-                probe_seamicro15k_and_enlist,
-                user, ip, username, password,
-                power_control=power_control, accept_all=accept_all)
-            d.addErrback(
-                partial(catch_probe_and_enlist_error, "SeaMicro 15000"))
-        else:
-            message = "Couldn't find IP address for MAC %s" % mac
-            maaslog.warning(message)
-            raise exceptions.NoIPFoundForMACAddress(message)
-        return {}
-
-    @cluster.AddVMware.responder
-    def add_vmware(self, user, host, username, password, port, protocol,
-                   prefix_filter, accept_all):
-        """add_vmware()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.AddVMware`.
-        """
-        d = deferToThread(
-            probe_vmware_and_enlist,
-            user, host, username, password,
-            port=port, protocol=protocol, prefix_filter=prefix_filter,
-            accept_all=accept_all)
-        d.addErrback(
-            partial(catch_probe_and_enlist_error, "VMware"))
-        return {}
-
-    @cluster.EnlistNodesFromMSCM.responder
-    def enlist_nodes_from_mscm(self, user, host, username,
-                               password, accept_all):
-        """enlist_nodes_from_mscm()
-
-        Implemention of
-        :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromMSCM`.
-        """
-        d = deferToThread(
-            probe_and_enlist_mscm,
-            user, host, username, password, accept_all)
-        d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
-        return {}
-
-    @cluster.EnlistNodesFromUCSM.responder
-    def enlist_nodes_from_ucsm(self, user, url, username,
-                               password, accept_all):
-        """enlist_nodes_from_ucsm()
-
-        Implemention of
-        :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromUCSM`.
-        """
-        d = deferToThread(
-            probe_and_enlist_ucsm,
-            user, url, username, password, accept_all)
-        d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
-        return {}
-
-    @cluster.EnlistNodesFromMicrosoftOCS.responder
-    def enlist_nodes_from_msftocs(self, user, ip, port, username,
-                                  password, accept_all):
-        """enlist_nodes_from_msftocs()
-
-        Implemention of
-        :py:class:
-          `~provisioningserver.rpc.cluster.EnlistNodesFromMicrosoftOCS`.
-        """
-        d = deferToThread(
-            probe_and_enlist_msftocs,
-            user, ip, port, username, password, accept_all)
-        d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
-        return {}
-
     @cluster.RefreshRackControllerInfo.responder
     def refresh(self, system_id, consumer_key, token_key, token_secret):
-        """refresh()
+        """RefreshRackControllerInfo()
 
         Implementation of
         :py:class:
@@ -457,6 +362,54 @@ class Cluster(RPCProtocol):
             'distro_series': distro_series,
             'swap_size': get_swap_size(),
         }
+
+    @cluster.AddChassis.responder
+    def add_chassis(
+            self, user, chassis_type, hostname, username=None, password=None,
+            accept_all=False, prefix_filter=None, power_control=None,
+            port=None, protocol=None):
+        """AddChassis()
+
+        Implementation of
+        :py:class:
+          `~provisioningserver.rpc.cluster.AddChassis`.
+        """
+        if chassis_type in ('virsh', 'powerkvm'):
+            d = deferToThread(
+                probe_virsh_and_enlist,
+                user, hostname, password, prefix_filter, accept_all)
+            d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
+        elif chassis_type == 'vmware':
+            d = deferToThread(
+                probe_vmware_and_enlist,
+                user, hostname, username, password, port, protocol,
+                prefix_filter, accept_all)
+            d.addErrback(partial(catch_probe_and_enlist_error, "VMware"))
+        elif chassis_type == 'seamicro15k':
+            d = deferToThread(
+                probe_seamicro15k_and_enlist,
+                user, hostname, username, password, power_control, accept_all)
+            d.addErrback(
+                partial(catch_probe_and_enlist_error, "SeaMicro 15000"))
+        elif chassis_type == 'mscm':
+            d = deferToThread(
+                probe_and_enlist_mscm, user, hostname, username, password,
+                accept_all)
+            d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
+        elif chassis_type == 'msftocs':
+            d = deferToThread(
+                probe_and_enlist_msftocs, user, hostname, port, username,
+                password, accept_all)
+            d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
+        elif chassis_type == 'ucsm':
+            d = deferToThread(
+                probe_and_enlist_ucsm, user, hostname, username, password,
+                accept_all)
+            d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
+        else:
+            message = "Unknown chassis type %s" % chassis_type
+            maaslog.error(message)
+        return {}
 
 
 @implementer(IConnection)

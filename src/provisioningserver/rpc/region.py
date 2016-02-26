@@ -333,11 +333,10 @@ class GetClusterInterfaces(amp.Command):
 class CreateNode(amp.Command):
     """Create a node on a given cluster.
 
-    :since: 1.7
+    :since: 2.0
     """
 
     arguments = [
-        (b'cluster_uuid', amp.Unicode()),
         (b'architecture', amp.Unicode()),
         (b'power_type', amp.Unicode()),
         (b'power_parameters', amp.Unicode()),

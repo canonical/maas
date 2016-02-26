@@ -12,9 +12,16 @@ from base64 import b64decode
 import re
 
 import crochet
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.db.models import Q
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseNotFound,
+)
 from django.shortcuts import get_object_or_404
+from formencode import validators
 from formencode.validators import StringBool
 from maasserver import (
     eventloop,
@@ -32,6 +39,7 @@ from maasserver.api.support import (
     operation,
 )
 from maasserver.api.utils import (
+    get_mandatory_param,
     get_oauth_token,
     get_optional_list,
     get_optional_param,
@@ -58,6 +66,7 @@ from maasserver.forms_commission import CommissionForm
 from maasserver.models import (
     Config,
     Machine,
+    RackController,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
@@ -1116,6 +1125,165 @@ class MachinesHandler(NodesHandler):
 
         return {machine.system_id: machine.power_parameters
                 for machine in machines}
+
+    @admin_method
+    @operation(idempotent=False)
+    def add_chassis(self, request):
+        """Add special hardware types.
+
+        :param chassis_type: The type of hardware.
+            mscm is the type for the Moonshot Chassis Manager.
+            msftocs is the type for the Microsoft OCS Chassis Manager.
+            powerkvm is the type for Virtual Machines on Power KVM,
+            managed by Virsh.
+            seamicro15k is the type for the Seamicro 1500 Chassis.
+            ucsm is the type for the Cisco UCS Manager.
+            virsh is the type for virtual machines managed by Virsh.
+            vmware is the type for virtual machines managed by VMware.
+        :type chassis_type: unicode
+
+        :param hostname: The URL, hostname, or IP address to access the
+            chassis.
+        :type url: unicode
+
+        :param username: The username used to access the chassis. This field
+            is required for the seamicro15k, vmware, mscm, msftocs, and ucsm
+            chassis types.
+        :type username: unicode
+
+        :param password: The password used to access the chassis. This field
+            is required for the seamicro15k, vmware, mscm, msftocs, and ucsm
+            chassis types.
+        :type password: unicode
+
+        :param accept_all: If true, all enlisted nodes will be
+            commissioned.
+        :type accept_all: unicode
+
+        :param rack_controller: The system_id of the rack controller to send
+            the add chassis command through. If none is specifed MAAS will
+            automatically determine the rack controller to use.
+        :type rack_controller: unicode
+
+        The following are optional if you are adding a virsh, vmware, or
+        powerkvm chassis:
+
+        :param prefix_filter: Filter machines with supplied prefix.
+        :type prefix_filter: unicode
+
+        The following are optional if you are adding a seamicro15k chassis:
+
+        :param power_control: The power_control to use, either ipmi (default),
+            restapi, or restapi2.
+        :type power_control: unicode
+
+        The following are optional if you are adding a vmware or msftocs
+        chassis.
+
+        :param port: The port to use when accessing the chassis.
+        :type port: integer
+
+        The following are optioanl if you are adding a vmware chassis:
+
+        :param protocol: The protocol to use when accessing the VMware
+            chassis (default: https).
+        :type protocol: unicode
+
+        :return: A string containing the chassis powered on by which rack
+            controller.
+
+        Returns 404 if no rack controller can be found which has access to the
+        given URL.
+        Returns 403 if the user does not have access to the rack controller.
+        Returns 400 if the required parameters were not passed.
+        """
+        chassis_type = get_mandatory_param(
+            request.POST, 'chassis_type',
+            validator=validators.OneOf([
+                'mscm', 'msftocs', 'powerkvm', 'seamicro15k', 'ucsm', 'virsh',
+                'vmware']))
+        hostname = get_mandatory_param(request.POST, 'hostname')
+
+        if chassis_type in (
+                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+            username = get_mandatory_param(request.POST, 'username')
+            password = get_mandatory_param(request.POST, 'password')
+        else:
+            username = get_optional_param(request.POST, 'username')
+            password = get_optional_param(request.POST, 'password')
+            if username is not None and chassis_type in ('powerkvm', 'virsh'):
+                return HttpResponseBadRequest(
+                    "username can not be specified when using the %s chassis."
+                    % chassis_type, content_type=(
+                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        accept_all = get_optional_param(request.POST, 'accept_all')
+        if isinstance(accept_all, str):
+            accept_all = accept_all.lower() == 'true'
+        else:
+            accept_all = False
+
+        # Only available with virsh, vmware, and powerkvm
+        prefix_filter = get_optional_param(request.POST, 'prefix_filter')
+        if (prefix_filter is not None and
+                chassis_type not in ('powerkvm', 'virsh', 'vmware')):
+            return HttpResponseBadRequest(
+                "prefix_filter is unavailable with the %s chassis type" %
+                chassis_type, content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        # Only available with seamicro15k
+        power_control = get_optional_param(
+            request.POST, 'power_control',
+            validator=validators.OneOf(['ipmi', 'restapi', 'restapi2']))
+        if power_control is not None and chassis_type != 'seamicro15k':
+            return HttpResponseBadRequest(
+                "power_control is unavailable with the %s chassis type" %
+                chassis_type, content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        # Only available with vmware or msftocs
+        port = get_optional_param(request.POST, 'port')
+        if port is not None and chassis_type not in ('msftocs', 'vmware'):
+            return HttpResponseBadRequest(
+                "port is unavailable with the %s chassis type" %
+                chassis_type, content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        # Only available with vmware
+        protocol = get_optional_param(request.POST, 'protocol')
+        if protocol is not None and chassis_type != 'vmware':
+            return HttpResponseBadRequest(
+                "protocol is unavailable with the %s chassis type" %
+                chassis_type, content_type=(
+                    "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        rack_controller = get_optional_param(request.POST, 'rack_controller')
+        if rack_controller is None:
+            rack = RackController.objects.get_accessible_by_url(hostname)
+            if not rack:
+                return HttpResponseNotFound(
+                    "Unable to find a rack controller with access to chassis "
+                    "%s" % hostname, content_type=(
+                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+        else:
+            try:
+                rack = RackController.objects.get(
+                    Q(system_id=rack_controller) | Q(hostname=rack_controller))
+            except RackController.DoesNotExist:
+                return HttpResponseNotFound(
+                    "Unable to find specified rack %s" % rack_controller,
+                    content_type=(
+                        "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+        rack.add_chassis(
+            request.user.username, chassis_type, hostname, username, password,
+            accept_all, prefix_filter, power_control, port, protocol)
+
+        return HttpResponse(
+            "Asking %s to add machines from chassis %s" % (
+                rack.hostname, hostname),
+            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

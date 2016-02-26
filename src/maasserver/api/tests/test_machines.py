@@ -33,6 +33,7 @@ from maasserver.models import (
     Domain,
     Machine,
     Node,
+    node as node_module,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.user import (
@@ -55,7 +56,11 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCalledWith,
+    MockNotCalled,
+)
 from maastesting.twisted import always_succeed_with
 from mock import Mock
 from provisioningserver.power.poweraction import PowerActionFail
@@ -1553,6 +1558,471 @@ class TestMachinesAPI(APITestCase):
             for machine in expected_machines
         }
         self.assertEqual(expected, parsed)
+
+    def test_POST_add_chassis_requires_admin(self):
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_POST_add_chassis_requires_chassis_type(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(b'No provided chassis_type!', response.content)
+
+    def test_POST_add_chassis_requires_hostname(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(b'No provided hostname!', response.content)
+
+    def test_POST_add_chassis_validates_chassis_type(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': factory.make_name('chassis_type'),
+                'hostname': factory.make_url(),
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_POST_add_chassis_username_required_for_required_chassis(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        self.patch(rack, 'add_chassis')
+        for chassis_type in (
+                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+            response = self.client.post(
+                reverse('machines_handler'),
+                {
+                    'op': 'add_chassis',
+                    'chassis_type': chassis_type,
+                    'hostname': factory.make_url(),
+                })
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(b'No provided username!', response.content)
+
+    def test_POST_add_chassis_password_required_for_required_chassis(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        self.patch(rack, 'add_chassis')
+        for chassis_type in (
+                'mscm', 'msftocs', 'seamicro15k', 'ucsm', 'vmware'):
+            response = self.client.post(
+                reverse('machines_handler'),
+                {
+                    'op': 'add_chassis',
+                    'chassis_type': chassis_type,
+                    'hostname': factory.make_url(),
+                    'username': factory.make_name('username'),
+                })
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(b'No provided password!', response.content)
+
+    def test_POST_add_chassis_username_disallowed_on_virsh_and_powerkvm(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        self.patch(rack, 'add_chassis')
+        for chassis_type in ('powerkvm', 'virsh'):
+            response = self.client.post(
+                reverse('machines_handler'),
+                {
+                    'op': 'add_chassis',
+                    'chassis_type': chassis_type,
+                    'hostname': factory.make_url(),
+                    'username': factory.make_name('username'),
+                })
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                ("username can not be specified when using the %s "
+                 "chassis." % chassis_type).encode('utf-8'),
+                response.content)
+
+    def test_POST_add_chassis_sends_accept_all_when_true(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'accept_all': 'true',
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis, MockCalledOnceWith(
+                self.logged_in_user.username, 'virsh', hostname, None, None,
+                True, None, None, None, None))
+
+    def test_POST_add_chassis_sends_accept_all_false_when_not_true(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'accept_all': factory.make_name('accept_all'),
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis, MockCalledOnceWith(
+                self.logged_in_user.username, 'virsh', hostname, None, None,
+                False, None, None, None, None))
+
+    def test_POST_add_chassis_sends_prefix_filter(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        for chassis_type in ('powerkvm', 'virsh', 'vmware'):
+            prefix_filter = factory.make_name('prefix_filter')
+            password = factory.make_name('password')
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': hostname,
+                'password': password,
+                'prefix_filter': prefix_filter,
+            }
+            if chassis_type == 'vmware':
+                username = factory.make_name('username')
+                params['username'] = username
+            else:
+                username = None
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.OK, response.status_code, response.content)
+            self.assertThat(
+                add_chassis, MockCalledWith(
+                    self.logged_in_user.username, chassis_type, hostname,
+                    username, password, False, prefix_filter, None, None, None
+                    ))
+
+    def test_POST_add_chassis_only_allows_prefix_filter_on_virtual_chassis(
+            self):
+        self.become_admin()
+        for chassis_type in ('mscm', 'msftocs', 'seamicro15k', 'ucsm'):
+            response = self.client.post(
+                reverse('machines_handler'),
+                {
+                    'op': 'add_chassis',
+                    'chassis_type': chassis_type,
+                    'hostname': factory.make_url(),
+                    'username': factory.make_name('username'),
+                    'password': factory.make_name('password'),
+                    'prefix_filter': factory.make_name('prefix_filter')
+                })
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                ("prefix_filter is unavailable with the %s chassis type" %
+                 chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chassis_seamicro_validates_power_control(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'seamicro15k',
+                'hostname': factory.make_url(),
+                'username': factory.make_name('username'),
+                'password': factory.make_name('password'),
+                'power_control': factory.make_name('power_control')
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_POST_add_chassis_seamicro_allows_acceptable_power_controls(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        self.patch(rack, 'add_chassis')
+        for power_control in ('ipmi', 'restapi', 'restapi2'):
+            hostname = factory.make_url()
+            username = factory.make_name('username')
+            password = factory.make_name('password')
+            response = self.client.post(
+                reverse('machines_handler'),
+                {
+                    'op': 'add_chassis',
+                    'chassis_type': 'seamicro15k',
+                    'hostname': hostname,
+                    'username': username,
+                    'password': password,
+                    'power_control': power_control,
+                })
+            self.assertEqual(
+                http.client.OK, response.status_code, response.content)
+            self.assertEqual(
+                ("Asking %s to add machines from chassis %s" %
+                 (rack.hostname, hostname)).encode('utf-8'),
+                response.content)
+
+    def test_POST_add_chassis_only_allow_power_control_on_seamicro15k(self):
+        self.become_admin()
+        for chassis_type in (
+                'mscm', 'msftocs', 'ucsm', 'virsh', 'vmware', 'powerkvm'):
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': factory.make_url(),
+                'password': factory.make_name('password'),
+                'power_control': 'ipmi',
+            }
+            if chassis_type not in ('virsh', 'powerkvm'):
+                params['username'] = factory.make_name('username')
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                ("power_control is unavailable with the %s chassis type" %
+                 chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chassis_sends_port_with_vmware_and_msftocs(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        port = "%s" % random.randint(0, 65535)
+        for chassis_type in ('msftocs', 'vmware'):
+            response = self.client.post(
+                reverse('machines_handler'), {
+                    'op': 'add_chassis',
+                    'chassis_type': chassis_type,
+                    'hostname': hostname,
+                    'username': username,
+                    'password': password,
+                    'port': port,
+                })
+            self.assertEqual(
+                http.client.OK, response.status_code, response.content)
+            self.assertThat(
+                add_chassis, MockCalledWith(
+                    self.logged_in_user.username, chassis_type, hostname,
+                    username, password, False, None, None, port, None))
+
+    def test_POST_add_chasis_only_allows_port_with_vmware_and_msftocs(self):
+        self.become_admin()
+        for chassis_type in (
+                'mscm', 'powerkvm', 'seamicro15k', 'ucsm', 'virsh'):
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': factory.make_url(),
+                'password': factory.make_name('password'),
+                'port': random.randint(0, 65535),
+            }
+            if chassis_type not in ('virsh', 'powerkvm'):
+                params['username'] = factory.make_name('username')
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                ("port is unavailable with the %s chassis type" %
+                 chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chassis_sends_protcol_with_vmware(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        protocol = factory.make_name('protocol')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'vmware',
+                'hostname': hostname,
+                'username': username,
+                'password': password,
+                'protocol': protocol,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis, MockCalledWith(
+                self.logged_in_user.username, 'vmware', hostname, username,
+                password, False, None, None, None, protocol))
+
+    def test_POST_add_chasis_only_allows_protocol_with_vmware(self):
+        self.become_admin()
+        for chassis_type in (
+                'mscm', 'msftocs', 'powerkvm', 'seamicro15k', 'ucsm', 'virsh'):
+            params = {
+                'op': 'add_chassis',
+                'chassis_type': chassis_type,
+                'hostname': factory.make_url(),
+                'password': factory.make_name('password'),
+                'protocol': factory.make_name('protocol'),
+            }
+            if chassis_type not in ('virsh', 'powerkvm'):
+                params['username'] = factory.make_name('username')
+            response = self.client.post(reverse('machines_handler'), params)
+            self.assertEqual(
+                http.client.BAD_REQUEST, response.status_code,
+                response.content)
+            self.assertEqual(
+                ("protocol is unavailable with the %s chassis type" %
+                 chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chassis_accepts_system_id_for_rack_controller(self):
+        self.become_admin()
+        subnet = factory.make_Subnet()
+        rack = factory.make_RackController(subnet=subnet)
+        add_chassis = self.patch(node_module.RackController, 'add_chassis')
+        factory.make_RackController(subnet=subnet)
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        hostname = factory.pick_ip_in_Subnet(subnet)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'rack_controller': rack.system_id,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(accessible_by_url, MockNotCalled())
+        self.assertThat(
+            add_chassis, MockCalledWith(
+                self.logged_in_user.username, 'virsh', hostname, None, None,
+                False, None, None, None, None))
+
+    def test_POST_add_chassis_accepts_hostname_for_rack_controller(self):
+        self.become_admin()
+        subnet = factory.make_Subnet()
+        rack = factory.make_RackController(subnet=subnet)
+        add_chassis = self.patch(node_module.RackController, 'add_chassis')
+        factory.make_RackController(subnet=subnet)
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        hostname = factory.pick_ip_in_Subnet(subnet)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'rack_controller': rack.hostname,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(accessible_by_url, MockNotCalled())
+        self.assertThat(
+            add_chassis, MockCalledWith(
+                self.logged_in_user.username, 'virsh', hostname, None, None,
+                False, None, None, None, None))
+
+    def test_POST_add_chassis_rejects_invalid_rack_controller(self):
+        self.become_admin()
+        subnet = factory.make_Subnet()
+        factory.make_RackController(subnet=subnet)
+        self.patch(node_module.RackController, 'add_chassis')
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        hostname = factory.pick_ip_in_Subnet(subnet)
+        bad_rack = factory.make_name('rack_controller')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'rack_controller': bad_rack,
+            })
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+        self.assertEqual(
+            ("Unable to find specified rack %s" % bad_rack).encode('utf-8'),
+            response.content)
+        self.assertThat(accessible_by_url, MockNotCalled())
+
+    def test_POST_add_chassis_errors_when_no_racks_avalible(self):
+        self.become_admin()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = None
+        hostname = factory.make_url()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+            })
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+        self.assertEqual(
+            ("Unable to find a rack controller with access to chassis %s" %
+             hostname).encode('utf-8'), response.content)
 
 
 class TestPowerState(APITransactionTestCase):

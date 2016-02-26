@@ -200,7 +200,8 @@ class OperationsHandlerMixin:
     anonymous = None
 
     def dispatch(self, request, *args, **kwargs):
-        signature = request.method.upper(), request.REQUEST.get("op")
+        op = request.GET.get("op") or request.POST.get("op")
+        signature = request.method.upper(), op
         function = self.exports.get(signature)
         if function is None:
             raise MAASAPIBadRequest(

@@ -110,8 +110,12 @@ from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
-from provisioningserver.rpc.cluster import RefreshRackControllerInfo
+from provisioningserver.rpc.cluster import (
+    AddChassis,
+    RefreshRackControllerInfo,
+)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import (
     map_enum,
@@ -256,7 +260,38 @@ class TestMachineManager(MAASServerTestCase):
             list(Machine.objects.get_available_machines_for_acquisition(user)))
 
 
+class TestControllerManager(MAASServerTestCase):
+    def test_controller_lists_node_type_rack_and_region(self):
+        racks_and_regions = set()
+        for _ in range(3):
+            factory.make_Node(node_type=NODE_TYPE.MACHINE)
+            factory.make_Device()
+            for node_type in (
+                    NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+                racks_and_regions.add(factory.make_Node(node_type=node_type))
+        self.assertItemsEqual(racks_and_regions, Node.controllers.all())
+
+    def test_get_running_controller(self):
+        rack = factory.make_RackController()
+        get_maas_id = self.patch(node_module, 'get_maas_id')
+        get_maas_id.return_value = rack.system_id
+        self.assertEquals(rack, Node.controllers.get_running_controller())
+
+
 class TestRackControllerManager(MAASServerTestCase):
+    def make_rack_controller_with_ip(self, subnet=None):
+        rack = factory.make_RackController(subnet=subnet)
+        # factory.make_Node_with_Interface_on_Subnet gives the rack an
+        # interface on the specified subnet a static IP but doesn't actually
+        # set one. Setting one in the factory breaks a number of other tests.
+        static_ip = rack.boot_interface.ip_addresses.first()
+        if subnet is None:
+            subnet = static_ip.subnet
+        static_ip.ip = factory.pick_ip_in_Subnet(subnet)
+        static_ip.save()
+        return rack
+
     def test_rack_controller_lists_node_type_rack_controller(self):
         # Create machines.
         [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
@@ -268,6 +303,130 @@ class TestRackControllerManager(MAASServerTestCase):
                 node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)]
         self.assertItemsEqual(rack_controllers, RackController.objects.all())
+
+    def test_filter_by_url_accessible_finds_correct_racks(self):
+        accessible_subnet = factory.make_Subnet()
+        accessible_racks = set()
+        for _ in range(3):
+            accessible_racks.add(
+                self.make_rack_controller_with_ip(accessible_subnet))
+            self.make_rack_controller_with_ip()
+        url = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (url,)),)
+        self.assertItemsEqual(
+            accessible_racks,
+            RackController.objects.filter_by_url_accessible(url, False))
+
+    def test_filter_by_url_accessible_parses_full_url(self):
+        hostname = factory.make_hostname()
+        url = "%s://%s:%s@%s:%d/%s" % (
+            factory.make_name('protocol'),
+            factory.make_name('username'),
+            factory.make_name('password'),
+            hostname,
+            random.randint(0, 65535),
+            factory.make_name('path'),
+        )
+        accessible_subnet = factory.make_Subnet()
+        accessible_rack = self.make_rack_controller_with_ip(accessible_subnet)
+        factory.make_RackController()
+        ip = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
+        self.assertItemsEqual(
+            (accessible_rack,),
+            RackController.objects.filter_by_url_accessible(url, False))
+        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+
+    def test_filter_by_url_accessible_parses_host_port(self):
+        hostname = factory.make_hostname()
+        url = "%s:%d" % (hostname, random.randint(0, 65535))
+        accessible_subnet = factory.make_Subnet()
+        accessible_rack = self.make_rack_controller_with_ip(accessible_subnet)
+        factory.make_RackController()
+        ip = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
+        self.assertItemsEqual(
+            (accessible_rack,),
+            RackController.objects.filter_by_url_accessible(url, False))
+        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+
+    def test_filter_by_url_accessible_parses_host_user_pass(self):
+        hostname = factory.make_hostname()
+        url = "%s:%s@%s" % (
+            factory.make_name('username'),
+            factory.make_name('password'),
+            hostname,
+        )
+        accessible_subnet = factory.make_Subnet()
+        accessible_rack = self.make_rack_controller_with_ip(accessible_subnet)
+        factory.make_RackController()
+        ip = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
+        self.assertItemsEqual(
+            (accessible_rack,),
+            RackController.objects.filter_by_url_accessible(url, False))
+        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+
+    def test_filter_by_url_finds_self_with_loopback(self):
+        rack = self.make_rack_controller_with_ip()
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        ip = random.choice(['127.0.0.1', '::1'])
+        mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
+        get_maas_id = self.patch(node_module, 'get_maas_id')
+        get_maas_id.return_value = rack.system_id
+        self.assertEquals(
+            [rack, ],
+            RackController.objects.filter_by_url_accessible(ip, False))
+
+    def test_filter_by_url_only_returns_connected_controllers(self):
+        subnet = factory.make_Subnet()
+        accessible_racks = set()
+        connections = list()
+        for _ in range(3):
+            accessible_rack = self.make_rack_controller_with_ip(subnet=subnet)
+            accessible_racks.add(accessible_rack)
+            conn = DummyConnection()
+            conn.ident = accessible_rack.system_id
+            connections.append(conn)
+            self.make_rack_controller_with_ip()
+        ip = factory.pick_ip_in_Subnet(subnet)
+        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (ip,)),)
+        mock_getallclients = self.patch(node_module, "getAllClients")
+        mock_getallclients.return_value = connections
+        self.assertItemsEqual(
+            accessible_racks,
+            RackController.objects.filter_by_url_accessible(ip, True))
+
+    def test_get_accessible_by_url(self):
+        accessible_subnet = factory.make_Subnet()
+        accessible_racks = set()
+        for _ in range(3):
+            accessible_racks.add(
+                self.make_rack_controller_with_ip(accessible_subnet))
+            factory.make_RackController()
+        url = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(
+            node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (url,)),)
+        self.assertIn(
+            RackController.objects.get_accessible_by_url(url, False),
+            accessible_racks)
+
+    def test_get_accessible_by_url_returns_none_when_not_found(self):
+        accessible_subnet = factory.make_Subnet()
+        for _ in range(3):
+            factory.make_RackController()
+        url = factory.pick_ip_in_Subnet(accessible_subnet)
+        mock_getaddr_info = self.patch(
+            node_module.socket, "getaddrinfo")
+        mock_getaddr_info.return_value = (('', '', '', '', (url,)),)
+        self.assertEquals(
+            None, RackController.objects.get_accessible_by_url(url, False))
 
 
 class TestDeviceManager(MAASServerTestCase):
@@ -4198,3 +4357,65 @@ class TestRackController(MAASServerTestCase):
         self.assertEquals(osystem, rackcontroller.osystem)
         self.assertEquals(distro_series, rackcontroller.distro_series)
         self.assertEquals(swap_size, rackcontroller.swap_size)
+
+    def test_add_chassis_issues_rpc_call(self):
+        rackcontroller = factory.make_RackController()
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(rackcontroller, AddChassis)
+        protocol.AddChassis.return_value = defer.succeed({})
+
+        user = factory.make_name('user')
+        chassis_type = factory.make_name('chassis_type')
+        hostname = factory.make_url()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        accept_all = factory.pick_bool()
+        prefix_filter = factory.make_name('prefix_filter')
+        power_control = factory.make_name('power_control')
+        port = random.randint(0, 65535)
+        given_protocol = factory.make_name('protocol')
+
+        rackcontroller.add_chassis(
+            user, chassis_type, hostname, username, password, accept_all,
+            prefix_filter, power_control, port, given_protocol)
+
+        self.expectThat(
+            protocol.AddChassis,
+            MockCalledOnceWith(
+                ANY, user=user, chassis_type=chassis_type, hostname=hostname,
+                username=username, password=password, accept_all=accept_all,
+                prefix_filter=prefix_filter, power_control=power_control,
+                port=port, protocol=given_protocol))
+
+    def test_add_chassis_logs_user_request(self):
+        rackcontroller = factory.make_RackController()
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(rackcontroller, AddChassis)
+        protocol.AddChassis.return_value = defer.succeed({})
+
+        user = factory.make_name('user')
+        chassis_type = factory.make_name('chassis_type')
+        hostname = factory.make_url()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        accept_all = factory.pick_bool()
+        prefix_filter = factory.make_name('prefix_filter')
+        power_control = factory.make_name('power_control')
+        port = random.randint(0, 65535)
+        given_protocol = factory.make_name('protocol')
+
+        register_event = self.patch(rackcontroller, '_register_request_event')
+        rackcontroller.add_chassis(
+            user, chassis_type, hostname, username, password, accept_all,
+            prefix_filter, power_control, port, given_protocol)
+        post_commit_hooks.reset()  # Ignore these for now.
+        self.assertThat(register_event, MockCalledOnceWith(
+            rackcontroller.owner,
+            EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS,
+            action="Adding chassis %s" % hostname))

@@ -619,6 +619,9 @@ class TestMachineAPI(APITestCase):
     def test_POST_deploy_stores_user_data(self):
         self.patch(node_module.Node, "_power_control_node")
         rack_controller = factory.make_RackController()
+        self.patch(
+            node_module.RackControllerManager, "filter_by_url_accessible"
+            ).return_value = [rack_controller]
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='virsh', architecture=make_usable_architecture(self),

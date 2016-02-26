@@ -37,7 +37,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         // fixed ASAP.
         var virshFields = [
             {
-                name: 'power_address',
+                name: 'hostname',
                 label: 'Address',
                 field_type: 'string',
                 "default": '',  // Using "default" to make lint happy.
@@ -45,7 +45,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 required: true
             },
             {
-                name: 'power_pass',
+                name: 'password',
                 label: 'Password',
                 field_type: 'string',
                 "default": '',
@@ -67,7 +67,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 description: 'Moonshot Chassis Manager',
                 fields: [
                     {
-                        name: 'host',
+                        name: 'hostname',
                         label: 'Host',
                         field_type: 'string',
                         "default": '',
@@ -102,9 +102,9 @@ angular.module('MAAS').controller('AddHardwareController', [
                 description: 'SeaMicro 15000',
                 fields: [
                     {
-                        name: 'mac',
-                        label: 'MAC',
-                        field_type: 'mac_address',
+                        name: 'hostname',
+                        label: 'Hostname',
+                        field_type: 'string',
                         "default": '',
                         choices: [],
                         required: true
@@ -144,7 +144,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 description: 'UCS Chassis Manager',
                 fields: [
                     {
-                        name: 'url',
+                        name: 'hostname',
                         label: 'URL',
                         field_type: 'string',
                         "default": '',
@@ -179,7 +179,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 description: 'VMWare',
                 fields: [
                     {
-                        name: 'host',
+                        name: 'hostname',
                         label: 'Host',
                         field_type: 'string',
                         "default": '',
@@ -516,15 +516,22 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Create the parameters.
             var params = angular.copy($scope.chassis.power.parameters);
-            params.model = $scope.chassis.power.type.name;
+            params.chassis_type = $scope.chassis.power.type.name;
 
+            // XXX ltrager 24-02-2016: Something is adding the username field
+            // even though its not defined in virshFields. The API rejects
+            // requests with improper fields so remove it before we send the
+            // request.
+            if(
+                    params.chassis_type === "powerkvm" ||
+                    params.chassis_type === "virsh") {
+                delete params.username;
+            }
             // Add the chassis. For now we use the API as the websocket doesn't
             // support probe and enlist.
             $http({
                 method: 'POST',
-                url: 'api/1.0/nodegroups/' +
-                    $scope.chassis.cluster.uuid +
-                    '/?op=probe_and_enlist_hardware',
+                url: 'api/2.0/machines/?op=add_chassis',
                 data: $.param(params),
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(function() {

@@ -2412,7 +2412,6 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
             self.create_node)
 
         params = {
-            'cluster_uuid': factory.make_name('uuid'),
             'architecture': make_usable_architecture(self),
             'power_type': factory.make_name("power_type"),
             'power_parameters': dumps({}),

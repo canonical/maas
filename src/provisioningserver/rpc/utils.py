@@ -18,6 +18,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NodeAlreadyExists,
 )
+from provisioningserver.rpc.region import CreateNode
 from provisioningserver.twisted.protocols.amp import (
     UnhandledCommand,
     UnknownRemoteError,
@@ -63,17 +64,6 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     :param power_parameters: The power parameters for the node, as a
         dict.
     """
-    # Avoid circular dependencies.
-    from provisioningserver.rpc.region import CreateNode
-    from provisioningserver.config import ClusterConfiguration
-
-    # XXX ltrager 04-02-2016 - Remove when rackd.conf lands
-    with ClusterConfiguration.open() as config:
-        cluster_uuid = config.cluster_uuid
-
-    if cluster_uuid is None:
-        cluster_uuid = 'None'
-
     if hostname is not None:
         hostname = coerce_to_valid_hostname(hostname)
 
@@ -94,7 +84,6 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     try:
         response = yield client(
             CreateNode,
-            cluster_uuid=cluster_uuid,
             architecture=arch,
             power_type=power_type,
             power_parameters=json.dumps(power_parameters),

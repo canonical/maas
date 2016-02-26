@@ -15,7 +15,10 @@ __all__ = [
 from collections import namedtuple
 from datetime import timedelta
 from operator import attrgetter
+import random
 import re
+import socket
+from urllib.parse import urlparse
 
 from django.contrib.auth.models import User
 from django.core.exceptions import (
@@ -86,6 +89,7 @@ from maasserver.models.licensekey import LicenseKey
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import (
     now,
@@ -99,6 +103,7 @@ from maasserver.node_status import (
     NODE_TRANSITIONS,
 )
 from maasserver.rpc import (
+    getAllClients,
     getClientFor,
     getClientFromIdentifiers,
 )
@@ -135,13 +140,17 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.rpc.cluster import RefreshRackControllerInfo
+from provisioningserver.rpc.cluster import (
+    AddChassis,
+    RefreshRackControllerInfo,
+)
 from provisioningserver.rpc.exceptions import (
     CannotRemoveHostMap,
     NoConnectionsAvailable,
 )
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum_reverse
+from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -496,8 +505,11 @@ class ControllerManager(BaseNodeManager):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
 
+    def get_running_controller(self):
+        return self.get(system_id=get_maas_id())
 
-class RackControllerManager(BaseNodeManager):
+
+class RackControllerManager(ControllerManager):
     """Rack controllers are nodes which are used by MAAS to deploy nodes."""
 
     extra_filters = {
@@ -506,8 +518,54 @@ class RackControllerManager(BaseNodeManager):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]}
 
+    def filter_by_url_accessible(self, url, with_connection=True):
+        """Return a list of rack controllers which have access to the given URL
 
-class RegionControllerManager(BaseNodeManager):
+        If a hostname is given MAAS will do a DNS lookup to discover the IP(s).
+        MAAS then uses the information it has about the network to return a
+        a list of rack controllers which should have access to each IP."""
+        if '://' not in url:
+            # urlparse only works if given with a protocol
+            parsed_url = urlparse("FAKE://%s" % url)
+        else:
+            parsed_url = urlparse(url)
+        # getaddrinfo can return duplicates
+        ips = set(
+            address[4][0]
+            for address in socket.getaddrinfo(parsed_url.hostname, None)
+        )
+        subnets = set(Subnet.objects.get_best_subnet_for_ip(ip) for ip in ips)
+        usable_racks = set(RackController.objects.filter(
+            interface__ip_addresses__subnet__in=subnets,
+            interface__ip_addresses__ip__isnull=False))
+        # There is no MAAS defined subnet for loop back so if its in our list
+        # of IPs add ourself
+        if '127.0.0.1' in ips or '::1' in ips:
+            running_rack = self.get_running_controller()
+            if running_rack is not None:
+                usable_racks.add(running_rack)
+
+        if with_connection:
+            conn_rack_ids = [client.ident for client in getAllClients()]
+            return [
+                rack
+                for rack in usable_racks
+                if rack.system_id in conn_rack_ids
+            ]
+        else:
+            return list(usable_racks)
+
+    def get_accessible_by_url(self, url, with_connection=True):
+        """Return a rack controller with access to a URL."""
+        racks = self.filter_by_url_accessible(url, with_connection)
+        if not racks:
+            return None
+        else:
+            # Lazy load balancing
+            return random.choice(racks)
+
+
+class RegionControllerManager(ControllerManager):
     """Region controllers are the API, UI, and Coordinators of MAAS."""
 
     extra_filters = {
@@ -2857,6 +2915,22 @@ class RackController(Node):
         if response['swap_size'] > 0:
             self.swap_size = response['swap_size']
         self.save()
+
+    def add_chassis(
+            self, user, chassis_type, hostname, username=None, password=None,
+            accept_all=False, prefix_filter=None, power_control=None,
+            port=None, protocol=None):
+        self._register_request_event(
+            self.owner,
+            EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS,
+            action="Adding chassis %s" % hostname)
+        client = getClientFor(self.system_id, timeout=1)
+        call = client(
+            AddChassis, user=user, chassis_type=chassis_type,
+            hostname=hostname, username=username, password=password,
+            accept_all=accept_all, prefix_filter=prefix_filter,
+            power_control=power_control, port=port, protocol=protocol)
+        call.wait(30)
 
     def get_bmc_accessible_nodes(self):
         """Return `QuerySet` of nodes that this rack controller can access.

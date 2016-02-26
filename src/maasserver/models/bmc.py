@@ -203,25 +203,7 @@ class BMC(CleanSave, TimestampedModel):
 
         # Circular imports.
         from maasserver.models.node import RackController
-
-        # Get all rack controllers that have an IP address on that subnet.
-        usable = set()
-        rack_controllers = RackController.objects.filter(
-            interface__ip_addresses__subnet=subnet,
-            interface__ip_addresses__ip__isnull=False)
-        for rack_controller in rack_controllers.prefetch_related(
-                'interface_set__ip_addresses'):
-            if rack_controller not in usable:
-                # We use `all()` in the query because the data was
-                # already prefetched.
-                for interface in rack_controller.interface_set.all():
-                    for ip_address in interface.ip_addresses.all():
-                        if (ip_address.ip != '' and
-                                ip_address.subnet_id == subnet.id and
-                                rack_controller not in usable):
-                            usable.add(rack_controller)
-                            break
-        return usable
+        return RackController.objects.filter_by_url_accessible(ip_address.ip)
 
     def get_client_identifiers(self):
         """Return a list of indetifiers that can be used to get the

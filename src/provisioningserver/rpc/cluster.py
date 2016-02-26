@@ -378,110 +378,6 @@ class EvaluateTag(amp.Command):
     errors = []
 
 
-class AddVirsh(amp.Command):
-    """Probe for and enlist virsh VMs attached to the cluster.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"poweraddr", amp.Unicode()),
-        (b"password", amp.Unicode(optional=True)),
-        (b"prefix_filter", amp.Unicode(optional=True)),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = []
-
-
-class AddSeaMicro15k(amp.Command):
-    """Probe for and enlist seamicro15k machines attached to the cluster.
-
-    :since: 1.7
-    """
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"mac", amp.Unicode()),
-        (b"username", amp.Unicode()),
-        (b"password", amp.Unicode()),
-        (b"power_control", amp.Unicode(optional=True)),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = {
-        exceptions.NoIPFoundForMACAddress: b"NoIPFoundForMACAddress",
-    }
-
-
-class AddVMware(amp.Command):
-    """Probe for and enlist VMware virtual machines.
-
-    :since: 1.8
-    """
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"host", amp.Unicode()),
-        (b"username", amp.Unicode()),
-        (b"password", amp.Unicode()),
-        (b"port", amp.Integer(optional=True)),
-        (b"protocol", amp.Unicode(optional=True)),
-        (b"prefix_filter", amp.Unicode(optional=True)),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = {}
-
-
-class EnlistNodesFromMSCM(amp.Command):
-    """Probe for and enlist mscm machines attached to the cluster.
-
-    :since: 1.7
-    """
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"host", amp.Unicode()),
-        (b"username", amp.Unicode()),
-        (b"password", amp.Unicode()),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = {}
-
-
-class EnlistNodesFromUCSM(amp.Command):
-    """Probe for and enlist ucsm machines attached to the cluster.
-
-    :since: 1.7
-    """
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"url", amp.Unicode()),
-        (b"username", amp.Unicode()),
-        (b"password", amp.Unicode()),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = {}
-
-
-class EnlistNodesFromMicrosoftOCS(amp.Command):
-    """Probe for and enlist msftocs machines attached to the cluster.
-
-    :since: 1.8
-    """
-    arguments = [
-        (b"user", amp.Unicode()),
-        (b"ip", amp.Unicode()),
-        (b"port", amp.Unicode()),
-        (b"username", amp.Unicode()),
-        (b"password", amp.Unicode()),
-        (b"accept_all", amp.Boolean(optional=True)),
-    ]
-    response = []
-    errors = {}
-
-
 class IsImportBootImagesRunning(amp.Command):
     """Check if the import boot images task is running on the cluster.
 
@@ -510,5 +406,25 @@ class RefreshRackControllerInfo(amp.Command):
         (b"osystem", amp.Unicode()),
         (b"distro_series", amp.Unicode()),
         (b"swap_size", amp.Integer()),
+    ]
+    errors = {}
+
+
+class AddChassis(amp.Command):
+    """Probe and enlist the chassis which a rack controller can connect to.
+
+    :since: 2.0
+    """
+    arguments = [
+        (b"user", amp.Unicode()),
+        (b"chassis_type", amp.Unicode()),
+        (b"hostname", amp.Unicode()),
+        (b"username", amp.Unicode(optional=True)),
+        (b"password", amp.Unicode(optional=True)),
+        (b"accept_all", amp.Boolean(optional=True)),
+        (b"prefix_filter", amp.Unicode(optional=True)),
+        (b"power_control", amp.Unicode(optional=True)),
+        (b"port", amp.Integer(optional=True)),
+        (b"protocol", amp.Unicode(optional=True)),
     ]
     errors = {}
