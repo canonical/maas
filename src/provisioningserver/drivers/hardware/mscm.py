@@ -15,6 +15,7 @@ __all__ = [
 ]
 
 import re
+from socket import error as SOCKETError
 
 from paramiko import (
     AutoAddPolicy,
@@ -62,11 +63,15 @@ class MSCM:
 
     def _run_cli_command(self, command):
         """Run a single command and return unparsed text from stdout."""
-        self._ssh.connect(
-            self.host, username=self.username, password=self.password)
         try:
+            self._ssh.connect(
+                self.host, username=self.username, password=self.password)
             _, stdout, _ = self._ssh.exec_command(command)
             output = stdout.read()
+        except (SSHException, EOFError, SOCKETError) as e:
+            raise MSCMError(
+                "Could not make SSH connection to MSCM for "
+                "%s on %s - %s" % (self.username, self.host, e))
         finally:
             self._ssh.close()
 

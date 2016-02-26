@@ -8,7 +8,10 @@ __all__ = []
 from io import StringIO
 from random import randint
 import re
+from socket import error as SOCKETError
 
+from hypothesis import given
+from hypothesis.strategies import sampled_from
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
@@ -20,6 +23,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from mock import Mock
+from paramiko import SSHException
 from provisioningserver.drivers.hardware import mscm
 from provisioningserver.drivers.hardware.mscm import (
     cartridge_mapping,
@@ -109,6 +113,16 @@ class TestMSCMCliApi(MAASTestCase):
         command = factory.make_name('command')
 
         self.assertRaises(exception_type, api._run_cli_command, command)
+        self.expectThat(ssh_mock.close, MockCalledOnceWith())
+
+    @given(sampled_from([EOFError, SSHException, SOCKETError]))
+    def test_run_cli_command_crashes_for_ssh_error(self, error):
+        api = make_mscm_api()
+        ssh_mock = self.patch(api, '_ssh')
+        ssh_mock.exec_command = Mock(side_effect=error)
+        command = factory.make_name('command')
+
+        self.assertRaises(MSCMError, api._run_cli_command, command)
         self.expectThat(ssh_mock.close, MockCalledOnceWith())
 
     def test_discover_nodes(self):
