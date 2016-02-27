@@ -82,12 +82,20 @@ from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
+from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
-from maasserver.models.interface import Interface
+from maasserver.models.interface import (
+    BondInterface,
+    Interface,
+    InterfaceRelationship,
+    PhysicalInterface,
+    VLANInterface,
+)
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.space import Space
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
@@ -95,6 +103,7 @@ from maasserver.models.timestampedmodel import (
     now,
     TimestampedModel,
 )
+from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.node_status import (
     COMMISSIONING_LIKE_STATUSES,
@@ -127,7 +136,10 @@ from maasserver.utils.threads import (
     deferToDatabase,
 )
 from metadataserver.enum import RESULT_TYPE
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+)
 import petname
 from piston3.models import Token
 from provisioningserver.events import (
@@ -148,7 +160,11 @@ from provisioningserver.rpc.exceptions import (
     CannotRemoveHostMap,
     NoConnectionsAvailable,
 )
-from provisioningserver.utils import znums
+from provisioningserver.utils import (
+    flatten,
+    sorttop,
+    znums,
+)
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.twisted import (
@@ -2883,6 +2899,385 @@ class RackController(Node):
         super(RackController, self).__init__(
             node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
 
+    def update_interfaces(self, interfaces):
+        """Update the interfaces attached to the rack controller.
+
+        :param interfaces: Interfaces dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        # Get all of the current interfaces on this rack controller.
+        current_interfaces = {
+            interface.id: interface
+            for interface in self.interface_set.all()
+        }
+
+        # Update the interfaces in dependency order. This make sure that the
+        # parent is created or updated before the child.
+        process_order = flatten(sorttop({
+            name: config["parents"]
+            for name, config in interfaces.items()
+        }))
+        for name in process_order:
+            interface = self._update_interface(name, interfaces[name])
+            if interface.id in current_interfaces:
+                del current_interfaces[interface.id]
+
+        # Remove all the interfaces that no longer exits. We do this in reverse
+        # order so the child is deleted before the parent.
+        deletion_order = {}
+        for nic_id, nic in current_interfaces.items():
+            deletion_order[nic_id] = [
+                parent.id
+                for parent in nic.parents.all()
+                if parent.id in current_interfaces
+            ]
+        deletion_order = reversed(list(flatten(sorttop(deletion_order))))
+        for delete_id in deletion_order:
+            if self.boot_interface_id == delete_id:
+                self.boot_interface = None
+            current_interfaces[delete_id].delete()
+        self.save()
+
+    def _update_interface(self, name, config):
+        """Update a interface.
+
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        if config["type"] == "physical":
+            return self._update_physical_interface(name, config)
+        elif config["type"] == "vlan":
+            return self._update_vlan_interface(name, config)
+        elif config["type"] == "bond":
+            return self._update_bond_interface(name, config)
+        else:
+            raise ValueError(
+                "Unkwown interface type '%s' for '%s'." % (
+                    config["type"], name))
+
+    def _update_physical_interface(self, name, config):
+        """Update a physical interface.
+
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        new_vlan = None
+        mac_address = config["mac_address"]
+        interface, created = PhysicalInterface.objects.get_or_create(
+            mac_address=mac_address, defaults={
+                "node": self,
+                "name": name,
+                "enabled": config["enabled"],
+            })
+        if created:
+            # Make sure that the VLAN on the interface is correct. When
+            # links exists on this interface we place it into the correct
+            # VLAN. If it cannot be determined and its a new interface it
+            # gets placed on its own fabric.
+            connected_to_subnets = self._get_connected_subnets(
+                config["links"])
+            if len(connected_to_subnets) == 0:
+                # Not connected to any known subnets. We add it to its own
+                # fabric unless this is the very first interface on this
+                # rack controller. The first interface always goes on
+                # the default VLAN on the default fabric.
+                if Interface.objects.filter(node=self).count() > 1:
+                    new_fabric = Fabric.objects.create()
+                    new_vlan = new_fabric.get_default_vlan()
+                    interface.vlan = new_vlan
+                    interface.save()
+        else:
+            if interface.node.id != self.id:
+                # MAC address was on a different node. We need to move
+                # it to its new owner. In the process we delete all of its
+                # current links because they are completely wrong.
+                interface.ip_addresses.all().delete()
+                interface.node = self
+            interface.name = name
+            interface.enabled = config["enabled"]
+            interface.save()
+
+        # Update all the IP address on this interface. Fix the VLAN the
+        # interface belongs to so its the same as the links.
+        update_ip_addresses = self._update_links(interface, config["links"])
+        linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
+            update_ip_addresses)
+        if linked_vlan is not None:
+            interface.vlan = linked_vlan
+            interface.save()
+            if new_vlan is not None and linked_vlan.id != new_vlan.id:
+                # Create a new VLAN for this interface and it was not used as
+                # a link re-assigned the VLAN this interface is connected to.
+                new_vlan.fabric.delete()
+        return interface
+
+    def _update_vlan_interface(self, name, config):
+        """Update a VLAN interface.
+
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        # VLAN only ever has one parent, and the parent should always
+        # exists because of the order the links are processed.
+        parent_name = config["parents"][0]
+        parent_nic = Interface.objects.get(node=self, name=parent_name)
+        parent_has_links = parent_nic.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY).count() > 0
+        update_links = True
+        if parent_has_links:
+            # If the parent interface has links then we assume that is
+            # connected to the correct fabric. This VLAN interface needs to
+            # exists on this fabric.
+            vlan, _ = VLAN.objects.get_or_create(
+                fabric=parent_nic.vlan.fabric, vid=config["vid"])
+            interface, _ = VLANInterface.objects.get_or_create(
+                vlan=vlan, parents=[parent_nic])
+        else:
+            # Parent has no links we do not assume that parent is on the
+            # correct fabric.
+            connected_to_subnets = self._get_connected_subnets(
+                config["links"])
+            if len(connected_to_subnets) > 0:
+                # This VLAN interface has links so lets see if the connected
+                # subnet exists on the VID.
+                subnet = list(connected_to_subnets)[0]
+                if subnet.vlan.vid != config["vid"]:
+                    # The matching subnet is not on a VLAN that has the
+                    # same VID as the configured interface. The best option
+                    # we can do is to log the error and create a new VLAN
+                    # on the parents fabric without adding links to this
+                    # interface.
+                    update_links = False
+                    vlan, _ = VLAN.objects.get_or_create(
+                        fabric=parent_nic.vlan.fabric, vid=config["vid"])
+                    interface, created = VLANInterface.objects.get_or_create(
+                        vlan=vlan, parents=[parent_nic])
+                    if not created:
+                        # Interface already existed so remove all assigned IP
+                        # addresses.
+                        for ip_address in interface.ip_addresses.exclude(
+                                alloc_type=IPADDRESS_TYPE.DISCOVERED):
+                            interface.unlink_ip_address(ip_address)
+                    maaslog.error(
+                        "Unable to correctly identify VLAN for interface '%s' "
+                        "on rack controller '%s'. Placing interface on "
+                        "VLAN '%s.%d' without address assignments." % (
+                            name, self.hostname, vlan.fabric.name,
+                            vlan.vid))
+                else:
+                    # Subnet is on matching VLAN. Create the VLAN interface
+                    # on this VLAN and update the parent interface fabric if
+                    # needed.
+                    interface, _ = VLANInterface.objects.get_or_create(
+                        vlan=subnet.vlan, parents=[parent_nic])
+                    if parent_nic.vlan.fabric_id != subnet.vlan.fabric_id:
+                        parent_nic.vlan = subnet.vlan.fabric.get_default_vlan()
+                        parent_nic.save()
+            else:
+                # This VLAN interface has no links and neither does the parent
+                # interface. Assume that the parent fabric is correct and
+                # place the interface on the VLAN for that fabric.
+                vlan, _ = VLAN.objects.get_or_create(
+                    fabric=parent_nic.vlan.fabric, vid=config["vid"])
+                interface, _ = VLANInterface.objects.get_or_create(
+                    vlan=vlan, parents=[parent_nic])
+
+        # Update all assigned IP address to the interface. This is not
+        # performed when the subnet and VID for that subnet do not match.
+        if update_links:
+            self._update_links(
+                interface, config["links"], force_vlan=True)
+        return interface
+
+    def _update_bond_interface(self, name, config):
+        """Update a bond interface.
+
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        # Get all the parent interfaces for this bond. All the parents should
+        # exists because of the order the links are processed.
+        parent_nics = [
+            Interface.objects.get(node=self, name=parent_name)
+            for parent_name in config["parents"]
+        ]
+
+        # Create the bond interface. get_or_create will not work as the way
+        # parents of a bond can be removed or the MAC address can change. Do
+        # the best possible to update the existing bond, if not a new one will
+        # be created and the old one will be removed in `update_interfaces`.
+        mac_address = config["mac_address"]
+        interface = BondInterface.objects.filter(
+            Q(mac_address=mac_address) | Q(name=name) & Q(node=self)).first()
+        if interface is not None:
+            interface.mac_address = mac_address
+            interface.name = name
+            interface.parents.clear()
+            for parent_nic in parent_nics:
+                InterfaceRelationship(
+                    child=interface, parent=parent_nic).save()
+            if interface.node.id != self.id:
+                # Bond with MAC address was on a different node. We need to
+                # move it to its new owner. In the process we delete all of its
+                # current links because they are completely wrong.
+                interface.ip_addresses.all().delete()
+                interface.node = self
+        else:
+            interface = BondInterface.objects.create(
+                name=name, mac_address=mac_address, node=self)
+            for parent_nic in parent_nics:
+                InterfaceRelationship(
+                    child=interface, parent=parent_nic).save()
+
+        # Make sure that the VLAN on the bond is correct. When
+        # links exists on this bond we place it into the correct
+        # VLAN. If it cannot be determined it is placed on the same fabric
+        # as its first parent interface.
+        connected_to_subnets = self._get_connected_subnets(
+            config["links"])
+        if len(connected_to_subnets) == 0:
+            # Not connected to any known subnets. We add it to the same
+            # VLAN as its first parent.
+            interface.vlan = parent_nics[0].vlan
+        interface.save()
+
+        # Update all the IP address on this bond. Fix the VLAN the
+        # bond belongs to so its the same as the links and all parents to
+        # be on the same VLAN.
+        update_ip_addresses = self._update_links(interface, config["links"])
+        linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
+            update_ip_addresses)
+        if linked_vlan is not None:
+            interface.vlan = linked_vlan
+            interface.save()
+            for parent_nic in parent_nics:
+                if parent_nic.vlan_id != linked_vlan.id:
+                    parent_nic.vlan = linked_vlan
+                    parent_nic.save()
+        return interface
+
+    def _get_connected_subnets(self, links):
+        """Return a set of subnets that `links` belongs to."""
+        subnets = set()
+        for link in links:
+            if link["mode"] == "static":
+                ip_addr = IPNetwork(link["address"])
+                subnet = get_one(Subnet.objects.filter(cidr=str(ip_addr.cidr)))
+                if subnet is not None:
+                    subnets.add(subnet)
+        return subnets
+
+    def _get_alloc_type_from_ip_addresses(self, alloc_type, ip_addresses):
+        """Return IP address from `ip_addresses` that is first
+        with `alloc_type`."""
+        for ip_address in ip_addresses:
+            if alloc_type == ip_address.alloc_type:
+                return ip_address
+        return None
+
+    def _get_ip_address_from_ip_addresses(self, ip, ip_addresses):
+        """Return IP address from `ip_addresses` that matches `ip`."""
+        for ip_address in ip_addresses:
+            if ip == ip_address.ip:
+                return ip_address
+        return None
+
+    def _get_first_sticky_vlan_from_ip_addresses(self, ip_addresses):
+        """Return the first VLAN for a STICKY IP address in `ip_addresses`."""
+        for ip_address in ip_addresses:
+            if ip_address.alloc_type == IPADDRESS_TYPE.STICKY:
+                return ip_address.subnet.vlan
+        return None
+
+    def _update_links(self, interface, links, force_vlan=False):
+        """Update the links on `interface`."""
+        current_ip_addresses = list(
+            interface.ip_addresses.exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED))
+        updated_ip_addresses = set()
+        for link in links:
+            if link["mode"] == "dhcp":
+                dhcp_address = self._get_alloc_type_from_ip_addresses(
+                    IPADDRESS_TYPE.DHCP, current_ip_addresses)
+                if dhcp_address is None:
+                    dhcp_address = StaticIPAddress.objects.create(
+                        alloc_type=IPADDRESS_TYPE.DHCP, ip=None, subnet=None)
+                    dhcp_address.save()
+                    interface.ip_addresses.add(dhcp_address)
+                else:
+                    current_ip_addresses.remove(dhcp_address)
+                updated_ip_addresses.add(dhcp_address)
+            elif link["mode"] == "static":
+                ip_network = IPNetwork(link["address"])
+                ip_addr = str(ip_network.ip)
+
+                # Get or create the subnet for this link. If created if will
+                # be added to the VLAN on the interface.
+                subnet, _ = Subnet.objects.get_or_create(
+                    cidr=str(ip_network.cidr), defaults={
+                        "name": str(ip_network.cidr),
+                        "vlan": interface.vlan,
+                        "space": Space.objects.get_default_space(),
+                    })
+
+                # Make sure that the subnet is on the same VLAN as the
+                # interface.
+                if force_vlan and subnet.vlan_id != interface.vlan_id:
+                    maaslog.error(
+                        "Unable to update IP address '%s' assigned to "
+                        "interface '%s' on rack controller '%s'. Subnet '%s' "
+                        "for IP address is not on VLAN '%s.%d'." % (
+                            ip_addr, interface.name, self.hostname,
+                            subnet.name, subnet.vlan.fabric.name,
+                            subnet.vlan.vid))
+                    continue
+
+                # Update the gateway on the subnet if one is not set.
+                if (subnet.gateway_ip is None and
+                        "gateway" in link and
+                        IPAddress(link["gateway"]) in subnet.get_ipnetwork()):
+                    subnet.gateway_ip = link["gateway"]
+                    subnet.save()
+
+                # Determine if this interface already has this IP address.
+                ip_address = self._get_ip_address_from_ip_addresses(
+                    ip_addr, current_ip_addresses)
+                if ip_address is None:
+                    # IP address is not assigned to this interface. Get or
+                    # create that IP address.
+                    ip_address, created = (
+                        StaticIPAddress.objects.get_or_create(
+                            ip=ip_addr, defaults={
+                                "alloc_type": IPADDRESS_TYPE.STICKY,
+                                "subnet": subnet,
+                            }))
+                else:
+                    current_ip_addresses.remove(ip_address)
+
+                # Update the properties and make sure all interfaces
+                # assigned to the address belong to this node.
+                for attached_nic in ip_address.interface_set.all():
+                    if attached_nic.node.id != self.id:
+                        attached_nic.ip_addresses.remove(ip_address)
+                ip_address.alloc_type = IPADDRESS_TYPE.STICKY
+                ip_address.subnet = subnet
+                ip_address.save()
+
+                # Add this IP address to the interface.
+                interface.ip_addresses.add(ip_address)
+                updated_ip_addresses.add(ip_address)
+
+        # Remove all the current IP address that no longer apply to this
+        # interface.
+        for ip_address in current_ip_addresses:
+            interface.unlink_ip_address(ip_address)
+
+        return updated_ip_addresses
+
     def refresh(self):
         """Refresh the hardware and networking columns of the rack controller."
 
@@ -2914,6 +3309,7 @@ class RackController(Node):
             self.distro_series = response['distro_series']
         if response['swap_size'] > 0:
             self.swap_size = response['swap_size']
+        self.update_interfaces(response['interfaces'])
         self.save()
 
     def add_chassis(

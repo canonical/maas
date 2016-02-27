@@ -1247,7 +1247,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
-                "mac_addresses": [],
+                "interfaces": {},
             })
         self.assertEquals(
             {"system_id": rack_controller.system_id}, response)
@@ -1262,7 +1262,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
-                "mac_addresses": [],
+                "interfaces": {},
             })
         self.assertEquals(rack_controller.system_id, protocol.ident)
 
@@ -1278,7 +1278,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
-                "mac_addresses": [],
+                "interfaces": {},
             })
         self.assertThat(
             mock_addConnectionFor,
@@ -1295,7 +1295,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
-                "mac_addresses": [],
+                "interfaces": {},
             })
         self.assertEquals(sentinel.host, protocol.host)
 
@@ -1314,7 +1314,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
-                "mac_addresses": [],
+                "interfaces": {},
             })
         self.assertTrue(sentinel.host, protocol.hostIsRemote)
         self.assertThat(
@@ -1331,7 +1331,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             call_responder(self.make_Region(), RegisterRackController,
                            {"system_id": None,
                             "hostname": hostname,
-                            "mac_addresses": []}),
+                            "interfaces": {}}),
             CannotRegisterRackController)
         self.assertEquals((
             "Failed to register rack controller 'None' into the database. "

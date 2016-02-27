@@ -330,7 +330,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             yield protocol.callRemote(
                 region.RegisterRackController,
                 system_id=rack_controller.system_id,
-                hostname=rack_controller.hostname, mac_addresses=[],
+                hostname=rack_controller.hostname, interfaces={},
                 url=urlparse(""))
         finally:
             # Restore the original function.

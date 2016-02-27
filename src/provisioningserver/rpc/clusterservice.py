@@ -35,7 +35,6 @@ from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.network import get_ip_addr
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.query import get_power_state
@@ -75,8 +74,11 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
-from provisioningserver.utils.shell import ExternalProcessError
-from provisioningserver.utils.twisted import DeferredValue
+from provisioningserver.utils.network import get_eni_interfaces_definition
+from provisioningserver.utils.twisted import (
+    DeferredValue,
+    synchronous,
+)
 from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
@@ -338,30 +340,43 @@ class Cluster(RPCProtocol):
         :py:class:
           `~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
         """
-        d = deferToThread(refresh, system_id, consumer_key, token_key,
-                          token_secret)
-        d.addErrback(partial(catch_probe_and_enlist_error, "Refresh"))
+        d = deferToThread(
+            refresh, system_id, consumer_key, token_key, token_secret)
+        d.addErrback(log.err, "Failed to refresh the rack controller.")
 
-        os_release = get_os_release()
-        if 'ID' in os_release:
-            osystem = os_release['ID']
-        elif 'NAME' in os_release:
-            osystem = os_release['NAME']
-        else:
-            osystem = ''
-        if 'UBUNTU_CODENAME' in os_release:
-            distro_series = os_release['UBUNTU_CODENAME']
-        elif 'VERSION_ID' in os_release:
-            distro_series = os_release['VERSION_ID']
-        else:
-            distro_series = ''
+        @synchronous
+        def perform_refresh():
+            architecture = get_architecture()
+            os_release = get_os_release()
+            swap_size = get_swap_size()
+            interfaces = get_eni_interfaces_definition()
+            return architecture, os_release, swap_size, interfaces
 
-        return {
-            'architecture': get_architecture(),
-            'osystem': osystem,
-            'distro_series': distro_series,
-            'swap_size': get_swap_size(),
-        }
+        def cb_result(result):
+            architecture, os_release, swap_size, interfaces = result
+            if 'ID' in os_release:
+                osystem = os_release['ID']
+            elif 'NAME' in os_release:
+                osystem = os_release['NAME']
+            else:
+                osystem = ''
+            if 'UBUNTU_CODENAME' in os_release:
+                distro_series = os_release['UBUNTU_CODENAME']
+            elif 'VERSION_ID' in os_release:
+                distro_series = os_release['VERSION_ID']
+            else:
+                distro_series = ''
+            return {
+                'architecture': architecture,
+                'osystem': osystem,
+                'distro_series': distro_series,
+                'swap_size': swap_size,
+                'interfaces': interfaces
+            }
+
+        d = deferToThread(perform_refresh)
+        d.addCallback(cb_result)
+        return d
 
     @cluster.AddChassis.responder
     def add_chassis(
@@ -472,9 +487,11 @@ class ClusterClient(Cluster):
         returnValue(digest == digest_local)
 
     def registerRackWithRegion(self):
-        # Grab the URL the rack uses to communicate to the region API.
+        # Grab the URL the rack uses to communicate to the region API along
+        # with the cluster UUID. It is possible that the cluster UUID is blank.
         with ClusterConfiguration.open() as config:
             url = config.maas_url
+            cluster_uuid = config.cluster_uuid
 
         # Grab the set system_id if already set for this controller.
         system_id = get_maas_id()
@@ -482,20 +499,8 @@ class ClusterClient(Cluster):
             # Cannot send None over RPC when the system_id is not set.
             system_id = ''
 
-        # Gather the mac addresses for this rack controller.
-        mac_addresses = []
-        try:
-            ip_addr = get_ip_addr()
-            mac_addresses = [
-                iface['mac']
-                for iface in ip_addr.values()
-                if 'mac' in iface.keys()
-            ]
-        except ExternalProcessError as epe:
-            log.msg(
-                "Warning: Could not gather IP address information: %s" % epe)
-
-        # Gather only the hostname for this rack controller.
+        # Gather the interface definition and hostname.
+        interfaces = get_eni_interfaces_definition()
         hostname = gethostname().split('.')[0]
 
         def cb_register(data):
@@ -515,7 +520,8 @@ class ClusterClient(Cluster):
 
         d = self.callRemote(
             region.RegisterRackController, system_id=system_id,
-            hostname=hostname, mac_addresses=mac_addresses, url=urlparse(url))
+            hostname=hostname, interfaces=interfaces, url=urlparse(url),
+            nodegroup_uuid=cluster_uuid)
         return d.addCallbacks(cb_register, eb_register)
 
     @inlineCallbacks

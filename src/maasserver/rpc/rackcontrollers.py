@@ -18,6 +18,7 @@ from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     Interface,
     Node,
+    NodeGroupToRackController,
     RackController,
 )
 from maasserver.models.node import typecast_node
@@ -32,7 +33,8 @@ maaslog = get_maas_logger('rpc.rackcontrollers')
 @synchronous
 @transactional
 def register_rackcontroller(
-        system_id=None, hostname='', mac_addresses=[], url=None):
+        system_id=None, hostname='', interfaces={}, url=None,
+        nodegroup_uuid=None):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
@@ -41,37 +43,60 @@ def register_rackcontroller(
     a new rack controller. After the rack controller has been registered and
     successfully connected we will refresh all commissioning data."""
     rackcontroller = find_and_register_existing(
-        system_id, hostname, mac_addresses)
+        system_id, hostname, interfaces)
     if rackcontroller is None:
-        rackcontroller = register_new_rackcontroller(
-            system_id, hostname, mac_addresses)
-
-    rackcontroller.owner = worker_user.get_worker_user()
+        rackcontroller = register_new_rackcontroller(system_id, hostname)
 
     # Update `rackcontroller.url` from the given URL, but only when the
     # hostname is not 'localhost' (i.e. the default value used when the master
     # cluster connects).
     if url is not None and url.hostname != "localhost":
         rackcontroller.url = url.geturl()
+    rackcontroller.owner = worker_user.get_worker_user()
+    rackcontroller.update_interfaces(interfaces)  # Calls save.
 
-    rackcontroller.save()
+    # Updating from MAAS 1.9 this will set the VLAN the rack controller
+    # should manage.
+    if (nodegroup_uuid is not None and
+            len(nodegroup_uuid) > 0 and
+            not nodegroup_uuid.isspace()):
+        ng_to_racks = NodeGroupToRackController.objects.filter(
+            uuid=nodegroup_uuid)
+        vlans = [
+            ng_to_rack.subnet.vlan
+            for ng_to_rack in ng_to_racks
+        ]
+        # The VLAN object can only be related to a RackController
+        for nic in rackcontroller.interface_set.all():
+            if nic.vlan in vlans:
+                nic.vlan.primary_rack = rackcontroller
+                nic.vlan.save()
+        for ng_to_rack in ng_to_racks:
+            ng_to_rack.delete()
+
     return rackcontroller
 
 
-def find_and_register_existing(system_id, hostname, mac_addresses):
+def find_and_register_existing(system_id, hostname, interfaces):
+    mac_addresses = set(
+        interface["mac_address"]
+        for _, interface in interfaces.items()
+        if "mac_address" in interface
+    )
     node = Node.objects.filter(
         Q(system_id=system_id) |
         Q(hostname=hostname) |
         Q(interface__mac_address__in=mac_addresses)).first()
     if node is None:
         return None
-    if node.node_type in (NODE_TYPE.RACK_CONTROLLER,
-                          NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+    if node.node_type in (
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER):
         maaslog.info(
             "Registering existing rack controller %s." % node.hostname)
     elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
-        maaslog.info("Converting %s into a region and rack controller." %
-                     node.hostname)
+        maaslog.info(
+            "Converting %s into a region and rack controller." % node.hostname)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.save()
     else:
@@ -85,7 +110,7 @@ def find_and_register_existing(system_id, hostname, mac_addresses):
     return rackcontroller
 
 
-def register_new_rackcontroller(system_id, hostname, mac_addresses):
+def register_new_rackcontroller(system_id, hostname):
     try:
         with transaction.atomic():
             rackcontroller = RackController.objects.create(hostname=hostname)
@@ -99,16 +124,13 @@ def register_new_rackcontroller(system_id, hostname, mac_addresses):
         maaslog.info(
             "Rack controller(%s) currently being registered, retrying..." %
             hostname)
-        rackcontroller = find_and_register_existing(
-            system_id, hostname, mac_addresses)
+        rackcontroller = find_and_register_existing(system_id, hostname, {})
         if rackcontroller is not None:
             return rackcontroller
         else:
             # If we still can't find it something has gone wrong so throw the
             # exception
             raise e from None
-    for mac in mac_addresses:
-        rackcontroller.add_physical_interface(mac)
     maaslog.info(
         "%s has been created as a new rack controller" %
         rackcontroller.hostname)

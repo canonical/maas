@@ -123,6 +123,33 @@ class TestInterfaceManager(MAASServerTestCase):
             node.system_id, interface.id,
             user, NODE_PERMISSION.ADMIN)
 
+    def test_get_or_create_without_parents(self):
+        node = factory.make_Node()
+        mac_address = factory.make_mac_address()
+        name = factory.make_name("eth")
+        interface, created = PhysicalInterface.objects.get_or_create(
+            node=node, mac_address=mac_address, name=name)
+        self.assertTrue(created)
+        self.assertIsNotNone(interface)
+        retrieved_interface, created = PhysicalInterface.objects.get_or_create(
+            node=node, mac_address=mac_address)
+        self.assertFalse(created)
+        self.assertEquals(interface, retrieved_interface)
+
+    def test_get_or_create_with_parents(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        interface, created = BondInterface.objects.get_or_create(
+            node=parent1.node, mac_address=parent1.mac_address, name="bond0",
+            parents=[parent1, parent2])
+        self.assertTrue(created)
+        self.assertIsNotNone(interface)
+        retrieved_interface, created = BondInterface.objects.get_or_create(
+            node=parent1.node, parents=[parent1, parent2])
+        self.assertFalse(created)
+        self.assertEquals(interface, retrieved_interface)
+
 
 class TestInterfaceQueriesMixin(MAASServerTestCase):
 

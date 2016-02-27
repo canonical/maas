@@ -78,8 +78,9 @@ def signal(
     try:
         payload = geturl(url, creds=creds, headers=headers, data=data)
         if payload != b"OK":
-            maaslog.error("Unexpected result sending region commissioning "
-                          "data: %s" % payload)
+            maaslog.error(
+                "Unexpected result sending region commissioning data: %s" % (
+                    payload))
     except urllib.error.HTTPError as exc:
         maaslog.error("http error [%s]" % exc.code)
     except urllib.error.URLError as exc:
@@ -95,12 +96,11 @@ def signal(
 @synchronous
 def refresh(system_id, consumer_key, token_key, token_secret):
     """Run all builtin commissioning scripts and report results to region."""
-    maaslog.info("Refreshing rack controller hardware and networking "
-                 "information")
+    maaslog.info(
+        "Refreshing rack controller hardware information.")
 
     with ClusterConfiguration.open() as config:
         url = "%s/metadata/status/%s/latest" % (config.maas_url, system_id)
-        nodegroup_uuid = config.cluster_uuid
 
     creds = {
         'consumer_key': consumer_key,
@@ -110,21 +110,18 @@ def refresh(system_id, consumer_key, token_key, token_secret):
         }
 
     tmpdir = tempfile.mkdtemp(prefix='maas-commission-')
-    total_scripts = len(NODE_INFO_SCRIPTS)
+    scripts_to_run = {
+        name: config
+        for name, config in NODE_INFO_SCRIPTS.items()
+        if config["run_on_controller"]
+    }
+    total_scripts = len(scripts_to_run)
     current_script = 1
     failed_scripts = []
-    for output_name, config in NODE_INFO_SCRIPTS.items():
+    for output_name, config in scripts_to_run.items():
         signal(
             url, creds, "WORKING", "Starting %s [%d/%d]" %
             (config['name'], current_script, total_scripts))
-
-        # XXX ltrager 2016-01-12 - We don't want to install lldp in MAAS.
-        # Until we make the proper packaging changes skip it.
-        if 'lldp' in config['name']:
-            signal(
-                url, creds, "WORKING", "Skipping %s [%d/%d]" %
-                (config['name'], current_script, total_scripts))
-            continue
 
         # Write script to /tmp and set it executable
         script_path = os.path.join(tmpdir, config['name'])
@@ -150,13 +147,8 @@ def refresh(system_id, consumer_key, token_key, token_secret):
     shutil.rmtree(tmpdir)
     fail_count = len(failed_scripts)
     if fail_count == 0:
-        if nodegroup_uuid is not None:
-            extra_headers = {'X-NodeGroup-UUID': nodegroup_uuid}
-        else:
-            extra_headers = None
         signal(
-            url, creds, "OK", "Finished refreshing %s" % system_id,
-            extra_headers=extra_headers)
+            url, creds, "OK", "Finished refreshing %s" % system_id)
     else:
         signal(
             url, creds, "FAILED", "Failed refreshing %s" % system_id)

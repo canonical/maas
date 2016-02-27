@@ -460,11 +460,13 @@ class RegionServer(Region):
 
     @region.RegisterRackController.responder
     @inlineCallbacks
-    def register(self, system_id, hostname, mac_addresses, url):
+    def register(
+            self, system_id, hostname, interfaces, url, nodegroup_uuid=None):
         try:
             rack_controller = yield deferToDatabase(
                 rackcontrollers.register_rackcontroller, system_id=system_id,
-                hostname=hostname, mac_addresses=mac_addresses, url=url)
+                hostname=hostname, interfaces=interfaces, url=url,
+                nodegroup_uuid=nodegroup_uuid)
 
             # Set the identifier and add the connection into the service
             # and into the database.

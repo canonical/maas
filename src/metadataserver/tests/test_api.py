@@ -30,9 +30,6 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.node import Node
-from maasserver.models.nodegroup_to_rackcontroller import (
-    NodeGroupToRackController,
-)
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -637,23 +634,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
-    def test_signaling_commissioning_result_migrates_nodegroup_subnet(self):
-        rack = factory.make_RackController(status=NODE_STATUS.COMMISSIONING)
-        vlan = rack.boot_interface.vlan
-        client = make_node_client(node=rack)
-        ng_uuid = factory.make_UUID()
-        ng_to_rack = NodeGroupToRackController(
-            uuid=ng_uuid, subnet=vlan.subnet_set.first())
-        ng_to_rack.save()
-        response = call_signal(
-            client, status='OK',
-            message=("Finished refreshing %s" % rack.system_id),
-            headers={'HTTP_X_NODEGROUP_UUID': ng_uuid})
-        vlan = reload_object(vlan)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(rack.system_id, vlan.primary_rack.system_id)
-        self.assertItemsEqual([], NodeGroupToRackController.objects.all())
-
     def test_signaling_commissioning_OK_repopulates_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
@@ -1017,6 +997,17 @@ class TestCommissioningAPI(MAASServerTestCase):
             Node.set_default_storage_layout,
             MockCalledOnceWith(node))
 
+    def test_signal_does_not_sets_default_storage_layout_if_rack(self):
+        self.patch_autospec(Node, "set_default_storage_layout")
+        node = factory.make_RackController(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK', script_result='0')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertThat(
+            Node.set_default_storage_layout,
+            MockNotCalled())
+
     def test_signal_does_not_set_default_storage_layout_if_WORKING(self):
         self.patch_autospec(Node, "set_default_storage_layout")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -1048,6 +1039,18 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockCalledOnceWith(node))
+
+    def test_signal_doesnt_call_sets_initial_network_config_if_rack(self):
+        mock_set_initial_networking_configuration = self.patch_autospec(
+            Node, "set_initial_networking_configuration")
+        node = factory.make_RackController(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node)
+        response = call_signal(client, status='OK', script_result='0')
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertThat(
+            mock_set_initial_networking_configuration,
+            MockNotCalled())
 
     def test_signal_doesnt_call_sets_initial_network_config_if_WORKING(self):
         mock_set_initial_networking_configuration = self.patch_autospec(

@@ -63,9 +63,11 @@ class RegisterRackController(amp.Command):
     arguments = [
         (b"system_id", amp.Unicode(optional=True)),
         (b"hostname", amp.Unicode()),
-        (b"mac_addresses", amp.ListOf(amp.Unicode())),
+        (b"interfaces", StructureAsJSON()),
         # The URL for the region as seen by the rack controller.
         (b"url", ParsedURL(optional=True)),
+        # The old nodegroup UUID.
+        (b"nodegroup_uuid", amp.Unicode(optional=True)),
     ]
     response = [
         (b"system_id", amp.Unicode()),

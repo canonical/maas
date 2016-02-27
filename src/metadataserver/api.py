@@ -44,13 +44,10 @@ from maasserver.exceptions import (
 from maasserver.models import (
     Interface,
     Node,
-    NodeGroupToRackController,
-    RackController,
     SSHKey,
     SSLKey,
 )
 from maasserver.models.event import Event
-from maasserver.models.node import typecast_node
 from maasserver.models.tag import Tag
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
@@ -497,41 +494,29 @@ class VersionIndexHandler(MetadataViewHandler):
             self._store_commissioning_results(node, request)
 
             # Commissioning was successful setup the default storage layout
-            # and the initial networking configuration for the node.
-            if status == SIGNAL_STATUS.OK:
-                ng_uuid = request.META.get('HTTP_X_NODEGROUP_UUID')
-                if ng_uuid is not None:
-                    ng_to_racks = NodeGroupToRackController.objects.filter(
-                        uuid=ng_uuid)
-                    vlans = [
-                        ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks
-                    ]
-                    # The VLAN object can only be related to a RackController
-                    rack = typecast_node(node, RackController)
-                    for nic in rack.interface_set.all():
-                        if nic.vlan in vlans:
-                            nic.vlan.primary_rack = rack
-                            nic.vlan.save()
-                    for ng_to_rack in ng_to_racks:
-                        ng_to_rack.delete()
-
+            # and the initial networking configuration for the node. This is
+            # skipped when its the rack controller using this endpoint.
+            if (status == SIGNAL_STATUS.OK and
+                    node.node_type not in (
+                        NODE_TYPE.RACK_CONTROLLER,
+                        NODE_TYPE.REGION_AND_RACK_CONTROLLER)):
                 node.set_default_storage_layout()
                 node.set_initial_networking_configuration()
 
-            # XXX 2014-10-21 newell, bug=1382075
-            # Auto detection for IPMI tries to save power parameters
-            # for Moonshot.  This causes issues if the node's power type
-            # is already MSCM as it uses SSH instead of IPMI.  This fix
-            # is temporary as power parameters should not be overwritten
-            # during commissioning because MAAS already has knowledge to
-            # boot the node.
-            # See MP discussion bug=1389808, for further details on why
-            # we are using bug fix 1382075 here.
-            if node.power_type != "mscm":
-                store_node_power_parameters(node, request)
+                # XXX 2014-10-21 newell, bug=1382075
+                # Auto detection for IPMI tries to save power parameters
+                # for Moonshot.  This causes issues if the node's power type
+                # is already MSCM as it uses SSH instead of IPMI.  This fix
+                # is temporary as power parameters should not be overwritten
+                # during commissioning because MAAS already has knowledge to
+                # boot the node.
+                # See MP discussion bug=1389808, for further details on why
+                # we are using bug fix 1382075 here.
+                if node.power_type != "mscm":
+                    store_node_power_parameters(node, request)
+
             node.status_expires = None
             target_status = self.signaling_statuses.get(status)
-
             # Recalculate tags when commissioning ends.
             if target_status == NODE_STATUS.READY:
                 populate_tags_for_single_node(Tag.objects.all(), node)

@@ -245,6 +245,41 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         else:
             raise PermissionDenied()
 
+    def get_or_create(self, *args, **kwargs):
+        """Get or create `Interface`.
+
+        Provides logic to allow `get_or_create` to be called with a `parents`
+        in kwargs. `parents` is used to find an already existing interface that
+        is a child of first parent. If a child of the first parent exists that
+        matches the other parameters then that interface is returned and not
+        created. If no match can be found then the interface is created and
+        assigned to a child or all of the `parents`.
+        """
+        parents = kwargs.pop("parents", [])
+        matching_kwargs = dict(kwargs)
+        matching_kwargs.pop("defaults", None)
+
+        def matches(interface):
+            for key, value in matching_kwargs.items():
+                if getattr(interface, key) != value:
+                    return False
+            return True
+
+        if len(parents) > 0:
+            parent = parents[0]
+            for rel in parent.children_relationships.all():
+                if matches(rel.child):
+                    return rel.child, False
+
+        interface, created = super(InterfaceManager, self).get_or_create(
+            *args, **kwargs)
+        if created:
+            for parent in parents:
+                InterfaceRelationship(child=interface, parent=parent).save()
+            # Need to call save again to update the fields on the interface.
+            interface.save()
+        return interface, created
+
 
 class Interface(CleanSave, TimestampedModel):
 

@@ -334,40 +334,49 @@ NODE_INFO_SCRIPTS = OrderedDict([
     (LSHW_OUTPUT_NAME, {
         'content': LSHW_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'run_on_controller': True,
     }),
     ('00-maas-02-virtuality.out', {
         'content': VIRTUALITY_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'run_on_controller': True,
     }),
     ('00-maas-03-install-lldpd.out', {
         'content': make_function_call_script(
             lldpd_install, config_file="/etc/default/lldpd"),
         'hook': null_hook,
+        'run_on_controller': False,
     }),
     (LIST_MODALIASES_OUTPUT_NAME, {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'run_on_controller': True,
     }),
     ('00-maas-06-dhcp-unconfigured-ifaces', {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
+        'run_on_controller': False,
     }),
     ('00-maas-07-block-devices.out', {
         'content': make_function_call_script(gather_physical_block_devices),
         'hook': null_hook,
+        'run_on_controller': True,
     }),
     ('99-maas-01-wait-for-lldpd.out', {
         'content': make_function_call_script(
             lldpd_wait, "/var/run/lldpd.socket", time_delay=60),
         'hook': null_hook,
+        'run_on_controller': False,
     }),
     (LLDP_OUTPUT_NAME, {
         'content': make_function_call_script(lldpd_capture),
         'hook': null_hook,
+        'run_on_controller': False,
     }),
     ('99-maas-03-network-interfaces.out', {
         'content': IPADDR_SCRIPT.encode('ascii'),
         'hook': null_hook,
+        'run_on_controller': False,
     }),
 ])
 

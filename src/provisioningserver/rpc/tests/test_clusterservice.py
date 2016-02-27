@@ -55,7 +55,6 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
 )
 from provisioningserver.drivers.power import power_drivers_by_name
-from provisioningserver.network import get_ip_addr
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -94,6 +93,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.twisted.protocols import amp
+from provisioningserver.utils.network import get_eni_interfaces_definition
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -1178,6 +1178,7 @@ class TestClusterClient(MAASTestCase):
             protocol.Authenticate,
             MockCalledOnceWith(protocol, message=ANY))
 
+    @inlineCallbacks
     def test_registerRackWithRegion_returns_True_when_accepted(self):
         client = self.make_running_client()
 
@@ -1186,13 +1187,14 @@ class TestClusterClient(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        d = client.registerRackWithRegion()
-        self.assertTrue(extract_result(d))
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
 
         self.assertDocTestMatches(
             "Rack controller '...' registered (via eventloop:pid=12345).",
             logger.output)
 
+    @inlineCallbacks
     def test_registerRackWithRegion_sets_localIdent(self):
         client = self.make_running_client()
 
@@ -1200,10 +1202,11 @@ class TestClusterClient(MAASTestCase):
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.side_effect = always_succeed_with({"system_id": system_id})
 
-        d = client.registerRackWithRegion()
-        self.assertTrue(extract_result(d))
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
         self.assertEqual(system_id, client.localIdent)
 
+    @inlineCallbacks
     def test_registerRackWithRegion_calls_set_maas_id(self):
         client = self.make_running_client()
 
@@ -1211,10 +1214,11 @@ class TestClusterClient(MAASTestCase):
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.side_effect = always_succeed_with({"system_id": system_id})
 
-        d = client.registerRackWithRegion()
-        self.assertTrue(extract_result(d))
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
         self.assertThat(self.set_maas_id, MockCalledOnceWith(system_id))
 
+    @inlineCallbacks
     def test_registerRackWithRegion_returns_False_when_rejected(self):
         client = self.make_running_client()
 
@@ -1224,14 +1228,15 @@ class TestClusterClient(MAASTestCase):
 
         logger = self.useFixture(TwistedLoggerFixture())
 
-        d = client.registerRackWithRegion()
-        self.assertFalse(extract_result(d))
+        result = yield client.registerRackWithRegion()
+        self.assertFalse(result)
 
         self.assertDocTestMatches(
             "Rack controller REJECTED by the region "
             "(via eventloop:pid=12345).",
             logger.output)
 
+    @inlineCallbacks
     def test_registerRackWithRegion_propagates_errors(self):
         client = self.make_running_client()
         exception_type = factory.make_exception_type()
@@ -1239,16 +1244,18 @@ class TestClusterClient(MAASTestCase):
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.return_value = fail(exception_type())
 
-        d = client.registerRackWithRegion()
-        self.assertRaises(exception_type, extract_result, d)
+        caught_exc = None
+        try:
+            yield client.registerRackWithRegion()
+        except Exception as exc:
+            caught_exc = exc
+        self.assertIsInstance(caught_exc, exception_type)
 
     @inlineCallbacks
     def test_registerRackWithRegion_end_to_end(self):
         maas_url = factory.make_simple_http_url()
         hostname = platform.node().split('.')[0]
-        ip_addr = get_ip_addr()
-        mac_addresses = [iface['mac'] for iface in ip_addr.values()
-                         if 'mac' in iface.keys()]
+        interfaces = get_eni_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture(
             maas_url=maas_url))
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
@@ -1258,7 +1265,8 @@ class TestClusterClient(MAASTestCase):
         self.assertThat(
             protocol.RegisterRackController, MockCalledOnceWith(
                 protocol, system_id='', hostname=hostname,
-                mac_addresses=mac_addresses, url=urlparse(maas_url)))
+                interfaces=interfaces, url=urlparse(maas_url),
+                nodegroup_uuid=None))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
@@ -1788,22 +1796,29 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
 class TestClusterProtocol_Refresh(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.RefreshRackControllerInfo.commandName)
         self.assertIsNotNone(responder)
 
+    @inlineCallbacks
     def test__defers_refresh_to_thread(self):
         mock_deferToThread = self.patch_autospec(
             clusterservice, 'deferToThread')
+        mock_deferToThread.side_effect = [
+            succeed(None),
+            succeed(('', {}, 0, {})),
+        ]
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
         token_key = factory.make_name('token_key')
         token_secret = factory.make_name('token_secret')
 
-        call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
+        yield call_responder(Cluster(), cluster.RefreshRackControllerInfo, {
             "system_id": system_id,
             "consumer_key": consumer_key,
             "token_key": token_key,
@@ -1811,12 +1826,13 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         })
 
         self.assertThat(
-            mock_deferToThread, MockCalledOnceWith(
+            mock_deferToThread, MockAnyCall(
                 clusterservice.refresh, system_id, consumer_key, token_key,
                 token_secret))
 
+    @inlineCallbacks
     def test_returns_extra_info(self):
-        self.patch_autospec(clusterservice, 'deferToThread')
+        self.patch_autospec(clusterservice, 'refresh')
 
         system_id = factory.make_name('system_id')
         consumer_key = factory.make_name('consumer_key')
@@ -1836,7 +1852,7 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         self.patch(clusterservice, 'get_os_release').return_value = os_release
         self.patch(clusterservice, 'get_swap_size').return_value = swap_size
 
-        response = call_responder(
+        response = yield call_responder(
             Cluster(), cluster.RefreshRackControllerInfo, {
                 "system_id": system_id,
                 "consumer_key": consumer_key,
@@ -1850,7 +1866,8 @@ class TestClusterProtocol_Refresh(MAASTestCase):
                 'distro_series': distro_series,
                 'swap_size': swap_size,
                 'architecture': architecture,
-            }, response.result)
+                'interfaces': get_eni_interfaces_definition(),
+            }, response)
 
 
 class TestClusterProtocol_AddChassis(MAASTestCase):

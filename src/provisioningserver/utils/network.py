@@ -738,7 +738,8 @@ def get_eni_interfaces_definition(
                 "type": "physical",
                 "links": [],
                 "enabled": False,
-                "mac_address": ipaddr["mac"]
+                "mac_address": ipaddr["mac"],
+                "parents": [],
             }
 
     return interfaces

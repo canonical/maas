@@ -810,18 +810,21 @@ class TestGetENIInterfacesDefinition(MAASTestCase):
                 "type": Equals("physical"),
                 "mac_address": Equals(nic_mapping["eth0"]),
                 "enabled": Is(False),
+                "parents": Equals([]),
                 "links": Equals([]),
             }),
             "eth1": MatchesDict({
                 "type": Equals("physical"),
                 "mac_address": Equals(nic_mapping["eth1"]),
                 "enabled": Is(False),
+                "parents": Equals([]),
                 "links": Equals([]),
             }),
             "wlan0": MatchesDict({
                 "type": Equals("physical"),
                 "mac_address": Equals(nic_mapping["wlan0"]),
                 "enabled": Is(False),
+                "parents": Equals([]),
                 "links": Equals([]),
             }),
         })
