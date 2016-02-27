@@ -12,8 +12,11 @@ from subprocess import check_output
 from tempfile import mkdtemp
 from textwrap import dedent
 
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.network import filter_and_annotate_networks
+from mock import sentinel
+from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
     _get_settings_dict,
@@ -21,6 +24,9 @@ from provisioningserver.utils.ipaddr import (
     annotate_with_driver_information,
     get_bonded_interfaces,
     get_interface_type,
+    get_ip_addr,
+    get_ip_addr_json,
+    get_mac_addresses,
     parse_ip_addr,
 )
 from testtools import ExpectedException
@@ -497,105 +503,48 @@ class TestAnnotateWithDriverInformation(MAASTestCase):
                 self.expectThat(iface, Contains('bridged_interfaces'))
 
 
-class TestFilterLikelyUnmanagedNetworks(MAASTestCase):
+class TestGetIPAddr(MAASTestCase):
+    """Tests for `get_ip_addr`, `get_ip_addr_json`, `get_mac_addresses`."""
 
-    def test__filters_based_on_name_by_default(self):
-        input_networks = [
-            {"interface": "eno1"},
-            {"interface": "ens3"},
-            {"interface": "enp0s25"},
-            {"interface": "enx78e7d1ea46da"},
-            {"interface": "em0"},
-            {"interface": "eth0"},
-            {"interface": "vlan0"},
-            {"interface": "bond0"},
-            {"interface": "br0"},
-            {"interface": "wlan0"},
-            {"interface": "avian0"},
-        ]
-        actual_networks = filter_and_annotate_networks(input_networks)
-        expected_networks = [
-            {"interface": "eno1"},
-            {"interface": "ens3"},
-            {"interface": "enp0s25"},
-            {"interface": "enx78e7d1ea46da"},
-            {"interface": "em0"},
-            {"interface": "eth0"},
-            {"interface": "vlan0"},
-            {"interface": "bond0"},
-        ]
-        self.assertThat(actual_networks, Equals(expected_networks))
+    def test_get_ip_addr_calls_methods(self):
+        patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
+        patch_call_and_check.return_value = sentinel.ip_addr_cmd
+        patch_parse_ip_addr = self.patch(ipaddr_module, "parse_ip_addr")
+        patch_parse_ip_addr.return_value = sentinel.parse_result
+        patch_annotate_with_driver_information = self.patch(
+            ipaddr_module, "annotate_with_driver_information")
+        patch_annotate_with_driver_information.return_value = sentinel.output
+        self.assertEquals(sentinel.output, get_ip_addr())
+        self.assertThat(
+            patch_call_and_check, MockCalledOnceWith(["/sbin/ip", "addr"]))
+        self.assertThat(
+            patch_parse_ip_addr, MockCalledOnceWith(sentinel.ip_addr_cmd))
+        self.assertThat(
+            patch_annotate_with_driver_information,
+            MockCalledOnceWith(sentinel.parse_result))
 
-    def test__filters_and_annotates_based_on_json_data_if_available(self):
-        input_networks = [
-            {"interface": "eno1"},
-            {"interface": "ens3"},
-            {"interface": "enp0s25"},
-            {"interface": "enx78e7d1ea46da"},
-            {"interface": "em0"},
-            {"interface": "eth0"},
-            {"interface": "vlan0"},
-            {"interface": "bond0"},
-            {"interface": "avian0"},
-            {"interface": "br0"},
-            {"interface": "br1"},
-            {"interface": "br2"},
-            {"interface": "br3"},
-            {"interface": "wlan0"},
-        ]
-        # Wow, these are some poorly named interfaces.
-        # Though I guess technically an avian carrier is a physical interface.
-        input_json = {
-            "avian0": {"type": "ethernet.physical"},
-            "br0": {"type": "ethernet.vlan", "vid": 123, "parent": "br3"},
-            "br1": {"type": "ethernet.bridge",
-                    "bridged_interfaces": ["eth1", "eth2"]},
-            "br2": {"type": "ethernet.bridge",
-                    "bridged_interfaces": ["avian0"]},
-            "br3": {"type": "ethernet.bridge"},
-            "wlan0": {"type": "ethernet.bond",
-                      "bonded_interfaces": ["eno1", "eth0"]}
+    def test_get_ip_addr_json_returns_json(self):
+        results = {
+            factory.make_name("eth"): {
+                "mac": factory.make_mac_address(),
+            },
         }
-        actual_networks = filter_and_annotate_networks(
-            input_networks, json.dumps(input_json))
-        expected_networks = [
-            {"interface": "avian0", 'type': "ethernet.physical"},
-            {"interface": "br0", 'type': "ethernet.vlan", "vid": 123,
-             "parent": "br3"},
-            {"interface": "br2", 'type': "ethernet.bridge",
-             "bridged_interfaces": "avian0"},
-            {"interface": "br3", 'type': "ethernet.bridge"},
-            {"interface": "wlan0", 'type': "ethernet.bond",
-             "bonded_interfaces": "eno1 eth0"},
-        ]
-        self.assertThat(actual_networks, Equals(expected_networks))
+        patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
+        patch_get_ip_addr.return_value = results
+        observed = get_ip_addr_json()
+        self.assertIsInstance(observed, str)
+        self.assertEquals(results, json.loads(observed))
 
-    def test__falls_back_to_names_if_no_interfaces_found(self):
-        input_networks = [
-            {"interface": "eno1"},
-            {"interface": "ens3"},
-            {"interface": "enp0s25"},
-            {"interface": "enx78e7d1ea46da"},
-            {"interface": "em0"},
-            {"interface": "eth0"},
-            {"interface": "vlan0"},
-            {"interface": "bond0"},
-            {"interface": "br0"},
-            {"interface": "wlan0"},
-            {"interface": "avian0"},
-        ]
-        input_json = {
-        }
-        actual_networks = filter_and_annotate_networks(
-            input_networks, json.dumps(input_json))
-        expected_networks = [
-            {"interface": "eno1"},
-            {"interface": "ens3"},
-            {"interface": "enp0s25"},
-            {"interface": "enx78e7d1ea46da"},
-            {"interface": "em0"},
-            {"interface": "eth0"},
-            {"interface": "vlan0"},
-            {"interface": "bond0"},
-        ]
-        self.assertThat(actual_networks, Equals(expected_networks))
+    def test_get_mac_addresses_returns_all_mac_addresses(self):
+        mac_addresses = []
+        results = {}
+        for _ in range(3):
+            mac = factory.make_mac_address()
+            mac_addresses.append(mac)
+            results[factory.make_name("eth")] = {
+                "mac": mac,
+            }
+        patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
+        patch_get_ip_addr.return_value = results
+        observed = get_mac_addresses()
+        self.assertItemsEqual(mac_addresses, observed)

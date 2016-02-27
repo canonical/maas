@@ -53,6 +53,7 @@ __all__ = [
     'get_first_and_last_usable_host_in_network',
 ]
 
+import json
 import os
 import re
 
@@ -60,6 +61,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
 )
+from provisioningserver.utils.shell import call_and_check
 
 
 def _get_settings_dict(settings_line):
@@ -325,3 +327,33 @@ def get_vid_from_ifname(ifname):
     elif vlan_vid_match:
         vid = int(vlan_vid_match.group(1))
     return vid
+
+
+def get_ip_addr():
+    """Returns this system's local IP address information as a dictionary.
+
+    :raises:ExternalProcessError: if IP address information could not be
+        gathered.
+    """
+    ip_addr_output = call_and_check(["/sbin/ip", "addr"])
+    ifaces = parse_ip_addr(ip_addr_output)
+    return annotate_with_driver_information(ifaces)
+
+
+def get_ip_addr_json():
+    """Returns this system's local IP address information, in JSON format.
+
+    :raises:ExternalProcessError: if IP address information could not be
+        gathered.
+    """
+    return json.dumps(get_ip_addr())
+
+
+def get_mac_addresses():
+    """Returns a list of this system's MAC addresses.
+
+    :raises:ExternalProcessError: if IP address information could not be
+        gathered.
+    """
+    ip_addr = get_ip_addr()
+    return [iface['mac'] for iface in ip_addr.values() if 'mac' in iface]

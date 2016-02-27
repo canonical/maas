@@ -63,7 +63,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
-from provisioningserver.network import get_mac_addresses
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -80,6 +79,7 @@ from provisioningserver.utils.env import (
     set_maas_id,
 )
 from provisioningserver.utils.events import EventGroup
+from provisioningserver.utils.ipaddr import get_mac_addresses
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
