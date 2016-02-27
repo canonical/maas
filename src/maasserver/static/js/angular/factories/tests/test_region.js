@@ -479,16 +479,17 @@ describe("RegionConnection", function() {
             var error = {};
             var requestId = RegionConnection.newRequestId();
             var defer = $q.defer();
+            var request = { expected: "request "};
             defer.promise.then(null, function(result) {
                 expect(result.error).toBe(error);
-                expect(result.request).toBe("expectedRequest");
+                expect(result.request).toBe(request);
                 done();
             });
 
             spyOn($rootScope, "$apply").and.callThrough();
 
             RegionConnection.callbacks[requestId] = defer;
-            RegionConnection.requests[requestId] = "expectedRequest";
+            RegionConnection.requests[requestId] = request;
             RegionConnection.onResponse({
                 type: 1,
                 rtype: 1,

@@ -271,7 +271,7 @@ angular.module('MAAS').factory(
                     $rootScope.$apply(defer.resolve(msg.result));
                 } else if(msg.rtype === RESPONSE_TYPE.ERROR) {
                     // Reject the defer since an error occurred.
-                    if(remembered_request) {
+                    if(angular.isObject(remembered_request)) {
                         $rootScope.$apply(defer.reject({
                             "error": msg.error,
                             "request": remembered_request
