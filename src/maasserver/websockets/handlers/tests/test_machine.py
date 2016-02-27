@@ -50,7 +50,6 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -64,6 +63,7 @@ from maasserver.utils.converters import (
 )
 from maasserver.utils.orm import (
     get_one,
+    reload_object,
     transactional,
 )
 from maasserver.utils.osystems import make_hwe_kernel_ui_text

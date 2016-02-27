@@ -23,13 +23,13 @@ from maasserver.testing.architecture import (
     patch_usable_architectures,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,

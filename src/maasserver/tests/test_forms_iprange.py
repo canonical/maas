@@ -8,8 +8,8 @@ __all__ = []
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms_iprange import IPRangeForm
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     Contains,
     Equals,

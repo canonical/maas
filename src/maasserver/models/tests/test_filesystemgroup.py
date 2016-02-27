@@ -40,15 +40,13 @@ from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import (
-    reload_object,
-    reload_objects,
-)
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import (
     machine_readable_bytes,
     round_size_to_nearest_block,
 )
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,

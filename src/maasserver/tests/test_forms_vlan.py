@@ -10,8 +10,8 @@ import random
 from maasserver.forms_vlan import VLANForm
 from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 
 
 class TestVLANForm(MAASServerTestCase):

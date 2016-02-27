@@ -52,9 +52,9 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
+from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,

@@ -60,7 +60,6 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -69,6 +68,7 @@ from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,
+    reload_object,
 )
 from maastesting.matchers import (
     MockCalledOnceWith,

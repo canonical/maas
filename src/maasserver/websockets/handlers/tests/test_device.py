@@ -19,8 +19,8 @@ from maasserver.models.interface import Interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,

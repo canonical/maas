@@ -11,8 +11,8 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from maasserver.forms import BootSourceForm
 from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 
 

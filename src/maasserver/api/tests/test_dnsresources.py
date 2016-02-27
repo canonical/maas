@@ -15,7 +15,7 @@ from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,
     Equals,

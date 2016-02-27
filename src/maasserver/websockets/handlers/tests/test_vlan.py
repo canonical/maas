@@ -8,8 +8,8 @@ __all__ = []
 from django.core.exceptions import ValidationError
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maasserver.websockets.handlers.vlan import VLANHandler
 from testtools import ExpectedException

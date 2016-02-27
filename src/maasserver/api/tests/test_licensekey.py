@@ -16,10 +16,12 @@ from maasserver.clusterrpc.testing.osystems import (
 from maasserver.models.licensekey import LicenseKey
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 
 
 class TestLicenseKey(APITestCase):

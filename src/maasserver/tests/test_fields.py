@@ -30,7 +30,6 @@ from maasserver.fields import (
 )
 from maasserver.models import Interface
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     CIDRTestModel,
@@ -40,6 +39,7 @@ from maasserver.tests.models import (
     MAASIPAddressFieldModel,
     XMLFieldModel,
 )
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote

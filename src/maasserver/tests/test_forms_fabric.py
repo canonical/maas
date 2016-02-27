@@ -7,8 +7,8 @@ __all__ = []
 
 from maasserver.forms_fabric import FabricForm
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 
 
 class TestFabricForm(MAASServerTestCase):

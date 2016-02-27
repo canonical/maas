@@ -27,8 +27,8 @@ from maasserver.models import (
 )
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
 from mock import (
     MagicMock,

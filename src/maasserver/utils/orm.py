@@ -1028,3 +1028,17 @@ class MAASQueriesMixin(object):
             return op(current_q, Q(id=object_id))
         else:
             return op(current_q, Q(name=item))
+
+
+def reload_object(model_object):
+    """Reload `obj` from the database.
+
+    If the object has been deleted, this will return None.
+
+    :param model_object: Model object to reload.
+    :type model_object: Concrete `Model` subtype.
+    :return: Freshly-loaded instance of `model_object`, or None.
+    :rtype: Same as `model_object`.
+    """
+    model_class = model_object.__class__
+    return get_one(model_class.objects.filter(id=model_object.id))

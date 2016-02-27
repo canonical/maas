@@ -72,11 +72,11 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
+    reload_object,
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (

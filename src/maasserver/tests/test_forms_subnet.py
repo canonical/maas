@@ -11,8 +11,8 @@ from maasserver.forms_subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import MatchesStructure
 
 

@@ -21,9 +21,9 @@ from maasserver.testing import (
     get_content_links,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
 from maasserver.views.settings_license_keys import LICENSE_KEY_ANCHOR
 from testtools.matchers import ContainsAll

@@ -14,7 +14,7 @@ from maasserver.models import Zone
 from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
+from maasserver.utils.orm import reload_object
 
 
 def get_zone_uri(zone):

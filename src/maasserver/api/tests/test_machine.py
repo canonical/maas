@@ -47,14 +47,14 @@ from maasserver.testing.api import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.orm import (
-    reload_object,
-    reload_objects,
-)
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import post_commit
+from maasserver.utils.orm import (
+    post_commit,
+    reload_object,
+)
 from maastesting.matchers import (
     Equals,
     MockCalledOnceWith,

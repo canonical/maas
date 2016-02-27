@@ -17,11 +17,11 @@ from maasserver.enum import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import (
     human_readable_bytes,
     json_load_bytes,
 )
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     ContainsDict,
     Equals,

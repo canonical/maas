@@ -44,8 +44,10 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    reload_object,
+    transactional,
+)
 from metadataserver.models import NodeResult
 
 

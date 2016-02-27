@@ -15,9 +15,9 @@ from maasserver.clusterrpc.testing.osystems import (
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 
 
 class TestLicenseKeyForm(MAASServerTestCase):

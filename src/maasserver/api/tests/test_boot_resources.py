@@ -27,10 +27,12 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    reload_object,
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from testtools.matchers import ContainsAll

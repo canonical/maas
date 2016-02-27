@@ -100,8 +100,8 @@ from maasserver.models.node import typecast_node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
-from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import round_size_to_nearest_block
+from maasserver.utils.orm import reload_object
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed

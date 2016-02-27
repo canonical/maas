@@ -11,9 +11,9 @@ import http.client
 from django.core.urlresolvers import reverse
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 

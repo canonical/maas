@@ -12,7 +12,7 @@ from maasserver.models import (
     RackController,
     VLAN,
 )
-from maasserver.testing.orm import reload_object
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )

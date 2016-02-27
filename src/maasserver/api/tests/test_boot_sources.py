@@ -13,8 +13,8 @@ from maasserver.models import BootSource
 from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 from testtools.matchers import MatchesStructure
 

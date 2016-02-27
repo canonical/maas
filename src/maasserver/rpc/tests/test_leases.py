@@ -21,8 +21,8 @@ from maasserver.rpc.leases import (
     update_lease,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from netaddr import IPAddress
 from testtools.matchers import MatchesStructure
 

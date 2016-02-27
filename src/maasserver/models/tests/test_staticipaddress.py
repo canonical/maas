@@ -30,13 +30,13 @@ from maasserver.models.staticipaddress import (
     StaticIPAddress,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import (
     is_serialization_failure,
+    reload_object,
     transactional,
 )
 from maastesting.matchers import (

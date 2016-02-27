@@ -5,7 +5,6 @@
 
 __all__ = [
     'PostCommitHooksTestMixin',
-    'reload_object',
     'reload_objects',
     'rollback',
 ]
@@ -15,28 +14,10 @@ from contextlib import contextmanager
 from django.db import transaction
 from maasserver.utils.orm import (
     gen_description_of_hooks,
-    get_one,
     post_commit_hooks,
 )
 import testtools
 from testtools.matchers import HasLength
-
-
-def reload_object(model_object):
-    """Reload `obj` from the database.
-
-    Use this when a test needs to inspect changes to model objects made by
-    the API.
-
-    If the object has been deleted, this will return None.
-
-    :param model_object: Model object to reload.
-    :type model_object: Concrete `Model` subtype.
-    :return: Freshly-loaded instance of `model_object`, or None.
-    :rtype: Same as `model_object`.
-    """
-    model_class = model_object.__class__
-    return get_one(model_class.objects.filter(id=model_object.id))
 
 
 def reload_objects(model_class, model_objects):

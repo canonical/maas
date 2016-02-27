@@ -39,8 +39,8 @@ from maasserver.models.migrations.create_default_storage_layout import (
     create_flat_layout,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     Is,
     MatchesStructure,

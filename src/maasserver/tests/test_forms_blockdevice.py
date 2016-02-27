@@ -24,10 +24,12 @@ from maasserver.models import Filesystem
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from testtools.matchers import MatchesStructure
 
 

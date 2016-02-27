@@ -16,8 +16,8 @@ from maasserver.models.node import Node
 from maasserver.models.zone import Zone
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets import base
 from maasserver.websockets.base import (
     Handler,

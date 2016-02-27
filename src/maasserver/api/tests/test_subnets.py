@@ -22,8 +22,8 @@ from maasserver.testing.api import (
     explain_unexpected_response,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from provisioningserver.utils.network import (
     inet_ntop,
     IPRangeStatistics,

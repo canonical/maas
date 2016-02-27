@@ -21,11 +21,9 @@ from maasserver.testing import (
     NoReceivers,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import (
-    reload_object,
-    reload_objects,
-)
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import Equals
 
 

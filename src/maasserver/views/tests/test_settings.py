@@ -27,12 +27,12 @@ from maasserver.testing import (
     get_prefixed_form_data,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.views import settings as settings_view
 
 

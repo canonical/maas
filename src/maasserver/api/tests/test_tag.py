@@ -19,7 +19,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.orm import reload_object
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,

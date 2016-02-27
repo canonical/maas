@@ -18,13 +18,13 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import (
     post_commit_hooks,
+    reload_object,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase

@@ -31,8 +31,8 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver.enum import RESULT_TYPE

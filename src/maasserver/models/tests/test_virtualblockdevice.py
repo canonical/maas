@@ -14,9 +14,9 @@ from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.orm import reload_object
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 

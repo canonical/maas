@@ -32,8 +32,8 @@ from maasserver.support.pertenant.tests.test_utils import (
 )
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from mock import (
     call,

@@ -18,8 +18,8 @@ from maasserver.models.service import (
     Service,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     Equals,
     HasLength,

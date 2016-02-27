@@ -44,7 +44,6 @@ from maasserver.node_status import (
     NON_MONITORED_STATUSES,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,
@@ -56,6 +55,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
+    reload_object,
 )
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE

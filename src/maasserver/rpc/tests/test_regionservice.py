@@ -68,13 +68,15 @@ from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import ignore_unused
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    reload_object,
+    transactional,
+)
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockAnyCall,

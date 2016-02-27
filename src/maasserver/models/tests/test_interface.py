@@ -39,15 +39,15 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import (
-    reload_object,
-    reload_objects,
-)
+from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,

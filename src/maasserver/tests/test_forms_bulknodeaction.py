@@ -19,11 +19,11 @@ from maasserver.node_action import (
     PowerOn,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.orm import reload_object
 
 
 class TestBulkNodeActionForm(MAASServerTestCase):

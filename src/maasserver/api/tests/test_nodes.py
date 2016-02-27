@@ -25,9 +25,9 @@ from maasserver.testing.api import (
     MultipleUsersScenarios,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
+from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 
 

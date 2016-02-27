@@ -18,8 +18,10 @@ from maasserver.management.commands import (
 )
 from maasserver.models.user import get_creds_tuple
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
 from maastesting.djangotestcase import DjangoTestCase
 from testtools.matchers import (
     AfterPreprocessing,

@@ -42,8 +42,8 @@ from maasserver.preseed import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,

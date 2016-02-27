@@ -33,9 +33,11 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import (
+    post_commit_hooks,
+    reload_object,
+)
 from maastesting.twisted import always_succeed_with
 from provisioningserver.drivers import gen_power_types
 from provisioningserver.rpc.cluster import DescribePowerTypes
