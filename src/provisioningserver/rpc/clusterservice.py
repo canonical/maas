@@ -34,6 +34,7 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
+from provisioningserver.eni import get_interfaces_definition
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.power.change import maybe_change_power_state
 from provisioningserver.power.poweraction import UnknownPowerType
@@ -74,7 +75,6 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
-from provisioningserver.utils.network import get_eni_interfaces_definition
 from provisioningserver.utils.twisted import (
     DeferredValue,
     synchronous,
@@ -349,7 +349,7 @@ class Cluster(RPCProtocol):
             architecture = get_architecture()
             os_release = get_os_release()
             swap_size = get_swap_size()
-            interfaces = get_eni_interfaces_definition()
+            interfaces, _ = get_interfaces_definition()
             return architecture, os_release, swap_size, interfaces
 
         def cb_result(result):
@@ -500,7 +500,7 @@ class ClusterClient(Cluster):
             system_id = ''
 
         # Gather the interface definition and hostname.
-        interfaces = get_eni_interfaces_definition()
+        interfaces, _ = get_interfaces_definition()
         hostname = gethostname().split('.')[0]
 
         def cb_register(data):

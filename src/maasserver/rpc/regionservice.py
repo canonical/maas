@@ -373,6 +373,18 @@ class Region(RPCProtocol):
         d.addCallback(lambda args: {})
         return d
 
+    @region.UpdateInterfaces.responder
+    def update_interfaces(self, system_id, interfaces):
+        """update_interfaces()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
+        """
+        d = deferToDatabase(
+            rackcontrollers.update_interfaces, system_id, interfaces)
+        d.addCallback(lambda args: {})
+        return d
+
     @region.RequestNodeInfoByMACAddress.responder
     def request_node_info_by_mac_address(self, mac_address):
         """request_node_info_by_mac_address()

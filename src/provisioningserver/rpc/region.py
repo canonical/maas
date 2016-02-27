@@ -20,12 +20,12 @@ __all__ = [
     "MarkNodeFailed",
     "RegisterRackController",
     "RegisterEventType",
-    "ReloadCluster",
     "ReportBootImages",
     "ReportForeignDHCPServer",
     "RequestNodeInfoByMACAddress",
     "SendEvent",
     "SendEventMACAddress",
+    "UpdateInterfaces",
     "UpdateNodePowerState",
 ]
 
@@ -369,23 +369,16 @@ class CommissionNode(amp.Command):
     }
 
 
-class ReloadCluster(amp.Command):
-    """Called by a cluster when it wants to reload its state.
+class UpdateInterfaces(amp.Command):
+    """Called by a rack controller to update its interface definition.
 
-    The region may respond with many different calls to the cluster
-    that will give it all the information it needs to restore state (for
-    example when it got restarted).
-
-    For example, the region will restore all the timers in the cluster,
-    so none or many StartTimer calls may be received after the cluster
-    issues this command.
-
-    :since: 1.7
+    :since: 2.0
     """
 
     arguments = [
-        (b"cluster_uuid", amp.Unicode()),
-        ]
+        (b'system_id', amp.Unicode()),
+        (b'interfaces', StructureAsJSON()),
+    ]
     response = []
     errors = []
 

@@ -184,3 +184,11 @@ def get_rack_controllers_interfaces_as_dicts(system_id):
         }
         for interface in interfaces
         ]
+
+
+@synchronous
+@transactional
+def update_interfaces(system_id, interfaces):
+    """Update the interface definition on the rack controller."""
+    rack_controller = RackController.objects.get(system_id=system_id)
+    rack_controller.update_interfaces(interfaces)

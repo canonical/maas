@@ -20,11 +20,13 @@ from maasserver.models import (
 from maasserver.rpc.rackcontrollers import (
     register_new_rackcontroller,
     register_rackcontroller,
+    update_interfaces,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
+from mock import sentinel
 
 
 class TestRegisterRackController(MAASServerTestCase):
@@ -216,3 +218,15 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(
             "Rack controller(%s) currently being registered, retrying..." %
             hostname, logger.output.strip())
+
+
+class TestUpdateInterfaces(MAASServerTestCase):
+
+    def test__calls_update_interfaces_on_rack_controller(self):
+        rack_controller = factory.make_RackController()
+        patched_update_interfaces = self.patch(
+            RackController, "update_interfaces")
+        update_interfaces(rack_controller.system_id, sentinel.interfaces)
+        self.assertThat(
+            patched_update_interfaces,
+            MockCalledOnceWith(sentinel.interfaces))

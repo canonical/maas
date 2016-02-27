@@ -124,6 +124,13 @@ class ProvisioningServiceMaker:
         rpc_service.setName("rpc")
         return rpc_service
 
+    def _makeENIMonitoringService(self, rpc_service):
+        from provisioningserver.pserv_services.eni_monitoring_service \
+            import ENIMonitoringService
+        eni_monitor = ENIMonitoringService(rpc_service, reactor)
+        eni_monitor.setName("eni_monitor")
+        return eni_monitor
+
     def _makeDHCPProbeService(self, rpc_service):
         from provisioningserver.pserv_services.dhcp_probe_service \
             import DHCPProbeService
@@ -144,6 +151,7 @@ class ProvisioningServiceMaker:
         rpc_service = self._makeRPCService()
         yield rpc_service
         # Other services that make up the MAAS Region Controller.
+        yield self._makeENIMonitoringService(rpc_service)
         yield self._makeDHCPProbeService(rpc_service)
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
