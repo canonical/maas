@@ -37,13 +37,33 @@ class ControllerHandler(MachineHandler):
             'unlink_subnet',
         ]
         form = AdminNodeWithMACAddressesForm
-        # Exclude list comes from MachineHandler.Meta.
+        exclude = [
+            "status_expires",
+            "parent",
+            "boot_interface",
+            "boot_cluster_ip",
+            "token",
+            "netboot",
+            "agent_name",
+            "power_state_queried",
+            "power_state_updated",
+            "gateway_link_ipv4",
+            "gateway_link_ipv6",
+            "enable_ssh",
+            "skip_networking",
+            "skip_storage",
+            "instance_power_parameters",
+            "address_ttl",
+            "url",
+            "dns_process",
+            "managing_process",
+        ]
         list_fields = [
             "system_id",
             "hostname",
             "node_type",
             "status",
-            "updated",
+            "last_image_sync",
             ]
         # Controller data rides on the machine channel.
         listen_channels = [

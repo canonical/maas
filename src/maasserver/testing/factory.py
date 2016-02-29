@@ -434,11 +434,17 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_RackController(self, **kwargs):
+    def make_RackController(self, last_image_sync=undefined, **kwargs):
         node = self.make_Node_with_Interface_on_Subnet(
             node_type=NODE_TYPE.RACK_CONTROLLER,
             with_dhcp_rack_primary=False, with_dhcp_rack_secondary=False,
             **kwargs)
+        if last_image_sync is undefined:
+            node.last_image_sync = (
+                timezone.now() - timedelta(minutes=random.randint(1, 15)))
+        else:
+            node.last_image_sync = last_image_sync
+        node.save()
         return typecast_node(node, RackController)
 
     def make_BMC(

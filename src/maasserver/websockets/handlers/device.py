@@ -100,6 +100,7 @@ class DeviceHandler(NodeHandler):
             "managing_process",
             "address_ttl",
             "url",
+            "last_image_sync",
             ]
         list_fields = [
             "system_id",

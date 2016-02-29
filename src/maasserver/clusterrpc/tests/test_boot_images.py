@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from datetime import timedelta
 import os
 import random
 
@@ -21,6 +22,7 @@ from maasserver.clusterrpc.boot_images import (
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models.config import Config
+from maasserver.models.timestampedmodel import now
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
@@ -32,6 +34,7 @@ from maasserver.testing.eventloop import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -618,3 +621,74 @@ class TestRackControllersImporterInAction(MAASServerTestCase):
             connected to the region at this time.
             """ % (rack_1.system_id, rack_2.system_id, rack_3.system_id),
             logger.output)
+
+    def test__run_touches_synced_racks_last_image_sync(self):
+        # Avoid deferring to the database.
+        self.patch(boot_images_module, "deferToDatabase", maybeDeferred)
+        touch = self.patch_autospec(
+            RackControllersImporter, 'touch_last_image_sync')
+
+        # Some clusters that we'll ask to import resources.
+        rack_1 = factory.make_RackController()
+        rack_2 = factory.make_RackController()
+        rack_3 = factory.make_RackController()
+        # Cluster #1 will work fine.
+        cluster_1 = self.rpc.makeCluster(rack_1, ImportBootImages)
+        cluster_1.ImportBootImages.return_value = succeed({})
+        # Cluster #2 will break.
+        cluster_2 = self.rpc.makeCluster(rack_2, ImportBootImages)
+        cluster_2.ImportBootImages.return_value = fail(ZeroDivisionError())
+        # Cluster #3 is not connected.
+
+        # Do the import.
+        importer = RackControllersImporter.new([
+            rack_1.system_id,
+            rack_2.system_id,
+            rack_3.system_id,
+        ])
+        importer.run().wait(5)
+
+        # Make sure that only rack_1's last_sync_time would get touched
+        self.assertThat(touch, MockCalledOnceWith([rack_1.system_id]))
+
+    def test__broken_touch_last_image_sync_reports_results(self):
+        # Avoid deferring to the database.
+        self.patch(boot_images_module, "deferToDatabase", maybeDeferred)
+        # Make touch_last_image_sync fail.
+        self.patch_autospec(
+            RackControllersImporter,
+            'touch_last_image_sync').side_effect = Exception()
+
+        rack_1 = factory.make_RackController()
+        cluster_1 = self.rpc.makeCluster(rack_1, ImportBootImages)
+        cluster_1.ImportBootImages.return_value = succeed({})
+
+        # Do the import with reporting.
+        importer = RackControllersImporter.new([rack_1.system_id])
+
+        with TwistedLoggerFixture() as logger:
+            importer.run().wait(5)
+
+        self.assertDocTestMatches(
+            """\
+            ...
+            ---
+            Failed to touch last image sync timestamps.
+            ...
+            """, logger.output)
+
+    def test__touch_last_image_sync(self):
+        # Create a few rackd's, two with no sync times.
+        birthday = now() - timedelta(minutes=random.randint(1, 15))
+        rack_1 = factory.make_RackController(last_image_sync=None)
+        rack_2 = factory.make_RackController(last_image_sync=None)
+        rack_3 = factory.make_RackController(last_image_sync=birthday)
+        rack_4 = factory.make_RackController(last_image_sync=birthday)
+
+        # Touch cluster with and without sync_time, confirm properly updated.
+        RackControllersImporter.touch_last_image_sync(
+            [rack_1.system_id, rack_3.system_id])
+        self.assertIsNotNone(reload_object(rack_1).last_image_sync)
+        self.assertIsNone(reload_object(rack_2).last_image_sync)
+        self.assertGreater(reload_object(rack_3).last_image_sync, birthday)
+        self.assertEqual(reload_object(rack_4).last_image_sync, birthday)

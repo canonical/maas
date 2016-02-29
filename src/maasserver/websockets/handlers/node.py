@@ -82,6 +82,11 @@ class NodeHandler(TimestampedModelHandler):
             "name": zone.name,
         }
 
+    def dehydrate_last_image_sync(self, last_image_sync):
+        """Return formatted datetime."""
+        return dehydrate_datetime(
+            last_image_sync) if last_image_sync is not None else None
+
     def dehydrate_power_parameters(self, power_parameters):
         """Return power_parameters None if empty."""
         return None if power_parameters == '' else power_parameters

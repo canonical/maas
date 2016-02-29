@@ -140,6 +140,7 @@ class MachineHandler(NodeHandler):
             "url",
             "dns_process",
             "managing_process",
+            "last_image_sync",
         ]
         list_fields = [
             "system_id",

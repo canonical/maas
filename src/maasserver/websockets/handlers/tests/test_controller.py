@@ -10,6 +10,7 @@ from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.controller import ControllerHandler
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 
 
 class TestControllerHandler(MAASServerTestCase):
@@ -18,6 +19,30 @@ class TestControllerHandler(MAASServerTestCase):
         """Create `number` of new nodes."""
         for counter in range(number):
             factory.make_RackController()
+
+    def test_last_image_sync(self):
+        owner = factory.make_User()
+        handler = ControllerHandler(owner, {})
+        node = factory.make_RackController(owner=owner)
+        result = handler.list({})
+        self.assertEqual(1, len(result))
+        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get('node_type'))
+        self.assertEqual(result[0].get(
+            'last_image_sync'), dehydrate_datetime(node.last_image_sync))
+        data = handler.get({"system_id": node.system_id})
+        self.assertEqual(data.get("last_image_sync"), dehydrate_datetime(
+            node.last_image_sync))
+
+    def test_last_image_sync_returns_none_for_none(self):
+        owner = factory.make_User()
+        handler = ControllerHandler(owner, {})
+        node = factory.make_RackController(owner=owner, last_image_sync=None)
+        result = handler.list({})
+        self.assertEqual(1, len(result))
+        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get('node_type'))
+        self.assertIsNone(result[0].get("last_image_sync"))
+        data = handler.get({"system_id": node.system_id})
+        self.assertIsNone(data.get("last_image_sync"))
 
     def test_list_ignores_devices_and_nodes(self):
         owner = factory.make_User()

@@ -227,15 +227,10 @@
                                 <dd class="four-col last-col">
                                     {$ node.node_type_display $}
                                 </dd>
-                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
-                            <span class="ng-hide">
                             <dt class="two-col">Last image sync</dt>
                                 <dd class="four-col last-col">
-                                    <time datetime="2015-08-29T13:58Z">
-                                        August 29th, 2015 at 13:58
-                                    </time>
+                                    {$ node.last_image_sync || 'Never' $}
                                 </dd>
-                            </span>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
                                     {$ node.zone.name $}

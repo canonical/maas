@@ -745,6 +745,10 @@ class Node(CleanSave, TimestampedModel):
     power_state_updated = DateTimeField(
         null=True, blank=False, default=None, editable=False)
 
+    # Updated each time a rack controller finishes syncing boot images.
+    last_image_sync = DateTimeField(
+        null=True, blank=False, default=None, editable=False)
+
     token = ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
 
