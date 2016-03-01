@@ -1393,13 +1393,20 @@ class Factory(maastesting.factory.Factory):
             partition_table=partition_table, uuid=uuid,
             size=size, bootable=bootable)
 
+    def pick_filesystem_type(self, but_not=()):
+        # XXX: Temporarily exclude swap from the random choice. It doesn't use
+        # a mount point, and this can surprise some tests.
+        but_not = {FILESYSTEM_TYPE.SWAP}.union(but_not)
+        return factory.pick_choice(
+            FILESYSTEM_FORMAT_TYPE_CHOICES, but_not=but_not)
+
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
             filesystem_group=None, label=None, create_params=None,
             mount_point=None, mount_options=undefined, block_device_size=None,
             acquired=False):
         if fstype is None:
-            fstype = self.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+            fstype = self.pick_filesystem_type()
         if partition is None and block_device is None:
             if self.pick_bool():
                 partition = self.make_Partition()

@@ -733,6 +733,7 @@ class TestBlockDeviceAPI(APITestCase):
             MatchesStructure(
                 mount_point=Equals(mount_point),
                 mount_options=Equals(mount_options),
+                is_mounted=Is(True),
             ))
 
     def test_mount_sets_mount_path_and_params_on_filesystem_as_user(self):
@@ -762,6 +763,7 @@ class TestBlockDeviceAPI(APITestCase):
             MatchesStructure(
                 mount_point=Equals(mount_point),
                 mount_options=Equals(mount_options),
+                is_mounted=Is(True),
             ))
 
     def test_unmount_returns_409_if_not_allocated_or_ready(self):
@@ -852,6 +854,7 @@ class TestBlockDeviceAPI(APITestCase):
             MatchesStructure(
                 mount_point=Is(None),
                 mount_options=Is(None),
+                is_mounted=Is(False),
             ))
 
     def test_unmount_unmounts_filesystem_as_user(self):
@@ -877,6 +880,7 @@ class TestBlockDeviceAPI(APITestCase):
             MatchesStructure(
                 mount_point=Is(None),
                 mount_options=Is(None),
+                is_mounted=Is(False),
             ))
 
     def test_update_physical_block_device_as_admin(self):

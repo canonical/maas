@@ -398,6 +398,9 @@ class FILESYSTEM_TYPE:
     #: Bcache backing.
     BCACHE_BACKING = 'bcache-backing'
 
+    #: Swap
+    SWAP = 'swap'
+
 
 # Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
 # representation).
@@ -414,6 +417,7 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.RAID_SPARE, "raid-spare"),
     (FILESYSTEM_TYPE.BCACHE_CACHE, "bcache-cache"),
     (FILESYSTEM_TYPE.BCACHE_BACKING, "bcache-backing"),
+    (FILESYSTEM_TYPE.SWAP, "swap"),
     )
 
 
@@ -428,6 +432,7 @@ FILESYSTEM_FORMAT_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.XFS, "xfs"),
     (FILESYSTEM_TYPE.FAT32, "fat32"),
     (FILESYSTEM_TYPE.VFAT, "vfat"),
+    (FILESYSTEM_TYPE.SWAP, "swap"),
     )
 
 

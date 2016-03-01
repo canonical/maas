@@ -27,8 +27,7 @@ from maasserver.forms import (
     CreateVolumeGroupForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
-    MountBlockDeviceForm,
-    MountPartitionForm,
+    MountFilesystemForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
@@ -312,8 +311,9 @@ class MachineHandler(NodeHandler):
                 fs.mount_point = None
                 fs.save()
             else:
-                form = MountPartitionForm(
-                    partition, {'mount_point': mount_point})
+                form = MountFilesystemForm(
+                    partition.get_effective_filesystem(),
+                    {'mount_point': mount_point})
                 if not form.is_valid():
                     raise HandlerError(form.errors)
                 else:
@@ -338,8 +338,9 @@ class MachineHandler(NodeHandler):
                 fs.mount_point = None
                 fs.save()
             else:
-                form = MountBlockDeviceForm(
-                    blockdevice, {'mount_point': mount_point})
+                form = MountFilesystemForm(
+                    blockdevice.get_effective_filesystem(),
+                    {'mount_point': mount_point})
                 if not form.is_valid():
                     raise HandlerError(form.errors)
                 else:

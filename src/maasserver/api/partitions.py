@@ -22,7 +22,7 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     AddPartitionForm,
     FormatPartitionForm,
-    MountPartitionForm,
+    MountFilesystemForm,
 )
 from maasserver.models import (
     BlockDevice,
@@ -255,14 +255,15 @@ class PartitionHandler(OperationsHandler):
             PartitionTable, block_device=device)
         partition = get_partition_by_id_or_name__or_404(
             partition_id, partition_table)
-        node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "mount")
-        form = MountPartitionForm(partition, data=request.data)
-        if not form.is_valid():
-            raise MAASAPIValidationError(form.errors)
+            device.get_node(), request.user, "mount")
+        filesystem = partition.get_effective_filesystem()
+        form = MountFilesystemForm(filesystem, data=request.data)
+        if form.is_valid():
+            form.save()
+            return partition
         else:
-            return form.save()
+            raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
     def unmount(self, request, system_id, device_id, partition_id):

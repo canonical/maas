@@ -15,6 +15,7 @@ from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    FILESYSTEM_TYPE,
     NODE_STATUS,
     PRESEED_TYPE,
 )
@@ -654,6 +655,24 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
         node.swap_size = 10 * 1000 ** 3
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, ['swap: {size: 10000000000B}\n'])
+
+    def test__suppresses_swap_file_when_swap_on_block_device(self):
+        node = factory.make_Node()
+        block_device = factory.make_BlockDevice(node=node)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.SWAP, block_device=block_device)
+        node.swap_size = None
+        swap_preseed = compose_curtin_swap_preseed(node)
+        self.assertEqual(swap_preseed, ['swap: {size: 0B}\n'])
+
+    def test__suppresses_swap_file_when_swap_on_partition(self):
+        node = factory.make_Node()
+        partition = factory.make_Partition(node=node)
+        factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.SWAP, partition=partition)
+        node.swap_size = None
+        swap_preseed = compose_curtin_swap_preseed(node)
+        self.assertEqual(swap_preseed, ['swap: {size: 0B}\n'])
 
 
 class TestComposeCurtinKernel(MAASServerTestCase):

@@ -83,18 +83,26 @@ class Filesystem(CleanSave, TimestampedModel):
     block_device = ForeignKey(
         BlockDevice, unique=False, null=True, blank=True)
 
+    # XXX: For CharField, why allow null *and* blank? Would
+    # CharField(null=False, blank=True, default="") not work better?
     label = CharField(
         max_length=255, null=True, blank=True)
 
     filesystem_group = ForeignKey(
         FilesystemGroup, null=True, blank=True, related_name='filesystems')
 
+    # XXX: For CharField, why allow null *and* blank? Would
+    # CharField(null=False, blank=True, default="") not work better?
     create_params = CharField(
         max_length=255, null=True, blank=True)
 
+    # XXX: For CharField, why allow null *and* blank? Would
+    # CharField(null=False, blank=True, default="") not work better?
     mount_point = CharField(
         max_length=255, null=True, blank=True)
 
+    # XXX: For CharField, why allow null *and* blank? Would
+    # CharField(null=False, blank=True, default="") not work better?
     mount_options = CharField(
         max_length=255, null=True, blank=True)
 
@@ -142,9 +150,24 @@ class Filesystem(CleanSave, TimestampedModel):
         else:
             return self.block_device.actual_instance
 
+    @property
     def is_mountable(self):
         """Return True if this is a mountable filesystem."""
         return self.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
+
+    @property
+    def is_mounted(self):
+        """Return True if this filesystem is mounted."""
+        return self.mount_point is not None
+
+    @property
+    def uses_mount_point(self):
+        """True if this filesystem can be mounted on a path.
+
+        Swap partitions, for example, are not mounted at a particular point in
+        the host's filesystem.
+        """
+        return self.fstype != FILESYSTEM_TYPE.SWAP
 
     def clean(self, *args, **kwargs):
         super(Filesystem, self).clean(*args, **kwargs)
@@ -152,11 +175,13 @@ class Filesystem(CleanSave, TimestampedModel):
         # You have to specify either a partition or a block device.
         if self.partition is None and self.block_device is None:
             raise ValidationError(
+                # XXX: Message leaks implementation details ("block_device").
                 "One of partition or block_device must be specified.")
 
         # You can have only one of partition or block device; not both.
         if self.partition is not None and self.block_device is not None:
             raise ValidationError(
+                # XXX: Message leaks implementation details ("block_device").
                 "Only one of partition or block_device can be specified.")
 
         # If fstype is for a bcache as a cache device it needs to be in a
@@ -164,7 +189,19 @@ class Filesystem(CleanSave, TimestampedModel):
         if (self.fstype == FILESYSTEM_TYPE.BCACHE_CACHE and
                 self.cache_set is None):
             raise ValidationError(
+                # XXX: Message leaks implementation details ("BCACHE_CACHE",
+                # "cache_set").
                 "BCACHE_CACHE must be inside of a cache_set.")
+
+        # Normalise the mount point to None or "none" if this filesystem does
+        # not use it. The mount point (fs_file) field in fstab(5) is ignored
+        # for filesystems that don't have a mount point (i.e. swap) and "none"
+        # should be used, so it's used here too. When the mount point is set
+        # to None (rather than the string "none") it means that the filesystem
+        # is unmounted. This overloading is going to catch us out one day.
+        if not self.uses_mount_point:
+            if self.mount_point is not None:
+                self.mount_point = "none"
 
         # You cannot place a filesystem directly on the boot_disk. It requires
         # a partition to be used.

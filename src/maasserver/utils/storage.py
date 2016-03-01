@@ -37,7 +37,7 @@ def get_effective_filesystem(model):
         # No acquired filesystem, could be a filesystem that is not
         # mountable so we return that filesystem.
         for filesystem in filesystems:
-            if not filesystem.is_mountable():
+            if not filesystem.is_mountable:
                 return filesystem
         return None
     else:

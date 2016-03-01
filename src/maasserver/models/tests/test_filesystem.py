@@ -14,11 +14,13 @@ from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES_DICT
 from maasserver.models.filesystem import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testscenarios import multiply_scenarios
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
     IsInstance,
+    MatchesStructure,
 )
 
 
@@ -211,12 +213,65 @@ class TestFilesystem(MAASServerTestCase):
 class TestFilesystemMountableTypes(MAASServerTestCase):
     """Tests the `Filesystem` model with mountable filesystems."""
 
-    scenarios = tuple(
+    scenarios_fstypes = tuple(
         (displayname, {"fstype": name}) for name, displayname in
         FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
 
+    scenarios_substrate = (
+        ("partition", {
+            "make_substrate": lambda: {
+                "partition": factory.make_Partition(),
+            },
+        }),
+        ("block-device", {
+            "make_substrate": lambda: {
+                "block_device": factory.make_PhysicalBlockDevice(),
+            },
+        }),
+    )
+
+    scenarios = multiply_scenarios(
+        scenarios_fstypes, scenarios_substrate)
+
     def test_can_create_mountable_filesystem(self):
-        filesystem = factory.make_Filesystem(fstype=self.fstype)
+        substrate = self.make_substrate()
+        filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
         self.assertThat(filesystem, IsInstance(Filesystem))
         self.assertThat(filesystem.fstype, Equals(self.fstype))
-        self.assertThat(filesystem.is_mountable(), Is(True))
+        self.assertThat(filesystem.is_mountable, Is(True))
+        self.assertThat(filesystem, MatchesStructure.byEquality(**substrate))
+
+    def test_mount_point_is_none_for_filesystems_that_do_not_use_one(self):
+        substrate = self.make_substrate()
+        mount_point = factory.make_name("mount-point")
+        filesystem = factory.make_Filesystem(
+            fstype=self.fstype, mount_point=mount_point, **substrate)
+        if filesystem.uses_mount_point:
+            self.assertThat(filesystem.mount_point, Equals(mount_point))
+        else:
+            self.assertThat(filesystem.mount_point, Equals("none"))
+
+    def test_filesystem_is_mounted_when_mount_point_is_set(self):
+        substrate = self.make_substrate()
+        filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
+        self.assertThat(filesystem.is_mounted, Is(False))
+        filesystem.mount_point = factory.make_name("path")
+        self.assertThat(filesystem.is_mounted, Is(True))
+
+
+class TestFilesystemsUsingMountPoints(MAASServerTestCase):
+    """Tests the `Filesystem` model regarding use of mount points."""
+
+    scenarios = tuple(
+        (displayname, {
+            "fstype": name,
+            "mounts_at_path": (name != "swap"),
+        })
+        for name, displayname in
+        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+
+    def test_uses_mount_point_is_true_for_real_filesystems(self):
+        filesystem = factory.make_Filesystem(fstype=self.fstype)
+        self.assertThat(
+            filesystem.uses_mount_point,
+            Equals(self.mounts_at_path))

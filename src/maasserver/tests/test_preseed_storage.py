@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from difflib import ndiff
 import random
 from textwrap import dedent
 
@@ -27,22 +28,25 @@ from maasserver.models.partitiontable import (
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from testtools.content import text_content
 from testtools.matchers import (
     ContainsDict,
     Equals,
+    HasLength,
     IsInstance,
     MatchesDict,
-    MatchesListwise,
 )
 import yaml
 
 
 class AssertStorageConfigMixin:
 
-    def assertStorageConfig(self, expected, output):
-        output = output[0]
-        output = yaml.load(output)
-        self.assertThat(output, ContainsDict({
+    def assertStorageConfig(self, expected, observed):
+        self.assertThat(observed, IsInstance(list))
+        self.assertThat(observed, HasLength(1))
+        observed = observed[0]
+        observed = yaml.load(observed)
+        self.assertThat(observed, ContainsDict({
             "partitioning_commands": MatchesDict({
                 "builtin": Equals(["curtin", "block-meta", "custom"]),
             }),
@@ -51,11 +55,19 @@ class AssertStorageConfigMixin:
                 "config": IsInstance(list),
             }),
         }))
-        expected = yaml.load(expected)
-        output_storage = output["storage"]["config"]
-        expected_storage = expected["config"]
-        expected_equals = list(map(Equals, expected_storage))
-        self.assertThat(output_storage, MatchesListwise(expected_equals))
+        storage_observed = observed["storage"]["config"]
+        storage_expected = yaml.load(expected)["config"]
+        if storage_observed != storage_expected:
+            storage_observed_dump = yaml.safe_dump(
+                storage_observed, default_flow_style=False)
+            storage_expected_dump = yaml.safe_dump(
+                storage_expected, default_flow_style=False)
+            diff = ["--- expected", "+++ observed"]
+            diff.extend(ndiff(
+                storage_expected_dump.splitlines(),
+                storage_observed_dump.splitlines()))
+            self.addDetail("Differences", text_content("\n".join(diff)))
+            self.fail("Storage configurations differ.")
 
 
 class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
@@ -93,8 +105,16 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             name: sda-part3
             type: partition
             number: 3
+            uuid: 53f88413-0568-44cc-b7db-4378bdba7f6e
+            size: 1073741824B
+            device: sda
+            wipe: superblock
+          - id: sda-part4
+            name: sda-part4
+            type: partition
+            number: 4
             uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
-            size: 6970933248B
+            size: 5897191424B
             wipe: superblock
             device: sda
           - id: sda-part1_format
@@ -111,15 +131,21 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             volume: sda-part2
           - id: sda-part3_format
             type: format
+            fstype: swap
+            label: swap
+            uuid: 0f523f74-e657-4c5d-a11b-b50c4c6b0c73
+            volume: sda-part3
+          - id: sda-part4_format
+            type: format
             fstype: xfs
             label: root
             uuid: 90a69b22-e281-4c5b-8df9-b09514f27ba1
-            volume: sda-part3
-          - id: sda-part3_mount
+            volume: sda-part4
+          - id: sda-part4_mount
             type: mount
             path: /
             options: rw,relatime,errors=remount-ro,data=ordered
-            device: sda-part3_format
+            device: sda-part4_format
           - id: sda-part2_mount
             type: mount
             path: /boot
@@ -129,6 +155,10 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             type: mount
             path: /boot/efi
             device: sda-part1_format
+          - id: sda-part3_mount
+            device: sda-part3_format
+            options: pri=1,discard=pages
+            type: mount
         """)
 
     def test__renders_expected_output(self):
@@ -150,10 +180,14 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
             size=1 * 1024 ** 3,
             bootable=True)
+        swap_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="53f88413-0568-44cc-b7db-4378bdba7f6e",
+            size=(1.0 * 1024 ** 3), bootable=False)
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=(6.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(5.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False)
         factory.make_Filesystem(
             partition=efi_partition, fstype=FILESYSTEM_TYPE.FAT32,
@@ -164,6 +198,10 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
             uuid="f98e5b7b-cbb1-437e-b4e5-1769f81f969f", label="boot",
             mount_point="/boot", mount_options=(
                 "rw,relatime,block_validity,barrier,user_xattr,acl"))
+        factory.make_Filesystem(
+            partition=swap_partition, fstype=FILESYSTEM_TYPE.SWAP,
+            uuid="0f523f74-e657-4c5d-a11b-b50c4c6b0c73", label="swap",
+            mount_point="/bogus", mount_options="pri=1,discard=pages")
         factory.make_Filesystem(
             partition=root_partition, fstype=FILESYSTEM_TYPE.XFS,
             uuid="90a69b22-e281-4c5b-8df9-b09514f27ba1", label="root",

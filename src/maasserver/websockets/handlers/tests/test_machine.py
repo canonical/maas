@@ -1188,9 +1188,7 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fs = factory.make_Filesystem(block_device=block_device)
-        new_fstype = factory.pick_choice(
-            FILESYSTEM_FORMAT_TYPE_CHOICES,
-            (fs.fstype))
+        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': block_device.id,
@@ -1210,9 +1208,7 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fs = factory.make_Filesystem(partition=partition)
-        new_fstype = factory.pick_choice(
-            FILESYSTEM_FORMAT_TYPE_CHOICES,
-            (fs.fstype))
+        new_fstype = factory.pick_filesystem_type(but_not={fs.fstype})
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': partition.partition_table.block_device.id,
@@ -1232,7 +1228,7 @@ class TestMachineHandler(MAASServerTestCase):
             architecture=architecture,
             status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': block_device.id,
@@ -1251,7 +1247,7 @@ class TestMachineHandler(MAASServerTestCase):
             architecture=architecture,
             status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': partition.partition_table.block_device.id,
@@ -1435,7 +1431,7 @@ class TestMachineHandler(MAASServerTestCase):
             block_device=block_device, node=node)
         partition = partition_table.partitions.first()
         size = partition_table.block_device.size // 2
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
         handler.create_partition({
             'system_id': node.system_id,
@@ -1522,7 +1518,7 @@ class TestMachineHandler(MAASServerTestCase):
         name = factory.make_name("bcache")
         cache_set = factory.make_CacheSet(node=node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
         handler.create_bcache({
             'system_id': node.system_id,
@@ -1582,7 +1578,7 @@ class TestMachineHandler(MAASServerTestCase):
         name = factory.make_name("bcache")
         cache_set = factory.make_CacheSet(node=node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
         handler.create_bcache({
             'system_id': node.system_id,
@@ -1640,7 +1636,7 @@ class TestMachineHandler(MAASServerTestCase):
         disk2 = factory.make_PhysicalBlockDevice(node=node)
         spare_disk = factory.make_PhysicalBlockDevice(node=node)
         name = factory.make_name("md")
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
         handler.create_raid({
             'system_id': node.system_id,
@@ -1710,7 +1706,7 @@ class TestMachineHandler(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, node=node)
         name = factory.make_name("lv")
         size = volume_group.get_lvm_free_space()
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
         handler.create_logical_volume({
             'system_id': node.system_id,

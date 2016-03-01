@@ -34,6 +34,7 @@ from maasserver.compose_preseed import (
     compose_preseed,
 )
 from maasserver.enum import (
+    FILESYSTEM_TYPE,
     PRESEED_TYPE,
     USERDATA_TYPE,
 )
@@ -45,6 +46,7 @@ from maasserver.models import (
     BootResource,
     Config,
 )
+from maasserver.models.filesystem import Filesystem
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
@@ -153,16 +155,25 @@ def compose_curtin_swap_preseed(node):
 
     These can then be appended to the main Curtin configuration.  The preseeds
     are returned as a list of strings, each holding a YAML section.
+
+    If a node's swap space is unconfigured but swap has been configured on a
+    block device or partition, this will suppress the creation of a swap file.
     """
-    if node.swap_size is not None:
-        swap_config = {
-            'swap': {
-                'size': ('%sB' % node.swap_size)
-            },
-        }
-        return [yaml.safe_dump(swap_config)]
+    if node.swap_size is None:
+        swap_filesystems = (
+            Filesystem.objects.filter_by_node(node).filter(
+                fstype=FILESYSTEM_TYPE.SWAP))
+        if swap_filesystems.exists():
+            # Suppress creation of a swap file.
+            swap_config = {'swap': {'size': '0B'}}
+            return [yaml.safe_dump(swap_config)]
+        else:
+            # Leave the decision up to Curtin.
+            return []
     else:
-        return []
+        # Make a swap file of `swap_size` bytes.
+        swap_config = {'swap': {'size': '%dB' % node.swap_size}}
+        return [yaml.safe_dump(swap_config)]
 
 
 def compose_curtin_kernel_preseed(node):

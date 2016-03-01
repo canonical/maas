@@ -13,17 +13,18 @@ __all__ = [
     "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
-    "get_node_edit_form",
+    "CreatePhysicalBlockDeviceForm",
     "get_node_create_form",
+    "get_node_edit_form",
     "list_all_usable_architectures",
-    "StorageSettingsForm",
     "MAASAndNetworkForm",
+    "MountFilesystemForm",
     "NetworksListingForm",
     "NodeWithMACAddressesForm",
-    "CreatePhysicalBlockDeviceForm",
     "ReleaseIPForm",
     "SSHKeyForm",
     "SSLKeyForm",
+    "StorageSettingsForm",
     "TagForm",
     "ThirdPartyDriversForm",
     "UbuntuForm",
@@ -34,6 +35,7 @@ from collections import Counter
 from functools import partial
 import pipes
 import re
+from typing import Optional
 
 from django import forms
 from django.contrib import messages
@@ -151,6 +153,7 @@ from netaddr import (
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils import typed
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -474,6 +477,9 @@ class NodeForm(MAASModelForm):
         M, G and T
         """
         swap_size = self.cleaned_data.get('swap_size')
+        # XXX: ValueError -- arising from int(...) -- is handled only when
+        # swap_size has no suffix. It should be handled, and ValidationError
+        # raised in its place, regardless of suffix.
         if swap_size == '':
             return None
         elif swap_size.endswith('K'):
@@ -2184,9 +2190,18 @@ class AbsolutePathField(forms.RegexField):
         regex = r"^(?:/[^/]*)*$"
         kwargs['min_length'] = 1
 
-        # This size comes from linux/limits.h where it defines PATH_MAX = 4096.
-        # 4096 includes the nul terminator, so the maximum string length is
-        # only 4095 since python does not count the nul terminator.
+        #
+        # XXX: Below, max_length was derived from linux/limits.h where it is
+        # defined as PATH_MAX = 4096. 4096 includes the nul terminator, so the
+        # maximum string length is only 4095 since Python does not count the
+        # nul terminator.
+        #
+        # PATH_MAX, however, refers to *bytes* AND it may not be that useful -
+        # http://insanecoding.blogspot.co.uk/2007/11/pathmax-simply-isnt.html
+        # - so 4095 appears to actually be an arbitrary limit that may be too
+        # large OR too small on Linux. For Windows it is almost certainly too
+        # large.
+        #
         kwargs['max_length'] = 4095
         super(AbsolutePathField, self).__init__(regex, *args, **kwargs)
 
@@ -2276,43 +2291,41 @@ class FormatBlockDeviceForm(Form):
         return self.block_device
 
 
-class MountBlockDeviceForm(Form):
-    """Form used to mount a block device."""
+class MountFilesystemForm(Form):
+    """Form used to mount a filesystem."""
 
-    mount_point = AbsolutePathField(required=True)
-    mount_options = StrippedCharField(required=False)
+    @typed
+    def __init__(self, filesystem: Optional[Filesystem], *args, **kwargs):
+        super(MountFilesystemForm, self).__init__(*args, **kwargs)
+        self.filesystem = filesystem
+        self.setup()
 
-    def __init__(self, block_device, *args, **kwargs):
-        super(MountBlockDeviceForm, self).__init__(*args, **kwargs)
-        self.block_device = block_device
+    def setup(self):
+        if self.filesystem is not None:
+            if self.filesystem.uses_mount_point:
+                self.fields["mount_point"] = AbsolutePathField(required=True)
+            self.fields["mount_options"] = StrippedCharField(required=False)
 
     def clean(self):
-        """Validate block device doesn't have a partition table."""
-        # Get the clean_data, check that all of the fields we need are
-        # present. If not then the form will error, so no reason to continue.
-        cleaned_data = super(MountBlockDeviceForm, self).clean()
-        if 'mount_point' not in cleaned_data:
-            return cleaned_data
-        filesystem = self.block_device.get_effective_filesystem()
-        if filesystem is None:
-            raise ValidationError(
-                "Cannot mount an unformatted block device.")
-        if filesystem.filesystem_group is not None:
-            raise ValidationError(
-                "Filesystem is part of a filesystem group, and cannot be "
-                "mounted.")
+        cleaned_data = super(MountFilesystemForm, self).clean()
+        if self.filesystem is None:
+            self.add_error(
+                None, "Cannot mount an unformatted partition "
+                "or block device.")
+        elif self.filesystem.filesystem_group is not None:
+            self.add_error(
+                None, "Filesystem is part of a filesystem group, "
+                "and cannot be mounted.")
         return cleaned_data
 
     def save(self):
-        """Persist the `Filesystem` into the database.
-
-        This implementation of `save` does not support the `commit` argument.
-        """
-        filesystem = self.block_device.get_effective_filesystem()
-        filesystem.mount_point = self.cleaned_data['mount_point']
-        filesystem.mount_options = self.cleaned_data['mount_options']
-        filesystem.save()
-        return self.block_device
+        if "mount_point" in self.cleaned_data:
+            self.filesystem.mount_point = self.cleaned_data['mount_point']
+        else:
+            self.filesystem.mount_point = "none"  # e.g. for swap.
+        if "mount_options" in self.cleaned_data:
+            self.filesystem.mount_options = self.cleaned_data['mount_options']
+        self.filesystem.save()
 
 
 class AddPartitionForm(Form):
@@ -2375,45 +2388,6 @@ class FormatPartitionForm(Form):
             uuid=self.cleaned_data.get('uuid', None),
             label=self.cleaned_data.get('label', None),
             acquired=self.node.is_in_allocated_state())
-        return self.partition
-
-
-class MountPartitionForm(Form):
-    """Form used to mount a partition."""
-
-    mount_point = AbsolutePathField(required=True)
-    mount_options = StrippedCharField(required=False)
-
-    def __init__(self, partition, *args, **kwargs):
-        super(MountPartitionForm, self).__init__(*args, **kwargs)
-        self.partition = partition
-
-    def clean(self):
-        """Validate block device doesn't have a partition table."""
-        # Get the clean_data, check that all of the fields we need are
-        # present. If not then the form will error, so no reason to continue.
-        cleaned_data = super(MountPartitionForm, self).clean()
-        if 'mount_point' not in cleaned_data:
-            return cleaned_data
-        filesystem = self.partition.get_effective_filesystem()
-        if filesystem is None:
-            raise ValidationError(
-                "Cannot mount an unformatted partition.")
-        if filesystem.filesystem_group is not None:
-            raise ValidationError(
-                "Partition is part of a filesystem group, and cannot be "
-                "mounted.")
-        return cleaned_data
-
-    def save(self):
-        """Persist the `Filesystem` into the database.
-
-        This implementation of `save` does not support the `commit` argument.
-        """
-        filesystem = self.partition.get_effective_filesystem()
-        filesystem.mount_point = self.cleaned_data['mount_point']
-        filesystem.mount_options = self.cleaned_data['mount_options']
-        filesystem.save()
         return self.partition
 
 

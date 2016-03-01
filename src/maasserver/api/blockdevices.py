@@ -22,7 +22,7 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
-    MountBlockDeviceForm,
+    MountFilesystemForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
@@ -376,12 +376,13 @@ class BlockDeviceHandler(OperationsHandler):
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
-        node = device.get_node()
         raise_error_for_invalid_state_on_allocated_operations(
-            node, request.user, "mount")
-        form = MountBlockDeviceForm(device, data=request.data)
+            device.get_node(), request.user, "mount")
+        filesystem = device.get_effective_filesystem()
+        form = MountFilesystemForm(filesystem, data=request.data)
         if form.is_valid():
-            return form.save()
+            form.save()
+            return device
         else:
             raise MAASAPIValidationError(form.errors)
 

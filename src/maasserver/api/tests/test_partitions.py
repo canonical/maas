@@ -475,6 +475,7 @@ class TestPartitions(APITestCase):
             MatchesStructure(
                 mount_point=Equals(mount_point),
                 mount_options=Equals(mount_options),
+                is_mounted=Is(True),
             ))
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
@@ -508,6 +509,7 @@ class TestPartitions(APITestCase):
             MatchesStructure(
                 mount_point=Equals(mount_point),
                 mount_options=Equals(mount_options),
+                is_mounted=Is(True),
             ))
 
     def test_mount_returns_400_on_missing_mount_point(self):
@@ -594,6 +596,7 @@ class TestPartitions(APITestCase):
             MatchesStructure(
                 mount_point=Is(None),
                 mount_options=Is(None),
+                is_mounted=Is(False),
             ))
 
     def test_unmount_unmounts_filesystem_as_user(self):
@@ -617,4 +620,5 @@ class TestPartitions(APITestCase):
             MatchesStructure(
                 mount_point=Is(None),
                 mount_options=Is(None),
+                is_mounted=Is(False),
             ))
