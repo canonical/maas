@@ -264,7 +264,7 @@ describe("AddDomainController", function() {
                 $scope.domain.name = makeName("name");
                 $scope.save();
                 var errorMsg = makeName("error");
-                var error = "{'name': ['" + errorMsg + "']}";
+                var error = '{"name": ["' + errorMsg + '"]}';
                 defer.reject(error);
                 $rootScope.$digest();
                 expect($scope.error).toBe(errorMsg + "  ");
@@ -276,8 +276,8 @@ describe("AddDomainController", function() {
             function() {
                 var controller = makeController();
                 var errorMsg = makeName("error");
-                var error = "{'name': ['Node " + errorMsg + "']}";
-                var expected = "Domain " + errorMsg + "  ";
+                var error = '{"name": ["' + errorMsg + '"]}';
+                var expected = errorMsg + "  ";
                 expect($scope.convertPythonDictToErrorMsg(
                         error)).toBe(expected);
         });
@@ -287,11 +287,23 @@ describe("AddDomainController", function() {
                     var controller = makeController();
                     var errorSegment1 = makeName("error");
                     var errorSegment2 = makeName("error");
-                    var error = "{'" + errorSegment1 +
-                        "': ['" + errorSegment2 + "']}";
-                    var expected = errorSegment1 + errorSegment2;
+                    var errorSegment3 = makeName("error");
+                    var error = '{"' + errorSegment1 +
+                        '": ["' + errorSegment2 + '", "' +
+                        errorSegment3 + '"]}';
+                    var expected = errorSegment1 + "  " + errorSegment2 +
+                        "  " + errorSegment3 + "  ";
                     expect($scope.convertPythonDictToErrorMsg(
                             error)).toBe(expected);
+        });
+
+        it("converts non-dictionary correctly",
+                function() {
+                    var controller = makeController();
+                    var errorSegment1 = makeName("error");
+                    var expected = errorSegment1;
+                    expect($scope.convertPythonDictToErrorMsg(
+                            errorSegment1)).toBe(expected);
         });
     });
 });

@@ -82,21 +82,37 @@ angular.module('MAAS').controller('AddDomainController', [
         };
 
         // Convert the Python dict error message to displayed message.
+        // We know it's probably a form ValidationError dictionary, so just use
+        // it as such, and recover if that doesn't parse as JSON.
         $scope.convertPythonDictToErrorMsg = function(pythonError) {
-            var elements = pythonError.match(/'([A-Za-z0-9 \.:_\-]+)'/g);
-            var result = '', msg = '';
-            for (k=0; k < elements.length; ++k) {
-                if (elements.hasOwnProperty(k)) {
-                    switch(elements[k]) {
-                        case "'name'":
-                            msg = elements[++k].replace(/'/g,'');
-                            result += msg.replace(/^Node/,'Domain') + '  ';
-                            break;
-                        default:
-                            result += elements[k].replace(/'/g,'');
-                    }
+            var dictionary;
+            try {
+                dictionary = JSON.parse(pythonError);
+            } catch(e) {
+                if (e instanceof SyntaxError) {
+                    return pythonError;
+                } else {
+                    throw e;
                 }
             }
+            var result = '', msg = '';
+            var key;
+            angular.forEach(dictionary, function(value, key) {
+                elements = dictionary[key];
+                switch(key) {
+                    case 'name':
+                        angular.forEach(elements, function(value) {
+                            result += value + "  ";
+                        });
+                        break;
+                    default:
+                        result += key + "  ";
+                        angular.forEach(elements, function(value) {
+                            result += value + "  ";
+                        });
+                        break;
+                }
+            });
             return result;
         };
 
@@ -113,7 +129,7 @@ angular.module('MAAS').controller('AddDomainController', [
 
             // Create the domain.
             var domain = convertDomainToProtocol($scope.domain);
-            DomainsManager.create(domain).then(function(domain) {
+            DomainsManager.create(domain).then(function() {
                 $scope.domain = makeDomain();
                 if(!addAnother) {
                     // Hide the scope if not adding another.
