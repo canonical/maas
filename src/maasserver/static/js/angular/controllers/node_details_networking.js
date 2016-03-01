@@ -471,15 +471,20 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             if (!$scope.isSuperUser()) {
                 // If the user is not a superuser, disable the networking panel.
                 return true;
-            } else if (angular.isObject($scope.node) &&
-                ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
-                // If the node is not ready or broken, disable networking panel.
-                return true;
-            } else {
-                // User must be a superuser and the node must be
-                // either ready or broken. Enable it.
-                return false;
             }
+            if ($scope.$parent.isController) {
+                // If the node is a controller, disable the networking panel.
+                return true;
+            }
+            if (angular.isObject($scope.node) &&
+                  ["Ready", "Broken"].indexOf($scope.node.status) === -1) {
+                // If a non-controller node is not ready or broken, disable
+                // networking panel.
+                return true;
+            }
+            // User must be a superuser and the node must be
+            // either ready or broken. Enable it.
+            return false;
         };
 
         // Return true if the interface is the boot interface or has a parent

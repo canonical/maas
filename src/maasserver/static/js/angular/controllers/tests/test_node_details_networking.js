@@ -307,6 +307,7 @@ describe("NodeNetworkingController", function() {
             interfaces: []
         };
         $parentScope.node = node;
+        $parentScope.isController = false;
     });
 
     // Makes the NodeStorageController.
@@ -2807,35 +2808,66 @@ describe("NodeNetworkingController", function() {
     });
 
     describe("isAllNetworkingDisabled", function() {
-        it("returns true if the user is not a superuser and the node is ready",
+        it("returns true if the user is not a superuser " +
+           "and the non-controller node is ready",
             function() {
             var controller = makeController();
             $scope.isSuperUser = function() { return false; };
             expect($scope.isAllNetworkingDisabled()).toBe(true);
         });
 
-        it("return false if the node is Ready and we are a superuser",
+        it("returns false when a non-controller node state " +
+           "is 'Ready' or 'Broken' and we are a superuser",
             function() {
             var controller = makeController();
             $scope.isSuperUser = function() { return true; };
-            $scope.node.status = "Ready";
+            $scope.node = {status: "Ready"};
             expect($scope.isAllNetworkingDisabled()).toBe(false);
+            $scope.node = {status: "Broken"};
+            expect($scope.isAllNetworkingDisabled()).toBe(false);
+            ["New",
+             "Commissioning",
+             "Failed commissioning",
+             "Missing",
+             "Reserved",
+             "Allocated",
+             "Deploying",
+             "Deployed",
+             "Retired",
+             "Failed deployment",
+             "Releasing",
+             "Releasing failed",
+             "Disk erasing",
+             "Failed disk erasing"].forEach(function (s) {
+                 $scope.node = {state: s};
+                 expect($scope.isAllNetworkingDisabled()).toBe(true);
+             });
         });
 
-        it("return false if the node is broken and we are a superuser",
+        it("returns true for controllers, in any state, even if superuser",
             function() {
             var controller = makeController();
+            $parentScope.isController = true;
             $scope.isSuperUser = function() { return true; };
-            $scope.node.status = "Broken";
-            expect($scope.isAllNetworkingDisabled()).toBe(false);
-        });
-
-        it("return true if the node is deploying and we are a superuser",
-            function() {
-            var controller = makeController();
-            $scope.isSuperUser = function() { return true; };
-            $scope.node.status = "Deploying";
-            expect($scope.isAllNetworkingDisabled()).toBe(true);
+            ["Ready",
+             "Broken",
+             "New",
+             "Commissioning",
+             "Failed commissioning",
+             "Missing",
+             "Reserved",
+             "Allocated",
+             "Deploying",
+             "Deployed",
+             "Retired",
+             "Failed deployment",
+             "Releasing",
+             "Releasing failed",
+             "Disk erasing",
+             "Failed disk erasing"].forEach(function (s) {
+                 $scope.node = {state: s};
+                 expect($scope.isAllNetworkingDisabled()).toBe(true);
+             });
         });
     });
 
