@@ -542,7 +542,7 @@
                                         MAC
                                     </a>
                                 </div>
-                                <div class="table__header table__column--3">PXE</div>
+                                <div class="table__header table__column--3" data-ng-hide="isController">PXE</div>
                                 <div class="table__header table__column--9">Type</div>
                                 <div class="table__header table__column--14">Fabric</div>
                                 <div class="table__header table__column--14">VLAN</div>
@@ -588,7 +588,7 @@
                                         </a>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--3">
+                                <div class="table__data table__column--3" data-ng-hide="isController">
                                     <input class="align-center" type="radio" name="bootInterface" checked
                                         data-ng-if="isBootInterface(interface)">
                                 </div>
