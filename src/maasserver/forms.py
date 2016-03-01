@@ -47,6 +47,7 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
 )
+from django.db.models import Q
 from django.forms import (
     CheckboxInput,
     Form,
@@ -3517,3 +3518,19 @@ class CreateLogicalVolumeForm(Form):
             name=self.cleaned_data['name'],
             uuid=self.cleaned_data.get('uuid'),
             size=self.cleaned_data['size'])
+
+
+class NodeChoiceField(forms.ModelChoiceField):
+
+    def __init__(self, queryset, *args, **kwargs):
+        super().__init__(queryset=queryset.distinct(), *args, **kwargs)
+
+    def clean(self, value):
+        if not value:
+            return None
+        try:
+            return self.queryset.get(Q(system_id=value) | Q(hostname=value))
+        except Node.DoesNotExist:
+            raise ValidationError(
+                "Select a valid choice. "
+                "%s is not one of the available choices." % value)

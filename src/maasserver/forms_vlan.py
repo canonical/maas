@@ -9,7 +9,10 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.forms import MAASModelForm
+from maasserver.forms import (
+    MAASModelForm,
+    NodeChoiceField,
+)
 from maasserver.models import RackController
 from maasserver.models.vlan import VLAN
 
@@ -41,12 +44,12 @@ class VLANForm(MAASModelForm):
 
     def _set_up_rack_fields(self):
         qs = RackController.objects.filter_by_vids([self.instance.vid])
-        self.fields['primary_rack'] = forms.ModelChoiceField(
+        self.fields['primary_rack'] = NodeChoiceField(
             required=False, initial=None, empty_label='No rack controller',
-            queryset=qs, to_field_name='system_id')
-        self.fields['secondary_rack'] = forms.ModelChoiceField(
+            queryset=qs)
+        self.fields['secondary_rack'] = NodeChoiceField(
             required=False, initial=None, empty_label='No rack controller',
-            queryset=qs, to_field_name='system_id')
+            queryset=qs)
 
         # Convert the initial values pulled from the database from id to
         # system_id so form validation doesn't complain
