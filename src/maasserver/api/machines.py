@@ -743,7 +743,6 @@ class AnonMachinesHandler(AnonNodesHandler):
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        autodetect_nodegroup=True
 
         :param architecture: A string containing the architecture type of
             the machine. (For example, "i386", or "amd64".) To determine the
@@ -760,12 +759,6 @@ class AnonMachinesHandler(AnonNodesHandler):
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
-        :param autodetect_nodegroup: (boolean) Whether or not to attempt
-            nodegroup detection for this machine. The nodegroup is determined
-            based on the requestor's IP address range. (if the API request
-            comes from an IP range within a known nodegroup, that nodegroup
-            will be used.)
-        :param nodegroup: The id of the nodegroup this machine belongs to.
         """
         return create_machine(request)
 
@@ -803,7 +796,6 @@ class MachinesHandler(NodesHandler):
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        autodetect_nodegroup=True
 
         :param architecture: A string containing the architecture type of
             the machine. (For example, "i386", or "amd64".) To determine the
@@ -820,12 +812,6 @@ class MachinesHandler(NodesHandler):
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
-        :param autodetect_nodegroup: (boolean) Whether or not to attempt
-            nodegroup detection for this machine. The nodegroup is determined
-            based on the requestor's IP address range. (if the API request
-            comes from an IP range within a known nodegroup, that nodegroup
-            will be used.)
-        :param nodegroup: The id of the nodegroup this node belongs to.
         """
         machine = create_machine(request)
         if request.user.is_superuser:

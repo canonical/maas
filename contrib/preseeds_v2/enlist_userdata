@@ -107,10 +107,6 @@ misc_bucket:
    # we could obtain the interface that booted from the kernel cmdline
    # thanks to 'IPAPPEND' (http://www.syslinux.org/wiki/index.php/SYSLINUX)
    url="{{server_url}}"
-   host=""
-   dig_output=""
-   ip=$(ifconfig eth0 | awk '$1 == "inet" { sub("addr:","",$2); print $2; }') &&
-     [ -n "${ip}" ] && dig_output=$(dig +short -x $ip) && host=${dig_output%.}
    # load ipmi modules
    load_modules
    pargs=""
@@ -130,12 +126,10 @@ misc_bucket:
    esac
    # Try maas-enlist without power parameters on failure for older versions of
    # maas-enlist without power parameter support
-   maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out ||\
-      maas-enlist --serverurl "$url" ${host:+--hostname "${host}"} >/tmp/enlist.out
+   maas-enlist --serverurl "$url" ${power_params:+--power-params "${power_params}" --power-type "${power_type}"}>/tmp/enlist.out ||\
+      maas-enlist --serverurl "$url" >/tmp/enlist.out
    if [ $? -eq 0 ]; then
       msg="successfully enlisted to '$url'"
-      [ -n "$host" ] && msg="$msg with hostname '$host'" ||
-         msg="$msg without hostname"
       echo
       echo "=== $(date -R): $msg"
       cat  /tmp/enlist.out
@@ -151,7 +145,7 @@ misc_bucket:
       chmod 755 /etc/profile.d/A01-block.sh
       echo
       echo =============================================
-      echo "failed to enlist system maas server '$host'"
+      echo "failed to enlist system maas server"
       echo "sleeping 60 seconds then poweroff"
       echo
       echo "login with '$user:$pass' to debug and disable poweroff"

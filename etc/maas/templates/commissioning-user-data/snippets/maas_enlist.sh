@@ -109,8 +109,6 @@ enlist_node() {
 
 	curl \
 	    --fail \
-	    --data-urlencode "op=new" \
-	    --data-urlencode "autodetect_nodegroup=1" \
 	    --data-urlencode "hostname=${hostname}" \
 	    --data-urlencode "architecture=${arch}" \
 	    --data-urlencode "subarchitecture=${subarch}" \
@@ -200,7 +198,7 @@ if [ -z "$servername" ]; then
 	servername="$serverurl"
 fi
 if echo "$serverurl" | egrep -q '(^[a-z]+://|^)[a-z0-9\.\-]+($|/$)'; then
-	api_url="MAAS/api/2.0/nodes/"
+	api_url="MAAS/api/2.0/machines/"
 else
 	api_url=`echo $serverurl | sed 's#^\(\|[a-z]\+://\)[a-zA-Z0-9\.\-]\+\(\|\:[0-9]\+\)/##'`
 fi
