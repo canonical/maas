@@ -1,20 +1,26 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Handlers for the WebSocket connections."""
 
+# Note: please keep this array in a consistent order with the imports below,
+# so that it's easy to sanity-check.
 __all__ = [
-    "NodeHandler",
+    "ControllerHandler",
     "DeviceHandler",
     "DomainHandler",
-    "GeneralHandler"
-    "ClusterHandler",
-    "UserHandler",
-    "ZoneHandler",
+    "EventHandler",
     "FabricHandler",
+    "GeneralHandler"
+    "IPRangeHandler",
+    "MachineHandler",
     "SpaceHandler",
     "SubnetHandler",
+    "TagHandler",
+    "UserHandler",
+    "ZoneHandler",
     "VLANHandler",
+    "FabricHandler",
     ]
 
 from maasserver.utils import ignore_unused
@@ -24,6 +30,7 @@ from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.event import EventHandler
 from maasserver.websockets.handlers.fabric import FabricHandler
 from maasserver.websockets.handlers.general import GeneralHandler
+from maasserver.websockets.handlers.iprange import IPRangeHandler
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.space import SpaceHandler
 from maasserver.websockets.handlers.subnet import SubnetHandler
@@ -39,6 +46,7 @@ ignore_unused(DomainHandler)
 ignore_unused(EventHandler)
 ignore_unused(FabricHandler)
 ignore_unused(GeneralHandler)
+ignore_unused(IPRangeHandler)
 ignore_unused(MachineHandler)
 ignore_unused(SpaceHandler)
 ignore_unused(SubnetHandler)

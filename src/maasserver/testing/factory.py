@@ -886,8 +886,15 @@ class Factory(maastesting.factory.Factory):
         return reload_object(interface)
 
     def make_IPRange(
-            self, subnet, start_ip, end_ip, comment=None, user=None,
-            type=IPRANGE_TYPE.DYNAMIC):
+            self, subnet=None, start_ip=None, end_ip=None, comment=None,
+            user=None, type=IPRANGE_TYPE.DYNAMIC):
+        if subnet is None and start_ip is None and end_ip is None:
+            subnet = self.make_ipv4_Subnet_with_IPRanges()
+            return subnet.get_dynamic_ranges().first()
+        # If any of these values are provided, they must all be provided.
+        assert subnet is not None
+        assert start_ip is not None
+        assert end_ip is not None
         iprange = IPRange(
             subnet=subnet, start_ip=start_ip, end_ip=end_ip, type=type,
             comment=comment, user=user)

@@ -792,6 +792,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_vlan", "vlan_delete_notify", "delete")
 
+    # IPRange table
+    register_procedure(
+        render_notification_procedure(
+            'iprange_create_notify', 'iprange_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'iprange_update_notify', 'iprange_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'iprange_delete_notify', 'iprange_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_iprange", "iprange_create_notify", "insert")
+    register_trigger(
+        "maasserver_iprange", "iprange_update_notify", "update")
+    register_trigger(
+        "maasserver_iprange", "iprange_delete_notify", "delete")
+
     # Fabric table
     register_procedure(
         render_notification_procedure(
