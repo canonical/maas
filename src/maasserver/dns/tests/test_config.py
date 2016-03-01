@@ -539,16 +539,31 @@ class TestDNSServer(MAASServerTestCase):
         if version == -1:
             version = IPAddress(ip).version
         fqdn = "%s.%s" % (hostname, domain)
+        start = time.time()
+        now = time.time()
+        forward_lookup_result = ['']
         # Give BIND enough time to process the rndc request.
-        time.sleep(0.2)
-        forward_lookup_result = self.dig_resolve(fqdn, version=version)
+        # XXX 2016-03-01 lamont bug=1550540 We should really query DNS for the
+        # SOA that we (can) know to be the correct one, and wait for that
+        # before we do the actual DNS lookup.  For now, rely on the fact that
+        # all of our tests go from having no answer for forward and/or reverse,
+        # to having the expected answer, and just wait for a non-empty return,
+        # or timeout (15 seconds because of slow jenkins sometimes.)
+        while forward_lookup_result == [''] and now - start < 15:
+            forward_lookup_result = self.dig_resolve(fqdn, version=version)
+            now = time.time()
+            time.sleep(0.05)
         self.assertThat(
             forward_lookup_result, Contains(ip),
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
-        reverse_lookup_result = self.dig_reverse_resolve(
-            ip, version=version)
+        reverse_lookup_result = ['']
+        while reverse_lookup_result == [''] and now - start < 15:
+            reverse_lookup_result = self.dig_reverse_resolve(
+                ip, version=version)
+            now = time.time()
+            time.sleep(0.05)
         self.assertThat(
             reverse_lookup_result, Contains("%s." % fqdn),
             "Failed to reverse resolve '%s' missing '%s' (results: '%s')." % (
