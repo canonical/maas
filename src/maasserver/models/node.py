@@ -3196,6 +3196,8 @@ class RackController(Node):
 
     def _update_links(self, interface, links, force_vlan=False):
         """Update the links on `interface`."""
+        interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
         current_ip_addresses = list(
             interface.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED))
@@ -3211,6 +3213,46 @@ class RackController(Node):
                     interface.ip_addresses.add(dhcp_address)
                 else:
                     current_ip_addresses.remove(dhcp_address)
+                if "address" in link:
+                    # DHCP IP address was discovered. Add it as a discovered
+                    # IP address.
+                    ip_network = IPNetwork(link["address"])
+                    ip_addr = str(ip_network.ip)
+
+                    # Get or create the subnet for this link. If created if
+                    # will be added to the VLAN on the interface.
+                    subnet, _ = Subnet.objects.get_or_create(
+                        cidr=str(ip_network.cidr), defaults={
+                            "name": str(ip_network.cidr),
+                            "vlan": interface.vlan,
+                            "space": Space.objects.get_default_space(),
+                        })
+
+                    # Make sure that the subnet is on the same VLAN as the
+                    # interface.
+                    if force_vlan and subnet.vlan_id != interface.vlan_id:
+                        maaslog.error(
+                            "Unable to update IP address '%s' assigned to "
+                            "interface '%s' on rack controller '%s'. "
+                            "Subnet '%s' for IP address is not on "
+                            "VLAN '%s.%d'." % (
+                                ip_addr, interface.name, self.hostname,
+                                subnet.name, subnet.vlan.fabric.name,
+                                subnet.vlan.vid))
+                        continue
+
+                    # Create the DISCOVERED IP address.
+                    ip_address, created = (
+                        StaticIPAddress.objects.get_or_create(
+                            ip=ip_addr, defaults={
+                                "alloc_type": IPADDRESS_TYPE.DISCOVERED,
+                                "subnet": subnet,
+                            }))
+                    if not created:
+                        ip_address.alloc_type = IPADDRESS_TYPE.DISCOVERED
+                        ip_address.subnet = subnet
+                        ip_address.save()
+                    interface.ip_addresses.add(ip_address)
                 updated_ip_addresses.add(dhcp_address)
             elif link["mode"] == "static":
                 ip_network = IPNetwork(link["address"])
@@ -3256,6 +3298,10 @@ class RackController(Node):
                                 "alloc_type": IPADDRESS_TYPE.STICKY,
                                 "subnet": subnet,
                             }))
+                    if not created:
+                        ip_address.alloc_type = IPADDRESS_TYPE.STICKY
+                        ip_address.subnet = subnet
+                        ip_address.save()
                 else:
                     current_ip_addresses.remove(ip_address)
 

@@ -89,7 +89,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.twisted.protocols import amp
-from provisioningserver.utils.network import get_eni_interfaces_definition
+from provisioningserver.utils.network import get_all_interfaces_definition
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -1251,7 +1251,7 @@ class TestClusterClient(MAASTestCase):
     def test_registerRackWithRegion_end_to_end(self):
         maas_url = factory.make_simple_http_url()
         hostname = platform.node().split('.')[0]
-        interfaces = get_eni_interfaces_definition()
+        interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture(
             maas_url=maas_url))
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
@@ -1862,7 +1862,7 @@ class TestClusterProtocol_Refresh(MAASTestCase):
                 'distro_series': distro_series,
                 'swap_size': swap_size,
                 'architecture': architecture,
-                'interfaces': get_eni_interfaces_definition(),
+                'interfaces': get_all_interfaces_definition(),
             }, response)
 
 

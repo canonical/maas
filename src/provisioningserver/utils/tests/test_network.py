@@ -11,8 +11,6 @@ from socket import (
     EAI_NONAME,
     gaierror,
 )
-from textwrap import dedent
-from unittest import skipIf
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -37,7 +35,7 @@ from provisioningserver.utils.network import (
     find_mac_via_arp,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
-    get_eni_interfaces_definition,
+    get_all_interfaces_definition,
     inet_ntop,
     intersect_iprange,
     ip_range_within_network,
@@ -763,351 +761,131 @@ class TestParseInteger(MAASTestCase):
         self.assertThat(parse_integer("0b10000000"), Equals(0b10000000))
 
 
-class TestGetENIInterfacesDefinition(MAASTestCase):
-    """Tests for `get_eni_interfaces_definition` and all helper methods."""
+class TestGetAllInterfacesDefinition(MAASTestCase):
+    """Tests for `get_all_interfaces_definition` and all helper methods."""
 
-    def setUp(self):
-        super(TestGetENIInterfacesDefinition, self).setUp()
-        self.patch(network_module, "call_and_check")
-
-    def patch_parse_ip_addr(self, nic_mapping):
-        # Extract the interface name to MAC address mapping.
-        nic_mapping = {
-            name: {
-                "mac": mac
-            }
-            for name, mac in nic_mapping.items()
-        }
-        self.patch(network_module, "parse_ip_addr").return_value = nic_mapping
-
-    def assertInterfacesResult(
-            self, eni_config, nic_mapping, expected_results,
-            include_other_interfaces=True):
-        file_name = self.make_file(contents=eni_config)
-        self.patch_parse_ip_addr(nic_mapping)
-        observed_result = get_eni_interfaces_definition(
-            eni_path=file_name,
-            include_other_interfaces=include_other_interfaces)
+    def assertInterfacesResult(self, ip_addr, dhclient_info, expected_results):
+        self.patch(network_module, "get_ip_addr").return_value = ip_addr
+        self.patch(
+            network_module, "get_dhclient_info").return_value = dhclient_info
+        observed_result = get_all_interfaces_definition()
         self.assertThat(observed_result, expected_results)
 
-    def test__includes_interfaces_no_in_eni_as_disabled(self):
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-            "eth1": factory.make_mac_address(),
-            "wlan0": factory.make_mac_address(),
-            "br0": factory.make_mac_address(),
+    def test__ignores_loopback(self):
+        ip_addr = {
+            "vnet": {
+                "type": "loopback",
+                "flags": ["UP"],
+                "inet": ["127.0.0.1/32"],
+                "inet6": ["::1"],
+            },
         }
-        interface_types = {
-            "eth0": "ethernet.physical",
-            "eth1": "ethernet.physical",
-            "wlan0": "ethernet.wireless",
-            "br0": "ethernet.bridge",
+        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+
+    def test__ignores_ethernet(self):
+        ip_addr = {
+            "vnet": {
+                "type": "ethernet",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.122.2/24"],
+            },
         }
-        self.patch(network_module, "get_interface_type").side_effect = (
-            lambda name: interface_types[name])
+        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+
+    def test__ignores_ipip(self):
+        ip_addr = {
+            "vnet": {
+                "type": "ipip",
+                "flags": ["UP"],
+            },
+        }
+        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+
+    def test__simple(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.122.2/24"],
+            },
+        }
         expected_result = MatchesDict({
             "eth0": MatchesDict({
                 "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(False),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
+                "enabled": Is(True),
                 "parents": Equals([]),
-                "links": Equals([]),
-            }),
-            "eth1": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth1"]),
-                "enabled": Is(False),
-                "parents": Equals([]),
-                "links": Equals([]),
-            }),
-            "wlan0": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["wlan0"]),
-                "enabled": Is(False),
-                "parents": Equals([]),
-                "links": Equals([]),
+                "links": Equals([{
+                    "mode": "static",
+                    "address": "192.168.122.2/24",
+                }]),
+                "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult("", nic_mapping, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, expected_result)
 
-    def test__ignores_inet_loopbacks(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet loopback
-
-            auto lo2
-            iface lo2 inet loopback
-            """)
-        self.assertInterfacesResult(
-            eni, {}, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet_bootp(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet bootp
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
+    def test__simple_with_dhcp(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.122.2/24", "192.168.122.200/32"],
+            },
         }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet_tunnel(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet tunnel
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet_ppp(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet ppp
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet_wvdial(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet wvdial
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet_ipv4ll(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet ipv4ll
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_ipx_static(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 ipx static
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_ipx_dynamic(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 ipx dynamic
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet6_auto(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet6 auto
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet6_loopback(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet6 loopback
-
-            auto lo2
-            iface lo2 inet6 loopback
-            """)
-        self.assertInterfacesResult(
-            eni, {}, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet6_v4tunnel(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet6 v4tunnel
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_inet6_6to4(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet6 6to4
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__ignores_can_static(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 can static
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        self.assertInterfacesResult(
-            eni, nic_mapping, MatchesDict({}), include_other_interfaces=False)
-
-    def test__grabs_mtu_on_interface(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 24
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-             mtu 1500
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
+        dhclient_info = {
+            "eth0": "192.168.122.2",
         }
         expected_result = MatchesDict({
             "eth0": MatchesDict({
                 "type": Equals("physical"),
-                "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
                 "enabled": Is(True),
-                "mtu": Equals(1500),
+                "parents": Equals([]),
                 "links": MatchesSetwise(
                     MatchesDict({
-                        "mode": Equals("static"),
+                        "mode": Equals("dhcp"),
                         "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
+                    }),
+                    MatchesDict({
+                        "mode": Equals("static"),
+                        "address": Equals("192.168.122.200/24"),
                     }),
                 ),
+                "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
+        self.assertInterfacesResult(ip_addr, dhclient_info, expected_result)
 
-    def test__inet_with_netmask_as_prefix_len(self):
-        eni = dedent("""\
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 24
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
+    def test__fixing_links(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": [
+                    "192.168.122.2/24",
+                    "192.168.122.3/32",
+                    "192.168.123.3/32",
+                ],
+                "inet6": [
+                    "2001:db8:a0b:12f0::1/96",
+                    "2001:db8:a0b:12f0::2/128",
+                ]
+            },
         }
         expected_result = MatchesDict({
             "eth0": MatchesDict({
                 "type": Equals("physical"),
-                "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
                 "enabled": Is(True),
+                "parents": Equals([]),
                 "links": MatchesSetwise(
                     MatchesDict({
                         "mode": Equals("static"),
                         "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
-                    }),
-                ),
-            }),
-        })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
-
-    def test__inet_simple_with_comments(self):
-        eni = dedent("""\
-            # This file describes the network interfaces available on your
-            # system and how to activate them. For more information,
-            # see interfaces(5).
-
-            # The loopback network interface
-            auto lo
-            iface lo inet loopback
-
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 255.255.255.0
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
-                    }),
-                ),
-            }),
-        })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
-
-    def test__inet_simple_with_aliases(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet loopback
-
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 255.255.255.0
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-
-            auto eth0:1
-            iface eth0:1 inet static
-             address 192.168.122.3/32
-
-            auto eth0:2
-            iface eth0:2 inet static
-             address 192.168.122.4
-             netmask 255.255.255.255
-
-            auto eth0:3
-            iface eth0:3 inet dhcp
-            """)
-        nic_mapping = {
-            "eth0": factory.make_mac_address(),
-        }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
@@ -1115,356 +893,146 @@ class TestGetENIInterfacesDefinition(MAASTestCase):
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
-                        "address": Equals("192.168.122.4/24"),
+                        "address": Equals("192.168.123.3/32"),
                     }),
                     MatchesDict({
-                        "mode": Equals("dhcp"),
+                        "mode": Equals("static"),
+                        "address": Equals("2001:db8:a0b:12f0::1/96"),
+                    }),
+                    MatchesDict({
+                        "mode": Equals("static"),
+                        "address": Equals("2001:db8:a0b:12f0::2/96"),
                     }),
                 ),
+                "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, expected_result)
 
-    def test__inet_vlan(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet loopback
-
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 255.255.255.0
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-
-            auto eth0.10
-            iface eth0.10 inet static
-             address 192.168.123.2
-             netmask 255.255.255.0
-
-            auto eth0.20
-            iface eth0.20 inet static
-             address 192.168.124.2
-             netmask 255.255.255.0
-
-            auto eth0.30
-            iface eth0.30 inet dhcp
-            """)
-        eth0_mac = factory.make_mac_address()
-        nic_mapping = {
-            "eth0": eth0_mac,
-            "eth0.10": eth0_mac,
-            "eth0.20": eth0_mac,
-            "eth0.30": eth0_mac,
+    def test__complex(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": [],
+            },
+            "eth1": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+            },
+            "eth2": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+            },
+            "bond0": {
+                "type": "ethernet.bond",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "bonded_interfaces": ["eth1", "eth2"],
+                "inet": ["192.168.122.2/24", "192.168.122.3/32"],
+                "inet6": ["2001:db8::3:2:2/96"],
+            },
+            "bond0.10": {
+                "type": "ethernet.vlan",
+                "flags": ["UP"],
+                "vid": 10,
+                "inet": ["192.168.123.2/24", "192.168.123.3/32"],
+            },
+            "wlan0": {
+                "type": "ethernet.wireless",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+            },
+            "br0": {
+                "type": "ethernet.bridge",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.124.2/24"],
+            },
         }
         expected_result = MatchesDict({
             "eth0": MatchesDict({
                 "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
+                "enabled": Is(False),
                 "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
-                    }),
-                ),
-            }),
-            "eth0.10": MatchesDict({
-                "type": Equals("vlan"),
-                "parents": Equals(["eth0"]),
-                "vid": Equals(10),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.123.2/24"),
-                    }),
-                ),
-            }),
-            "eth0.20": MatchesDict({
-                "type": Equals("vlan"),
-                "parents": Equals(["eth0"]),
-                "vid": Equals(20),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.124.2/24"),
-                    }),
-                ),
-            }),
-            "eth0.30": MatchesDict({
-                "type": Equals("vlan"),
-                "parents": Equals(["eth0"]),
-                "vid": Equals(30),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("dhcp"),
-                    }),
-                ),
-            }),
-        })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
-
-    def test__inet_vlan_with_aliases(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet loopback
-
-            auto eth0
-            iface eth0 inet static
-             address 192.168.122.2
-             netmask 255.255.255.0
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-
-            auto eth0.10
-            iface eth0.10 inet static
-             address 192.168.123.2
-             netmask 255.255.255.0
-
-            auto eth0.10:1
-            iface eth0.10:1 inet static
-             address 192.168.123.3/32
-
-            auto eth0.10:2
-            iface eth0.10:2 inet static
-             address 192.168.123.4/32
-            """)
-        eth0_mac = factory.make_mac_address()
-        nic_mapping = {
-            "eth0": eth0_mac,
-            "eth0.10": eth0_mac,
-        }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "parents": Equals([]),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
-                    }),
-                ),
-            }),
-            "eth0.10": MatchesDict({
-                "type": Equals("vlan"),
-                "parents": Equals(["eth0"]),
-                "vid": Equals(10),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.123.2/24"),
-                    }),
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.123.3/24"),
-                    }),
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.123.4/24"),
-                    }),
-                ),
-            }),
-        })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
-
-    @skipIf(
-        installed_curtin_version < 358,
-        "Update curtin to be newer than bzr358 to support parsing bonds "
-        "in /etc/network/interfaces.")
-    def test__inet_bond_with_vlan_and_aliases(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet loopback
-
-            auto eth0
-            iface eth0 inet manual
-                bond-master bond0
-                bond-primary eth0
-                bond-mode active-backup
-
-            auto eth1
-            iface eth1 inet manual
-                bond-master bond0
-                bond-primary eth0
-                bond-mode active-backup
-
-            auto bond0
-            iface bond0 inet static
-             address 192.168.122.2
-             netmask 255.255.255.0
-             gateway 192.168.122.1
-             dns-nameservers 192.168.1.1
-             bond-slaves none
-             bond-primary eth0
-             bond-mode active-backup
-             bond-miimon 100
-
-            auto bond0.10
-            iface bond0.10 inet static
-             address 192.168.123.2
-             netmask 255.255.255.0
-
-            auto bond0.10:1
-            iface bond0.10:1 inet static
-             address 192.168.123.3
-             netmask 255.255.255.255
-            """)
-        eth0_mac = factory.make_mac_address()
-        eth0_mac = factory.make_mac_address()
-        nic_mapping = {
-            "eth0": eth0_mac,
-            "eth1": factory.make_mac_address(),
-            "bond0": eth0_mac,
-            "bond0.10": eth0_mac,
-        }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
                 "links": Equals([]),
-                "parents": Equals([]),
+                "source": Equals("ipaddr"),
             }),
             "eth1": MatchesDict({
                 "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth1"]),
+                "mac_address": Equals(ip_addr["eth1"]["mac"]),
                 "enabled": Is(True),
-                "links": Equals([]),
                 "parents": Equals([]),
+                "links": Equals([]),
+                "source": Equals("ipaddr"),
+            }),
+            "eth2": MatchesDict({
+                "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["eth2"]["mac"]),
+                "enabled": Is(True),
+                "parents": Equals([]),
+                "links": Equals([]),
+                "source": Equals("ipaddr"),
             }),
             "bond0": MatchesDict({
                 "type": Equals("bond"),
-                "parents": MatchesSetwise(Equals("eth0"), Equals("eth1")),
-                "mac_address": Equals(nic_mapping["eth0"]),
+                "mac_address": Equals(ip_addr["bond0"]["mac"]),
                 "enabled": Is(True),
+                "parents": Equals(["eth1", "eth2"]),
                 "links": MatchesSetwise(
                     MatchesDict({
                         "mode": Equals("static"),
                         "address": Equals("192.168.122.2/24"),
-                        "gateway": Equals("192.168.122.1"),
-                    }),
-                ),
-            }),
-            "bond0.10": MatchesDict({
-                "type": Equals("vlan"),
-                "parents": Equals(["bond0"]),
-                "vid": Equals(10),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
-                    MatchesDict({
-                        "mode": Equals("static"),
-                        "address": Equals("192.168.123.2/24"),
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
-                        "address": Equals("192.168.123.3/24"),
+                        "address": Equals("192.168.122.3/24"),
                     }),
-                ),
-            }),
-        })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
-
-    @skipIf(
-        installed_curtin_version < 358,
-        "Update curtin to be newer than bzr358 to support parsing bonds "
-        "in /etc/network/interfaces.")
-    def test__inet6_bond_with_vlan_and_aliases(self):
-        eni = dedent("""\
-            auto lo
-            iface lo inet6 loopback
-
-            auto eth0
-            iface eth0 inet6 manual
-                bond-master bond0
-                bond-primary eth0
-                bond-mode active-backup
-
-            auto eth1
-            iface eth1 inet6 manual
-                bond-master bond0
-                bond-primary eth0
-                bond-mode active-backup
-
-            auto bond0
-            iface bond0 inet6 static
-             address 2001:db8::3:2:2
-             netmask 96
-             gateway 2001:db8::3:2:1
-             bond-slaves none
-             bond-primary eth0
-             bond-mode active-backup
-             bond-miimon 100
-
-            auto bond0.10
-            iface bond0.10 inet6 static
-             address 2001:db8::4:2:3
-             netmask 96
-
-            auto bond0.10:1
-            iface bond0.10:1 inet6 static
-             address 2001:db8::4:2:4
-             netmask 128
-            """)
-        eth0_mac = factory.make_mac_address()
-        eth0_mac = factory.make_mac_address()
-        nic_mapping = {
-            "eth0": eth0_mac,
-            "eth1": factory.make_mac_address(),
-            "bond0": eth0_mac,
-            "bond0.10": eth0_mac,
-        }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": Equals([]),
-                "parents": Equals([]),
-            }),
-            "eth1": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(nic_mapping["eth1"]),
-                "enabled": Is(True),
-                "links": Equals([]),
-                "parents": Equals([]),
-            }),
-            "bond0": MatchesDict({
-                "type": Equals("bond"),
-                "parents": MatchesSetwise(Equals("eth0"), Equals("eth1")),
-                "mac_address": Equals(nic_mapping["eth0"]),
-                "enabled": Is(True),
-                "links": MatchesSetwise(
                     MatchesDict({
                         "mode": Equals("static"),
                         "address": Equals("2001:db8::3:2:2/96"),
-                        "gateway": Equals("2001:db8::3:2:1"),
                     }),
                 ),
+                "source": Equals("ipaddr"),
             }),
             "bond0.10": MatchesDict({
                 "type": Equals("vlan"),
+                "enabled": Is(True),
                 "parents": Equals(["bond0"]),
                 "vid": Equals(10),
-                "enabled": Is(True),
                 "links": MatchesSetwise(
                     MatchesDict({
                         "mode": Equals("static"),
-                        "address": Equals("2001:db8::4:2:3/96"),
+                        "address": Equals("192.168.123.2/24"),
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
-                        "address": Equals("2001:db8::4:2:4/96"),
+                        "address": Equals("192.168.123.3/24"),
                     }),
                 ),
+                "source": Equals("ipaddr"),
+            }),
+            "wlan0": MatchesDict({
+                "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["wlan0"]["mac"]),
+                "enabled": Is(True),
+                "parents": Equals([]),
+                "links": Equals([]),
+                "source": Equals("ipaddr"),
+            }),
+            "br0": MatchesDict({
+                "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["br0"]["mac"]),
+                "enabled": Is(True),
+                "parents": Equals([]),
+                "links": Equals([{
+                    "mode": "static",
+                    "address": "192.168.124.2/24",
+                }]),
+                "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(eni, nic_mapping, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, expected_result)

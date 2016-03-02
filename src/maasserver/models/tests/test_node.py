@@ -4375,6 +4375,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
 
     def test__new_physical_with_dhcp_link(self):
         rack = self.create_empty_rack_controller()
+        network = factory.make_ip4_or_6_network()
+        ip = factory.pick_ip_in_network(network)
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -4382,6 +4384,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "parents": [],
                 "links": [{
                     "mode": "dhcp",
+                    "address": "%s/%d" % (str(ip), network.prefixlen),
                 }],
                 "enabled": True,
             },
@@ -4397,12 +4400,30 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 enabled=True,
                 vlan=default_vlan,
             ))
-        eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertThat(eth0_addresses, HasLength(1))
+        dhcp_addresses = list(eth0.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DHCP))
+        self.assertThat(dhcp_addresses, HasLength(1))
         self.assertThat(
-            eth0_addresses[0], MatchesStructure.byEquality(
+            dhcp_addresses[0], MatchesStructure.byEquality(
                 alloc_type=IPADDRESS_TYPE.DHCP,
                 ip=None,
+            ))
+        subnet = Subnet.objects.get(cidr=str(network.cidr))
+        self.assertThat(
+            subnet, MatchesStructure.byEquality(
+                name=str(network.cidr),
+                cidr=str(network.cidr),
+                vlan=default_vlan,
+                space=Space.objects.get_default_space(),
+            ))
+        discovered_addresses = list(eth0.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED))
+        self.assertThat(discovered_addresses, HasLength(1))
+        self.assertThat(
+            discovered_addresses[0], MatchesStructure.byEquality(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                ip=ip,
+                subnet=subnet,
             ))
 
     def test__new_physical_with_multiple_dhcp_link(self):

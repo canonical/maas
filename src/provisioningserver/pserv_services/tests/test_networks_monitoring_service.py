@@ -1,7 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for /etc/network/interfaces monitor."""
+"""Tests for networks monitor."""
 
 __all__ = []
 
@@ -18,9 +18,9 @@ from mock import (
     Mock,
     sentinel,
 )
-from provisioningserver.pserv_services import eni_monitoring_service
-from provisioningserver.pserv_services.eni_monitoring_service import (
-    ENIMonitoringService,
+from provisioningserver.pserv_services import networks_monitoring_service
+from provisioningserver.pserv_services.networks_monitoring_service import (
+    NetworksMonitoringService,
 )
 from provisioningserver.rpc import (
     getRegionClient,
@@ -32,7 +32,7 @@ from twisted.internet import defer
 from twisted.internet.task import Clock
 
 
-class TestENIMonitorService(PservTestCase):
+class TestNetworksMonitorService(PservTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -43,7 +43,7 @@ class TestENIMonitorService(PservTestCase):
 
     def test_is_called_every_interval(self):
         clock = Clock()
-        service = ENIMonitoringService(
+        service = NetworksMonitoringService(
             sentinel.service, clock)
 
         # Avoid actually updating.
@@ -74,18 +74,19 @@ class TestENIMonitorService(PservTestCase):
     def test_get_interfaces_definition_is_initiated_in_new_thread(self):
         clock = Clock()
         rpc_service = Mock()
-        deferToThread = self.patch(eni_monitoring_service, 'deferToThread')
+        deferToThread = self.patch(
+            networks_monitoring_service, 'deferToThread')
         deferToThread.return_value = defer.succeed(({}, False))
-        service = ENIMonitoringService(rpc_service, clock)
+        service = NetworksMonitoringService(rpc_service, clock)
         service.startService()
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                eni_monitoring_service.get_interfaces_definition))
+                networks_monitoring_service.get_interfaces_definition))
 
     def test_logs_errors(self):
         clock = Clock()
-        maaslog = self.patch(eni_monitoring_service, 'maaslog')
-        service = ENIMonitoringService(
+        maaslog = self.patch(networks_monitoring_service, 'maaslog')
+        service = NetworksMonitoringService(
             sentinel.service, clock)
         error_message = factory.make_string()
         self.patch(service, 'updateInterfaces').side_effect = Exception(
@@ -101,9 +102,9 @@ class TestENIMonitorService(PservTestCase):
     def test_calls_clear_current_interfaces_when_fails_to_send_to_region(self):
         clock = Clock()
         clear_current_interfaces_definition = self.patch(
-            eni_monitoring_service, 'clear_current_interfaces_definition')
+            networks_monitoring_service, 'clear_current_interfaces_definition')
         get_interfaces_definition = self.patch(
-            eni_monitoring_service, 'get_interfaces_definition')
+            networks_monitoring_service, 'get_interfaces_definition')
         get_interfaces_definition.return_value = ({}, True)
 
         protocol, connecting = self.patch_rpc_methods()
@@ -113,7 +114,7 @@ class TestENIMonitorService(PservTestCase):
             region.UpdateInterfaces.commandName]
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
-        service = ENIMonitoringService(rpc_service, clock)
+        service = NetworksMonitoringService(rpc_service, clock)
         yield service.startService()
         yield service.stopService()
         self.assertThat(
@@ -126,7 +127,7 @@ class TestENIMonitorService(PservTestCase):
         self.addCleanup((yield connecting))
 
         deferToThread = self.patch(
-            eni_monitoring_service, 'deferToThread')
+            networks_monitoring_service, 'deferToThread')
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -142,7 +143,7 @@ class TestENIMonitorService(PservTestCase):
         rpc_service = Mock()
         rpc_service.getClient.return_value = client
 
-        service = ENIMonitoringService(
+        service = NetworksMonitoringService(
             rpc_service, clock)
         yield service.startService()
         yield service.stopService()

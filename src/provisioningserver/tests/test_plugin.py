@@ -21,15 +21,15 @@ from provisioningserver.plugin import (
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,
 )
-from provisioningserver.pserv_services.eni_monitoring_service import (
-    ENIMonitoringService,
-)
 from provisioningserver.pserv_services.image import BootImageEndpointService
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
 )
 from provisioningserver.pserv_services.lease_socket_service import (
     LeaseSocketService,
+)
+from provisioningserver.pserv_services.networks_monitoring_service import (
+    NetworksMonitoringService,
 )
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
@@ -94,7 +94,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = [
-            "dhcp_probe", "eni_monitor", "image_download",
+            "dhcp_probe", "networks_monitor", "image_download",
             "lease_socket_service", "node_monitor", "rpc", "tftp",
             "image_service", "service_monitor",
             ]
@@ -127,12 +127,12 @@ class TestProvisioningServiceMaker(MAASTestCase):
         node_monitor = service.getServiceNamed("node_monitor")
         self.assertIsInstance(node_monitor, NodePowerMonitorService)
 
-    def test_eni_monitor_service(self):
+    def test_networks_monitor_service(self):
         options = Options()
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
         service = service_maker.makeService(options)
-        eni_monitor = service.getServiceNamed("eni_monitor")
-        self.assertIsInstance(eni_monitor, ENIMonitoringService)
+        networks_monitor = service.getServiceNamed("networks_monitor")
+        self.assertIsInstance(networks_monitor, NetworksMonitoringService)
 
     def test_dhcp_probe_service(self):
         options = Options()
