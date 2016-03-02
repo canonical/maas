@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 import time
+from unittest import SkipTest
 
 from django.conf import settings
 from django.core.management import call_command
@@ -81,6 +82,12 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import Deferred
+
+
+def setUp():
+    raise SkipTest(
+        "XXX: GavinPanella 2016-03-02 bug=1550540: DNS test suite needs "
+        "to do better lockstep on checking that DNS updates happened.")
 
 
 def get_expected_names(node, ip):
