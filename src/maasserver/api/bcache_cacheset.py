@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CacheSet`."""
@@ -32,7 +32,7 @@ DISPLAYED_CACHE_SET_FIELDS = (
 
 
 class BcacheCacheSetsHandler(OperationsHandler):
-    """Manage bcache cache sets on a node."""
+    """Manage bcache cache sets on a machine."""
     api_doc_section_name = "Bcache Cache Sets"
     update = delete = None
     fields = DISPLAYED_CACHE_SET_FIELDS
@@ -43,7 +43,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
         return ('bcache_cache_sets_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all bcache cache sets belonging to node.
+        """List all bcache cache sets belonging to a machine.
 
         Returns 404 if the machine is not found.
         """
@@ -75,7 +75,7 @@ class BcacheCacheSetsHandler(OperationsHandler):
 
 
 class BcacheCacheSetHandler(OperationsHandler):
-    """Manage bcache cache set on a node."""
+    """Manage bcache cache set on a machine."""
     api_doc_section_name = "Bcache Cache Set"
     create = None
     model = CacheSet
@@ -99,26 +99,26 @@ class BcacheCacheSetHandler(OperationsHandler):
         return cache_set.get_device()
 
     def read(self, request, system_id, cache_set_id):
-        """Read bcache cache set on node.
+        """Read bcache cache set on a machine.
 
-        Returns 404 if the node or cache set is not found.
+        Returns 404 if the machine or cache set is not found.
         """
         return CacheSet.objects.get_cache_set_or_404(
             system_id, cache_set_id, request.user, NODE_PERMISSION.VIEW)
 
     def delete(self, request, system_id, cache_set_id):
-        """Delete cache set on node.
+        """Delete cache set on a machine.
 
         Returns 400 if the cache set is in use.
-        Returns 404 if the node or cache set is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or cache set is not found.
+        Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
             system_id, cache_set_id, request.user, NODE_PERMISSION.ADMIN)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete cache set because the node is not Ready.")
+                "Cannot delete cache set because the machine is not Ready.")
         if cache_set.filesystemgroup_set.exists():
             raise MAASAPIBadRequest(
                 "Cannot delete cache set; it's currently in use.")
@@ -127,22 +127,22 @@ class BcacheCacheSetHandler(OperationsHandler):
             return rc.DELETED
 
     def update(self, request, system_id, cache_set_id):
-        """Delete bcache on node.
+        """Delete bcache on a machine.
 
         :param cache_device: Cache block device to replace current one.
         :param cache_partition: Cache partition to replace current one.
 
         Specifying both a cache_device and a cache_partition is not allowed.
 
-        Returns 404 if the node or the cache set is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or the cache set is not found.
+        Returns 409 if the machine is not Ready.
         """
         cache_set = CacheSet.objects.get_cache_set_or_404(
             system_id, cache_set_id, request.user, NODE_PERMISSION.ADMIN)
         node = cache_set.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update cache set because the node is not Ready.")
+                "Cannot update cache set because the machine is not Ready.")
         form = UpdateCacheSetForm(cache_set, data=request.data)
         if form.is_valid():
             return form.save()

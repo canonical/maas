@@ -5650,6 +5650,7 @@ class TestRackController(MAASServerTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         power_control = factory.make_name('power_control')
         port = random.randint(0, 65535)
@@ -5657,15 +5658,16 @@ class TestRackController(MAASServerTestCase):
 
         rackcontroller.add_chassis(
             user, chassis_type, hostname, username, password, accept_all,
-            prefix_filter, power_control, port, given_protocol)
+            domain, prefix_filter, power_control, port, given_protocol)
 
         self.expectThat(
             protocol.AddChassis,
             MockCalledOnceWith(
                 ANY, user=user, chassis_type=chassis_type, hostname=hostname,
                 username=username, password=password, accept_all=accept_all,
-                prefix_filter=prefix_filter, power_control=power_control,
-                port=port, protocol=given_protocol))
+                domain=domain, prefix_filter=prefix_filter,
+                power_control=power_control, port=port,
+                protocol=given_protocol))
 
     def test_add_chassis_logs_user_request(self):
         rackcontroller = factory.make_RackController()
@@ -5682,6 +5684,7 @@ class TestRackController(MAASServerTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         power_control = factory.make_name('power_control')
         port = random.randint(0, 65535)
@@ -5690,7 +5693,7 @@ class TestRackController(MAASServerTestCase):
         register_event = self.patch(rackcontroller, '_register_request_event')
         rackcontroller.add_chassis(
             user, chassis_type, hostname, username, password, accept_all,
-            prefix_filter, power_control, port, given_protocol)
+            domain, prefix_filter, power_control, port, given_protocol)
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(register_event, MockCalledOnceWith(
             rackcontroller.owner,

@@ -20,42 +20,12 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.testing.api import (
-    APITestCase,
-    MultipleUsersScenarios,
-)
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
-
-
-class NodeHostnameTest(MultipleUsersScenarios,
-                       MAASServerTestCase):
-
-    scenarios = [
-        ('user', dict(userfactory=factory.make_User)),
-        ('admin', dict(userfactory=factory.make_admin)),
-    ]
-
-    def test_GET_returns_fqdn_with_proper_domain_name(self):
-        # The FQDN for a host is properly constructed.
-        hostname_without_domain = factory.make_name('hostname')
-        domain = factory.make_Domain(name=factory.make_name('domain'))
-        hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, domain.name)
-        factory.make_Node(
-            hostname=hostname_with_domain)
-        expected_hostname = hostname_with_domain
-        response = self.client.get(reverse('nodes_handler'))
-        self.assertEqual(
-            http.client.OK.value, response.status_code, response.content)
-        parsed_result = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertItemsEqual(
-            [expected_hostname],
-            [node.get('hostname') for node in parsed_result])
 
 
 class AnonymousIsRegisteredAPITest(MAASServerTestCase):

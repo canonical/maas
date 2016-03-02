@@ -275,8 +275,9 @@ def find_seamicro15k_servers(ip, username, password, power_control):
 
 
 @synchronous
-def probe_seamicro15k_and_enlist(user, ip, username, password,
-                                 power_control=None, accept_all=False):
+def probe_seamicro15k_and_enlist(
+        user, ip, username, password, power_control=None, accept_all=False,
+        domain=None):
     power_control = power_control or 'ipmi'
 
     maaslog.info("Probing for seamicro15k servers as %s@%s", username, ip)
@@ -292,7 +293,8 @@ def probe_seamicro15k_and_enlist(user, ip, username, password,
             'system_id': system_id
         }
         maaslog.info("Creating seamicro15k node with MACs: %s", macs)
-        system_id = create_node(macs, 'amd64', 'sm15k', params).wait(30)
+        system_id = create_node(
+            macs, 'amd64', 'sm15k', params, domain).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)

@@ -618,6 +618,7 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         system_id = factory.make_name('system_id')
+        domain = factory.make_name('domain')
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         server_element = {'uuid': 'uuid'}
@@ -631,7 +632,7 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
 
         yield deferToThread(
             probe_and_enlist_ucsm, user, url, username,
-            password, accept_all=True)
+            password, True, domain)
         self.expectThat(
             set_lan_boot_default_mock,
             MockCalledOnceWith(api, server_element))
@@ -644,7 +645,7 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
         }
         self.expectThat(
             create_node_mock,
-            MockCalledOnceWith(server[1], 'amd64', 'ucsm', params))
+            MockCalledOnceWith(server[1], 'amd64', 'ucsm', params, domain))
         self.expectThat(
             commission_node_mock,
             MockCalledOnceWith(system_id, user))

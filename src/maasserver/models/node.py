@@ -3361,8 +3361,8 @@ class RackController(Node):
 
     def add_chassis(
             self, user, chassis_type, hostname, username=None, password=None,
-            accept_all=False, prefix_filter=None, power_control=None,
-            port=None, protocol=None):
+            accept_all=False, domain=None, prefix_filter=None,
+            power_control=None, port=None, protocol=None):
         self._register_request_event(
             self.owner,
             EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS,
@@ -3371,8 +3371,9 @@ class RackController(Node):
         call = client(
             AddChassis, user=user, chassis_type=chassis_type,
             hostname=hostname, username=username, password=password,
-            accept_all=accept_all, prefix_filter=prefix_filter,
-            power_control=power_control, port=port, protocol=protocol)
+            accept_all=accept_all, domain=domain,
+            prefix_filter=prefix_filter, power_control=power_control,
+            port=port, protocol=protocol)
         call.wait(30)
 
     def get_bmc_accessible_nodes(self):

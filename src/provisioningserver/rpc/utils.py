@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for the provisioning server."""
@@ -55,7 +55,8 @@ def coerce_to_valid_hostname(hostname):
 
 @asynchronous
 @inlineCallbacks
-def create_node(macs, arch, power_type, power_parameters, hostname=None):
+def create_node(
+        macs, arch, power_type, power_parameters, domain=None, hostname=None):
     """Create a Node on the region and return its system_id.
 
     :param macs: A list of MAC addresses belonging to the node.
@@ -63,6 +64,7 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
     :param power_type: The node's power type as a string.
     :param power_parameters: The power parameters for the node, as a
         dict.
+    :param domain: The domain the node should join.
     """
     if hostname is not None:
         hostname = coerce_to_valid_hostname(hostname)
@@ -88,7 +90,7 @@ def create_node(macs, arch, power_type, power_parameters, hostname=None):
             power_type=power_type,
             power_parameters=json.dumps(power_parameters),
             mac_addresses=macs,
-            hostname=hostname)
+            hostname=hostname, domain=domain)
     except NodeAlreadyExists:
         # The node already exists on the region, so we log the error and
         # give up.

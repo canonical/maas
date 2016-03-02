@@ -419,6 +419,7 @@ class AddChassis(amp.Command):
         (b"username", amp.Unicode(optional=True)),
         (b"password", amp.Unicode(optional=True)),
         (b"accept_all", amp.Boolean(optional=True)),
+        (b"domain", amp.Unicode(optional=True)),
         (b"prefix_filter", amp.Unicode(optional=True)),
         (b"power_control", amp.Unicode(optional=True)),
         (b"port", amp.Integer(optional=True)),

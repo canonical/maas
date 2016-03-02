@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Bcache`."""
@@ -38,7 +38,7 @@ DISPLAYED_BCACHE_FIELDS = (
 
 
 class BcachesHandler(OperationsHandler):
-    """Manage bcache devices on a node."""
+    """Manage bcache devices on a machine."""
     api_doc_section_name = "Bcache Devices"
     update = delete = None
     fields = DISPLAYED_BCACHE_FIELDS
@@ -49,7 +49,7 @@ class BcachesHandler(OperationsHandler):
         return ('bcache_devices_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all bcache devices belonging to node.
+        """List all bcache devices belonging to a machine.
 
         Returns 404 if the machine is not found.
         """
@@ -77,7 +77,7 @@ class BcachesHandler(OperationsHandler):
             system_id, request.user, NODE_PERMISSION.ADMIN)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create Bcache because node is not Ready.")
+                "Cannot create Bcache because the machine is not Ready.")
         form = CreateBcacheForm(machine, data=request.data)
         if form.is_valid():
             return form.save()
@@ -86,7 +86,7 @@ class BcachesHandler(OperationsHandler):
 
 
 class BcacheHandler(OperationsHandler):
-    """Manage bcache device on a node."""
+    """Manage bcache device on a machine."""
     api_doc_section_name = "Bcache Device"
     create = None
     model = Bcache
@@ -123,30 +123,30 @@ class BcacheHandler(OperationsHandler):
         return bcache.get_bcache_backing_filesystem().get_parent()
 
     def read(self, request, system_id, bcache_id):
-        """Read bcache device on node.
+        """Read bcache device on a machine.
 
-        Returns 404 if the node or bcache is not found.
+        Returns 404 if the machine or bcache is not found.
         """
         return Bcache.objects.get_object_or_404(
             system_id, bcache_id, request.user, NODE_PERMISSION.VIEW)
 
     def delete(self, request, system_id, bcache_id):
-        """Delete bcache on node.
+        """Delete bcache on a machine.
 
-        Returns 404 if the node or bcache is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or bcache is not found.
+        Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
             system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete Bcache because the node is not Ready.")
+                "Cannot delete Bcache because the machine is not Ready.")
         bcache.delete()
         return rc.DELETED
 
     def update(self, request, system_id, bcache_id):
-        """Delete bcache on node.
+        """Delete bcache on a machine.
 
         :param name: Name of the Bcache.
         :param uuid: UUID of the Bcache.
@@ -158,15 +158,15 @@ class BcacheHandler(OperationsHandler):
         Specifying both a device and a partition for a given role (cache or
         backing) is not allowed.
 
-        Returns 404 if the node or the bcache is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or the bcache is not found.
+        Returns 409 if the machine is not Ready.
         """
         bcache = Bcache.objects.get_object_or_404(
             system_id, bcache_id, request.user, NODE_PERMISSION.ADMIN)
         node = bcache.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update Bcache because the node is not Ready.")
+                "Cannot update Bcache because the machine is not Ready.")
         form = UpdateBcacheForm(bcache, data=request.data)
         if form.is_valid():
             return form.save()

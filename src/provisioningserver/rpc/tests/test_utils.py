@@ -73,6 +73,7 @@ class TestCreateNode(PservTestCase):
         macs = sorted(factory.make_mac_address() for _ in range(3))
         arch = factory.make_name('architecture')
         hostname = factory.make_hostname()
+        domain = factory.make_name('domain')
 
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -84,12 +85,14 @@ class TestCreateNode(PservTestCase):
         }
 
         yield create_node(
-            macs, arch, power_type, power_parameters, hostname=hostname)
+            macs, arch, power_type, power_parameters, domain=domain,
+            hostname=hostname)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
                 protocol, architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs, hostname=hostname))
+                mac_addresses=macs, domain=domain,
+                hostname=hostname))
 
     @defer.inlineCallbacks
     def test_returns_system_id_of_new_node(self):
@@ -146,7 +149,7 @@ class TestCreateNode(PservTestCase):
             protocol.CreateNode, MockCalledOnceWith(
                 protocol, architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs, hostname=None))
+                mac_addresses=macs, domain=None, hostname=None))
 
     @defer.inlineCallbacks
     def test_logs_error_on_duplicate_macs(self):

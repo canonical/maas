@@ -366,6 +366,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         port = randint(2000, 4000)
         username = factory.make_name('username')
         password = factory.make_name('password')
+        domain = factory.make_name('domain')
         system_id = factory.make_name('system_id')
         blade_id = randint(1, 24)
         macs = ['F4:52:14:D6:70:98', 'F4:52:14:D6:70:99']
@@ -385,13 +386,13 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         }
         yield deferToThread(
             probe_and_enlist_msftocs, user, ip, port, username,
-            password, accept_all=True)
+            password, True, domain)
 
         self.expectThat(blades_mock, MockAnyCall())
         self.expectThat(next_boot_device_mock.call_count, Equals(2))
         self.expectThat(
             create_node_mock,
-            MockCalledOnceWith(macs, 'amd64', 'msftocs', params))
+            MockCalledOnceWith(macs, 'amd64', 'msftocs', params, domain))
         self.expectThat(
             commission_node_mock,
             MockCalledOnceWith(system_id, user))

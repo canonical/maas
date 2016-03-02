@@ -26,7 +26,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
@@ -898,14 +898,14 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
         self.assertEqual(
-            AdminNodeWithMACAddressesForm,
+            AdminMachineWithMACAddressesForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
         handler = MachineHandler(user, {})
         self.assertEqual(
-            AdminNodeWithMACAddressesForm,
+            AdminMachineWithMACAddressesForm,
             handler.get_form_class("update"))
 
     def test_get_form_class_raises_error_for_unknown_action(self):

@@ -6,7 +6,7 @@
 __all__ = []
 
 from maasserver.enum import NODE_TYPE
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.controller import ControllerHandler
@@ -63,12 +63,12 @@ class TestControllerHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = ControllerHandler(user, {})
         self.assertEqual(
-            AdminNodeWithMACAddressesForm,
+            AdminMachineWithMACAddressesForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
         handler = ControllerHandler(user, {})
         self.assertEqual(
-            AdminNodeWithMACAddressesForm,
+            AdminMachineWithMACAddressesForm,
             handler.get_form_class("update"))

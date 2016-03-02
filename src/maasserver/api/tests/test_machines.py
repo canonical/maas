@@ -107,57 +107,15 @@ class MachineHostnameTest(
             name=domainname, defaults={'authoritative': True})
         factory.make_Node(
             hostname=hostname, domain=domain)
-        expected_hostname = "%s.%s" % (hostname, domainname)
+        fqdn = "%s.%s" % (hostname, domainname)
         response = self.client.get(reverse('machines_handler'))
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertItemsEqual(
-            [expected_hostname],
-            [machine.get('hostname') for machine in parsed_result])
-
-
-class AnonymousIsRegisteredAPITest(MAASServerTestCase):
-
-    def test_is_registered_returns_True_if_machine_registered(self):
-        mac_address = factory.make_mac_address()
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address=mac_address)
-        response = self.client.get(
-            reverse('machines_handler'),
-            {'op': 'is_registered', 'mac_address': mac_address})
-        self.assertEqual(
-            (http.client.OK.value, "true"),
-            (response.status_code,
-             response.content.decode(settings.DEFAULT_CHARSET)))
-
-    def test_is_registered_normalizes_mac_address(self):
-        # These two non-normalized MAC addresses are the same.
-        non_normalized_mac_address = 'AA-bb-cc-dd-ee-ff'
-        non_normalized_mac_address2 = 'aabbccddeeff'
-        factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address=non_normalized_mac_address)
-        response = self.client.get(
-            reverse('machines_handler'),
-            {
-                'op': 'is_registered',
-                'mac_address': non_normalized_mac_address2
-            })
-        self.assertEqual(
-            (http.client.OK.value, "true"),
-            (response.status_code,
-             response.content.decode(settings.DEFAULT_CHARSET)))
-
-    def test_is_registered_returns_False_if_machine_not_registered(self):
-        mac_address = factory.make_mac_address()
-        response = self.client.get(
-            reverse('machines_handler'),
-            {'op': 'is_registered', 'mac_address': mac_address})
-        self.assertEqual(
-            (http.client.OK.value, "false"),
-            (response.status_code,
-             response.content.decode(settings.DEFAULT_CHARSET)))
+            [fqdn],
+            [machine.get('fqdn') for machine in parsed_result])
 
 
 def extract_system_ids(parsed_result):
@@ -649,7 +607,7 @@ class TestMachinesAPI(APITestCase):
         domain_name = desired_machine.domain.name
         self.assertEqual(
             "%s.%s" % (desired_machine.hostname, domain_name),
-            parsed_result['hostname'])
+            parsed_result['fqdn'])
 
     def test_POST_allocate_would_rather_fail_than_disobey_constraint(self):
         # If "allocate" is passed a constraint, it won't return a machine
@@ -693,7 +651,7 @@ class TestMachinesAPI(APITestCase):
         self.assertEqual(
             "%s.%s" % (machine.hostname, domain_name),
             json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET))['hostname'])
+                response.content.decode(settings.DEFAULT_CHARSET))['fqdn'])
 
     def test_POST_allocate_treats_unknown_name_as_resource_conflict(self):
         # A name constraint naming an unknown machine produces a resource
@@ -1693,7 +1651,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(
             add_chassis, MockCalledOnceWith(
                 self.logged_in_user.username, 'virsh', hostname, None, None,
-                True, None, None, None, None))
+                True, None, None, None, None, None))
 
     def test_POST_add_chassis_sends_accept_all_false_when_not_true(self):
         self.become_admin()
@@ -1716,7 +1674,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(
             add_chassis, MockCalledOnceWith(
                 self.logged_in_user.username, 'virsh', hostname, None, None,
-                False, None, None, None, None))
+                False, None, None, None, None, None))
 
     def test_POST_add_chassis_sends_prefix_filter(self):
         self.become_admin()
@@ -1747,8 +1705,8 @@ class TestMachinesAPI(APITestCase):
             self.assertThat(
                 add_chassis, MockCalledWith(
                     self.logged_in_user.username, chassis_type, hostname,
-                    username, password, False, prefix_filter, None, None, None
-                    ))
+                    username, password, False, None, prefix_filter, None,
+                    None, None))
 
     def test_POST_add_chassis_only_allows_prefix_filter_on_virtual_chassis(
             self):
@@ -1861,7 +1819,7 @@ class TestMachinesAPI(APITestCase):
             self.assertThat(
                 add_chassis, MockCalledWith(
                     self.logged_in_user.username, chassis_type, hostname,
-                    username, password, False, None, None, port, None))
+                    username, password, False, None, None, None, port, None))
 
     def test_POST_add_chasis_only_allows_port_with_vmware_and_msftocs(self):
         self.become_admin()
@@ -1910,7 +1868,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(
             add_chassis, MockCalledWith(
                 self.logged_in_user.username, 'vmware', hostname, username,
-                password, False, None, None, None, protocol))
+                password, False, None, None, None, None, protocol))
 
     def test_POST_add_chasis_only_allows_protocol_with_vmware(self):
         self.become_admin()
@@ -1932,6 +1890,71 @@ class TestMachinesAPI(APITestCase):
             self.assertEqual(
                 ("protocol is unavailable with the %s chassis type" %
                  chassis_type).encode('utf-8'), response.content)
+
+    def test_POST_add_chassis_accept_domain_by_name(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        domain = factory.make_Domain()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'domain': domain.name,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis, MockCalledWith(
+                self.logged_in_user.username, 'virsh', hostname, None,
+                None, False, domain.name, None, None, None, None))
+
+    def test_POST_add_chassis_accept_domain_by_id(self):
+        self.become_admin()
+        rack = factory.make_RackController()
+        accessible_by_url = self.patch(
+            machines_module.RackController.objects, 'get_accessible_by_url')
+        accessible_by_url.return_value = rack
+        add_chassis = self.patch(rack, 'add_chassis')
+        hostname = factory.make_url()
+        domain = factory.make_Domain()
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': hostname,
+                'domain': domain.id,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            add_chassis, MockCalledWith(
+                self.logged_in_user.username, 'virsh', hostname, None,
+                None, False, domain.name, None, None, None, None))
+
+    def test_POST_add_chassis_validates_domain(self):
+        self.become_admin()
+        domain = factory.make_name('domain')
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'op': 'add_chassis',
+                'chassis_type': 'virsh',
+                'hostname': factory.make_url(),
+                'domain': domain,
+            })
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+        self.assertEqual(
+            ("Unable to find specified domain %s" % domain).encode('utf-8'),
+            response.content)
 
     def test_POST_add_chassis_accepts_system_id_for_rack_controller(self):
         self.become_admin()
@@ -1956,7 +1979,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(
             add_chassis, MockCalledWith(
                 self.logged_in_user.username, 'virsh', hostname, None, None,
-                False, None, None, None, None))
+                False, None, None, None, None, None))
 
     def test_POST_add_chassis_accepts_hostname_for_rack_controller(self):
         self.become_admin()
@@ -1981,7 +2004,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(
             add_chassis, MockCalledWith(
                 self.logged_in_user.username, 'virsh', hostname, None, None,
-                False, None, None, None, None))
+                False, None, None, None, None, None))
 
     def test_POST_add_chassis_rejects_invalid_rack_controller(self):
         self.become_admin()

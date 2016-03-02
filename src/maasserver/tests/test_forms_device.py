@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for device forms."""
@@ -16,25 +16,14 @@ class TestDeviceForm(MAASServerTestCase):
     def test_contains_limited_set_of_fields(self):
         form = DeviceForm()
 
-        self.assertEqual(
+        self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
                 'parent',
+                'disable_ipv4',
+                'swap_size',
             ], list(form.fields))
-
-    def test_changes_device_hostname(self):
-        device = factory.make_Device()
-        hostname = factory.make_string()
-
-        form = DeviceForm(
-            data={
-                'hostname': hostname,
-                },
-            instance=device)
-        form.save()
-        reload_object(device)
-
-        self.assertEqual(hostname, device.hostname)
 
     def test_changes_device_parent(self):
         device = factory.make_Device()

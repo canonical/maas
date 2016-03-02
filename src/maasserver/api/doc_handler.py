@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Restful MAAS API.
@@ -43,7 +43,7 @@ Most resources offer a choice of GET or POST operations.  In those cases these
 methods will take one special parameter, called `op`, to indicate what it is
 you want to do.
 
-For example, to list all nodes, you might GET "/api/2.0/nodes/?op=list".
+For example, to list all machines, you might GET "/api/2.0/machines".
 """
 
 __all__ = [

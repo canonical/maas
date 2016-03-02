@@ -136,14 +136,9 @@ class NodeHandler(OperationsHandler):
     """
     api_doc_section_name = "Node"
 
-    create = None  # Disable create.
+    # Disable create and update
+    create = update = None
     model = Node
-
-    # Override the 'hostname' field so that it returns the FQDN instead as
-    # this is used by Juju to reach that node.
-    @classmethod
-    def hostname(handler, node):
-        return node.fqdn
 
     # Override 'owner' so it emits the owner's name rather than a
     # full nested user object.
@@ -315,7 +310,37 @@ class NodesHandler(OperationsHandler):
     base_model = Node
 
     def read(self, request):
-        """List all nodes."""
+        """List Nodes visible to the user, optionally filtered by criteria.
+
+        Nodes are sorted by id (i.e. most recent last) and grouped by type.
+
+        :param hostname: An optional hostname. Only nodes relating to the node
+            with the matching hostname will be returned. This can be specified
+            multiple times to see multiple nodes.
+        :type hostname: unicode
+
+        :param mac_address: An optional MAC address. Only nodes relating to the
+            node owning the specified MAC address will be returned. This can be
+            specified multiple times to see multiple nodes.
+        :type mac_address: unicode
+
+        :param id: An optional list of system ids.  Only nodes relating to the
+            nodes with matching system ids will be returned.
+        :type id: unicode
+
+        :param domain: An optional name for a dns domain. Only nodes relating
+            to the nodes in the domain will be returned.
+        :type domain: unicode
+
+        :param zone: An optional name for a physical zone. Only nodes relating
+            to the nodes in the zone will be returned.
+        :type zone: unicode
+
+        :param agent_name: An optional agent name.  Only nodes relating to the
+            nodes with matching agent names will be returned.
+        :type agent_name: unicode
+        """
+
         if self.base_model == Node:
             # Avoid circular dependencies
             from maasserver.api.devices import DevicesHandler

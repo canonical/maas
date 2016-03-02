@@ -257,8 +257,9 @@ class VirshSSH(pexpect.spawn):
 
 
 @synchronous
-def probe_virsh_and_enlist(user, poweraddr, password=None,
-                           prefix_filter=None, accept_all=False):
+def probe_virsh_and_enlist(
+        user, poweraddr, password=None, prefix_filter=None, accept_all=False,
+        domain=None):
     """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 
@@ -267,6 +268,7 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
     :param password: password connection string.
     :param prefix_filter: only enlist nodes that have the prefix.
     :param accept_all: if True, commission enlisted nodes.
+    :param domain: The domain for the node to join.
     """
     conn = VirshSSH(dom_prefix=prefix_filter)
     if not conn.login(poweraddr, password):
@@ -289,7 +291,7 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
         if password is not None:
             params['power_pass'] = password
         system_id = create_node(
-            macs, arch, 'virsh', params, hostname=machine).wait(30)
+            macs, arch, 'virsh', params, domain, machine).wait(30)
 
         if system_id is not None:
             conn.configure_pxe_boot(machine)

@@ -349,7 +349,7 @@ class Region(RPCProtocol):
 
     @region.CreateNode.responder
     def create_node(self, architecture, power_type, power_parameters,
-                    mac_addresses, hostname=None):
+                    mac_addresses, domain=None, hostname=None):
         """create_node()
 
         Implementation of
@@ -357,7 +357,7 @@ class Region(RPCProtocol):
         """
         d = deferToDatabase(
             create_node, architecture, power_type, power_parameters,
-            mac_addresses, hostname=hostname)
+            mac_addresses, domain=domain, hostname=hostname)
         d.addCallback(lambda node: {'system_id': node.system_id})
         return d
 

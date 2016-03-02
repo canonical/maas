@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `BlockDevice`."""
@@ -61,16 +61,16 @@ def raise_error_for_invalid_state_on_allocated_operations(
         node, user, operation):
     if node.status not in [NODE_STATUS.READY, NODE_STATUS.ALLOCATED]:
         raise NodeStateViolation(
-            "Cannot %s block device because the node is not Ready "
+            "Cannot %s block device because the machine is not Ready "
             "or Allocated." % operation)
     if node.status == NODE_STATUS.READY and not user.is_superuser:
         raise PermissionDenied(
             "Cannot %s block device because you don't have the "
-            "permissions on a Ready node." % operation)
+            "permissions on a Ready machine." % operation)
 
 
 class BlockDevicesHandler(OperationsHandler):
-    """Manage block devices on a node."""
+    """Manage block devices on a machine."""
     api_doc_section_name = "Block devices"
     replace = update = delete = None
     fields = DISPLAYED_BLOCKDEVICE_FIELDS
@@ -80,7 +80,7 @@ class BlockDevicesHandler(OperationsHandler):
         return ('blockdevices_handler', ["system_id"])
 
     def read(self, request, system_id):
-        """List all block devices belonging to node.
+        """List all block devices belonging to a machine.
 
         Returns 404 if the machine is not found.
         """
@@ -113,7 +113,7 @@ class BlockDevicesHandler(OperationsHandler):
 
 
 class BlockDeviceHandler(OperationsHandler):
-    """Manage a block device on a node."""
+    """Manage a block device on a machine."""
     api_doc_section_name = "Block device"
     create = replace = None
     model = BlockDevice
@@ -203,29 +203,29 @@ class BlockDeviceHandler(OperationsHandler):
     def read(self, request, system_id, device_id):
         """Read block device on node.
 
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         """
         return BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.VIEW)
 
     def delete(self, request, system_id, device_id):
-        """Delete block device on node.
+        """Delete block device on a machine.
 
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         Returns 403 if the user is not allowed to delete the block device.
-        Returns 409 if the node is not Ready.
+        Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete block device because the node is not Ready.")
+                "Cannot delete block device because the machine is not Ready.")
         device.delete()
         return rc.DELETED
 
     def update(self, request, system_id, device_id):
-        """Update block device on node.
+        """Update block device on a machine.
 
         Fields for physical block device:
         :param name: Name of the block device.
@@ -243,16 +243,16 @@ class BlockDeviceHandler(OperationsHandler):
         :param size: Size of the block device. (Only allowed for logical \
             volumes.)
 
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the node is not Ready.
+        Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because the node is not Ready.")
+                "Cannot update block device because the machine is not Ready.")
         if device.type == 'physical':
             form = UpdatePhysicalBlockDeviceForm(
                 instance=device, data=request.data)
@@ -269,40 +269,40 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def add_tag(self, request, system_id, device_id):
-        """Add a tag to block device on node.
+        """Add a tag to block device on a machine.
 
         :param tag: The tag being added.
 
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the node is not Ready.
+        Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because the node is not Ready.")
+                "Cannot update block device because the machine is not Ready.")
         device.add_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
 
     @operation(idempotent=True)
     def remove_tag(self, request, system_id, device_id):
-        """Remove a tag from block device on node.
+        """Remove a tag from block device on a machine.
 
         :param tag: The tag being removed.
 
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the node is not Ready.
+        Returns 409 if the machine is not Ready.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update block device because the node is not Ready.")
+                "Cannot update block device because the machine is not Ready.")
         device.remove_tag(get_mandatory_param(request.GET, 'tag'))
         device.save()
         return device
@@ -316,8 +316,8 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 403 when the user doesn't have the ability to format the \
             block device.
-        Returns 404 if the node or block device is not found.
-        Returns 409 if the node is not Ready or Allocated.
+        Returns 404 if the machine or block device is not found.
+        Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
@@ -338,8 +338,8 @@ class BlockDeviceHandler(OperationsHandler):
             or part of a filesystem group.
         Returns 403 when the user doesn't have the ability to unformat the \
             block device.
-        Returns 404 if the node or block device is not found.
-        Returns 409 if the node is not Ready or Allocated.
+        Returns 404 if the machine or block device is not found.
+        Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
@@ -371,8 +371,8 @@ class BlockDeviceHandler(OperationsHandler):
 
         Returns 403 when the user doesn't have the ability to mount the \
             block device.
-        Returns 404 if the node or block device is not found.
-        Returns 409 if the node is not Ready or Allocated.
+        Returns 404 if the machine or block device is not found.
+        Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
@@ -394,8 +394,8 @@ class BlockDeviceHandler(OperationsHandler):
             mounted.
         Returns 403 when the user doesn't have the ability to unmount the \
             block device.
-        Returns 404 if the node or block device is not found.
-        Returns 409 if the node is not Ready or Allocated.
+        Returns 404 if the machine or block device is not found.
+        Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.EDIT)
@@ -414,19 +414,19 @@ class BlockDeviceHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def set_boot_disk(self, request, system_id, device_id):
-        """Set this block device as the boot disk for the node.
+        """Set this block device as the boot disk for the machine.
 
         Returns 400 if the block device is a virtual block device.
-        Returns 404 if the node or block device is not found.
+        Returns 404 if the machine or block device is not found.
         Returns 403 if the user is not allowed to update the block device.
-        Returns 409 if the node is not Ready or Allocated.
+        Returns 409 if the machine is not Ready or Allocated.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NODE_PERMISSION.ADMIN)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot set as boot disk because the node is not Ready.")
+                "Cannot set as boot disk because the machine is not Ready.")
         if not isinstance(device, PhysicalBlockDevice):
             raise MAASAPIBadRequest(
                 "Cannot set a %s block device as the boot disk." % device.type)

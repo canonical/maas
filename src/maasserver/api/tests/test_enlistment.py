@@ -64,7 +64,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertIn('application/json', response['Content-Type'])
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
-            'diane.%s' % domain_name, parsed_result['hostname'])
+            'diane.%s' % domain_name, parsed_result['fqdn'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
@@ -129,7 +129,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertIn('application/json', response['Content-Type'])
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
-            'diane.%s' % domain_name, parsed_result['hostname'])
+            'diane.%s' % domain_name, parsed_result['fqdn'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
@@ -152,7 +152,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertIn('application/json', response['Content-Type'])
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
-            'diane.%s' % domain_name, parsed_result['hostname'])
+            'diane.%s' % domain_name, parsed_result['fqdn'])
         self.assertNotEqual(0, len(parsed_result.get('system_id')))
         [diane] = Machine.objects.filter(hostname='diane')
         self.assertEqual(architecture, diane.architecture)
@@ -275,6 +275,30 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertItemsEqual(
             ['architecture'], parsed_result, response.content)
 
+    def test_POST_create_creates_machine_with_domain(self):
+        domain = factory.make_Domain()
+        # The API allows a Machine to be created.
+        architecture = make_usable_architecture(self)
+        response = self.client.post(
+            reverse('machines_handler'),
+            {
+                'hostname': 'diane',
+                'architecture': architecture.split('/')[0],
+                'subarchitecture': architecture.split('/')[1],
+                'power_type': 'manual',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+                'domain': domain.name,
+            })
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertIn('application/json', response['Content-Type'])
+        self.assertEqual(
+            'diane.%s' % domain.name, parsed_result['fqdn'])
+        self.assertNotEqual(0, len(parsed_result.get('system_id')))
+        [diane] = Machine.objects.filter(hostname='diane')
+        self.assertEqual(architecture, diane.architecture)
+
 
 class MachineHostnameEnlistmentTest(
         MultipleUsersScenarios, MAASServerTestCase):
@@ -307,7 +331,7 @@ class MachineHostnameEnlistmentTest(
             hostname_without_domain,
             Domain.objects.get_default_domain().name)
         self.assertEqual(
-            expected_hostname, parsed_result.get('hostname'))
+            expected_hostname, parsed_result.get('fqdn'))
 
 
 class NonAdminEnlistmentAPITest(
@@ -376,6 +400,8 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
+                'fqdn',
                 'owner',
                 'system_id',
                 'architecture',
@@ -482,6 +508,8 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
+                'fqdn',
                 'owner',
                 'system_id',
                 'macaddress_set',
@@ -644,6 +672,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
+                'fqdn',
                 'owner',
                 'system_id',
                 'macaddress_set',

@@ -1,24 +1,15 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node forms."""
 
 __all__ = []
 
-from crochet import TimeoutError
 from django.core.exceptions import ValidationError
-from maasserver import forms
-from maasserver.clusterrpc.power_parameters import get_power_type_choices
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
 from maasserver.forms import (
     AdminNodeForm,
-    BLANK_CHOICE,
     NodeChoiceField,
     NodeForm,
-    pick_default_architecture,
 )
 from maasserver.models import Node
 from maasserver.testing.architecture import (
@@ -26,319 +17,76 @@ from maasserver.testing.architecture import (
     patch_usable_architectures,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import (
-    make_osystem_with_releases,
-    make_usable_osystem,
-    patch_usable_osystems,
-)
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchOperatingSystem,
-)
 
 
 class TestNodeForm(MAASServerTestCase):
-
     def test_contains_limited_set_of_fields(self):
         form = NodeForm()
 
-        self.assertEqual(
+        self.assertItemsEqual(
             [
                 'hostname',
-                'architecture',
-                'osystem',
-                'distro_series',
-                'license_key',
+                'domain',
                 'disable_ipv4',
                 'swap_size',
-                'min_hwe_kernel',
-                'hwe_kernel',
             ], list(form.fields))
 
-    def test_changes_node(self):
-        node = factory.make_Node()
+    def test_accepts_hostname(self):
+        machine = factory.make_Node()
         hostname = factory.make_string()
-        patch_usable_architectures(self, [node.architecture])
+        patch_usable_architectures(self, [machine.architecture])
 
         form = NodeForm(
             data={
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
                 },
-            instance=node)
+            instance=machine)
         form.save()
 
-        self.assertEqual(hostname, node.hostname)
+        self.assertEqual(hostname, machine.hostname)
 
-    def test_accepts_usable_architecture(self):
-        arch = make_usable_architecture(self)
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': arch,
-            })
-        self.assertTrue(form.is_valid(), form._errors)
+    def test_accepts_domain_by_name(self):
+        machine = factory.make_Node()
+        domain = factory.make_Domain()
+        patch_usable_architectures(self, [machine.architecture])
 
-    def test_rejects_unusable_architecture(self):
-        patch_usable_architectures(self)
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': factory.make_name('arch'),
-            })
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['architecture'], form._errors.keys())
-
-    def test_starts_with_default_architecture(self):
-        arches = sorted([factory.make_name('arch') for _ in range(5)])
-        patch_usable_architectures(self, arches)
-        form = NodeForm()
-        self.assertEqual(
-            pick_default_architecture(arches),
-            form.fields['architecture'].initial)
-
-    def test_form_validates_hwe_kernel_by_passing_invalid_config(self):
-        self.client_log_in()
-        node = factory.make_Node(
-            owner=self.logged_in_user)
-        osystem = make_usable_osystem(self)
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'min_hwe_kernel': 'hwe-t',
-            'hwe_kernel': 'hwe-p',
-            },
-            instance=node)
-        self.assertEqual(form.is_valid(), False)
-
-    def test_form_validates_min_hwe_kernel_by_passing_invalid_config(self):
-        node = factory.make_Node(min_hwe_kernel='hwe-t')
-        form = NodeForm(instance=node)
-        self.assertEqual(form.is_valid(), False)
-
-    def test_adds_blank_default_when_no_arches_available(self):
-        patch_usable_architectures(self, [])
-        form = NodeForm()
-        self.assertEqual(
-            [BLANK_CHOICE],
-            form.fields['architecture'].choices)
-
-    def test_accepts_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystem = make_usable_osystem(self)
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            },
-            instance=node)
-        self.assertTrue(form.is_valid(), form._errors)
-
-    def test_rejects_invalid_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        patch_usable_osystems(self)
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': factory.make_name('os'),
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['osystem'], form._errors.keys())
-
-    def test_starts_with_default_osystem(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystems = [make_osystem_with_releases(self) for _ in range(5)]
-        patch_usable_osystems(self, osystems)
-        form = NodeForm(instance=node)
-        self.assertEqual(
-            '',
-            form.fields['osystem'].initial)
-
-    def test_accepts_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystem = make_usable_osystem(self)
-        release = osystem['default_release']
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s' % (osystem['name'], release),
-            },
-            instance=node)
-        self.assertTrue(form.is_valid(), form._errors)
-
-    def test_rejects_invalid_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystem = make_usable_osystem(self)
-        release = factory.make_name('release')
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s' % (osystem['name'], release),
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['distro_series'], form._errors.keys())
-
-    def test_set_distro_series_accepts_short_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = factory.make_name('release')
-        make_usable_osystem(
-            self, releases=[release + '6', release + '0', release + '3'])
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            },
-            instance=node)
-        form.set_distro_series(release)
+        form = NodeForm(
+            data={
+                'domain': domain.name,
+                },
+            instance=machine)
         form.save()
-        self.assertEqual(release + '6', node.distro_series)
 
-    def test_set_distro_series_doesnt_allow_short_ubuntu_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        make_usable_osystem(
-            self,
-            osystem_name='ubuntu',
-            releases=['trusty'])
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            },
-            instance=node)
-        form.set_distro_series('trust')
+        self.assertEqual(domain.name, machine.domain.name)
+
+    def test_accepts_domain_by_id(self):
+        machine = factory.make_Node()
+        domain = factory.make_Domain()
+        patch_usable_architectures(self, [machine.architecture])
+
+        form = NodeForm(
+            data={
+                'domain': domain.id,
+                },
+            instance=machine)
+        form.save()
+
+        self.assertEqual(domain.name, machine.domain.name)
+
+    def test_validates_domain(self):
+        machine = factory.make_Node()
+        patch_usable_architectures(self, [machine.architecture])
+
+        form = NodeForm(
+            data={
+                'domain': factory.make_name('domain'),
+                },
+            instance=machine)
+
         self.assertFalse(form.is_valid())
-
-    def test_starts_with_default_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystems = [make_osystem_with_releases(self) for _ in range(5)]
-        patch_usable_osystems(self, osystems)
-        form = NodeForm(instance=node)
-        self.assertEqual(
-            '',
-            form.fields['distro_series'].initial)
-
-    def test_rejects_mismatch_osystem_distro_series(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        osystem = make_usable_osystem(self)
-        release = osystem['default_release']
-        invalid = factory.make_name('invalid_os')
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s' % (invalid, release),
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['distro_series'], form._errors.keys())
-
-    def test_rejects_when_validate_license_key_returns_False(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate = self.patch(forms, 'validate_license_key')
-        mock_validate.return_value = False
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['license_key'], form._errors.keys())
-
-    def test_rejects_when_validate_license_key_for_returns_False(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate_for = self.patch(forms, 'validate_license_key_for')
-        mock_validate_for.return_value = False
-        form = NodeForm(data={
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['license_key'], form._errors.keys())
-
-    def test_rejects_when_validate_license_key_for_raise_no_connection(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate_for = self.patch(forms, 'validate_license_key_for')
-        mock_validate_for.side_effect = NoConnectionsAvailable()
-        form = NodeForm(data={
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['license_key'], form._errors.keys())
-
-    def test_rejects_when_validate_license_key_for_raise_timeout(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate_for = self.patch(forms, 'validate_license_key_for')
-        mock_validate_for.side_effect = TimeoutError()
-        form = NodeForm(data={
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['license_key'], form._errors.keys())
-
-    def test_rejects_when_validate_license_key_for_raise_no_os(self):
-        self.client_log_in()
-        node = factory.make_Node(owner=self.logged_in_user)
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate_for = self.patch(forms, 'validate_license_key_for')
-        mock_validate_for.side_effect = NoSuchOperatingSystem()
-        form = NodeForm(data={
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_obeys_disable_ipv4_if_given(self):
         setting = factory.pick_bool()
@@ -372,31 +120,24 @@ class TestNodeForm(MAASServerTestCase):
 
 class TestAdminNodeForm(MAASServerTestCase):
 
-    def test_AdminNodeForm_contains_limited_set_of_fields(self):
+    def test_contains_limited_set_of_fields(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
         form = AdminNodeForm(instance=node)
 
-        self.assertEqual(
+        self.assertItemsEqual(
             [
                 'hostname',
-                'architecture',
-                'osystem',
-                'distro_series',
-                'license_key',
+                'domain',
                 'disable_ipv4',
                 'swap_size',
-                'min_hwe_kernel',
-                'hwe_kernel',
                 'cpu_count',
                 'memory',
                 'zone',
-                'power_type',
-                'power_parameters',
             ],
             list(form.fields))
 
-    def test_AdminNodeForm_initialises_zone(self):
+    def test_initialises_zone(self):
         # The zone field uses "to_field_name", so that it can refer to a zone
         # by name instead of by ID.  A bug in Django breaks initialisation
         # from an instance: the field tries to initialise the field using a
@@ -411,15 +152,13 @@ class TestAdminNodeForm(MAASServerTestCase):
         # but the workaround ensures that it is initialised.
         self.assertEqual(zone.name, form.initial['zone'])
 
-    def test_AdminNodeForm_changes_node(self):
+    def test_changes_zone(self):
         node = factory.make_Node()
         zone = factory.make_Zone()
         hostname = factory.make_string()
-        power_type = factory.pick_power_type()
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
-                'power_type': power_type,
                 'architecture': make_usable_architecture(self),
                 'zone': zone.name,
             },
@@ -427,41 +166,8 @@ class TestAdminNodeForm(MAASServerTestCase):
         form.save()
 
         node = reload_object(node)
-        self.assertEqual(
-            (node.hostname, node.power_type, node.zone),
-            (hostname, power_type, zone))
-
-    def test_AdminNodeForm_populates_power_type_choices(self):
-        form = AdminNodeForm()
-        self.assertEqual(
-            [''] + [choice[0] for choice in get_power_type_choices()],
-            [choice[0] for choice in form.fields['power_type'].choices])
-
-    def test_AdminNodeForm_populates_power_type_initial(self):
-        node = factory.make_Node()
-        form = AdminNodeForm(instance=node)
-        self.assertEqual(node.power_type, form.fields['power_type'].initial)
-
-    def test_AdminNodeForm_changes_node_with_skip_check(self):
-        node = factory.make_Node()
-        hostname = factory.make_string()
-        power_type = factory.pick_power_type()
-        power_parameters_field = factory.make_string()
-        arch = make_usable_architecture(self)
-        form = AdminNodeForm(
-            data={
-                'hostname': hostname,
-                'architecture': arch,
-                'power_type': power_type,
-                'power_parameters_field': power_parameters_field,
-                'power_parameters_skip_check': True,
-                },
-            instance=node)
-        form.save()
-
-        self.assertEqual(
-            (hostname, power_type, {'field': power_parameters_field}),
-            (node.hostname, node.power_type, node.power_parameters))
+        self.assertEqual(node.hostname, hostname)
+        self.assertEqual(node.zone, zone)
 
 
 class TestNodeChoiceField(MAASServerTestCase):

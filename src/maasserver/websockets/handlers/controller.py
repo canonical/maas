@@ -8,7 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models.node import Node
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
@@ -36,7 +36,7 @@ class ControllerHandler(MachineHandler):
             'link_subnet',
             'unlink_subnet',
         ]
-        form = AdminNodeWithMACAddressesForm
+        form = AdminMachineWithMACAddressesForm
         exclude = [
             "status_expires",
             "parent",

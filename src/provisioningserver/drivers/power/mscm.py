@@ -141,7 +141,8 @@ class MSCMPowerDriver(PowerDriver):
 
 
 @synchronous
-def probe_and_enlist_mscm(user, host, username, password, accept_all=False):
+def probe_and_enlist_mscm(
+        user, host, username, password, accept_all=False, domain=None):
     """ Extracts all of nodes from the MSCM, sets all of them to boot via M.2
     by, default, sets them to bootonce via PXE, and then enlists them into
     MAAS.  If accept_all is True, it will also commission them.
@@ -201,7 +202,7 @@ def probe_and_enlist_mscm(user, host, username, password, accept_all=False):
             "show node macaddr %s" % node_id, **params)
         macs = re.findall(r':'.join(['[0-9a-f]{2}'] * 6), node_macaddr)
         # Create node
-        system_id = create_node(macs, arch, 'mscm', params).wait(30)
+        system_id = create_node(macs, arch, 'mscm', params, domain).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)

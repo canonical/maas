@@ -153,6 +153,55 @@ class TestCreateNode(MAASServerTestCase):
                 architecture, power_type, power_parameters,
                 mac_addresses, hostname=hostname)
 
+    def test__creates_node_with_explicit_domain(self):
+        self.prepare_rack_rpc()
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        hostname = factory.make_hostname()
+        domain = factory.make_Domain()
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        node = create_node(
+            architecture, power_type, power_parameters,
+            mac_addresses, domain=domain.name, hostname=hostname)
+
+        self.assertEqual(
+            (
+                architecture,
+                power_type,
+                {},
+                domain.id,
+                hostname,
+            ),
+            (
+                node.architecture,
+                node.power_type,
+                node.power_parameters,
+                node.domain.id,
+                node.hostname,
+            ))
+        self.expectThat(node.id, Not(Is(None)))
+        self.assertItemsEqual(
+            mac_addresses,
+            [nic.mac_address for nic in node.interface_set.all()])
+
+    def test__create_node_fails_with_invalid_domain(self):
+        self.prepare_rack_rpc()
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        with ExpectedException(ValidationError):
+            create_node(
+                architecture, power_type, power_parameters,
+                mac_addresses, factory.make_name('domain'))
+
     def test__raises_validation_errors_for_invalid_data(self):
         self.prepare_rack_rpc()
 

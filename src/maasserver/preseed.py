@@ -601,7 +601,7 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
         'osystem': osystem,
         'release': release,
         'server_host': server_host,
-        'server_url': absolute_reverse('nodes_handler', base_url=base_url),
+        'server_url': absolute_reverse('machines_handler', base_url=base_url),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
         'http_proxy': Config.objects.get_config('http_proxy'),

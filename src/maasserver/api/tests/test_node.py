@@ -6,18 +6,13 @@
 __all__ = []
 
 import http.client
-from io import StringIO
-import sys
 
 import bson
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    INTERFACE_TYPE,
-    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
-    NODE_STATUS_CHOICES_DICT,
 )
 from maasserver.models import (
     Node,
@@ -44,24 +39,10 @@ from provisioningserver.refresh.node_info_scripts import (
 
 class NodeAnonAPITest(MAASServerTestCase):
 
-    def setUp(self):
-        super(NodeAnonAPITest, self).setUp()
-        self.patch(node_module, 'power_on_node')
-        self.patch(node_module, 'power_off_node')
-        self.patch(node_module, 'power_driver_check')
-
-    def test_anon_api_doc(self):
-        # The documentation is accessible to anon users.
-        self.patch(sys, "stderr", StringIO())
-        response = self.client.get(reverse('api-doc'))
-        self.assertEqual(http.client.OK, response.status_code)
-        # No error or warning are emitted by docutils.
-        self.assertEqual("", sys.stderr.getvalue())
-
     def test_node_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
-        response = client.get(reverse('nodes_handler'), {'op': 'list'})
+        response = client.get(reverse('nodes_handler'))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
@@ -87,13 +68,6 @@ class NodesAPILoggedInTest(MAASServerTestCase):
 class TestNodeAPI(APITestCase):
     """Tests for /api/2.0/nodes/<node>/."""
 
-    def setUp(self):
-        super(TestNodeAPI, self).setUp()
-        self.patch(node_module, 'power_on_node')
-        self.patch(node_module, 'power_off_node')
-        self.patch(node_module, 'power_driver_check')
-        self.patch(node_module.Node, '_power_control_node')
-
     def test_handler_path(self):
         self.assertEqual(
             '/api/2.0/nodes/node-name/',
@@ -103,62 +77,6 @@ class TestNodeAPI(APITestCase):
     def get_node_uri(node):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
-
-    def test_GET_returns_node(self):
-        # The api allows for fetching a single Node (using system_id).
-        node = factory.make_Node()
-        response = self.client.get(self.get_node_uri(node))
-
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        domain_name = node.domain.name
-        self.assertEqual(
-            "%s.%s" % (node.hostname, domain_name),
-            parsed_result['hostname'])
-        self.assertEqual(node.system_id, parsed_result['system_id'])
-
-    def test_GET_returns_associated_tag(self):
-        node = factory.make_Node()
-        tag = factory.make_Tag()
-        node.tags.add(tag)
-        response = self.client.get(self.get_node_uri(node))
-
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual([tag.name], parsed_result['tag_names'])
-
-    def test_GET_returns_associated_ip_addresses(self):
-        node = factory.make_Node(disable_ipv4=False)
-        nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        subnet = factory.make_Subnet()
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        lease = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip,
-            interface=nic, subnet=subnet)
-        response = self.client.get(self.get_node_uri(node))
-
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual([lease.ip], parsed_result['ip_addresses'])
-
-    def test_GET_returns_interface_set(self):
-        node = factory.make_Node()
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertIn('interface_set', parsed_result)
-
-    def test_GET_returns_zone(self):
-        node = factory.make_Node()
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(
-            [node.zone.name, node.zone.description],
-            [
-                parsed_result['zone']['name'],
-                parsed_result['zone']['description']])
 
     def test_GET_refuses_to_access_nonexistent_node(self):
         # When fetching a Node, the api returns a 'Not Found' (404) error
@@ -181,84 +99,6 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
             "Not Found", response.content.decode(settings.DEFAULT_CHARSET))
-
-    def test_GET_returns_owner_name_when_allocated_to_self(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(node.owner.username, parsed_result["owner"])
-
-    def test_GET_returns_owner_name_when_allocated_to_other_user(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(node.owner.username, parsed_result["owner"])
-
-    def test_GET_returns_empty_owner_when_not_allocated(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(None, parsed_result["owner"])
-
-    def test_GET_returns_physical_block_devices(self):
-        node = factory.make_Node(with_boot_disk=False)
-        devices = [
-            factory.make_PhysicalBlockDevice(node=node)
-            for _ in range(3)
-        ]
-        response = self.client.get(self.get_node_uri(node))
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        parsed_devices = [
-            device['name']
-            for device in parsed_result['physicalblockdevice_set']
-        ]
-        self.assertItemsEqual(
-            [device.name for device in devices], parsed_devices)
-
-    def test_GET_returns_min_hwe_kernel_and_hwe_kernel(self):
-        node = factory.make_Node()
-        response = self.client.get(self.get_node_uri(node))
-
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(None, parsed_result['min_hwe_kernel'])
-        self.assertEqual(None, parsed_result['hwe_kernel'])
-
-    def test_GET_returns_min_hwe_kernel(self):
-        node = factory.make_Node(min_hwe_kernel="hwe-v")
-        response = self.client.get(self.get_node_uri(node))
-
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual("hwe-v", parsed_result['min_hwe_kernel'])
-
-    def test_GET_returns_status_message_with_most_recent_event(self):
-        """Makes sure the most recent event from this node is shown in the
-        status_message attribute."""
-        # The first event won't be returned.
-        event = factory.make_Event(description="Uninteresting event")
-        node = event.node
-        # The second (and last) event will be returned.
-        message = "Interesting event"
-        factory.make_Event(description=message, node=node)
-        response = self.client.get(self.get_node_uri(node))
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(message, parsed_result['status_message'])
-
-    def test_GET_returns_status_name(self):
-        """GET should display the node status as a user-friendly string."""
-        for status in NODE_STATUS_CHOICES_DICT:
-            node = factory.make_Node(status=status)
-            response = self.client.get(self.get_node_uri(node))
-            parsed_result = json_load_bytes(response.content)
-            self.assertEqual(NODE_STATUS_CHOICES_DICT[status],
-                             parsed_result['status_name'])
 
     def test_resource_uri_points_back_at_machine(self):
         self.become_admin()

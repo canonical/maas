@@ -188,7 +188,7 @@ def power_control_msftocs(
 
 @synchronous
 def probe_and_enlist_msftocs(
-        user, ip, port, username, password, accept_all=False):
+        user, ip, port, username, password, accept_all=False, domain=None):
     """ Extracts all of nodes from msftocs, sets all of them to boot via
     HDD by, default, sets them to bootonce via PXE, and then enlists them
     into MAAS.
@@ -223,7 +223,8 @@ def probe_and_enlist_msftocs(
             'power_pass': password,
             'blade_id': blade_id,
         }
-        system_id = create_node(macs, 'amd64', 'msftocs', params).wait(30)
+        system_id = create_node(
+            macs, 'amd64', 'msftocs', params, domain).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)

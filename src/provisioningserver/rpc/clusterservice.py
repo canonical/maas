@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -380,8 +380,8 @@ class Cluster(RPCProtocol):
     @cluster.AddChassis.responder
     def add_chassis(
             self, user, chassis_type, hostname, username=None, password=None,
-            accept_all=False, prefix_filter=None, power_control=None,
-            port=None, protocol=None):
+            accept_all=False, domain=None, prefix_filter=None,
+            power_control=None, port=None, protocol=None):
         """AddChassis()
 
         Implementation of
@@ -391,34 +391,36 @@ class Cluster(RPCProtocol):
         if chassis_type in ('virsh', 'powerkvm'):
             d = deferToThread(
                 probe_virsh_and_enlist,
-                user, hostname, password, prefix_filter, accept_all)
+                user, hostname, password, prefix_filter, accept_all,
+                domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
         elif chassis_type == 'vmware':
             d = deferToThread(
                 probe_vmware_and_enlist,
                 user, hostname, username, password, port, protocol,
-                prefix_filter, accept_all)
+                prefix_filter, accept_all, domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "VMware"))
         elif chassis_type == 'seamicro15k':
             d = deferToThread(
                 probe_seamicro15k_and_enlist,
-                user, hostname, username, password, power_control, accept_all)
+                user, hostname, username, password, power_control, accept_all,
+                domain)
             d.addErrback(
                 partial(catch_probe_and_enlist_error, "SeaMicro 15000"))
         elif chassis_type == 'mscm':
             d = deferToThread(
                 probe_and_enlist_mscm, user, hostname, username, password,
-                accept_all)
+                accept_all, domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
         elif chassis_type == 'msftocs':
             d = deferToThread(
                 probe_and_enlist_msftocs, user, hostname, port, username,
-                password, accept_all)
+                password, accept_all, domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
         elif chassis_type == 'ucsm':
             d = deferToThread(
                 probe_and_enlist_ucsm, user, hostname, username, password,
-                accept_all)
+                accept_all, domain)
             d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
         else:
             message = "Unknown chassis type %s" % chassis_type

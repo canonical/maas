@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `VolumeGroups`."""
@@ -46,7 +46,7 @@ DISPLAYED_VOLUME_GROUP_FIELDS = (
 
 
 class VolumeGroupsHandler(OperationsHandler):
-    """Manage volume groups on a node."""
+    """Manage volume groups on a machine."""
     api_doc_section_name = "Volume groups"
     update = delete = None
     fields = DISPLAYED_VOLUME_GROUP_FIELDS
@@ -80,7 +80,7 @@ class VolumeGroupsHandler(OperationsHandler):
             system_id, request.user, NODE_PERMISSION.ADMIN)
         if machine.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create volume group because the node is not Ready.")
+                "Cannot create volume group because the machine is not Ready.")
         form = CreateVolumeGroupForm(machine, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -89,7 +89,7 @@ class VolumeGroupsHandler(OperationsHandler):
 
 
 class VolumeGroupHandler(OperationsHandler):
-    """Manage volume group on a node."""
+    """Manage volume group on a machine."""
     api_doc_section_name = "Volume group"
     create = None
     model = VolumeGroup
@@ -143,15 +143,15 @@ class VolumeGroupHandler(OperationsHandler):
         ]
 
     def read(self, request, system_id, volume_group_id):
-        """Read volume group on node.
+        """Read volume group on a machine.
 
-        Returns 404 if the node or volume group is not found.
+        Returns 404 if the machine or volume group is not found.
         """
         return VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id, volume_group_id):
-        """Read volume group on node.
+        """Read volume group on a machine.
 
         :param name: Name of the volume group.
         :param uuid: UUID of the volume group.
@@ -161,15 +161,15 @@ class VolumeGroupHandler(OperationsHandler):
         :param add_partitions: Partitions to add to the volume group.
         :param remove_partitions: Partitions to remove from the volume group.
 
-        Returns 404 if the node or volume group is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or volume group is not found.
+        Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot update volume group because the node is not Ready.")
+                "Cannot update volume group because the machine is not Ready.")
         form = UpdateVolumeGroupForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -177,17 +177,17 @@ class VolumeGroupHandler(OperationsHandler):
             return form.save()
 
     def delete(self, request, system_id, volume_group_id):
-        """Delete volume group on node.
+        """Delete volume group on a machine.
 
-        Returns 404 if the node or volume group is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or volume group is not found.
+        Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete volume group because the node is not Ready.")
+                "Cannot delete volume group because the machine is not Ready.")
         volume_group.delete()
         return rc.DELETED
 
@@ -199,15 +199,16 @@ class VolumeGroupHandler(OperationsHandler):
         :param uuid: (optional) UUID of the logical volume.
         :param size: Size of the logical volume.
 
-        Returns 404 if the node or volume group is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or volume group is not found.
+        Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot create logical volume because the node is not Ready.")
+                "Cannot create logical volume because the machine is not "
+                "Ready.")
         form = CreateLogicalVolumeForm(volume_group, data=request.data)
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
@@ -221,15 +222,16 @@ class VolumeGroupHandler(OperationsHandler):
         :param id: ID of the logical volume.
 
         Returns 403 if no logical volume with id.
-        Returns 404 if the node or volume group is not found.
-        Returns 409 if the node is not Ready.
+        Returns 404 if the machine or volume group is not found.
+        Returns 409 if the machine is not Ready.
         """
         volume_group = VolumeGroup.objects.get_object_or_404(
             system_id, volume_group_id, request.user, NODE_PERMISSION.ADMIN)
         node = volume_group.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
-                "Cannot delete logical volume because the node is not Ready.")
+                "Cannot delete logical volume because the machine is not "
+                "Ready.")
         volume_id = get_mandatory_param(request.data, 'id')
         try:
             logical_volume = volume_group.virtual_devices.get(id=volume_id)

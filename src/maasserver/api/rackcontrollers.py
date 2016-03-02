@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -8,9 +8,9 @@ __all__ = [
 
 from django.conf import settings
 from django.http import HttpResponse
-from maasserver.api.machines import (
-    MachineHandler,
-    MachinesHandler,
+from maasserver.api.nodes import (
+    NodeHandler,
+    NodesHandler,
 )
 from maasserver.api.support import (
     admin_method,
@@ -27,15 +27,14 @@ from maasserver.utils.orm import post_commit_do
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'system_id',
     'hostname',
+    'domain',
+    'fqdn',
     'architecture',
     'cpu_count',
     'memory',
     'swap_size',
-    'status',
     'osystem',
     'distro_series',
-    'power_type',
-    'power_state',
     'ip_addresses',
     ('interface_set', (
         'id',
@@ -54,14 +53,12 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
         )),
     'zone',
     'status_action',
-    'status_message',
-    'status_name',
     'node_type',
     'node_type_name',
 )
 
 
-class RackControllerHandler(MachineHandler):
+class RackControllerHandler(NodeHandler):
     """Manage an individual rack controller.
 
     The rack controller is identified by its system_id.
@@ -75,7 +72,7 @@ class RackControllerHandler(MachineHandler):
     def refresh(self, request, system_id):
         """Refresh the hardware information for a specific rack controller.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the rack-controller is not found.
         Returns 403 if the user does not have permission to refresh the rack.
         """
         rack = self.model.objects.get_node_or_404(
@@ -110,7 +107,7 @@ class RackControllerHandler(MachineHandler):
         return ('rackcontroller_handler', (rackcontroller_id, ))
 
 
-class RackControllersHandler(MachinesHandler):
+class RackControllersHandler(NodesHandler):
     """Manage the collection of all rack controllers in MAAS."""
     api_doc_section_name = "RackControllers"
     base_model = RackController

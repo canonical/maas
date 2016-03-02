@@ -311,6 +311,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         system_id = factory.make_name('system_id')
+        domain = factory.make_name('domain')
         result = {
             0: {
                 'serverId': '0/0',
@@ -343,7 +344,7 @@ class TestSeaMicro(MAASTestCase):
         yield deferToThread(
             probe_seamicro15k_and_enlist,
             user, ip, username, password,
-            power_control='restapi', accept_all=True)
+            power_control='restapi', accept_all=True, domain=domain)
         self.assertEqual(3, mock_create_node.call_count)
 
         last = result[2]
@@ -357,7 +358,7 @@ class TestSeaMicro(MAASTestCase):
         self.expectThat(
             mock_create_node,
             MockCalledWith(
-                last['serverMacAddr'], 'amd64', 'sm15k', power_params))
+                last['serverMacAddr'], 'amd64', 'sm15k', power_params, domain))
         self.expectThat(
             mock_commission_node,
             MockCalledWith(system_id, user))

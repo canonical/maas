@@ -248,6 +248,7 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         host = factory.make_hostname('mscm')
         username = factory.make_name('user')
         password = factory.make_name('password')
+        domain = factory.make_name('domain')
         system_id = factory.make_name('system_id')
         Driver = self.patch(mscm_module, "MSCMPowerDriver")
         mscm_driver = Driver.return_value
@@ -265,11 +266,11 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
 
         yield deferToThread(
             probe_and_enlist_mscm,
-            user, host, username, password, accept_all=True)
+            user, host, username, password, True, domain)
 
         self.expectThat(
             create_node,
-            MockCalledOnceWith(macs, self.arch, 'mscm', params))
+            MockCalledOnceWith(macs, self.arch, 'mscm', params, domain))
         self.expectThat(
             commission_node,
             MockCalledOnceWith(system_id, user))

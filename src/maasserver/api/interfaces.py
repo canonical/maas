@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Interface`."""
@@ -72,7 +72,7 @@ def raise_error_for_invalid_state_on_allocated_operations(
 
 
 class InterfacesHandler(OperationsHandler):
-    """Manage interfaces on a node or device."""
+    """Manage interfaces on a node."""
     api_doc_section_name = "Interfaces"
     create = update = delete = None
     fields = DISPLAYED_INTERFACE_FIELDS

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.hardware.virsh`.
@@ -271,6 +271,7 @@ class TestVirsh(MAASTestCase):
         fake_arch = factory.make_name('arch')
         mock_arch = self.patch(virsh.VirshSSH, 'get_arch')
         mock_arch.return_value = fake_arch
+        domain = factory.make_name('domain')
 
         # Patch get_state so that one of the machines is on, so we
         # can check that it will be forced off.
@@ -330,7 +331,7 @@ class TestVirsh(MAASTestCase):
         # Perform the probe and enlist
         yield deferToThread(
             virsh.probe_virsh_and_enlist, user, poweraddr,
-            password=fake_password, accept_all=True)
+            fake_password, True, domain)
 
         # Check that login was called with the provided poweraddr and
         # password.
@@ -351,16 +352,16 @@ class TestVirsh(MAASTestCase):
             mock_create_node, MockCallsMatch(
                 call(
                     fake_macs[0], fake_arch, 'virsh', called_params[0],
-                    machines[0]),
+                    domain, machines[0]),
                 call(
                     fake_macs[1], fake_arch, 'virsh', called_params[1],
-                    machines[1]),
+                    domain, machines[1]),
                 call(
                     fake_macs[2], fake_arch, 'virsh', called_params[2],
-                    machines[2]),
+                    domain, machines[2]),
                 call(
                     fake_macs[3], fake_arch, 'virsh', called_params[3],
-                    machines[3]),
+                    domain, machines[3]),
             ))
         self.assertThat(mock_logout, MockCalledOnceWith())
         self.expectThat(

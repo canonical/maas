@@ -19,7 +19,7 @@ from django.core.exceptions import ValidationError
 from maasserver import exceptions
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import NODE_STATUS
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models import (
     Node,
     PhysicalInterface,
@@ -177,8 +177,9 @@ def update_node_power_state(system_id, power_state):
 
 @synchronous
 @transactional
-def create_node(architecture, power_type,
-                power_parameters, mac_addresses, hostname=None):
+def create_node(
+        architecture, power_type, power_parameters, mac_addresses, domain=None,
+        hostname=None):
     """Create a new `Node` and return it.
 
     :param architecture: The architecture of the new node.
@@ -187,6 +188,7 @@ def create_node(architecture, power_type,
         for the new node.
     :param mac_addresses: An iterable of MAC addresses that belong to
         the node.
+    :param domain: The domain the node should join.
     :param hostname: the desired hostname for the new node
     """
     # Check that there isn't already a node with one of our MAC
@@ -209,12 +211,15 @@ def create_node(architecture, power_type,
         'mac_addresses': mac_addresses,
     }
 
+    if domain is not None:
+        data['domain'] = domain
+
     if hostname is not None:
         data['hostname'] = hostname.strip()
 
     data_query_dict = get_overridden_query_dict(
-        {}, data, AdminNodeWithMACAddressesForm.Meta.fields)
-    form = AdminNodeWithMACAddressesForm(data_query_dict)
+        {}, data, AdminMachineWithMACAddressesForm.Meta.fields)
+    form = AdminMachineWithMACAddressesForm(data_query_dict)
     if form.is_valid():
         node = form.save()
         # We have to explicitly save the power parameters; the form

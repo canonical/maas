@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `CommissioningScript`."""
@@ -49,7 +49,7 @@ class CommissioningScriptsHandler(OperationsHandler):
         so opens you up to risks w.r.t. encoding and ordering.  The name must
         not contain any whitespace, quotes, or apostrophes.
 
-        A commissioning node will run each of the scripts in lexicographical
+        A commissioning machine will run each of the scripts in lexicographical
         order.  There are no promises about how non-ASCII characters are
         sorted, or even how upper-case letters are sorted relative to
         lower-case letters.  So where ordering matters, use unique numbers.
@@ -61,7 +61,7 @@ class CommissioningScriptsHandler(OperationsHandler):
         script should be ASCII text to avoid any confusion over encoding.  But
         in some cases a commissioning script might consist of a binary tool
         provided by a hardware vendor.  Either way, the script gets passed to
-        the commissioning node in the exact form in which it was uploaded.
+        the commissioning machine in the exact form in which it was uploaded.
 
         :param name: Unique identifying name for the script.  Names should
             follow the pattern of "25-burn-in-hard-disk" (all ASCII, and with

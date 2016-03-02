@@ -1,11 +1,12 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
 
 __all__ = [
+    "AdminMachineForm",
+    "AdminMachineWithMACAddressesForm",
     "AdminNodeForm",
-    "AdminNodeWithMACAddressesForm",
     "BootSourceForm",
     "BootSourceSelectionForm",
     "BootSourceSettingsForm",
@@ -13,14 +14,17 @@ __all__ = [
     "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
+    "get_machine_edit_form",
+    "get_machine_create_form",
     "CreatePhysicalBlockDeviceForm",
-    "get_node_create_form",
     "get_node_edit_form",
     "list_all_usable_architectures",
     "MAASAndNetworkForm",
     "MountFilesystemForm",
     "NetworksListingForm",
-    "NodeWithMACAddressesForm",
+    "NodeChoiceField",
+    "MachineWithMACAddressesForm",
+    "CreatePhysicalBlockDeviceForm",
     "ReleaseIPForm",
     "SSHKeyForm",
     "SSLKeyForm",
@@ -102,10 +106,12 @@ from maasserver.models import (
     CacheSet,
     Config,
     Device,
+    Domain,
     Filesystem,
     Interface,
     LargeFile,
     LicenseKey,
+    Machine,
     Node,
     Partition,
     PartitionTable,
@@ -371,10 +377,10 @@ class CheckboxInputTrueDefault(CheckboxInput):
 class NodeForm(MAASModelForm):
     def __init__(self, request=None, *args, **kwargs):
         super(NodeForm, self).__init__(*args, **kwargs)
+
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
-        # with AdminNodeForm which actually uses this parameter.
-
+        # with AdminMachineForm which actually uses this parameter.
         instance = kwargs.get('instance')
         if instance is None or instance.owner is None:
             self.has_owner = False
@@ -384,16 +390,102 @@ class NodeForm(MAASModelForm):
         # Are we creating a new node object?
         self.new_node = (instance is None)
 
-        self.set_up_architecture_field()
-        if self.has_owner:
-            self.set_up_osystem_and_distro_series_fields(instance)
-
         self.fields['disable_ipv4'] = forms.BooleanField(
             label="", required=False)
 
+    def clean_disable_ipv4(self):
+        # Boolean fields only show up in UI form submissions as "true" (if the
+        # box was checked) or not at all (if the box was not checked).  This
+        # is different from API submissions which can submit "false" values.
+        # Our forms are rigged to interpret missing fields as unchanged, but
+        # that doesn't work for the UI.  A form in the UI always submits all
+        # its fields, so in that case, no value means False.
+        #
+        # To kludge around this, the UI form submits a hidden input field named
+        # "ui_submission" that doesn't exist in the API.  If this field is
+        # present, go with the UI-style behaviour.
+        form_data = self.submitted_data
+        if 'ui_submission' in form_data and 'disable_ipv4' not in form_data:
+            self.cleaned_data['disable_ipv4'] = False
+        return self.cleaned_data['disable_ipv4']
+
+    def clean_swap_size(self):
+        """Validates the swap size field and parses integers suffixed with K,
+        M, G and T
+        """
+        swap_size = self.cleaned_data.get('swap_size')
+        # XXX: ValueError -- arising from int(...) -- is handled only when
+        # swap_size has no suffix. It should be handled, and ValidationError
+        # raised in its place, regardless of suffix.
+        if swap_size == '':
+            return None
+        elif swap_size.endswith('K'):
+            return int(swap_size[:-1]) * 1000
+        elif swap_size.endswith('M'):
+            return int(swap_size[:-1]) * 1000000
+        elif swap_size.endswith('G'):
+            return int(swap_size[:-1]) * 1000000000
+        elif swap_size.endswith('T'):
+            return int(swap_size[:-1]) * 1000000000000
+        try:
+            return int(swap_size)
+        except ValueError:
+            raise ValidationError('Invalid size for swap: %s' % swap_size)
+
+    def clean_domain(self):
+        domain = self.cleaned_data.get('domain')
+        if not domain:
+            return None
+        try:
+            return Domain.objects.get(id=int(domain))
+        except ValueError:
+            try:
+                return Domain.objects.get(name=domain)
+            except Domain.DoesNotExist:
+                raise ValidationError("Unable to find domain %s" % domain)
+
+    hostname = forms.CharField(
+        label="Host name", required=False, help_text=(
+            "The hostname of the machine"))
+
+    domain = forms.CharField(
+        label="Domain name", required=False, help_text=(
+            "The domain name of the machine."))
+
+    swap_size = forms.CharField(
+        label="Swap size", required=False, help_text=(
+            "The size of the swap file in bytes. The field also accepts K, M, "
+            "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
+
+    class Meta:
+        model = Node
+
+        # Fields that the form should generate automatically from the
+        # model:
+        # Note: fields have to be added here even if they were defined manually
+        # elsewhere in the form
+        fields = (
+            'hostname',
+            'domain',
+            'disable_ipv4',
+            'swap_size',
+            )
+
+
+class MachineForm(NodeForm):
+    def __init__(self, request=None, *args, **kwargs):
+        super(MachineForm, self).__init__(*args, **kwargs)
+
+        # Even though it doesn't need it and doesn't use it, this form accepts
+        # a parameter named 'request' because it is used interchangingly
+        # with AdminMachineForm which actually uses this parameter.
+        instance = kwargs.get('instance')
+
+        self.set_up_architecture_field()
         # We only want the license key field to render in the UI if the `OS`
         # and `Release` fields are also present.
         if self.has_owner:
+            self.set_up_osystem_and_distro_series_fields(instance)
             self.fields['license_key'] = forms.CharField(
                 label="License Key", required=False, help_text=(
                     "License key for operating system"),
@@ -456,45 +548,6 @@ class NodeForm(MAASModelForm):
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
 
-    def clean_disable_ipv4(self):
-        # Boolean fields only show up in UI form submissions as "true" (if the
-        # box was checked) or not at all (if the box was not checked).  This
-        # is different from API submissions which can submit "false" values.
-        # Our forms are rigged to interpret missing fields as unchanged, but
-        # that doesn't work for the UI.  A form in the UI always submits all
-        # its fields, so in that case, no value means False.
-        #
-        # To kludge around this, the UI form submits a hidden input field named
-        # "ui_submission" that doesn't exist in the API.  If this field is
-        # present, go with the UI-style behaviour.
-        form_data = self.submitted_data
-        if 'ui_submission' in form_data and 'disable_ipv4' not in form_data:
-            self.cleaned_data['disable_ipv4'] = False
-        return self.cleaned_data['disable_ipv4']
-
-    def clean_swap_size(self):
-        """Validates the swap size field and parses integers suffixed with K,
-        M, G and T
-        """
-        swap_size = self.cleaned_data.get('swap_size')
-        # XXX: ValueError -- arising from int(...) -- is handled only when
-        # swap_size has no suffix. It should be handled, and ValidationError
-        # raised in its place, regardless of suffix.
-        if swap_size == '':
-            return None
-        elif swap_size.endswith('K'):
-            return int(swap_size[:-1]) * 1000
-        elif swap_size.endswith('M'):
-            return int(swap_size[:-1]) * 1000000
-        elif swap_size.endswith('G'):
-            return int(swap_size[:-1]) * 1000000000
-        elif swap_size.endswith('T'):
-            return int(swap_size[:-1]) * 1000000000000
-        try:
-            return int(swap_size)
-        except ValueError:
-            raise ValidationError('Invalid size for swap: %s' % swap_size)
-
     def clean_min_hwe_kernel(self):
         min_hwe_kernel = self.cleaned_data.get('min_hwe_kernel')
         if self.new_node and not min_hwe_kernel:
@@ -503,7 +556,7 @@ class NodeForm(MAASModelForm):
         return validate_min_hwe_kernel(min_hwe_kernel)
 
     def clean(self):
-        cleaned_data = super(NodeForm, self).clean()
+        cleaned_data = super(MachineForm, self).clean()
 
         if not self.instance.hwe_kernel:
             osystem = cleaned_data.get('osystem')
@@ -520,7 +573,7 @@ class NodeForm(MAASModelForm):
         return cleaned_data
 
     def is_valid(self):
-        is_valid = super(NodeForm, self).is_valid()
+        is_valid = super(MachineForm, self).is_valid()
         if not is_valid:
             return False
         if len(list_all_usable_architectures()) == 0:
@@ -585,41 +638,20 @@ class NodeForm(MAASModelForm):
         self.is_bound = True
         self.data['hwe_kernel'] = hwe_kernel
 
-    hostname = forms.CharField(
-        label="Host name", required=False, help_text=(
-            "The FQDN (Fully Qualified Domain Name) is derived from the "
-            "host name: If the cluster controller for this node is managing "
-            "DNS then the domain part in the host name (if any) is replaced "
-            "by the domain defined on the cluster; if the cluster controller "
-            "does not manage DNS, then the host name as entered will be the "
-            "FQDN."))
-
-    swap_size = forms.CharField(
-        label="Swap size", required=False, help_text=(
-            "The size of the swap file in bytes. The field also accepts K, M, "
-            "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
-
     class Meta:
-        model = Node
+        model = Machine
 
-        # Fields that the form should generate automatically from the
-        # model:
-        # Note: fields have to be added here even if they were defined manually
-        # elsewhere in the form
-        fields = (
-            'hostname',
+        fields = NodeForm.Meta.fields + (
             'architecture',
             'osystem',
             'distro_series',
             'license_key',
-            'disable_ipv4',
-            'swap_size',
             'min_hwe_kernel',
-            'hwe_kernel'
-            )
+            'hwe_kernel',
+        )
 
 
-class DeviceForm(MAASModelForm):
+class DeviceForm(NodeForm):
     parent = forms.ModelChoiceField(
         required=False, initial=None,
         queryset=Node.objects.all(), to_field_name='system_id')
@@ -627,8 +659,7 @@ class DeviceForm(MAASModelForm):
     class Meta:
         model = Device
 
-        fields = (
-            'hostname',
+        fields = NodeForm.Meta.fields + (
             'parent',
         )
 
@@ -637,8 +668,6 @@ class DeviceForm(MAASModelForm):
         self.request = request
 
         instance = kwargs.get('instance')
-        # Are we creating a new device object?
-        self.new_device = (instance is None)
         self.set_up_initial_device(instance)
 
     def set_up_initial_device(self, instance):
@@ -652,11 +681,12 @@ class DeviceForm(MAASModelForm):
     def save(self, commit=True):
         device = super(DeviceForm, self).save(commit=False)
         device.node_type = NODE_TYPE.DEVICE
-        if self.new_device:
+        if self.new_node:
             # Set the owner: devices are owned by their creator.
             device.owner = self.request.user
         device.save()
         return device
+
 
 CLUSTER_NOT_AVAILABLE = mark_safe(
     "The cluster controller for this node is not responding; power type "
@@ -673,7 +703,6 @@ NO_ARCHITECTURES_AVAILABLE = mark_safe(
 
 class AdminNodeForm(NodeForm):
     """A `NodeForm` which includes fields that only an admin may change."""
-
     zone = forms.ModelChoiceField(
         label="Physical zone", required=False,
         initial=Zone.objects.get_default_zone,
@@ -699,7 +728,6 @@ class AdminNodeForm(NodeForm):
             data=data, instance=instance, **kwargs)
         self.request = request
         self.set_up_initial_zone(instance)
-        AdminNodeForm.set_up_power_type(self, data, instance)
         # The zone field is not required because we want to be able
         # to omit it when using that form in the API.
         # We don't want the UI to show an entry for the 'empty' zone,
@@ -718,17 +746,47 @@ class AdminNodeForm(NodeForm):
         if instance is not None:
             self.initial['zone'] = instance.zone.name
 
+    def save(self, *args, **kwargs):
+        """Persist the node into the database."""
+        node = super(AdminNodeForm, self).save(commit=False)
+        zone = self.cleaned_data.get('zone')
+        if zone:
+            node.zone = zone
+        if kwargs.get('commit', True):
+            node.save(*args, **kwargs)
+            self.save_m2m()  # Save many to many relations.
+        return node
+
+
+class AdminMachineForm(MachineForm, AdminNodeForm):
+    """A `MachineForm` which includes fields that only an admin may change."""
+
+    class Meta:
+        model = Machine
+
+        # Fields that the form should generate automatically from the
+        # model:
+        fields = MachineForm.Meta.fields + (
+            'cpu_count',
+            'memory',
+        )
+
+    def __init__(self, data=None, instance=None, request=None, **kwargs):
+        super(AdminMachineForm, self).__init__(
+            data=data, instance=instance, **kwargs)
+        AdminMachineForm.set_up_power_type(self, data, instance)
+
     @staticmethod
-    def _get_power_type(form, data, node):
+    def _get_power_type(form, data, machine):
         if data is None:
             data = {}
 
         power_type = data.get('power_type', form.initial.get('power_type'))
 
-        # If power_type is None (this is a node creation form or this
+        # If power_type is None (this is a machine creation form or this
         # form deals with an API call which does not change the value of
-        # 'power_type') or invalid: get the node's current 'power_type'
-        # value or the default value if this form is not linked to a node.
+        # 'power_type') or invalid: get the machine's current 'power_type'
+        # value or the default value if this form is not linked to a machine.
         try:
             power_types = get_power_types()
         except ClusterUnavailable as e:
@@ -741,17 +799,17 @@ class AdminNodeForm(NodeForm):
             return ''
 
         if power_type not in power_types:
-            return '' if node is None else node.power_type
+            return '' if machine is None else machine.power_type
         return power_type
 
     @staticmethod
-    def set_up_power_type(form, data, node=None):
+    def set_up_power_type(form, data, machine=None):
         """Set up the 'power_type' and 'power_parameters' fields.
 
         This can't be done at the model level because the choices need to
         be generated on the fly by get_power_type_choices().
         """
-        power_type = AdminNodeForm._get_power_type(form, data, node)
+        power_type = AdminMachineForm._get_power_type(form, data, machine)
         choices = [BLANK_CHOICE] + get_power_type_choices()
         form.fields['power_type'] = forms.ChoiceField(
             required=False, choices=choices, initial=power_type)
@@ -782,30 +840,37 @@ class AdminNodeForm(NodeForm):
         return cleaned_data
 
     def clean(self):
-        cleaned_data = super(AdminNodeForm, self).clean()
-        return AdminNodeForm.check_power_type(self, cleaned_data)
+        cleaned_data = super(AdminMachineForm, self).clean()
+        return AdminMachineForm.check_power_type(self, cleaned_data)
 
     @staticmethod
-    def set_power_type(form, node):
-        """Persist the node into the database."""
+    def set_power_type(form, machine):
+        """Persist the machine into the database."""
         power_type = form.cleaned_data.get('power_type')
         if power_type is not None:
-            node.power_type = power_type
+            machine.power_type = power_type
         power_parameters = form.cleaned_data.get('power_parameters')
         if power_parameters is not None:
-            node.power_parameters = power_parameters
+            machine.power_parameters = power_parameters
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
-        node = super(AdminNodeForm, self).save(commit=False)
+        machine = super(AdminMachineForm, self).save(commit=False)
         zone = self.cleaned_data.get('zone')
         if zone:
-            node.zone = zone
-        AdminNodeForm.set_power_type(self, node)
+            machine.zone = zone
+        AdminMachineForm.set_power_type(self, machine)
         if kwargs.get('commit', True):
-            node.save(*args, **kwargs)
+            machine.save(*args, **kwargs)
             self.save_m2m()  # Save many to many relations.
-        return node
+        return machine
+
+
+def get_machine_edit_form(user):
+    if user.is_superuser:
+        return AdminMachineForm
+    else:
+        return MachineForm
 
 
 def get_node_edit_form(user):
@@ -1008,40 +1073,41 @@ class WithPowerMixin:
     """A form mixin which dynamically adds power_type and power_parameters to
     the list of fields.  This mixin also overrides the 'save' method to persist
     these fields and is intended to be used with a class inheriting from
-    NodeForm.
+    MachineForm.
     """
 
     def __init__(self, *args, **kwargs):
         super(WithPowerMixin, self).__init__(*args, **kwargs)
         self.data = self.data.copy()
-        AdminNodeForm.set_up_power_type(self, self.data)
+        AdminMachineForm.set_up_power_type(self, self.data)
 
     def clean(self):
         cleaned_data = super(WithPowerMixin, self).clean()
-        return AdminNodeForm.check_power_type(self, cleaned_data)
+        return AdminMachineForm.check_power_type(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
         node = super(WithPowerMixin, self).save()
-        AdminNodeForm.set_power_type(self, node)
+        AdminMachineForm.set_power_type(self, node)
         node.save()
         return node
 
 
-class AdminNodeWithMACAddressesForm(WithMACAddressesMixin, AdminNodeForm):
-    """A version of the AdminNodeForm which includes the multi-MAC address
+class AdminMachineWithMACAddressesForm(
+        WithMACAddressesMixin, AdminMachineForm):
+    """A version of the AdminMachineForm which includes the multi-MAC address
     field.
     """
 
 
-class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
-    """A version of the NodeForm which includes the multi-MAC address field.
+class MachineWithMACAddressesForm(WithMACAddressesMixin, MachineForm):
+    """A version of the MachineForm which includes the multi-MAC address field.
     """
 
 
-class NodeWithPowerAndMACAddressesForm(
-        WithPowerMixin, NodeWithMACAddressesForm):
-    """A version of the NodeForm which includes the power fields.
+class MachineWithPowerAndMACAddressesForm(
+        WithPowerMixin, MachineWithMACAddressesForm):
+    """A version of the MachineForm which includes the power fields.
     """
 
 
@@ -1050,11 +1116,11 @@ class DeviceWithMACsForm(WithMACAddressesMixin, DeviceForm):
     """
 
 
-def get_node_create_form(user):
+def get_machine_create_form(user):
     if user.is_superuser:
-        return AdminNodeWithMACAddressesForm
+        return AdminMachineWithMACAddressesForm
     else:
-        return NodeWithPowerAndMACAddressesForm
+        return MachineWithPowerAndMACAddressesForm
 
 
 class ProfileForm(MAASModelForm):

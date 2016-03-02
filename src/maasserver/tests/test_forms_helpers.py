@@ -8,14 +8,17 @@ __all__ = []
 from django.forms import CharField
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
+    AdminMachineForm,
+    AdminMachineWithMACAddressesForm,
     AdminNodeForm,
-    AdminNodeWithMACAddressesForm,
-    get_node_create_form,
+    get_machine_create_form,
+    get_machine_edit_form,
     get_node_edit_form,
     list_all_usable_architectures,
     MAASModelForm,
+    MachineForm,
+    MachineWithPowerAndMACAddressesForm,
     NodeForm,
-    NodeWithPowerAndMACAddressesForm,
     pick_default_architecture,
     remove_None_values,
 )
@@ -98,23 +101,31 @@ class TestHelpers(MAASServerTestCase):
     def test_remove_None_values_leaves_empty_dict_untouched(self):
         self.assertEqual({}, remove_None_values({}))
 
+    def test_get_machine_edit_form_returns_MachineForm_if_non_admin(self):
+        user = factory.make_User()
+        self.assertEqual(MachineForm, get_machine_edit_form(user))
+
+    def test_get_machine_edit_form_returns_AdminMachineForm_if_admin(self):
+        admin = factory.make_admin()
+        self.assertEqual(AdminMachineForm, get_machine_edit_form(admin))
+
     def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
         user = factory.make_User()
         self.assertEqual(NodeForm, get_node_edit_form(user))
 
-    def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin(self):
+    def test_get_node_edit_form_returns_AdminNodeForm_if_admin(self):
         admin = factory.make_admin()
         self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
 
-    def test_get_node_create_form_if_non_admin(self):
+    def test_get_machine_create_form_if_non_admin(self):
         user = factory.make_User()
         self.assertEqual(
-            NodeWithPowerAndMACAddressesForm, get_node_create_form(user))
+            MachineWithPowerAndMACAddressesForm, get_machine_create_form(user))
 
-    def test_get_node_create_form_if_admin(self):
+    def test_get_machine_create_form_if_admin(self):
         admin = factory.make_admin()
         self.assertEqual(
-            AdminNodeWithMACAddressesForm, get_node_create_form(admin))
+            AdminMachineWithMACAddressesForm, get_machine_create_form(admin))
 
 
 class TestMAASModelForm(MAASTransactionServerTestCase):

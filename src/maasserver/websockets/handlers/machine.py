@@ -19,7 +19,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AddPartitionForm,
-    AdminNodeWithMACAddressesForm,
+    AdminMachineWithMACAddressesForm,
     CreateBcacheForm,
     CreateCacheSetForm,
     CreateLogicalVolumeForm,
@@ -118,7 +118,7 @@ class MachineHandler(NodeHandler):
             'create_logical_volume',
             'set_boot_disk',
         ]
-        form = AdminNodeWithMACAddressesForm
+        form = AdminMachineWithMACAddressesForm
         exclude = [
             "status_expires",
             "parent",
@@ -202,7 +202,7 @@ class MachineHandler(NodeHandler):
     def get_form_class(self, action):
         """Return the form class used for `action`."""
         if action in ("create", "update"):
-            return AdminNodeWithMACAddressesForm
+            return AdminMachineWithMACAddressesForm
         else:
             raise HandlerError("Unknown action: %s" % action)
 

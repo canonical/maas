@@ -432,7 +432,8 @@ def power_state_ucsm(url, username, password, uuid):
 
 
 @synchronous
-def probe_and_enlist_ucsm(user, url, username, password, accept_all=False):
+def probe_and_enlist_ucsm(
+        user, url, username, password, accept_all=False, domain=None):
     """Probe a UCS Manager and enlist all its servers.
 
     Here's what happens here: 1. Get a list of servers from the UCS
@@ -474,7 +475,8 @@ def probe_and_enlist_ucsm(user, url, username, password, accept_all=False):
             'power_pass': password,
             'uuid': server.get('uuid'),
         }
-        system_id = create_node(macs, 'amd64', 'ucsm', params).wait(30)
+        system_id = create_node(
+            macs, 'amd64', 'ucsm', params, domain).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)

@@ -2416,9 +2416,10 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
 
         params = {
             'architecture': make_usable_architecture(self),
-            'power_type': factory.make_name("power_type"),
+            'power_type': factory.make_name('power_type'),
             'power_parameters': dumps({}),
             'mac_addresses': [factory.make_mac_address()],
+            'domain': factory.make_name('domain'),
             'hostname': None,
         }
 
@@ -2431,6 +2432,7 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
             MockCalledOnceWith(
                 params['architecture'], params['power_type'],
                 params['power_parameters'], params['mac_addresses'],
+                domain=params['domain'],
                 hostname=params['hostname']))
         self.assertEqual(
             create_node_function.return_value.system_id,

@@ -5,7 +5,10 @@
 
 __all__ = []
 
+import http.client
 from inspect import getdoc
+from io import StringIO
+import sys
 import types
 
 from django.conf.urls import (
@@ -73,6 +76,14 @@ class TestFindingResources(MAASServerTestCase):
         """Return a new module with a fabricated name."""
         name = factory.make_name("module")
         return types.ModuleType(name)
+
+    def test_anon_api_doc(self):
+        # The documentation is accessible to anon users.
+        self.patch(sys, "stderr", StringIO())
+        response = self.client.get(reverse('api-doc'))
+        self.assertEqual(http.client.OK, response.status_code)
+        # No error or warning are emitted by docutils.
+        self.assertEqual("", sys.stderr.getvalue())
 
     def test_urlpatterns_empty(self):
         # No resources are found in empty modules.

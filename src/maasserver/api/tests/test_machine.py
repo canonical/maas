@@ -7,10 +7,7 @@ __all__ = []
 
 from base64 import b64encode
 import http.client
-from io import StringIO
-import sys
 
-import bson
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -20,7 +17,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
@@ -66,10 +62,6 @@ from metadataserver.models import (
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
 from netaddr import IPNetwork
-from provisioningserver.refresh.node_info_scripts import (
-    LLDP_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
-)
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
 from twisted.internet import defer
@@ -77,19 +69,6 @@ import yaml
 
 
 class MachineAnonAPITest(MAASServerTestCase):
-
-    def setUp(self):
-        super(MachineAnonAPITest, self).setUp()
-        self.patch(node_module.Node, '_start')
-        self.patch(node_module.Node, '_stop')
-
-    def test_anon_api_doc(self):
-        # The documentation is accessible to anon users.
-        self.patch(sys, "stderr", StringIO())
-        response = self.client.get(reverse('api-doc'))
-        self.assertEqual(http.client.OK, response.status_code)
-        # No error or warning are emitted by docutils.
-        self.assertEqual("", sys.stderr.getvalue())
 
     def test_machine_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
@@ -147,7 +126,7 @@ class TestMachineAPI(APITestCase):
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
             "%s.%s" % (machine.hostname, domain_name),
-            parsed_result['hostname'])
+            parsed_result['fqdn'])
         self.assertEqual(machine.system_id, parsed_result['system_id'])
 
     def test_GET_returns_associated_tag(self):
@@ -924,7 +903,7 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
-            'francis.%s' % domain_name, parsed_result['hostname'])
+            'francis.%s' % domain_name, parsed_result['fqdn'])
         self.assertEqual(0, Machine.objects.filter(hostname='diane').count())
         self.assertEqual(1, Machine.objects.filter(hostname='francis').count())
 
@@ -1478,188 +1457,6 @@ class TestMachineAPITransactional(APITransactionTestCase):
         self.assertEqual(
             http.client.SERVICE_UNAVAILABLE, response.status_code,
             response.content)
-
-
-class TestGetDetails(APITestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=details."""
-
-    def make_lshw_result(self, machine, script_result=0):
-        return factory.make_NodeResult_for_commissioning(
-            node=machine, name=LSHW_OUTPUT_NAME,
-            script_result=script_result)
-
-    def make_lldp_result(self, machine, script_result=0):
-        return factory.make_NodeResult_for_commissioning(
-            node=machine, name=LLDP_OUTPUT_NAME, script_result=script_result)
-
-    def get_details(self, machine):
-        url = reverse('machine_handler', args=[machine.system_id])
-        response = self.client.get(url, {'op': 'details'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual('application/bson', response['content-type'])
-        return bson.BSON(response.content).decode()
-
-    def test_GET_returns_empty_details_when_there_are_none(self):
-        machine = factory.make_Node()
-        self.assertDictEqual(
-            {"lshw": None, "lldp": None},
-            self.get_details(machine))
-
-    def test_GET_returns_all_details(self):
-        machine = factory.make_Node()
-        lshw_result = self.make_lshw_result(machine)
-        lldp_result = self.make_lldp_result(machine)
-        self.assertDictEqual(
-            {"lshw": lshw_result.data,
-             "lldp": lldp_result.data},
-            self.get_details(machine))
-
-    def test_GET_returns_only_those_details_that_exist(self):
-        machine = factory.make_Node()
-        lshw_result = self.make_lshw_result(machine)
-        self.assertDictEqual(
-            {"lshw": lshw_result.data,
-             "lldp": None},
-            self.get_details(machine))
-
-    def test_GET_returns_not_found_when_machine_does_not_exist(self):
-        url = reverse('machine_handler', args=['does-not-exist'])
-        response = self.client.get(url, {'op': 'details'})
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-
-class TestMarkBroken(APITestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=mark_broken"""
-
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_mark_broken_changes_status(self):
-        machine = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_broken'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.BROKEN, reload_object(machine).status)
-
-    def test_mark_broken_updates_error_description(self):
-        # 'error_description' parameter was renamed 'comment' for consistency
-        # make sure this comment updates the machine's error_description
-        machine = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        comment = factory.make_name('comment')
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'mark_broken', 'comment': comment})
-        self.assertEqual(http.client.OK, response.status_code)
-        machine = reload_object(machine)
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, comment),
-            (machine.status, machine.error_description)
-        )
-
-    def test_mark_broken_updates_error_description_compatibility(self):
-        # test old 'error_description' parameter is honored for compatibility
-        machine = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        error_description = factory.make_name('error_description')
-        response = self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'mark_broken', 'error_description': error_description})
-        self.assertEqual(http.client.OK, response.status_code)
-        machine = reload_object(machine)
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, error_description),
-            (machine.status, machine.error_description)
-        )
-
-    def test_mark_broken_passes_comment(self):
-        machine = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        machine_mark_broken = self.patch(node_module.Machine, 'mark_broken')
-        comment = factory.make_name('comment')
-        self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'mark_broken', 'comment': comment})
-        self.assertThat(
-            machine_mark_broken,
-            MockCalledOnceWith(self.logged_in_user, comment))
-
-    def test_mark_broken_handles_missing_comment(self):
-        machine = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        machine_mark_broken = self.patch(node_module.Machine, 'mark_broken')
-        self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_broken'})
-        self.assertThat(
-            machine_mark_broken,
-            MockCalledOnceWith(self.logged_in_user, None))
-
-    def test_mark_broken_requires_ownership(self):
-        machine = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_broken'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_mark_broken_allowed_from_any_other_state(self):
-        self.patch(node_module.Node, "_stop")
-        for status, _ in NODE_STATUS_CHOICES:
-            if status == NODE_STATUS.BROKEN:
-                continue
-
-            machine = factory.make_Node(
-                status=status, owner=self.logged_in_user)
-            response = self.client.post(
-                self.get_machine_uri(machine), {'op': 'mark_broken'})
-            self.expectThat(
-                response.status_code, Equals(http.client.OK), response)
-            machine = reload_object(machine)
-            self.expectThat(machine.status, Equals(NODE_STATUS.BROKEN))
-
-
-class TestMarkFixed(APITestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=mark_fixed"""
-
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_mark_fixed_changes_status(self):
-        self.become_admin()
-        machine = factory.make_Node(status=NODE_STATUS.BROKEN)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_fixed'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(machine).status)
-
-    def test_mark_fixed_requires_admin(self):
-        machine = factory.make_Node(status=NODE_STATUS.BROKEN)
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_fixed'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_mark_fixed_passes_comment(self):
-        self.become_admin()
-        machine = factory.make_Node(status=NODE_STATUS.BROKEN)
-        machine_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
-        comment = factory.make_name('comment')
-        self.client.post(
-            self.get_machine_uri(machine),
-            {'op': 'mark_fixed', 'comment': comment})
-        self.assertThat(
-            machine_mark_fixed,
-            MockCalledOnceWith(self.logged_in_user, comment))
-
-    def test_mark_fixed_handles_missing_comment(self):
-        self.become_admin()
-        machine = factory.make_Node(status=NODE_STATUS.BROKEN)
-        machine_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
-        self.client.post(
-            self.get_machine_uri(machine), {'op': 'mark_fixed'})
-        self.assertThat(
-            machine_mark_fixed,
-            MockCalledOnceWith(self.logged_in_user, None))
 
 
 class TestPowerParameters(APITestCase):

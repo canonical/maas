@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -353,7 +353,7 @@ def get_vmware_servers(
 @synchronous
 def probe_vmware_and_enlist(
         user, host, username, password, port=None,
-        protocol=None, prefix_filter=None, accept_all=False):
+        protocol=None, prefix_filter=None, accept_all=False, domain=None):
 
     # Both '' and None mean the same thing, so normalize it.
     if prefix_filter is None:
@@ -367,14 +367,14 @@ def probe_vmware_and_enlist(
             servers = api.get_all_vm_properties()
             _probe_and_enlist_vmware_servers(
                 api, accept_all, host, password, port, prefix_filter, protocol,
-                servers, user, username)
+                servers, user, username, domain)
         finally:
             api.disconnect()
 
 
 def _probe_and_enlist_vmware_servers(
         api, accept_all, host, password, port, prefix_filter, protocol,
-        servers, user, username):
+        servers, user, username, domain):
     maaslog.info("Found %d VMware servers", len(servers))
     for system_name in servers:
         if not system_name.startswith(prefix_filter):
@@ -403,7 +403,7 @@ def _probe_and_enlist_vmware_servers(
 
         system_id = create_node(
             properties['macs'], properties['architecture'],
-            'vmware', params, hostname=system_name).wait(30)
+            'vmware', params, domain, system_name).wait(30)
 
         if system_id is not None:
             api.set_pxe_boot(properties)

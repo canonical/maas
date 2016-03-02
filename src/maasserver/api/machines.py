@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -59,12 +59,13 @@ from maasserver.exceptions import (
     Unauthorized,
 )
 from maasserver.forms import (
-    get_node_create_form,
-    get_node_edit_form,
+    get_machine_create_form,
+    get_machine_edit_form,
 )
 from maasserver.forms_commission import CommissionForm
 from maasserver.models import (
     Config,
+    Domain,
     Machine,
     RackController,
 )
@@ -91,6 +92,8 @@ import yaml
 DISPLAYED_MACHINE_FIELDS = (
     'system_id',
     'hostname',
+    'domain',
+    'fqdn',
     'owner',
     'macaddress_set',
     'boot_interface',
@@ -191,17 +194,25 @@ class MachineHandler(NodeHandler):
 
         :param hostname: The new hostname for this machine.
         :type hostname: unicode
+
+        :param domain: The domain for this machine. If not given the default
+            domain is used.
+        :type domain: unicode
+
         :param architecture: The new architecture for this machine.
         :type architecture: unicode
+
         :param min_hwe_kernel: A string containing the minimum kernel version
             allowed to be ran on this machine.
         :type min_hwe_kernel: unicode
+
         :param power_type: The new power type for this machine. If you use the
             default value, power_parameters will be set to the empty string.
             Available to admin users.
             See the `Power types`_ section for a list of the available power
             types.
         :type power_type: unicode
+
         :param power_parameters_{param1}: The new value for the 'param1'
             power parameter.  Note that this is dynamic as the available
             parameters depend on the selected value of the Machine's
@@ -209,18 +220,31 @@ class MachineHandler(NodeHandler):
             section for a list of the available power parameters for each
             power type.
         :type power_parameters_{param1}: unicode
+
         :param power_parameters_skip_check: Whether or not the new power
             parameters for this machine should be checked against the expected
             power parameters for the machine's power type ('true' or 'false').
             The default is 'false'.
         :type power_parameters_skip_check: unicode
+
         :param zone: Name of a valid physical zone in which to place this
-            machine
+            machine.
         :type zone: unicode
+
         :param swap_size: Specifies the size of the swap file, in bytes. Field
             accept K, M, G and T suffixes for values expressed respectively in
             kilobytes, megabytes, gigabytes and terabytes.
         :type swap_size: unicode
+
+        :param disable_ipv4: Whether or not IPv4 should be enabled on the
+            machine.
+        :type disable_ipv4: boolean
+
+        :param cpu_count: The amount of CPU cores the machine has.
+        :type cpu_count: integer
+
+        :param memory: How much memory the machine has.
+        :type memory: unicode
 
         Returns 404 if the machine is not found.
         Returns 403 if the user does not have permission to update the machine.
@@ -234,7 +258,7 @@ class MachineHandler(NodeHandler):
         if 'power_type' not in request.data:
             altered_query_data['power_type'] = machine.power_type
 
-        Form = get_node_edit_form(request.user)
+        Form = get_machine_edit_form(request.user)
         form = Form(data=altered_query_data, instance=machine)
 
         if form.is_valid():
@@ -325,7 +349,7 @@ class MachineHandler(NodeHandler):
         if not machine.distro_series and not series:
             series = Config.objects.get_config('default_distro_series')
         if None in (series, license_key, hwe_kernel):
-            Form = get_node_edit_form(request.user)
+            Form = get_machine_edit_form(request.user)
             form = Form(instance=machine)
             if series is not None:
                 form.set_distro_series(series=series)
@@ -375,7 +399,7 @@ class MachineHandler(NodeHandler):
             machine.start(request.user, user_data=user_data, comment=comment)
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
-            # system_id in it, as that is the primary API key to a node.
+            # system_id in it, as that is the primary API key to a machine.
             raise StaticIPAddressExhaustion(
                 "%s: Unable to allocate static IP due to address"
                 " exhaustion." % system_id)
@@ -383,7 +407,7 @@ class MachineHandler(NodeHandler):
 
     @operation(idempotent=False)
     def release(self, request, system_id):
-        """Release a node. Opposite of `Machines.allocate`.
+        """Release a machine. Opposite of `Machines.allocate`.
 
         :param comment: Optional comment for the event log.
         :type comment: unicode
@@ -396,7 +420,7 @@ class MachineHandler(NodeHandler):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
-            # Nothing to do if this node is already releasing, otherwise
+            # Nothing to do if this machine is already releasing, otherwise
             # this may be a redundant retry, and the
             # postcondition is achieved, so call this success.
             pass
@@ -536,7 +560,7 @@ class MachineHandler(NodeHandler):
 
         If the default gateways need to be specific for this machine you can
         set which interface and subnet's gateway to use when this machine is
-        deployed with the `node-interfaces set-default-gateway` API.
+        deployed with the `interfaces set-default-gateway` API.
 
         Returns 404 if the machine could not be found.
         Returns 403 if the user does not have permission to clear the default
@@ -579,17 +603,17 @@ class MachineHandler(NodeHandler):
         user is not one.
 
         This returns the power parameters, if any, configured for a
-        node. For some types of power control this will include private
+        machine. For some types of power control this will include private
         information such as passwords and secret keys.
 
-        Returns 404 if the node is not found.
+        Returns 404 if the machine is not found.
         """
         machine = get_object_or_404(self.model, system_id=system_id)
         return machine.power_parameters
 
     @operation(idempotent=True)
     def query_power_state(self, request, system_id):
-        """Query the power state of a node.
+        """Query the power state of a machine.
 
         Send a request to the machine's power controller which asks it about
         the machine's state.  The reply to this could be delayed by up to
@@ -663,7 +687,7 @@ def create_machine(request):
 
     The machine will be in the New state.
 
-    :param request: The http request for this node to be created.
+    :param request: The http request for this machine to be created.
     :return: A `Machine`.
     :rtype: :class:`maasserver.models.Machine`.
     :raises: ValidationError
@@ -710,7 +734,7 @@ def create_machine(request):
             raise MAASAPIValidationError(
                 'min_hwe_kernel must be in the form of hwe-<LETTER>.')
 
-    Form = get_node_create_form(request.user)
+    Form = get_machine_create_form(request.user)
     form = Form(data=altered_query_data, request=request)
     if form.is_valid():
         machine = form.save()
@@ -745,18 +769,33 @@ class AnonMachinesHandler(AnonNodesHandler):
         :param architecture: A string containing the architecture type of
             the machine. (For example, "i386", or "amd64".) To determine the
             supported architectures, use the boot-resources endpoint.
+        :type architecture: unicode
+
         :param min_hwe_kernel: A string containing the minimum kernel version
             allowed to be ran on this machine.
+        :type min_hwe_kernel: unicode
+
         :param subarchitecture: A string containing the subarchitecture type
             of the machine. (For example, "generic" or "hwe-t".) To determine
             the supported subarchitectures, use the boot-resources endpoint.
+        :type subarchitecture: unicode
+
         :param mac_addresses: One or more MAC addresses for the machine. To
             specify more than one MAC address, the parameter must be specified
             twice. (such as "machines new mac_addresses=01:02:03:04:05:06
             mac_addresses=02:03:04:05:06:07")
+        :type mac_addresses: unicode
+
         :param hostname: A hostname. If not given, one will be generated.
+        :type hostname: unicode
+
+        :param domain: The domain of the machine. If not given the default
+            domain is used.
+        :type domain: unicode
+
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
+        :type power_type:unicode
         """
         return create_machine(request)
 
@@ -774,7 +813,7 @@ class AnonMachinesHandler(AnonNodesHandler):
 
 
 class MachinesHandler(NodesHandler):
-    """Manage the collection of all the nodes in the MAAS."""
+    """Manage the collection of all the machines in the MAAS."""
     api_doc_section_name = "Machines"
     anonymous = AnonMachinesHandler
     base_model = Machine
@@ -798,18 +837,33 @@ class MachinesHandler(NodesHandler):
         :param architecture: A string containing the architecture type of
             the machine. (For example, "i386", or "amd64".) To determine the
             supported architectures, use the boot-resources endpoint.
+        :type architecture: unicode
+
         :param min_hwe_kernel: A string containing the minimum kernel version
             allowed to be ran on this machine.
+        :type min_hwe_kernel: unicode
+
         :param subarchitecture: A string containing the subarchitecture type
             of the machine. (For example, "generic" or "hwe-t".) To determine
             the supported subarchitectures, use the boot-resources endpoint.
+        :type subarchitecture: unicode
+
         :param mac_addresses: One or more MAC addresses for the machine. To
             specify more than one MAC address, the parameter must be specified
             twice. (such as "machines new mac_addresses=01:02:03:04:05:06
             mac_addresses=02:03:04:05:06:07")
+        :type mac_addresses: unicode
+
         :param hostname: A hostname. If not given, one will be generated.
+        :type hostname: unicode
+
+        :param domain: The domain of the machine. If not given the default
+            domain is used.
+        :type domain: unicode
+
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
+        :type power_type: unicode
         """
         machine = create_machine(request)
         if request.user.is_superuser:
@@ -857,7 +911,7 @@ class MachinesHandler(NodesHandler):
         Returns 403 if the user is not an admin.
         """
         system_ids = set(request.POST.getlist('machines'))
-        # Check the existence of these nodes first.
+        # Check the existence of these machines first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
         machines = self.base_model.objects.get_nodes(
@@ -1045,7 +1099,7 @@ class MachinesHandler(NodesHandler):
             if machine is None:
                 constraints = form.describe_constraints()
                 if constraints == '':
-                    # No constraints. That means no nodes at all were
+                    # No constraints. That means no machines at all were
                     # available.
                     message = "No machine available."
                 else:
@@ -1140,7 +1194,7 @@ class MachinesHandler(NodesHandler):
             chassis types.
         :type password: unicode
 
-        :param accept_all: If true, all enlisted nodes will be
+        :param accept_all: If true, all enlisted machines will be
             commissioned.
         :type accept_all: unicode
 
@@ -1148,6 +1202,9 @@ class MachinesHandler(NodesHandler):
             the add chassis command through. If none is specifed MAAS will
             automatically determine the rack controller to use.
         :type rack_controller: unicode
+
+        :param domain: The domain that each new machine added should use.
+        :type domain: unicode
 
         The following are optional if you are adding a virsh, vmware, or
         powerkvm chassis:
@@ -1242,6 +1299,19 @@ class MachinesHandler(NodesHandler):
                 chassis_type, content_type=(
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
+        # If given a domain make sure it exists first
+        domain_name = get_optional_param(request.POST, 'domain')
+        if domain_name is not None:
+            try:
+                domain = Domain.objects.get(id=int(domain_name))
+            except ValueError:
+                try:
+                    domain = Domain.objects.get(name=domain_name)
+                except Domain.DoesNotExist:
+                    return HttpResponseNotFound(
+                        "Unable to find specified domain %s" % domain_name)
+            domain_name = domain.name
+
         rack_controller = get_optional_param(request.POST, 'rack_controller')
         if rack_controller is None:
             rack = RackController.objects.get_accessible_by_url(hostname)
@@ -1262,7 +1332,8 @@ class MachinesHandler(NodesHandler):
 
         rack.add_chassis(
             request.user.username, chassis_type, hostname, username, password,
-            accept_all, prefix_filter, power_control, port, protocol)
+            accept_all, domain_name, prefix_filter, power_control, port,
+            protocol)
 
         return HttpResponse(
             "Asking %s to add machines from chassis %s" % (

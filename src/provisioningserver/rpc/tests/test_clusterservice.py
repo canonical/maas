@@ -1881,6 +1881,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         hostname = factory.make_hostname()
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -1888,12 +1889,14 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'hostname': hostname,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'prefix_filter': prefix_filter,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_virsh_and_enlist,
-                user, hostname, password, prefix_filter, accept_all))
+                user, hostname, password, prefix_filter, accept_all,
+                domain))
 
     def test_chassis_type_powerkvm_calls_probe_virsh_and_enlist(self):
         mock_deferToThread = self.patch_autospec(
@@ -1902,6 +1905,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         hostname = factory.make_hostname()
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -1909,12 +1913,14 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'hostname': hostname,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'prefix_filter': prefix_filter,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_virsh_and_enlist,
-                user, hostname, password, prefix_filter, accept_all))
+                user, hostname, password, prefix_filter, accept_all,
+                domain))
 
     def test_chassis_type_virsh_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -1926,6 +1932,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         hostname = factory.make_hostname()
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -1933,6 +1940,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'hostname': hostname,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'prefix_filter': prefix_filter,
             })
         self.assertThat(
@@ -1949,6 +1957,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         port = random.choice([80, 443, 8080, 8443])
         protocol = random.choice(["http", "https"])
@@ -1959,6 +1968,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'prefix_filter': prefix_filter,
             'port': port,
             'protocol': protocol,
@@ -1967,7 +1977,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_vmware_and_enlist,
                 user, hostname, username, password, port,
-                protocol, prefix_filter, accept_all))
+                protocol, prefix_filter, accept_all, domain))
 
     def test_chassis_type_vmware_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -1980,6 +1990,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         prefix_filter = factory.make_name('prefix_filter')
         port = random.choice([80, 443, 8080, 8443])
         protocol = random.choice(["http", "https"])
@@ -1990,6 +2001,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'prefix_filter': prefix_filter,
             'port': port,
             'protocol': protocol,
@@ -2008,6 +2020,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         power_control = random.choice(['ipmi', 'restapi', 'restapi2'])
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -2016,12 +2029,13 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'power_control': power_control,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_seamicro15k_and_enlist, user, hostname,
-                username, password, power_control, accept_all))
+                username, password, power_control, accept_all, domain))
 
     def test_chassis_type_seamicro15k_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -2034,6 +2048,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         power_control = random.choice(['ipmi', 'restapi', 'restapi2'])
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -2042,6 +2057,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'power_control': power_control,
             })
         self.assertThat(
@@ -2058,6 +2074,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
             'chassis_type': 'mscm',
@@ -2065,11 +2082,12 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_and_enlist_mscm, user, hostname,
-                username, password, accept_all))
+                username, password, accept_all, domain))
 
     def test_chassis_type_mscm_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -2082,6 +2100,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
             'chassis_type': 'mscm',
@@ -2089,6 +2108,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             })
         self.assertThat(
             clusterservice.maaslog.error,
@@ -2104,6 +2124,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         port = randint(2000, 4000)
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -2112,12 +2133,13 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'port': port,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_and_enlist_msftocs, user, hostname, port,
-                username, password, accept_all))
+                username, password, accept_all, domain))
 
     def test_chassis_type_msftocs_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -2130,6 +2152,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         port = randint(2000, 4000)
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
@@ -2138,6 +2161,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             'port': port,
             })
         self.assertThat(
@@ -2154,6 +2178,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
             'chassis_type': 'ucsm',
@@ -2161,11 +2186,12 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             })
         self.assertThat(
             mock_deferToThread, MockCalledOnceWith(
                 clusterservice.probe_and_enlist_ucsm, user, hostname,
-                username, password, accept_all))
+                username, password, accept_all, domain))
 
     def test_chassis_type_ucsm_logs_error_to_maaslog(self):
         fake_error = factory.make_name('error')
@@ -2178,6 +2204,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         username = factory.make_name('username')
         password = factory.make_name('password')
         accept_all = factory.pick_bool()
+        domain = factory.make_name('domain')
         call_responder(Cluster(), cluster.AddChassis, {
             'user': user,
             'chassis_type': 'ucsm',
@@ -2185,6 +2212,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'username': username,
             'password': password,
             'accept_all': accept_all,
+            'domain': domain,
             })
         self.assertThat(
             clusterservice.maaslog.error,

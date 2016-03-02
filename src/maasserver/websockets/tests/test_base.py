@@ -9,8 +9,8 @@ from operator import attrgetter
 
 from django.db.models.query import QuerySet
 from maasserver.forms import (
-    AdminNodeForm,
-    AdminNodeWithMACAddressesForm,
+    AdminMachineForm,
+    AdminMachineWithMACAddressesForm,
 )
 from maasserver.models.node import Node
 from maasserver.models.zone import Zone
@@ -446,7 +446,7 @@ class TestHandler(MAASServerTestCase):
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'],
-            form=AdminNodeWithMACAddressesForm)
+            form=AdminMachineWithMACAddressesForm)
         json_obj = handler.create({
             "hostname": hostname,
             "architecture": arch,
@@ -464,7 +464,7 @@ class TestHandler(MAASServerTestCase):
             fields=['hostname', 'architecture'])
         self.patch(
             handler,
-            "get_form_class").return_value = AdminNodeWithMACAddressesForm
+            "get_form_class").return_value = AdminMachineWithMACAddressesForm
         json_obj = handler.create({
             "hostname": hostname,
             "architecture": arch,
@@ -495,7 +495,7 @@ class TestHandler(MAASServerTestCase):
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(
             fields=['hostname', 'architecture'],
-            form=AdminNodeWithMACAddressesForm)
+            form=AdminMachineWithMACAddressesForm)
         self.assertRaises(
             HandlerValidationError, handler.create, {
                 "hostname": hostname,
@@ -521,7 +521,7 @@ class TestHandler(MAASServerTestCase):
         node = factory.make_Node(architecture=arch)
         hostname = factory.make_name("hostname")
         handler = self.make_nodes_handler(
-            fields=['hostname'], form=AdminNodeForm)
+            fields=['hostname'], form=AdminMachineForm)
         json_obj = handler.update({
             "system_id": node.system_id,
             "hostname": hostname,
@@ -539,7 +539,7 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler(fields=['hostname'])
         self.patch(
             handler,
-            "get_form_class").return_value = AdminNodeForm
+            "get_form_class").return_value = AdminMachineForm
         json_obj = handler.update({
             "system_id": node.system_id,
             "hostname": hostname,

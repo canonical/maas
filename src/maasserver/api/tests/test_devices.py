@@ -13,7 +13,10 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.models import Device
+from maasserver.models import (
+    Device,
+    Domain,
+)
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -72,6 +75,48 @@ class TestDevicesAPI(APITestCase):
         self.assertEquals(parent, device.parent)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
 
+    def test_POST_creates_device_with_default_domain(self):
+        hostname = factory.make_name('host')
+        macs = {
+            factory.make_mac_address()
+            for _ in range(random.randint(1, 2))
+        }
+        response = self.client.post(
+            reverse('devices_handler'),
+            {
+                'hostname': hostname,
+                'mac_addresses': macs,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        system_id = json_load_bytes(response.content)['system_id']
+        device = Device.objects.get(system_id=system_id)
+        self.assertEquals(hostname, device.hostname)
+        self.assertEquals(Domain.objects.get_default_domain(), device.domain)
+        self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
+
+    def test_POST_creates_device_with_domain(self):
+        hostname = factory.make_name('host')
+        domain = factory.make_Domain()
+        macs = {
+            factory.make_mac_address()
+            for _ in range(random.randint(1, 2))
+        }
+        response = self.client.post(
+            reverse('devices_handler'),
+            {
+                'hostname': hostname,
+                'mac_addresses': macs,
+                'domain': domain.name,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        system_id = json_load_bytes(response.content)['system_id']
+        device = Device.objects.get(system_id=system_id)
+        self.assertEquals(hostname, device.hostname)
+        self.assertEquals(domain, device.domain)
+        self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
+
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
             reverse('devices_handler'),
@@ -83,6 +128,8 @@ class TestDevicesAPI(APITestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
+                'fqdn',
                 'owner',
                 'system_id',
                 'macaddress_set',
@@ -162,6 +209,8 @@ class TestDevicesAPI(APITestCase):
         self.assertItemsEqual(
             [
                 'hostname',
+                'domain',
+                'fqdn',
                 'owner',
                 'system_id',
                 'macaddress_set',
@@ -195,7 +244,7 @@ class TestDeviceAPI(APITestCase):
 
         response = self.client.post(get_device_uri(device))
         self.assertEqual(
-            http.client.METHOD_NOT_ALLOWED, response.status_code,
+            http.client.BAD_REQUEST, response.status_code,
             response.content)
 
     def test_GET_reads_device(self):
