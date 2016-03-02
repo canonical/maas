@@ -199,3 +199,7 @@ class PowerProblem(MAASAPIException):
     information.
     """
     api_error = int(http.client.SERVICE_UNAVAILABLE)
+
+
+class DHCPConfigurationError(MAASException):
+    """Raised when the configuration of DHCP hits a problem."""

@@ -25,21 +25,21 @@ TEMPLATES_DIR = "templates/dhcp"
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = """
 {{behaviour}} option arch = {{arch_octet}} {
-          filename \"{{bootloader}}\";
-          {{if path_prefix}}
-          option path-prefix \"{{path_prefix}}\";
-          {{endif}}
-       }
+    filename \"{{bootloader}}\";
+    {{if path_prefix}}
+    option path-prefix \"{{path_prefix}}\";
+    {{endif}}
+}
 """
 
 # Used to generate the PXEBootLoader special case
 PXE_BOOTLOADER = """
 else {
-          filename \"{{bootloader}}\";
-          {{if path_prefix}}
-          option path-prefix \"{{path_prefix}}\";
-          {{endif}}
-       }
+    filename \"{{bootloader}}\";
+    {{if path_prefix}}
+    option path-prefix \"{{path_prefix}}\";
+    {{endif}}
+}
 """
 
 

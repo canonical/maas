@@ -18,8 +18,8 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import (
     make_failover_peer_config,
-    make_subnet_config,
-    make_subnet_host,
+    make_host,
+    make_shared_network,
 )
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
@@ -38,45 +38,50 @@ sample_template = dedent("""\
         {{failover_peer['address']}}
         {{failover_peer['peer_address']}}
     {{endfor}}
-    {{for dhcp_subnet in dhcp_subnets}}
-        {{dhcp_subnet['subnet']}}
-        {{dhcp_subnet['interface']}}
-        {{dhcp_subnet['subnet_mask']}}
-        {{dhcp_subnet['broadcast_ip']}}
-        {{dhcp_subnet['dns_servers']}}
-        {{dhcp_subnet['domain_name']}}
-        {{dhcp_subnet['router_ip']}}
-        {{for pool in dhcp_subnet['pools']}}
-            {{pool['ip_range_low']}}
-            {{pool['ip_range_high']}}
-            {{pool['failover_peer']}}
+    {{for shared_network in shared_networks}}
+        {{shared_network['name']}}
+        {{for dhcp_subnet in shared_network['subnets']}}
+            {{dhcp_subnet['subnet']}}
+            {{dhcp_subnet['subnet_mask']}}
+            {{dhcp_subnet['broadcast_ip']}}
+            {{dhcp_subnet['dns_servers']}}
+            {{dhcp_subnet['domain_name']}}
+            {{dhcp_subnet['router_ip']}}
+            {{for pool in dhcp_subnet['pools']}}
+                {{pool['ip_range_low']}}
+                {{pool['ip_range_high']}}
+                {{pool['failover_peer']}}
+            {{endfor}}
         {{endfor}}
-        {{for host in dhcp_subnet['hosts']}}
-            {{host['host']}}
-            {{host['mac']}}
-            {{host['ip']}}
-        }
-        {{endfor}}
+    {{endfor}}
+    {{for host in hosts}}
+        {{host['host']}}
+        {{host['mac']}}
+        {{host['ip']}}
     {{endfor}}
 """)
 
 
-def make_sample_params(network=None, hosts=None, failover_peers=None):
+def make_sample_params(hosts=None):
     """Return a dict of arbitrary DHCP configuration parameters."""
-    if network is None:
-        if factory.pick_bool():
-            network = factory.make_ipv4_network()
-        else:
-            network = factory.make_ipv6_network()
-    if failover_peers is None:
-        failover_peers = [
-            make_failover_peer_config()
+    failover_peers = [
+        make_failover_peer_config()
+        for _ in range(3)
+    ]
+    shared_networks = [
+        make_shared_network()
+        for _ in range(3)
+    ]
+    if hosts is None:
+        hosts = [
+            make_host()
             for _ in range(3)
         ]
     return {
         'omapi_key': factory.make_name('key'),
         'failover_peers': failover_peers,
-        'dhcp_subnets': [make_subnet_config(network, hosts=hosts)],
+        'shared_networks': shared_networks,
+        'hosts': hosts,
         }
 
 
@@ -117,19 +122,10 @@ class TestGetConfig(PservTestCase):
             template.substitute(params),
             config.get_config(template_name, **params))
 
-    def test__quotes_interface(self):
-        # The interface name doesn't normally need to be quoted, but the
-        # template does quote it, in case it contains dots or other weird
-        # but legal characters (bug 1306335).
-        params = make_sample_params()
-        self.assertIn(
-            'interface "%s";' % params['dhcp_subnets'][0]['interface'],
-            config.get_config('dhcpd.conf.template', **params))
-
     def test__complains_if_too_few_parameters(self):
         template = self.patch_template()
         params = make_sample_params()
-        del params['dhcp_subnets'][0]['subnet']
+        del params['shared_networks'][0]['subnets'][0]['subnet']
 
         e = self.assertRaises(
             config.DHCPConfigError,
@@ -164,7 +160,9 @@ class TestGetConfig(PservTestCase):
 
     def test__renders_without_ntp_servers_set(self):
         params = make_sample_params()
-        del params['dhcp_subnets'][0]['ntp_server']
+        for network in params['shared_networks']:
+            for subnet in network['subnets']:
+                del subnet['ntp_server']
         template = self.patch_template()
         rendered = template.substitute(params)
         self.assertEqual(
@@ -175,14 +173,16 @@ class TestGetConfig(PservTestCase):
     def test__renders_router_ip_if_present(self):
         params = make_sample_params()
         router_ip = factory.make_ipv4_address()
-        params['dhcp_subnets'][0]['router_ip'] = router_ip
+        params['shared_networks'][0]['subnets'][0]['router_ip'] = router_ip
         self.assertThat(
             config.get_config('dhcpd.conf.template', **params),
             Contains(router_ip))
 
     def test__renders_with_empty_string_router_ip(self):
         params = make_sample_params()
-        params['dhcp_subnets'][0]['router_ip'] = ''
+        for network in params['shared_networks']:
+            for subnet in network['subnets']:
+                subnet['router_ip'] = ''
         template = self.patch_template()
         rendered = template.substitute(params)
         self.assertEqual(
@@ -193,10 +193,10 @@ class TestGetConfig(PservTestCase):
     def test__renders_with_hosts(self):
         network = factory.make_ipv4_network()
         hosts = [
-            make_subnet_host(network)
+            make_host(network)
             for _ in range(3)
         ]
-        params = make_sample_params(network, hosts)
+        params = make_sample_params(hosts)
         config_output = config.get_config('dhcpd.conf.template', **params)
         self.assertThat(
             config_output,

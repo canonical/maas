@@ -16,7 +16,10 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.exceptions import UnresolvableHost
+from maasserver.exceptions import (
+    DHCPConfigurationError,
+    UnresolvableHost,
+)
 from maasserver.models import (
     Config,
     Domain,
@@ -25,6 +28,7 @@ from maasserver.models import (
 from maasserver.rpc import getClientFor
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from netaddr import IPAddress
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
@@ -86,26 +90,52 @@ def get_best_interface(interfaces):
     return best_interface
 
 
-def get_best_interface_for_subnet(rack_controller, subnet):
-    """Return best `Interface` for `rack_controller` that has access to
-    `subnet`."""
-    return get_best_interface(
-        rack_controller.interface_set.filter(
-            vlan__subnet=subnet).order_by('id'))
+def ip_is_version(ip_address, ip_version):
+    """Return True if `ip_address` is the same IP version as `ip_version`."""
+    return (
+        ip_address.ip is not None and
+        ip_address.ip != "" and
+        IPAddress(ip_address.ip).version == ip_version)
 
 
-def get_managed_subnets_for(rack_controller):
-    """Return list of `Subnet` for the `rack_controller`."""
-    # Get all subnets that are managed by this rack controller.
+def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
+    """Return a list of interfaces that have an assigned IP address on `vlan`.
+
+    The assigned IP address needs to be of same `ip_version`. Only a list of
+    STICKY or AUTO addresses will be returned, unless none exists which will
+    fallback to DISCOVERED addresses.
+    """
+    interfaces_with_static = []
+    interfaces_with_discovered = []
+    for interface in rack_controller.interface_set.all().prefetch_related(
+            "ip_addresses__subnet__vlan"):
+        for ip_address in interface.ip_addresses.all():
+            if ip_address.alloc_type in [
+                    IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY]:
+                if ip_is_version(ip_address, ip_version):
+                    interfaces_with_static.append(interface)
+                    break
+            elif ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
+                if ip_is_version(ip_address, ip_version):
+                    interfaces_with_discovered.append(interface)
+                    break
+    if len(interfaces_with_static) > 0:
+        return interfaces_with_static
+    else:
+        return interfaces_with_discovered
+
+
+def get_managed_vlans_for(rack_controller):
+    """Return list of `VLAN` for the `rack_controller` when DHCP is enabled and
+    `rack_controller` is either the `primary_rack` or the `secondary_rack`.
+    """
     interfaces = rack_controller.interface_set.filter(
         Q(vlan__dhcp_on=True) & (
             Q(vlan__primary_rack=rack_controller) |
-            Q(vlan__secondary_rack=rack_controller)))
-    interfaces = interfaces.prefetch_related("vlan__subnet_set")
+            Q(vlan__secondary_rack=rack_controller))).select_related("vlan")
     return {
-        subnet
+        interface.vlan
         for interface in interfaces
-        for subnet in interface.vlan.subnet_set.all()
     }
 
 
@@ -221,13 +251,11 @@ def make_subnet_config(
         failover_peer=None):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
-    interface = get_best_interface_for_subnet(rack_controller, subnet)
     return {
         'subnet': str(ip_network.network),
         'subnet_mask': str(ip_network.netmask),
         'subnet_cidr': str(ip_network.cidr),
         'broadcast_ip': str(ip_network.broadcast),
-        'interface': interface.name,
         'router_ip': (
             '' if not subnet.gateway_ip
             else str(subnet.gateway_ip)),
@@ -235,7 +263,6 @@ def make_subnet_config(
         'ntp_server': ntp_server,
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
-        'hosts': make_hosts_for_subnet(subnet),
         }
 
 
@@ -260,7 +287,7 @@ def make_failover_peer_config(vlan, rack_controller):
 
 
 def get_dhcp_configure_for(
-        ip_version, rack_controller, subnets, ntp_server, domain):
+        ip_version, rack_controller, vlan, subnets, ntp_server, domain):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
@@ -273,27 +300,34 @@ def get_dhcp_configure_for(
         # that becomes the empty string.
         dns_servers = ''
 
-    # Generate the failover peers and the subnet configuration.
-    failover_peers = {}
-    subnet_configs = []
-    for subnet in subnets:
-        peer_name = None
-        if subnet.vlan.secondary_rack_id is not None:
-            if subnet.vlan not in failover_peers:
-                peer_name, peer_config = make_failover_peer_config(
-                    subnet.vlan, rack_controller)
-                failover_peers[subnet.vlan] = (peer_name, peer_config)
-            else:
-                (peer_name, peer_config) = failover_peers[subnet.vlan]
+    # Select the best interface for this VLAN. This is an interface that
+    # at least has an IP address.
+    interfaces = get_interfaces_with_ip_on_vlan(
+        rack_controller, vlan, ip_version)
+    interface = get_best_interface(interfaces)
+    if interface is None:
+        raise DHCPConfigurationError(
+            "No interface on rack controller '%s' has an IP address on any "
+            "subnet on VLAN '%s.%d'." % (
+                rack_controller.hostname, vlan.fabric.name, vlan.vid))
 
-        subnet_config = make_subnet_config(
-            rack_controller, subnet, dns_servers, ntp_server,
-            domain, peer_name)
-        subnet_configs.append(subnet_config)
-    return [
-        config
-        for _, config in failover_peers.values()
-    ], subnet_configs
+    # Generate the failover peer for this VLAN.
+    if vlan.secondary_rack_id is not None:
+        peer_name, peer_config = make_failover_peer_config(
+            vlan, rack_controller)
+    else:
+        peer_name, peer_config = None, None
+
+    # Generate the shared network configurations and hosts for all subnets.
+    subnet_configs = []
+    hosts = []
+    for subnet in subnets:
+        subnet_configs.append(
+            make_subnet_config(
+                rack_controller, subnet, dns_servers, ntp_server,
+                domain, peer_name))
+        hosts.extend(make_hosts_for_subnet(subnet))
+    return peer_config, subnet_configs, hosts, interface.name
 
 
 @synchronous
@@ -301,23 +335,58 @@ def get_dhcp_configure_for(
 def get_dhcp_configuration(rack_controller):
     """Return tuple with IPv4 and IPv6 configurations for the
     rack controller."""
-    # Get list of all subnets that are being managed by the rack controller.
-    subnets = get_managed_subnets_for(rack_controller)
+    # Get list of all vlans that are being managed by the rack controller.
+    vlans = get_managed_vlans_for(rack_controller)
 
-    # Split the subnets into IPv4 and IPv6 subnets.
-    subnets_v4, subnets_v6 = split_ipv4_ipv6_subnets(subnets)
+    # Group the subnets on each VLAN into IPv4 and IPv6 subnets.
+    vlan_subnets = {
+        vlan: split_ipv4_ipv6_subnets(vlan.subnet_set.all())
+        for vlan in vlans
+    }
 
     # Configure both DHCPv4 and DHCPv6 on the rack controller.
+    failover_peers_v4 = []
+    shared_networks_v4 = []
+    hosts_v4 = []
+    interfaces_v4 = set()
+    failover_peers_v6 = []
+    shared_networks_v6 = []
+    hosts_v6 = []
+    interfaces_v6 = set()
     ntp_server = Config.objects.get_config("ntp_server")
     default_domain = Domain.objects.get_default_domain()
-    failover_peers_v4, subnets_v4 = get_dhcp_configure_for(
-        4, rack_controller, subnets_v4, ntp_server, default_domain)
-    failover_peers_v6, subnets_v6 = get_dhcp_configure_for(
-        6, rack_controller, subnets_v6, ntp_server, default_domain)
+    for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
+        # IPv4
+        if len(subnets_v4) > 0:
+            failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
+                4, rack_controller, vlan, subnets_v4,
+                ntp_server, default_domain)
+            if failover_peer is not None:
+                failover_peers_v4.append(failover_peer)
+            shared_networks_v4.append({
+                "name": "vlan-%d" % vlan.id,
+                "subnets": subnets,
+            })
+            hosts_v4.extend(hosts)
+            interfaces_v4.add(interface)
+
+        # IPv6
+        if len(subnets_v6) > 0:
+            failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
+                6, rack_controller, vlan, subnets_v6,
+                ntp_server, default_domain)
+            if failover_peer is not None:
+                failover_peers_v6.append(failover_peer)
+            shared_networks_v6.append({
+                "name": "vlan-%d" % vlan.id,
+                "subnets": subnets,
+            })
+            hosts_v6.extend(hosts)
+            interfaces_v6.add(interface)
     return (
         get_omapi_key(),
-        failover_peers_v4, subnets_v4,
-        failover_peers_v6, subnets_v6)
+        failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+        failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6)
 
 
 @asynchronous
@@ -340,14 +409,27 @@ def configure_dhcp(rack_controller):
     client = yield getClientFor(rack_controller.system_id)
 
     # Get configuration for both IPv4 and IPv6.
-    omapi_key, failover_peers_v4, subnets_v4, failover_peers_v6, subnets_v6 = (
+    (omapi_key, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+     failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6) = (
         yield deferToDatabase(
             get_dhcp_configuration, rack_controller))
+
+    # Fix interfaces to go over the wire.
+    interfaces_v4 = [
+        {"name": name}
+        for name in interfaces_v4
+    ]
+    interfaces_v6 = [
+        {"name": name}
+        for name in interfaces_v6
+    ]
 
     # Configure both IPv4 and IPv6.
     yield client(
         ConfigureDHCPv4, omapi_key=omapi_key,
-        failover_peers=failover_peers_v4, subnet_configs=subnets_v4)
+        failover_peers=failover_peers_v4, shared_networks=shared_networks_v4,
+        hosts=hosts_v4, interfaces=interfaces_v4)
     yield client(
         ConfigureDHCPv6, omapi_key=omapi_key,
-        failover_peers=failover_peers_v6, subnet_configs=subnets_v6)
+        failover_peers=failover_peers_v6, shared_networks=shared_networks_v6,
+        hosts=hosts_v6, interfaces=interfaces_v6)

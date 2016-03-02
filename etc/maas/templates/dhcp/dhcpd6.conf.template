@@ -1,69 +1,83 @@
-# WARNING: Do not edit /var/lib/maas/dhcpd6.conf yourself.  MAAS will overwrite any
+# WARNING: Do not edit /var/lib/maas/dhcpd.conf yourself.  MAAS will overwrite any
 # changes made there.
 #
-# Instead, edit /etc/maas/templates/dhcp/dhcpd6.conf.template and your changes
+# Instead, edit /etc/maas/templates/dhcp/dhcpd.conf.template and your changes
 # will be present whenever MAAS rewrites the DHCP configuration.  Update and save
 # the cluster's configuration in MAAS to trigger an update to this file.
 
 option arch code 93 = unsigned integer 16; # RFC4578
 option path-prefix code 210 = text; #RFC5071
 
+#
+# Bootloaders
+#
+{{bootloader}}
+
+#
+# Failover Peers
+#
 {{for failover_peer in failover_peers}}
 failover peer "{{failover_peer["name"]}}" {
-       {{failover_peer["mode"]}};
-       address {{failover_peer["address"]}};
-       peer address {{failover_peer["peer_address"]}};
-       max-response-delay 60;
-       max-unacked-updates 10;
-       load balance max seconds 3;
-       {{if failover_peer["mode"] == "primary"}}
-       mclt 3600;
-       split 255;
-       {{endif}}
+   {{failover_peer["mode"]}};
+   address {{failover_peer["address"]}};
+   peer address {{failover_peer["peer_address"]}};
+   max-response-delay 60;
+   max-unacked-updates 10;
+   load balance max seconds 3;
+   {{if failover_peer["mode"] == "primary"}}
+   mclt 3600;
+   split 255;
+   {{endif}}
 }
 {{endfor}}
 
-{{for dhcp_subnet in dhcp_subnets}}
-subnet6 {{dhcp_subnet['subnet_cidr']}} {
-       {{bootloader}}
-       interface "{{dhcp_subnet['interface']}}";
-       ignore-client-uids true;
-       {{if dhcp_subnet.get('dns_servers')}}
-       option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};
-       {{endif}}
-       option domain-name "{{dhcp_subnet['domain_name']}}";
-       # DHCPv6 does not have a router option (although there has been a
-       # draft proposal for one).  Clients should get their routes from route
-       # advertisements, or use custom options configured into both the server
-       # and the client:
-       # http://www.isc.org/blogs/routing-configuration-over-dhcpv6-2/
-       #
-       #option routers {{dhcp_subnet['router_ip']}};
-       {{if dhcp_subnet.get('ntp_server')}}
-       option ntp-servers {{dhcp_subnet['ntp_server']}};
-       {{endif}}
+#
+# Networks
+#
+{{for shared_network in shared_networks}}
+shared-network {{shared_network["name"]}} {
+    {{for dhcp_subnet in shared_network["subnets"]}}
+    subnet6 {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
+           ignore-client-uids true;
+           {{if dhcp_subnet.get('dns_servers')}}
+           option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};
+           {{endif}}
+           option domain-name "{{dhcp_subnet['domain_name']}}";
+           # DHCPv6 does not have a router option (although there has been a
+           # draft proposal for one).  Clients should get their routes from
+           # route advertisements, or use custom options configured into both
+           # the server and the client:
+           # http://www.isc.org/blogs/routing-configuration-over-dhcpv6-2/
+           #
+           #option routers {{dhcp_subnet['router_ip']}};
+           {{if dhcp_subnet.get('ntp_server')}}
+           option ntp-servers {{dhcp_subnet['ntp_server']}};
+           {{endif}}
 
-       {{for pool in dhcp_subnet['pools']}}
-       pool6 {
-          {{if pool.get('failover_peer')}}
-          failover peer "{{pool['failover_peer']}}";
-          {{endif}}
-          range6 {{pool['ip_range_low']}} {{pool['ip_range_high']}};
-       }
-       {{endfor}}
-
-       {{if dhcp_subnet.get('hosts')}}
-       {{for host in dhcp_subnet['hosts']}}
-       host {{host['host']}} {
-          hardware ethernet {{host['mac']}};
-          fixed-address {{host['ip']}};
-       }
-       {{endfor}}
-       {{endif}}
+           {{for pool in dhcp_subnet['pools']}}
+           pool6 {
+              {{if pool.get('failover_peer')}}
+              failover peer "{{pool['failover_peer']}}";
+              {{endif}}
+              range6 {{pool['ip_range_low']}} {{pool['ip_range_high']}};
+           }
+           {{endfor}}
+    }
+    {{endfor}}
 }
 {{endfor}}
 
-omapi-port 7912;
+#
+# Hosts
+#
+{{for host in hosts}}
+host {{host['host']}} {
+   hardware ethernet {{host['mac']}};
+   fixed-address6 {{host['ip']}};
+}
+{{endfor}}
+
+omapi-port 7911;
 key omapi_key {
     algorithm HMAC-MD5;
     secret "{{omapi_key}}";

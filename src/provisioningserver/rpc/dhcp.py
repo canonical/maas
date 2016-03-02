@@ -35,17 +35,20 @@ maaslog = get_maas_logger("dhcp")
 
 
 @synchronous
-def configure(server, failover_peers, subnet_configs):
+def configure(server, failover_peers, shared_networks, hosts, interfaces):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
     :param server: A `DHCPServer` instance.
     :param failover_peers: List of dicts with failover parameters for each
         subnet where HA is enabled.
-    :param subnet_configs: List of dicts with subnet parameters for each
-        subnet for which the DHCP server should serve DHCP. If no subnets
-        are defined, the DHCP server will be stopped.
+    :param shared_networks: List of dicts with shared network parameters that
+        contain a list of subnets when the DHCP should server shared.
+        If no shared network are defined, the DHCP server will be stopped.
+    :param hosts: List of dicts with host parameters that
+        contain a list of hosts the DHCP should statically.
+    :param interfaces: List of interfaces that DHCP should use.
     """
-    stopping = len(subnet_configs) == 0
+    stopping = len(shared_networks) == 0
 
     if stopping:
         if os.path.exists(server.config_filename):
@@ -71,8 +74,12 @@ def configure(server, failover_peers, subnet_configs):
     else:
         dhcpd_config = get_config(
             server.template_basename, omapi_key=server.omapi_key,
-            failover_peers=failover_peers, dhcp_subnets=subnet_configs)
-        interfaces = {subnet['interface'] for subnet in subnet_configs}
+            failover_peers=failover_peers, shared_networks=shared_networks,
+            hosts=hosts)
+        interfaces = {
+            interface['name']
+            for interface in interfaces
+        }
         interfaces_config = ' '.join(sorted(interfaces))
         try:
             sudo_write_file(

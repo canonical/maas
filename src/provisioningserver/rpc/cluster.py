@@ -286,26 +286,31 @@ class _ConfigureDHCP(amp.Command):
             (b"address", amp.Unicode()),
             (b"peer_address", amp.Unicode()),
             ])),
-        (b"subnet_configs", AmpList([
-            (b"subnet", amp.Unicode()),
-            (b"subnet_mask", amp.Unicode()),
-            (b"subnet_cidr", amp.Unicode()),
-            (b"broadcast_ip", amp.Unicode()),
-            (b"interface", amp.Unicode()),
-            (b"router_ip", amp.Unicode()),
-            (b"dns_servers", amp.Unicode()),
-            (b"ntp_server", amp.Unicode()),
-            (b"domain_name", amp.Unicode()),
-            (b"pools", AmpList([
-                (b"ip_range_low", amp.Unicode()),
-                (b"ip_range_high", amp.Unicode()),
-                (b"failover_peer", amp.Unicode(optional=True)),
+        (b"shared_networks", CompressedAmpList([
+            (b"name", amp.Unicode()),
+            (b"subnets", AmpList([
+                (b"subnet", amp.Unicode()),
+                (b"subnet_mask", amp.Unicode()),
+                (b"subnet_cidr", amp.Unicode()),
+                (b"broadcast_ip", amp.Unicode()),
+                (b"router_ip", amp.Unicode()),
+                (b"dns_servers", amp.Unicode()),
+                (b"ntp_server", amp.Unicode()),
+                (b"domain_name", amp.Unicode()),
+                (b"pools", AmpList([
+                    (b"ip_range_low", amp.Unicode()),
+                    (b"ip_range_high", amp.Unicode()),
+                    (b"failover_peer", amp.Unicode(optional=True)),
+                    ])),
                 ])),
-            (b"hosts", CompressedAmpList([
-                (b"host", amp.Unicode()),
-                (b"mac", amp.Unicode()),
-                (b"ip", amp.Unicode()),
-                ])),
+            ])),
+        (b"hosts", CompressedAmpList([
+            (b"host", amp.Unicode()),
+            (b"mac", amp.Unicode()),
+            (b"ip", amp.Unicode()),
+            ])),
+        (b"interfaces", AmpList([
+            (b"name", amp.Unicode()),
             ])),
         ]
     response = []

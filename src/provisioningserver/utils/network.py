@@ -34,6 +34,7 @@ from netaddr import (
 import netifaces
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
+from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
@@ -599,10 +600,13 @@ def get_all_interfaces_definition():
     """
     interfaces = {}
     dhclient_info = get_dhclient_info()
+    exclude_types = ["loopback", "ipip"]
+    if not running_in_container():
+        exclude_types.append("ethernet")
     ipaddr_info = {
         name: ipaddr
         for name, ipaddr in get_ip_addr().items()
-        if (ipaddr["type"] not in ["ethernet", "loopback", "ipip"] and
+        if (ipaddr["type"] not in exclude_types and
             not ipaddr["type"].startswith("unknown-"))
     }
     for name, ipaddr in ipaddr_info.items():

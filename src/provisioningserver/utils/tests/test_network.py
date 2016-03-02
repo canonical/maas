@@ -764,10 +764,14 @@ class TestParseInteger(MAASTestCase):
 class TestGetAllInterfacesDefinition(MAASTestCase):
     """Tests for `get_all_interfaces_definition` and all helper methods."""
 
-    def assertInterfacesResult(self, ip_addr, dhclient_info, expected_results):
+    def assertInterfacesResult(
+            self, ip_addr, dhclient_info, expected_results,
+            in_container=False):
         self.patch(network_module, "get_ip_addr").return_value = ip_addr
         self.patch(
             network_module, "get_dhclient_info").return_value = dhclient_info
+        self.patch(
+            network_module, "running_in_container").return_value = in_container
         observed_result = get_all_interfaces_definition()
         self.assertThat(observed_result, expected_results)
 
@@ -825,6 +829,31 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }),
         })
         self.assertInterfacesResult(ip_addr, {}, expected_result)
+
+    def test__doesnt_ignore_ethernet_in_container(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.122.2/24"],
+            },
+        }
+        expected_result = MatchesDict({
+            "eth0": MatchesDict({
+                "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
+                "enabled": Is(True),
+                "parents": Equals([]),
+                "links": Equals([{
+                    "mode": "static",
+                    "address": "192.168.122.2/24",
+                }]),
+                "source": Equals("ipaddr"),
+            }),
+        })
+        self.assertInterfacesResult(
+            ip_addr, {}, expected_result, in_container=True)
 
     def test__simple_with_dhcp(self):
         ip_addr = {

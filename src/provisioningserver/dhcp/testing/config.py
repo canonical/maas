@@ -27,8 +27,8 @@ def make_subnet_pool(
     }
 
 
-def make_subnet_host(
-        network, hostname=None, interface_name=None,
+def make_host(
+        hostname=None, interface_name=None,
         mac_address=None, ip=None):
     """Return a host entry for a subnet from network."""
     if hostname is None:
@@ -38,7 +38,7 @@ def make_subnet_host(
     if mac_address is None:
         mac_address = factory.make_mac_address()
     if ip is None:
-        ip = str(factory.pick_ip_in_network(network))
+        ip = str(factory.make_ipv4_address())
     return {
         "host": "%s-%s" % (hostname, interface_name),
         "mac": mac_address,
@@ -46,19 +46,13 @@ def make_subnet_host(
     }
 
 
-def make_subnet_config(network=None, pools=None, hosts=None):
+def make_subnet_config(network=None, pools=None):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
         network = factory.make_ipv4_network()
     if pools is None:
         pools = [make_subnet_pool(network)]
-    if hosts is None:
-        hosts = [
-            make_subnet_host(network)
-            for _ in range(3)
-        ]
     return {
-        'interface': factory.make_name('eth', sep=''),
         'subnet': str(IPAddress(network.first)),
         'subnet_mask': str(network.netmask),
         'subnet_cidr': str(network.cidr),
@@ -68,8 +62,22 @@ def make_subnet_config(network=None, pools=None, hosts=None):
         'domain_name': '%s.example.com' % factory.make_name('domain'),
         'router_ip': str(factory.pick_ip_in_network(network)),
         'pools': pools,
-        'hosts': hosts,
         }
+
+
+def make_shared_network(name=None, subnets=None):
+    """Return complete DHCP configuration dict for a shared network."""
+    if name is None:
+        name = factory.make_name("vlan")
+    if subnets is None:
+        subnets = [
+            make_subnet_config()
+            for _ in range(3)
+        ]
+    return {
+        "name": name,
+        "subnets": subnets,
+    }
 
 
 def make_failover_peer_config(
@@ -89,3 +97,11 @@ def make_failover_peer_config(
         'address': address,
         'peer_address': peer_address,
         }
+
+
+def make_interface(name=None):
+    if name is None:
+        name = factory.make_name("eth")
+    return {
+        'name': name,
+    }
