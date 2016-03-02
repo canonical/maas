@@ -45,6 +45,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.primaryRack = null;
         vm.secondaryRack = null;
 
+        // Get the aciton structure for the action with the specified name.
         vm.getActionByName = function(name) {
             var i;
             for(i = 0 ; i < vm.actionOptions.length ; i++) {
@@ -55,16 +56,36 @@ angular.module('MAAS').controller('VLANDetailsController', [
             return null;
         };
 
+        // Initialize the provideDHCPAction structure with the current primary
+        // and secondary rack, plus an indication regarding whether or not
+        // adding a dynamic IP range is required.
+        vm.initProvideDHCP = function() {
+            var dhcp = vm.provideDHCPAction;
+            if (angular.isObject(vm.primaryRack)) {
+                dhcp.primaryRack = vm.primaryRack.system_id;
+            }
+            if (angular.isObject(vm.secondaryRack)) {
+                dhcp.secondaryRack = vm.secondaryRack.system_id;
+            }
+            if (angular.isObject(vm.relatedSubnets)) {
+                vm.provideDHCPAction.needsDynamicRange = true;
+                var i;
+                for (i = 0; i < vm.relatedSubnets.length; i++) {
+                    var subnet = vm.relatedSubnets[i].subnet;
+                    // If any related subnet already has a dynamic range, we
+                    // cannot prompt the user to enter one here.
+                    if (SubnetsManager.hasDynamicRange(subnet)) {
+                        dhcp.needsDynamicRange = false;
+                        break;
+                    }
+                }
+            }
+        };
+
         // Called when the actionOption has changed.
         vm.actionOptionChanged = function() {
             if(vm.actionOption.name === "provide_dhcp") {
-                var dhcp = vm.provideDHCPAction;
-                if(angular.isObject(vm.primaryRack)) {
-                    dhcp.primaryRack = vm.primaryRack.system_id;
-                }
-                if(angular.isObject(vm.secondaryRack)) {
-                    dhcp.secondaryRack = vm.secondaryRack.system_id;
-                }
+                vm.initProvideDHCP();
             }
             // Clear the action error.
             vm.actionError = null;
@@ -80,6 +101,39 @@ angular.module('MAAS').controller('VLANDetailsController', [
             vm.actionError = null;
         };
 
+        // Called from the Provide DHCP form when the primary rack changes.
+        vm.updatePrimaryRack = function() {
+            var dhcp = vm.provideDHCPAction;
+            if(dhcp.primaryRack === dhcp.secondaryRack) {
+                dhcp.secondaryRack = null;
+            }
+        };
+
+        // Called from the Provide DHCP form when the secondary rack changes.
+        vm.updateSecondaryRack = function() {
+            var dhcp = vm.provideDHCPAction;
+            if(dhcp.primaryRack === dhcp.secondaryRack) {
+                dhcp.primaryRack = null;
+            }
+        };
+
+        // Called from the Provide DHCP form when the subnet selection changes.
+        vm.updateSubnet = function() {
+            var dhcp = vm.provideDHCPAction;
+            var subnet = SubnetsManager.getItemFromList(dhcp.subnet);
+            var iprange = SubnetsManager.getLargestRange(subnet);
+            if(iprange.num_addresses > 0) {
+                dhcp.numIPs = iprange.num_addresses;
+                dhcp.maxIPs = iprange.num_addresses;
+                dhcp.startIP = iprange.start;
+                dhcp.endIP = iprange.end;
+            } else {
+                dhcp.numIPs = "";
+                dhcp.startIP = "";
+                dhcp.endIP = "";
+            }
+        };
+
         vm.actionRetry = function() {
             // When we clear actionError, the HTML will be re-rendered to
             // hide the error message (and the user will be taken back to
@@ -93,6 +147,13 @@ angular.module('MAAS').controller('VLANDetailsController', [
             if(vm.actionOption.name === "provide_dhcp") {
                 var dhcp = vm.provideDHCPAction;
                 var controllers = [];
+                // These will be undefined if they don't exist, and the region
+                // will simply get an empty dictionary.
+                var iprange = {
+                    subnet: dhcp.subnet,
+                    start: dhcp.startIP,
+                    end: dhcp.endIP
+                };
                 if(angular.isString(dhcp.primaryRack)) {
                     controllers.push(dhcp.primaryRack);
                 }
@@ -100,7 +161,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
                     controllers.push(dhcp.secondaryRack);
                 }
                 VLANsManager.configureDHCP(
-                    vm.vlan, controllers).then(
+                    vm.vlan, controllers, iprange).then(
                     function() {
                         vm.actionOption = null;
                         vm.actionError = null;
@@ -146,6 +207,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
             }
         }
 
+        // Called from a $watch when the management racks are updated.
         function updateManagementRacks() {
             var vlan = vm.vlan;
             if(!angular.isObject(vlan)) {
@@ -165,6 +227,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
             }
         }
 
+        // Called from a $watch when the related controllers may have changed.
         function updateRelatedControllers() {
             var vlan = vm.vlan;
             if(!angular.isObject(vlan)) {
@@ -174,6 +237,8 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 filterControllersByVLAN(vm.controllers, vlan);
         }
 
+        // Called from a $watch when the related subnets or spaces may have
+        // changed.
         function updateRelatedSubnetsAndSpaces() {
             var vlan = vm.vlan;
             if(!angular.isObject(vlan)) {

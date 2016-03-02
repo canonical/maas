@@ -5,11 +5,14 @@
  */
 
 angular.module('MAAS').controller('SubnetDetailsController', [
-    '$scope', '$rootScope', '$routeParams', '$location',
-    'SubnetsManager', 'ManagerHelperService', 'ErrorService',
+    '$scope', '$rootScope', '$routeParams', '$filter', '$location',
+    'SubnetsManager', 'IPRangesManager', 'ManagerHelperService',
+    'ErrorService',
     function(
-        $scope, $rootScope, $routeParams, $location,
-        SubnetsManager, ManagerHelperService, ErrorService) {
+        $scope, $rootScope, $routeParams, $filter, $location,
+        SubnetsManager, IPRangesManager, ManagerHelperService, ErrorService) {
+
+        var filterBySubnet = $filter('filterBySubnet');
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -21,6 +24,8 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
+        $scope.ipranges = IPRangesManager.getItems();
+        $scope.relatedIPRanges = [];
 
         // Updates the page title.
         function updateTitle() {
@@ -33,17 +38,26 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             }
         }
 
+        function updateRelatedIPRanges() {
+            var subnet = $scope.subnet;
+            if(!angular.isObject(subnet)) {
+                return;
+            }
+            $scope.relatedIPRanges = filterBySubnet($scope.ipranges, subnet);
+        }
+
         // Called when the subnet has been loaded.
         function subnetLoaded(subnet) {
             $scope.subnet = subnet;
             $scope.loaded = true;
 
             updateTitle();
+            updateRelatedIPRanges();
         }
 
         // Load all the required managers.
         ManagerHelperService.loadManagers([
-            SubnetsManager
+            SubnetsManager, IPRangesManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not
@@ -63,5 +77,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                         ErrorService.raiseError(error);
                     });
             }
+            $scope.$watchCollection("ipranges", updateRelatedIPRanges);
         });
     }]);

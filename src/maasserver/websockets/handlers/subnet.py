@@ -11,6 +11,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
 
 
@@ -33,7 +34,8 @@ class SubnetHandler(TimestampedModelHandler):
     def dehydrate(self, subnet, data, for_list=False):
         full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)
-        data['statistics'] = metadata.render_json()
+        data['statistics'] = metadata.render_json(include_ranges=True)
+        data['version'] = IPNetwork(subnet.cidr).version
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)

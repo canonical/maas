@@ -10,6 +10,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
 from testtools.matchers import Equals
 
@@ -31,7 +32,8 @@ class TestSubnetHandler(MAASServerTestCase):
         }
         full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)
-        data['statistics'] = metadata.render_json()
+        data['statistics'] = metadata.render_json(include_ranges=True)
+        data['version'] = IPNetwork(subnet.cidr).version
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)

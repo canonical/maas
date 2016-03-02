@@ -65,7 +65,8 @@ describe("VLANDetailsController", function() {
             name: null,
             cidr: '192.168.0.1/24',
             space: spaceId,
-            vlan: VLAN_ID
+            vlan: VLAN_ID,
+            statistics: { ranges: [] }
         };
         SubnetsManager._items.push(subnet);
         return subnet;
@@ -360,12 +361,15 @@ describe("VLANDetailsController", function() {
         expect(controller.actionError).toBe('errorString');
     });
 
-    it("performAction for provide_dhcp called correctly", function() {
+    it("performAction for provide_dhcp called with all params", function() {
         var controller = makeControllerResolveSetActiveItem();
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         // This will populate the default values for the racks with
         // the current values from the mock objects.
         controller.actionOptionChanged();
+        controller.provideDHCPAction.subnet = 1;
+        controller.provideDHCPAction.startIP = "192.168.0.2";
+        controller.provideDHCPAction.endIP = "192.168.0.254";
         var defer = $q.defer();
         spyOn(VLANsManager, "configureDHCP").and.returnValue(
             defer.promise);
@@ -377,10 +381,57 @@ describe("VLANDetailsController", function() {
             [
                 controller.primaryRack.system_id,
                 controller.secondaryRack.system_id
-            ]
+            ],
+            {
+                subnet: 1,
+                start: "192.168.0.2",
+                end: "192.168.0.254"
+            }
         );
         expect(controller.actionOption).toBe(null);
         expect(controller.actionError).toBe(null);
     });
 
+    it("prepares provideDHCPAction on actionOptionChanged", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.PROVIDE_DHCP_ACTION;
+        controller.actionOptionChanged();
+        expect(controller.provideDHCPAction).toEqual({
+            primaryRack: "p1",
+            secondaryRack: "p2",
+            needsDynamicRange: true
+        });
+    });
+
+    it("provideDHCPAction skips dynamic range if already present", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.subnets[0].statistics.ranges = [{purpose: ["dynamic"]}];
+        controller.actionOption = controller.PROVIDE_DHCP_ACTION;
+        controller.actionOptionChanged();
+        expect(controller.provideDHCPAction).toEqual({
+            primaryRack: "p1",
+            secondaryRack: "p2",
+            needsDynamicRange: false
+        });
+    });
+
+    it("prevents selection of a duplicate rack controller", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        controller.actionOption = controller.PROVIDE_DHCP_ACTION;
+        controller.actionOptionChanged();
+        controller.provideDHCPAction.primaryRack = "p2";
+        controller.updatePrimaryRack();
+        expect(controller.provideDHCPAction).toEqual({
+            primaryRack: "p2",
+            secondaryRack: null,
+            needsDynamicRange: true
+        });
+        controller.provideDHCPAction.secondaryRack = "p2";
+        controller.updateSecondaryRack();
+        expect(controller.provideDHCPAction).toEqual({
+            primaryRack: null,
+            secondaryRack: "p2",
+            needsDynamicRange: true
+        });
+    });
 });

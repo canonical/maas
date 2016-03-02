@@ -23,7 +23,7 @@ class TestIPRangeHandler(MAASServerTestCase):
             "start_ip": iprange.start_ip,
             "end_ip": iprange.end_ip,
             "comment": iprange.comment,
-            "user": iprange.user_id,
+            "user": iprange.user.username if iprange.user else "",
             "type": iprange.type,
         }
         return data

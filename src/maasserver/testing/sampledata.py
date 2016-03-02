@@ -7,7 +7,7 @@ __all__ = [
     "populate",
 ]
 
-from random import choice
+import random
 
 from maasserver.enum import NODE_STATUS
 from maasserver.testing.factory import factory
@@ -15,7 +15,7 @@ from maasserver.utils.orm import transactional
 
 
 @transactional
-def populate():
+def populate(seed="sampledata"):
     """Populate the database with example data.
 
     This should:
@@ -40,6 +40,7 @@ def populate():
     the same database.
 
     """
+    random.seed(seed)
 
     admin = factory.make_admin(username="admin", password="test")  # noqa
     user1, _ = factory.make_user_with_keys(username="user1", password="test")
@@ -58,24 +59,35 @@ def populate():
             fabric=fabric, vlan=fabric.get_default_vlan())
         for fabric in fabrics
     ]
+    vlans = [
+        factory.make_VLAN(fabric=fabric)
+        for fabric in fabrics
+    ]
+    for fabric in fabrics:
+        vlans.append(fabric.get_default_vlan())
+
+    subnets = [  # noqa
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        for vlan in vlans
+    ]
 
     user1_machines = [  # noqa
         factory.make_Node(
-            owner=user1, status=NODE_STATUS.ALLOCATED, zone=choice(zones),
-            fabric=choice(fabrics),
+            owner=user1, status=NODE_STATUS.ALLOCATED,
+            zone=random.choice(zones), fabric=random.choice(fabrics),
         ),
         factory.make_Node(
-            owner=user1, status=NODE_STATUS.DEPLOYED, zone=choice(zones),
-            fabric=choice(fabrics),
+            owner=user1, status=NODE_STATUS.DEPLOYED,
+            zone=random.choice(zones), fabric=random.choice(fabrics),
         ),
     ]
     user2_machines = [  # noqa
         factory.make_Node(
-            owner=user2, status=NODE_STATUS.DEPLOYING, zone=choice(zones),
-            fabric=choice(fabrics),
+            owner=user2, status=NODE_STATUS.DEPLOYING,
+            zone=random.choice(zones), fabric=random.choice(fabrics),
         ),
         factory.make_Node(
-            owner=user2, status=NODE_STATUS.RELEASING, zone=choice(zones),
-            fabric=choice(fabrics),
+            owner=user2, status=NODE_STATUS.RELEASING,
+            zone=random.choice(zones), fabric=random.choice(fabrics),
         ),
     ]

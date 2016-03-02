@@ -20,8 +20,17 @@ describe("SubnetDetailsController", function() {
         return subnet;
     }
 
+    function makeIPRange() {
+        var iprange = {
+            id: makeInteger(1, 10000),
+            subnet: subnet.id
+        };
+        IPRangesManager._items.push(iprange);
+        return iprange;
+    }
+
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $location, $scope, $q, $routeParams;
+    var $controller, $rootScope, $location, $scope, $q, $routeParams, $filter;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
@@ -29,12 +38,14 @@ describe("SubnetDetailsController", function() {
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
         $routeParams = {};
+        $location = $injector.get("$filter");
     }));
 
     // Load any injected managers and services.
-    var SubnetsManager, ManagerHelperService, ErrorService;
+    var SubnetsManager, IPRangesManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
+        IPRangesManager = $injector.get("IPRangesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
@@ -90,11 +101,11 @@ describe("SubnetDetailsController", function() {
         expect($rootScope.page).toBe("networks");
     });
 
-    it("calls loadManagers with SubnetsManager" +
+    it("calls loadManagers with required managers" +
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [SubnetsManager]);
+                [SubnetsManager, IPRangesManager]);
     });
 
     it("raises error if subnet identifier is invalid", function() {
@@ -154,5 +165,14 @@ describe("SubnetDetailsController", function() {
     it("title is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(subnet.cidr + " (" + subnet.name + ")");
+    });
+
+    it("updates relatedSubnets when subnets list changes", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        makeIPRange();
+        expect($scope.relatedIPRanges.length).toBe(0);
+        expect($scope.ipranges.length).toBe(1);
+        $scope.$digest();
+        expect($scope.relatedIPRanges.length).toBe(1);
     });
 });

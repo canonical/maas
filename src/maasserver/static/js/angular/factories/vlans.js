@@ -51,10 +51,13 @@ angular.module('MAAS').factory(
 
         // Configure DHCP on the VLAN
         VLANsManager.prototype.configureDHCP = function(
-            vlan, controllers) {
+            vlan, controllers, iprange) {
             return RegionConnection.callMethod(
-                "vlan.configure_dhcp",
-                { "id": vlan.id, "controllers": controllers }, true);
+                "vlan.configure_dhcp", {
+                    "id": vlan.id,
+                    "controllers": controllers,
+                    "iprange": iprange
+                }, true);
         };
 
         return new VLANsManager();

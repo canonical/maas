@@ -47,6 +47,36 @@
                 </dd>
             </dl>
             <div class="twelve-col">
+                <h1>IP Ranges</h1>
+                <div class="table">
+                    <header class="table__head">
+                        <div class="table__row">
+                            <!-- XXX mpontillo IPv6 addresses may overflow the column width. -->
+                            <div class="table__header table__column--25">Start IP Address</div>
+                            <div class="table__header table__column--25">End IP Address</div>
+                            <!-- XXX mpontillo these fields are in the design, but we do not yet have the data.
+                            <div class="table__header table__column--10">Amount</div>
+                            <div class="table__header table__column--10">Used</div>
+                            -->
+                            <div class="table__header table__column--25">Purpose</div>
+                            <div class="table__header table__column--25">Owner</div>
+                            <!-- XXX mpontillo this field is in the design, but only "half way" - is it needed?
+                            <div class="table__header table__column--20">Date created</div>
+                            -->
+                        </div>
+                    </header>
+                    <section class="table__body">
+                        <div class="table__row" data-ng-repeat="iprange in relatedIPRanges">
+                            <div class="table__data table__column--25">{$ iprange.start_ip $}</div>
+                            <div class="table__data table__column--25">{$ iprange.end_ip $}</div>
+                            <div class="table__data table__column--25">{$ iprange.type $}</div>
+                            <div class="table__data table__column--25">{$ iprange.user $}</div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <div class="twelve-col">
+                <h1>IP Addresses Used</h1>
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
@@ -67,8 +97,8 @@
                               XXX ltrager 2015-12-02
                               node_type is an enum of node(0), device(1), or rack_controller(2). We need to create some type of Javascript enum to represent this
                               -->
-			      <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.hostname $}</a>
-			      <span data-ng-if="ip.node_summary.node_type == 1">{$ ip.node_summary.hostname $}</span>
+                                <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.hostname $}</a>
+                                <span data-ng-if="ip.node_summary.node_type == 1">{$ ip.node_summary.hostname $}</span>
 			    </div>
                             <div class="table__data table__column--15">{$ ip.node_summary.node_type == 0 ? "Node" : "Device" $}</div>
                             <div class="table__data table__column--15" data-ng-switch="ip.alloc_type">
@@ -80,8 +110,8 @@
                                 <span data-ng-switch-default>Unknown</span>
                             </div>
                             <div class="table__data table__column--20">
-			      <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.fqdn $}.</a>
-			      <span data-ng-if="ip.node_summary.node_type != 0">{$ ip.node_summary.fqdn $}.</span>
+                                <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.fqdn $}.</a>
+                                <span data-ng-if="ip.node_summary.node_type != 0">{$ ip.node_summary.fqdn $}.</span>
                             </div>
                         </div>
                     </section>
@@ -89,4 +119,4 @@
             </div>
         </div>
     </section>
-    </div>
+</div>

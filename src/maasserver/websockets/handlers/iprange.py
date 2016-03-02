@@ -20,12 +20,20 @@ maaslog = get_maas_logger("websockets.iprange")
 class IPRangeHandler(TimestampedModelHandler):
 
     class Meta:
-        queryset = IPRange.objects.all()
+        queryset = IPRange.objects.all().select_related('user')
         pk = 'id'
         allowed_methods = [
             'list',
             'get',
+            'delete',
         ]
         listen_channels = [
             "iprange",
         ]
+
+    def dehydrate(self, obj, data, for_list=False):
+        if obj.user is None:
+            data['user'] = ""
+        else:
+            data['user'] = obj.user.username
+        return data

@@ -8,8 +8,10 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.forms_iprange import IPRangeForm
 from maasserver.models import (
     RackController,
+    Subnet,
     VLAN,
 )
 from maasserver.utils.orm import reload_object
@@ -75,6 +77,25 @@ class VLANHandler(TimestampedModelHandler):
             NODE_PERMISSION.ADMIN, vlan), "Permission denied."
         vlan.delete()
 
+    def _configure_iprange(self, iprange):
+        if 'subnet' in iprange:
+            subnet = Subnet.objects.get(id=iprange['subnet'])
+            if 'start' in iprange and 'end' in iprange:
+                iprange_form = IPRangeForm(data={
+                    "start_ip": iprange['start'],
+                    "end_ip": iprange['end'],
+                    "type": "dynamic",
+                    "subnet": subnet.id,
+                    "user": self.user.id,
+                    "comment": "Added via 'Provide DHCP...' in Web UI."
+                })
+                iprange_form.save()
+            else:
+                maaslog.warn("Invalid IP range configuration: %r" % iprange)
+        else:
+            maaslog.warn(
+                "Invalid subnet in IP range configuration: %r" % iprange)
+
     def configure_dhcp(self, parameters):
         """Helper method to look up rack controllers based on the parameters
         provided in the action input, and then reconfigure DHCP on the VLAN
@@ -89,6 +110,10 @@ class VLANHandler(TimestampedModelHandler):
         self.user = reload_object(self.user)
         assert self.user.has_perm(
             NODE_PERMISSION.ADMIN, vlan), "Permission denied."
+        # Make sure the dictionary both exists, and has the expected number
+        # of parameters, to prevent spurious log statements.
+        if 'iprange' in parameters and len(parameters['iprange']) >= 3:
+            self._configure_iprange(parameters['iprange'])
         controllers = [
             RackController.objects.get(system_id=system_id)
             for system_id in parameters['controllers']

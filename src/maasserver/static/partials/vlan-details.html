@@ -21,31 +21,56 @@
                         <form class="form-inline">
                             <div class="eight-col no-margin-bottom ng-hide" data-ng-show="vlanDetails.actionOption.name === 'provide_dhcp'">
                                 <div class="inline width--auto margin-top--ten margin-right left">
-                                    <div class="inline">
+                                    <!-- Conroller selection fields -->
+                                    <div data-ng-hide="vlanDetails.relatedSubnets.length === 0">
                                         <label for="primary-rack" class="four-col">Primary controller</label>
-                                        <div class="three-col">
+                                        <div class="three-col" style="padding: 1px;">
                                             <select name="primary-rack" data-ng-model="vlanDetails.provideDHCPAction.primaryRack" data-ng-change="vlanDetails.updatePrimaryRack()" data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers">
                                                 <!-- XXX mpontillo temporary hack: remove this when we have a better way to disable DHCP. -->
                                                 <option value=""></option>
                                             </select>
                                         </div>
-                                    </div>
-                                    <div class="inline">
                                         <label for="secondary-rack" class="four-col">Secondary controller</label>
-                                        <div class="three-col">
+                                        <div class="three-col" style="padding-top: 1px; padding-bottom: 1px;">
                                             <select name="secondary-rack" data-ng-model="vlanDetails.provideDHCPAction.secondaryRack" data-ng-change="vlanDetails.updateSecondaryRack()" data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers">
                                                 <option value=""></option>
                                             </select>
+                                        </div>
+                                    </div>
+                                    <!-- IP range selection fields -->
+                                   <div data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
+                                        <label for="subnet" class="four-col">Subnet</label>
+                                        <div class="three-col" style="padding-top: 1px; padding-bottom: 1px;">
+                                            <select name="subnet" data-ng-model="vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateSubnet()" data-ng-options="row.subnet.id as row.subnet.cidr for row in vlanDetails.relatedSubnets">
+                                                <option value=""></option>
+                                            </select>
+                                        </div>
+                                        <label for="number-of-ips" class="four-col">Maximum addresses</label>
+                                        <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
+                                            <input type="text" class="three-col" name="number-of-ips" data-ng-model="vlanDetails.provideDHCPAction.numIPs" data-ng-disabled="true" data-ng-change="vlanDetails.updateNumAddresses()">
+                                        </div>
+                                        <label for="start-ip" class="four-col">Start IP</label>
+                                        <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
+                                            <input type="text" name="start-ip" size="39" data-ng-model="vlanDetails.provideDHCPAction.startIP" data-ng-disabled="!vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateStartIP()">
+                                        </div>
+                                        <label for="end-ip" class="four-col">End IP</label>
+                                        <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
+                                            <input type="text" name="end-ip" size="39" data-ng-model="vlanDetails.provideDHCPAction.endIP" data-ng-disabled="!vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateEndIP()">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="right">
                                 <a href="" class="margin-right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
-                                <button class="cta-ubuntu" data-ng-click="vlanDetails.actionGo()">Go</button>
+                                <button class="cta-ubuntu" data-ng-click="vlanDetails.actionGo()" data-ng-disabled="vlanDetails.actionOption.name === 'provide_dhcp' && vlanDetails.relatedSubnets.length === 0">Go</button>
                             </div>
                         </form>
 
+                    </div>
+                    <div class="page-header__feedback ng-hide" data-ng-show="vlanDetails.actionOption.name === 'provide_dhcp' && vlanDetails.relatedSubnets.length === 0">
+                        <p class="page-header__feedback-message info">
+                            No subnets are available on this VLAN. DHCP cannot be enabled.
+                        </p>
                     </div>
                     <div class="page-header__feedback ng-hide" data-ng-show="vlanDetails.isActionError()">
                         <p class="page-header__feedback-message info">

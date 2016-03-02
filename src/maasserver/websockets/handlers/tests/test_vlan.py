@@ -14,6 +14,7 @@ from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maasserver.websockets.handlers.vlan import VLANHandler
 from testtools import ExpectedException
 from testtools.matchers import (
+    Contains,
     Equals,
     Is,
 )
@@ -194,3 +195,31 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
                 "id": vlan.id,
                 "controllers": []
             })
+
+    def test__configure_dhcp_optionally_creates_iprange(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "iprange": {
+                "start": "10.0.0.2",
+                "end": "10.0.0.99",
+                "subnet": subnet.id
+            }
+        })
+        vlan = reload_object(vlan)
+        subnet = reload_object(subnet)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(1))
+        dynamic_range = subnet.get_dynamic_ranges().first()
+        self.assertThat(dynamic_range.start_ip, Equals("10.0.0.2"))
+        self.assertThat(dynamic_range.end_ip, Equals("10.0.0.99"))
+        self.assertThat(dynamic_range.type, Equals("dynamic"))
+        self.assertThat(dynamic_range.user_id, Equals(user.id))
+        self.assertThat(dynamic_range.comment, Contains("Web UI"))

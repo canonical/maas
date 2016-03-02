@@ -29,5 +29,28 @@ angular.module('MAAS').factory(
 
         SubnetsManager.prototype = new Manager();
 
+        SubnetsManager.prototype.getLargestRange = function(subnet) {
+            var largest_range = {num_addresses: 0, start: "", end: ""};
+            angular.forEach(subnet.statistics.ranges, function(iprange) {
+                if(angular.equals(iprange.purpose, ["unused"]) &&
+                        iprange.num_addresses > largest_range.num_addresses) {
+                    largest_range = iprange;
+                }
+            });
+            return largest_range;
+        };
+
+        SubnetsManager.prototype.hasDynamicRange = function(subnet) {
+            var i;
+            for(i = 0; i < subnet.statistics.ranges.length ; i++) {
+                var iprange = subnet.statistics.ranges[i];
+                if(iprange.purpose.indexOf("dynamic") !== -1) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+
         return new SubnetsManager();
     }]);
