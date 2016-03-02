@@ -1,24 +1,34 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""American Power Conversion (APC) Power Driver."""
+"""American Power Conversion (APC) Power Driver.
+
+Support for managing American Power Conversion (APC) PDU outlets via SNMP.
+"""
 
 __all__ = []
 
-from provisioningserver.drivers.hardware.apc import (
-    power_control_apc,
-    power_state_apc,
-    required_package,
+import re
+from subprocess import (
+    PIPE,
+    Popen,
 )
-from provisioningserver.drivers.power import PowerDriver
+from time import sleep
+
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerDriver,
+    PowerFatalError,
+)
 from provisioningserver.utils import shell
 
 
-def extract_apc_parameters(context):
-    ip = context.get('power_address')
-    outlet = context.get('node_outlet')
-    power_on_delay = context.get('power_on_delay')
-    return ip, outlet, power_on_delay
+COMMON_ARGS = '-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s'
+
+
+class APCState:
+    ON = '1'
+    OFF = '2'
 
 
 class APCPowerDriver(PowerDriver):
@@ -28,26 +38,51 @@ class APCPowerDriver(PowerDriver):
     settings = []
 
     def detect_missing_packages(self):
-        binary, package = required_package()
+        binary, package = ['snmpset', 'snmp']
         if not shell.has_command_available(binary):
             return [package]
         return []
 
+    def run_process(self, command):
+        """Run SNMP command in subprocess."""
+        proc = Popen(command.split(), stdout=PIPE)
+        stdout, stderr = proc.communicate()
+
+        if proc.returncode != 0:
+            raise PowerFatalError(
+                "APC Power Driver external process error for command %s: %s"
+                % (command, stderr))
+        match = re.search("INTEGER:\s*([1-2])", stdout)
+        if match is None:
+            raise PowerFatalError(
+                "APC Power Driver unable to extract outlet power state"
+                " from: %s" % stdout)
+        else:
+            return match.group(1)
+
     def power_on(self, system_id, context):
         """Power on Apc outlet."""
-        power_change = 'on'
-        ip, outlet, power_on_delay = extract_apc_parameters(context)
-        power_control_apc(
-            ip, outlet, power_change, power_on_delay)
+        if self.power_query(system_id, context) == 'on':
+            self.power_off(system_id, context)
+        sleep(float(context['power_on_delay']))
+        self.run_process('snmpset ' + COMMON_ARGS % (
+            context['power_address'], context['node_outlet']) + ' i 1')
 
     def power_off(self, system_id, context):
         """Power off APC outlet."""
-        power_change = 'off'
-        ip, outlet, power_on_delay = extract_apc_parameters(context)
-        power_control_apc(
-            ip, outlet, power_change, power_on_delay)
+        self.run_process('snmpset ' + COMMON_ARGS % (
+            context['power_address'], context['node_outlet']) + ' i 2')
 
     def power_query(self, system_id, context):
         """Power query APC outlet."""
-        ip, outlet, _ = extract_apc_parameters(context)
-        return power_state_apc(ip, outlet)
+        power_state = self.run_process(
+            'snmpget ' + COMMON_ARGS % (
+                context['power_address'], context['node_outlet']))
+        if power_state == APCState.OFF:
+            return 'off'
+        elif power_state == APCState.ON:
+            return 'on'
+        else:
+            raise PowerActionError(
+                "APC Power Driver retrieved unknown power state: %r"
+                % power_state)
