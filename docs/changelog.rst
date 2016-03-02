@@ -213,6 +213,25 @@ Minor notable changes
 
  Remaining Power Drivers include AMT, Fence CDU's, Moonshot.
 
+Known Problems & Workarounds
+----------------------------
+
+**Garbage in the UI after upgrade**
+ When upgrading from any earlier release (1.5, 1.7, 1.8), the user may see
+ garbage in the UI. This is because the local cache is dirty and won't be
+ refreshed automatically. MAAS 1.9.0 introduced a mechanism to refresh the
+ cache automatically, but this will only take into effect upgrading from
+ 1.9.0 to any later release.
+
+ To work around this issue, the only thing required is to refresh the
+ browsers cache, by hitting F5.
+
+ See bug `1515380`_ for more information.
+
+.. _1515380:
+  https://launchpad.net/bugs/1515380
+
+
 Major bugs fixed in this release
 --------------------------------
 
