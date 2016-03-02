@@ -226,7 +226,7 @@ class PartitionHandler(OperationsHandler):
         filesystem = partition.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
-        if filesystem.mount_point:
+        if filesystem.is_mounted:
             raise MAASAPIBadRequest(
                 "Filesystem is mounted and cannot be unformatted. Unmount the "
                 "filesystem before unformatting the partition.")
@@ -287,7 +287,7 @@ class PartitionHandler(OperationsHandler):
         filesystem = partition.get_effective_filesystem()
         if filesystem is None:
             raise MAASAPIBadRequest("Partition is not formatted.")
-        if not filesystem.mount_point:
+        if not filesystem.is_mounted:
             raise MAASAPIBadRequest("Filesystem is already unmounted.")
         filesystem.mount_point = None
         filesystem.mount_options = None

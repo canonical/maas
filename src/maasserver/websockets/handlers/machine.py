@@ -307,7 +307,11 @@ class MachineHandler(NodeHandler):
             form.save()
             fs = partition.get_effective_filesystem()
         if mount_point != fs.mount_point:
-            if not mount_point:
+            # XXX: Elsewhere, a mount_point of "" would somtimes mean that the
+            # filesystem is mounted, sometimes that it is *not* mounted. Which
+            # is correct was not clear from the code history, so the existing
+            # behaviour is maintained here.
+            if mount_point is None or mount_point == "":
                 fs.mount_point = None
                 fs.save()
             else:
@@ -334,7 +338,11 @@ class MachineHandler(NodeHandler):
             form.save()
             fs = blockdevice.get_effective_filesystem()
         if mount_point != fs.mount_point:
-            if not mount_point:
+            # XXX: Elsewhere, a mount_point of "" would somtimes mean that the
+            # filesystem is mounted, sometimes that it is *not* mounted. Which
+            # is correct was not clear from the code history, so the existing
+            # behaviour is maintained here.
+            if mount_point is None or mount_point == "":
                 fs.mount_point = None
                 fs.save()
             else:

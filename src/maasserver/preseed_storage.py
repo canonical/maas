@@ -143,7 +143,7 @@ class CurtinStorageGenerator:
             filesystem = block_device.get_effective_filesystem()
             if self._requires_format_operation(filesystem):
                 self.operations["format"].append(filesystem)
-                if filesystem.mount_point is not None:
+                if filesystem.is_mounted:
                     self.operations["mount"].append(filesystem)
             else:
                 partition_table = block_device.get_partitiontable()
@@ -155,7 +155,7 @@ class CurtinStorageGenerator:
                                 partition_filesystem):
                             self.operations["format"].append(
                                 partition_filesystem)
-                            if partition_filesystem.mount_point is not None:
+                            if partition_filesystem.is_mounted:
                                 self.operations["mount"].append(
                                     partition_filesystem)
 

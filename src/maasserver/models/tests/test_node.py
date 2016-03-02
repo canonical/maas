@@ -800,14 +800,14 @@ class TestNode(MAASServerTestCase):
         }
         uncontrolled_power_types = all_power_types.difference(
             QUERY_POWER_TYPES)
-        power_type = random.choice(list(uncontrolled_power_types))
-        node = factory.make_Node(power_type=power_type)
-        gepp = self.patch(node, "get_effective_power_parameters")
-        self.assertEqual(
-            PowerInfo(
-                True, power_type != 'manual', False, power_type,
-                gepp()),
-            node.get_effective_power_info())
+        for power_type in uncontrolled_power_types:
+            node = factory.make_Node(power_type=power_type)
+            gepp = self.patch(node, "get_effective_power_parameters")
+            self.assertEqual(
+                PowerInfo(
+                    power_type != 'manual', power_type != 'manual',
+                    False, power_type, gepp()),
+                node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_queried(self):
         power_type = random.choice(QUERY_POWER_TYPES)

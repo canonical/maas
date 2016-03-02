@@ -61,7 +61,7 @@ def used_for(model):
     from maasserver.models import BlockDevice
     filesystem = get_effective_filesystem(model)
     if filesystem is not None:
-        if filesystem.mount_point:
+        if filesystem.is_mounted:
             return ("%s formatted filesystem mounted at %s" %
                     (filesystem.fstype, filesystem.mount_point))
         elif filesystem.fstype == FILESYSTEM_TYPE.LVM_PV:
