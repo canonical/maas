@@ -23,10 +23,6 @@ __all__ = [
     "ValidateLicenseKey",
 ]
 
-from provisioningserver.power.poweraction import (
-    PowerActionFail,
-    UnknownPowerType,
-)
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     AmpList,
@@ -192,7 +188,7 @@ class PowerDriverCheck(amp.Command):
         (b"missing_packages", amp.ListOf(amp.Unicode())),
     ]
     errors = {
-        UnknownPowerType: (
+        exceptions.UnknownPowerType: (
             b"UnknownPowerType"),
         NotImplementedError: (
             b"NotImplementedError"),
@@ -242,11 +238,11 @@ class _Power(amp.Command):
     ]
     response = []
     errors = {
-        UnknownPowerType: (
+        exceptions.UnknownPowerType: (
             b"UnknownPowerType"),
         NotImplementedError: (
             b"NotImplementedError"),
-        PowerActionFail: (
+        exceptions.PowerActionFail: (
             b"PowerActionFail"),
         exceptions.PowerActionAlreadyInProgress: (
             b"PowerActionAlreadyInProgress"),

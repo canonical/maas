@@ -8,11 +8,7 @@ __all__ = []
 import random
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
@@ -23,21 +19,17 @@ from maastesting.twisted import (
 )
 from mock import (
     ANY,
-    call,
-    DEFAULT,
     Mock,
     sentinel,
 )
 from provisioningserver import power
 from provisioningserver.drivers.power import (
-    DEFAULT_WAITING_POLICY,
     get_error_message as get_driver_error_message,
     power_drivers_by_name,
     PowerDriverRegistry,
     PowerError,
 )
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.power import poweraction
 from provisioningserver.rpc import (
     exceptions,
     region,
@@ -60,33 +52,6 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.task import Clock
-
-
-def patch_PowerAction(test, return_value=DEFAULT, side_effect=None):
-    """Patch the PowerAction object.
-
-    Patch the PowerAction object so that PowerAction().execute
-    is replaced by a Mock object created using the given `return_value`
-    and `side_effect`.
-
-    This can be used to simulate various successes or failures patterns
-    while manipulating the power state of a node.
-
-    Returns a tuple of mock objects: power.poweraction.PowerAction and
-    power.poweraction.PowerAction().execute.
-    """
-    power_action_obj = Mock()
-    power_action_obj_execute = Mock(
-        return_value=return_value, side_effect=side_effect)
-    power_action_obj.execute = power_action_obj_execute
-    power_action = test.patch(poweraction, 'PowerAction')
-    power_action.return_value = power_action_obj
-    return power_action, power_action_obj_execute
-
-
-def do_not_pause(test):
-    test.patch_autospec(power.change, "pause", always_succeed_with(None))
-    test.patch_autospec(power.query, "pause", always_succeed_with(None))
 
 
 class TestPowerHelpers(MAASTestCase):
@@ -172,7 +137,6 @@ class TestChangePowerState(MAASTestCase):
     def setUp(self):
         super(TestChangePowerState, self).setUp()
         self.useFixture(EventTypesAllRegistered())
-        do_not_pause(self)
 
     @inlineCallbacks
     def patch_rpc_methods(self, return_value={}, side_effect=None):
@@ -205,214 +169,6 @@ class TestChangePowerState(MAASTestCase):
         self.assertThat(
             power.change.power_change_starting, MockCalledOnceWith(
                 sentinel.system_id, sentinel.hostname, sentinel.power_change))
-
-    @inlineCallbacks
-    def test_change_power_state_changes_power_state(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Patch the power action utility so that it says the node is
-        # in the required power state.
-        power_action, execute = patch_PowerAction(
-            self, return_value=power_change)
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            execute,
-            MockCallsMatch(
-                # One call to change the power state.
-                call(power_change=power_change, **context),
-                # One call to query the power state.
-                call(power_change='query', **context),
-            ),
-        )
-        # The node hasn't been marked broken.
-        self.assertThat(markNodeBroken, MockNotCalled())
-
-    @inlineCallbacks
-    def test_change_power_state_doesnt_retry_for_certain_power_types(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        # Use a power type that is not among power.QUERY_POWER_TYPES.
-        power_type = factory.make_name('power_type')
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        power_action, execute = patch_PowerAction(
-            self, return_value=random.choice(['on', 'off']))
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            execute,
-            MockCallsMatch(
-                # Only one call to change the power state.
-                call(power_change=power_change, **context),
-            ),
-        )
-        # The node hasn't been marked broken.
-        self.assertThat(markNodeBroken, MockNotCalled())
-
-    @inlineCallbacks
-    def test_change_power_state_retries_if_power_state_doesnt_change(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Simulate a failure to power up the node, then a success.
-        power_action, execute = patch_PowerAction(
-            self, side_effect=[None, 'off', None, 'on'])
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            execute,
-            MockCallsMatch(
-                call(power_change=power_change, **context),
-                call(power_change='query', **context),
-                call(power_change=power_change, **context),
-                call(power_change='query', **context),
-            )
-        )
-        # The node hasn't been marked broken.
-        self.assertThat(markNodeBroken, MockNotCalled())
-
-    @inlineCallbacks
-    def test_change_power_state_doesnt_retry_if_query_returns_unknown(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Patch the power action utility so that it says the node is
-        # in the required power state.
-        power_action, execute = patch_PowerAction(
-            self, return_value="unknown")
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            execute,
-            MockCallsMatch(
-                # One call to change the power state.
-                call(power_change=power_change, **context),
-                # One call to query the power state.
-                call(power_change='query', **context),
-            ),
-        )
-        # The node hasn't been marked broken.
-        self.assertThat(markNodeBroken, MockNotCalled())
-
-    @inlineCallbacks
-    def test_change_power_state_marks_the_node_broken_if_failure(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Simulate a persistent failure.
-        power_action, execute = patch_PowerAction(
-            self, return_value='off')
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-
-        # The node has been marked broken.
-        msg = "Timeout after %s tries" % len(DEFAULT_WAITING_POLICY)
-        self.assertThat(
-            markNodeBroken,
-            MockCalledOnceWith(
-                ANY,
-                system_id=system_id,
-                error_description=msg)
-        )
-
-    @inlineCallbacks
-    def test_change_power_state_marks_the_node_broken_if_exception(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Simulate an exception.
-        exception_message = factory.make_name('exception')
-        power_action, execute = patch_PowerAction(
-            self, side_effect=poweraction.PowerActionFail(exception_message))
-        markNodeBroken = yield self.patch_rpc_methods()
-
-        with ExpectedException(poweraction.PowerActionFail):
-            yield power.change.change_power_state(
-                system_id, hostname, power_type, power_change, context)
-
-        error_message = "Node could not be powered on: %s" % exception_message
-        self.assertThat(
-            markNodeBroken, MockCalledOnceWith(
-                ANY, system_id=system_id, error_description=error_message))
-
-    @inlineCallbacks
-    def test_change_power_state_pauses_inbetween_retries(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        power.power_action_registry[system_id] = power_change, sentinel.d
-        # Simulate two failures to power up the node, then a success.
-        power_action, execute = patch_PowerAction(
-            self, side_effect=[None, 'off', None, 'off', None, 'on'])
-        # Patch calls to pause() to `execute` so that we record both in the
-        # same place, and can thus see ordering.
-        self.patch(power.change, 'pause', execute)
-        self.patch(power.query, 'pause', execute)
-
-        yield self.patch_rpc_methods()
-
-        yield power.change.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-
-        self.assertThat(execute, MockCallsMatch(
-            call(power_change=power_change, **context),
-            call(1, reactor),  # pause(1, reactor)
-            call(power_change='query', **context),
-            call(power_change=power_change, **context),
-            call(2, reactor),  # pause(1, reactor)
-            call(power_change='query', **context),
-        ))
 
     @inlineCallbacks
     def test___handles_power_driver_power_types(self):
@@ -549,7 +305,6 @@ class TestMaybeChangePowerState(MAASTestCase):
             self.patch(
                 power_driver, "detect_missing_packages").return_value = []
         self.useFixture(EventTypesAllRegistered())
-        do_not_pause(self)
 
     def patch_methods_using_rpc(self):
         self.patch_autospec(power.change, 'power_change_starting')
@@ -618,7 +373,7 @@ class TestMaybeChangePowerState(MAASTestCase):
         }
         power_driver = power_drivers_by_name.get(power_type)
         power_driver.detect_missing_packages.return_value = ['gone']
-        with ExpectedException(poweraction.PowerActionFail):
+        with ExpectedException(exceptions.PowerActionFail):
             yield power.change.maybe_change_power_state(
                 system_id, hostname, power_type, power_change, context)
         self.assertThat(

@@ -26,7 +26,6 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
 )
-from maasserver.fields import MAC_ERROR_MSG
 from maasserver.models import (
     Config,
     Domain,
@@ -360,7 +359,7 @@ class TestMachineAPI(APITestCase):
     def test_POST_power_off_may_be_repeated(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake')
+            power_type='manual')
         self.patch(machine, 'stop')
         self.client.post(self.get_machine_uri(machine), {'op': 'power_off'})
         response = self.client.post(
@@ -426,7 +425,7 @@ class TestMachineAPI(APITestCase):
         self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -455,7 +454,7 @@ class TestMachineAPI(APITestCase):
         self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -476,7 +475,7 @@ class TestMachineAPI(APITestCase):
     def test_POST_deploy_validates_distro_series(self):
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         invalid_distro_series = factory.make_string()
         response = self.client.post(
@@ -496,7 +495,7 @@ class TestMachineAPI(APITestCase):
         self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -519,7 +518,7 @@ class TestMachineAPI(APITestCase):
     def test_POST_deploy_validates_license_key(self):
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -544,7 +543,7 @@ class TestMachineAPI(APITestCase):
         self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
@@ -560,7 +559,7 @@ class TestMachineAPI(APITestCase):
     def test_POST_deploy_fails_with_no_boot_source(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         response = self.client.post(
             self.get_machine_uri(machine), {'op': 'deploy'})
@@ -578,7 +577,7 @@ class TestMachineAPI(APITestCase):
         architecture = make_usable_architecture(self, subarch_name="generic")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=architecture)
         osystem = Config.objects.get_config('default_osystem')
         distro_series = Config.objects.get_config('default_distro_series')
@@ -604,7 +603,7 @@ class TestMachineAPI(APITestCase):
         self.patch(node_module.Node, "_start")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -667,7 +666,7 @@ class TestMachineAPI(APITestCase):
     def test_POST_deploy_handles_missing_comment(self):
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
-            power_type='ether_wake',
+            power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem['default_release']
@@ -1040,17 +1039,28 @@ class TestMachineAPI(APITestCase):
         self.become_admin()
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='virsh',
             architecture=make_usable_architecture(self))
         # Create a power_parameter valid for the selected power_type.
-        new_power_address = factory.make_mac_address()
+        new_power_id = factory.make_name('power_id')
+        new_power_pass = factory.make_name('power_pass')
+        new_power_address = factory.make_ipv4_address()
         response = self.client.put(
             self.get_machine_uri(machine),
-            {'power_parameters_mac_address': new_power_address})
+            {
+                'power_parameters_power_id': new_power_id,
+                'power_parameters_power_pass': new_power_pass,
+                'power_parameters_power_address': new_power_address,
+            }
+        )
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            {'mac_address': new_power_address},
+            {
+                'power_id': new_power_id,
+                'power_pass': new_power_pass,
+                'power_address': new_power_address,
+            },
             reload_object(machine).power_parameters)
 
     def test_PUT_updates_cpu_memory(self):
@@ -1067,32 +1077,12 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(1, machine.cpu_count)
         self.assertEqual(1024, machine.memory)
 
-    def test_PUT_updates_power_parameters_accepts_only_mac_for_wol(self):
-        self.become_admin()
-        machine = factory.make_Node(
-            owner=self.logged_in_user,
-            power_type='ether_wake',
-            architecture=make_usable_architecture(self))
-        # Create an invalid power_parameter for WoL (not a valid
-        # MAC address).
-        new_power_address = factory.make_string()
-        response = self.client.put(
-            self.get_machine_uri(machine),
-            {'power_parameters_mac_address': new_power_address})
-        error_msg = MAC_ERROR_MSG % {'value': new_power_address}
-        self.assertEqual(
-            (
-                http.client.BAD_REQUEST,
-                {'power_parameters': ["MAC Address: %s" % error_msg]},
-            ),
-            (response.status_code, json_load_bytes(response.content)))
-
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
         power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='manual',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         response = self.client.put(
@@ -1115,7 +1105,7 @@ class TestMachineAPI(APITestCase):
         power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='manual',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         response = self.client.put(
@@ -1133,7 +1123,7 @@ class TestMachineAPI(APITestCase):
         power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='manual',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
@@ -1162,7 +1152,7 @@ class TestMachineAPI(APITestCase):
         power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='manual',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
@@ -1204,16 +1194,20 @@ class TestMachineAPI(APITestCase):
         power_parameters = {factory.make_string(): factory.make_string()}
         machine = factory.make_Node(
             owner=self.logged_in_user,
-            power_type='ether_wake',
+            power_type='virsh',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_machine_uri(machine),
-            {'power_parameters_mac_address': ''})
+            {'power_parameters_power_id': ''})
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            {'mac_address': ''},
+            {
+                'power_id': '',
+                'power_pass': '',
+                'power_address': '',
+            },
             reload_object(machine).power_parameters)
 
     def test_PUT_sets_zone(self):

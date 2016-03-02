@@ -21,14 +21,12 @@ from maasserver.utils.orm import (
 from maasserver.utils.signals import SignalsManager
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.power.poweraction import (
-    PowerActionFail,
-    UnknownPowerType,
-)
 from provisioningserver.rpc.cluster import PowerQuery
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
+    PowerActionFail,
+    UnknownPowerType,
 )
 from provisioningserver.utils.twisted import (
     asynchronous,

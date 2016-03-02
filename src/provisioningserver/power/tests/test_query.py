@@ -14,7 +14,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
-    MockNotCalled,
 )
 from maastesting.testcase import (
     MAASTestCase,
@@ -22,14 +21,11 @@ from maastesting.testcase import (
 )
 from maastesting.twisted import (
     always_fail_with,
-    always_succeed_with,
     TwistedLoggerFixture,
 )
 from mock import (
     ANY,
     call,
-    DEFAULT,
-    Mock,
     sentinel,
 )
 from provisioningserver import power
@@ -39,7 +35,6 @@ from provisioningserver.drivers.power import (
     PowerDriverRegistry,
 )
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.power import poweraction
 from provisioningserver.rpc import (
     exceptions,
     region,
@@ -60,33 +55,6 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import Clock
 from twisted.python.failure import Failure
-
-
-def patch_PowerAction(test, return_value=DEFAULT, side_effect=None):
-    """Patch the PowerAction object.
-
-    Patch the PowerAction object so that PowerAction().execute
-    is replaced by a Mock object created using the given `return_value`
-    and `side_effect`.
-
-    This can be used to simulate various successes or failures patterns
-    while manipulating the power state of a node.
-
-    Returns a tuple of mock objects: power.poweraction.PowerAction and
-    power.poweraction.PowerAction().execute.
-    """
-    power_action_obj = Mock()
-    power_action_obj_execute = Mock(
-        return_value=return_value, side_effect=side_effect)
-    power_action_obj.execute = power_action_obj_execute
-    power_action = test.patch(poweraction, 'PowerAction')
-    power_action.return_value = power_action_obj
-    return power_action, power_action_obj_execute
-
-
-def do_not_pause(test):
-    test.patch_autospec(power.change, "pause", always_succeed_with(None))
-    test.patch_autospec(power.query, "pause", always_succeed_with(None))
 
 
 def suppress_reporting(test):
@@ -154,13 +122,11 @@ class TestPowerQuery(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
-        self.patch(power, 'is_driver_available').return_value = False
-
-        # Patch the power action utility so that it says the node is
-        # in on/off power state.
-        power_action, execute = patch_PowerAction(
-            self, return_value=power_state)
+        self.patch(power, 'is_driver_available').return_value = True
         _, markNodeBroken, io = self.patch_rpc_methods()
+        mock_perform_power_driver_query = self.patch(
+            power.query, 'perform_power_driver_query')
+        mock_perform_power_driver_query.return_value = power_state
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
@@ -171,10 +137,9 @@ class TestPowerQuery(MAASTestCase):
             power_drivers_by_name.get(power_type).detect_missing_packages,
             MockCalledOnceWith())
         self.assertThat(
-            execute,
+            mock_perform_power_driver_query,
             MockCallsMatch(
-                # One call to change the power state.
-                call(power_change='query', **context),
+                call(system_id, hostname, power_type, context)
             ),
         )
 
@@ -182,15 +147,10 @@ class TestPowerQuery(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_state = random.choice(['on', 'off'])
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'is_driver_available').return_value = False
-        # Patch the power action utility so that it says the node is
-        # in on/off power state.
-        power_action, execute = patch_PowerAction(
-            self, return_value=power_state)
         _, markNodeBroken, io = self.patch_rpc_methods()
 
         power_driver = power_drivers_by_name.get(power_type)
@@ -198,10 +158,12 @@ class TestPowerQuery(MAASTestCase):
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
+        # This blocks until the deferred is complete.
+        io.flush()
 
         self.assertThat(
             power_driver.detect_missing_packages, MockCalledOnceWith())
-        return assert_fails_with(d, poweraction.PowerActionFail)
+        return assert_fails_with(d, exceptions.PowerActionFail)
 
     def test_get_power_state_returns_unknown_for_certain_power_types(self):
         system_id = factory.make_name('system_id')
@@ -216,39 +178,10 @@ class TestPowerQuery(MAASTestCase):
 
         d = power.query.get_power_state(
             system_id, hostname, power_type, context)
-
-        return assert_fails_with(d, poweraction.PowerActionFail)
-
-    def test_get_power_state_retries_if_power_query_fails(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_state = random.choice(['on', 'off'])
-        err_msg = factory.make_name('error')
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        # Simulate a failure to power query the node, then success.
-        power_action, execute = patch_PowerAction(self, side_effect=[
-            poweraction.PowerActionFail(err_msg), power_state])
-        sendEvent, markNodeBroken, io = self.patch_rpc_methods()
-        do_not_pause(self)
-
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
         # This blocks until the deferred is complete.
         io.flush()
-        self.assertEqual(power_state, extract_result(d))
-        self.assertThat(
-            execute,
-            MockCallsMatch(
-                call(power_change='query', **context),
-                call(power_change='query', **context),
-            )
-        )
-        # The node hasn't been marked broken.
-        self.assertThat(markNodeBroken, MockNotCalled())
+
+        return assert_fails_with(d, exceptions.PowerActionFail)
 
     def test_report_power_state_changes_power_state_if_failure(self):
         system_id = factory.make_name('system_id')
@@ -259,13 +192,13 @@ class TestPowerQuery(MAASTestCase):
         self.patch_autospec(power, 'power_state_update')
 
         # Simulate a failure when querying state.
-        query = fail(poweraction.PowerActionFail(err_msg))
+        query = fail(exceptions.PowerActionFail(err_msg))
         report = power.query.report_power_state(query, system_id, hostname)
-
+        # This blocks until the deferred is complete.
         io.flush()
 
         error = self.assertRaises(
-            poweraction.PowerActionFail, extract_result, report)
+            exceptions.PowerActionFail, extract_result, report)
         self.assertEqual(err_msg, str(error))
         self.assertThat(
             power.power_state_update,
@@ -282,7 +215,7 @@ class TestPowerQuery(MAASTestCase):
         # Simulate a success when querying state.
         query = succeed(power_state)
         report = power.query.report_power_state(query, system_id, hostname)
-
+        # This blocks until the deferred is complete.
         io.flush()
 
         self.assertEqual(power_state, extract_result(report))
@@ -301,50 +234,13 @@ class TestPowerQuery(MAASTestCase):
         # Simulate a success when querying state.
         query = succeed(power_state)
         report = power.query.report_power_state(query, system_id, hostname)
-
+        # This blocks until the deferred is complete.
         io.flush()
 
         self.assertEqual(power_state, extract_result(report))
         self.assertThat(
             power.power_state_update,
             MockCalledOnceWith(system_id, power_state))
-
-    def test_get_power_state_pauses_inbetween_retries(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        # Simulate two failures to power up the node, then a success.
-        power_action, execute = patch_PowerAction(self, side_effect=[
-            poweraction.PowerActionFail, poweraction.PowerActionFail, 'off'])
-        self.patch(power.query, "deferToThread", maybeDeferred)
-        _, _, io = self.patch_rpc_methods()
-        clock = Clock()
-
-        calls_and_pause = [
-            ([
-                call(power_change='query', **context),
-            ], 3),
-            ([
-                call(power_change='query', **context),
-            ], 5),
-            ([
-                call(power_change='query', **context),
-            ], 10),
-        ]
-        calls = []
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context, clock=clock)
-        for newcalls, waiting_time in calls_and_pause:
-            calls.extend(newcalls)
-            # This blocks until the deferred is complete.
-            io.flush()
-            self.assertThat(execute, MockCallsMatch(*calls))
-            clock.advance(waiting_time)
-        self.assertEqual("off", extract_result(d))
 
 
 class TestPowerQueryExceptions(MAASTestCase):
@@ -440,7 +336,6 @@ class TestPowerQueryAsync(MAASTestCase):
 
     def setUp(self):
         super(TestPowerQueryAsync, self).setUp()
-        do_not_pause(self)
 
     def make_node(self, power_type=None):
         system_id = factory.make_name('system_id')
@@ -539,7 +434,7 @@ class TestPowerQueryAsync(MAASTestCase):
     def test_query_all_nodes_only_queries_queryable_power_types(self):
         nodes = self.make_nodes()
         # nodes are all queryable, so add one that isn't:
-        nodes.append(self.make_node(power_type='ether_wake'))
+        nodes.append(self.make_node(power_type='manual'))
 
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
@@ -564,7 +459,7 @@ class TestPowerQueryAsync(MAASTestCase):
         get_power_state = self.patch(power.query, 'get_power_state')
         error_msg = factory.make_name("error")
         get_power_state.side_effect = [
-            fail(poweraction.PowerActionFail(error_msg)),
+            fail(exceptions.PowerActionFail(error_msg)),
             succeed(new_state_2),
         ]
         suppress_reporting(self)

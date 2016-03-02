@@ -55,7 +55,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             {
                 'hostname': 'diane',
                 'architecture': architecture,
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -77,7 +77,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             {
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(http.client.OK, response.status_code)
@@ -103,7 +103,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             {
                 'hostname': hostname,
                 'architecture': architecture,
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': factory.make_mac_address(),
                 'power_parameters': json.dumps(power_parameters),
                 'power_type': power_type,
@@ -120,7 +120,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             {
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -143,7 +143,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': 'diane',
                 'architecture': architecture.split('/')[0],
                 'subarchitecture': architecture.split('/')[1],
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
 
@@ -195,7 +195,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             reverse('machines_handler'),
             {
                 'architecture': architecture,
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': [factory.make_mac_address()],
             })
         machine = Machine.objects.get(
@@ -297,7 +297,7 @@ class MachineHostnameEnlistmentTest(
             {
                 'hostname': hostname_without_domain,
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(
@@ -455,7 +455,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'power_parameters': json.dumps(
                     {"power_address": new_power_address}),
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
@@ -465,7 +465,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
             (http.client.OK, {"power_address": new_power_address},
-             'ether_wake'),
+             'manual'),
             (response.status_code, machine.power_parameters,
              machine.power_type))
 
@@ -532,25 +532,29 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['00:11:22:33:44:55'],
                 })
         self.assertEqual(http.client.OK, response.status_code)
         machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
-        self.assertEqual('ether_wake', machine.power_type)
+        self.assertEqual('manual', machine.power_type)
         self.assertEqual({}, machine.power_parameters)
 
     def test_POST_sets_power_parameters_field(self):
         # The api allows the setting of a Machine's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
         self.client_log_in(as_admin=True)
-        new_mac_address = factory.make_mac_address()
+        new_power_id = factory.make_name('power_id')
+        new_power_address = factory.make_ipv4_address()
+        new_power_pass = factory.make_name('power_pass')
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
-                'power_parameters_mac_address': new_mac_address,
+                'power_type': 'virsh',
+                'power_parameters_power_id': new_power_id,
+                'power_parameters_power_pass': new_power_pass,
+                'power_parameters_power_address': new_power_address,
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
@@ -559,7 +563,11 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         machine = Machine.objects.get(
             system_id=json_load_bytes(response.content)['system_id'])
         self.assertEqual(
-            {'mac_address': new_mac_address},
+            {
+                'power_id': new_power_id,
+                'power_pass': new_power_pass,
+                'power_address': new_power_address,
+            },
             reload_object(machine).power_parameters)
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
@@ -569,7 +577,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             reverse('machines_handler'), {
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'power_parameters_unknown_param': factory.make_string(),
                 'mac_addresses': [factory.make_mac_address()],
                 })
@@ -590,7 +598,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'power_parameters_param': param,
                 'power_parameters_skip_check': 'true',
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
@@ -613,7 +621,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             {
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
         self.assertEqual(http.client.OK, response.status_code)
@@ -629,7 +637,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             {
                 'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
-                'power_type': 'ether_wake',
+                'power_type': 'manual',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json_load_bytes(response.content)

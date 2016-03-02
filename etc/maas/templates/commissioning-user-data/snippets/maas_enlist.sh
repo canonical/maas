@@ -135,7 +135,7 @@ Usage: ${0##*/} [ options ]
       -n | --hostname         hostname of the node to register
       -i | --interface        interface address to register (obtains MAC address)
       -a | --arch             architecture of the node to register
-      -t | --power-type       power type (ipmi, virsh, ether_wake)
+      -t | --power-type       power type (ipmi, virsh, manual)
       -p | --power-params     power parameters (In JSON format, between single quotes)
                               e.g. --power-params '{"power_address":"192.168.1.10"}'
       --subarch               subarchitecture of the node to register

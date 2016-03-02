@@ -33,14 +33,12 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.twisted import always_succeed_with
-from provisioningserver.power.poweraction import (
-    PowerActionFail,
-    UnknownPowerType,
-)
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
+    PowerActionFail,
+    UnknownPowerType,
 )
 from testtools.matchers import (
     Equals,

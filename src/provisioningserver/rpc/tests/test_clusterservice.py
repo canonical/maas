@@ -56,10 +56,6 @@ from provisioningserver.drivers.osystem import (
 )
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.poweraction import (
-    PowerActionFail,
-    UnknownPowerType,
-)
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     boot_images,
@@ -1529,7 +1525,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
     def test_power_on_can_propagate_UnknownPowerType(self):
         self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            UnknownPowerType)
+            exceptions.UnknownPowerType)
 
         d = call_responder(Cluster(), self.command, {
             "system_id": "id", "hostname": "hostname", "power_type": "type",
@@ -1540,7 +1536,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         d.addCallback(self.fail)
 
         def check(failure):
-            failure.trap(UnknownPowerType)
+            failure.trap(exceptions.UnknownPowerType)
         return d.addErrback(check)
 
     def test_power_on_can_propagate_NotImplementedError(self):
@@ -1561,7 +1557,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
     def test_power_on_can_propagate_PowerActionFail(self):
         self.patch(clusterservice, "maybe_change_power_state").side_effect = (
-            PowerActionFail)
+            exceptions.PowerActionFail)
 
         d = call_responder(Cluster(), self.command, {
             "system_id": "id", "hostname": "hostname", "power_type": "type",
@@ -1572,7 +1568,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         d.addCallback(self.fail)
 
         def check(failure):
-            failure.trap(PowerActionFail)
+            failure.trap(exceptions.PowerActionFail)
         return d.addErrback(check)
 
     def test_power_on_can_propagate_PowerActionAlreadyInProgress(self):

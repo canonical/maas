@@ -573,7 +573,7 @@ describe("AddHardwareController", function() {
             };
             $scope.machine.architecture = makeName("arch");
             $scope.machine.power.type = {
-                name: "ether_wake"
+                name: "virsh"
             };
             $scope.machine.power.parameters = {
                 mac_address: "00:11:22:33:44:55"

@@ -316,7 +316,6 @@ class PowerDriverRegistry(Registry):
 from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
-from provisioningserver.drivers.power.ether_wake import EtherWakePowerDriver
 from provisioningserver.drivers.power.fence_cdu import FenceCDUPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
@@ -329,7 +328,7 @@ from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
 
-registered_power_drivers = [
+power_drivers = [
     AMTPowerDriver(),
     APCPowerDriver(),
     DLIPowerDriver(),
@@ -345,13 +344,9 @@ registered_power_drivers = [
     VirshPowerDriver(),
     VMwarePowerDriver(),
 ]
-for driver in registered_power_drivers:
+for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)
 
-unregistered_power_drivers = [
-    EtherWakePowerDriver(),
-]
 power_drivers_by_name = {
-    d.name: d for d in
-    registered_power_drivers + unregistered_power_drivers
+    d.name: d for d in power_drivers
 }

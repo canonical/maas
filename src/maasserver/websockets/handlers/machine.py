@@ -63,12 +63,12 @@ from maasserver.websockets.handlers.node import (
 )
 from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.power.poweraction import (
+from provisioningserver.rpc.cluster import PowerQuery
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferWithTimeout,

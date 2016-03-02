@@ -221,15 +221,6 @@ JSON_POWER_TYPE_PARAMETERS = [
         'fields': [],
     },
     {
-        'name': 'ether_wake',
-        'description': 'Wake-on-LAN',
-        'fields': [
-            make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address',
-                scope=POWER_PARAMETER_SCOPE.NODE),
-        ],
-    },
-    {
         'name': 'virsh',
         'description': 'Virsh (virtual systems)',
         'fields': [

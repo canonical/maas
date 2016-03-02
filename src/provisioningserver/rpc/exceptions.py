@@ -19,6 +19,8 @@ __all__ = [
     "NoSuchNode",
     "NoSuchOperatingSystem",
     "PowerActionAlreadyInProgress",
+    "PowerActionFail",
+    "UnknownPowerType",
     "RegistrationFailed",
 ]
 
@@ -104,6 +106,14 @@ class PowerActionAlreadyInProgress(Exception):
     """A power action was requested on a node where a power action is
     already in progress.
     """
+
+
+class PowerActionFail(Exception):
+    """Raised when there's a problem executing a power script."""
+
+
+class UnknownPowerType(Exception):
+    """Raised when trying to process an unknown power type."""
 
 
 class CannotRegisterCluster(Exception):

@@ -273,7 +273,7 @@ class TestCommissionAction(MAASServerTestCase):
     def test_Commission_starts_commissioning(self):
         node = factory.make_Node(
             interface=True, status=self.status,
-            power_type='ether_wake', power_state=POWER_STATE.OFF)
+            power_type='manual', power_state=POWER_STATE.OFF)
         node_start = self.patch(node, '_start')
         node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
@@ -361,7 +361,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
     def test_Acquire_acquires_node(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY,
-            power_type='ether_wake', with_boot_disk=True)
+            power_type='manual', with_boot_disk=True)
         user = factory.make_User()
         Acquire(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -370,7 +370,7 @@ class TestAcquireNodeAction(MAASServerTestCase):
     def test_Acquire_uses_node_acquire_lock(self):
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY,
-            power_type='ether_wake', with_boot_disk=True)
+            power_type='manual', with_boot_disk=True)
         user = factory.make_User()
         node_acquire = self.patch(locks, 'node_acquire')
         Acquire(node, user).execute()
@@ -397,7 +397,7 @@ class TestDeployAction(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=owner)
+            power_type='manual', owner=owner)
         self.assertTrue(Deploy(node, owner).is_actionable())
 
     def test_Deploy_is_actionable_if_user_has_ssh_keys(self):
@@ -405,14 +405,14 @@ class TestDeployAction(MAASServerTestCase):
         factory.make_SSHKey(owner)
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=owner)
+            power_type='manual', owner=owner)
         self.assertTrue(Deploy(node, owner).is_actionable())
 
     def test_Deploy_starts_node(self):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         node_start = self.patch(node, 'start')
         Deploy(node, user).execute()
         self.assertThat(
@@ -422,7 +422,7 @@ class TestDeployAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         self.patch(node, 'start')
         os_name = factory.make_name("os")
         release_name = factory.make_name("release")
@@ -440,7 +440,7 @@ class TestDeployAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         self.patch(node, 'start')
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
@@ -458,7 +458,7 @@ class TestDeployAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         self.patch(node, 'start')
         osystem = make_usable_osystem(self)
         os_name = osystem["name"]
@@ -476,7 +476,7 @@ class TestDeployAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
         extra = {
@@ -490,7 +490,7 @@ class TestDeployAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         self.patch(node, 'start')
         osystem = make_osystem_with_releases(self)
         extra = {
@@ -569,7 +569,7 @@ class TestPowerOnAction(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.ALLOCATED,
-            power_type='ether_wake', owner=user)
+            power_type='manual', owner=user)
         node_start = self.patch(node, 'start')
         PowerOn(node, user).execute()
         self.assertThat(
@@ -586,14 +586,14 @@ class TestPowerOnAction(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED,
-            power_type='ether_wake')
+            power_type='manual')
         self.assertTrue(PowerOn(node, owner).is_actionable())
 
     def test_PowerOn_is_actionable_if_node_does_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DEPLOYED,
-            power_type='ether_wake', owner=owner)
+            power_type='manual', owner=owner)
         self.assertTrue(PowerOn(node, owner).is_actionable())
 
 
@@ -830,7 +830,7 @@ class TestActionsErrorHandling(MAASServerTestCase):
 
     def make_action(self, action_class, node_status, power_state=None):
         node = factory.make_Node(
-            interface=True, status=node_status, power_type='ether_wake',
+            interface=True, status=node_status, power_type='manual',
             power_state=power_state)
         admin = factory.make_admin()
         return action_class(node, admin)

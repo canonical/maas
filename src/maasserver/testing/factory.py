@@ -452,7 +452,7 @@ class Factory(maastesting.factory.Factory):
             **kwargs):
         """Make a :class:`BMC`. """
         if power_type is None:
-            power_type = 'ether_wake'
+            power_type = 'manual'
         if power_parameters is None:
             power_parameters = {}
         bmc = BMC(

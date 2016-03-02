@@ -13,7 +13,6 @@ import sys
 
 from provisioningserver import power
 from provisioningserver.drivers.power import (
-    DEFAULT_WAITING_POLICY,
     power_drivers_by_name,
     PowerDriverRegistry,
 )
@@ -22,13 +21,11 @@ from provisioningserver.events import (
     send_event_node,
 )
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.power import poweraction
-from provisioningserver.rpc.exceptions import NoSuchNode
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    pause,
-    synchronous,
+from provisioningserver.rpc.exceptions import (
+    NoSuchNode,
+    PowerActionFail,
 )
+from provisioningserver.utils.twisted import asynchronous
 from twisted.internet import reactor
 from twisted.internet.defer import (
     DeferredList,
@@ -37,28 +34,10 @@ from twisted.internet.defer import (
     returnValue,
     succeed,
 )
-from twisted.internet.threads import deferToThread
 from twisted.python import log
 
 
 maaslog = get_maas_logger("power")
-
-
-@synchronous
-def perform_power_query(system_id, hostname, power_type, context):
-    """Query the node's power state.
-
-    No exception handling is performed here. This allows `get_power_state` to
-    perform multiple queries and only log the final error.
-
-    :param power_type: This must refer to one of the template-based power
-        drivers, and *not* to a Python-based one.
-
-    :deprecated: This relates to template-based power control.
-    """
-    action = poweraction.PowerAction(power_type)
-    # `power_change` is a misnomer here.
-    return action.execute(power_change='query', **context)
 
 
 @asynchronous
@@ -88,57 +67,35 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     if power_type not in power.QUERY_POWER_TYPES:
         # query_all_nodes() won't call this with an un-queryable power
         # type, however this is left here to prevent PEBKAC.
-        raise poweraction.PowerActionFail(
+        raise PowerActionFail(
             "Unknown power_type '%s'" % power_type)
 
     def check_power_state(state):
         if state not in ("on", "off", "unknown"):
             # This is considered an error.
-            raise poweraction.PowerActionFail(state)
+            raise PowerActionFail(state)
 
     # Capture errors as we go along.
     exc_info = None, None, None
 
     power_driver = power_drivers_by_name.get(power_type)
     if power_driver is None:
-        raise poweraction.PowerActionFail(
+        raise PowerActionFail(
             "Unknown power_type '%s'" % power_type)
     missing_packages = power_driver.detect_missing_packages()
     if len(missing_packages):
-        raise poweraction.PowerActionFail(
+        raise PowerActionFail(
             "'%s' package(s) are not installed" % ", ".join(
                 missing_packages))
-
-    if power.is_driver_available(power_type):
-        # New-style power drivers handle retries for themselves, so we only
-        # ever call them once.
-        try:
-            power_state = yield perform_power_driver_query(
-                system_id, hostname, power_type, context)
-            check_power_state(power_state)
-        except:
-            # Hold the error; it will be reported later.
-            exc_info = sys.exc_info()
-        else:
-            returnValue(power_state)
+    try:
+        power_state = yield perform_power_driver_query(
+            system_id, hostname, power_type, context)
+        check_power_state(power_state)
+    except:
+        # Hold the error; it will be reported later.
+        exc_info = sys.exc_info()
     else:
-        # Old-style power drivers need to be retried. Use increasing waiting
-        # times to work around race conditions that could arise when power
-        # querying the node.
-        for waiting_time in DEFAULT_WAITING_POLICY:
-            # Perform power query.
-            try:
-                power_state = yield deferToThread(
-                    perform_power_query, system_id, hostname,
-                    power_type, context)
-                check_power_state(power_state)
-            except:
-                # Hold the error; it may be reported later.
-                exc_info = sys.exc_info()
-                # Wait before trying again.
-                yield pause(waiting_time, clock)
-            else:
-                returnValue(power_state)
+        returnValue(power_state)
 
     # Reaching here means that things have gone wrong.
     assert exc_info != (None, None, None)
@@ -196,7 +153,7 @@ def maaslog_report_success(node, power_state):
 
 def maaslog_report_failure(node, failure):
     """Log failure to query node."""
-    if failure.check(poweraction.PowerActionFail):
+    if failure.check(PowerActionFail):
         maaslog.error(
             "%s: Could not query power state: %s.",
             node['hostname'], failure.getErrorMessage())

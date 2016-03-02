@@ -37,7 +37,6 @@ from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.eni import get_interfaces_definition
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.power.change import maybe_change_power_state
-from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
     get_architecture,
@@ -277,7 +276,7 @@ class Cluster(RPCProtocol):
         """Return a list of missing power driver packages, if any."""
         driver = power_drivers_by_name.get(power_type)
         if driver is None:
-            raise UnknownPowerType(
+            raise exceptions.UnknownPowerType(
                 "No driver found for power type '%s'" % power_type)
         return {"missing_packages": driver.detect_missing_packages()}
 

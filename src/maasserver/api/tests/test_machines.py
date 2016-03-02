@@ -63,9 +63,11 @@ from maastesting.matchers import (
 )
 from maastesting.twisted import always_succeed_with
 from mock import Mock
-from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import cluster as cluster_module
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    PowerActionFail,
+)
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Contains,

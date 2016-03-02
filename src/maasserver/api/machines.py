@@ -79,12 +79,12 @@ from maasserver.storage_layouts import (
 )
 from maasserver.utils.orm import get_first
 from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
-from provisioningserver.power.poweraction import (
+from provisioningserver.rpc.cluster import PowerQuery
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
     PowerActionFail,
     UnknownPowerType,
 )
-from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import yaml
 
 # Machine's fields exposed on the API.
@@ -205,11 +205,9 @@ class MachineHandler(NodeHandler):
         :param power_parameters_{param1}: The new value for the 'param1'
             power parameter.  Note that this is dynamic as the available
             parameters depend on the selected value of the Machine's
-            power_type. For instance, if the power_type is 'ether_wake', the
-            only valid parameter is 'power_address' so one would want to pass
-            'myaddress' as the value of the 'power_parameters_power_address'
-            parameter. Available to admin users. See the `Power types`_ section
-            for a list of the available power parameters for each power type.
+            power_type.  Available to admin users. See the `Power types`_
+            section for a list of the available power parameters for each
+            power type.
         :type power_parameters_{param1}: unicode
         :param power_parameters_skip_check: Whether or not the new power
             parameters for this machine should be checked against the expected

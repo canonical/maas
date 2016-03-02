@@ -11,7 +11,6 @@ from datetime import timedelta
 
 from provisioningserver import power
 from provisioningserver.drivers.power import (
-    DEFAULT_WAITING_POLICY,
     get_error_message,
     power_drivers_by_name,
     PowerDriverRegistry,
@@ -21,12 +20,12 @@ from provisioningserver.events import (
     send_event_node,
 )
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.power import (
-    poweraction,
-    query,
-)
+from provisioningserver.power import query
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
+from provisioningserver.rpc.exceptions import (
+    PowerActionAlreadyInProgress,
+    PowerActionFail,
+)
 from provisioningserver.rpc.region import MarkNodeFailed
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -34,7 +33,6 @@ from provisioningserver.utils.twisted import (
     deferred,
     deferWithTimeout,
     pause,
-    synchronous,
 )
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -42,7 +40,6 @@ from twisted.internet.defer import (
     inlineCallbacks,
 )
 from twisted.internet.task import deferLater
-from twisted.internet.threads import deferToThread
 from twisted.python import log
 
 
@@ -75,25 +72,6 @@ def power_change_failure(system_id, hostname, power_change, message):
     elif power_change == 'off':
         event_type = EVENT_TYPES.NODE_POWER_OFF_FAILED
     yield send_event_node(event_type, system_id, hostname, message)
-
-
-@synchronous
-def perform_power_change(
-        system_id, hostname, power_type, power_change, context):
-    """Issue the given `power_change` command.
-
-    On failure the node will be marked as broken and the error will be
-    re-raised to the caller.
-
-    :deprecated: This relates to template-based power control.
-    """
-    action = poweraction.PowerAction(power_type)
-    try:
-        return action.execute(power_change=power_change, **context)
-    except poweraction.PowerActionFail as error:
-        message = "Node could not be powered %s: %s" % (power_change, error)
-        power_change_failure(system_id, hostname, power_change, message)
-        raise
 
 
 @asynchronous
@@ -194,11 +172,11 @@ def maybe_change_power_state(
 
     power_driver = power_drivers_by_name.get(power_type)
     if power_driver is None:
-        raise poweraction.PowerActionFail(
+        raise PowerActionFail(
             "Unknown power_type '%s'" % power_type)
     missing_packages = power_driver.detect_missing_packages()
     if len(missing_packages):
-        raise poweraction.PowerActionFail(
+        raise PowerActionFail(
             "'%s' package(s) are not installed" % " ".join(
                 missing_packages))
 
@@ -269,41 +247,14 @@ def change_power_state(
     by the caller.
     """
     yield power_change_starting(system_id, hostname, power_change)
-    # Use increasing waiting times to work around race conditions
-    # that could arise when power-cycling the node.
-    for waiting_time in DEFAULT_WAITING_POLICY:
-        if power.is_driver_available(power_type):
-            # There's a Python-based driver for this power type.
-            yield perform_power_driver_change(
-                system_id, hostname, power_type, power_change, context)
-        else:
-            # This power type is still template-based.
-            yield deferToThread(
-                perform_power_change, system_id, hostname, power_type,
-                power_change, context)
-        # Return now if we can't query the power state.
-        if power_type not in power.QUERY_POWER_TYPES:
-            return
-        # Wait to let the node some time to change its power state.
-        yield pause(waiting_time, clock)
-        # Check current power state.
-        if power.is_driver_available(power_type):
-            new_power_state = yield query.perform_power_driver_query(
-                system_id, hostname, power_type, context)
-        else:
-            new_power_state = yield deferToThread(
-                perform_power_change, system_id, hostname, power_type,
-                'query', context)
-        if new_power_state == "unknown" or new_power_state == power_change:
-            yield power_change_success(system_id, hostname, power_change)
-            return
-        # Retry logic is handled by power driver
-        # Once all power types have had templates converted to power drivers
-        # this method will need to be re-factored.
-        if power.is_driver_available(power_type):
-            return
-
-    # Failure: the power state of the node hasn't changed: mark it as
-    # broken.
-    message = "Timeout after %s tries" % len(DEFAULT_WAITING_POLICY)
-    yield power_change_failure(system_id, hostname, power_change, message)
+    yield perform_power_driver_change(
+        system_id, hostname, power_type, power_change, context)
+    if power_type not in power.QUERY_POWER_TYPES:
+        return
+    # Wait to let the node some time to change its power state.
+    yield pause(1, clock)
+    new_power_state = yield query.perform_power_driver_query(
+        system_id, hostname, power_type, context)
+    if new_power_state == "unknown" or new_power_state == power_change:
+        yield power_change_success(system_id, hostname, power_change)
+        return

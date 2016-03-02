@@ -10,7 +10,6 @@ import jsonschema
 from maasserver.clusterrpc import power_parameters
 from maasserver.clusterrpc.power_parameters import (
     add_power_type_parameters,
-    get_power_type_parameters,
     get_power_type_parameters_from_json,
     get_power_types,
     JSON_POWER_TYPE_SCHEMA,
@@ -19,51 +18,12 @@ from maasserver.clusterrpc.power_parameters import (
 )
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from provisioningserver import power
-from provisioningserver.power.poweraction import PowerAction
-from provisioningserver.power.schema import (
-    JSON_POWER_TYPE_PARAMETERS,
-    make_json_field,
-)
-
-
-class TestPowerActionRendering(MAASServerTestCase):
-    """Test that the power templates can be rendered."""
-
-    scenarios = [
-        (type['name'], {'power_type': type['name']})
-        for type in JSON_POWER_TYPE_PARAMETERS
-        if not power.is_driver_available(type['name'])
-    ]
-
-    def make_random_parameters(self, power_change="on"):
-        params = {'power_change': power_change}
-        param_definition = get_power_type_parameters()[self.power_type]
-        for name, field in param_definition.field_dict.items():
-            params[name] = factory.make_name(name)
-        return params
-
-    def test_render_template(self):
-        params = self.make_random_parameters()
-        node = factory.make_Node(power_type=self.power_type)
-        params.update(node.get_effective_power_parameters())
-        # ip_address is determined by querying the ARP cache,
-        # hence in this test the value does not matter.
-        params.update(ip_address=factory.make_ipv4_address())
-        # power_off_mode is provided via the API, and isn't a
-        # built in parameter.
-        params.update(power_off_mode=factory.make_name('power_off_mode'))
-        action = PowerAction(self.power_type)
-        script = action.render_template(
-            action.get_template(), action.update_context(params))
-        # The real check is that the rendering went fine.
-        self.assertIsInstance(script, str)
+from provisioningserver.power.schema import make_json_field
 
 
 class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):

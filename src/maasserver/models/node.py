@@ -148,10 +148,6 @@ from provisioningserver.events import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.poweraction import (
-    PowerActionFail,
-    UnknownPowerType,
-)
 from provisioningserver.rpc.cluster import (
     AddChassis,
     RefreshRackControllerInfo,
@@ -159,6 +155,8 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import (
     CannotRemoveHostMap,
     NoConnectionsAvailable,
+    PowerActionFail,
+    UnknownPowerType,
 )
 from provisioningserver.utils import (
     flatten,
@@ -1823,9 +1821,8 @@ class Node(CleanSave, TimestampedModel):
             maaslog.warning("%s: Unrecognised power type.", self.hostname)
             return PowerInfo(False, False, False, None, None)
         else:
-            if power_type == 'ether_wake':
-                mac = power_params.get('mac_address')
-                can_be_started = (mac != '' and mac is not None)
+            if power_type == 'manual':
+                can_be_started = False
                 can_be_stopped = False
             else:
                 can_be_started = True

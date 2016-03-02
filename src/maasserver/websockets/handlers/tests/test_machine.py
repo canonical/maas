@@ -92,13 +92,15 @@ from mock import (
     ANY,
     sentinel,
 )
-from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
 from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    PowerActionFail,
+)
 from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
@@ -968,20 +970,16 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": {
                 "name": zone.name,
             },
-            "power_type": "ether_wake",
-            "power_parameters": {
-                "mac_address": mac,
-            },
+            "power_type": "manual",
+            "power_parameters": {},
         })
         self.expectThat(created_node["hostname"], Equals(hostname))
         self.expectThat(created_node["pxe_mac"], Equals(mac))
         self.expectThat(created_node["extra_macs"], Equals([]))
         self.expectThat(created_node["architecture"], Equals(architecture))
         self.expectThat(created_node["zone"]["id"], Equals(zone.id))
-        self.expectThat(created_node["power_type"], Equals("ether_wake"))
-        self.expectThat(created_node["power_parameters"], Equals({
-            "mac_address": mac,
-        }))
+        self.expectThat(created_node["power_type"], Equals("manual"))
+        self.expectThat(created_node["power_parameters"], Equals({}))
 
     def test_create_starts_auto_commissioning(self):
         user = factory.make_admin()
@@ -1001,10 +999,8 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": {
                 "name": zone.name,
             },
-            "power_type": "ether_wake",
-            "power_parameters": {
-                "mac_address": mac,
-            },
+            "power_type": "manual",
+            "power_parameters": {},
         })
         self.assertThat(mock_start_commissioning, MockCalledOnceWith(user))
 
@@ -1039,23 +1035,29 @@ class TestMachineHandler(MAASServerTestCase):
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
         new_architecture = make_usable_architecture(self)
+        power_id = factory.make_name('power_id')
+        power_pass = factory.make_name('power_pass')
+        power_address = factory.make_ipv4_address()
         node_data["hostname"] = new_hostname
         node_data["architecture"] = new_architecture
         node_data["zone"] = {
             "name": new_zone.name,
         }
-        node_data["power_type"] = "ether_wake"
-        power_mac = factory.make_mac_address()
+        node_data["power_type"] = "virsh"
         node_data["power_parameters"] = {
-            "mac_address": power_mac,
+            'power_id': power_id,
+            'power_pass': power_pass,
+            'power_address': power_address,
         }
         updated_node = handler.update(node_data)
         self.expectThat(updated_node["hostname"], Equals(new_hostname))
         self.expectThat(updated_node["architecture"], Equals(new_architecture))
         self.expectThat(updated_node["zone"]["id"], Equals(new_zone.id))
-        self.expectThat(updated_node["power_type"], Equals("ether_wake"))
+        self.expectThat(updated_node["power_type"], Equals("virsh"))
         self.expectThat(updated_node["power_parameters"], Equals({
-            "mac_address": power_mac,
+            'power_id': power_id,
+            'power_pass': power_pass,
+            'power_address': power_address,
         }))
 
     def test_update_adds_tags_to_node(self):
@@ -2198,7 +2200,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
     def test__sets_power_state_to_unknown_when_power_cannot_be_started(self):
         rack = self.make_rack_controller().wait(30)
         node = self.make_node(
-            power_type="ether_wake", primary_rack=rack).wait(30)
+            power_type="manual", primary_rack=rack).wait(30)
         self.prepare_rpc(
             rack,
             side_effect=always_succeed_with({"state": "on"}))

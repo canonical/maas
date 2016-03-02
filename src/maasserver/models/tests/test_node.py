@@ -113,14 +113,16 @@ from provisioningserver.events import (
     EVENT_TYPES,
 )
 from provisioningserver.power import QUERY_POWER_TYPES
-from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import (
     AddChassis,
     RefreshRackControllerInfo,
 )
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    UnknownPowerType,
+)
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import (
@@ -747,7 +749,7 @@ class TestNode(MAASServerTestCase):
 
     def test_get_effective_power_type_no_default_power_address_if_not_virsh(
             self):
-        node = factory.make_Node(power_type="ether_wake")
+        node = factory.make_Node(power_type="manual")
         params = node.get_effective_power_parameters()
         self.assertEqual("", params["power_address"])
 
@@ -782,30 +784,13 @@ class TestNode(MAASServerTestCase):
                 True, True, False, node.power_type, sentinel.power_parameters),
             node.get_effective_power_info())
 
-    def test_get_effective_power_info_can_be_False_for_ether_wake(self):
-        node = factory.make_Node(power_type="ether_wake")
+    def test_get_effective_power_info_can_be_False_for_manual(self):
+        node = factory.make_Node(power_type="manual")
         gepp = self.patch(node, "get_effective_power_parameters")
-        # When there's no MAC address in the power parameters,
-        # get_effective_power_info() says that this node's power cannot
-        # be turned on. However, it does return the power parameters.
-        # For ether_wake the power can never be turned off.
+        # For manual the power can never be turned off or on.
         gepp.return_value = {}
         self.assertEqual(
-            (False, False, False, "ether_wake", {}),
-            node.get_effective_power_info())
-
-    def test_get_effective_power_info_can_be_True_for_ether_wake(self):
-        node = factory.make_Node(power_type="ether_wake")
-        gepp = self.patch(node, "get_effective_power_parameters")
-        # When the MAC address is supplied it changes its mind: this
-        # node's power can be turned on. For ether_wake the power can
-        # never be turned off.
-        gepp.return_value = {"mac_address": sentinel.mac_addr}
-        self.assertEqual(
-            (
-                True, False, False, "ether_wake",
-                {"mac_address": sentinel.mac_addr}
-            ),
+            (False, False, False, "manual", {}),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_cant_be_queried(self):
@@ -820,7 +805,7 @@ class TestNode(MAASServerTestCase):
         gepp = self.patch(node, "get_effective_power_parameters")
         self.assertEqual(
             PowerInfo(
-                True, power_type != 'ether_wake', False, power_type,
+                True, power_type != 'manual', False, power_type,
                 gepp()),
             node.get_effective_power_info())
 
@@ -830,26 +815,22 @@ class TestNode(MAASServerTestCase):
         gepp = self.patch(node, "get_effective_power_parameters")
         self.assertEqual(
             PowerInfo(
-                True, power_type != 'ether_wake', True,
+                True, power_type != 'manual', True,
                 power_type, gepp()),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_returns_named_tuple(self):
-        node = factory.make_Node(power_type="ether_wake")
-        # Ensure that can_be_started and can_be_stopped have different
-        # values by specifying a MAC address for ether_wake.
+        node = factory.make_Node(power_type="manual")
         gepp = self.patch(node, "get_effective_power_parameters")
-        gepp.return_value = {"mac_address": sentinel.mac_addr}
+        gepp.return_value = {}
         self.assertThat(
             node.get_effective_power_info(),
             MatchesStructure.byEquality(
-                can_be_started=True,
+                can_be_started=False,
                 can_be_stopped=False,
                 can_be_queried=False,
-                power_type="ether_wake",
-                power_parameters={
-                    "mac_address": sentinel.mac_addr,
-                },
+                power_type="manual",
+                power_parameters={},
             ),
         )
 
@@ -1329,10 +1310,10 @@ class TestNode(MAASServerTestCase):
         }
         uncontrolled_power_types = (
             all_power_types.difference(QUERY_POWER_TYPES))
-        # ether_wake cannot be stopped, so discard this option.
-        uncontrolled_power_types.discard("ether_wake")
+        # manual cannot be stopped, so discard this option.
+        uncontrolled_power_types.discard("manual")
         power_type = random.choice(list(uncontrolled_power_types))
-        self.assertNotEqual("ether_wake", power_type)
+        self.assertNotEqual("manual", power_type)
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
@@ -1631,7 +1612,7 @@ class TestNode(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
-            power_state=POWER_STATE.ON, power_type='ether_wake')
+            power_state=POWER_STATE.ON, power_type='manual')
         release = self.patch_autospec(
             node, "release_auto_ips")
         self.patch(Node, '_set_status_expires')
@@ -1761,7 +1742,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
+            interface=True, status=NODE_STATUS.NEW, power_type='manual')
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
         node_start.side_effect = lambda user, user_data: post_commit()
@@ -1969,7 +1950,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_logs_user_request(self):
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
+            interface=True, status=NODE_STATUS.NEW, power_type='manual')
         register_event = self.patch(node, '_register_request_event')
         node_start = self.patch(node, '_start')
         # Return a post-commit hook from Node.start().
@@ -2090,7 +2071,7 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_sets_owner(self):
         node = factory.make_Node(
-            status=NODE_STATUS.NEW, power_type='ether_wake',
+            status=NODE_STATUS.NEW, power_type='manual',
             enable_ssh=True)
         node_start = self.patch(node, 'start')
         # Return a post-commit hook from Node.start().
@@ -3995,7 +3976,7 @@ class TestNode_Start(MAASServerTestCase):
         # exercise the whole of start().
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
-            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
+            power_type='manual', status=NODE_STATUS.DEPLOYED,
             owner=user, interface=True)
         boot_interface = node.get_boot_interface()
         boot_interface.vlan.dhcp_on = True
@@ -4257,7 +4238,7 @@ class TestNode_Stop(MAASServerTestCase):
         # If the node has a power_type that doesn't allow MAAS to power
         # the node off, stop() won't attempt to send the power command.
         user = factory.make_User()
-        node = self.make_node_with_interface(user, power_type="ether_wake")
+        node = self.make_node_with_interface(user, power_type="manual")
         node.save()
 
         power_off_node = self.patch_autospec(node_module, "power_off_node")
@@ -5572,7 +5553,7 @@ class TestRackController(MAASServerTestCase):
 
     def test_refresh_logs_user_request(self):
         rackcontroller = factory.make_RackController(
-            interface=True, status=NODE_STATUS.NEW, power_type='ether_wake')
+            interface=True, status=NODE_STATUS.NEW, power_type='manual')
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())

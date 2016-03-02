@@ -19,7 +19,7 @@ from maas_api_helper import (
 
 MD_VERSION = "2012-03-01"
 VALID_STATUS = ("OK", "FAILED", "WORKING")
-POWER_TYPES = ("ipmi", "virsh", "ether_wake", "moonshot")
+POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot")
 
 
 def _encode_field(field_name, data, boundary):
