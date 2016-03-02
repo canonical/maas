@@ -2202,6 +2202,11 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(hostname=hostname)
         self.assertEqual(hostname, node.fqdn)
 
+    def test_split_arch_doesnt_raise_on_missing_arch(self):
+        # Method can be called from partition.py, etc, when arch is None.
+        node = factory.make_Node(architecture=None)
+        self.assertEqual(('', ''), node.split_arch())
+
     def test_split_arch_returns_arch_as_tuple(self):
         main_arch = factory.make_name('arch')
         sub_arch = factory.make_name('subarch')

@@ -65,9 +65,8 @@ class ControllerHandler(MachineHandler):
             "status",
             "last_image_sync",
             ]
-        # Controller data rides on the machine channel.
         listen_channels = [
-            "machine",
+            "controller",
         ]
 
     def get_queryset(self):

@@ -46,6 +46,8 @@ NODE_TAG_NOTIFY = dedent("""\
 
       IF node.node_type = %d THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      ELSIF node.node_type IN (%d, %d, %d) THEN
+        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
@@ -80,6 +82,8 @@ TAG_NODES_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -111,6 +115,8 @@ EVENT_NODE_NOTIFY = dedent("""\
 
       IF node.node_type = %d THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      ELSIF node.node_type IN (%d, %d, %d) THEN
+        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
@@ -141,6 +147,8 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
 
       IF node.node_type = %d THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      ELSIF node.node_type IN (%d, %d, %d) THEN
+        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
@@ -174,6 +182,8 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
 
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -190,6 +200,8 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent("""\
 
       IF node.node_type = %d THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      ELSIF node.node_type IN (%d, %d, %d) THEN
+        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
@@ -380,6 +392,8 @@ SUBNET_NODE_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -417,6 +431,8 @@ FABRIC_NODE_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -458,6 +474,8 @@ SPACE_NODE_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -490,6 +508,8 @@ VLAN_NODE_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -526,6 +546,8 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent("""\
       LOOP
         IF node.node_type = %d THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
           FROM maasserver_node
@@ -718,6 +740,9 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
 
           IF node.node_type = %d THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+          ELSIF node.node_type IN (%d, %d, %d) THEN
+            PERFORM pg_notify('controller_update',CAST(
+              node.system_id AS text));
           ELSIF node.parent_id IS NOT NULL THEN
             SELECT system_id INTO pnode
             FROM maasserver_node
@@ -729,33 +754,55 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-        """ % (proc_name, node_id_relation, NODE_TYPE.MACHINE))
+        """ % (proc_name, node_id_relation, NODE_TYPE.MACHINE,
+               NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+               NODE_TYPE.REGION_AND_RACK_CONTROLLER))
 
 
 @transactional
 def register_websocket_triggers():
     """Register all websocket triggers into the database."""
-    # Node where type is node table
-    register_procedure(
-        render_notification_procedure(
-            'machine_create_notify', 'machine_create', 'NEW.system_id'))
-    register_procedure(
-        render_notification_procedure(
-            'machine_update_notify', 'machine_update', 'NEW.system_id'))
-    register_procedure(
-        render_notification_procedure(
-            'machine_delete_notify', 'machine_delete', 'OLD.system_id'))
-    register_trigger(
-        "maasserver_node", "machine_create_notify", "insert",
-        {'NEW.node_type': NODE_TYPE.MACHINE})
-    register_trigger(
-        "maasserver_node", "machine_update_notify", "update",
-        {'NEW.node_type': NODE_TYPE.MACHINE})
-    register_trigger(
-        "maasserver_node", "machine_delete_notify", "delete",
-        {'OLD.node_type': NODE_TYPE.MACHINE})
 
-    # Node(device) table
+    for (proc_name_prefix, event_name_prefix, node_type) in (
+        ('machine', 'machine', NODE_TYPE.MACHINE),
+        ('rack_controller', 'controller', NODE_TYPE.RACK_CONTROLLER),
+        ('region_controller', 'controller', NODE_TYPE.REGION_CONTROLLER),
+        ('region_and_rack_controller', 'controller',
+         NODE_TYPE.REGION_AND_RACK_CONTROLLER)):
+
+        # Non-Device Node types
+        register_procedure(
+            render_notification_procedure(
+                '%s_create_notify' % proc_name_prefix,
+                '%s_create' % event_name_prefix,
+                'NEW.system_id'))
+        register_procedure(
+            render_notification_procedure(
+                '%s_update_notify' % proc_name_prefix,
+                '%s_update' % event_name_prefix,
+                'NEW.system_id'))
+        register_procedure(
+            render_notification_procedure(
+                '%s_delete_notify' % proc_name_prefix,
+                '%s_delete' % event_name_prefix,
+                'OLD.system_id'))
+        register_trigger(
+            "maasserver_node",
+            "%s_create_notify" % proc_name_prefix,
+            "insert",
+            {'NEW.node_type': node_type})
+        register_trigger(
+            "maasserver_node",
+            "%s_update_notify" % proc_name_prefix,
+            "update",
+            {'NEW.node_type': node_type})
+        register_trigger(
+            "maasserver_node",
+            "%s_delete_notify" % proc_name_prefix,
+            "delete",
+            {'OLD.node_type': node_type})
+
+    # Device Node types
     register_procedure(
         render_device_notification_procedure(
             'device_create_notify', 'device_create', 'NEW'))
@@ -863,7 +910,9 @@ def register_websocket_triggers():
     # Subnet node notifications
     register_procedure(
         SUBNET_NODE_NOTIFY % (
-            'subnet_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'subnet_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_subnet",
         "subnet_machine_update_notify", "update")
@@ -871,7 +920,9 @@ def register_websocket_triggers():
     # Fabric node notifications
     register_procedure(
         FABRIC_NODE_NOTIFY % (
-            'fabric_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'fabric_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_fabric",
         "fabric_machine_update_notify", "update")
@@ -879,7 +930,9 @@ def register_websocket_triggers():
     # Space node notifications
     register_procedure(
         SPACE_NODE_NOTIFY % (
-            'space_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'space_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_space",
         "space_machine_update_notify", "update")
@@ -887,7 +940,9 @@ def register_websocket_triggers():
     # VLAN node notifications
     register_procedure(
         VLAN_NODE_NOTIFY % (
-            'vlan_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'vlan_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_vlan",
         "vlan_machine_update_notify", "update")
@@ -895,7 +950,9 @@ def register_websocket_triggers():
     # IP address node notifications
     register_procedure(
         STATIC_IP_ADDRESS_NODE_NOTIFY % (
-            'ipaddress_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE))
+            'ipaddress_machine_update_notify', 'NEW.id', NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_staticipaddress",
         "ipaddress_machine_update_notify", "update")
@@ -1023,18 +1080,22 @@ def register_websocket_triggers():
     register_procedure(
         NODE_TAG_NOTIFY % (
             'machine_device_tag_link_notify', 'NEW.node_id',
-            NODE_TYPE.MACHINE))
+            NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_procedure(
         NODE_TAG_NOTIFY % (
             'machine_device_tag_unlink_notify', 'OLD.node_id',
-            NODE_TYPE.MACHINE))
+            NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_node_tags", "machine_device_tag_link_notify", "insert")
     register_trigger(
         "maasserver_node_tags", "machine_device_tag_unlink_notify", "delete")
 
     # Tag table, update to linked nodes.
-    register_procedure(TAG_NODES_NOTIFY % NODE_TYPE.MACHINE)
+    register_procedure(TAG_NODES_NOTIFY % (NODE_TYPE.MACHINE,
+                       NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+                       NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_tag", "tag_update_machine_device_notify", "update")
 
@@ -1073,7 +1134,9 @@ def register_websocket_triggers():
         "maasserver_event", "event_delete_notify", "delete")
 
     # Events table, update to linked node.
-    register_procedure(EVENT_NODE_NOTIFY % NODE_TYPE.MACHINE)
+    register_procedure(EVENT_NODE_NOTIFY % (
+        NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_event", "event_create_machine_device_notify", "insert")
 
@@ -1081,11 +1144,13 @@ def register_websocket_triggers():
     register_procedure(
         INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
             'nd_sipaddress_link_notify', 'NEW.interface_id',
-            NODE_TYPE.MACHINE))
+            NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_procedure(
         INTERFACE_IP_ADDRESS_NODE_NOTIFY % (
             'nd_sipaddress_unlink_notify', 'OLD.interface_id',
-            NODE_TYPE.MACHINE))
+            NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_link_notify", "insert")
@@ -1114,8 +1179,15 @@ def register_websocket_triggers():
     register_procedure(
         render_node_related_notification_procedure(
             'nd_interface_unlink_notify', 'OLD.node_id'))
-    register_procedure(
-        INTERFACE_UPDATE_NODE_NOTIFY % (NODE_TYPE.MACHINE, NODE_TYPE.MACHINE))
+    register_procedure(INTERFACE_UPDATE_NODE_NOTIFY % (
+        NODE_TYPE.MACHINE,
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        NODE_TYPE.MACHINE,
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER))
     register_trigger(
         "maasserver_interface",
         "nd_interface_link_notify", "insert")

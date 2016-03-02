@@ -21,7 +21,7 @@ angular.module('MAAS').factory(
 
             // Listen for notify events for the machine object.
             var self = this;
-            RegionConnection.registerNotifier("machine",
+            RegionConnection.registerNotifier("controller",
                 function(action, data) {
                     self.onNotify(action, data);
                 });

@@ -687,6 +687,7 @@ class MakeProtocolFactoryMixin:
         return protocol, factory
 
 ALL_NOTIFIERS = (
+    "controller",
     "device",
     "domain",
     "event",

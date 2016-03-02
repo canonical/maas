@@ -2164,6 +2164,8 @@ class Node(CleanSave, TimestampedModel):
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
+        if self.architecture is None:
+            return ("", "")
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 

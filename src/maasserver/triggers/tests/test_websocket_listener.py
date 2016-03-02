@@ -39,6 +39,18 @@ class TestNodeListener(
             'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+            }),
     )
 
     @wait_for_reactor
@@ -279,6 +291,18 @@ class TestNodeTagListener(
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
             }),
     )
 
@@ -529,6 +553,18 @@ class TestNodeEventListener(
             'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+            }),
     )
 
     @wait_for_reactor
@@ -585,6 +621,21 @@ class TestNodeStaticIPAddressListener(
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
             'listener': 'device',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
             }),
     )
 
@@ -693,6 +744,18 @@ class TestNodeNodeResultListener(
             'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
             }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
+            }),
     )
 
     @wait_for_reactor
@@ -786,6 +849,18 @@ class TestNodeInterfaceListener(
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE},
             'listener': 'device',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER},
+            'listener': 'controller',
             }),
     )
 
@@ -1280,6 +1355,21 @@ class TestNodeNetworkListener(
         ('device', {
             'params': {'node_type': NODE_TYPE.DEVICE, 'interface': True},
             'listener': 'device',
+            }),
+        ('rack', {
+            'params': {'node_type': NODE_TYPE.RACK_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
+            }),
+        ('region_and_rack', {
+            'params': {'node_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
+            }),
+        ('region', {
+            'params': {'node_type': NODE_TYPE.REGION_CONTROLLER,
+                       'interface': True},
+            'listener': 'controller',
             }),
     )
 
