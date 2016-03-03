@@ -281,20 +281,25 @@ DHCP_VLAN_UPDATE = dedent("""\
           PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
         END IF;
       -- DHCP state was not changed but the rack controllers might have been.
-      ELSIF NEW.dhcp_on THEN
-        -- Send message to both old and new primary rack controller.
+      ELSIF NEW.dhcp_on AND (
+         OLD.primary_rack_id != NEW.primary_rack_id OR (
+           OLD.secondary_rack_id IS NULL AND
+           NEW.secondary_rack_id IS NOT NULL) OR (
+           OLD.secondary_rack_id IS NOT NULL AND
+           NEW.secondary_rack_id IS NULL) OR
+         OLD.secondary_rack_id != NEW.secondary_rack_id) THEN
+        -- Send the message to the old primary if no longer the primary.
         IF OLD.primary_rack_id != NEW.primary_rack_id THEN
           PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
-          PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
         END IF;
+        -- Always send the message to the primary as it has to be set.
+        PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
         -- Send message to both old and new secondary rack controller if set.
-        IF OLD.secondary_rack_id != NEW.secondary_rack_id THEN
-          IF OLD.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
-          END IF;
-          IF NEW.secondary_rack_id IS NOT NULL THEN
-            PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
-          END IF;
+        IF OLD.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
+        END IF;
+        IF NEW.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
         END IF;
       END IF;
       RETURN NEW;
@@ -342,7 +347,9 @@ DHCP_SUBNET_UPDATE = dedent("""\
         END IF;
       -- Related fields of subnet where changed.
       ELSIF OLD.cidr != NEW.cidr OR
-        OLD.gateway_ip != NEW.gateway_ip OR
+        (OLD.gateway_ip IS NULL AND NEW.gateway_ip IS NOT NULL) OR
+        (OLD.gateway_ip IS NOT NULL AND NEW.gateway_ip IS NULL) OR
+        host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
         OLD.dns_servers != NEW.dns_servers THEN
         -- Network has changed update alert DHCP if enabled.
         SELECT * INTO vlan
