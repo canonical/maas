@@ -38,10 +38,3 @@ def execute_from_command_line():
     # Hand over to Django.
     from django.core import management
     management.execute_from_command_line()
-
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass

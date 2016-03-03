@@ -4,10 +4,3 @@
 """An API client."""
 
 __all__ = []
-
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass

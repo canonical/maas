@@ -215,7 +215,7 @@ coverage.data:
 	@$(error Use `$(MAKE) test+coverage` to generate coverage data, or invoke a \
             test script using the `--with-coverage` flag)
 
-lint: lint-py lint-js lint-doc lint-rst
+lint: lint-py lint-py-imports lint-js lint-doc lint-rst
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -238,6 +238,10 @@ lint-py: bin/flake8
 	  -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
 	    --config=/dev/null
+
+# Statically check imports against policy.
+lint-py-imports:
+	@utilities/check-imports
 
 lint-doc:
 	@utilities/doc-lint
@@ -377,6 +381,7 @@ define phony_targets
   lint-doc
   lint-js
   lint-py
+  lint-py-imports
   lint-rst
   man
   sampledata

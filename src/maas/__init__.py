@@ -85,10 +85,3 @@ class SuppressDeprecated(logging.Filter):
             warn in record.getMessage()
             for warn in WARNINGS_TO_SUPPRESS
         ])
-
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass

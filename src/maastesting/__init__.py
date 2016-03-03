@@ -53,9 +53,3 @@ filterwarnings('ignore', category=DeprecationWarning, module=r"^twisted\b")
 sentinel_type = type(mock.sentinel.foo)
 copy._copy_dispatch[sentinel_type] = copy._copy_immutable
 copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass

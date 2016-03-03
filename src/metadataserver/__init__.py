@@ -22,10 +22,3 @@ class DefaultMeta:
     the model and will fail to generate schema migrations for it.
     """
     app_label = 'metadataserver'
-
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass

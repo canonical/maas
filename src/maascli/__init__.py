@@ -34,9 +34,3 @@ def main(argv=sys.argv):
         else:
             # Note: this will call sys.exit() when finished.
             parser.error("%s" % error)
-
-try:
-    import maasfascist
-    maasfascist  # Silence lint.
-except ImportError:
-    pass
