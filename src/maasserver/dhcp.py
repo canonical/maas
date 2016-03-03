@@ -112,11 +112,15 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
         for ip_address in interface.ip_addresses.all():
             if ip_address.alloc_type in [
                     IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY]:
-                if ip_is_version(ip_address, ip_version):
+                if (ip_is_version(ip_address, ip_version) and
+                        ip_address.subnet is not None and
+                        ip_address.subnet.vlan == vlan):
                     interfaces_with_static.append(interface)
                     break
             elif ip_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
-                if ip_is_version(ip_address, ip_version):
+                if (ip_is_version(ip_address, ip_version) and
+                        ip_address.subnet is not None and
+                        ip_address.subnet.vlan == vlan):
                     interfaces_with_discovered.append(interface)
                     break
     if len(interfaces_with_static) > 0:

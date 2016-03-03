@@ -254,6 +254,54 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version))
 
+    def test__returns_only_interfaces_on_vlan_ipv4(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=subnet, interface=interface)
+        other_vlan = factory.make_VLAN()
+        other_network = factory.make_ipv4_network()
+        other_subnet = factory.make_Subnet(
+            cidr=str(other_network.cidr), vlan=other_vlan)
+        other_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=other_vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=other_subnet, interface=other_interface)
+        self.assertEquals(
+            [interface],
+            dhcp.get_interfaces_with_ip_on_vlan(
+                rack_controller, vlan, subnet.get_ipnetwork().version))
+
+    def test__returns_only_interfaces_on_vlan_ipv6(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=subnet, interface=interface)
+        other_vlan = factory.make_VLAN()
+        other_network = factory.make_ipv6_network()
+        other_subnet = factory.make_Subnet(
+            cidr=str(other_network.cidr), vlan=other_vlan)
+        other_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=other_vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            subnet=other_subnet, interface=other_interface)
+        self.assertEquals(
+            [interface],
+            dhcp.get_interfaces_with_ip_on_vlan(
+                rack_controller, vlan, subnet.get_ipnetwork().version))
+
 
 class TestGetManagedVLANsFor(MAASServerTestCase):
     """Tests for `get_managed_vlans_for`."""
