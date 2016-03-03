@@ -37,5 +37,10 @@ angular.module('MAAS').factory(
             return RegionConnection.callMethod("domain.create", domain);
         };
 
+        // Delete the domain.
+        DomainsManager.prototype.deleteDomain = function(domain) {
+            return RegionConnection.callMethod("domain.delete", domain);
+        };
+
         return new DomainsManager();
     }]);

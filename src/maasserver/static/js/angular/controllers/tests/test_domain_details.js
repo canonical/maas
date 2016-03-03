@@ -32,9 +32,10 @@ describe("DomainDetailsController", function() {
     }));
 
     // Load any injected managers and services.
-    var DomainsManager, ManagerHelperService, ErrorService;
+    var DomainsManager, UsersManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
         DomainsManager = $injector.get("DomainsManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
@@ -46,11 +47,12 @@ describe("DomainDetailsController", function() {
 
     // Makes the NodesListController
     function makeController(loadManagerDefer) {
-        var loadManager = spyOn(ManagerHelperService, "loadManager");
+        spyOn(UsersManager, "isSuperUser").and.returnValue(true);
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagerDefer)) {
-            loadManager.and.returnValue(loadManagerDefer.promise);
+            loadManagers.and.returnValue(loadManagerDefer.promise);
         } else {
-            loadManager.and.returnValue($q.defer().promise);
+            loadManagers.and.returnValue($q.defer().promise);
         }
 
         // Create the controller.
@@ -60,6 +62,7 @@ describe("DomainDetailsController", function() {
             $routeParams: $routeParams,
             $location: $location,
             DomainsManager: DomainsManager,
+            UsersManager: UsersManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -90,11 +93,11 @@ describe("DomainDetailsController", function() {
         expect($rootScope.page).toBe("domains");
     });
 
-    it("calls loadManager with DomainsManager" +
+    it("calls loadManagers with [DomainsManager, UsersManager]" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-                DomainsManager);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                [DomainsManager, UsersManager]);
     });
 
     it("raises error if domain identifier is invalid", function() {
@@ -155,4 +158,36 @@ describe("DomainDetailsController", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(domain.name);
     });
+
+    it("default domain title is special", function() {
+        domain.id = 0;
+        var controller = makeControllerResolveSetActiveItem();
+        expect($rootScope.title).toBe("Default domain " + domain.name);
+    });
+
+    it("confirms delete", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        $scope.deleteButton();
+        expect($scope.confirmingDelete).toBe(true);
+    });
+
+    it("can cancel delete", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        $scope.deleteButton();
+        $scope.cancelDeleteButton();
+        expect($scope.confirmingDelete).toBe(false);
+    });
+
+    describe("deleteDomain", function() {
+
+        it("calls deleteDomain", function() {
+            var controller = makeController();
+            var deleteDomain = spyOn(DomainsManager, "deleteDomain");
+            var defer = $q.defer();
+            deleteDomain.and.returnValue(defer.promise);
+            $scope.deleteConfirmButton();
+            expect(deleteDomain).toHaveBeenCalled();
+        });
+    });
+
 });

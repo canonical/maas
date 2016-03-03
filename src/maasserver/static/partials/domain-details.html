@@ -1,7 +1,7 @@
 <header class="page-header margin-bottom" data-maas-sticky-header>
     <div class="inner-wrapper">
-	<h1 class="page-header__title twelvel-col">
-	    {$ domain.name $}:
+        <h1 class="page-header__title twelvel-col">
+            {$ domain.displayname $}:
             <ng-pluralize data-ng-hide="loading" count="domain.hosts"
                           when="{'one': '{$ domain.hosts $} host,', 'other': '{$ domain.hosts $} hosts,'}"></ng-pluralize>
             <ng-pluralize data-ng-hide="loading" count="domain.resource_count"
@@ -12,10 +12,44 @@
                     Loading...
                 </span>
             </span>
-	</h1>
+        </h1>
+        <div class="page-header__actions four-col last-col ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain()">
+            <div class="page-header__cta two-col no-margin-bottom last-col">
+                <div class="two-col no-margin-bottom last-col">
+                    <button class="cta-ubuntu"
+                        data-ng-click="deleteButton()"
+                        data-ng-hide="loading || confirmingDelete">Delete Domain</button>
+                    <button class="cta-ubuntu secondary ng-hide"
+                        data-ng-click="cancelDeleteButton()"
+                        data-ng-show="loading || confirmingDelete">Cancel</button>
+                </div>
+            </div>
+        </div>
     </div>
 </header>
 <div data-ng-show="!loading">
+    <div class="page-header__dropdown border ng-hide" data-ng-show="confirmingDelete">
+        <div class="page-header__feedback ten-col no-margin-bottom">
+            <div class="twelve-col ng-hide" data-ng-show="error">
+                <p class="page-header__feedback-message info">{$ error $}</p>
+            </div>
+            <div class="inner-wrapper">
+                <div class="twelve-col">
+                    <div class="table">
+                        <div class="table__row table__row--no-hover">
+                            <div class="table__data table__column--70">
+                                Are you sure you want to delete this domain?
+                            </div>
+                            <div class="table__data table__column--10" data-ng-click="cancelDeleteButton()">Cancel</div>
+                            <div class="table__data table__column--10">
+                                <button class="cta-ubuntu secondary" data-ng-click="deleteConfirmButton()">Confirm</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <section class="row">
         <div class="inner-wrapper">
             <div class="twelve-col">
@@ -23,7 +57,7 @@
                     <header class="table__head">
                         <div class="table__row">
                             <div class="table__header table__column--20" data-ng-click="predicate='name'; reverse = !reverse"
-				data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
+                                 data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
                             <div class="table__header table__column--5" data-ng-click="predicate='rrtype'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
                             <div class="table__header table__column--75" data-ng-click="predicate='rrdata'; reverse = !reverse"

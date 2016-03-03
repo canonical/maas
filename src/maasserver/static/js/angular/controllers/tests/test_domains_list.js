@@ -20,20 +20,21 @@ describe("DomainsListController", function() {
     }));
 
     // Load the managers and services.
-    var DomainsManager;
+    var DomainsManager, UsersManager;
     var ManagerHelperService, RegionConnection;
     beforeEach(inject(function($injector) {
         DomainsManager = $injector.get("DomainsManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
     // Makes the DomainsListController
     function makeController(loadManagerDefer, defaultConnectDefer) {
-        var loadManager = spyOn(ManagerHelperService, "loadManager");
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagerDefer)) {
-            loadManager.and.returnValue(loadManagerDefer.promise);
+            loadManagers.and.returnValue(loadManagerDefer.promise);
         } else {
-            loadManager.and.returnValue($q.defer().promise);
+            loadManagers.and.returnValue($q.defer().promise);
         }
 
         // Create the controller.
@@ -61,14 +62,14 @@ describe("DomainsListController", function() {
         expect($scope.loading).toBe(true);
     });
 
-    it("calls loadManager with DomainsManager",
+    it("calls loadManagers with [DomainsManager, UsersManager]",
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-                DomainsManager);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                [DomainsManager, UsersManager]);
         });
 
-    it("sets loading to false with loadManager resolves", function() {
+    it("sets loading to false when loadManagers resolves", function() {
         var defer = $q.defer();
         var controller = makeController(defer);
         defer.resolve();

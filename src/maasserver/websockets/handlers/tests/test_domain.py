@@ -13,9 +13,11 @@ from maasserver.models import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from netaddr import IPAddress
+from testtools import ExpectedException
 from testtools.matchers import Equals
 
 
@@ -98,3 +100,34 @@ class TestDomainHandler(MAASServerTestCase):
             ValidationError, handler.create, params)
         self.assertThat(error.message_dict, Equals(
             {'name': ['This field cannot be blank.']}))
+
+
+class TestDomainHandlerDelete(MAASServerTestCase):
+
+    def test__delete_as_admin_success(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        handler.delete({
+            "id": domain.id,
+        })
+        domain = reload_object(domain)
+        self.assertThat(domain, Equals(None))
+
+    def test__delete_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = DomainHandler(user, {})
+        domain = factory.make_Domain()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": domain.id,
+            })
+
+    def test__delete_default_domain_fails(self):
+        domain = Domain.objects.get_default_domain()
+        user = factory.make_admin()
+        handler = DomainHandler(user, {})
+        with ExpectedException(ValidationError):
+            handler.delete({
+                "id": domain.id,
+            })

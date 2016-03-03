@@ -7,6 +7,7 @@ __all__ = [
     "DomainHandler",
     ]
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.domain import Domain
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -18,7 +19,7 @@ class DomainHandler(TimestampedModelHandler):
     class Meta:
         queryset = Domain.objects.all()
         pk = 'id'
-        allowed_methods = ['list', 'get', 'create', 'set_active']
+        allowed_methods = ['list', 'get', 'create', 'delete', 'set_active']
         listen_channels = [
             "domain",
             ]
@@ -31,3 +32,10 @@ class DomainHandler(TimestampedModelHandler):
             rr['system_id'] for rr in rrsets if rr['system_id'] is not None})
         data["resource_count"] = len(rrsets)
         return data
+
+    def delete(self, parameters):
+        """Delete this Domain."""
+        domain = self.get_object(parameters)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, domain), "Permission denied."
+        domain.delete()

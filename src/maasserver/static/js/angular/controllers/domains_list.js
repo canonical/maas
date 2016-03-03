@@ -6,9 +6,9 @@
 
 angular.module('MAAS').controller('DomainsListController', [
     '$scope', '$rootScope', '$routeParams', '$filter', 'DomainsManager',
-    'ManagerHelperService',
+    'UsersManager', 'ManagerHelperService',
     function($scope, $rootScope, $routeParams, $filter, DomainsManager,
-        ManagerHelperService) {
+        UsersManager, ManagerHelperService) {
 
         // Load the filters that are used inside the controller.
 
@@ -38,10 +38,16 @@ angular.module('MAAS').controller('DomainsListController', [
             $scope.addDomainScope.cancel();
         };
 
-        ManagerHelperService.loadManager(DomainsManager).then(
+        // Return true if the authenticated user is super user.
+        $scope.isSuperUser = function() {
+            return UsersManager.isSuperUser();
+        };
+
+        ManagerHelperService.loadManagers([
+            DomainsManager,
+            UsersManager]).then(
             function() {
                 $scope.loading = false;
             });
-
         }
     ]);
