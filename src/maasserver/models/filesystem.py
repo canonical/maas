@@ -61,6 +61,22 @@ class Filesystem(CleanSave, TimestampedModel):
         on the deployed operating system.
     """
 
+    # All filesystem types.
+    TYPES = frozenset(
+        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES)
+
+    # Filesystem types that expect to be mounted into the host's filesystem.
+    # Essentially this means all filesystems except swap.
+    TYPES_REQUIRING_MOUNT_POINT = frozenset(
+        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES
+        if fstype != FILESYSTEM_TYPE.SWAP)
+
+    # Filesystem types that require storage on a block special device, i.e. a
+    # block device or partition.
+    TYPES_REQUIRING_STORAGE = frozenset(
+        fstype for fstype, _ in FILESYSTEM_TYPE_CHOICES
+        if fstype != FILESYSTEM_TYPE.RAMFS and fstype != FILESYSTEM_TYPE.TMPFS)
+
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
         unique_together = (
@@ -82,6 +98,9 @@ class Filesystem(CleanSave, TimestampedModel):
 
     block_device = ForeignKey(
         BlockDevice, unique=False, null=True, blank=True)
+
+    node = ForeignKey(
+        "Node", unique=False, null=True, blank=True)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
@@ -167,22 +186,34 @@ class Filesystem(CleanSave, TimestampedModel):
         Swap partitions, for example, are not mounted at a particular point in
         the host's filesystem.
         """
-        return self.fstype != FILESYSTEM_TYPE.SWAP
+        return self.fstype in self.TYPES_REQUIRING_MOUNT_POINT
+
+    @property
+    def uses_storage(self):
+        """True if this filesystem expects a block special device.
+
+        ramfs and tmpfs, for example, exist only in memory.
+        """
+        return self.fstype in self.TYPES_REQUIRING_STORAGE
 
     def clean(self, *args, **kwargs):
         super(Filesystem, self).clean(*args, **kwargs)
+        parents = self.partition, self.block_device, self.node
 
-        # You have to specify either a partition or a block device.
-        if self.partition is None and self.block_device is None:
-            raise ValidationError(
-                # XXX: Message leaks implementation details ("block_device").
-                "One of partition or block_device must be specified.")
+        # You have to specify either a partition, block device, or node.
+        if parents.count(None) == len(parents):
+            if self.uses_storage:
+                raise ValidationError(
+                    "One of partition or block device must be specified.")
+            else:
+                raise ValidationError(
+                    "A node must be specified.")
 
-        # You can have only one of partition or block device; not both.
-        if self.partition is not None and self.block_device is not None:
+        # You can have only one of partition, block device, or node.
+        if len(parents) - parents.count(None) > 1:
             raise ValidationError(
-                # XXX: Message leaks implementation details ("block_device").
-                "Only one of partition or block_device can be specified.")
+                "Only one of partition, block device, or node can "
+                "be specified.")
 
         # If fstype is for a bcache as a cache device it needs to be in a
         # cache_set.
@@ -214,6 +245,18 @@ class Filesystem(CleanSave, TimestampedModel):
                     "Cannot place filesystem directly on the boot disk. "
                     "Create a partition on the boot disk first and then "
                     "format the partition.")
+
+        # Only ramfs and tmpfs can have a node as a parent.
+        if self.fstype in self.TYPES_REQUIRING_STORAGE:
+            if self.node is not None:
+                raise ValidationError(
+                    "A %s filesystem must be placed on a "
+                    "block device or partition." % self.fstype)
+        else:
+            if self.node is None:
+                raise ValidationError(
+                    "RAM-backed filesystems cannot be placed on "
+                    "block devices or partitions.")
 
     def save(self, *args, **kwargs):
         if not self.uuid:

@@ -8,10 +8,7 @@ __all__ = []
 import random
 import uuid
 
-from maasserver.enum import (
-    FILESYSTEM_FORMAT_TYPE_CHOICES,
-    FILESYSTEM_TYPE,
-)
+from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
@@ -40,7 +37,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertItemsEqual(['fstype'], form.errors.keys())
 
     def test_is_not_valid_if_block_device_has_partition_table(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         factory.make_PartitionTable(block_device=block_device)
         data = {
@@ -73,7 +70,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
             }, form._errors)
 
     def test_is_not_valid_if_invalid_uuid(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         data = {
             'fstype': fstype,
@@ -86,7 +83,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_uuid_append_XYZ(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         data = {
             'fstype': fstype,
@@ -99,7 +96,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertEqual({'uuid': ["Enter a valid value."]}, form._errors)
 
     def test_is_not_valid_if_invalid_uuid_prepend_XYZ(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         data = {
             'fstype': fstype,
@@ -113,7 +110,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
 
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         data = {
             'uuid': fsuuid,
@@ -129,7 +126,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
         self.assertEqual(fsuuid, filesystem.uuid)
 
     def test_deletes_old_filesystem_and_creates_new_one(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
         prev_filesystem = factory.make_Filesystem(block_device=block_device)
         data = {

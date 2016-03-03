@@ -1394,31 +1394,40 @@ class Factory(maastesting.factory.Factory):
             size=size, bootable=bootable)
 
     def pick_filesystem_type(self, but_not=()):
-        # XXX: Temporarily exclude swap from the random choice. It doesn't use
-        # a mount point, and this can surprise some tests.
-        but_not = {FILESYSTEM_TYPE.SWAP}.union(but_not)
+        # XXX: Temporarily exclude swap, ramfs, and tmpfs from the random
+        # choice. Swap doesn't use a mount point, and ramfs/tmpfs don't use
+        # storage, and this can surprise some tests. This is obviously not a
+        # tenable position longer term.
+        but_not = {
+            FILESYSTEM_TYPE.SWAP, FILESYSTEM_TYPE.RAMFS,
+            FILESYSTEM_TYPE.TMPFS}.union(but_not)
         return factory.pick_choice(
             FILESYSTEM_FORMAT_TYPE_CHOICES, but_not=but_not)
 
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
-            filesystem_group=None, label=None, create_params=None,
+            node=None, filesystem_group=None, label=None, create_params=None,
             mount_point=None, mount_options=undefined, block_device_size=None,
             acquired=False):
         if fstype is None:
             fstype = self.pick_filesystem_type()
-        if partition is None and block_device is None:
-            if self.pick_bool():
-                partition = self.make_Partition()
-            else:
-                block_device = self.make_PhysicalBlockDevice(
-                    size=block_device_size)
+        if fstype in Filesystem.TYPES_REQUIRING_STORAGE:
+            if partition is None and block_device is None:
+                if self.pick_bool():
+                    partition = self.make_Partition()
+                else:
+                    block_device = self.make_PhysicalBlockDevice(
+                        size=block_device_size)
+        else:
+            if node is None:
+                node = self.make_Node()
         if mount_options is undefined:
             mount_options = self.make_name("mount-options")
         return Filesystem.objects.create(
             uuid=uuid, fstype=fstype, partition=partition,
-            block_device=block_device, filesystem_group=filesystem_group,
-            label=label, create_params=create_params, mount_point=mount_point,
+            block_device=block_device, node=node,
+            filesystem_group=filesystem_group, label=label,
+            create_params=create_params, mount_point=mount_point,
             mount_options=mount_options, acquired=acquired)
 
     def make_CacheSet(self, block_device=None, partition=None, node=None):

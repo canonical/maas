@@ -7,10 +7,7 @@ __all__ = []
 
 import uuid
 
-from maasserver.enum import (
-    FILESYSTEM_FORMAT_TYPE_CHOICES,
-    FILESYSTEM_TYPE,
-)
+from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     AddPartitionForm,
     FormatPartitionForm,
@@ -127,7 +124,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertItemsEqual(['fstype'], form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         partition = factory.make_Partition()
         data = {
             'fstype': fstype,
@@ -157,7 +154,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
 
     def test_creates_filesystem(self):
         fsuuid = "%s" % uuid.uuid4()
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         partition = factory.make_Partition()
         data = {
             'uuid': fsuuid,
@@ -173,7 +170,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
         self.assertEqual(fsuuid, filesystem.uuid)
 
     def test_deletes_old_filesystem_and_creates_new_one(self):
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         partition = factory.make_Partition()
         prev_filesystem = factory.make_Filesystem(partition=partition)
         data = {

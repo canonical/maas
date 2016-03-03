@@ -6,6 +6,10 @@
 __all__ = []
 
 from copy import copy
+from itertools import (
+    chain,
+    combinations,
+)
 import re
 from uuid import uuid4
 
@@ -95,25 +99,41 @@ class TestFilesystem(MAASServerTestCase):
         fs = Filesystem()
         self.assertEqual(0, fs.get_block_size())
 
-    def test_cannot_save_if_boot_partition_and_block_device_missing(self):
+    def test_cannot_save_storage_backed_filesystem_if_storage_missing(self):
         fs = Filesystem()
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['One of partition or block_device "
-                    "must be specified.']}")):
-            fs.save()
+        error = self.assertRaises(ValidationError, fs.save)
+        self.assertThat(error.messages, Equals([
+            "One of partition or block device must be specified.",
+        ]))
 
-    def test_cannot_save_if_both_boot_partition_and_block_device_exists(self):
-        fs = Filesystem()
-        fs.block_device = factory.make_PhysicalBlockDevice()
-        fs.partition = factory.make_Partition()
-        with ExpectedException(
-                ValidationError,
-                re.escape(
-                    "{'__all__': ['Only one of partition or block_device "
-                    "can be specified.']}")):
-            fs.save()
+    def test_cannot_save_host_backed_filesystem_if_node_missing(self):
+        for fstype in Filesystem.TYPES - Filesystem.TYPES_REQUIRING_STORAGE:
+            fs = Filesystem(fstype=fstype)
+            error = self.assertRaises(ValidationError, fs.save)
+            self.expectThat(error.messages, Equals([
+                "A node must be specified.",
+            ]), "using " + fstype)
+
+    def test_cannot_save_filesystem_if_too_much_storage(self):
+        substrate_factories = {
+            "block_device": factory.make_BlockDevice,
+            "partition": factory.make_Partition,
+            "node": factory.make_Node,
+        }
+        substrate_combos = chain(
+            combinations(substrate_factories, 2),
+            combinations(substrate_factories, 3),
+        )
+        for substrates in substrate_combos:
+            fs = Filesystem(**{
+                substrate: substrate_factories[substrate]()
+                for substrate in substrates
+            })
+            error = self.assertRaises(ValidationError, fs.save)
+            self.expectThat(error.messages, Equals([
+                "Only one of partition, block device, "
+                "or node can be specified.",
+            ]), "using " + ", ".join(substrates))
 
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
@@ -213,11 +233,17 @@ class TestFilesystem(MAASServerTestCase):
 class TestFilesystemMountableTypes(MAASServerTestCase):
     """Tests the `Filesystem` model with mountable filesystems."""
 
-    scenarios_fstypes = tuple(
+    scenarios_fstypes_with_storage = tuple(
         (displayname, {"fstype": name}) for name, displayname in
-        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+        if name in Filesystem.TYPES_REQUIRING_STORAGE)
 
-    scenarios_substrate = (
+    scenarios_fstypes_without_storage = tuple(
+        (displayname, {"fstype": name}) for name, displayname in
+        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items()
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE)
+
+    scenarios_substrate_storage = (
         ("partition", {
             "make_substrate": lambda: {
                 "partition": factory.make_Partition(),
@@ -230,8 +256,20 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         }),
     )
 
-    scenarios = multiply_scenarios(
-        scenarios_fstypes, scenarios_substrate)
+    scenarios_substrate_node = (
+        ("node", {
+            "make_substrate": lambda: {
+                "node": factory.make_Node(),
+            },
+        }),
+    )
+
+    scenarios = chain(
+        multiply_scenarios(
+            scenarios_fstypes_with_storage, scenarios_substrate_storage),
+        multiply_scenarios(
+            scenarios_fstypes_without_storage, scenarios_substrate_node),
+    )
 
     def test_can_create_mountable_filesystem(self):
         substrate = self.make_substrate()
@@ -275,3 +313,22 @@ class TestFilesystemsUsingMountPoints(MAASServerTestCase):
         self.assertThat(
             filesystem.uses_mount_point,
             Equals(self.mounts_at_path))
+
+
+class TestFilesystemsUsingStorage(MAASServerTestCase):
+    """Tests the `Filesystem` model regarding use of storage."""
+
+    scenarios = tuple(
+        (displayname, {
+            "fstype": name,
+            "mounts_device_or_partition": (
+                name != "ramfs" and name != "tmpfs"),
+        })
+        for name, displayname in
+        FILESYSTEM_FORMAT_TYPE_CHOICES_DICT.items())
+
+    def test_uses_mount_point_is_true_for_real_filesystems(self):
+        filesystem = factory.make_Filesystem(fstype=self.fstype)
+        self.assertThat(
+            filesystem.uses_storage,
+            Equals(self.mounts_device_or_partition))

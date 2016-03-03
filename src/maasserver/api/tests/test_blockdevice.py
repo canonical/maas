@@ -11,7 +11,6 @@ import uuid
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
-    FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     NODE_STATUS,
@@ -518,7 +517,7 @@ class TestBlockDeviceAPI(APITestCase):
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
         node = factory.make_Node(status=status, owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
@@ -529,7 +528,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_format_returns_403_if_ready_and_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
@@ -541,7 +540,7 @@ class TestBlockDeviceAPI(APITestCase):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(
@@ -562,7 +561,7 @@ class TestBlockDeviceAPI(APITestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         block_device = factory.make_VirtualBlockDevice(node=node)
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(

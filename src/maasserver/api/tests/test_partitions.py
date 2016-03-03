@@ -12,10 +12,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.enum import (
-    FILESYSTEM_FORMAT_TYPE_CHOICES,
-    NODE_STATUS,
-)
+from maasserver.enum import NODE_STATUS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
@@ -229,7 +226,7 @@ class TestPartitions(APITestCase):
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
@@ -244,7 +241,7 @@ class TestPartitions(APITestCase):
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
@@ -260,7 +257,7 @@ class TestPartitions(APITestCase):
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
@@ -281,7 +278,7 @@ class TestPartitions(APITestCase):
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
@@ -308,7 +305,7 @@ class TestPartitions(APITestCase):
             'partition_handler',
             args=[node.system_id, device.id, partition_id])
         fs_uuid = str(uuid4())
-        fstype = factory.pick_choice(FILESYSTEM_FORMAT_TYPE_CHOICES)
+        fstype = factory.pick_filesystem_type()
         response = self.client.post(uri, {
             'op': 'format',
             'uuid': fs_uuid,
