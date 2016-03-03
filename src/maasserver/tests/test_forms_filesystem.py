@@ -1,7 +1,7 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for all forms that are used with `Filesystem`."""
+"""Tests for forms relating to filesystems."""
 
 __all__ = []
 
@@ -9,7 +9,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
-from maasserver.forms import MountFilesystemForm
+from maasserver.forms_filesystem import MountFilesystemForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import Is

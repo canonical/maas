@@ -20,7 +20,6 @@ __all__ = [
     "get_node_edit_form",
     "list_all_usable_architectures",
     "MAASAndNetworkForm",
-    "MountFilesystemForm",
     "NetworksListingForm",
     "NodeChoiceField",
     "MachineWithMACAddressesForm",
@@ -39,7 +38,6 @@ from collections import Counter
 from functools import partial
 import pipes
 import re
-from typing import Optional
 
 from django import forms
 from django.contrib import messages
@@ -159,7 +157,6 @@ from netaddr import (
     valid_ipv6,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import typed
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -2355,43 +2352,6 @@ class FormatBlockDeviceForm(Form):
             label=self.cleaned_data.get('label', None),
             acquired=self.node.is_in_allocated_state())
         return self.block_device
-
-
-class MountFilesystemForm(Form):
-    """Form used to mount a filesystem."""
-
-    @typed
-    def __init__(self, filesystem: Optional[Filesystem], *args, **kwargs):
-        super(MountFilesystemForm, self).__init__(*args, **kwargs)
-        self.filesystem = filesystem
-        self.setup()
-
-    def setup(self):
-        if self.filesystem is not None:
-            if self.filesystem.uses_mount_point:
-                self.fields["mount_point"] = AbsolutePathField(required=True)
-            self.fields["mount_options"] = StrippedCharField(required=False)
-
-    def clean(self):
-        cleaned_data = super(MountFilesystemForm, self).clean()
-        if self.filesystem is None:
-            self.add_error(
-                None, "Cannot mount an unformatted partition "
-                "or block device.")
-        elif self.filesystem.filesystem_group is not None:
-            self.add_error(
-                None, "Filesystem is part of a filesystem group, "
-                "and cannot be mounted.")
-        return cleaned_data
-
-    def save(self):
-        if "mount_point" in self.cleaned_data:
-            self.filesystem.mount_point = self.cleaned_data['mount_point']
-        else:
-            self.filesystem.mount_point = "none"  # e.g. for swap.
-        if "mount_options" in self.cleaned_data:
-            self.filesystem.mount_options = self.cleaned_data['mount_options']
-        self.filesystem.save()
 
 
 class AddPartitionForm(Form):

@@ -22,8 +22,8 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     AddPartitionForm,
     FormatPartitionForm,
-    MountFilesystemForm,
 )
+from maasserver.forms_filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
     Partition,
@@ -244,6 +244,7 @@ class PartitionHandler(OperationsHandler):
         """Mount the filesystem on partition.
 
         :param mount_point: Path on the filesystem to mount.
+        :param mount_options: Options to pass to mount(8).
 
         Returns 403 when the user doesn't have the ability to mount the \
             partition.

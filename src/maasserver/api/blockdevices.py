@@ -22,10 +22,10 @@ from maasserver.exceptions import (
 from maasserver.forms import (
     CreatePhysicalBlockDeviceForm,
     FormatBlockDeviceForm,
-    MountFilesystemForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
+from maasserver.forms_filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
     Machine,
@@ -368,6 +368,7 @@ class BlockDeviceHandler(OperationsHandler):
         """Mount the filesystem on block device.
 
         :param mount_point: Path on the filesystem to mount.
+        :param mount_options: Options to pass to mount(8).
 
         Returns 403 when the user doesn't have the ability to mount the \
             block device.

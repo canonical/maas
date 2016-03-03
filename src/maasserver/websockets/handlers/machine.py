@@ -27,10 +27,10 @@ from maasserver.forms import (
     CreateVolumeGroupForm,
     FormatBlockDeviceForm,
     FormatPartitionForm,
-    MountFilesystemForm,
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
+from maasserver.forms_filesystem import MountFilesystemForm
 from maasserver.forms_interface import (
     BondInterfaceForm,
     InterfaceForm,
