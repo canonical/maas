@@ -49,7 +49,7 @@ def get_running_pids_with_command(
         try:
             pid_command = read_text_file(
                 os.path.join(proc_path, pid, "comm")).strip()
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
             # Process was closed while running.
             pass
         else:

@@ -793,7 +793,35 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             }
         ], key=itemgetter('host'))
 
-        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnet(subnet))
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+
+    def tests__returns_hosts_interface_once_when_on_multiple_subnets(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller)
+        node = factory.make_Node(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+        subnet_one = factory.make_Subnet(vlan=vlan)
+        ip_one = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_one,
+            interface=interface)
+        subnet_two = factory.make_Subnet(vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_two,
+            interface=interface)
+
+        expected_hosts = sorted([
+            {
+                'host': '%s-%s' % (node.hostname, interface.name),
+                'mac': str(interface.mac_address),
+                'ip': str(ip_one.ip),
+            },
+        ], key=itemgetter('host'))
+        self.assertEqual(
+            expected_hosts,
+            dhcp.make_hosts_for_subnets([subnet_one, subnet_two]))
 
     def tests__returns_hosts_for_bond(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -837,7 +865,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             },
         ]
 
-        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnet(subnet))
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
     def tests__returns_hosts_first_created_ip_address(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -865,7 +893,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             },
         ]
 
-        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnet(subnet))
+        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
 
 class TestMakeFailoverPeerConfig(MAASServerTestCase):
@@ -1027,7 +1055,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             },
         ], observed_subnets)
         self.assertItemsEqual(
-            dhcp.make_hosts_for_subnet(ha_subnet), observed_hosts)
+            dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)
 
     def test__raises_DHCPConfigurationError_for_ipv6(self):
@@ -1146,7 +1174,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             },
         ], observed_subnets)
         self.assertItemsEqual(
-            dhcp.make_hosts_for_subnet(ha_subnet), observed_hosts)
+            dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)
 
 

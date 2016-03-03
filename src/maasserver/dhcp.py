@@ -185,15 +185,17 @@ def make_interface_hostname(interface):
         return "%s-%s" % (interface.node.hostname, interface_name)
 
 
-def make_hosts_for_subnet(subnet):
-    """Return list of host entries to create in the DHCP configuration."""
+def make_hosts_for_subnets(subnets):
+    """Return list of host entries to create in the DHCP configuration for the
+    given `subnets`.
+    """
     sips = StaticIPAddress.objects.filter(
         alloc_type__in=[
             IPADDRESS_TYPE.AUTO,
             IPADDRESS_TYPE.STICKY,
             IPADDRESS_TYPE.USER_RESERVED,
             ],
-        subnet=subnet, ip__isnull=False).order_by('id')
+        subnet__in=subnets, ip__isnull=False).order_by('id')
     hosts = []
     interface_ids = set()
     for sip in sips:
@@ -322,7 +324,7 @@ def get_dhcp_configure_for(
     else:
         peer_name, peer_config = None, None
 
-    # Generate the shared network configurations and hosts for all subnets.
+    # Generate the shared network configurations.
     subnet_configs = []
     hosts = []
     for subnet in subnets:
@@ -330,7 +332,9 @@ def get_dhcp_configure_for(
             make_subnet_config(
                 rack_controller, subnet, dns_servers, ntp_server,
                 domain, peer_name))
-        hosts.extend(make_hosts_for_subnet(subnet))
+
+    # Generate the hosts for all subnets.
+    hosts = make_hosts_for_subnets(subnets)
     return peer_config, subnet_configs, hosts, interface.name
 
 

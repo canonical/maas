@@ -167,6 +167,22 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             pids_running_command,
             get_running_pids_with_command(command, proc_path=proc_path))
 
+    def test_ignores_process_that_have_been_removed(self):
+        proc_path = self.make_dir()
+        self.make_init_process(proc_path)
+        command = factory.make_name("command")
+        pids_running_command = set(
+            random.randint(2, 999)
+            for _ in range(3)
+        )
+        for pid in pids_running_command:
+            self.make_process(proc_path, pid, command=command)
+            # Remove the comm file to test the exception handling.
+            os.remove(os.path.join(proc_path, str(pid), "comm"))
+        self.assertItemsEqual(
+            [],
+            get_running_pids_with_command(command, proc_path=proc_path))
+
     def test_returns_processes_when_running_in_container(self):
         proc_path = self.make_dir()
         self.make_init_process(proc_path, in_container=True)
