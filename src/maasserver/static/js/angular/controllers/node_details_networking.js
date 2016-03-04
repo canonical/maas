@@ -463,7 +463,6 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             updateLoaded();
         };
 
-
         // Return true if the networking information cannot be edited.
         // (it can't be changed when the node is in any state other
         // than Ready or Broken and the user is not a superuser)
@@ -473,8 +472,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 return true;
             }
             if ($scope.$parent.isController) {
-                // If the node is a controller, disable the networking panel.
-                return true;
+                // Never disable the full networking panel when its a
+                // controller.
+                return false;
             }
             if (angular.isObject($scope.node) &&
                   ["Ready", "Broken"].indexOf($scope.node.status) === -1) {

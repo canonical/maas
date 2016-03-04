@@ -17,6 +17,7 @@ from maasserver.forms_interface import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     BondInterfaceForm,
+    ControllerInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -51,6 +52,38 @@ class GetInterfaceFormErrorTests(MAASServerTestCase):
     def test_get_interface_form_returns_form(self):
         with ExpectedException(ValidationError):
             InterfaceForm.get_interface_form(factory.make_name())
+
+
+class ControllerInterfaceFormTest(MAASServerTestCase):
+
+    scenarios = (
+        ("region", {
+            "maker": factory.make_RegionController,
+        }),
+        ("rack", {
+            "maker": factory.make_RackController,
+        }),
+        ("region_rack", {
+            "maker": factory.make_RegionRackController,
+        })
+    )
+
+    def test__edits_interface(self):
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        new_vlan = factory.make_VLAN(vid=33)
+        form = ControllerInterfaceForm(
+            instance=interface,
+            data={
+                'vlan': new_vlan.id,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertThat(
+            interface,
+            MatchesStructure.byEquality(
+                name=interface.name, vlan=new_vlan, enabled=interface.enabled))
 
 
 class PhysicalInterfaceFormTest(MAASServerTestCase):

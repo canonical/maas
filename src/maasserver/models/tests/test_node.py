@@ -467,6 +467,26 @@ class TestNode(MAASServerTestCase):
         self.addCleanup(node_query.signals.enable)
         node_query.signals.disable()
 
+    def test_is_controller_machine(self):
+        machine = factory.make_Node()
+        self.assertFalse(machine.is_controller)
+
+    def test_is_controller_device(self):
+        device = factory.make_Device()
+        self.assertFalse(device.is_controller)
+
+    def test_is_controller_region_controller(self):
+        region = factory.make_RegionController()
+        self.assertTrue(region.is_controller)
+
+    def test_is_controller_region_rack_controller(self):
+        region_rack = factory.make_RegionRackController()
+        self.assertTrue(region_rack.is_controller)
+
+    def test_is_controller_rack_controller(self):
+        rack = factory.make_RackController()
+        self.assertTrue(rack.is_controller)
+
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
         self.assertThat(

@@ -2808,6 +2808,7 @@ describe("NodeNetworkingController", function() {
     });
 
     describe("isAllNetworkingDisabled", function() {
+
         it("returns true if the user is not a superuser " +
            "and the non-controller node is ready",
             function() {
@@ -2844,7 +2845,7 @@ describe("NodeNetworkingController", function() {
              });
         });
 
-        it("returns true for controllers, in any state, even if superuser",
+        it("returns false for controllers, in any state, even if superuser",
             function() {
             var controller = makeController();
             $parentScope.isController = true;
@@ -2866,7 +2867,7 @@ describe("NodeNetworkingController", function() {
              "Disk erasing",
              "Failed disk erasing"].forEach(function (s) {
                  $scope.node = {state: s};
-                 expect($scope.isAllNetworkingDisabled()).toBe(true);
+                 expect($scope.isAllNetworkingDisabled()).toBe(false);
              });
         });
     });

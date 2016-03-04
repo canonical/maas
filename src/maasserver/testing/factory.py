@@ -440,6 +440,12 @@ class Factory(maastesting.factory.Factory):
         node.save()
         return typecast_node(node, RackController)
 
+    def make_RegionRackController(self, *args, **kwargs):
+        region_rack = self.make_RackController(*args, **kwargs)
+        region_rack.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        region_rack.save()
+        return region_rack
+
     def make_BMC(
             self, power_type=None, power_parameters=None, ip_address=None,
             **kwargs):

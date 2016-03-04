@@ -16,11 +16,13 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.exceptions import (
+    MAASAPIForbidden,
     MAASAPIValidationError,
     NodeStateViolation,
 )
 from maasserver.forms_interface import (
     BondInterfaceForm,
+    ControllerInterfaceForm,
     InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
@@ -71,6 +73,12 @@ def raise_error_for_invalid_state_on_allocated_operations(
             "Cannot %s interface because the node is not Ready." % operation)
 
 
+def raise_error_if_controller(node, operation):
+    if node.is_controller:
+        raise MAASAPIForbidden(
+            "Cannot %s interface on a controller." % operation)
+
+
 class InterfacesHandler(OperationsHandler):
     """Manage interfaces on a node."""
     api_doc_section_name = "Interfaces"
@@ -94,8 +102,7 @@ class InterfacesHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
-        """Create a physical interface on a machine, device, or
-        rack controller.
+        """Create a physical interface on a machine and device.
 
         :param name: Name of the interface.
         :param mac_address: MAC address of the interface.
@@ -112,6 +119,7 @@ class InterfacesHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NODE_PERMISSION.EDIT)
+        raise_error_if_controller(node, "create")
         # Machine type nodes require the node needs to be in the correct state.
         if node.node_type == NODE_TYPE.MACHINE:
             raise_error_for_invalid_state_on_allocated_operations(
@@ -377,12 +385,19 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        node = interface.get_node()
+        if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "update interface")
-        interface_form = InterfaceForm.get_interface_form(interface.type)
+                node, request.user, "update interface")
+        if node.is_controller:
+            if interface.type == INTERFACE_TYPE.VLAN:
+                raise MAASAPIForbidden(
+                    "Cannot modify VLAN interface on controller.")
+            interface_form = ControllerInterfaceForm
+        else:
+            interface_form = InterfaceForm.get_interface_form(interface.type)
         # For VLAN interface we cast parents to parent. As a VLAN can only
         # have one parent.
         if interface.type == INTERFACE_TYPE.VLAN:
@@ -407,7 +422,9 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        node = interface.get_node()
+        raise_error_if_controller(node, "delete interface")
+        if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
@@ -449,11 +466,12 @@ class InterfaceHandler(OperationsHandler):
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
         node = interface.get_node()
+        raise_error_if_controller(node, "link subnet")
         if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "link subnet")
+                node, request.user, "link subnet")
             allowed_modes = [
                 INTERFACE_LINK_TYPE.AUTO,
                 INTERFACE_LINK_TYPE.DHCP,
@@ -480,11 +498,13 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        node = interface.get_node()
+        raise_error_if_controller(node, "link subnet")
+        if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "unlink subnet")
+                node, request.user, "unlink subnet")
         form = InterfaceUnlinkForm(instance=interface, data=request.data)
         if form.is_valid():
             return form.save()
@@ -507,11 +527,13 @@ class InterfaceHandler(OperationsHandler):
         """
         interface = Interface.objects.get_interface_or_404(
             system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
-        if interface.get_node().node_type == NODE_TYPE.MACHINE:
+        node = interface.get_node()
+        raise_error_if_controller(node, "link subnet")
+        if node.node_type == NODE_TYPE.MACHINE:
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "set default gateway")
+                node, request.user, "set default gateway")
         form = InterfaceSetDefaultGatwayForm(
             instance=interface, data=request.data)
         if form.is_valid():

@@ -154,6 +154,19 @@ class InterfaceForm(MAASModelForm):
         self._set_param(interface, "autoconf")
 
 
+class ControllerInterfaceForm(MAASModelForm):
+    """Interface update form for controllers."""
+
+    type = None
+    parents = None
+
+    class Meta:
+        model = Interface
+        fields = (
+            'vlan',
+            )
+
+
 class PhysicalInterfaceForm(InterfaceForm):
     """Form used to create/edit a physical interface."""
 

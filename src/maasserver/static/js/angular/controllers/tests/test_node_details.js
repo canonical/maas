@@ -1184,15 +1184,23 @@ describe("NodeDetailsController", function() {
 
     describe("canEdit", function() {
 
-        it("returns false if not super user", function() {
+        it("returns false if not super user and not controller", function() {
             var controller = makeController();
+            $scope.isController = false;
             spyOn($scope, "isSuperUser").and.returnValue(false);
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns true if super user",
+        it("returns false if super user and controller", function() {
+            var controller = makeController();
+            $scope.isController = true;
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns true if super user and not controller",
             function() {
                 var controller = makeController();
+                $scope.isController = false;
                 expect($scope.canEdit()).toBe(true);
             });
     });

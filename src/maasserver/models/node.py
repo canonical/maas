@@ -846,6 +846,14 @@ class Node(CleanSave, TimestampedModel):
             return self.system_id
 
     @property
+    def is_controller(self):
+        return self.node_type in [
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            NODE_TYPE.RACK_CONTROLLER,
+            ]
+
+    @property
     def power_type(self):
         return '' if self.bmc is None else self.bmc.power_type
 

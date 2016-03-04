@@ -654,7 +654,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            return $scope.isSuperUser();
+            return $scope.isSuperUser() && !$scope.isController;
         };
 
         // Called to edit the node name.

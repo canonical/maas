@@ -494,6 +494,109 @@ class TestInterfacesAPI(APITestCase):
             }, json_load_bytes(response.content))
 
 
+class TestInterfacesAPIForControllers(APITestCase):
+
+    scenarios = (
+        ("region", {
+            "maker": factory.make_RegionController,
+        }),
+        ("rack", {
+            "maker": factory.make_RackController,
+        }),
+        ("region_rack", {
+            "maker": factory.make_RegionRackController,
+        })
+    )
+
+    def test_read(self):
+        node = self.maker()
+        for _ in range(3):
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        uri = get_interfaces_uri(node)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        expected_ids = [
+            nic.id
+            for nic in node.interface_set.all()
+            ]
+        result_ids = [
+            nic["id"]
+            for nic in json_load_bytes(response.content)
+            ]
+        self.assertItemsEqual(expected_ids, result_ids)
+
+    def test_create_physical_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        mac = factory.make_mac_address()
+        name = factory.make_name("eth")
+        vlan = factory.make_VLAN()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_physical",
+            "mac_address": mac,
+            "name": name,
+            "vlan": vlan.id,
+            "tags": ",".join(tags),
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_bond_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        vlan = factory.make_VLAN()
+        parent_1_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+        parent_2_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
+        name = factory.make_name("bond")
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_bond",
+            "mac_address": "%s" % parent_1_iface.mac_address,
+            "name": name,
+            "vlan": vlan.id,
+            "parents": [parent_1_iface.id, parent_2_iface.id],
+            "tags": ",".join(tags),
+            })
+
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
+    def test_create_vlan_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        untagged_vlan = factory.make_VLAN()
+        parent_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=untagged_vlan, node=node)
+        tagged_vlan = factory.make_VLAN()
+        tags = [
+            factory.make_name("tag")
+            for _ in range(3)
+        ]
+        uri = get_interfaces_uri(node)
+        response = self.client.post(uri, {
+            "op": "create_vlan",
+            "vlan": tagged_vlan.id,
+            "parent": parent_iface.id,
+            "tags": ",".join(tags),
+            })
+
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
+
 class TestNodeInterfaceAPI(APITestCase):
 
     def test_handler_path(self):
@@ -1118,3 +1221,200 @@ class TestNodeInterfaceAPI(APITestCase):
                 })
             self.assertEqual(
                 http.client.CONFLICT, response.status_code, response.content)
+
+
+class TestInterfaceAPIForControllers(APITestCase):
+
+    scenarios = (
+        ("region", {
+            "maker": factory.make_RegionController,
+        }),
+        ("rack", {
+            "maker": factory.make_RackController,
+        }),
+        ("region_rack", {
+            "maker": factory.make_RegionRackController,
+        })
+    )
+
+    def test_read(self):
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+
+        # First link is a DHCP link.
+        links = []
+        dhcp_subnet = factory.make_Subnet()
+        dhcp_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+            subnet=dhcp_subnet, interface=interface)
+        discovered_ip = factory.pick_ip_in_network(
+            dhcp_subnet.get_ipnetwork())
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=discovered_ip,
+            subnet=dhcp_subnet, interface=interface)
+        links.append(
+            MatchesDict({
+                "id": Equals(dhcp_ip.id),
+                "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
+                "subnet": ContainsDict({
+                    "id": Equals(dhcp_subnet.id)
+                    }),
+                "ip_address": Equals(discovered_ip),
+            }))
+
+        # Second link is a STATIC ip link.
+        static_subnet = factory.make_Subnet()
+        static_ip = factory.pick_ip_in_network(static_subnet.get_ipnetwork())
+        sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=static_ip,
+            subnet=static_subnet, interface=interface)
+        links.append(
+            MatchesDict({
+                "id": Equals(sip.id),
+                "mode": Equals(INTERFACE_LINK_TYPE.STATIC),
+                "ip_address": Equals(static_ip),
+                "subnet": ContainsDict({
+                    "id": Equals(static_subnet.id)
+                    })
+            }))
+
+        # Third link is just a LINK_UP. In reality this cannot exist while the
+        # other two links exist but for testing we allow it. If validation of
+        # the StaticIPAddress model ever included this check, which it
+        # probably should then this will fail and cause this test to break.
+        link_subnet = factory.make_Subnet()
+        link_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="",
+            subnet=link_subnet, interface=interface)
+        links.append(
+            MatchesDict({
+                "id": Equals(link_ip.id),
+                "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
+                "subnet": ContainsDict({
+                    "id": Equals(link_subnet.id)
+                    })
+            }))
+
+        # Add MTU parameter.
+        interface.params = {
+            "mtu": random.randint(800, 2000)
+        }
+        interface.save()
+
+        uri = get_interface_uri(interface)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertThat(parsed_interface, ContainsDict({
+            "id": Equals(interface.id),
+            "name": Equals(interface.name),
+            "type": Equals(interface.type),
+            "vlan": ContainsDict({
+                "id": Equals(interface.vlan.id),
+                }),
+            "mac_address": Equals("%s" % interface.mac_address),
+            "tags": Equals(interface.tags),
+            "resource_uri": Equals(get_interface_uri(interface)),
+            "params": Equals(interface.params),
+            "effective_mtu": Equals(interface.get_effective_mtu()),
+        }))
+        self.assertThat(parsed_interface["links"], MatchesListwise(links))
+        json_discovered = parsed_interface["discovered"][0]
+        self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
+        self.assertEqual(discovered_ip, json_discovered["ip_address"])
+
+    def test_update(self):
+        self.become_admin()
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        uri = get_interface_uri(interface)
+        response = self.client.put(uri, {
+            "vlan": new_vlan.id
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertEquals(new_vlan.id, parsed_interface["vlan"]["id"])
+
+    def test_update_only_works_for_vlan_field(self):
+        self.become_admin()
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+
+        new_name = factory.make_name("name")
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        uri = get_interface_uri(interface)
+        response = self.client.put(uri, {
+            "name": new_name,
+            "vlan": new_vlan.id
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_interface = json_load_bytes(response.content)
+        self.assertEquals(new_vlan.id, parsed_interface["vlan"]["id"])
+        self.assertEquals(interface.name, parsed_interface["name"])
+
+    def test_update_forbidden_for_vlan_interface(self):
+        self.become_admin()
+        node = self.maker()
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[parent])
+
+        new_vlan = factory.make_VLAN()
+        uri = get_interface_uri(vlan_interface)
+        response = self.client.put(uri, {
+            "vlan": new_vlan.id
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_delete_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        uri = get_interface_uri(interface)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_link_subnet_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        uri = get_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "link_subnet",
+            "mode": INTERFACE_LINK_TYPE.DHCP,
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_unlink_subnet_is_forbidden(self):
+        self.become_admin()
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet()
+        dhcp_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DHCP, ip="",
+            subnet=subnet, interface=interface)
+        uri = get_interface_uri(interface)
+        response = self.client.post(uri, {
+            "op": "unlink_subnet",
+            "id": dhcp_ip.id,
+            })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+        self.assertIsNotNone(reload_object(dhcp_ip))
