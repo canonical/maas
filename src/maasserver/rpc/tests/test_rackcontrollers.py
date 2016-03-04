@@ -62,10 +62,24 @@ class TestRegisterRackController(MAASServerTestCase):
         rack_registered = register_rackcontroller(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
-    def test_finds_existing_node_sets_needs_refresh_to_false(self):
-        node = factory.make_Node()
+    def test_finds_existing_controller_sets_needs_refresh_to_false(self):
+        node_type = random.choice([
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ])
+        node = factory.make_Node(node_type=node_type)
         rack_registered = register_rackcontroller(system_id=node.system_id)
         self.assertFalse(rack_registered.needs_refresh)
+
+    def test_converts_existing_node_sets_needs_refresh_to_true(self):
+        node_type = random.choice([
+            NODE_TYPE.MACHINE,
+            NODE_TYPE.DEVICE,
+            NODE_TYPE.REGION_CONTROLLER,
+        ])
+        node = factory.make_Node(node_type=node_type)
+        rack_registered = register_rackcontroller(system_id=node.system_id)
+        self.assertTrue(rack_registered.needs_refresh)
 
     def test_find_existing_keeps_type(self):
         node_type = random.choice(
@@ -181,7 +195,38 @@ class TestRegisterRackController(MAASServerTestCase):
             interfaces=interfaces, nodegroup_uuid=ng_uuid)
         vlan = reload_object(vlan)
         self.assertEqual(rack.system_id, vlan.primary_rack.system_id)
+        self.assertTrue(vlan.dhcp_on)
         self.assertItemsEqual([], NodeGroupToRackController.objects.all())
+
+    def test_logs_migration(self):
+        logger = self.useFixture(FakeLogger("maas"))
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [{
+                    "mode": "static",
+                    "address": "%s/%d" % (
+                        str(ip), subnet.get_ipnetwork().prefixlen),
+                }],
+                "enabled": True,
+            }
+        }
+        ng_uuid = factory.make_UUID()
+        NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
+        register_rackcontroller(
+            system_id=rack.system_id, hostname=rack.hostname,
+            interfaces=interfaces, nodegroup_uuid=ng_uuid)
+        vlan = reload_object(vlan)
+        self.assertEqual(
+            "DHCP setting from NodeGroup(%s) have been migrated to "
+            "VID %d on fabric_id %d" % (ng_uuid, vlan.vid, vlan.fabric_id),
+            logger.output.split('\n')[1].strip())
 
     def test_logs_creating_new_rackcontroller(self):
         logger = self.useFixture(FakeLogger("maas"))

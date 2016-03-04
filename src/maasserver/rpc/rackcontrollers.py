@@ -70,7 +70,12 @@ def register_rackcontroller(
         for nic in rackcontroller.interface_set.all():
             if nic.vlan in vlans:
                 nic.vlan.primary_rack = rackcontroller
+                nic.vlan.dhcp_on = True
                 nic.vlan.save()
+                maaslog.info(
+                    "DHCP setting from NodeGroup(%s) have been migrated to "
+                    "VID %d on fabric_id %d" %
+                    (nodegroup_uuid, nic.vlan.vid, nic.vlan.fabric_id))
         for ng_to_rack in ng_to_racks:
             ng_to_rack.delete()
 
@@ -89,11 +94,23 @@ def find_and_register_existing(system_id, hostname, interfaces):
         Q(interface__mac_address__in=mac_addresses)).first()
     if node is None:
         return None
+    # Refresh whenever an existing node is converted for use as a rack
+    # controller. This is needed for two reasons. First, when the region starts
+    # it creates a node for itself but only gathers networking information.
+    # Second, information about the node may have changed since its last use.
+    needs_refresh = True
     if node.node_type in (
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER):
         maaslog.info(
             "Registering existing rack controller %s." % node.hostname)
+        # We don't want to refresh existing rack controllers as each time a
+        # rack controller connects to a region it creates four connections.
+        # This means for every region we connect to we would refresh
+        # 4 * regions every time the rack controller restarts. Our information
+        # at this point should be current anyway and the user can always
+        # manually refresh.
+        needs_refresh = False
     elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
         maaslog.info(
             "Converting %s into a region and rack controller." % node.hostname)
@@ -106,7 +123,7 @@ def find_and_register_existing(system_id, hostname, interfaces):
 
     rackcontroller = typecast_node(node, RackController)
     # Tell register RPC call a refresh isn't needed
-    rackcontroller.needs_refresh = False
+    rackcontroller.needs_refresh = needs_refresh
     return rackcontroller
 
 
