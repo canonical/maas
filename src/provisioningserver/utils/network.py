@@ -34,6 +34,7 @@ from netaddr import (
 import netifaces
 from provisioningserver.utils.dhclient import get_dhclient_info
 from provisioningserver.utils.ipaddr import get_ip_addr
+from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check
 
@@ -590,6 +591,20 @@ def fix_link_addresses(links):
                 break
 
 
+def fix_link_gateways(links, iproute_info):
+    """Fix the gateways to be set on each link if a route exists for the subnet
+    or if the default gateway is in the subnet.
+    """
+    for link in links:
+        ip_addr = IPNetwork(link["address"])
+        cidr = str(ip_addr.cidr)
+        if cidr in iproute_info:
+            link["gateway"] = iproute_info[cidr]["via"]
+        elif ("default" in iproute_info and
+                IPAddress(iproute_info["default"]["via"]) in ip_addr):
+            link["gateway"] = iproute_info["default"]["via"]
+
+
 def get_all_interfaces_definition():
     """Return interfaces definition by parsing "ip addr" and the running
     "dhclient" processes on the machine.
@@ -600,6 +615,7 @@ def get_all_interfaces_definition():
     """
     interfaces = {}
     dhclient_info = get_dhclient_info()
+    iproute_info = get_ip_route()
     exclude_types = ["loopback", "ipip"]
     if not running_in_container():
         exclude_types.append("ethernet")
@@ -653,6 +669,7 @@ def get_all_interfaces_definition():
                     "address": address,
                 })
         fix_link_addresses(interface["links"])
+        fix_link_gateways(interface["links"], iproute_info)
         interfaces[name] = interface
 
     return interfaces

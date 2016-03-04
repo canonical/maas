@@ -19,7 +19,6 @@ from mock import sentinel
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
-    _get_settings_dict,
     _parse_interface_definition,
     annotate_with_driver_information,
     get_bonded_interfaces,
@@ -27,6 +26,7 @@ from provisioningserver.utils.ipaddr import (
     get_ip_addr,
     get_ip_addr_json,
     get_mac_addresses,
+    get_settings_dict,
     parse_ip_addr,
 )
 from testtools import ExpectedException
@@ -38,22 +38,22 @@ from testtools.matchers import (
 
 
 class TestHelperFunctions(MAASTestCase):
-    def test_get_settings_dict_ignores_empty_settings_string(self):
-        settings = _get_settings_dict("")
+    def testget_settings_dict_ignores_empty_settings_string(self):
+        settings = get_settings_dict("")
         self.assertEqual({}, settings)
 
-    def test_get_settings_dict_handles_odd_number_of_tokens(self):
-        self.assertThat(_get_settings_dict("mtu"), Equals({}))
+    def testget_settings_dict_handles_odd_number_of_tokens(self):
+        self.assertThat(get_settings_dict("mtu"), Equals({}))
         self.assertThat(
-            _get_settings_dict("mtu 1500 qdisc"), Equals({"mtu": "1500"}))
+            get_settings_dict("mtu 1500 qdisc"), Equals({"mtu": "1500"}))
 
-    def test_get_settings_dict_creates_correct_dictionary(self):
-        settings = _get_settings_dict("mtu 1073741824 state AWESOME")
+    def testget_settings_dict_creates_correct_dictionary(self):
+        settings = get_settings_dict("mtu 1073741824 state AWESOME")
         self.assertThat(settings, Equals(
             {'mtu': '1073741824', 'state': 'AWESOME'}))
 
-    def test_get_settings_dict_ignores_whitespace(self):
-        settings = _get_settings_dict("    mtu   1073741824  state  AWESOME  ")
+    def testget_settings_dict_ignores_whitespace(self):
+        settings = get_settings_dict("    mtu   1073741824  state  AWESOME  ")
         self.assertThat(settings, Equals(
             {'mtu': '1073741824', 'state': 'AWESOME'}))
 

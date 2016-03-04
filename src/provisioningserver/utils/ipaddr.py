@@ -64,7 +64,7 @@ from netaddr import (
 from provisioningserver.utils.shell import call_and_check
 
 
-def _get_settings_dict(settings_line):
+def get_settings_dict(settings_line):
     """
     Given a string of the format:
         "[[<key1> <value1>] <key2> <value2>][...]"
@@ -114,7 +114,7 @@ def _parse_interface_definition(line):
         else:
             flags = []
         interface['flags'] = flags
-        interface['settings'] = _get_settings_dict(matches.group(2))
+        interface['settings'] = get_settings_dict(matches.group(2))
     else:
         raise ValueError("Malformed 'ip addr' line (%s)" % line)
     return interface
@@ -128,7 +128,7 @@ def _add_additional_interface_properties(interface, line):
     :param interface: dict
     :param line: unicode
     """
-    settings = _get_settings_dict(line)
+    settings = get_settings_dict(line)
     mac = settings.get('link/ether')
     if mac is not None:
         interface['mac'] = mac

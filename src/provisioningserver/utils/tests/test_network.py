@@ -765,9 +765,10 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
     """Tests for `get_all_interfaces_definition` and all helper methods."""
 
     def assertInterfacesResult(
-            self, ip_addr, dhclient_info, expected_results,
+            self, ip_addr, iproute_info, dhclient_info, expected_results,
             in_container=False):
         self.patch(network_module, "get_ip_addr").return_value = ip_addr
+        self.patch(network_module, "get_ip_route").return_value = iproute_info
         self.patch(
             network_module, "get_dhclient_info").return_value = dhclient_info
         self.patch(
@@ -784,7 +785,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "inet6": ["::1"],
             },
         }
-        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test__ignores_ethernet(self):
         ip_addr = {
@@ -795,7 +796,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "inet": ["192.168.122.2/24"],
             },
         }
-        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test__ignores_ipip(self):
         ip_addr = {
@@ -804,7 +805,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "flags": ["UP"],
             },
         }
-        self.assertInterfacesResult(ip_addr, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test__simple(self):
         ip_addr = {
@@ -828,7 +829,37 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(ip_addr, {}, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
+
+    def test__simple_with_default_gateway(self):
+        ip_addr = {
+            "eth0": {
+                "type": "ethernet.physical",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "inet": ["192.168.122.2/24"],
+            },
+        }
+        iproute_info = {
+            "default": {
+                "via": "192.168.122.1",
+            }
+        }
+        expected_result = MatchesDict({
+            "eth0": MatchesDict({
+                "type": Equals("physical"),
+                "mac_address": Equals(ip_addr["eth0"]["mac"]),
+                "enabled": Is(True),
+                "parents": Equals([]),
+                "links": Equals([{
+                    "mode": "static",
+                    "address": "192.168.122.2/24",
+                    "gateway": "192.168.122.1",
+                }]),
+                "source": Equals("ipaddr"),
+            }),
+        })
+        self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
     def test__doesnt_ignore_ethernet_in_container(self):
         ip_addr = {
@@ -853,7 +884,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }),
         })
         self.assertInterfacesResult(
-            ip_addr, {}, expected_result, in_container=True)
+            ip_addr, {}, {}, expected_result, in_container=True)
 
     def test__simple_with_dhcp(self):
         ip_addr = {
@@ -886,7 +917,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(ip_addr, dhclient_info, expected_result)
+        self.assertInterfacesResult(
+            ip_addr, {}, dhclient_info, expected_result)
 
     def test__fixing_links(self):
         ip_addr = {
@@ -936,7 +968,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(ip_addr, {}, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
 
     def test__complex(self):
         ip_addr = {
@@ -981,6 +1013,14 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "inet": ["192.168.124.2/24"],
             },
         }
+        iproute_info = {
+            "default": {
+                "via": "192.168.122.1",
+            },
+            "192.168.124.0/24": {
+                "via": "192.168.124.1",
+            }
+        }
         expected_result = MatchesDict({
             "eth0": MatchesDict({
                 "type": Equals("physical"),
@@ -1015,10 +1055,12 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                     MatchesDict({
                         "mode": Equals("static"),
                         "address": Equals("192.168.122.2/24"),
+                        "gateway": Equals("192.168.122.1"),
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
                         "address": Equals("192.168.122.3/24"),
+                        "gateway": Equals("192.168.122.1"),
                     }),
                     MatchesDict({
                         "mode": Equals("static"),
@@ -1060,8 +1102,9 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "links": Equals([{
                     "mode": "static",
                     "address": "192.168.124.2/24",
+                    "gateway": "192.168.124.1",
                 }]),
                 "source": Equals("ipaddr"),
             }),
         })
-        self.assertInterfacesResult(ip_addr, {}, expected_result)
+        self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
