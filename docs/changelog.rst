@@ -36,6 +36,7 @@ Minor bugs fixed in this release
 
 LP: #1540765    Fix unable to detect IPMI control settings during enlistment
 LP: #1541464    Fix comparison of AMT versions. Compare major version as integers.
+LP: #1499934    Power state could not be queried (vmware)
 
 
 1.9.0
