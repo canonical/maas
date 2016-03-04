@@ -378,3 +378,23 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
                     "end": ""
                 }
             })
+
+    def test__configure_dhcp_ignores_undefined_subnet(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "extra": {
+                "subnet": None,
+                "gateway": "",
+                "start": "",
+                "end": ""
+            }
+        })
+        vlan = reload_object(vlan)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))

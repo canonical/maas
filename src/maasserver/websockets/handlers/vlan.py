@@ -83,7 +83,7 @@ class VLANHandler(TimestampedModelHandler):
         vlan.delete()
 
     def _configure_iprange_and_gateway(self, parameters):
-        if 'subnet' in parameters:
+        if 'subnet' in parameters and parameters['subnet'] is not None:
             subnet = Subnet.objects.get(id=parameters['subnet'])
         else:
             # Without a subnet, we cannot continue. (We need one to either
