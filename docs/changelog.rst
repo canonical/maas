@@ -3,6 +3,17 @@ Changelog
 =========
 
 
+1.9.2
+=====
+
+See https://launchpad.net/maas/+milestone/1.9.2 for full details.
+
+Bug Fix Update
+--------------
+
+#1499934    Power state could not be queried (vmware)
+
+
 1.9.1
 =====
 

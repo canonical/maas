@@ -30,6 +30,11 @@ def extract_vmware_parameters(context):
     uuid = context.get('power_uuid')
     port = context.get('power_port')
     protocol = context.get('power_protocol')
+    # Ensure the optional parameters are unambiguously present, or None.
+    if port is not None and port.strip() == "":
+        port = None
+    if protocol is not None and protocol.strip() == "":
+        protocol = None
     return host, username, password, vm_name, uuid, port, protocol
 
 
