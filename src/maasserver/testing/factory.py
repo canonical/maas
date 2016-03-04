@@ -413,14 +413,7 @@ class Factory(maastesting.factory.Factory):
                     subnet=subnet, interface=rack_interface)
             else:
                 ip_address = existing_static_ips[0]
-            current_ip_addresses = [
-                sip.ip
-                for sip in StaticIPAddress.objects.filter(
-                    subnet=ip_address.subnet)
-                if sip.ip
-            ]
-            bmc_ip_address = self.pick_ip_in_Subnet(
-                ip_address.subnet, but_not=current_ip_addresses)
+            bmc_ip_address = self.pick_ip_in_Subnet(ip_address.subnet)
             node.power_parameters = {
                 "power_address": "qemu+ssh://user@%s/system" % bmc_ip_address
             }
@@ -610,8 +603,12 @@ class Factory(maastesting.factory.Factory):
         if vlan is None and subnet is not None:
             vlan = subnet.vlan
         if vlan is None:
+            if fabric is None:
+                fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
             dhcp_on = with_dhcp_rack_primary or with_dhcp_rack_secondary
-            vlan = self.make_VLAN(fabric=fabric, dhcp_on=dhcp_on)
+            vlan.dhcp_on = dhcp_on
+            vlan.save()
         if subnet is None:
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
         boot_interface = self.make_Interface(
@@ -661,7 +658,7 @@ class Factory(maastesting.factory.Factory):
                     secondary_rack = vlan.secondary_rack
             vlan.secondary_rack = secondary_rack
             vlan.save()
-        return node
+        return reload_object(node)
 
     UNDEFINED = float('NaN')
 
@@ -860,7 +857,19 @@ class Factory(maastesting.factory.Factory):
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
         if vlan is None:
-            vlan = self.make_VLAN(fabric=fabric)
+            if fabric is not None:
+                if iftype == INTERFACE_TYPE.VLAN:
+                    vlan = self.make_VLAN(fabric=fabric)
+                else:
+                    vlan = fabric.get_default_vlan()
+            else:
+                if iftype == INTERFACE_TYPE.VLAN and parents:
+                    vlan = self.make_VLAN(fabric=parents[0].vlan.fabric)
+                elif iftype == INTERFACE_TYPE.BOND and parents:
+                    vlan = parents[0].vlan
+                else:
+                    fabric = self.make_Fabric()
+                    vlan = fabric.get_default_vlan()
         if (mac_address is None and
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,

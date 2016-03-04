@@ -10,6 +10,7 @@ import random
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_TYPE,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -123,3 +124,103 @@ class TestMTUParams(MAASServerTestCase):
         self.assertEqual({
             'mtu': bond_mtu,
             }, reload_object(physical3_interface).params)
+
+
+class TestUpdateBondParents(MAASServerTestCase):
+
+    def test__updates_bond_parents(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        self.assertEqual(bond.vlan, reload_object(parent1).vlan)
+        self.assertEqual(bond.vlan, reload_object(parent2).vlan)
+
+    def test__update_bond_clears_parent_links(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        static_ip = factory.make_StaticIPAddress(interface=parent1)
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        self.assertIsNone(reload_object(static_ip))
+
+
+class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
+
+    scenarios = (
+        ("machine", {
+            "maker": factory.make_Node,
+        }),
+        ("device", {
+            "maker": factory.make_Device,
+        }),
+    )
+
+    def test__removes_links(self):
+        node = self.maker()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        static_ip = factory.make_StaticIPAddress(interface=interface)
+        discovered_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        interface.vlan = new_vlan
+        interface.save()
+        self.assertIsNone(reload_object(static_ip))
+        self.assertIsNotNone(reload_object(discovered_ip))
+
+
+class TestInterfaceVLANUpdateController(MAASServerTestCase):
+
+    scenarios = (
+        ("region", {
+            "maker": factory.make_RegionController,
+        }),
+        ("rack", {
+            "maker": factory.make_RackController,
+        }),
+        ("region-rack", {
+            "maker": lambda: factory.make_Node(
+                node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        }),
+    )
+
+    def test__moves_link_subnets_to_same_vlan(self):
+        node = self.maker()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=interface.vlan)
+        factory.make_StaticIPAddress(
+            subnet=subnet, interface=interface)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        interface.vlan = new_vlan
+        interface.save()
+        self.assertEquals(new_vlan, reload_object(subnet).vlan)
+
+    def test__moves_children_vlans_to_same_fabric(self):
+        node = self.maker()
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        subnet = factory.make_Subnet(vlan=parent.vlan)
+        factory.make_StaticIPAddress(
+            subnet=subnet, interface=parent)
+        old_vlan = factory.make_VLAN(fabric=parent.vlan.fabric)
+        vlan_interface = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=old_vlan, parents=[parent])
+        vlan_subnet = factory.make_Subnet(vlan=old_vlan)
+        factory.make_StaticIPAddress(
+            subnet=vlan_subnet, interface=vlan_interface)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        parent.vlan = new_vlan
+        parent.save()
+        self.assertEquals(new_vlan, reload_object(subnet).vlan)
+        vlan_interface = reload_object(vlan_interface)
+        self.assertEquals(
+            (new_fabric.id, old_vlan.vid),
+            (vlan_interface.vlan.fabric.id, vlan_interface.vlan.vid))
+        vlan_subnet = reload_object(vlan_subnet)
+        self.assertEquals(
+            (new_fabric.id, old_vlan.vid),
+            (vlan_subnet.vlan.fabric.id, vlan_subnet.vlan.vid))

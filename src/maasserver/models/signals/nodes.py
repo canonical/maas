@@ -43,10 +43,10 @@ def clear_nodekey_when_owner_changes(node, old_values, deleted=False):
     if owner_id_new != owner_id_old:
         NodeKey.objects.clear_token_for_node(node)
 
-for kclass in NODE_CLASSES:
+for klass in NODE_CLASSES:
     signals.watch_fields(
         clear_nodekey_when_owner_changes,
-        kclass, ['owner_id'], delete=False)
+        klass, ['owner_id'], delete=False)
 
 
 def create_services_on_node_type_change(node, old_values, deleted=False):
@@ -62,13 +62,13 @@ def create_services_on_create(sender, instance, created, **kwargs):
     if created:
         Service.objects.create_services_for(instance)
 
-for kclass in NODE_CLASSES:
+for klass in NODE_CLASSES:
     signals.watch_fields(
         create_services_on_node_type_change,
-        kclass, ['node_type'], delete=False)
+        klass, ['node_type'], delete=False)
     signals.watch(
         post_save, create_services_on_create,
-        sender=kclass)
+        sender=klass)
 
 
 # Enable all signals by default.
