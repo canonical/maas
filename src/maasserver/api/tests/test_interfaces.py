@@ -48,14 +48,14 @@ def get_interface_uri(interface, node=None):
 def make_complex_interface(node, name=None):
     """Makes interface with parents and children."""
     fabric = factory.make_Fabric()
-    vlan_5 = factory.make_VLAN(vid=5, fabric=fabric)
+    untagged = fabric.get_default_vlan()
     nic_0 = factory.make_Interface(
-        INTERFACE_TYPE.PHYSICAL, vlan=vlan_5, node=node)
+        INTERFACE_TYPE.PHYSICAL, vlan=untagged, node=node)
     nic_1 = factory.make_Interface(
-        INTERFACE_TYPE.PHYSICAL, vlan=vlan_5, node=node)
+        INTERFACE_TYPE.PHYSICAL, vlan=untagged, node=node)
     parents = [nic_0, nic_1]
     bond_interface = factory.make_Interface(
-        INTERFACE_TYPE.BOND, mac_address=nic_0.mac_address, vlan=vlan_5,
+        INTERFACE_TYPE.BOND, mac_address=nic_0.mac_address, vlan=untagged,
         parents=parents, name=name)
     vlan_10 = factory.make_VLAN(vid=10, fabric=fabric)
     vlan_nic_10 = factory.make_Interface(
@@ -112,7 +112,8 @@ class TestInterfacesAPI(APITestCase):
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
-            vlan = factory.make_VLAN()
+            fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
             tags = [
                 factory.make_name("tag")
                 for _ in range(3)
@@ -145,7 +146,8 @@ class TestInterfacesAPI(APITestCase):
             owner=self.logged_in_user, parent=parent)
         mac = factory.make_mac_address()
         name = factory.make_name("eth")
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         tags = [
             factory.make_name("tag")
             for _ in range(3)
@@ -178,7 +180,8 @@ class TestInterfacesAPI(APITestCase):
             node = factory.make_Node(status=status)
             mac = factory.make_mac_address()
             name = factory.make_name("eth")
-            vlan = factory.make_VLAN()
+            fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
             tags = [
                 factory.make_name("tag")
                 for _ in range(3)
@@ -274,7 +277,8 @@ class TestInterfacesAPI(APITestCase):
         interface_on_other_node = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL)
         name = factory.make_name("eth")
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {
             "op": "create_physical",
@@ -294,7 +298,8 @@ class TestInterfacesAPI(APITestCase):
         self.become_admin()
         for status in (NODE_STATUS.READY, NODE_STATUS.BROKEN):
             node = factory.make_Node(status=status)
-            vlan = factory.make_VLAN()
+            fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
             parent_1_iface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=node)
             parent_2_iface = factory.make_Interface(
@@ -398,7 +403,7 @@ class TestInterfacesAPI(APITestCase):
             self.assertEqual(
                 http.client.CONFLICT, response.status_code, response.content)
 
-    def test_create_bond_requires_name_vlan_and_parents(self):
+    def test_create_bond_requires_name_and_parents(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         uri = get_interfaces_uri(node)
@@ -411,7 +416,6 @@ class TestInterfacesAPI(APITestCase):
         self.assertEqual({
             "mac_address": ["This field cannot be blank."],
             "name": ["This field is required."],
-            "vlan": ["This field is required."],
             "parents": ["A Bond interface must have one or more parents."],
             }, json_load_bytes(response.content))
 
@@ -635,7 +639,8 @@ class TestNodeInterfaceAPI(APITestCase):
             interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
             new_name = factory.make_name("name")
-            new_vlan = factory.make_VLAN()
+            new_fabric = factory.make_Fabric()
+            new_vlan = new_fabric.get_default_vlan()
             uri = get_interface_uri(interface)
             response = self.client.put(uri, {
                 "name": new_name,
@@ -654,7 +659,8 @@ class TestNodeInterfaceAPI(APITestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         new_name = factory.make_name("name")
-        new_vlan = factory.make_VLAN()
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
         uri = get_interface_uri(interface)
         response = self.client.put(uri, {
             "name": new_name,
@@ -689,9 +695,11 @@ class TestNodeInterfaceAPI(APITestCase):
                 node)
             physical_interface = factory.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=node)
+            new_vlan = factory.make_VLAN(fabric=physical_interface.vlan.fabric)
             uri = get_interface_uri(vlan_10)
             response = self.client.put(uri, {
                 "parent": physical_interface.id,
+                "vlan": new_vlan.id,
                 })
             self.assertEqual(
                 http.client.OK, response.status_code, response.content)

@@ -186,6 +186,13 @@ class PhysicalInterfaceForm(InterfaceForm):
         if len(parents) > 0:
             raise ValidationError("A physical interface cannot have parents.")
 
+    def clean_vlan(self):
+        new_vlan = self.cleaned_data.get('vlan')
+        if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
+            raise ValidationError(
+                "A physical interface can only belong to an untagged VLAN.")
+        return new_vlan
+
     def clean(self):
         cleaned_data = super(PhysicalInterfaceForm, self).clean()
         new_name = cleaned_data.get('name')
@@ -223,11 +230,25 @@ class VLANInterfaceForm(InterfaceForm):
                 "in a bond.")
         return parents
 
+    def clean_vlan(self):
+        new_vlan = self.cleaned_data.get('vlan')
+        if new_vlan and new_vlan.fabric.get_default_vlan() == new_vlan:
+            raise ValidationError(
+                "A VLAN interface can only belong to a tagged VLAN.")
+        return new_vlan
+
     def clean(self):
         cleaned_data = super(VLANInterfaceForm, self).clean()
         if self.fields_ok(['vlan', 'parents']):
             new_vlan = self.cleaned_data.get('vlan')
             if new_vlan:
+                # VLAN needs to be the in the same fabric as the parent.
+                parent = self.cleaned_data.get('parents')[0]
+                if parent.vlan.fabric_id != new_vlan.fabric_id:
+                    set_form_error(
+                        self, "vlan",
+                        "A VLAN interface can only belong to a tagged VLAN on "
+                        "the same fabric as its parent interface.")
                 name = build_vlan_interface_name(
                     self.cleaned_data.get('parents').first(), new_vlan)
                 self.clean_interface_name_uniqueness(name)
@@ -271,6 +292,15 @@ class BondInterfaceForm(InterfaceForm):
             'name',
         )
 
+    def __init__(self, *args, **kwargs):
+        super(BondInterfaceForm, self).__init__(*args, **kwargs)
+        # Allow VLAN to be blank when creating.
+        instance = kwargs.get("instance", None)
+        if instance is not None and instance.id is not None:
+            self.fields['vlan'].required = True
+        else:
+            self.fields['vlan'].required = False
+
     def clean_parents(self):
         parents = self.get_clean_parents()
         if parents is None:
@@ -280,9 +310,16 @@ class BondInterfaceForm(InterfaceForm):
                 "A Bond interface must have one or more parents.")
         return parents
 
+    def clean_vlan(self):
+        new_vlan = self.cleaned_data.get('vlan')
+        if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
+            raise ValidationError(
+                "A bond interface can only belong to an untagged VLAN.")
+        return new_vlan
+
     def clean(self):
         cleaned_data = super(BondInterfaceForm, self).clean()
-        if self.fields_ok(['parents']):
+        if self.fields_ok(['vlan', 'parents']):
             parents = self.cleaned_data.get('parents')
             # Set the mac_address if its missing and the interface is being
             # created.
@@ -323,6 +360,23 @@ class BondInterfaceForm(InterfaceForm):
                         self, 'parents',
                         "%s is already in-use by another interface." % (
                             ', '.join(sorted(parents_with_other_children))))
+
+                # When creating the bond set VLAN to the same as the parents
+                # and check that the parents all belong to the same VLAN.
+                if self.instance.id is None:
+                    vlan = self.cleaned_data.get('vlan')
+                    if vlan is None:
+                        vlan = parents[0].vlan
+                        self.cleaned_data['vlan'] = vlan
+                    parent_vlans = {
+                        parent.vlan
+                        for parent in parents
+                    }
+                    if parent_vlans != set([vlan]):
+                        set_form_error(
+                            self, 'parents',
+                            "All parents must belong to the same VLAN.")
+
         return cleaned_data
 
     def set_extra_parameters(self, interface, created):
@@ -345,17 +399,6 @@ class BondInterfaceForm(InterfaceForm):
                 interface.params[bond_field] = value
             elif created:
                 interface.params[bond_field] = self.fields[bond_field].initial
-
-    def save(self, *args, **kwargs):
-        """Persist the interface into the database."""
-        created = self.instance.id is None
-        interface = super(BondInterfaceForm, self).save()
-        if created:
-            # Bond was created we remove all the links on the parent interfaces
-            # and ensure that the bond has atleast a LINK_UP.
-            for parent in interface.parents.all():
-                parent.clear_all_links(clearing_config=True)
-        return interface
 
 
 INTERFACE_FORM_MAPPING = {

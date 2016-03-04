@@ -25,6 +25,7 @@ from maasserver.models.interface import build_vlan_interface_name
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
+from maasserver.utils.orm import reload_object
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 
@@ -58,7 +59,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = 'eth0'
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         tags = [
             factory.make_name("tag")
             for _ in range(3)
@@ -84,7 +86,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = 'eth0'
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         tags = [
             factory.make_name("tag")
             for _ in range(3)
@@ -104,7 +107,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
 
     def test__requires_mac_address(self):
         interface_name = 'eth0'
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         form = PhysicalInterfaceForm(
             node=factory.make_Node(),
             data={
@@ -119,7 +123,9 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             form.errors['mac_address'][0])
 
     def test_rejects_interface_with_duplicate_name(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         mac_address = factory.make_mac_address()
         form = PhysicalInterfaceForm(
             node=interface.node,
@@ -135,9 +141,30 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             "already has an interface named '%s'." % interface.name,
             form.errors['name'][0])
 
+    def test_rejects_interface_on_tagged_vlan(self):
+        fabric = factory.make_Fabric()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan())
+        vlan = factory.make_VLAN(fabric=fabric)
+        mac_address = factory.make_mac_address()
+        form = PhysicalInterfaceForm(
+            node=interface.node,
+            data={
+                'name': factory.make_name("eth"),
+                'mac_address': mac_address,
+                'vlan': vlan.id,
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(
+            ['vlan'], form.errors.keys(), form.errors)
+        self.assertIn(
+            "A physical interface can only belong to an untagged VLAN.",
+            form.errors['vlan'][0])
+
     def test__rejects_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         form = PhysicalInterfaceForm(
             node=parent.node,
             data={
@@ -157,7 +184,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name='eth0')
         new_name = 'eth1'
-        new_vlan = factory.make_VLAN(vid=33)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
         form = PhysicalInterfaceForm(
             instance=interface,
             data={
@@ -178,7 +206,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
         node = factory.make_Node()
         mac_address = factory.make_mac_address()
         interface_name = 'eth0'
-        vlan = factory.make_VLAN()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
         tags = [
             factory.make_name("tag")
             for _ in range(3)
@@ -217,7 +246,8 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             "autoconf": autoconf,
         }
         new_name = 'eth1'
-        new_vlan = factory.make_VLAN(vid=33)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
         form = PhysicalInterfaceForm(
             instance=interface,
             data={
@@ -290,7 +320,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
 
     def test__creates_vlan_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        vlan = factory.make_VLAN(vid=10)
+        vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
         form = VLANInterfaceForm(
             node=parent.node,
             data={
@@ -308,7 +338,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
 
     def test__create_ensures_link_up(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        vlan = factory.make_VLAN(vid=10)
+        vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
         form = VLANInterfaceForm(
             node=parent.node,
             data={
@@ -321,13 +351,10 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.STICKY))
 
     def test_rejects_interface_with_duplicate_name(self):
-        vlan = factory.make_VLAN(vid=10)
-        parent = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL,
-            vlan=vlan)
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.VLAN,
-            vlan=vlan, parents=[parent])
+            INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent])
         form = VLANInterfaceForm(
             node=parent.node,
             data={
@@ -340,6 +367,22 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         self.assertIn(
             "already has an interface named '%s'." % interface.name,
             form.errors['name'][0])
+
+    def test_rejects_interface_on_default_fabric(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan = parent.vlan.fabric.get_default_vlan()
+        form = VLANInterfaceForm(
+            node=parent.node,
+            data={
+                'vlan': vlan.id,
+                'parents': [parent.id],
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(
+            ['vlan'], form.errors.keys(), form.errors)
+        self.assertIn(
+            "A VLAN interface can only belong to a tagged VLAN.",
+            form.errors['vlan'][0])
 
     def test__rejects_no_parents(self):
         vlan = factory.make_VLAN(vid=10)
@@ -356,13 +399,14 @@ class VLANInterfaceFormTest(MAASServerTestCase):
 
     def test__rejects_vlan_parent(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
         vlan_parent = factory.make_Interface(
-            INTERFACE_TYPE.VLAN, parents=[parent])
-        vlan = factory.make_VLAN(vid=10)
+            INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent])
+        other_vlan = factory.make_VLAN(fabric=parent.vlan.fabric, vid=11)
         form = VLANInterfaceForm(
             node=parent.node,
             data={
-                'vlan': vlan.id,
+                'vlan': other_vlan.id,
                 'parents': [vlan_parent.id],
             })
         self.assertFalse(form.is_valid(), form.errors)
@@ -371,10 +415,27 @@ class VLANInterfaceFormTest(MAASServerTestCase):
             "VLAN interface can't have another VLAN interface as parent.",
             form.errors['parents'][0])
 
+    def test__rejects_vlan_not_on_same_fabric(self):
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        factory.make_VLAN(fabric=parent.vlan.fabric, vid=10)
+        other_vlan = factory.make_VLAN()
+        form = VLANInterfaceForm(
+            node=parent.node,
+            data={
+                'vlan': other_vlan.id,
+                'parents': [parent.id],
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(['vlan'], form.errors.keys())
+        self.assertIn(
+            "A VLAN interface can only belong to a tagged VLAN on "
+            "the same fabric as its parent interface.",
+            form.errors['vlan'][0])
+
     def test__rejects_parent_on_bond(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        factory.make_Interface(INTERFACE_TYPE.BOND, parents=[parent])
-        vlan = factory.make_VLAN(vid=10)
+        bond = factory.make_Interface(INTERFACE_TYPE.BOND, parents=[parent])
+        vlan = factory.make_VLAN(fabric=bond.vlan.fabric, vid=10)
         form = VLANInterfaceForm(
             node=parent.node,
             data={
@@ -408,7 +469,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, parents=[parent])
-        new_vlan = factory.make_VLAN(vid=33)
+        new_vlan = factory.make_VLAN(fabric=interface.vlan.fabric, vid=33)
         form = VLANInterfaceForm(
             instance=interface,
             data={
@@ -429,15 +490,13 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__error_with_invalid_bond_mode(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         bond_mode = factory.make_name("bond_mode")
         form = BondInterfaceForm(
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
                 'bond_mode': bond_mode,
             })
@@ -451,14 +510,12 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__creates_bond_interface(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         form = BondInterfaceForm(
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
@@ -475,15 +532,13 @@ class BondInterfaceFormTest(MAASServerTestCase):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent1.ensure_link_up()
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         parent2.ensure_link_up()
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         form = BondInterfaceForm(
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
@@ -502,14 +557,12 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__creates_bond_interface_with_parent_mac_address(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         form = BondInterfaceForm(
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
                 'mac_address': parent1.mac_address,
             })
@@ -525,14 +578,12 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__creates_bond_interface_with_default_bond_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         form = BondInterfaceForm(
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
             })
         self.assertTrue(form.is_valid(), form.errors)
@@ -549,9 +600,8 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__creates_bond_interface_with_bond_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface_name = factory.make_name()
-        vlan = factory.make_VLAN(vid=10)
         bond_mode = factory.pick_choice(BOND_MODE_CHOICES)
         bond_miimon = random.randint(0, 1000)
         bond_downdelay = random.randint(0, 1000)
@@ -563,7 +613,6 @@ class BondInterfaceFormTest(MAASServerTestCase):
             node=parent1.node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id],
                 'bond_mode': bond_mode,
                 'bond_miimon': bond_miimon,
@@ -584,13 +633,11 @@ class BondInterfaceFormTest(MAASServerTestCase):
             }, interface.params)
 
     def test__rejects_no_parents(self):
-        vlan = factory.make_VLAN(vid=10)
         interface_name = factory.make_name()
         form = BondInterfaceForm(
             node=factory.make_Node(),
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
             })
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(['parents', 'mac_address'], form.errors.keys())
@@ -598,21 +645,37 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "A Bond interface must have one or more parents.",
             form.errors['parents'][0])
 
+    def test__rejects_when_vlan_not_untagged(self):
+        interface_name = factory.make_name()
+        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        vlan = factory.make_VLAN(fabric=parent.vlan.fabric)
+        form = BondInterfaceForm(
+            node=parent.node,
+            data={
+                'name': interface_name,
+                'parents': [parent.id],
+                'mac_address': parent.mac_address,
+                'vlan': vlan.id,
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertItemsEqual(['vlan'], form.errors.keys())
+        self.assertIn(
+            "A bond interface can only belong to an untagged VLAN.",
+            form.errors['vlan'][0])
+
     def test__rejects_when_parents_already_have_children(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
         factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent1])
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1", vlan=parent1.vlan)
         factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[parent2])
-        vlan = factory.make_VLAN(vid=10)
         interface_name = factory.make_name()
         form = BondInterfaceForm(
             node=node,
             data={
                 'name': interface_name,
-                'vlan': vlan.id,
                 'parents': [parent1.id, parent2.id]
             })
         self.assertFalse(form.is_valid(), form.errors)
@@ -620,17 +683,36 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "eth0, eth1 is already in-use by another interface.",
             form.errors['parents'][0])
 
+    def test__rejects_when_parents_not_in_same_vlan(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth0")
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, name="eth1")
+        interface_name = factory.make_name()
+        form = BondInterfaceForm(
+            node=node,
+            data={
+                'name': interface_name,
+                'parents': [parent1.id, parent2.id]
+            })
+        self.assertFalse(form.is_valid(), form.errors)
+        self.assertEquals(
+            "All parents must belong to the same VLAN.",
+            form.errors['parents'][0])
+
     def test__edits_interface(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             parents=[parent1, parent2])
-        new_vlan = factory.make_VLAN(vid=33)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
         new_name = factory.make_name()
         new_parent = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         form = BondInterfaceForm(
             instance=interface,
             data={
@@ -647,6 +729,10 @@ class BondInterfaceFormTest(MAASServerTestCase):
                 vlan=new_vlan, type=INTERFACE_TYPE.BOND))
         self.assertItemsEqual(
             [parent1, parent2, new_parent], interface.parents.all())
+        self.assertItemsEqual([new_vlan], set(
+            reload_object(parent).vlan
+            for parent in [parent1, parent2, new_parent]
+        ))
 
     def test__edits_interface_removes_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -704,7 +790,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__edit_doesnt_overwrite_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             parents=[parent1, parent2])
@@ -724,12 +810,10 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_xmit_hash_policy": bond_xmit_hash_policy,
         }
         interface.save()
-        new_vlan = factory.make_VLAN(vid=33)
         new_name = factory.make_name()
         form = BondInterfaceForm(
             instance=interface,
             data={
-                'vlan': new_vlan.id,
                 'name': new_name,
             })
         self.assertTrue(form.is_valid(), form.errors)
@@ -746,7 +830,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__edit_does_overwrite_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             parents=[parent1, parent2])
@@ -766,7 +850,6 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_xmit_hash_policy": bond_xmit_hash_policy,
         }
         interface.save()
-        new_vlan = factory.make_VLAN(vid=33)
         new_name = factory.make_name()
         new_bond_mode = factory.pick_choice(BOND_MODE_CHOICES)
         new_bond_miimon = random.randint(0, 1000)
@@ -778,7 +861,6 @@ class BondInterfaceFormTest(MAASServerTestCase):
         form = BondInterfaceForm(
             instance=interface,
             data={
-                'vlan': new_vlan.id,
                 'name': new_name,
                 'bond_mode': new_bond_mode,
                 'bond_miimon': new_bond_miimon,
@@ -801,7 +883,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
     def test__edit_allows_zero_params(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node, vlan=parent1.vlan)
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             parents=[parent1, parent2])
@@ -821,7 +903,6 @@ class BondInterfaceFormTest(MAASServerTestCase):
             "bond_xmit_hash_policy": bond_xmit_hash_policy,
         }
         interface.save()
-        new_vlan = factory.make_VLAN(vid=33)
         new_name = factory.make_name()
         new_bond_mode = factory.pick_choice(BOND_MODE_CHOICES)
         new_bond_miimon = 0
@@ -833,7 +914,6 @@ class BondInterfaceFormTest(MAASServerTestCase):
         form = BondInterfaceForm(
             instance=interface,
             data={
-                'vlan': new_vlan.id,
                 'name': new_name,
                 'bond_mode': new_bond_mode,
                 'bond_miimon': new_bond_miimon,
