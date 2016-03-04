@@ -7,9 +7,13 @@ __all__ = [
     "VLANHandler",
     ]
 
-from maasserver.enum import NODE_PERMISSION
+from maasserver.enum import (
+    IPRANGE_TYPE,
+    NODE_PERMISSION,
+)
 from maasserver.forms_iprange import IPRangeForm
 from maasserver.models import (
+    IPRange,
     RackController,
     Subnet,
     VLAN,
@@ -18,6 +22,7 @@ from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+import netaddr
 from provisioningserver.logger import get_maas_logger
 
 
@@ -77,24 +82,53 @@ class VLANHandler(TimestampedModelHandler):
             NODE_PERMISSION.ADMIN, vlan), "Permission denied."
         vlan.delete()
 
-    def _configure_iprange(self, iprange):
-        if 'subnet' in iprange:
-            subnet = Subnet.objects.get(id=iprange['subnet'])
-            if 'start' in iprange and 'end' in iprange:
+    def _configure_iprange_and_gateway(self, parameters):
+        if 'subnet' in parameters:
+            subnet = Subnet.objects.get(id=parameters['subnet'])
+        else:
+            # Without a subnet, we cannot continue. (We need one to either
+            # add an IP range, or specify a gateway IP.)
+            return
+        gateway = None
+        if ('gateway' in parameters and
+                parameters['gateway'] is not None):
+            gateway_text = parameters['gateway'].strip()
+            if len(gateway_text) > 0:
+                gateway = netaddr.IPAddress(gateway_text)
+                ipnetwork = netaddr.IPNetwork(subnet.cidr)
+                if gateway not in ipnetwork:
+                    raise ValueError(
+                        "Gateway IP must be within specified subnet: %s" %
+                        subnet.cidr)
+        if ('start' in parameters and 'end' in parameters and
+                parameters['start'] is not None and
+                parameters['end'] is not None):
+            start_text = parameters['start'].strip()
+            end_text = parameters['end'].strip()
+            # User wishes to add a range.
+            if len(start_text) > 0 and len(end_text) > 0:
+                start_ipaddr = netaddr.IPAddress(start_text)
+                end_ipaddr = netaddr.IPAddress(end_text)
+                if gateway is not None:
+                    # If a gateway was specified, validate that it is not
+                    # within the range the user wants to define.
+                    desired_range = netaddr.IPRange(start_ipaddr, end_ipaddr)
+                    if gateway in desired_range:
+                        raise ValueError(
+                            "Gateway IP must be outside the specified dynamic "
+                            "range.")
                 iprange_form = IPRangeForm(data={
-                    "start_ip": iprange['start'],
-                    "end_ip": iprange['end'],
-                    "type": "dynamic",
+                    "start_ip": str(start_ipaddr),
+                    "end_ip": str(end_ipaddr),
+                    "type": IPRANGE_TYPE.DYNAMIC,
                     "subnet": subnet.id,
                     "user": self.user.id,
                     "comment": "Added via 'Provide DHCP...' in Web UI."
                 })
                 iprange_form.save()
-            else:
-                maaslog.warn("Invalid IP range configuration: %r" % iprange)
-        else:
-            maaslog.warn(
-                "Invalid subnet in IP range configuration: %r" % iprange)
+        if gateway is not None:
+            subnet.gateway_ip = str(gateway)
+            subnet.save()
 
     def configure_dhcp(self, parameters):
         """Helper method to look up rack controllers based on the parameters
@@ -112,8 +146,14 @@ class VLANHandler(TimestampedModelHandler):
             NODE_PERMISSION.ADMIN, vlan), "Permission denied."
         # Make sure the dictionary both exists, and has the expected number
         # of parameters, to prevent spurious log statements.
-        if 'iprange' in parameters and len(parameters['iprange']) >= 3:
-            self._configure_iprange(parameters['iprange'])
+        if 'extra' in parameters:
+            self._configure_iprange_and_gateway(parameters['extra'])
+        iprange_count = IPRange.objects.filter(
+            type=IPRANGE_TYPE.DYNAMIC, subnet__vlan=vlan).count()
+        if iprange_count == 0:
+            raise ValueError(
+                "Cannot configure DHCP: At least one dynamic range is "
+                "required.")
         controllers = [
             RackController.objects.get(system_id=system_id)
             for system_id in parameters['controllers']

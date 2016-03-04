@@ -368,6 +368,7 @@ describe("VLANDetailsController", function() {
         // the current values from the mock objects.
         controller.actionOptionChanged();
         controller.provideDHCPAction.subnet = 1;
+        controller.provideDHCPAction.gatewayIP = "192.168.0.1";
         controller.provideDHCPAction.startIP = "192.168.0.2";
         controller.provideDHCPAction.endIP = "192.168.0.254";
         var defer = $q.defer();
@@ -384,6 +385,7 @@ describe("VLANDetailsController", function() {
             ],
             {
                 subnet: 1,
+                gateway: "192.168.0.1",
                 start: "192.168.0.2",
                 end: "192.168.0.254"
             }
@@ -397,8 +399,15 @@ describe("VLANDetailsController", function() {
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
+            subnet: null,
             primaryRack: "p1",
             secondaryRack: "p2",
+            maxIPs: 0,
+            startIP: null,
+            endIP: null,
+            gatewayIP: '',
+            needsGatewayIP: false,
+            subnetMissingGatewayIP: true,
             needsDynamicRange: true
         });
     });
@@ -409,8 +418,15 @@ describe("VLANDetailsController", function() {
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
+            subnet: null,
             primaryRack: "p1",
             secondaryRack: "p2",
+            maxIPs: 0,
+            startIP: null,
+            endIP: null,
+            gatewayIP: '',
+            needsGatewayIP: false,
+            subnetMissingGatewayIP: true,
             needsDynamicRange: false
         });
     });
@@ -422,15 +438,29 @@ describe("VLANDetailsController", function() {
         controller.provideDHCPAction.primaryRack = "p2";
         controller.updatePrimaryRack();
         expect(controller.provideDHCPAction).toEqual({
+            subnet: null,
             primaryRack: "p2",
             secondaryRack: null,
+            maxIPs: 0,
+            startIP: null,
+            endIP: null,
+            gatewayIP: '',
+            needsGatewayIP: false,
+            subnetMissingGatewayIP: true,
             needsDynamicRange: true
         });
         controller.provideDHCPAction.secondaryRack = "p2";
         controller.updateSecondaryRack();
         expect(controller.provideDHCPAction).toEqual({
+            subnet: null,
             primaryRack: null,
             secondaryRack: "p2",
+            maxIPs: 0,
+            startIP: null,
+            endIP: null,
+            gatewayIP: '',
+            needsGatewayIP: false,
+            subnetMissingGatewayIP: true,
             needsDynamicRange: true
         });
     });

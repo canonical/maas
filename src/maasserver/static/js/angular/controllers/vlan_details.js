@@ -60,22 +60,41 @@ angular.module('MAAS').controller('VLANDetailsController', [
         // and secondary rack, plus an indication regarding whether or not
         // adding a dynamic IP range is required.
         vm.initProvideDHCP = function() {
+            vm.provideDHCPAction = {};
             var dhcp = vm.provideDHCPAction;
+            dhcp.subnet = null;
             if (angular.isObject(vm.primaryRack)) {
                 dhcp.primaryRack = vm.primaryRack.system_id;
             }
             if (angular.isObject(vm.secondaryRack)) {
                 dhcp.secondaryRack = vm.secondaryRack.system_id;
             }
+            dhcp.maxIPs = 0;
+            dhcp.startIP = null;
+            dhcp.endIP = null;
+            dhcp.gatewayIP = "";
             if (angular.isObject(vm.relatedSubnets)) {
-                vm.provideDHCPAction.needsDynamicRange = true;
-                var i;
+                dhcp.needsDynamicRange = true;
+                var i, subnet;
                 for (i = 0; i < vm.relatedSubnets.length; i++) {
-                    var subnet = vm.relatedSubnets[i].subnet;
+                    subnet = vm.relatedSubnets[i].subnet;
                     // If any related subnet already has a dynamic range, we
                     // cannot prompt the user to enter one here.
                     if (SubnetsManager.hasDynamicRange(subnet)) {
                         dhcp.needsDynamicRange = false;
+                        break;
+                    }
+                }
+                // We must prompt the user for a subnet and a gateway IP
+                // address if any subnet does not yet contain a gateway IP
+                // address.
+                dhcp.needsGatewayIP = false;
+                dhcp.subnetMissingGatewayIP = true;
+                for (i = 0; i < vm.relatedSubnets.length; i++) {
+                    subnet = vm.relatedSubnets[i].subnet;
+                    if(subnet.gateway_ip === null ||
+                        subnet.gateway_ip === '') {
+                        dhcp.needsGatewayIP = true;
                         break;
                     }
                 }
@@ -121,18 +140,34 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.updateSubnet = function() {
             var dhcp = vm.provideDHCPAction;
             var subnet = SubnetsManager.getItemFromList(dhcp.subnet);
-            var iprange = SubnetsManager.getLargestRange(subnet);
-            if(iprange.num_addresses > 0) {
-                dhcp.numIPs = iprange.num_addresses;
-                dhcp.maxIPs = iprange.num_addresses;
-                dhcp.startIP = iprange.start;
-                dhcp.endIP = iprange.end;
+            dhcp.subnetMissingGatewayIP = !angular.isString(subnet.gateway_ip);
+            if(dhcp.needsDynamicRange === true) {
+                var iprange = SubnetsManager.getLargestRange(subnet);
+                if(iprange.num_addresses > 0) {
+                    dhcp.maxIPs = iprange.num_addresses;
+                    dhcp.startIP = iprange.start;
+                    dhcp.endIP = iprange.end;
+                    dhcp.gatewayIP = iprange.start;
+                } else {
+                    // Need to add a dynamic range, but according to our data,
+                    // there is no room on the subnet for a dynamic range.
+                    dhcp.maxIPs = 0;
+                    dhcp.startIP = "";
+                    dhcp.endIP = "";
+                    dhcp.gatewayIP = "";
+                }
             } else {
-                dhcp.numIPs = "";
-                dhcp.startIP = "";
-                dhcp.endIP = "";
+                // Don't need to add a dynamic range, so ensure these fields
+                // are cleared out.
+                dhcp.maxIPs = 0;
+                dhcp.startIP = null;
+                dhcp.endIP = null;
+                dhcp.gatewayIP = "";
             }
-        };
+            if(dhcp.subnetMissingGatewayIP === false) {
+                dhcp.gatewayIP = null;
+            }
+       };
 
         vm.actionRetry = function() {
             // When we clear actionError, the HTML will be re-rendered to
@@ -149,11 +184,11 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 var controllers = [];
                 // These will be undefined if they don't exist, and the region
                 // will simply get an empty dictionary.
-                var iprange = {
-                    subnet: dhcp.subnet,
-                    start: dhcp.startIP,
-                    end: dhcp.endIP
-                };
+                var extra = {};
+                extra.subnet = dhcp.subnet;
+                extra.start = dhcp.startIP;
+                extra.end = dhcp.endIP;
+                extra.gateway = dhcp.gatewayIP;
                 if(angular.isString(dhcp.primaryRack)) {
                     controllers.push(dhcp.primaryRack);
                 }
@@ -161,7 +196,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
                     controllers.push(dhcp.secondaryRack);
                 }
                 VLANsManager.configureDHCP(
-                    vm.vlan, controllers, iprange).then(
+                    vm.vlan, controllers, extra).then(
                     function() {
                         vm.actionOption = null;
                         vm.actionError = null;

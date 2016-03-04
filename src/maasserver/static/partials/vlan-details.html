@@ -38,17 +38,21 @@
                                         </div>
                                     </div>
                                     <!-- IP range selection fields -->
-                                   <div data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
+                                   <div data-ng-hide="vlanDetails.relatedSubnets.length === 0 || (vlanDetails.provideDHCPAction.needsDynamicRange === false && vlanDetails.provideDHCPAction.needsGatewayIP === false)">
                                         <label for="subnet" class="four-col">Subnet</label>
                                         <div class="three-col" style="padding-top: 1px; padding-bottom: 1px;">
                                             <select name="subnet" data-ng-model="vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateSubnet()" data-ng-options="row.subnet.id as row.subnet.cidr for row in vlanDetails.relatedSubnets">
                                                 <option value=""></option>
                                             </select>
                                         </div>
+                                   </div>
+                                   <div data-ng-hide="vlanDetails.provideDHCPAction.needsDynamicRange === false || vlanDetails.relatedSubnets.length === 0">
+                                        <!--
                                         <label for="number-of-ips" class="four-col">Maximum addresses</label>
                                         <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
                                             <input type="text" class="three-col" name="number-of-ips" data-ng-model="vlanDetails.provideDHCPAction.numIPs" data-ng-disabled="true" data-ng-change="vlanDetails.updateNumAddresses()">
                                         </div>
+                                        -->
                                         <label for="start-ip" class="four-col">Start IP</label>
                                         <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
                                             <input type="text" name="start-ip" size="39" data-ng-model="vlanDetails.provideDHCPAction.startIP" data-ng-disabled="!vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateStartIP()">
@@ -57,6 +61,12 @@
                                         <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
                                             <input type="text" name="end-ip" size="39" data-ng-model="vlanDetails.provideDHCPAction.endIP" data-ng-disabled="!vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updateEndIP()">
                                         </div>
+                                    </div>
+                                       <div data-ng-hide="vlanDetails.provideDHCPAction.needsGatewayIP === false || vlanDetails.provideDHCPAction.subnetMissingGatewayIP === false || vlanDetails.relatedSubnets.length === 0">
+                                        <label for="gateway-ip" class="four-col">Gateway IP</label>
+                                           <div class="three-col" style="padding-left: 20px; padding-top: 1px; padding-bottom: 1px;">
+                                               <input type="text" name="gateway-ip" size="39" data-ng-model="vlanDetails.provideDHCPAction.gatewayIP" data-ng-disabled="!vlanDetails.provideDHCPAction.subnet" data-ng-change="vlanDetails.updatendIP()">
+                                           </div>
                                     </div>
                                 </div>
                             </div>

@@ -124,6 +124,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_admin()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN()
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         handler.configure_dhcp({
             "id": vlan.id,
             "controllers": [rack.system_id]
@@ -138,6 +139,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_admin()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN()
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         handler.configure_dhcp({
             "id": vlan.id,
             "controllers": [rack.system_id, rack2.system_id]
@@ -152,6 +154,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_admin()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN()
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         with ExpectedException(ValidationError):
             handler.configure_dhcp({
                 "id": vlan.id,
@@ -163,6 +166,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_admin()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         handler.configure_dhcp({
             "id": vlan.id,
             "controllers": []
@@ -177,6 +181,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_User()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         with ExpectedException(AssertionError, "Permission denied."):
             handler.configure_dhcp({
                 "id": vlan.id,
@@ -190,6 +195,7 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user.is_superuser = False
         user.save()
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         with ExpectedException(AssertionError, "Permission denied."):
             handler.configure_dhcp({
                 "id": vlan.id,
@@ -201,15 +207,16 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         user = factory.make_admin()
         handler = VLANHandler(user, {})
         vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
         self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
         handler.configure_dhcp({
             "id": vlan.id,
             "controllers": [rack.system_id],
-            "iprange": {
+            "extra": {
+                "subnet": subnet.id,
                 "start": "10.0.0.2",
-                "end": "10.0.0.99",
-                "subnet": subnet.id
+                "end": "10.0.0.99"
             }
         })
         vlan = reload_object(vlan)
@@ -223,3 +230,151 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         self.assertThat(dynamic_range.type, Equals("dynamic"))
         self.assertThat(dynamic_range.user_id, Equals(user.id))
         self.assertThat(dynamic_range.comment, Contains("Web UI"))
+
+    def test__configure_dhcp_optionally_defines_gateway(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "extra": {
+                "subnet": subnet.id,
+                "gateway": "10.0.0.1",
+            }
+        })
+        vlan = reload_object(vlan)
+        subnet = reload_object(subnet)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        self.assertThat(subnet.gateway_ip, Equals("10.0.0.1"))
+
+    def test__configure_dhcp_optionally_defines_gateway_and_range(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "extra": {
+                "subnet": subnet.id,
+                "gateway": "10.0.0.1",
+                "start": "10.0.0.2",
+                "end": "10.0.0.99"
+            }
+        })
+        subnet = reload_object(subnet)
+        vlan = reload_object(vlan)
+        subnet = reload_object(subnet)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(1))
+        dynamic_range = subnet.get_dynamic_ranges().first()
+        self.assertThat(subnet.gateway_ip, Equals("10.0.0.1"))
+        self.assertThat(dynamic_range.start_ip, Equals("10.0.0.2"))
+        self.assertThat(dynamic_range.end_ip, Equals("10.0.0.99"))
+        self.assertThat(dynamic_range.type, Equals("dynamic"))
+        self.assertThat(dynamic_range.user_id, Equals(user.id))
+        self.assertThat(dynamic_range.comment, Contains("Web UI"))
+
+    def test__configure_dhcp_ignores_empty_gateway(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        handler.configure_dhcp({
+            "id": vlan.id,
+            "controllers": [rack.system_id],
+            "extra": {
+                "subnet": subnet.id,
+                "gateway": "",
+                "start": "10.0.0.2",
+                "end": "10.0.0.99"
+            }
+        })
+        subnet = reload_object(subnet)
+        vlan = reload_object(vlan)
+        subnet = reload_object(subnet)
+        self.assertThat(vlan.dhcp_on, Equals(True))
+        self.assertThat(vlan.primary_rack, Equals(rack))
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(1))
+        dynamic_range = subnet.get_dynamic_ranges().first()
+        self.assertThat(subnet.gateway_ip, Is(None))
+        self.assertThat(dynamic_range.start_ip, Equals("10.0.0.2"))
+        self.assertThat(dynamic_range.end_ip, Equals("10.0.0.99"))
+        self.assertThat(dynamic_range.type, Equals("dynamic"))
+        self.assertThat(dynamic_range.user_id, Equals(user.id))
+        self.assertThat(dynamic_range.comment, Contains("Web UI"))
+
+    def test__configure_dhcp_gateway_outside_subnet_raises(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        with ExpectedException(ValueError):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "1.0.0.1",
+                    "start": "10.0.0.2",
+                    "end": "10.0.0.99"
+                }
+            })
+
+    def test__configure_dhcp_gateway_inside_range_raises(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        with ExpectedException(ValueError):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "10.0.0.1",
+                    "start": "10.0.0.1",
+                    "end": "10.0.0.99"
+                }
+            })
+
+    def test__configure_dhcp_gateway_raises_if_dynamic_range_required(self):
+        rack = factory.make_RackController()
+        user = factory.make_admin()
+        handler = VLANHandler(user, {})
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            vlan=vlan, cidr="10.0.0.0/24", gateway_ip="")
+        self.assertThat(subnet.get_dynamic_ranges().count(), Equals(0))
+        with ExpectedException(ValueError):
+            handler.configure_dhcp({
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "10.0.0.1",
+                    "start": "",
+                    "end": ""
+                }
+            })

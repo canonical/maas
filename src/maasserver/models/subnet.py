@@ -418,7 +418,8 @@ class Subnet(CleanSave, TimestampedModel):
             ranges |= {make_iprange(first, second, purpose="reserved")}
         ipnetwork = self.get_ipnetwork()
         assigned_ip_addresses = self.get_staticipaddresses_in_use()
-        if self.gateway_ip is not None and self.gateway_ip != '':
+        if (self.gateway_ip is not None and self.gateway_ip != '' and
+                self.gateway_ip in ipnetwork):
             ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
         if self.dns_servers is not None:
             ranges |= set(
@@ -429,6 +430,7 @@ class Subnet(CleanSave, TimestampedModel):
         ranges |= set(
             make_iprange(ip, purpose="assigned-ip")
             for ip in assigned_ip_addresses
+            if ip in ipnetwork
         )
         ranges |= set(
             make_iprange(address, purpose="excluded")
