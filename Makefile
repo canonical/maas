@@ -24,6 +24,8 @@ endif
 py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
+templates := $(shell find etc/maas/templates -type f)
+py_data := src/maasserver/data/templates.py
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
@@ -94,12 +96,12 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/maas-region-admin bin/twistd.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    data bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region
 	@touch --no-create $@
 
 bin/test.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    data bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region-test
 	@touch --no-create $@
 
@@ -190,9 +192,14 @@ define test-scripts
   bin/test.config
   bin/test.region
   bin/test.testing
-	bin/test.js
-	bin/test.e2e
+  bin/test.js
+  bin/test.e2e
 endef
+
+data: $(py_data)
+
+src/maasserver/data/templates.py: utilities/create-python-templates $(templates)
+	utilities/create-python-templates > $@
 
 test: $(strip $(test-scripts))
 	@$(RM) coverage.data
@@ -235,7 +242,7 @@ lint-py: bin/flake8
 	@find $(sources) -name '*.py' \
 	  ! -path '*/migrations/*' ! -path '*/south_migrations/*' \
 	  ! -path 'src/provisioningserver/twisted/*' ! -path 'ez_setup.py' \
-	  -print0 \
+	  ! -path 'src/maasserver/data/*' -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123,E402,E731 \
 	    --config=/dev/null
 
@@ -313,6 +320,7 @@ clean: stop clean-run
 	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 	$(RM) $(js_enums) $(js_enums).tmp
+	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build
@@ -384,6 +392,7 @@ define phony_targets
   lint-py-imports
   lint-rst
   man
+  print-%
   sampledata
   styles
   syncdb
@@ -567,6 +576,12 @@ source-package-clean: patterns := *.dsc *.build *.changes
 source-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 source-package-clean:
 	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
+
+# Debugging target. Allows printing of any variable.
+# As an example, try:
+#     make print-js_enums
+print-%:
+	@echo $* = $($*)
 
 define phony_package_targets
   -packaging-export-orig

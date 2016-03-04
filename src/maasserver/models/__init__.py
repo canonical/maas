@@ -50,6 +50,8 @@ __all__ = [
     'SSLKey',
     'Subnet',
     'Tag',
+    'Template',
+    'VersionedTextFile',
     'UserProfile',
     'VirtualBlockDevice',
     'VLAN',
@@ -131,8 +133,10 @@ from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
+from maasserver.models.template import Template
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
+from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
@@ -174,6 +178,8 @@ ignore_unused(
     SSHKey,
     StaticIPAddress,
     Tag,
+    Template,
+    VersionedTextFile,
     UserProfile,
     VirtualBlockDevice,
     VLAN,

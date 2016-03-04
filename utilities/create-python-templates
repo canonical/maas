@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+# This script goes through etc/maas/templates/* in the current sandbox and
+# prints a Python data structure that can be imported from another module.
+
+import os
+from pprint import pformat
+import sys
+
+
+def pretty_print(templates):
+    print("templates = {")
+    for key in templates:
+        print("%r:\n%s,\n" % (key, pformat(templates[key])))
+    print("}")
+
+
+def main():
+    utility_path = os.path.dirname(os.path.realpath(__file__))
+    sys.stderr.write("Converting etc/maas/templates to Python...\n")
+    os.chdir(utility_path + "/../etc/maas/templates")
+    templates = {}
+    templates.update(scan("dns"))
+    templates.update(scan("dhcp"))
+    print("# DO NOT MODIFY - This file was created automatically by:")
+    print("#    utilities/create-python-templates")
+    print()
+    pretty_print(templates)
+
+
+def scan(directory):
+    templates = {}
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            filename = "%s/%s" % (root, file)
+            if root.endswith("/tests"):
+                sys.stderr.write("Skipped: %s\n" % filename)
+                continue
+            with open(filename) as f:
+                try:
+                    data = f.read()
+                    templates[filename] = data
+                    sys.stderr.write("Processed: %s\n" % filename)
+                except UnicodeDecodeError:
+                    # Ignore binary files within the templates/ directory.
+                    sys.stderr.write("Skipped: %s\n" % filename)
+                    pass
+    return templates
+
+
+if __name__ == "__main__":
+    main()

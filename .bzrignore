@@ -44,6 +44,7 @@
 ./run-e2e/etc/maas/*
 ./services/*/supervise
 ./src/maasserver/static/js/enums.js
+./src/maasserver/data/templates.py
 ./TAGS
 ./tags
 dropin.cache
