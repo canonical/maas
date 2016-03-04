@@ -33,7 +33,7 @@ class TestVMwarePowerDriver(MAASTestCase):
         missing = driver.detect_missing_packages()
         self.assertItemsEqual([], missing)
 
-    def make_parameters(self):
+    def make_parameters(self, has_optional=True):
         system_id = factory.make_name('system_id')
         host = factory.make_name('power_address')
         username = factory.make_name('power_user')
@@ -51,12 +51,24 @@ class TestVMwarePowerDriver(MAASTestCase):
             'power_port': port,
             'power_protocol': protocol,
         }
+        if not has_optional:
+            context['power_port'] = ""
+            context['power_protocol'] = ""
         return (system_id, host, username, password,
                 vm_name, uuid, port, protocol, context)
 
     def test_extract_vmware_parameters_extracts_parameters(self):
         (system_id, host, username, password,
          vm_name, uuid, port, protocol, context) = self.make_parameters()
+
+        self.assertItemsEqual(
+            (host, username, password, vm_name, uuid, None, None),
+            extract_vmware_parameters(context))
+
+    def test_extract_vmware_parameters_treats_optional_params_as_none(self):
+        (system_id, host, username, password,
+         vm_name, uuid, port, protocol, context) = self.make_parameters(
+            has_optional=False)
 
         self.assertItemsEqual(
             (host, username, password, vm_name, uuid, port, protocol),
