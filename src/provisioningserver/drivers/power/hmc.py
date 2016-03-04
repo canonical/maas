@@ -1,24 +1,32 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Moonshot HP iLO Chassis Power Driver."""
+"""HMC Power Driver.
+
+Support for managing lpars via the IBM Hardware Management Console (HMC).
+This module provides support for interacting with IBM's HMC via SSH.
+"""
 
 __all__ = []
 
-from provisioningserver.drivers.hardware.hmc import (
-    power_control_hmc,
-    power_state_hmc,
+from socket import error as SOCKETError
+
+from paramiko import (
+    AutoAddPolicy,
+    SSHClient,
+    SSHException,
 )
-from provisioningserver.drivers.power import PowerDriver
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerConnError,
+    PowerDriver,
+    PowerFatalError,
+)
 
 
-def extract_hmc_parameters(context):
-    ip = context.get('power_address')
-    username = context.get('power_user')
-    password = context.get('power_pass')
-    server_name = context.get('server_name')
-    lpar = context.get('lpar')
-    return ip, username, password, server_name, lpar
+class HMCState:
+    OFF = ('Shutting Down', 'Not Activated')
+    ON = ('Starting', 'Running', 'Open Firmware')
 
 
 class HMCPowerDriver(PowerDriver):
@@ -31,19 +39,68 @@ class HMCPowerDriver(PowerDriver):
         # uses pure-python paramiko ssh client - nothing to look for!
         return []
 
+    def run_hmc_command(self, command, power_address=None, power_user=None,
+                        power_pass=None, **extra):
+        """Run a single command on HMC via SSH and return output."""
+        try:
+            ssh_client = SSHClient()
+            ssh_client.set_missing_host_key_policy(AutoAddPolicy())
+            ssh_client.connect(
+                power_address, username=power_user, password=power_pass)
+            _, stdout, _ = ssh_client.exec_command(command)
+            output = stdout.read()
+        except (SSHException, EOFError, SOCKETError) as e:
+            raise PowerConnError(
+                "Could not make SSH connection to HMC for "
+                "%s on %s - %s" % (power_user, power_address, e))
+        finally:
+            ssh_client.close()
+
+        return output
+
     def power_on(self, system_id, context):
-        ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(context))
-        power_control_hmc(
-            ip, username, password, server_name, lpar, power_change='on')
+        """Power on HMC lpar."""
+        if self.power_query(system_id, context) in HMCState.ON:
+            self.power_off(system_id, context)
+        try:
+            # Power lpar on
+            self.run_hmc_command(
+                "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
+                % (context['server_name'], context['lpar']))
+        except PowerConnError as e:
+            raise PowerActionError(
+                "HMC Power Driver unable to power on lpar %s: %s"
+                % (context['lpar'], e))
 
     def power_off(self, system_id, context):
-        ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(context))
-        power_control_hmc(
-            ip, username, password, server_name, lpar, power_change='off')
+        """Power off HMC lpar."""
+        try:
+            # Power lpar off
+            self.run_hmc_command(
+                "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
+                % (context['server_name'], context['lpar']))
+        except PowerConnError as e:
+            raise PowerActionError(
+                "HMC Power Driver unable to power off lpar %s: %s"
+                % (context['lpar'], e))
 
     def power_query(self, system_id, context):
-        ip, username, password, server_name, lpar = (
-            extract_hmc_parameters(context))
-        return power_state_hmc(ip, username, password, server_name, lpar)
+        """Power query HMC lpar."""
+        try:
+            # Power query lpar
+            power_state = self.run_hmc_command(
+                "lssyscfg -m %s -r lpar -F state --filter lpar_names=%s"
+                % (context['server_name'], context['lpar']))
+        except PowerConnError as e:
+            raise PowerActionError(
+                "HMC Power Driver unable to power query lpar %s: %s"
+                % (context['lpar'], e))
+        else:
+            if power_state in HMCState.OFF:
+                return 'off'
+            elif power_state in HMCState.ON:
+                return 'on'
+            else:
+                raise PowerFatalError(
+                    "HMC Power Driver retrieved unknown power state %s"
+                    " for lpar %s" % (power_state, context['lpar']))
