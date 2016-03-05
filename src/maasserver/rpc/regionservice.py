@@ -505,7 +505,7 @@ class RegionServer(Region):
                 log.msg(
                     "Rack controller '%s' needs to be refreshed; "
                     "performing the refresh operation." % self.ident)
-                deferToDatabase(rack_controller.performRefresh)
+                deferToDatabase(rack_controller.refresh)
 
             # Done registering the rack controller and connection.
             return {'system_id': self.ident}

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's RPC implementation."""
@@ -80,6 +80,7 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockAnyCall,
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
     Provides,
@@ -1321,6 +1322,41 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertThat(
             mock_deferToDatabase,
             MockAnyCall(registerConnection, ANY, host))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_creates_new_rack(self):
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        hostname = factory.make_hostname()
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": None,
+                "hostname": hostname,
+                "interfaces": {},
+            })
+        yield deferToDatabase(
+            RackController.objects.get, hostname=hostname)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_calls_refresh_when_needed(self):
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        mock_gethost = self.patch(protocol.transport, 'getHost')
+        mock_gethost.return_value = IPv4Address(
+            type='TCP', host=factory.make_ipv4_address(),
+            port=random.randint(1, 65535))
+        mock_refresh = self.patch(RackController, 'refresh')
+        self.patch(regionservice, 'registerConnection')
+        hostname = factory.make_hostname()
+        yield call_responder(
+            protocol, RegisterRackController, {
+                "system_id": None,
+                "hostname": hostname,
+                "interfaces": {},
+            })
+        self.assertThat(mock_refresh, MockCalledOnce())
 
     @wait_for_reactor
     @inlineCallbacks
