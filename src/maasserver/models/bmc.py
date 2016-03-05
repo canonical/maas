@@ -187,7 +187,7 @@ class BMC(CleanSave, TimestampedModel):
         # no match found - return None
         return None
 
-    def get_usable_rack_controllers(self):
+    def get_usable_rack_controllers(self, with_connection=True):
         """Return a list of `RackController`'s that have the ability to access
         this `BMC`."""
         ip_address = self.ip_address
@@ -197,13 +197,14 @@ class BMC(CleanSave, TimestampedModel):
         # The BMC has a valid StaticIPAddress set. Make sure that the subnet
         # is correct for that BMC.
         subnet = Subnet.objects.get_best_subnet_for_ip(ip_address.ip)
-        if self.ip_address.subnet.id != subnet.id:
+        if subnet is not None and self.ip_address.subnet_id != subnet.id:
             self.ip_address.subnet = subnet
             self.ip_address.save()
 
         # Circular imports.
         from maasserver.models.node import RackController
-        return RackController.objects.filter_by_url_accessible(ip_address.ip)
+        return RackController.objects.filter_by_url_accessible(
+            ip_address.ip, with_connection=with_connection)
 
     def get_client_identifiers(self):
         """Return a list of indetifiers that can be used to get the

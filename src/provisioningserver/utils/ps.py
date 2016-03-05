@@ -23,9 +23,8 @@ def is_pid_in_container(pid, proc_path="/proc"):
     cgroup_info = read_text_file(cgroup_path)
     for line in cgroup_info.splitlines():
         id_num, subsytem, hierarchy = line.split(":", 2)
-        if int(id_num) == 1:
-            if "lxc" in hierarchy or "docker" in hierarchy:
-                return True
+        if hierarchy.startswith("/lxc") or "docker" in hierarchy:
+            return True
     return False
 
 

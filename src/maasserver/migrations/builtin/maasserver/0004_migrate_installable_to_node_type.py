@@ -11,6 +11,7 @@ from maasserver.enum import NODE_TYPE
 def convert_installable_to_node_type(apps, schema_editor):
     Node = apps.get_model("maasserver", "Node")
     for node in Node.objects.all():
+        node.routers = ""
         if node.installable:
             node.node_type = NODE_TYPE.MACHINE
         else:

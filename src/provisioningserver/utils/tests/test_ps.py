@@ -48,17 +48,16 @@ IN_DOCKER_CONTAINER = dedent("""\
     """)
 
 IN_LXC_CONTAINER = dedent("""\
-    11:freezer:/lxc/maas
+    11:hugetlb:/lxc/maas
     10:perf_event:/lxc/maas
-    9:cpuset:/lxc/maas
-    8:net_cls,net_prio:/lxc/maas
+    9:blkio:/lxc/maas
+    8:freezer:/lxc/maas
     7:devices:/lxc/maas/init.scope
-    6:blkio:/lxc/maas
-    5:memory:/lxc/maas
-    4:cpu,cpuacct:/lxc/maas
-    3:pids:/lxc/maas/init.scope
-    2:hugetlb:/lxc/maas
-    1:name=systemd:/lxc/maas/init.scope
+    6:memory:/lxc/maas
+    5:cpuacct:/lxc/maas
+    4:cpu:/lxc/maas
+    3:name=systemd:/lxc/maas/init.scope
+    2:cpuset:/lxc/maas
     """)
 
 
