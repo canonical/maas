@@ -79,7 +79,7 @@ DNS_CONNECT = True
 DHCP_CONNECT = True
 
 # The MAAS CLI.
-MAAS_CLI = 'sudo maas-region-admin'
+MAAS_CLI = 'sudo maas-region'
 
 API_URL_REGEXP = '^/api/2[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'

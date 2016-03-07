@@ -40,7 +40,7 @@ def _force_delete_all(verbosity, stdout):
         template.delete()
     if verbosity > 0:
         stdout.write("It would now be wise to run:\n")
-        stdout.write("    sudo maas-region-admin template update-defaults\n")
+        stdout.write("    sudo maas-region template update-defaults\n")
 
 
 class Command(BaseCommand):

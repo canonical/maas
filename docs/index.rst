@@ -113,7 +113,7 @@ Command-line Tools
 .. toctree::
    :maxdepth: 1
 
-   man/maas-region-admin.8
+   man/maas-region.8
    man/maas.8
 
 

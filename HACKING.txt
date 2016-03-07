@@ -195,7 +195,7 @@ not start by default.
 
 First create a superuser and start all MAAS services::
 
-    $ bin/maas-region-admin createadmin
+    $ bin/maas-region createadmin
     $ make run
 
 Substitute your own email.  The command will prompt for a choice of password.
@@ -412,7 +412,7 @@ in ``src/<application>/models/__init__.py``
 
 Generate the migration script with::
 
-    $ ./bin/maas-region-admin makemigrations --name description_of_the_change maasserver
+    $ ./bin/maas-region makemigrations --name description_of_the_change maasserver
 
 This will generate a migration module named
 ``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
@@ -432,7 +432,7 @@ If you need to perform data migration, very much in the same way, you will need
 to run Django's `makemigrations`_ command. For instance, if you want to perform
 changes to the ``maasserver`` application, run::
 
-    $ ./bin/maas-region-admin makemigrations --empty --name description_of_the_change maasserver
+    $ ./bin/maas-region makemigrations --empty --name description_of_the_change maasserver
 
 This will generate a migration module named
 ``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
@@ -458,13 +458,13 @@ the South_ migrations will be skipped because the Django_ migrations already
 provide the entire schema in the initial migration. All of this logic is
 performed on upgrade by the `dbupgrade` command.::
 
-    $ bin/maas-region-admin dbupgrade
+    $ bin/maas-region dbupgrade
 
 In some testing case you might need to always run the South_ migrations before
 the Django_ migrations on a clean database. Using the `always-south` option on
 the `dbupgrade` command allows this testing scenario.::
 
-    $ bin/maas-region-admin dbupgrade --always-south
+    $ bin/maas-region dbupgrade --always-south
 
 .. Note::
 
@@ -481,14 +481,14 @@ Examining the database manually
 
 If you need to get an interactive ``psql`` prompt, you can use `dbshell`_::
 
-    $ bin/maas-region-admin dbshell
+    $ bin/maas-region dbshell
 
 .. _dbshell: https://docs.djangoproject.com/en/dev/ref/django-admin/#dbshell
 
 If you need to do the same thing with a version of MAAS you have installed
 from the package, you can use::
 
-    $ sudo maas-region-admin dbshell --installed
+    $ sudo maas-region dbshell --installed
 
 You can use the ``\dt`` command to list the tables in the MAAS database. You
 can also execute arbitrary SQL. For example:::

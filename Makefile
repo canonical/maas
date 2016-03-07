@@ -53,7 +53,7 @@ build: \
     bin/maas \
     bin/maas-probe-dhcp \
     bin/maas-rack \
-    bin/maas-region-admin \
+    bin/maas-region \
     bin/twistd.rack \
     bin/twistd.region \
     bin/test.cli \
@@ -95,7 +95,7 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
 
-bin/maas-region-admin bin/twistd.region: \
+bin/maas-region bin/twistd.region: \
     data bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region
 	@touch --no-create $@
@@ -121,10 +121,10 @@ bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
-# bin/maas-region-admin is needed for South migration tests. bin/flake8 is
+# bin/maas-region is needed for South migration tests. bin/flake8 is
 # needed for checking lint and bin/sass is needed for checking css.
 bin/test.testing: \
-    bin/maas-region-admin bin/flake8 bin/sass bin/buildout \
+    bin/maas-region bin/flake8 bin/sass bin/buildout \
     buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -277,11 +277,11 @@ copyright:
 
 check: clean test
 
-docs/api.rst: bin/maas-region-admin src/maasserver/api/doc_handler.py syncdb
-	bin/maas-region-admin generate_api_doc > $@
+docs/api.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
+	bin/maas-region generate_api_doc > $@
 
-sampledata: bin/maas-region-admin bin/database syncdb
-	$(dbrun) bin/maas-region-admin generate_sample_data
+sampledata: bin/maas-region bin/database syncdb
+	$(dbrun) bin/maas-region generate_sample_data
 
 doc: bin/sphinx docs/api.rst
 	bin/sphinx
@@ -357,14 +357,14 @@ clean+db: clean
 distclean: clean
 	$(warning 'distclean' is deprecated; use 'clean')
 
-harness: bin/maas-region-admin bin/database
-	$(dbrun) bin/maas-region-admin shell --settings=maas.demo
+harness: bin/maas-region bin/database
+	$(dbrun) bin/maas-region shell --settings=maas.demo
 
 dbharness: bin/database
 	bin/database --preserve shell
 
-syncdb: bin/maas-region-admin bin/database
-	$(dbrun) bin/maas-region-admin dbupgrade
+syncdb: bin/maas-region bin/database
+	$(dbrun) bin/maas-region dbupgrade
 
 define phony_targets
   build
@@ -495,9 +495,9 @@ services/rackd/@deps: bin/twistd.rack
 
 services/reloader/@deps:
 
-services/regiond/@deps: bin/maas-region-admin
+services/regiond/@deps: bin/maas-region
 
-services/regiond2/@deps: bin/maas-region-admin
+services/regiond2/@deps: bin/maas-region
 
 #
 # Package building

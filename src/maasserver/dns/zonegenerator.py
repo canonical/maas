@@ -94,7 +94,7 @@ WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
     "MAAS's DNS features or if you don't rely on this information. "
-    "Consult the 'maas-region-admin local_config_set --maas-url' command "
+    "Consult the 'maas-region local_config_set --maas-url' command "
     "for details on how to set the MAAS URL.")
 
 
@@ -108,7 +108,7 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
     """Return the DNS server's IP address.
 
     That address is derived from the config maas_url or rack_controller.url.
-    Consult the 'maas-region-admin local_config_set --maas-url' command for
+    Consult the 'maas-region local_config_set --maas-url' command for
     details on how to set the MAAS URL.
 
     :param rack_controller: Optional rack controller to which the DNS server
@@ -127,7 +127,7 @@ def get_dns_server_address(rack_controller=None, ipv4=True, ipv6=True):
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
             "Make sure that the configuration setting for the MAAS URL has "
-            "the correct hostname. Consult the 'maas-region-admin "
+            "the correct hostname. Consult the 'maas-region "
             "local_config_set --maas-url' command."
             % e.strerror)
 

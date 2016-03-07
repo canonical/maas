@@ -1,11 +1,11 @@
-maas-region-admin
------------------
+maas-region
+-----------
 
 
 Usage
 ^^^^^
 
-maas-region-admin  [-h, --help] createadmin | changepassword | shell
+maas-region  [-h, --help] createadmin | changepassword | shell
 
 
 Description

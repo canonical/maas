@@ -27,7 +27,7 @@ DNS_CONNECT = True
 # Connect to the DHCP server. TODO: Use the signals manager instead.
 DHCP_CONNECT = True
 
-MAAS_CLI = abspath("bin/maas-region-admin")
+MAAS_CLI = abspath("bin/maas-region")
 
 # For demo purposes, give nodes unauthenticated access to their metadata
 # even if we can't pass boot parameters.  This is not safe; do not

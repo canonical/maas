@@ -41,7 +41,7 @@ class TestDBUpgrade(MAASTestCase):
         env = os.environ.copy()
         env["DEV_DB_NAME"] = "test_maas_dbupgrade"
         env["MAAS_PREVENT_MIGRATIONS"] = "0"
-        mra = os.path.join(root, "bin", "maas-region-admin")
+        mra = os.path.join(root, "bin", "maas-region")
         cmd = [mra, "dbupgrade"]
         if always_south:
             cmd.append("--always-south")

@@ -40,7 +40,7 @@ def get_maas_facing_server_address(rack_controller=None, ipv4=True, ipv6=True):
     """Return address where nodes and workers can reach the MAAS server.
 
     The address is taken from the configured MAAS URL or `controller.url`.
-    Consult the 'maas-region-admin local_config_set' command for details on
+    Consult the 'maas-region local_config_set' command for details on
     how to set the MAAS URL.
 
     If there is more than one IP address for the host, the addresses

@@ -281,7 +281,7 @@ latex_documents = [
 man_pages = [
     ('man/maas.8', 'maas', u'MAAS API commandline utility',
      [u'Canonical 2013-2014'], 8),
-    ('man/maas-region-admin.8', 'maas-region-admin', u'MAAS administration tool',
+    ('man/maas-region.8', 'maas-region', u'MAAS administration tool',
      [u'Canonical 2013-2014'], 8)
 ]
 
