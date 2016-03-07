@@ -131,7 +131,7 @@ shared secret can be copied from the Region Controller in::
 Once you have copied the secret, you can install it in the Cluster
 Controller. At the command line, type::
 
- $ sudo maas-provision
+ $ sudo maas-rack
 
 Once installed, you will need to reconfigure the Cluster Controller
 to correctly point to the API hostname or IP address of the Region

@@ -52,7 +52,7 @@ build: \
     bin/database \
     bin/maas \
     bin/maas-probe-dhcp \
-    bin/maas-provision \
+    bin/maas-rack \
     bin/maas-region-admin \
     bin/twistd.rack \
     bin/twistd.region \
@@ -129,13 +129,13 @@ bin/test.testing: \
 	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-probe-dhcp bin/maas-provision bin/twistd.rack: \
+bin/maas-probe-dhcp bin/maas-rack bin/twistd.rack: \
     bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@
 
 bin/test.rack: \
-	  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-provision
+	  bin/buildout buildout.cfg versions.cfg setup.py bin/maas-rack
 	$(buildout) install rack-test
 	@touch --no-create $@
 

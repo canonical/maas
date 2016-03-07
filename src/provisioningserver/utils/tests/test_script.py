@@ -194,7 +194,7 @@ class TestAtomicWriteScript(MAASTestCase):
 
     def test_script_executable(self):
         content = factory.make_string()
-        script = [os.path.join(bindir, "maas-provision"), 'atomic-write']
+        script = [os.path.join(bindir, "maas-rack"), 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file, '--mode', '615'))
         cmd = Popen(script, stdin=PIPE, env=select_c_utf8_locale())

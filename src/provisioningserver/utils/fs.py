@@ -56,9 +56,9 @@ from twisted.python.lockfile import FilesystemLock
 
 
 def get_maas_provision_command():
-    """Return path to the maas-provision command.
+    """Return path to the maas-rack command.
 
-    In production mode this will just return 'maas-provision', but in
+    In production mode this will just return 'maas-rack', but in
     development mode it will return the path for the current development
     environment.
     """
@@ -66,9 +66,9 @@ def get_maas_provision_command():
     from provisioningserver.config import is_dev_environment
     if is_dev_environment():
         from maastesting import root
-        return os.path.join(root, "bin", "maas-provision")
+        return os.path.join(root, "bin", "maas-rack")
     else:
-        return "maas-provision"
+        return "maas-rack"
 
 
 def _write_temp_file(content, filename):

@@ -313,13 +313,13 @@ class TestGetMAASProvisionCommand(MAASTestCase):
     def test__returns_just_command_for_production(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = False
-        self.assertEqual("maas-provision", get_maas_provision_command())
+        self.assertEqual("maas-rack", get_maas_provision_command())
 
     def test__returns_full_path_for_development(self):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
         self.assertEqual(
-            root.rstrip("/") + "/bin/maas-provision",
+            root.rstrip("/") + "/bin/maas-rack",
             get_maas_provision_command())
 
 
