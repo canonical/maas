@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utility to parse 'ip addr [show]'.
@@ -221,7 +221,7 @@ def get_bridged_interfaces(ifname, sys_class_net="/sys/class/net"):
 
 def get_interface_type(
         ifname, sys_class_net="/sys/class/net",
-        proc_net_vlan='/proc/net/vlan'):
+        proc_net="/proc/net"):
     """Heuristic to return the type of the given interface.
 
     The given interface must be able to be found in /sys/class/net/ifname.
@@ -270,7 +270,7 @@ def get_interface_type(
         bond_dir = os.path.join(sys_path, 'bonding')
         if os.path.isdir(bond_dir):
             return 'ethernet.bond'
-        if os.path.isfile('%s/%s' % (proc_net_vlan, ifname)):
+        if os.path.isfile(os.path.join(proc_net, "vlan", ifname)):
             return 'ethernet.vlan'
         device_path = os.path.join(sys_path, 'device')
         if os.path.islink(device_path):
@@ -291,22 +291,88 @@ def get_interface_type(
         return 'unknown-%d' % iftype
 
 
-def annotate_with_driver_information(interfaces):
+def _parse_proc_net_bonding(file):
+    """Parse the given file, which must be a path to a file in the format
+    that is used for file in `/proc/net/bonding/<interface>`.
+
+    Returns a dictionary mapping each interface name found in the file to
+    its original MAC address.
+    """
+    interfaces = {}
+    current_iface = None
+    with open(file) as f:
+        for line in f.readlines():
+            line = line.strip()
+            slave_iface = line.split("Slave Interface: ")
+            if len(slave_iface) == 2:
+                current_iface = slave_iface[1]
+            hw_addr = line.split("Permanent HW addr: ")
+            if len(hw_addr) == 2:
+                interfaces[current_iface] = hw_addr[1]
+    return interfaces
+
+
+def annotate_with_proc_net_bonding_original_macs(
+        interfaces, proc_net="/proc/net"):
+    """Repairs the MAC addresses of bond members in the specified structure.
+
+    Given the specified interfaces structure, uses the data in
+    `/proc/net/bonding/*` to determine if any of the interfaces
+    in the structure are bond members. If so, modifies their MAC address,
+    setting it back to the original hardware MAC. (When an interface is added
+    to a bond, its MAC address is set to the bond MAC, and subsequently
+    reported in commands like "ip addr".)
+    """
+    proc_net_bonding = os.path.join(proc_net, "bonding")
+    if os.path.isdir(proc_net_bonding):
+        bonds = os.listdir(proc_net_bonding)
+        for bond in bonds:
+            parent_macs = _parse_proc_net_bonding(
+                os.path.join(proc_net_bonding, bond))
+            for interface in parent_macs:
+                if interface in interfaces:
+                    interfaces[interface]['mac'] = parent_macs[interface]
+    return interfaces
+
+
+def annotate_with_driver_information(
+        interfaces, sys_class_net="/sys/class/net", proc_net="/proc/net"):
     """Determines driver information for each of the given interfaces.
 
     Annotates the given dictionary to update it with driver information
     (if found) for each interface.
+
+    Deletes bond interfaces if they are not configured.
+
+    :param interfaces: interfaces dictionary from `parse_ip_addr()`.
+    :param proc_net: path to /proc/net
+    :param sys_class_net: path to /sys/class/net
     """
+    interfaces = annotate_with_proc_net_bonding_original_macs(
+        interfaces, proc_net=proc_net)
+    bogus_interfaces = []
     for name in interfaces:
         iface = interfaces[name]
-        iftype = get_interface_type(name)
+        iftype = get_interface_type(
+            name, sys_class_net=sys_class_net, proc_net=proc_net)
         interfaces[name]['type'] = iftype
         if iftype == 'ethernet.bond':
-            iface['bonded_interfaces'] = get_bonded_interfaces(name)
+            bond_parents = get_bonded_interfaces(
+                name, sys_class_net=sys_class_net)
+            if len(bond_parents) > 0:
+                iface['bonded_interfaces'] = bond_parents
+            else:
+                # If we found a bond interface with no parents, just pretend
+                # it doesn't exist. The MAAS model assumes bonds must have
+                # backing interfaces.
+                bogus_interfaces.append(name)
         elif iftype == 'ethernet.vlan':
             iface['vid'] = get_vid_from_ifname(name)
         elif iftype == 'ethernet.bridge':
-            iface['bridged_interfaces'] = get_bridged_interfaces(name)
+            iface['bridged_interfaces'] = get_bridged_interfaces(
+                name, sys_class_net=sys_class_net)
+    for name in bogus_interfaces:
+        del interfaces[name]
     return interfaces
 
 

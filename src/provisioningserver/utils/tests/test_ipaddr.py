@@ -21,6 +21,7 @@ from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
     _parse_interface_definition,
     annotate_with_driver_information,
+    annotate_with_proc_net_bonding_original_macs,
     get_bonded_interfaces,
     get_interface_type,
     get_ip_addr,
@@ -33,6 +34,7 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    HasLength,
     Not,
 )
 
@@ -347,17 +349,19 @@ group default qlen 1000
         self.assertThat(ip_link['ens11'], Not(Contains('inet')))
 
 
-class TestGetInterfaceType(MAASTestCase):
+class FakeSysProcTestCase(MAASTestCase):
 
     def setUp(self):
-        super(TestGetInterfaceType, self).setUp()
+        super().setUp()
         self.tmp_sys_net = mkdtemp('maas-unit-tests.sys-class-net')
-        self.tmp_proc_net_vlan = mkdtemp('maas-unit-tests.proc-net-vlan')
+        self.tmp_proc_net = mkdtemp('maas-unit-tests.proc-net')
+        os.mkdir(os.path.join(self.tmp_proc_net, "vlan"))
+        os.mkdir(os.path.join(self.tmp_proc_net, "bonding"))
 
     def tearDown(self):
-        super(TestGetInterfaceType, self).tearDown()
+        super().tearDown()
         rmtree(self.tmp_sys_net)
-        rmtree(self.tmp_proc_net_vlan)
+        rmtree(self.tmp_proc_net)
 
     def createInterfaceType(
             self, ifname, iftype, is_bridge=False, is_vlan=False,
@@ -371,7 +375,7 @@ class TestGetInterfaceType(MAASTestCase):
         if is_bridge:
             os.mkdir(os.path.join(ifdir, 'bridge'))
         if is_vlan:
-            with open(os.path.join(self.tmp_proc_net_vlan, ifname), 'w'):
+            with open(os.path.join(self.tmp_proc_net, "vlan", ifname), 'w'):
                 pass  # Just touch.
         if is_bond:
             os.mkdir(os.path.join(ifdir, 'bonding'))
@@ -395,6 +399,9 @@ class TestGetInterfaceType(MAASTestCase):
     def createEthernetInterface(self, ifname, **kwargs):
         self.createInterfaceType(ifname, 1, **kwargs)
 
+
+class TestGetInterfaceType(FakeSysProcTestCase):
+
     def test__identifies_missing_interface(self):
         self.assertThat(get_interface_type(
             'eth0', sys_class_net=self.tmp_sys_net),
@@ -405,7 +412,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('br0', is_bridge=True)
         self.assertThat(get_interface_type(
             'br0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet.bridge')
         )
 
@@ -413,7 +420,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('bond0', is_bond=True)
         self.assertThat(get_interface_type(
             'bond0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet.bond')
         )
 
@@ -429,7 +436,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('vlan42', is_vlan=True)
         self.assertThat(get_interface_type(
             'vlan42', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet.vlan')
         )
 
@@ -437,7 +444,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('eth0', is_physical=True)
         self.assertThat(get_interface_type(
             'eth0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet.physical')
         )
 
@@ -445,7 +452,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('wlan0', is_wireless=True)
         self.assertThat(get_interface_type(
             'wlan0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet.wireless')
         )
 
@@ -453,7 +460,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createEthernetInterface('eth1')
         self.assertThat(get_interface_type(
             'eth1', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ethernet')
         )
 
@@ -461,7 +468,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createLoopbackInterface('lo')
         self.assertThat(get_interface_type(
             'lo', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('loopback')
         )
 
@@ -469,7 +476,7 @@ class TestGetInterfaceType(MAASTestCase):
         self.createIpIpInterface('tun0')
         self.assertThat(get_interface_type(
             'tun0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('ipip')
         )
 
@@ -477,18 +484,16 @@ class TestGetInterfaceType(MAASTestCase):
         self.createInterfaceType('avian0', 1149)
         self.assertThat(get_interface_type(
             'avian0', sys_class_net=self.tmp_sys_net,
-            proc_net_vlan=self.tmp_proc_net_vlan),
+            proc_net=self.tmp_proc_net),
             Equals('unknown-1149')
         )
 
 
-class TestAnnotateWithDriverInformation(MAASTestCase):
+class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
 
     def test__populates_interface_type_for_each_interface(self):
         # Note: this is more of an end-to-end test, since we call
-        # "/sbin/ip addr" on the host running the tests. This is necessary
-        # because we don't have dependency injection for the directory names
-        # all the way through.
+        # "/sbin/ip addr" on the host running the tests.
         ip_addr_output = check_output(['/sbin/ip', 'addr'])
         interfaces = parse_ip_addr(ip_addr_output)
         interfaces_with_types = annotate_with_driver_information(interfaces)
@@ -501,6 +506,89 @@ class TestAnnotateWithDriverInformation(MAASTestCase):
                 self.expectThat(iface, Contains('bonded_interfaces'))
             elif iface['type'] == 'ethernet.bridge':
                 self.expectThat(iface, Contains('bridged_interfaces'))
+
+    def test__ignores_bond_interfaces_with_no_parents(self):
+        interfaces = {
+            'eth0': {},
+            'eth1': {},
+            'bond0': {},
+            'bond1': {},
+        }
+        self.createEthernetInterface('eth0', is_physical=True)
+        self.createEthernetInterface('eth1', is_physical=True)
+        self.createEthernetInterface(
+            'bond0', is_bond=True, bonded_interfaces=['eth0, eth1'])
+        self.createEthernetInterface(
+            'bond1', is_bond=True, bonded_interfaces=[])
+        interfaces = annotate_with_driver_information(
+            interfaces, sys_class_net=self.tmp_sys_net,
+            proc_net=self.tmp_proc_net)
+        self.expectThat(interfaces, HasLength(3))
+        self.expectThat(interfaces, Contains('eth0'))
+        self.expectThat(interfaces, Contains('eth1'))
+        self.expectThat(interfaces, Contains('bond0'))
+
+    def test__finds_bond_members_original_mac_addresses(self):
+        testdata = dedent("""\
+            Ethernet Channel Bonding Driver: v3.7.1 (April 27, 2011)
+
+            Bonding Mode: fault-tolerance (active-backup)
+            Primary Slave: None
+            Currently Active Slave: ens11
+            MII Status: up
+            MII Polling Interval (ms): 100
+            Up Delay (ms): 200
+            Down Delay (ms): 0
+
+            Slave Interface: ens11
+            MII Status: up
+            Speed: Unknown
+            Duplex: Unknown
+            Link Failure Count: 0
+            Permanent HW addr: 52:54:00:ea:1c:fc
+            Slave queue ID: 0
+
+            Slave Interface: ens3
+            MII Status: up
+            Speed: Unknown
+            Duplex: Unknown
+            Link Failure Count: 0
+            Permanent HW addr: 52:54:00:13:0e:6f
+            Slave queue ID: 0
+            """)
+        proc_net_bonding_bond0 = os.path.join(
+            self.tmp_proc_net, "bonding", "bond0")
+        with open(proc_net_bonding_bond0, mode='w') as f:
+            f.write(testdata)
+        interfaces = {
+            "ens3": {"mac": "00:01:02:03:04:05"},
+            "ens11": {"mac": "01:02:03:04:05:06"},
+        }
+        annotate_with_proc_net_bonding_original_macs(
+            interfaces, proc_net=self.tmp_proc_net)
+        self.assertEqual(
+            {
+                "ens3": {"mac": "52:54:00:13:0e:6f"},
+                "ens11": {"mac": "52:54:00:ea:1c:fc"},
+            },
+            interfaces
+        )
+
+    def test__ignores_missing_proc_net_bonding(self):
+        os.rmdir(os.path.join(self.tmp_proc_net, "bonding"))
+        interfaces = {
+            "ens3": {"mac": "00:01:02:03:04:05"},
+            "ens11": {"mac": "01:02:03:04:05:06"},
+        }
+        annotate_with_proc_net_bonding_original_macs(
+            interfaces, proc_net=self.tmp_proc_net)
+        self.assertEqual(
+            {
+                "ens3": {"mac": "00:01:02:03:04:05"},
+                "ens11": {"mac": "01:02:03:04:05:06"},
+            },
+            interfaces
+        )
 
 
 class TestGetIPAddr(MAASTestCase):
