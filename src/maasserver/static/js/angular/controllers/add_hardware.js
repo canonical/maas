@@ -5,11 +5,11 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', 'ZonesManager',
-    'MachinesManager', 'GeneralManager', 'RegionConnection',
-    'ManagerHelperService', 'ValidationService', function(
-        $scope, $http, ZonesManager, MachinesManager,
-        GeneralManager, RegionConnection, ManagerHelperService,
+    '$scope', '$http', 'ZonesManager', 'MachinesManager', 'GeneralManager',
+    'DomainsManager', 'RegionConnection', 'ManagerHelperService',
+    'ValidationService', function(
+        $scope, $http, ZonesManager, MachinesManager, GeneralManager,
+        DomainsManager, RegionConnection, ManagerHelperService,
         ValidationService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
@@ -21,6 +21,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.viewable = false;
         $scope.model = 'machine';
         $scope.zones = ZonesManager.getItems();
+        $scope.domains = DomainsManager.getItems();
         $scope.architectures = GeneralManager.getData("architectures");
         $scope.hwe_kernels = GeneralManager.getData("hwe_kernels");
         $scope.default_min_hwe_kernel = GeneralManager.getData(
@@ -255,6 +256,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             if(angular.isObject(cloneMachine)) {
                 return {
                     name: '',
+                    domain: cloneMachine.domain,
                     macs: [newMAC()],
                     zone: cloneMachine.zone,
                     architecture: cloneMachine.architecture,
@@ -269,6 +271,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             // No clone machine. So create a new blank machine.
             return {
                 name: '',
+                domain: DomainsManager.getDefaultDomain(),
                 macs: [newMAC()],
                 zone: defaultZone(),
                 architecture: defaultArchitecture(),
@@ -281,13 +284,27 @@ angular.module('MAAS').controller('AddHardwareController', [
         }
 
         // Return a new chassis object.
-        function newChassis() {
-            return {
-                power: {
-                    type: null,
-                    parameters: {}
-                }
-            };
+        function newChassis(cloneChassis) {
+            // Clone the chassis instead of just creating a new one.
+            // This helps the user by already having the previous selected
+            // items selected for the new machine.
+            if(angular.isObject(cloneChassis)) {
+                return {
+                    domain: cloneChassis.domain,
+                    power: {
+                        type: null,
+                        parameters: {}
+                    }
+                };
+            } else {
+                return {
+                    domain: DomainsManager.getDefaultDomain(),
+                    power: {
+                        type: null,
+                        parameters: {}
+                    }
+                };
+            }
         }
 
         // Converts the machine information from how it is held in the UI to
@@ -301,6 +318,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             // Return the new object.
             return {
                 hostname: machine.name,
+                domain: machine.domain,
                 architecture: machine.architecture,
                 min_hwe_kernel: machine.min_hwe_kernel,
                 pxe_mac: pxe_mac,
@@ -517,6 +535,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             // Create the parameters.
             var params = angular.copy($scope.chassis.power.parameters);
             params.chassis_type = $scope.chassis.power.type.name;
+            params.domain = $scope.chassis.domain.name;
 
             // XXX ltrager 24-02-2016: Something is adding the username field
             // even though its not defined in virshFields. The API rejects
@@ -535,8 +554,10 @@ angular.module('MAAS').controller('AddHardwareController', [
                 data: $.param(params),
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'}
             }).then(function() {
-                $scope.chassis = newChassis();
-                if(!addAnother) {
+                if(addAnother) {
+                    $scope.chassis = newChassis($scope.chassis);
+                } else {
+                    $scope.chassis = newChassis();
                     // Hide the scope if not adding another.
                     $scope.hide();
                 }
@@ -545,10 +566,10 @@ angular.module('MAAS').controller('AddHardwareController', [
             });
         };
 
-        // Load zones. Once loaded create the first machine and
+        // Load zones and domains. Once loaded create the first machine and
         // chassis.
         ManagerHelperService.loadManagers(
-            [ZonesManager]).then(function() {
+            [ZonesManager, DomainsManager]).then(function() {
                 // Add the first machine and chassis.
                 $scope.machine = newMachine();
                 $scope.chassis = newChassis();

@@ -1,4 +1,4 @@
-/* Copyright 2015,2016 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Domain Manager
@@ -40,6 +40,20 @@ angular.module('MAAS').factory(
         // Delete the domain.
         DomainsManager.prototype.deleteDomain = function(domain) {
             return RegionConnection.callMethod("domain.delete", domain);
+        };
+
+        DomainsManager.prototype.getDefaultDomain = function() {
+            if(this._items.length === 0) {
+                return null;
+            } else {
+                var i;
+                for(i=0;i<this._items.length;i++) {
+                    if(this._items[i].id === 0) {
+                        return this._items[i];
+                    }
+                }
+            }
+            return this._items[0];
         };
 
         return new DomainsManager();

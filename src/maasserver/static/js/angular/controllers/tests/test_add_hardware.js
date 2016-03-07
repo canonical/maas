@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for AddHardwareController.
@@ -20,13 +20,14 @@ describe("AddHardwareController", function() {
     }));
 
     // Load the ZonesManager, MachinesManager, RegionConnection,
-    // and mock the websocket connection.
-    var ZonesManager, MachinesManager, GeneralManager;
+    // DomainManager, and mock the websocket connection.
+    var ZonesManager, MachinesManager, GeneralManager, DomainsManager;
     var RegionConnection, ManagerHelperService, webSocket;
     beforeEach(inject(function($injector) {
         ZonesManager = $injector.get("ZonesManager");
         MachinesManager = $injector.get("MachinesManager");
         GeneralManager = $injector.get("GeneralManager");
+        DomainsManager = $injector.get("DomainsManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
 
@@ -70,6 +71,7 @@ describe("AddHardwareController", function() {
             ZonesManager: ZonesManager,
             MachinesManager: MachinesManager,
             GeneralManager: GeneralManager,
+            DomainsManager: DomainsManager,
             RegionConnection: RegionConnection,
             ManagerHelperService: ManagerHelperService
         });
@@ -94,6 +96,7 @@ describe("AddHardwareController", function() {
         var controller = makeController();
         expect($scope.viewable).toBe(false);
         expect($scope.zones).toBe(ZonesManager.getItems());
+        expect($scope.domains).toBe(DomainsManager.getItems());
         expect($scope.architectures).toEqual([]);
         expect($scope.hwe_kernels).toEqual([]);
         expect($scope.power_types).toEqual([]);
@@ -102,10 +105,10 @@ describe("AddHardwareController", function() {
         expect($scope.chassis).toBeNull();
     });
 
-    it("calls loadManagers with ZonesManager", function() {
+    it("calls loadManagers with ZonesManager, DomainsManager", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-            [ZonesManager]);
+            [ZonesManager, DomainsManager]);
     });
 
     it("calls loadManager with GeneralManager", function() {
@@ -114,7 +117,7 @@ describe("AddHardwareController", function() {
             GeneralManager);
     });
 
-    it("intializes machine once ZonesManager loaded",
+    it("intializes machine once ZonesManager and DomainsManager loaded",
         function() {
             var defer = $q.defer();
             var controller = makeController(defer);
@@ -124,7 +127,7 @@ describe("AddHardwareController", function() {
             expect($scope.machine).not.toBeNull();
         });
 
-    it("intializes chassis once ZonesManager loaded",
+    it("intializes chassis once ZonesManager and DomainsManager loaded",
         function() {
             var defer = $q.defer();
             var controller = makeController(defer);
@@ -567,6 +570,7 @@ describe("AddHardwareController", function() {
 
             $scope.addMac();
             $scope.machine.name = makeName("name").replace("_", "");
+            $scope.machine.domain = makeName("domain").replace("_", "");
             $scope.machine.zone = {
                 id: 1,
                 name: makeName("zone")
@@ -606,6 +610,7 @@ describe("AddHardwareController", function() {
             $scope.saveMachine(false);
             expect(MachinesManager.create).toHaveBeenCalledWith({
                 hostname: $scope.machine.name,
+                domain: $scope.machine.domain,
                 architecture: $scope.machine.architecture,
                 min_hwe_kernel: $scope.machine.min_hwe_kernel,
                 pxe_mac: $scope.machine.macs[0].mac,
@@ -694,9 +699,7 @@ describe("AddHardwareController", function() {
             // Create the controller and the valid chassis.
             var controller = makeController();
             $scope.chassis = {
-                cluster: {
-                    uuid: "123"
-                },
+                domain: makeName("domain"),
                 power: {
                     type: {
                         name: makeName("model"),
@@ -732,6 +735,7 @@ describe("AddHardwareController", function() {
 
             var parameters = $scope.chassis.power.parameters;
             parameters.chassis_type = $scope.chassis.power.type.name;
+            parameters.domain = $scope.chassis.domain.name;
             expect($http).toHaveBeenCalledWith({
                 method: 'POST',
                 url: 'api/2.0/machines/?op=add_chassis',

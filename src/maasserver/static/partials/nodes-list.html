@@ -140,6 +140,13 @@
                                 data-ng-model="machine.name">
                         </div>
                         <div class="inline">
+                            <label for="domain" class="two-col">Domain</label>
+                            <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
+                                data-ng-model="machine.domain"
+                                data-ng-options="domain as domain.name for domain in domains">
+                            </select>
+                        </div>
+                        <div class="inline">
                             <label for="architecture" class="two-col">Architecture</label>
                             <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
                                 data-ng-model="machine.architecture"
@@ -150,7 +157,7 @@
                             <label for="min_hwe_kernel" class="two-col">Minimum Kernel</label>
                             <select name="min_hwe_kernel" id="min_hwe_kernel" class="three-col" placeholder="No minimum kernel"
                                 data-ng-model="machine.min_hwe_kernel"
-                                data-ng-options="hwe_kernel for hwe_kernel in hwe_kernels">
+                                data-ng-options="hwe_kernel[0] as hwe_kernel[1] for hwe_kernel in hwe_kernels">
                                 <option value="">No minimum kernel</option>
                             </select>
                         </div>
@@ -184,6 +191,11 @@
                         data-maas-power-parameters="chassisPowerTypes"
                         data-ng-model="chassis.power">
                     </fieldset>
+                    <label for="domain" class="two-col">Domain</label>
+                    <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
+                        data-ng-model="chassis.domain"
+                        data-ng-options="domain as domain.name for domain in domains">
+                    </select>
                 </form>
                 <div class="page-header__feedback twelve-col no-margin-bottom" data-ng-show="showMachine()">
                     <form class="form-inline">
@@ -298,6 +310,13 @@
                             <input type="text" id="device-name" class="three-col" placeholder="Name your device"
                                 data-ng-model="device.name"
                                 data-ng-class="{ invalid: nameHasError() }">
+                        </div>
+                        <div class="inline">
+                            <label for="domain" class="two-col">Domain</label>
+                            <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
+                                data-ng-model="device.domain"
+                                data-ng-options="domain as domain.name for domain in domains">
+                            </select>
                         </div>
                     </fieldset>
                     <table class="margin-bottom table-listing">

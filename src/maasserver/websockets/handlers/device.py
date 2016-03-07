@@ -226,6 +226,9 @@ class DeviceHandler(NodeHandler):
             "hostname": params.get("hostname"),
             }
 
+        if "domain" in params:
+            new_params["domain"] = params["domain"]["name"]
+
         # Cleanup any fields that have a None value.
         new_params = {
             key: value

@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for AddDeviceController.
@@ -19,11 +19,12 @@ describe("AddDeviceController", function() {
 
     // Load the required dependencies for the AddDeviceController
     // and mock the websocket connection.
-    var SubnetsManager, DevicesManager, ManagerHelperService;
+    var SubnetsManager, DevicesManager, DomainsManager, ManagerHelperService;
     var ValidationService, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         DevicesManager = $injector.get("DevicesManager");
+        DomainsManager = $injector.get("DomainsManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ValidationService = $injector.get("ValidationService");
         RegionConnection = $injector.get("RegionConnection");
@@ -42,7 +43,13 @@ describe("AddDeviceController", function() {
     });
 
     // Makes the AddDeviceController
-    function makeController() {
+    function makeController(loadManagersDefer) {
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+        if(angular.isObject(loadManagersDefer)) {
+            loadManagers.and.returnValue(loadManagersDefer.promise);
+        } else {
+            loadManagers.and.returnValue($q.defer().promise);
+        }
         // Start the connection so a valid websocket is created in the
         // RegionConnection.
         RegionConnection.connect("");
@@ -51,9 +58,19 @@ describe("AddDeviceController", function() {
             $scope: $scope,
             SubnetsManager: SubnetsManager,
             DevicesManager: DevicesManager,
+            DomainsManager: DomainsManager,
             ValidationService: ValidationService,
             ManagerHelperService: ManagerHelperService
         });
+    }
+
+    // Make the AddDeviceController with the $scope.device already initialized.
+    function makeControllerWithDevice() {
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        return controller;
     }
 
     // Generating random subnets is difficult, so we just use an array
@@ -125,7 +142,7 @@ describe("AddDeviceController", function() {
     });
 
     it("sets initial values on $scope", function() {
-        var controller = makeController();
+        var controller = makeControllerWithDevice();
         expect($scope.viewable).toBe(false);
         expect($scope.error).toBe(null);
         expect($scope.ipAssignments).toEqual([
@@ -144,6 +161,7 @@ describe("AddDeviceController", function() {
         ]);
         expect($scope.device).toEqual({
             name: "",
+            domain: null,
             interfaces: [{
                 mac: "",
                 ipAssignment: null,
@@ -151,19 +169,19 @@ describe("AddDeviceController", function() {
                 ipAddress: ""
             }]
         });
+        expect($scope.domains).toBe(DomainsManager.getItems());
     });
 
-    it("calls loadManager with SubnetsManager", function() {
-        spyOn(ManagerHelperService, "loadManager");
+    it("calls loadManagers with SubnetsManager and DomainsManager", function() {
         var controller = makeController();
-        expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
-            SubnetsManager);
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            [SubnetsManager, DomainsManager]);
     });
 
     describe("show", function() {
 
         it("does nothing if already viewable", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.viewable = true;
             var name = makeName("name");
             $scope.device.name = name;
@@ -174,7 +192,7 @@ describe("AddDeviceController", function() {
         });
 
         it("clears device and sets viewable to true", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = makeName("name");
             $scope.show();
             expect($scope.device.name).toBe("");
@@ -209,13 +227,13 @@ describe("AddDeviceController", function() {
         });
 
         it("returns false if valid name", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             expect($scope.nameHasError()).toBe(false);
         });
 
         it("returns true if invalid name", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "a_bc.local";
             expect($scope.nameHasError()).toBe(true);
         });
@@ -230,13 +248,13 @@ describe("AddDeviceController", function() {
         });
 
         it("returns false if valid mac", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             var nic = makeInterface("00:00:11:22:33:44");
             expect($scope.macHasError(nic)).toBe(false);
         });
 
         it("returns false if not repeat mac", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             var nic = makeInterface("00:00:11:22:33:44");
             var nic2 = makeInterface("00:00:11:22:33:55");
             $scope.device.interfaces = [
@@ -254,7 +272,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if repeat mac", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             var nic = makeInterface("00:00:11:22:33:44");
             var nic2 = makeInterface("00:00:11:22:33:44");
             $scope.device.interfaces = [
@@ -374,7 +392,7 @@ describe("AddDeviceController", function() {
     describe("deviceHasError", function() {
 
         it("returns true if name empty", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
@@ -383,7 +401,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if mac empty", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].ipAssignment = {
                 name: "dynamic"
@@ -392,7 +410,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if name invalid", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "ab_c.local";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
@@ -402,7 +420,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if mac invalid", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44';
             $scope.device.interfaces[0].ipAssignment = {
@@ -412,14 +430,14 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if missing ip assignment selection", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             expect($scope.deviceHasError()).toBe(true);
         });
 
         it("returns false if dynamic ip assignment selection", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
@@ -429,7 +447,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if external ip assignment and ip empty", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
@@ -440,7 +458,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns true if external ip assignment and ip invalid", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
@@ -451,7 +469,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns false if external ip assignment and ip valid", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = "abc";
             $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
             $scope.device.interfaces[0].ipAssignment = {
@@ -463,7 +481,7 @@ describe("AddDeviceController", function() {
 
         it("returns true if static ip assignment and no cluster interface",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 $scope.device.name = "abc";
                 $scope.device.interfaces[0].mac = '00:11:22:33:44:55';
                 $scope.device.interfaces[0].ipAssignment = {
@@ -474,7 +492,7 @@ describe("AddDeviceController", function() {
 
         it("returns false if static ip assignment and subnet",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 var subnet = makeSubnet();
                 SubnetsManager._items = [subnet];
                 $scope.subnets = [subnet];
@@ -490,7 +508,7 @@ describe("AddDeviceController", function() {
         it("returns true if static ip assignment, subnet, and " +
             "invalid ip address",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 var subnet = makeSubnet();
                 SubnetsManager._items = [subnet];
                 $scope.subnets = [subnet];
@@ -507,7 +525,7 @@ describe("AddDeviceController", function() {
         it("returns true if static ip assignment, subnet, and " +
             "ip address out of network",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 var subnet = makeSubnet();
                 SubnetsManager._items = [subnet];
                 $scope.subnets = [subnet];
@@ -524,7 +542,7 @@ describe("AddDeviceController", function() {
         it("returns false if static ip assignment, subnet, and " +
             "ip address in network",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 var subnet = makeSubnet();
                 SubnetsManager._items = [subnet];
                 $scope.subnets = [subnet];
@@ -542,7 +560,7 @@ describe("AddDeviceController", function() {
     describe("addInterface", function() {
 
         it("adds another interface", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.addInterface();
             expect($scope.device.interfaces.length).toBe(2);
         });
@@ -551,7 +569,7 @@ describe("AddDeviceController", function() {
     describe("isPrimaryInterface", function() {
 
         it("returns true for first interface", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.addInterface();
             expect(
                 $scope.isPrimaryInterface(
@@ -559,7 +577,7 @@ describe("AddDeviceController", function() {
         });
 
         it("returns false for second interface", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.addInterface();
             expect(
                 $scope.isPrimaryInterface(
@@ -570,14 +588,14 @@ describe("AddDeviceController", function() {
     describe("deleteInterface", function() {
 
         it("doesnt remove primary interface", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             var nic = $scope.device.interfaces[0];
             $scope.deleteInterface(nic);
             expect($scope.device.interfaces[0]).toBe(nic);
         });
 
         it("removes interface", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.addInterface();
             var nic = $scope.device.interfaces[1];
             $scope.deleteInterface(nic);
@@ -595,7 +613,7 @@ describe("AddDeviceController", function() {
         });
 
         it("clears device", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.device.name = makeName("name");
             $scope.cancel();
             expect($scope.device.name).toBe("");
@@ -622,7 +640,7 @@ describe("AddDeviceController", function() {
         });
 
         it("clears error before calling create", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.error = makeName("error");
             spyOn($scope, "deviceHasError").and.returnValue(false);
             spyOn(DevicesManager, "create").and.returnValue(
@@ -641,12 +659,14 @@ describe("AddDeviceController", function() {
             spyOn(DevicesManager, "create").and.returnValue(
                 $q.defer().promise);
             var name = makeName("name");
+            var domain = makeName("domain");
             var mac = makeName("mac");
             var assignment = "static";
             var ipAddress = makeName("ip");
             var subnet = makeSubnet();
             $scope.device = {
                 name: name,
+                domain: domain,
                 interfaces: [{
                     mac: mac,
                     ipAssignment: {
@@ -659,6 +679,7 @@ describe("AddDeviceController", function() {
             $scope.save();
             expect(DevicesManager.create).toHaveBeenCalledWith({
                 hostname: name,
+                domain: domain,
                 primary_mac: mac,
                 extra_macs: [],
                 interfaces: [{
@@ -671,7 +692,7 @@ describe("AddDeviceController", function() {
         });
 
         it("on create resolve device is cleared", function() {
-            var controller = makeController();
+            var controller = makeControllerWithDevice();
             $scope.error = makeName("error");
             spyOn($scope, "deviceHasError").and.returnValue(false);
             var defer = $q.defer();
@@ -688,7 +709,7 @@ describe("AddDeviceController", function() {
 
         it("on create resolve hide is called when addAnother is false",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 $scope.error = makeName("error");
                 spyOn($scope, "deviceHasError").and.returnValue(false);
                 var defer = $q.defer();
@@ -706,7 +727,7 @@ describe("AddDeviceController", function() {
 
         it("on create resolve hide is not called when addAnother is true",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 $scope.error = makeName("error");
                 spyOn($scope, "deviceHasError").and.returnValue(false);
                 var defer = $q.defer();
@@ -724,7 +745,7 @@ describe("AddDeviceController", function() {
 
         it("on create reject error is set",
             function() {
-                var controller = makeController();
+                var controller = makeControllerWithDevice();
                 $scope.error = makeName("error");
                 spyOn($scope, "deviceHasError").and.returnValue(false);
                 var defer = $q.defer();

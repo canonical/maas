@@ -1,12 +1,13 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Add Device Controller
  */
 
 angular.module('MAAS').controller('AddDeviceController', [
-    '$scope', 'DevicesManager', 'SubnetsManager', 'ManagerHelperService',
-    'ValidationService', function($scope, DevicesManager, SubnetsManager,
+    '$scope', 'DevicesManager', 'SubnetsManager', 'DomainsManager',
+    'ManagerHelperService', 'ValidationService', function(
+        $scope, DevicesManager, SubnetsManager, DomainsManager,
         ManagerHelperService, ValidationService) {
 
         // Set the addDeviceScope in the parent, so it can call functions
@@ -16,6 +17,7 @@ angular.module('MAAS').controller('AddDeviceController', [
 
         // Set initial values.
         $scope.subnets = SubnetsManager.getItems();
+        $scope.domains = DomainsManager.getItems();
         $scope.viewable = false;
         $scope.error = null;
 
@@ -46,15 +48,24 @@ angular.module('MAAS').controller('AddDeviceController', [
         }
 
         // Makes a new device.
-        function makeDevice() {
-            return {
-                name: "",
-                interfaces: [makeInterface()]
-            };
+        function newDevice(cloneDevice) {
+            if(angular.isObject(cloneDevice)) {
+                return {
+                    name: "",
+                    domain: cloneDevice.domain,
+                    interfaces: [makeInterface()]
+                };
+            } else {
+                return {
+                    name: "",
+                    domain: DomainsManager.getDefaultDomain(),
+                    interfaces: [makeInterface()]
+                };
+            }
         }
 
-        // Initial device.
-        $scope.device = makeDevice();
+        // Input values.
+        $scope.device = null;
 
         // Converts the device information from how it is held in the UI to
         // how it is handled over the websocket.
@@ -62,6 +73,7 @@ angular.module('MAAS').controller('AddDeviceController', [
             // Return the new object.
             var convertedDevice = {
                 hostname: device.name,
+                domain: device.domain,
                 primary_mac: device.interfaces[0].mac,
                 extra_macs: [],
                 interfaces: []
@@ -87,7 +99,7 @@ angular.module('MAAS').controller('AddDeviceController', [
             if($scope.viewable) {
                 return;
             }
-            $scope.device = makeDevice();
+            $scope.device = newDevice();
             $scope.viewable = true;
         };
 
@@ -102,7 +114,7 @@ angular.module('MAAS').controller('AddDeviceController', [
         // Returns true if the name is in error.
         $scope.nameHasError = function() {
             // If the name is empty don't show error.
-            if($scope.device.name.length === 0) {
+            if($scope.device === null || $scope.device.name.length === 0) {
                 return false;
             }
             return !ValidationService.validateHostname($scope.device.name);
@@ -170,7 +182,8 @@ angular.module('MAAS').controller('AddDeviceController', [
         // Return true when the device is missing information or invalid
         // information.
         $scope.deviceHasError = function() {
-            if($scope.device.name === '' || $scope.nameHasError()) {
+            if($scope.device === null || $scope.device.name === '' ||
+                    $scope.nameHasError()) {
                 return true;
             }
 
@@ -220,7 +233,7 @@ angular.module('MAAS').controller('AddDeviceController', [
         // Called when cancel clicked.
         $scope.cancel = function() {
             $scope.error = null;
-            $scope.device = makeDevice();
+            $scope.device = newDevice();
             $scope.hide();
         };
 
@@ -261,8 +274,10 @@ angular.module('MAAS').controller('AddDeviceController', [
             // Create the device.
             var device = convertDeviceToProtocol($scope.device);
             DevicesManager.create(device).then(function(device) {
-                $scope.device = makeDevice();
-                if(!addAnother) {
+                if(addAnother) {
+                    $scope.device = newDevice($scope.device);
+                } else {
+                    $scope.device = newDevice();
                     // Hide the scope if not adding another.
                     $scope.hide();
                 }
@@ -272,5 +287,9 @@ angular.module('MAAS').controller('AddDeviceController', [
         };
 
         // Load subnets to get the available subnets.
-        ManagerHelperService.loadManager(SubnetsManager);
+        ManagerHelperService.loadManagers(
+            [SubnetsManager, DomainsManager]).then(function() {
+                // Initial device.
+                $scope.device = newDevice();
+            });
     }]);
