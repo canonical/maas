@@ -23,9 +23,6 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     gen_power_types,
 )
-from provisioningserver.drivers.hardware.msftocs import (
-    probe_and_enlist_msftocs,
-)
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
@@ -34,6 +31,7 @@ from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.power import power_drivers_by_name
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
+from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.networks import get_interfaces_definition
 from provisioningserver.power.change import maybe_change_power_state
