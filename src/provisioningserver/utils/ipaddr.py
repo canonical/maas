@@ -422,4 +422,4 @@ def get_mac_addresses():
         gathered.
     """
     ip_addr = get_ip_addr()
-    return [iface['mac'] for iface in ip_addr.values() if 'mac' in iface]
+    return list({iface['mac'] for iface in ip_addr.values() if 'mac' in iface})

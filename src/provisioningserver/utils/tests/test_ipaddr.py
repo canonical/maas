@@ -636,3 +636,17 @@ class TestGetIPAddr(MAASTestCase):
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
         self.assertItemsEqual(mac_addresses, observed)
+
+    def test_get_mac_addresses_ignores_duplicates(self):
+        mac_addresses = set()
+        results = {}
+        mac = factory.make_mac_address()
+        mac_addresses.add(mac)
+        for _ in range(3):
+            results[factory.make_name("eth")] = {
+                "mac": mac,
+            }
+        patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
+        patch_get_ip_addr.return_value = results
+        observed = get_mac_addresses()
+        self.assertItemsEqual(mac_addresses, observed)

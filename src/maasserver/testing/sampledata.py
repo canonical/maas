@@ -16,9 +16,15 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.models.fabric import Fabric
+from maasserver.models import (
+    Fabric,
+    Node,
+)
 from maasserver.testing.factory import factory
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    get_one,
+    transactional,
+)
 from provisioningserver.utils.ipaddr import get_mac_addresses
 
 
@@ -80,55 +86,63 @@ def populate(seed="sampledata"):
         cidr="192.168.3.0/24", gateway_ip="192.168.3.1",
         vlan=fabric0_vlan10)
 
-    # Get list of mac addresses that should be used for the region
-    # rack controller. This will make sure the RegionAdvertisingService picks
-    # the correct region on first start-up and doesn't get multiple.
-    mac_addresses = get_mac_addresses()
-
-    def get_next_mac():
-        try:
-            return mac_addresses.pop()
-        except IndexError:
-            return factory.make_mac_address()
-
-    # Region and rack controller (hostname of dev machine)
-    #   eth0     - fabric 0 - untagged
-    #   eth1     - fabric 0 - untagged
-    #   eth2     - fabric 1 - untagged - 192.168.2.2/24 - static
-    #   bond0    - fabric 0 - untagged - 192.168.1.2/24 - static
-    #   bond0.10 - fabric 0 - 10       - 192.168.3.2/24 - static
     hostname = gethostname()
-    region_rack = factory.make_Node(
-        node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        hostname=hostname, interface=False)
-    eth0 = factory.make_Interface(
-        INTERFACE_TYPE.PHYSICAL, name="eth0",
-        node=region_rack, vlan=fabric0_untagged,
-        mac_address=get_next_mac())
-    eth1 = factory.make_Interface(
-        INTERFACE_TYPE.PHYSICAL, name="eth1",
-        node=region_rack, vlan=fabric0_untagged,
-        mac_address=get_next_mac())
-    eth2 = factory.make_Interface(
-        INTERFACE_TYPE.PHYSICAL, name="eth2",
-        node=region_rack, vlan=fabric1_untagged,
-        mac_address=get_next_mac())
-    bond0 = factory.make_Interface(
-        INTERFACE_TYPE.BOND, name="bond0",
-        node=region_rack, vlan=fabric0_untagged,
-        parents=[eth0, eth1], mac_address=eth0.mac_address)
-    bond0_10 = factory.make_Interface(
-        INTERFACE_TYPE.VLAN, node=region_rack,
-        vlan=fabric0_vlan10, parents=[bond0])
-    factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.1.2",
-        subnet=subnet_1, interface=bond0)
-    factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.2.2",
-        subnet=subnet_2, interface=eth2)
-    factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.3.2",
-        subnet=subnet_3, interface=bond0_10)
+
+    region_rack = get_one(Node.objects.filter(
+        node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER, hostname=hostname))
+    # If "make run" executes before "make sampledata", the rack may have
+    # already registered.
+    if region_rack is None:
+        region_rack = factory.make_Node(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            hostname=hostname, interface=False)
+
+        # Get list of mac addresses that should be used for the region
+        # rack controller. This will make sure the RegionAdvertisingService
+        # picks the correct region on first start-up and doesn't get multiple.
+        mac_addresses = get_mac_addresses()
+
+        def get_next_mac():
+            try:
+                return mac_addresses.pop()
+            except IndexError:
+                return factory.make_mac_address()
+
+        # Region and rack controller (hostname of dev machine)
+        #   eth0     - fabric 0 - untagged
+        #   eth1     - fabric 0 - untagged
+        #   eth2     - fabric 1 - untagged - 192.168.2.2/24 - static
+        #   bond0    - fabric 0 - untagged - 192.168.1.2/24 - static
+        #   bond0.10 - fabric 0 - 10       - 192.168.3.2/24 - static
+
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth0",
+            node=region_rack, vlan=fabric0_untagged,
+            mac_address=get_next_mac())
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth1",
+            node=region_rack, vlan=fabric0_untagged,
+            mac_address=get_next_mac())
+        eth2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, name="eth2",
+            node=region_rack, vlan=fabric1_untagged,
+            mac_address=get_next_mac())
+        bond0 = factory.make_Interface(
+            INTERFACE_TYPE.BOND, name="bond0",
+            node=region_rack, vlan=fabric0_untagged,
+            parents=[eth0, eth1], mac_address=eth0.mac_address)
+        bond0_10 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=region_rack,
+            vlan=fabric0_vlan10, parents=[bond0])
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.1.2",
+            subnet=subnet_1, interface=bond0)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.2.2",
+            subnet=subnet_2, interface=eth2)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.3.2",
+            subnet=subnet_3, interface=bond0_10)
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
