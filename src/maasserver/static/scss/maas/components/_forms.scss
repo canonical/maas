@@ -39,8 +39,10 @@
     display: block;
     font-family: Ubuntu,Arial,"libra sans",sans-serif;
     font-size: 1em;
+    line-height: 16px;
     font-weight: 300;
     padding: 0px 13px;
+    max-height: 36px;
 
     &:hover {
 
@@ -61,10 +63,13 @@
         border-color: #d90000;
     }
 
+    .disabled,
     &[disabled="disabled"] {
-        -webkit-text-fill-color: #333;
-        border-color: #D2D2D2;
+        -webkit-text-fill-color: #e3e3e3;
+        color: #e3e3e3;
+        border-color: #e3e3e3;
         background-color: transparent;
+        cursor: not-allowed;
     }
 }
 
@@ -349,6 +354,7 @@ select {
 --------------------------------------------------------------------*/
 
 .form-inline {
+    clear: both;
 
     label,
     button,

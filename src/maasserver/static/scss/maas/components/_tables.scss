@@ -50,6 +50,7 @@ table {
             border: none;
             border-bottom: 1px dotted #B2B2B2;
             position: relative;
+            word-wrap: break-word;
 
             a:link,
             a:visited {
@@ -157,6 +158,7 @@ table {
         border: none;
         border-bottom: 1px dotted #B2B2B2;
         position: relative;
+        word-wrap: break-word;
 
         &.icon-controls {
             text-align: right;
@@ -469,6 +471,7 @@ table {
     border: 0;
     text-align: left;
     float: left;
+    word-wrap: break-word;
   }
 
   .table__head {
