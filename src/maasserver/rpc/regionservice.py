@@ -981,8 +981,8 @@ class RegionAdvertisingService(TimerService, object):
             # this node.
             hostname = gethostname()
             region_obj = get_one(Node.objects.filter(
-                Q(hostname=hostname) |
-                Q(interface__mac_address__in=mac_addresses)))
+                Q(interface__mac_address__in=mac_addresses) |
+                Q(hostname=hostname)).distinct())
             if region_obj is not None:
                 # Already a node with a MAC address that matches this machine.
                 # Convert that into a region.

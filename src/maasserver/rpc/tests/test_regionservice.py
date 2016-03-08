@@ -2029,9 +2029,16 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         service = RegionAdvertisingService()
 
         node = factory.make_Node(interface=True)
-        interface = node.get_boot_interface()
+        interfaces = [
+            factory.make_Interface(node=node),
+            factory.make_Interface(node=node),
+        ]
+        mac_addresses = [
+            str(interface.mac_address)
+            for interface in interfaces
+        ]
 
-        service.prepare([str(interface.mac_address)])
+        service.prepare(mac_addresses)
 
         # Node should have been converted to a RegionController.
         node = reload_object(node)
