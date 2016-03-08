@@ -78,6 +78,9 @@ install-dependencies:
 	sudo DEBIAN_FRONTEND=noninteractive apt-get -y \
 	    purge $(shell sort -u required-packages/forbidden | sed '/^\#/d')
 
+.bzrignore: FORCE
+	LC_ALL=C.UTF-8 sort -f $@ --output $@
+
 .gitignore: .bzrignore
 	sed 's:^[.]/:/:' $^ > $@
 	echo '/src/**/*.pyc' >> $@
@@ -612,7 +615,7 @@ endef
 
 phony := $(sort $(strip $(phony)))
 
-.PHONY: $(phony)
+.PHONY: $(phony) FORCE
 
 #
 # Functions.

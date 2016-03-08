@@ -26,7 +26,6 @@ from mock import (
 from provisioningserver.rpc import common
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing.doubles import DummyConnection
-from provisioningserver.twisted.protocols import amp
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -37,6 +36,7 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
+from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransport
 from zope.interface import alsoProvides
 

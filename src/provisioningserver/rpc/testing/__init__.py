@@ -40,7 +40,6 @@ from provisioningserver.security import (
     get_shared_secret_from_filesystem,
     set_shared_secret_on_filesystem,
 )
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -63,6 +62,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
+from twisted.protocols import amp
 from twisted.python import reflect
 from twisted.python.failure import Failure
 from twisted.test import iosim

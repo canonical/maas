@@ -137,7 +137,6 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils import events
 from testtools.deferredruntest import (
     assert_fails_with,
@@ -174,6 +173,7 @@ from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.logger import globalLogPublisher
+from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.python.reflect import fullyQualifiedName

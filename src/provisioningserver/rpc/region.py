@@ -48,7 +48,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
     NoSuchNode,
 )
-from provisioningserver.twisted.protocols import amp
+from twisted.protocols import amp
 
 
 class RegisterRackController(amp.Command):

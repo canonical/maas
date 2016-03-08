@@ -18,7 +18,7 @@ def get_tls_parameters(private_cert_name, trust_cert_name):
     """get_tls_parameters()
 
     Implementation of
-    :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
+    :py:class:`~twisted.protocols.amp.StartTLS`.
     """
     testing = filepath.FilePath(__file__).parent()
     with testing.child(private_cert_name).open() as fin:

@@ -90,7 +90,6 @@ from provisioningserver.rpc.testing.doubles import (
 )
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.network import get_all_interfaces_definition
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
@@ -118,6 +117,7 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
+from twisted.protocols import amp
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection

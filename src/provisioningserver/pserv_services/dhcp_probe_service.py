@@ -18,7 +18,6 @@ from provisioningserver.rpc.region import (
     GetClusterInterfaces,
     ReportForeignDHCPServer,
 )
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -29,6 +28,7 @@ from twisted.internet.defer import (
     returnValue,
 )
 from twisted.internet.threads import deferToThread
+from twisted.protocols.amp import UnhandledCommand
 
 
 maaslog = get_maas_logger("dhcp.probe")

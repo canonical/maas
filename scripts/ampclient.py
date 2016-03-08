@@ -9,12 +9,12 @@ import sys
 
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.rpc.region import ReportBootImages
-from provisioningserver.twisted.protocols.amp import AMP
 from twisted.internet import reactor
 from twisted.internet.endpoints import (
     connectProtocol,
     TCP4ClientEndpoint,
 )
+from twisted.protocols.amp import AMP
 
 
 def callRemote(command, port, **kwargs):

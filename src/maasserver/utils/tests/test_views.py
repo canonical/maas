@@ -49,7 +49,6 @@ from mock import (
 )
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
-from provisioningserver.twisted.web import wsgi
 from testtools.matchers import (
     Contains,
     Equals,
@@ -61,6 +60,7 @@ from testtools.matchers import (
 from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
 from twisted.python import log
+from twisted.web import wsgi
 
 
 def make_request(env=None, oauth_env=None, missing_oauth_param=None):

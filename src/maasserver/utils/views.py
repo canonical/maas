@@ -27,11 +27,11 @@ from maasserver.utils.orm import (
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
 from piston3.oauth import OAuthError
-from provisioningserver.twisted.web import wsgi
 from provisioningserver.utils.twisted import retries
 from twisted.internet import reactor as clock
 from twisted.python import log
 from twisted.python.failure import Failure
+from twisted.web import wsgi
 
 
 logger = logging.getLogger(__name__)

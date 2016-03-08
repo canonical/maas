@@ -11,13 +11,13 @@ import zlib
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import arguments
-from provisioningserver.twisted.protocols import amp
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     IsInstance,
     LessThan,
 )
+from twisted.protocols import amp
 
 
 class TestBytes(MAASTestCase):

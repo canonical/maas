@@ -67,7 +67,6 @@ from provisioningserver.testing.boot_images import (
     make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
@@ -80,6 +79,7 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.task import Clock
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 

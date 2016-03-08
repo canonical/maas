@@ -39,7 +39,6 @@ from provisioningserver.rpc.cluster import (
     ListBootImagesV2,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils import flatten
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -50,6 +49,7 @@ from twisted.internet.defer import (
     DeferredList,
     DeferredSemaphore,
 )
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 from twisted.python.failure import Failure
 

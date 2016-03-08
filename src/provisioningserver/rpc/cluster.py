@@ -35,7 +35,7 @@ from provisioningserver.rpc.common import (
     Authenticate,
     Identify,
 )
-from provisioningserver.twisted.protocols import amp
+from twisted.protocols import amp
 
 
 class ListBootImages(amp.Command):

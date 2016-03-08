@@ -14,9 +14,9 @@ from os import getpid
 from socket import gethostname
 
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import Deferred
+from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
 

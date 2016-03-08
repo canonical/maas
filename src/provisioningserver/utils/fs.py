@@ -26,9 +26,9 @@ import errno
 from itertools import count
 import os
 from os import (
+    chown,
     rename,
     stat,
-    chown,
 )
 from os.path import (
     abspath,

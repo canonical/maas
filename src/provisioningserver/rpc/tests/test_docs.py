@@ -4,7 +4,7 @@
 """Test the documentation of defined commands.
 
 Specifically, check
-:py:class:`~provisioningserver.twisted.protocols.amp.Command` subclasses in the
+:py:class:`~twisted.protocols.amp.Command` subclasses in the
 MAAS codebase.
 """
 
@@ -18,13 +18,13 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.rpc.cluster
 import provisioningserver.rpc.common
 import provisioningserver.rpc.region
-from provisioningserver.twisted.protocols import amp
 from testtools.matchers import (
     Annotate,
     Contains,
     MatchesAll,
     MatchesRegex,
 )
+from twisted.protocols import amp
 
 
 def get_commands(module):

@@ -16,7 +16,7 @@ import urllib.parse
 import zlib
 
 from apiclient.utils import ascii_url
-from provisioningserver.twisted.protocols import amp
+from twisted.protocols import amp
 
 
 class Bytes(amp.Argument):
@@ -103,9 +103,9 @@ class StructureAsJSON(amp.Argument):
     """Encode a structure on the wire as JSON, compressed with zlib.
 
     The compressed size of the structure should not exceed
-    :py:data:`~provisioningserver.twisted.protocols.amp.MAX_VALUE_LENGTH`, or
-    ``0xffff`` bytes. This is pretty hard to be sure of ahead of time, so only
-    use this for small structures that won't go near the limit.
+    :py:data:`~twisted.protocols.amp.MAX_VALUE_LENGTH`, or ``0xffff`` bytes.
+    This is pretty hard to be sure of ahead of time, so only use this for
+    small structures that won't go near the limit.
     """
 
     def toString(self, inObject):

@@ -19,7 +19,6 @@ from maasserver.websockets.websockets import (
     lookupProtocolForFactory,
     WebSocketsResource,
 )
-from provisioningserver.twisted.web.wsgi import WSGIResource
 from provisioningserver.utils.twisted import (
     asynchronous,
     ThreadPoolLimiter,
@@ -43,6 +42,7 @@ from twisted.web.server import (
 )
 from twisted.web.static import File
 from twisted.web.util import Redirect
+from twisted.web.wsgi import WSGIResource
 
 
 class StartPage(ErrorPage, object):

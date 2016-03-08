@@ -17,8 +17,8 @@ from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
 )
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import asynchronous
+from twisted.protocols.amp import UnhandledCommand
 
 
 logger = logging.getLogger(__name__)

@@ -73,7 +73,6 @@ from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
@@ -111,6 +110,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
+from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
 
@@ -187,7 +187,7 @@ class Region(RPCProtocol):
         """get_tls_parameters()
 
         Implementation of
-        :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
+        :py:class:`~twisted.protocols.amp.StartTLS`.
         """
         try:
             from provisioningserver.rpc.testing import tls

@@ -35,11 +35,11 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
 )
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
+from twisted.protocols.amp import UnhandledCommand
 
 
 class TestPeriodicImageDownloadService(PservTestCase):

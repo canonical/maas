@@ -24,7 +24,7 @@ respectively.
 
 A new command could be declared like so::
 
-  from provisioningserver.twisted.protocols import amp
+  from twisted.protocols import amp
 
   class EatCheez(amp.Command):
       arguments = [

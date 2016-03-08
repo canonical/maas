@@ -87,7 +87,6 @@ from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
 )
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous
 from testtools.deferredruntest import extract_result
@@ -102,6 +101,7 @@ from twisted.internet.defer import (
     fail,
     succeed,
 )
+from twisted.protocols.amp import UnhandledCommand
 
 
 def make_boot_resource_file_with_stream():

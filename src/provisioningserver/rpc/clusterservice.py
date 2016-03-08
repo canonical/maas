@@ -67,7 +67,6 @@ from provisioningserver.security import (
     calculate_digest,
     get_shared_secret_from_filesystem,
 )
-from provisioningserver.twisted.protocols import amp
 from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
@@ -91,6 +90,7 @@ from twisted.internet.error import (
     ConnectionClosed,
 )
 from twisted.internet.threads import deferToThread
+from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web import http
@@ -305,7 +305,7 @@ class Cluster(RPCProtocol):
         """get_tls_parameters()
 
         Implementation of
-        :py:class:`~provisioningserver.twisted.protocols.amp.StartTLS`.
+        :py:class:`~twisted.protocols.amp.StartTLS`.
         """
         try:
             from provisioningserver.rpc.testing import tls

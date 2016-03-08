@@ -19,7 +19,6 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
     GetProxies,
 )
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -29,6 +28,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
 )
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
 

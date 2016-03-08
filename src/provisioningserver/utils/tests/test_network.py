@@ -23,9 +23,9 @@ from netaddr import (
 )
 import netifaces
 from netifaces import (
-    AF_LINK,
     AF_INET,
     AF_INET6,
+    AF_LINK,
 )
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module

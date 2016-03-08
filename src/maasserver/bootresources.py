@@ -81,7 +81,6 @@ from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
 )
-from provisioningserver.twisted.protocols.amp import UnhandledCommand
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -101,6 +100,7 @@ from twisted.internet.defer import (
     DeferredList,
     inlineCallbacks,
 )
+from twisted.protocols.amp import UnhandledCommand
 from twisted.python import log
 
 

@@ -19,10 +19,6 @@ from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
 )
 from provisioningserver.rpc.region import CreateNode
-from provisioningserver.twisted.protocols.amp import (
-    UnhandledCommand,
-    UnknownRemoteError,
-)
 from provisioningserver.utils.twisted import (
     asynchronous,
     pause,
@@ -32,6 +28,10 @@ from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
+)
+from twisted.protocols.amp import (
+    UnhandledCommand,
+    UnknownRemoteError,
 )
 
 
