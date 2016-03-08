@@ -15,5 +15,6 @@ nodejs-legacy
 npm
 python-pocket-lint
 python3-django-nose
+python3-dnspython
 socat
 xvfb

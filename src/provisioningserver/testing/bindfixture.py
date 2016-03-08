@@ -119,8 +119,9 @@ class BINDServerResources(fixtures.Fixture):
       logging{
         channel simple_log {
           file "{{log_file}}";
-          severity info;
+          severity debug;
           print-severity yes;
+          print-time yes;
         };
         category default{
           simple_log;

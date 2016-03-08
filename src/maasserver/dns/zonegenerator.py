@@ -152,12 +152,9 @@ class ZoneGenerator:
     We generate zones for the domains (forward), and subnets (reverse) passed.
     """
 
-    def __init__(self, domains, subnets, default_ttl=None,
-                 serial=None, serial_generator=None):
+    def __init__(self, domains, subnets, default_ttl=None, serial=None):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
-        :param serial_generator: As an alternative to `serial`, a callback
-            that returns a fresh serial number on every call.
         """
         self.domains = sequence(domains)
         self.subnets = sequence(subnets)
@@ -166,7 +163,6 @@ class ZoneGenerator:
         else:
             self.default_ttl = default_ttl
         self.serial = serial
-        self.serial_generator = serial_generator
 
     @staticmethod
     def _get_mappings():
@@ -356,12 +352,11 @@ class ZoneGenerator:
         """
         # For testing and such it's fine if we don't have a serial, but once
         # we get to this point, we really need one.
-        assert not (self.serial is None and self.serial_generator is None), (
-            "No serial number or serial number generator specified.")
+        assert not (self.serial is None), ("No serial number specified.")
 
         mappings = self._get_mappings()
         rrset_mappings = self._get_rrset_mappings()
-        serial = self.serial or self.serial_generator()
+        serial = self.serial
         default_ttl = self.default_ttl
         return chain(
             self._gen_forward_zones(

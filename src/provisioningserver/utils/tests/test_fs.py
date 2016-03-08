@@ -8,7 +8,6 @@ __all__ = []
 from base64 import urlsafe_b64encode
 import os
 import os.path
-from random import randint
 import re
 from shutil import rmtree
 import stat
@@ -21,7 +20,6 @@ import time
 
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     FileContains,
     MockCalledOnceWith,
@@ -43,9 +41,7 @@ from provisioningserver.utils.fs import (
     ensure_dir,
     FileLock,
     get_maas_provision_command,
-    get_mtime,
     incremental_write,
-    pick_new_mtime,
     read_text_file,
     RunLock,
     sudo_delete_file,
@@ -250,7 +246,7 @@ class TestAtomicSymlink(MAASTestCase):
 class TestIncrementalWrite(MAASTestCase):
     """Test `incremental_write`."""
 
-    def test_incremental_write_increments_modification_time(self):
+    def test_incremental_write_updates_modification_time(self):
         content = factory.make_bytes()
         filename = self.make_file(contents=factory.make_string())
         # Pretend that this file is older than it is.  So that
@@ -259,53 +255,27 @@ class TestIncrementalWrite(MAASTestCase):
         os.utime(filename, (old_mtime, old_mtime))
         incremental_write(content, filename)
         new_time = time.time()
+        # should be much closer to new_time than to old_mtime.
         self.assertAlmostEqual(
-            os.stat(filename).st_mtime, new_time, delta=0.01)
+            os.stat(filename).st_mtime, new_time, delta=2.0)
+
+    def test_incremental_write_does_not_set_future_time(self):
+        content = factory.make_bytes()
+        filename = self.make_file(contents=factory.make_string())
+        # Pretend that this file is older than it is.  So that
+        # incrementing its mtime won't put it in the future.
+        old_mtime = os.stat(filename).st_mtime + 10
+        os.utime(filename, (old_mtime, old_mtime))
+        incremental_write(content, filename)
+        new_time = time.time()
+        self.assertAlmostEqual(
+            os.stat(filename).st_mtime, new_time, delta=2.0)
 
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
         mode = 0o323
         incremental_write(factory.make_bytes(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
-
-
-class TestGetMTime(MAASTestCase):
-    """Test `get_mtime`."""
-
-    def test_get_mtime_returns_None_for_nonexistent_file(self):
-        nonexistent_file = os.path.join(
-            self.make_dir(), factory.make_name('nonexistent-file'))
-        self.assertIsNone(get_mtime(nonexistent_file))
-
-    def test_get_mtime_returns_mtime(self):
-        existing_file = self.make_file()
-        mtime = os.stat(existing_file).st_mtime - randint(0, 100)
-        os.utime(existing_file, (mtime, mtime))
-        # Some small rounding/representation errors can happen here.
-        # That's just the way of floating-point numbers.  According to
-        # Gavin there's a conversion to fixed-point along the way, which
-        # would raise representability issues.
-        self.assertAlmostEqual(mtime, get_mtime(existing_file), delta=0.00001)
-
-    def test_get_mtime_passes_on_other_error(self):
-        forbidden_file = self.make_file()
-        self.patch(os, 'stat', FakeMethod(failure=OSError("Forbidden file")))
-        self.assertRaises(OSError, get_mtime, forbidden_file)
-
-
-class TestPickNewMTime(MAASTestCase):
-    """Test `pick_new_mtime`."""
-
-    def test_pick_new_mtime_increments_mtime_if_possible(self):
-        now = time.time()
-        new_time = pick_new_mtime(now - 2)
-        self.assertAlmostEqual(new_time, now, delta=0.0001)
-
-    def test_pick_new_mtime_happily_moves_mtime_into_the_future(self):
-        # Race condition: this will fail if the test gets held up for
-        # a second between readings of the clock.
-        now = time.time()
-        self.assertEqual(now + 1, pick_new_mtime(now))
 
 
 class TestGetMAASProvisionCommand(MAASTestCase):

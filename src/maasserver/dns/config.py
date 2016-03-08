@@ -89,12 +89,12 @@ def dns_add_zones_now(domains, subnets):
         return
 
     default_ttl = Config.objects.get_config('default_dns_ttl')
+    serial = next_zone_serial()
     zones_to_write = ZoneGenerator(
         domains, subnets, default_ttl,
-        serial_generator=next_zone_serial).as_list()
+        serial).as_list()
     if len(zones_to_write) == 0:
         return None
-    serial = next_zone_serial()
     # Compute non-None zones.
     zones = ZoneGenerator(
         Domain.objects.all(), Subnet.objects.all(),
@@ -232,9 +232,10 @@ def dns_update_all_zones_now(reload_retry=False, force=False):
     domains = Domain.objects.filter(authoritative=True)
     subnets = Subnet.objects.exclude(rdns_mode=RDNS_MODE.DISABLED)
     default_ttl = Config.objects.get_config('default_dns_ttl')
+    serial = next_zone_serial()
     zones = ZoneGenerator(
         domains, subnets, default_ttl,
-        serial_generator=next_zone_serial).as_list()
+        serial).as_list()
     bind_write_zones(zones)
 
     # We should not be calling bind_write_options() here; call-sites should be

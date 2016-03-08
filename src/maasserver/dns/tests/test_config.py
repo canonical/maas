@@ -7,10 +7,10 @@ __all__ = []
 
 import random
 import time
-from unittest import SkipTest
 
 from django.conf import settings
 from django.core.management import call_command
+import dns.resolver
 from maasserver import locks
 from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
@@ -72,6 +72,7 @@ from provisioningserver.testing.bindfixture import (
     BINDServer,
 )
 from provisioningserver.testing.tests.test_bindfixture import dig_call
+from provisioningserver.utils.twisted import retries
 from testtools.matchers import (
     Contains,
     FileContains,
@@ -82,12 +83,6 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet.defer import Deferred
-
-
-def setUp():
-    raise SkipTest(
-        "XXX: GavinPanella 2016-03-02 bug=1550540: DNS test suite needs "
-        "to do better lockstep on checking that DNS updates happened.")
 
 
 def get_expected_names(node, ip):
@@ -489,6 +484,10 @@ class TestDNSServer(MAASServerTestCase):
         self.patch(dns_config_module, "DNS_DEFER_UPDATES", False)
         # Create a DNS server.
         self.bind = self.useFixture(BINDServer())
+        # Use the dnspython resolver for at least some queries.
+        self.resolver = dns.resolver.Resolver()
+        self.resolver.nameservers = ['127.0.0.1']
+        self.resolver.port = self.bind.config.port
         patch_dns_config_path(self, self.bind.config.homedir)
         # Use a random port for rndc.
         patch_dns_rndc_port(self, allocate_ports("localhost")[0])
@@ -522,11 +521,66 @@ class TestDNSServer(MAASServerTestCase):
         dns_update_zones_now([domain], [subnet])
         return node, static_ip
 
-    def dig_resolve(self, fqdn, version=4):
+    def dns_wait_soa(self, fqdn, removing=False):
+        # Get the serial number for the zone containing the FQDN by asking DNS
+        # nicely for the SOA for the FQDN.  If it's top-of-zone, we get an
+        # answer, if it's not, we get the SOA in authority.
+
+        if not fqdn.endswith('.'):
+            fqdn = fqdn + '.'
+
+        for elapsed, remaining, wait in retries(15, 0.02):
+            query_name = fqdn
+
+            # Loop until we have a value for serial, be that numeric or None.
+            serial = undefined = object()
+            while serial is undefined:
+                try:
+                    ans = self.resolver.query(
+                        query_name, 'SOA', raise_on_no_answer=False)
+                except dns.resolver.NXDOMAIN:
+                    if removing:
+                        # The zone has gone; we're done.
+                        return
+                    elif "." in query_name:
+                        # Query the parent domain for the SOA record.
+                        # For most things, this will be the correct DNS zone.
+                        # In the case of SRV records, we'll actually need to
+                        # strip more, hence the loop.
+                        query_name = query_name.split('.', 1)[1]
+                    else:
+                        # We've hit the root zone; no SOA found.
+                        serial = None
+                except dns.resolver.NoNameservers:
+                    # No DNS service as yet.
+                    serial = None
+                else:
+                    # If we got here, then we either have (1) a situation where
+                    # the LHS exists in the DNS, but no SOA RR exists for that
+                    # LHS (because it's a node with an A or AAAA RR, and not
+                    # the domain...) or (2) an answer to our SOA query.
+                    # Either way, we get exactly one SOA in the reply: in the
+                    # first case, it's in the Authority section, in the second,
+                    # it's in the Answer section.
+                    if ans.rrset is None:
+                        serial = ans.response.authority[0].items[0].serial
+                    else:
+                        serial = ans.rrset.items[0].serial
+
+            if serial == zone_serial.current():
+                # The zone is up-to-date; we're done.
+                return
+            else:
+                time.sleep(wait)
+
+        self.fail("Timed-out waiting for %s to update." % fqdn)
+
+    def dig_resolve(self, fqdn, version=4, removing=False):
         """Resolve `fqdn` using dig.  Returns a list of results."""
         # Using version=6 has two effects:
         # - it changes the type of query from 'A' to 'AAAA';
         # - it forces dig to only use IPv6 query transport.
+        self.dns_wait_soa(fqdn, removing)
         record_type = 'AAAA' if version == 6 else 'A'
         commands = [fqdn, '+short', '-%i' % version, record_type]
         output = dig_call(
@@ -534,8 +588,9 @@ class TestDNSServer(MAASServerTestCase):
             commands=commands)
         return output.split('\n')
 
-    def dig_reverse_resolve(self, ip, version=4):
+    def dig_reverse_resolve(self, ip, version=4, removing=False):
         """Reverse resolve `ip` using dig.  Returns a list of results."""
+        self.dns_wait_soa(IPAddress(ip).reverse_dns, removing)
         output = dig_call(
             port=self.bind.config.port,
             commands=['-x', ip, '+short', '-%i' % version])
@@ -546,9 +601,6 @@ class TestDNSServer(MAASServerTestCase):
         if version == -1:
             version = IPAddress(ip).version
         fqdn = "%s.%s" % (hostname, domain)
-        start = time.time()
-        now = time.time()
-        forward_lookup_result = ['']
         # Give BIND enough time to process the rndc request.
         # XXX 2016-03-01 lamont bug=1550540 We should really query DNS for the
         # SOA that we (can) know to be the correct one, and wait for that
@@ -556,21 +608,14 @@ class TestDNSServer(MAASServerTestCase):
         # all of our tests go from having no answer for forward and/or reverse,
         # to having the expected answer, and just wait for a non-empty return,
         # or timeout (15 seconds because of slow jenkins sometimes.)
-        while forward_lookup_result == [''] and now - start < 15:
-            forward_lookup_result = self.dig_resolve(fqdn, version=version)
-            now = time.time()
-            time.sleep(0.05)
+        forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.assertThat(
             forward_lookup_result, Contains(ip),
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
-        reverse_lookup_result = ['']
-        while reverse_lookup_result == [''] and now - start < 15:
-            reverse_lookup_result = self.dig_reverse_resolve(
-                ip, version=version)
-            now = time.time()
-            time.sleep(0.05)
+        reverse_lookup_result = self.dig_reverse_resolve(
+            ip, version=version)
         self.assertThat(
             reverse_lookup_result, Contains("%s." % fqdn),
             "Failed to reverse resolve '%s' missing '%s' (results: '%s')." % (
@@ -701,16 +746,15 @@ class TestDNSConfigModifications(TestDNSServer):
             FileContains(matcher=Contains(trusted_network)))
 
     def test_dns_config_has_NS_record(self):
+        self.patch(settings, 'DNS_CONNECT', True)
         ip = factory.make_ipv4_address()
         with RegionConfiguration.open_for_update() as config:
             config.maas_url = 'http://%s/' % ip
         domain = factory.make_Domain()
         node, static = self.create_node_with_static_ip(domain=domain)
-        self.patch(settings, 'DNS_CONNECT', True)
-        dns_update_all_zones_now()
-        # Sleep half a second to make sure bind is fully-ready. This is not the
-        # best, but it does prevent this tests from failing randomly.
-        time.sleep(0.5)
+        # Creating the domain triggered writing the zone file and updating the
+        # DNS.
+        self.dns_wait_soa(domain.name)
         # Get the NS record for the zone 'domain.name'.
         ns_record = dig_call(
             port=self.bind.config.port,
@@ -718,6 +762,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.assertGreater(
             len(ns_record), 0, "No NS record for domain.name.")
         # Resolve that hostname.
+        self.dns_wait_soa(ns_record)
         ip_of_ns_record = dig_call(
             port=self.bind.config.port, commands=[ns_record, '+short'])
         self.assertEqual(ip, ip_of_ns_record)
@@ -736,7 +781,8 @@ class TestDNSConfigModifications(TestDNSServer):
         subnet.dns_servers = []
         subnet.save()
         # The IP from the old network does not resolve anymore.
-        self.assertEqual([''], self.dig_reverse_resolve(lease.ip))
+        self.assertEqual([''], self.dig_reverse_resolve(
+            lease.ip, removing=True))
         # A lease in the new network resolves.
         node, lease = self.create_node_with_static_ip(subnet=subnet)
         self.assertTrue(
@@ -752,7 +798,7 @@ class TestDNSConfigModifications(TestDNSServer):
         ip = factory.pick_ip_in_network(network)
         domain = factory.make_Domain()
         domain.delete()
-        self.assertEqual([''], self.dig_reverse_resolve(ip))
+        self.assertEqual([''], self.dig_reverse_resolve(ip, removing=True))
 
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -764,7 +810,7 @@ class TestDNSConfigModifications(TestDNSServer):
         node, static = self.create_node_with_static_ip()
         node.delete()
         fqdn = "%s.%s" % (node.hostname, node.domain.name)
-        self.assertEqual([''], self.dig_resolve(fqdn))
+        self.assertEqual([''], self.dig_resolve(fqdn, removing=True))
 
     def test_change_node_hostname_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)

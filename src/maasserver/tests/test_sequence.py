@@ -43,7 +43,7 @@ class TestSequence(MAASServerTestCase):
         seq.create()
         self.assertRaisesRegex(ProgrammingError, "already exists", seq.create)
 
-    def test_create_if_not_exists_does_not_fails_if_sequence_exists(self):
+    def test_create_if_not_exists_does_not_fail_if_sequence_exists(self):
         name = factory.make_name('seq', sep='')
         seq = Sequence(name)
         seq.create()
@@ -151,3 +151,33 @@ class TestSequence(MAASServerTestCase):
         seq.create()
         self.assertSequenceEqual(
             list(range(1, 11)), list(islice(seq, 10)))
+
+    def test_current_returns_none_when_table_does_not_exist(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        self.assertEqual(None, seq.current())
+
+    def test_current_returns_none_when_no_current_value(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        self.assertEqual(None, seq.current())
+
+    def test_current_returns_current_value(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        expected = next(seq)
+        self.assertEqual(expected, seq.current())
+        self.assertEqual(expected, seq.current())
+
+    def test_current_returns_correct_value(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        expected = next(seq)
+        self.assertEqual(expected, seq.current())
+        self.assertEqual(expected, seq.current())
+        expected = next(seq)
+        self.assertEqual(expected, seq.current())
+        self.assertEqual(expected, seq.current())

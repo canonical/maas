@@ -20,6 +20,7 @@ from maasserver.utils.orm import get_psycopg2_exception
 from provisioningserver.utils import typed
 from psycopg2.errorcodes import (
     DUPLICATE_TABLE,
+    OBJECT_NOT_IN_PREREQUISITE_STATE,
     UNDEFINED_TABLE,
 )
 
@@ -150,6 +151,29 @@ class Sequence:
                 # Suppress DUPLICATE_TABLE errors from races here.
                 self.create_if_not_exists()
                 return next(self)
+            else:
+                raise
+
+    def current(self):
+        """Return the current value of this sequence, or `None`.
+
+        :return: The sequence value, or None if there is no current value for
+            the sequence in the database session or if the sequence does not
+            exist.
+        :rtype: int / None
+        """
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT currval(%s)", [self.name])
+                    return cursor.fetchone()[0]
+        except (utils.OperationalError, utils.ProgrammingError) as error:
+            if is_postgres_error(error, OBJECT_NOT_IN_PREREQUISITE_STATE):
+                # There is no current value for the sequence.
+                return None
+            elif is_postgres_error(error, UNDEFINED_TABLE):
+                # The sequence does not exist, hence has no current value.
+                return None
             else:
                 raise
 

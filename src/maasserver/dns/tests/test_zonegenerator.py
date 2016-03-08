@@ -284,10 +284,10 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_empty_yields_nothing(self):
         self.assertEqual(
             [],
-            ZoneGenerator((), (), serial_generator=Mock()).as_list())
+            ZoneGenerator((), (), serial=random.randint(0, 65535)).as_list())
 
     def test_defaults_ttl(self):
-        zonegen = ZoneGenerator((), (), serial_generator=Mock())
+        zonegen = ZoneGenerator((), (), serial=random.randint(0, 65535))
         self.assertEqual(
             Config.objects.get_config('default_dns_ttl'),
             zonegen.default_ttl)
@@ -296,7 +296,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_accepts_default_ttl(self):
         default_ttl = random.randint(10, 1000)
         zonegen = ZoneGenerator(
-            (), (), default_ttl=default_ttl, serial_generator=Mock())
+            (), (), default_ttl=default_ttl, serial=random.randint(0, 65535))
         self.assertEqual(default_ttl, zonegen.default_ttl)
 
     def test_yields_forward_and_reverse_zone(self):
@@ -304,7 +304,7 @@ class TestZoneGenerator(MAASServerTestCase):
         domain = factory.make_Domain(name='henry')
         subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
         zones = ZoneGenerator(
-            domain, subnet, serial_generator=Mock()).as_list()
+            domain, subnet, serial=random.randint(0, 65535)).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
@@ -318,7 +318,7 @@ class TestZoneGenerator(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric)
         zones = ZoneGenerator(
-            domain, subnet, serial_generator=Mock()).as_list()
+            domain, subnet, serial=random.randint(0, 65535)).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
@@ -347,7 +347,7 @@ class TestZoneGenerator(MAASServerTestCase):
         Config.objects.set_config('default_dns_ttl', default_ttl)
         zones = ZoneGenerator(
             domain, subnet, default_ttl=default_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone("henry"),
@@ -404,7 +404,7 @@ class TestZoneGenerator(MAASServerTestCase):
         Config.objects.set_config('default_dns_ttl', default_ttl)
         zones = ZoneGenerator(
             domain, [subnet1, subnet2], default_ttl=default_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertThat(
             zones, MatchesSetwise(
                 forward_zone(domain.name),
@@ -436,7 +436,8 @@ class TestZoneGenerator(MAASServerTestCase):
         ]
         self.assertThat(
             ZoneGenerator(
-                domain, [subnet1, subnet2], serial_generator=Mock()).as_list(),
+                domain, [subnet1, subnet2],
+                serial=random.randint(0, 65535)).as_list(),
             MatchesSetwise(*expected_zones))
 
     def test_with_many_yields_many_zones(self):
@@ -459,7 +460,7 @@ class TestZoneGenerator(MAASServerTestCase):
                 expected_zones.add(
                     reverse_zone(default_domain.name, rfc2317_net.cidr))
         actual_zones = ZoneGenerator(
-            domains, subnets, serial_generator=Mock()).as_list()
+            domains, subnets, serial=random.randint(0, 65535)).as_list()
         self.assertThat(actual_zones, MatchesSetwise(*expected_zones))
 
     def test_zone_generator_handles_rdns_mode_equal_enabled(self):
@@ -475,7 +476,8 @@ class TestZoneGenerator(MAASServerTestCase):
             reverse_zone(default_domain.name, "10/29"),
             )
         self.assertThat(
-            ZoneGenerator(domains, subnets, serial_generator=Mock()).as_list(),
+            ZoneGenerator(
+                domains, subnets, serial=random.randint(0, 65535)).as_list(),
             MatchesSetwise(*expected_zones))
 
 
@@ -502,7 +504,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
                 node.system_id, domain.ttl, {boot_ip.ip}, node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._mapping.items())
         self.assertItemsEqual(
@@ -532,7 +534,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
                 node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._mapping.items())
         self.assertItemsEqual(
@@ -568,7 +570,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
                 node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._mapping.items())
         self.assertItemsEqual(
@@ -608,7 +610,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
                 node.node_type)}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._mapping.items())
         self.assertItemsEqual(
@@ -629,7 +631,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
             None, {(global_ttl, dnsdata.rrtype, dnsdata.rrdata)})}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._other_mapping.items())
         self.assertItemsEqual([], zones[0]._mapping.items())
@@ -651,7 +653,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
             None, {(domain.ttl, dnsdata.rrtype, dnsdata.rrdata)})}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._other_mapping.items())
         self.assertItemsEqual([], zones[0]._mapping.items())
@@ -673,7 +675,7 @@ class TestZoneGeneratorTTL(MAASServerTestCase):
             None, {(dnsdata.ttl, dnsdata.rrtype, dnsdata.rrdata)})}
         zones = ZoneGenerator(
             domain, subnet, default_ttl=global_ttl,
-            serial_generator=Mock()).as_list()
+            serial=random.randint(0, 65535)).as_list()
         self.assertItemsEqual(
             expected_forward.items(), zones[0]._other_mapping.items())
         self.assertItemsEqual([], zones[0]._mapping.items())
