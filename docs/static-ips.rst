@@ -17,7 +17,7 @@ once the node had booted and requested an address, and had race conditions
 when the lease expired and another machine was looking for its own IP.
 
 MAAS now defines an additional range on the cluster for static IPs that
-are allocated by MAAS itself (see :doc:`cluster-configuration` for more
+are allocated by MAAS itself (see :doc:`rack-configuration` for more
 information about this).
 
 In normal operation, MAAS will automatically choose and allocate a static IP to

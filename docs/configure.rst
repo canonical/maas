@@ -2,74 +2,6 @@ Additional Configuration
 ========================
 
 
-.. _manual-dhcp:
-
-Manual DHCP configuration
--------------------------
-
-DHCP is needed in order for MAAS to boot and control nodes.  However, there
-are some circumstances under which you may not wish a cluster controller to
-handle DHCP address assignments for the network.  In these instances, the
-existing DHCP server for the network will need its configuration altered to
-allow MAAS to enlist and control nodes automatically.
-
-.. note::
-  If you don't let MAAS manage DHCP, then MAAS will not be able to allocate
-  its :ref:`static IP addresses <static-ip-address>` to Nodes.
-
-At the very least the "filename" option should be set to "pxelinux.0".
-
-How to configure this depends on what software you use as a DHCP server.  If
-you are using the ISC DHCP server, for example, the configuration entry might
-look something like this::
-
-   subnet 192.168.122.0 netmask 255.255.255.0 {
-       filename "pxelinux.0";
-       option subnet-mask 255.255.255.0;
-       option broadcast-address 192.168.122.255;
-       option domain-name-servers 192.168.122.136;
-       range dynamic-bootp 192.168.122.5 192.168.122.135;
-   }
-
-When doing this, leave the cluster controller's interface in the "unmanaged"
-state.
-
-If your cluster controller is in charge of nodes on more than one network
-through different network interfaces, there is an additional complication.
-Without the DHCP server built into the cluster controller, MAAS may not
-know which of the cluster controller's IP addresses each node should use
-for downloading its installer image.  If you want to support this situation,
-ensure that all of the nodes can reach all of the cluster controller's
-network addresses.
-
-
-.. _ssl:
-
-SSL Support
------------
-
-If you want secure access to your MAAS web UI/API, you need to do a few
-things. First, turn on SSL support in Apache::
-
-  $ sudo a2enmod ssl
-
-Ensure that the Apache config file from ``etc/maas/maas-http.conf`` is
-included in ``/etc/apache2/conf.d/``, then set the default URL using the
-``maas-region`` command to use ``https`` instead of ``http``::
-
-  $ maas-region local_config_set \
-  >   --maas-url="https://localhost:5240/MAAS"
-
-Now, restart Apache::
-
-  $ sudo service apache2 restart
-
-At this point you will be able to access the MAAS web server using https but
-the default SSL certificate is insecure.  Please generate your own and then
-edit ``/etc/apache2/conf.d/maas-http.conf`` to set the location of the
-certificate.
-
-
 Choosing a series to install
 ----------------------------
 
@@ -100,7 +32,7 @@ Using the maas command
 It is also possible to select a series using the maas command. This
 can be done on a per node basis with::
 
- $ maas <profile> node update <system_id> distro_series="<value>"
+ $ maas <profile> machine update <system_id> distro_series="<value>"
 
 Where the string contains one of the valid, available distro series (e.g.
 "trusty") or is empty for the default value.
@@ -127,129 +59,62 @@ However, in exceptional circumstances, you may wish to alter the
 pressed file to work around some issue.
 There are actually two preseed files, stored here::
 
-  /etc/maas/preseeds/generic
-  /etc/maas/preseeds/preseed-master
+  /etc/maas/preseeds/curtin_userdata
 
-The generic file actually references the preseed-master file, and is
-used to set conditional parameters based on the type of series and
-architecture to install as well as to define the minimum set of install
-packages and to tidy up the PXE boot process if that has been used for
-the node. Unless you have a specific need to change where install
-packages come from, you should not need to edit this file.
+The preseed file is used to customize the installation of a machine
+based on different options. Users can set early_commands or late_commands
+according to what they need, or customize it based on nodes, architecture
+and other variables. The preseeds offers a concept that will allow users
+to configure it as required. This is based on a node's ::
 
-For the more usual sorts of things you may wish to change, you should
-edit the preseed-master file. For example, depending on your network
-you may wish to change the clock settings::
+    node.system_id
+    node.hostname
+    node.domain
+    node.owner
+    node.bios_boot_method
+    node.osystem
+    node.distro_series
+    node.architecture
+    node.min_hwe_kernel
+    node.hwe_kernel
+    node.zone
+    node.cpu_count
+    node.memory
 
-    # Local clock (set to UTC and use ntp)
-    d-i     clock-setup/utc boolean true
-    d-i     clock-setup/ntp boolean true
-    d-i     clock-setup/ntp-server  string ntp.ubuntu.com
+You can configure the preseed to add late_commands. For example,
+you can configure the preseed to install a package based on the hostname,
+and after the installation has been completed::
 
-Having consistent clocks is very important to the working of your MAAS
-system overall. If your nodes however cannot freely access the Internet,
-the supplied NTP server is not going to be very useful, and you may
-find it better to run an ntp service on the MAAS controller and change
-the `ntp.ubuntu.com` in the last line for a more appropriate server.
-
-One thing you may wish to alter in the preseed file is the disk
-partitioning. This is a simple recipe that creates a swap partition and
-uses the rest of the disk for one large root filesystem::
-
-	partman-auto/text/atomic_scheme ::
-
-	500 10000 1000000 ext3
-		$primary{ }
-		$bootable{ }
-		method{ format }
-		format{ }
-		use_filesystem{ }
-		filesystem{ ext3 }
-		mountpoint{ / } .
-
-	64 512 300% linux-swap
-		method{ swap }
-		format{ } .
+    late_commands:
+    {{if node.hostname == 'node01'}}
+        package_install: ["curtin", "in-target", "--", "apt-get", "-y", "install", "mysql"]
+    {{endif}}
 
 
-Here the root partition must be at least 500 mb, and has effectively no
-maximum size. The swap partition ranges from 64 MB to 3 times the system's
-ram.
-Adding `$bootable{ }` to make the partition bootable, and $primary{ }
-marks it as the primary partition. The other specifiers used are:
-
-*method{ format }*
-	Used to make the partition be formatted. For swap partitions,
-	change it to "swap". To create a new partition but do not
-	format it, change "format" to "keep" (such a partition can be
-	used to reserve for future use some disk space).
-*format{ }*
-	Also needed to make the partition be formatted.
-*use_filesystem{ }*
-	Specifies that the partition has a filesystem on it.
-*filesystem{ ext3 }*
-	Specifies the filesystem to put on the partition.
-*mountpoint{ / }*
-	Where to mount the partition.
-
-For more information on preseed options, you should refer to
-`the official Ubuntu documentation
-<https://help.ubuntu.com/12.04/installation-guide/i386/preseed-contents.html>`_
-
-.. note::
-  Future versions of MAAS are likely to replace this type of automatic
-  installation with a different installer.
-
-
-Installing additional clusters
-------------------------------
+Installing Additional Rack Controllers
+--------------------------------------
 
 In an environment comprising large numbers of nodes, it is likely that you will
 want to organise the nodes on a more distributed basis. The standard install of
-the MAAS region controller includes a cluster controller, but it is
-possible to add additional cluster controllers to the configuration, as
+the MAAS region controller includes a rack controller, but it is
+possible to add additional rack controllers to the configuration, as
 shown in the diagram below:
 
 .. image:: media/orientation_architecture-diagram.*
 
-Each cluster controller will need to run on a separate Ubuntu server.
+Each rack controller will need to run on a separate Ubuntu server.
 Installing and configuring the software is straightforward though::
 
-  $ sudo apt-get install maas-cluster-controller
+  $ sudo apt-get install maas-rack-controller
 
 This meta-package will install all the basic requirements of the system.
-However, you may also wish or need to run DHCP and/or DNS services, in
-which case you should also specify these::
-
-  $ sudo apt-get install maas-cluster-controller maas-dhcp maas-dns
 
 
-Configuring the cluster controller
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Configuring the Rack Controller
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once the packages are installed, the cluster controller needs to know
-where to look for the region controller. This is achieved using `dpkg` to
-configure the software::
-
-  $ dpkg-reconfigure maas-cluster-controller
-
-.. image:: media/cluster-config.*
-
-The configuration script should then bring up a screen where you can
-enter the IP address of the region controller. Additionally, you will
-need to import the distro image files locally for commissioning::
-
-  $ maas maas node-groups import-boot-images
-
-…and optionally set up the DHCP and DNS for the cluster by either:
-
-*Using the web UI*
-  Follow the instructions at :doc:`cluster-configuration` to
-  use the web UI to set up your cluster controller.
-
-*Using the command line client*
-  First :ref:`logging in to the API <api-key>` and then
-  :ref:`following this procedure <cli-dhcp>`
+Follow the instructions at :doc:`rack-configuration` to configure
+additional Rack Controllers.
 
 
 Client-side DNS configuration

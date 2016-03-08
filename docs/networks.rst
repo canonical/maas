@@ -36,7 +36,7 @@ networks, or on which nodes are connected to which networks.  The rules are:
 1. Each node must be on a network that is directly connected to an interface
    on the node's cluster controller.  It is recommended that you let the
    cluster controller manage DHCP and DNS on this network. See
-   :doc:`cluster-configuration` for the details.
+   :doc:`rack-configuration` for the details.
 2. All networks must have different, non-overlapping IP ranges.  Any possible
    IP address in the MAAS should belong to only one network.
 3. If you use virtual networks, each must have a different VLAN tag in the

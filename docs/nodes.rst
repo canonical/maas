@@ -9,7 +9,7 @@ You do not need to install Ubuntu on nodes that you wish to add to MAAS
 prior to enlistment.
 
 To learn more about setting up DHCP, read the :ref:`cluster configuration
-documentation <cluster-configuration>`.
+documentation <rack-configuration>`.
 
 .. _PXE: http://en.wikipedia.org/wiki/Preboot_Execution_Environment
 

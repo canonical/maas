@@ -25,15 +25,15 @@ for a 'seed cloud', that is a single server that will directly
 control a group of nodes. The main packages are:
 
  * ``maas`` - seed cloud setup, which includes both the region
-   controller and the cluster controller below.
+   controller and the rack controller below.
  * ``maas-region-controller`` - includes the web UI, API and database.
- * ``maas-cluster-controller`` - controls a group ("cluster") of nodes
-   including DHCP management.
+ * ``maas-rack-controller`` - controls a group of machines under a
+   rack or multiple racks, including DHCP management.
  * ``maas-dhcp``/``maas-dns`` - required when managing dhcp/dns.
  * ``maas-proxy`` - required to provide a MAAS proxy.
 
 If you need to separate these services or want to deploy an additional
-cluster controller, you should install the corresponding packages
+rack controller, you should install the corresponding packages
 individually (see :ref:`the description of a typical setup <setup>`
 for more background on how a typical hardware setup might be
 arranged).
@@ -88,9 +88,9 @@ At the command line, type::
 
   $ sudo apt-get install maas
 
-This will install both the MAAS Region Controller and the MAAS Cluster
+This will install both the MAAS Region Controller and the MAAS Rack
 Controller, and will select sane defaults for the communication between
-the Cluster Controller and the Region Controller. After installation,
+the Rack Controller and the Region Controller. After installation,
 you can access the Web Interface. Then, there are just a few more setup
 steps :ref:`post_install`
 
@@ -112,39 +112,12 @@ region controller (i.e. the web and API interface) from a different
 network address, for example where a server has several network
 interfaces.
 
-Adding Cluster Controllers
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+Adding Rack Controllers
+^^^^^^^^^^^^^^^^^^^^^^^
 
-If you would like to add addtional MAAS Cluster Controllers to your
-MAAS setup, you can do so by installing the Cluster Controller in a
-different Ubuntu machine. At the command line, type::
-
- $ sudo apt-get install maas-cluster-controller
-
-Once installed, you will need to input the shared secret, in order
-to allow the Cluster Controller to authenticate with the Region Controller.
-You can obtain the shared secret from the Region Controller. The
-shared secret can be copied from the Region Controller in::
-
- /var/lib/maas/secret
-
-Once you have copied the secret, you can install it in the Cluster
-Controller. At the command line, type::
-
- $ sudo maas-rack
-
-Once installed, you will need to reconfigure the Cluster Controller
-to correctly point to the API hostname or IP address of the Region
-Controller that's on the same network as the Cluster Controller:
-
- $ sudo dpkg-reconfigure maas-cluster-controller
-
-The configuration for the MAAS Cluster Controller will automatically
-run and pop up this config screen:
-
-.. image:: media/install_cluster-config.*
-
-Once entered, the MAAS Cluster Controller configuration will request
+If you would like to add additional MAAS Rack Controllers to your
+MAAS setup, you can do so by following the instructions in
+:doc:`rack-configuration`.
 
 .. _disc-install:
 
@@ -291,8 +264,8 @@ Import the boot images
 ----------------------
 
 Since version 1.7, MAAS stores the boot images in the region controller's
-database, from where the cluster controllers will synchronise with the region
-and pull images from the region to the cluster's local disk.  This process
+database, from where the rack controllers will synchronise with the region
+and pull images from the region to the rack's local disk.  This process
 is automatic and MAAS will check for and download new Ubuntu images every hour.
 
 However, on a new installation you'll need to start the import process manually
@@ -343,17 +316,14 @@ configure MAAS to use it.
 Configure DHCP
 --------------
 
-If you want MAAS to control DHCP, you can either:
+To enable MAAS to control DHCP, you can either:
 
-#. Follow the instructions at :doc:`cluster-configuration` to
-   use the web UI to set up your cluster controller.
+#. Follow the instructions at :doc:`rack-configuration` to
+   use the web UI to set up your rack controller.
 
 #. Use the command line interface `maas` by first
    :ref:`logging in to the API <api-key>` and then
    :ref:`following this procedure <cli-dhcp>`
-
-If you are manually configuring a DHCP server, you should take a look at
-:ref:`manual-dhcp`
 
 
 Configure switches on the network
@@ -373,10 +343,10 @@ up almost immediately.
   https://www.symantec.com/business/support/index?page=content&id=HOWTO6019
 
 
-Traffic between the region contoller and cluster controllers
+Traffic between the region contoller and rack controllers
 ------------------------------------------------------------
 
-* Each cluster controller must be able to:
+* Each rack controller must be able to:
 
   * Initiate TCP connections (for HTTP) to each region controller on
     port 80 or port 5240, the choice of which depends on the setting of
