@@ -160,7 +160,7 @@ interface.
 
 The second step is to create a dynamic range::
 
- $ maas admin ipranges create type=dynamic start_ip=192.168.122.10 end_ip=192.168.122.100
+ $ maas admin ipranges create type=dynamic start_ip=192.168.10.28 end_ip=192.168.10.100
 
 The third, and last step is to enable DHCP on a VLAN. For this to be
 effective we need to at least select the Primary Rack controller that will
@@ -172,6 +172,11 @@ HA::
 You can also do the same configuration via the WebUI on the VLAN details page:
 
 .. image:: media/vlan_provide_dhcp.png
+
+Note that if you are enabling DHCP over the CLI, the subnet doesn't have a
+Gateway IP defined, you can do so with::
+
+ $ maas admin subnet update 192.168.10.0/24 gateway_ip=192.168.10.1
 
 
 Multiple networks
