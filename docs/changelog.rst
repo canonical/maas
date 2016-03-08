@@ -3,6 +3,286 @@ Changelog
 =========
 
 
+2.0.0 (alpha1)
+==============
+
+Important Announcements
+-----------------------
+
+**MAAS 2.0 supported on Ubuntu 16.04 LTS (Xenial)**
+  MAAS version 2.0 will be supported on Ubuntu 16.04 LTS. MAAS 2.0 (and
+  the transitional 1.10 release) will NOT be supported on Ubuntu 14.04 LTS.
+  MAAS versions 1.9 and earlier will continue to be supported on Ubuntu
+  14.04 LTS (Trusty) until they reach end-of-life.
+
+  Upgrades are supported for users running Ubuntu 14.04 systems running
+  MAAS 1.9 or earlier. Upon upgrading to Ubuntu 16.04, the MAAS
+  database and configuration will be seamlessly migrated to the supported
+  MAAS version.
+
+  Please see the “Other Notable Changes” section below for more details
+  regarding the reasons for this change.
+
+**API 1.0 has been deprecated, introducing API 2.0**
+  Starting from MAAS 2.0, the API 1.0 has now been deprecated and a new
+  MAAS 2.0 API is being introduced. With the introduction of the new
+  API version, various different endpoints have now been deprecated
+  and new end-points have been introduced. API users will need to update
+  their client tools to reflect the changes of the new API 2.0.
+
+  For more information on API 2.0, refer to :ref:`API documentation <region-controller-api>`.
+
+**Cluster Controllers have now been deprecated. Introducing Rack Controllers**
+  Starting from MAAS 2.0, MAAS Cluster Controllers have been deprecated
+  alongside with the NodeGroups API. The Cluster Controllers have been
+  replaced with Rack Controllers, and the RackController API have now
+  been introduced. Thehe new Rack Controllers currently provides feature
+  parity with earlier versions of MAAS.
+
+  For more information on Rack Controllers, refer to the `Major new Features`
+  section bellow or refer to :ref:`rack-configuration`.
+
+**MAAS Static Range has been deprecated**
+  Starting from MAAS 2.0, the MAAS Static Range has now been deprecated,
+  and MAAS assumes total control of a subnet. MAAS will auto-assign IP
+  addresses to deployed machines that are not within a dynamic or a reserved
+  range. Users are now only required to (continue to) specify the dynamic
+  range, which continues to be used for auto-enlistment, commissioning,
+  and any other systems configured for DHCP.
+
+Major new features
+-------------------
+
+**MAAS Rack Controllers**
+  Starting for MAAS 2.0, MAAS has introduced Rack Controllers that completely
+  replace Cluster Controllers.
+
+  * NodeGroups and NodeGroupInterfaces API endpoints are now deprecated.
+    RackControllers API endpoint has been introduced.
+
+  * Clusters tab is no longer available in the WebUI.
+    Controllers can now be found under the Nodes tab, where each cluster
+    interface can be found. Other cluster interface properties have been
+    moved to the Subnet and VLAN details page under the “Networks” tab.
+
+  * Machines no longer belong to Rack Controllers.
+    In earlier versions of MAAS, Machines would directly belong to a Cluster
+    Controller in order for them to be managed. The Cluster Controller that
+    the machine belonged to would not only perform DHCP for that machine,
+    but also all the PXE/TFTP booting, and power management.
+
+    As of MAAS 2.0, Machines no longer belong to a Rack Controller. Multiple
+    Rack Controllers could potentially manage the machine. This is now
+    automatically determined.
+
+  * DHCP now configured per VLAN
+    In earlier versions of MAAS, DHCP was directly linked and configured
+    per Cluster Controller Interface. As of MAAS 2.0, DHCP is now configured
+    and managed per VLAN, allowing the ability for any Rack Controller in a
+    VLAN to manage DHCP.
+
+  * Rack Controllers now provide High Availability
+    Provided that machines no longer belong to a Rack Controller, and that
+    DHCP is managed on the VLAN bases, multiple Rack Controllers can manage
+    the same set of machines. Starting from MAAS 2.0, Rack Controllers in the
+    same VLAN become candidates to manage DHCP, PXE/TFTP, and power for the
+    machines connected to the VLAN.
+
+    As such, Rack Controllers now support high availability. MAAS supports
+    the concept of Primary and Secondary Rack Controller. In the event that
+    the Primary Rack Controller is unavailable, the Secondary Rack Controller
+    can take over the services provided providing High Availability.
+
+**DNS Management**
+  MAAS 2.0 extends DNS management and provides the ability to:
+
+  * Ability to create multiple DNS domains.
+  * Ability to add multiple records (CNAME, TXT, MX, SRV ) per
+    domain. (API only)
+  * Ability to select Domain for Machines and Devices. (API only, WebUI in progress)
+  * Ability to assign (additional) names to IP addresses (API only)
+  * For deployed machines, A records continue to be create specifying
+    the IP of the PXE interface.
+  * Additional PTR records and now created for all the other interfaces in
+    the form of: <interface>.<machine fully-qualified-domain-name>
+  * Reverse DNS is now generated for only the subnet specified, rather
+    than the parent /24 or /16.  By default, RFC2137 glue is provided
+    for networks smaller than /24.  This can be disabled or changed
+    on a per-subnet basis via the API.
+
+**IP Ranges**
+  Previous versions of MAAS used the concepts of a “dynamic range” and
+  “static range”, which were properties of each cluster interface. This
+  has been redesigned for MAAS 2.0 as follows:
+
+  * Dynamic ranges have been migrated from MAAS 1.10 and earlier as-is.
+
+  * Because static ranges have been removed from MAAS, each static
+    range has been migrated to one or more reserved ranges, which
+    represent the opposite of the previous static range. (MAAS now
+    assumes it has full control of each managed subnet, and is free
+    to assign IP addresses as it sees fit, unless told otherwise.)
+
+    For example, if in MAAS 1.10 or earlier you configured a cluster
+    interface on 192.168.0.1/24, with a dynamic range of 192.168.0.2
+    through 192.168.0.99, and a static range of 192.168.0.100 through
+    192.168.0.199, this will be migrated to:
+
+      IP range #1 (dynamic): 192.168.0.2 - 192.168.0.99
+      IP range #2 (reserved): 192.168.0.200 - 192.168.0.254
+
+    Since 192.168.0.100 - 192.168.0.199 (the previous static range)
+    is not accounted for, MAAS assumes it is free to allocate static
+    IP addresses from that range.
+
+  * Scalability is now possible by means of adding a second dynamic
+    IP range to a VLAN. (To deal with IP address exhaustion, MAAS
+    supports multiple dynamic ranges on one or more subnets within
+    a DHCP-enabled VLAN.)
+
+  * Reserved ranges can now be allocated to a particular MAAS user.
+
+  * A comment field has been added, so that users can indicate why
+    a particular range of IP addresses is reserved.
+
+**API 2.0 and MAAS CLI Updates**
+  MAAS 2.0 introduces a new API version, fully deprecating the
+  MAAS 1.0 API. As such, new endpoints and commands have been introduced:
+
+  * RackControllers - This endpoint/command has the following operations
+    in addition to the base operations provided by nodes:
+     * import-boot-images - Import the boot images on all rack controllers
+     * describe-power-types - Query all of the rack controllers for power information
+  * RackController - This endpoint/command has the following operations
+    in addition to the base operations provided by nodes
+     * import-boot-images - Import boot images on the given rack controller
+     * refresh - refresh the hardware information for the given rack controller
+  * Machines - This endpoint/command replaces many of the operations
+    previously found in the nodes endpoint/command. The machines
+    endpoint/command has the following operations in addition to the
+    base operations provided by nodes.
+     * power-parameters - Retrieve power parameters for multiple machines
+     * list-allocated - Fetch machines that were allocated to the user/oauth token.
+     * allocate - Allocate an available machine for deployment.
+     * accept - Accept declared machine into MAAS.
+     * accept-all - Accept all declared machines into MAAS.
+     * create - Create a new machine.
+     * add-chassis - Add special hardware types.
+     * release - Release multiple machines.
+  * Machine - This endpoint/command replaces many of the operations
+    previously found in the node endpoint/command. The machine
+    endpoint/command has the following operations in addition to the
+    base operations provided by node.
+     * power-parameters - Obtain power parameters for the given machine.
+     * deploy - Deploy an operating system to a given machine.
+     * abort - Abort the machines current operation.
+     * get-curtin-config - Return the rendered curtin configuration for the machine.
+     * power-off - Power off the given machine.
+     * set-storage-layout - Change the storage layout of the given machine.
+     * power-on -Turn on the given machine.
+     * release - Release a given machine.
+     * clear-default-gateways - Clear any set default gateways on the machine.
+     * update - Change machine configuration.
+     * query-power-state - Query the power state of a machine.
+     * commission - Begin commissioning process for a machine
+
+  Other endpoints/commands have changed:
+  * All list commands/operations have been converted to read
+  * All new and add commands/operations have been converted to create
+  * Nodes - The nodes endpoint/command is now a base endpoint/command
+    for all other node types(devices, machines, and rack-controllers).
+    As such most operations have been moved to the machines
+    endpoint/command.The following operations remain as they can be
+    used on all node types.
+     * is-registered - Returns whether or not the given MAC address is
+       registered with this MAAS.
+     * set-zone - Assign multiple nodes to a physical zone at once.
+     * read - List nodes visible to the user, optionally filtered by criteria.
+  * Node - The node endpoint/command is now a base endpoint/command for
+    all other node types(devices, machines, and rack-controllers). As
+    such most operations have been moved to the machine endpoint/command.
+    The following operations remain as they can be used on all node types.
+     * read - Read information about a specific node
+     * details - Obtain various system details.
+     * delete  - Delete a specific node.
+  * With the migration of nodes to machines the following items previously
+    outputted with the list command have been changed or removed from the
+    machines read command:
+     * status - Will now show all status types
+     * substatus, substatus_action, substatus_message, substatus_name - Replaced
+       by status, status_action, status_message, status_name.
+     * boot_type - Removed, MAAS 2.0 only supports fastpath.
+     * pxe_mac - Replaced by boot_interface.
+     * hostname - Now only displays the hostname, without the domain, of the
+       machine. To get the fully qualified domain name the fqdn and domain
+       are now also outputted.
+  * And other endpoints/commands have been deprecated:
+     * NodeGroups - Replacement operations are found in the RackControllers,
+       Machines, and BootResources endpoints/commands.
+     * NodeGroupInterfaces - replacement operations are found in the
+       RackController, IPRanges, Subnets, and VLANS endpoints/commands.
+
+**Extended Storage Support**
+  MAAS 2.0 Storage Model has been extended to support:
+
+  * XFS as a filesystem.
+  * Mount Options.
+  * Swap partitions. MAAS 1.9 only supported the creation of a swap
+    file in the filesystem.
+  * tmps/ramfs Support.
+
+  All of these options are currently available over the CLI.
+
+Other notable changes
+---------------------
+
+**MAAS 2.0 Requires Python 3.5**
+  Starting from MAAS 1.10 transitional release, MAAS has now been
+  ported to Python 3. The Python 3 version ported against is 3.5,
+  which is default in Ubuntu Xenial.
+
+**MAAS 2.0 now fully supports native Django 1.8 migration system**
+  Starting from the MAAS 1.10 transitional release, MAAS has added
+  support for Django 1.8. Django 1.8 has dropped support for the
+  south migration system in favor of the native Django migration
+  system, breaking backwards compatibility. As such, MAAS 2.0 has
+  inherited such support and moving forward migrations will be run
+  with the native migration system.
+
+  Provided that Django 1.8 breaks backwards compatibility with the
+  south migration system, the MAAS team has put significant effort
+  in ensuring MAAS continues to support an upgrade path, and as
+  such, users from 1.5, 1.7, 1.8, 1.9 and 1.10 will be able to
+  upgrade seamlessly to MAAS 2.0.
+
+**Instant DHCP Lease Notifications**
+  We no longer scan the leases file every 5 minutes. ISC-DHCP now
+  directly notifies MAAS if a lease is committed, released, or expires.
+
+**Host entries in DHCP**
+  Host entries are now rendered in the DHCP configuration instead
+  of placed in the leases file. This removes any state that used
+  to previously exist in the leases file on the cluster controller.
+  Now deleting the dhcpd.leases file will not cause an issue with
+  MAAS static mappings.
+
+**Modeling BMCs**
+  We select one of the available rack controllers to power control
+  or query a BMC. The same rack controller that powers the BMC does
+  not need to be the rack controller that the machine PXE boots from.
+
+Known Problems & Workarounds
+----------------------------
+
+**Rack Controllers will fail to register when bond interfaces are present**
+  Registering Rack Controller that have bond interfaces will fail.
+
+  See bug `1553617`_ for more information.
+
+.. _1553617:
+  https://launchpad.net/bugs/1553617
+
+
 1.9.1
 =====
 
@@ -116,7 +396,7 @@ Major new features
   These new concepts replace the old `Network` concepts from MAAS'
   earlier versions. For more information, see :ref:`networking`.
 
-  For more information about the API, see :ref:`api`.
+  For more information about the API, see :ref:`region-controller-api`.
 
  **Advanced Node Networking Configuration**
   MAAS can now perform the Node's networking configuration. Doing so,
