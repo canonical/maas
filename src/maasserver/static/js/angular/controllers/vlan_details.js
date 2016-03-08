@@ -140,8 +140,7 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.updateSubnet = function() {
             var dhcp = vm.provideDHCPAction;
             var subnet = SubnetsManager.getItemFromList(dhcp.subnet);
-            dhcp.subnetMissingGatewayIP = !angular.isString(subnet.gateway_ip);
-            if(dhcp.needsDynamicRange === true) {
+            if(angular.isObject(subnet) && dhcp.needsDynamicRange === true) {
                 var iprange = SubnetsManager.getLargestRange(subnet);
                 if(iprange.num_addresses > 0) {
                     dhcp.maxIPs = iprange.num_addresses;
@@ -163,6 +162,12 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 dhcp.startIP = null;
                 dhcp.endIP = null;
                 dhcp.gatewayIP = "";
+            }
+            if(angular.isObject(subnet)) {
+                dhcp.subnetMissingGatewayIP = !angular.isString(
+                    subnet.gateway_ip);
+            } else {
+                dhcp.subnetMissingGatewayIP = false;
             }
             if(dhcp.subnetMissingGatewayIP === false) {
                 dhcp.gatewayIP = null;

@@ -25,6 +25,7 @@ from maasserver.utils.orm import (
     get_one,
     transactional,
 )
+import petname
 from provisioningserver.utils.ipaddr import get_mac_addresses
 
 
@@ -182,19 +183,23 @@ def populate(seed="sampledata"):
         factory.make_Node(
             owner=user1, status=NODE_STATUS.ALLOCATED,
             zone=random.choice(zones), fabric=random.choice(fabrics),
+            hostname=petname.Generate(2, '-')
         ),
         factory.make_Node(
             owner=user1, status=NODE_STATUS.DEPLOYED,
             zone=random.choice(zones), fabric=random.choice(fabrics),
+            hostname=petname.Generate(2, '-')
         ),
     ]
     user2_machines = [  # noqa
         factory.make_Node(
             owner=user2, status=NODE_STATUS.DEPLOYING,
             zone=random.choice(zones), fabric=random.choice(fabrics),
+            hostname=petname.Generate(2, '-')
         ),
         factory.make_Node(
             owner=user2, status=NODE_STATUS.RELEASING,
             zone=random.choice(zones), fabric=random.choice(fabrics),
+            hostname=petname.Generate(2, '-')
         ),
     ]
