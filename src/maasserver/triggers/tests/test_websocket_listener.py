@@ -14,6 +14,8 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.listener import PostgresListenerService
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.tests.helper import TransactionalHelpersMixin
@@ -196,9 +198,8 @@ class TestZoneListener(
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_zone,
-                zone.id,
-                {'cluster_name': factory.make_name('cluster_name')})
+                self.update_zone, zone.id,
+                {'description': factory.make_name('description')})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % zone.id), dv.value)
         finally:
@@ -1771,7 +1772,7 @@ class TestMachineBlockDeviceListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.update_blockdevice, blockdevice.id, {
-                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
+                "size": random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -1885,10 +1886,9 @@ class TestMachinePartitionTableListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_partitiontable, partitiontable.id, {
-                    "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
-                })
+                self.update_partitiontable, partitiontable.id, {})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -1960,7 +1960,7 @@ class TestMachinePartitionListener(
             # to the random number being generated is greater than the mock
             # available disk space
             yield deferToDatabase(self.update_partition, partition.id, {
-                "size": partition.size - 1,
+                "size": random.randint(MIN_PARTITION_SIZE, 1000 ** 3),
                 })
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
@@ -2036,9 +2036,8 @@ class TestMachineFilesystemListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_filesystem, filesystem.id, {
-                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
-                })
+            # No changes to apply, but trigger a save nonetheless.
+            yield deferToDatabase(self.update_filesystem, filesystem.id, {})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2112,10 +2111,9 @@ class TestMachineFilesystemgroupListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            # No changes to apply, but trigger a save nonetheless.
             yield deferToDatabase(
-                self.update_filesystemgroup, filesystemgroup.id, {
-                    "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
-                })
+                self.update_filesystemgroup, filesystemgroup.id, {})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
@@ -2190,9 +2188,8 @@ class TestMachineCachesetListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.update_cacheset, cacheset.id, {
-                "size": random.randint(3000 * 1000, 1000 * 1000 * 1000)
-                })
+            # No changes to apply, but trigger a save nonetheless.
+            yield deferToDatabase(self.update_cacheset, cacheset.id, {})
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:

@@ -54,6 +54,38 @@ from metadataserver.models import NodeResult
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
+def apply_update(record, params):
+    """Apply updates from `params` to `record`.
+
+    Each key in `params` MUST correspond to a preexisting attribute on
+    `record`, otherwise `AttributeError` is raised. It's not an update if
+    there's nothing previously there.
+
+    :param record: Any object.
+    :param params: A mapping of attributes to values.
+    """
+    for key, value in params.items():
+        if not hasattr(record, key):
+            raise AttributeError(
+                "%r has no %r attribute to which to assign "
+                "the value %r" % (record, key, value))
+        setattr(record, key, value)
+
+
+def apply_update_to_model(model, id, params):
+    """Apply updates from `params` to `model` with ID `id`.
+
+    See `apply_update`.
+
+    :param model: A Django model class.
+    :param id: The ID of `model` to `get`.
+    :param params: A mapping of attributes to values.
+    """
+    record = model.objects.get(id=id)
+    apply_update(record, params)
+    return record.save()
+
+
 class TransactionalHelpersMixin:
     """Helpers performing actions in transactions."""
 
@@ -77,8 +109,7 @@ class TransactionalHelpersMixin:
     @transactional
     def update_node(self, system_id, params):
         node = Node.objects.get(system_id=system_id)
-        for key, value in params.items():
-            setattr(node, key, value)
+        apply_update(node, params)
         return node.save()
 
     @transactional
@@ -109,10 +140,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_fabric(self, id, params):
-        fabric = Fabric.objects.get(id=id)
-        for key, value in params.items():
-            setattr(fabric, key, value)
-        return fabric.save()
+        return apply_update_to_model(Fabric, id, params)
 
     @transactional
     def delete_fabric(self, id):
@@ -127,10 +155,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_space(self, id, params):
-        space = Space.objects.get(id=id)
-        for key, value in params.items():
-            setattr(space, key, value)
-        return space.save()
+        return apply_update_to_model(Space, id, params)
 
     @transactional
     def delete_space(self, id):
@@ -145,10 +170,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_subnet(self, id, params):
-        subnet = Subnet.objects.get(id=id)
-        for key, value in params.items():
-            setattr(subnet, key, value)
-        return subnet.save()
+        return apply_update_to_model(Subnet, id, params)
 
     @transactional
     def delete_subnet(self, id):
@@ -163,10 +185,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_vlan(self, id, params):
-        vlan = VLAN.objects.get(id=id)
-        for key, value in params.items():
-            setattr(vlan, key, value)
-        return vlan.save()
+        return apply_update_to_model(VLAN, id, params)
 
     @transactional
     def delete_vlan(self, id):
@@ -181,10 +200,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_zone(self, id, params):
-        zone = Zone.objects.get(id=id)
-        for key, value in params.items():
-            setattr(zone, key, value)
-        return zone.save()
+        return apply_update_to_model(Zone, id, params)
 
     @transactional
     def delete_zone(self, id):
@@ -209,10 +225,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_tag(self, id, params):
-        tag = Tag.objects.get(id=id)
-        for key, value in params.items():
-            setattr(tag, key, value)
-        return tag.save()
+        return apply_update_to_model(Tag, id, params)
 
     @transactional
     def delete_tag(self, id):
@@ -227,10 +240,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_user(self, id, params):
-        user = User.objects.get(id=id)
-        for key, value in params.items():
-            setattr(user, key, value)
-        return user.save()
+        return apply_update_to_model(User, id, params)
 
     @transactional
     def delete_user(self, id):
@@ -246,10 +256,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_event(self, id, params):
-        event = Event.objects.get(id=id)
-        for key, value in params.items():
-            setattr(event, key, value)
-        return event.save()
+        return apply_update_to_model(Event, id, params)
 
     @transactional
     def delete_event(self, id):
@@ -264,10 +271,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_staticipaddress(self, id, params):
-        ip = StaticIPAddress.objects.get(id=id)
-        for key, value in params.items():
-            setattr(ip, key, value)
-        return ip.save()
+        return apply_update_to_model(StaticIPAddress, id, params)
 
     @transactional
     def delete_staticipaddress(self, id):
@@ -318,10 +322,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_interface(self, id, params):
-        interface = Interface.objects.get(id=id)
-        for key, value in params.items():
-            setattr(interface, key, value)
-        return interface.save()
+        return apply_update_to_model(Interface, id, params)
 
     @transactional
     def get_interface_vlan(self, id):
@@ -358,24 +359,15 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_blockdevice(self, id, params):
-        blockdevice = BlockDevice.objects.get(id=id)
-        for key, value in params.items():
-            setattr(blockdevice, key, value)
-        return blockdevice.save()
+        return apply_update_to_model(BlockDevice, id, params)
 
     @transactional
     def update_physicalblockdevice(self, id, params):
-        blockdevice = PhysicalBlockDevice.objects.get(id=id)
-        for key, value in params.items():
-            setattr(blockdevice, key, value)
-        return blockdevice.save()
+        return apply_update_to_model(PhysicalBlockDevice, id, params)
 
     @transactional
     def update_virtualblockdevice(self, id, params):
-        blockdevice = VirtualBlockDevice.objects.get(id=id)
-        for key, value in params.items():
-            setattr(blockdevice, key, value)
-        return blockdevice.save()
+        return apply_update_to_model(VirtualBlockDevice, id, params)
 
     @transactional
     def create_partitiontable(self, params=None):
@@ -390,10 +382,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_partitiontable(self, id, params):
-        partitiontable = PartitionTable.objects.get(id=id)
-        for key, value in params.items():
-            setattr(partitiontable, key, value)
-        return partitiontable.save()
+        return apply_update_to_model(PartitionTable, id, params)
 
     @transactional
     def create_partition(self, params=None):
@@ -408,10 +397,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_partition(self, id, params):
-        partition = Partition.objects.get(id=id)
-        for key, value in params.items():
-            setattr(partition, key, value)
-        return partition.save()
+        return apply_update_to_model(Partition, id, params)
 
     @transactional
     def create_filesystem(self, params=None):
@@ -426,10 +412,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_filesystem(self, id, params):
-        filesystem = Filesystem.objects.get(id=id)
-        for key, value in params.items():
-            setattr(filesystem, key, value)
-        return filesystem.save()
+        return apply_update_to_model(Filesystem, id, params)
 
     @transactional
     def create_filesystemgroup(self, params=None):
@@ -444,10 +427,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_filesystemgroup(self, id, params):
-        filesystemgroup = FilesystemGroup.objects.get(id=id)
-        for key, value in params.items():
-            setattr(filesystemgroup, key, value)
-        return filesystemgroup.save()
+        return apply_update_to_model(FilesystemGroup, id, params)
 
     @transactional
     def create_cacheset(self, params=None):
@@ -462,10 +442,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_cacheset(self, id, params):
-        cacheset = CacheSet.objects.get(id=id)
-        for key, value in params.items():
-            setattr(cacheset, key, value)
-        return cacheset.save()
+        return apply_update_to_model(CacheSet, id, params)
 
     @transactional
     def create_sshkey(self, params=None):
@@ -497,10 +474,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_rack_controller(self, id, params):
-        rack = RackController.objects.get(id=id)
-        for key, value in params.items():
-            setattr(rack, key, value)
-        return rack.save()
+        return apply_update_to_model(RackController, id, params)
 
     @transactional
     def delete_rack_controller(self, id):
@@ -515,10 +489,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_iprange(self, id, params):
-        ipr = IPRange.objects.get(id=id)
-        for key, value in params.items():
-            setattr(ipr, key, value)
-        return ipr.save()
+        return apply_update_to_model(IPRange, id, params)
 
     @transactional
     def delete_iprange(self, id):
@@ -533,10 +504,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_region_controller(self, id, params):
-        region = RegionController.objects.get(id=id)
-        for key, value in params.items():
-            setattr(region, key, value)
-        return region.save()
+        return apply_update_to_model(RegionController, id, params)
 
     @transactional
     def delete_region_controller(self, id):
@@ -551,10 +519,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_region_controller_process(self, id, params):
-        process = RegionControllerProcess.objects.get(id=id)
-        for key, value in params.items():
-            setattr(process, key, value)
-        return process.save()
+        return apply_update_to_model(RegionControllerProcess, id, params)
 
     @transactional
     def delete_region_controller_process(self, id):
@@ -569,10 +534,8 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_region_controller_process_endpoint(self, id, params):
-        process = RegionControllerProcessEndpoint.objects.get(id=id)
-        for key, value in params.items():
-            setattr(process, key, value)
-        return process.save()
+        return apply_update_to_model(
+            RegionControllerProcessEndpoint, id, params)
 
     @transactional
     def delete_region_controller_process_endpoint(self, id):
@@ -587,10 +550,7 @@ class TransactionalHelpersMixin:
 
     @transactional
     def update_region_rack_rpc_connection(self, id, params):
-        process = RegionRackRPCConnection.objects.get(id=id)
-        for key, value in params.items():
-            setattr(process, key, value)
-        return process.save()
+        return apply_update_to_model(RegionRackRPCConnection, id, params)
 
     @transactional
     def delete_region_rack_rpc_connection(self, id):

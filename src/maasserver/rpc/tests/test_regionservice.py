@@ -21,6 +21,7 @@ from random import randint
 from socket import gethostname
 import threading
 import time
+from unittest import skip
 from urllib.parse import urlparse
 
 from crochet import wait_for
@@ -1377,6 +1378,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         yield deferToDatabase(
             RackController.objects.get, hostname=hostname)
 
+    @skip("XXX: GavinPanella 2016-03-09 bug=1555236: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
     def test_register_calls_refresh_when_needed(self):
