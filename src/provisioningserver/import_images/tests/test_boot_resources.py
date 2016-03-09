@@ -491,11 +491,11 @@ class TestMain(MAASTestCase):
             boot_resources.main, self.make_args(sources="", sources_file=""))
 
     def test_update_targets_conf_ensures_tgt_service(self):
-        mock_ensure_service = self.patch(
-            boot_resources.service_monitor, "ensure_service")
+        mock_ensureService = self.patch(
+            boot_resources.service_monitor, "ensureService")
         self.patch(boot_resources, "call_and_check")
         boot_resources.update_targets_conf(factory.make_name("snapshot"))
-        self.assertThat(mock_ensure_service, MockCalledOnceWith("tgt"))
+        self.assertThat(mock_ensureService, MockCalledOnceWith("tgt"))
 
 
 class TestMetaContains(MAASTestCase):

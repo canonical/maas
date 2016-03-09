@@ -14,14 +14,13 @@ from datetime import timedelta
 from provisioningserver.config import is_dev_environment
 from provisioningserver.service_monitor import service_monitor
 from twisted.application.internet import TimerService
-from twisted.internet.threads import deferToThread
 from twisted.python import log
 
 
 class ServiceMonitorService(TimerService, object):
     """Service to monitor external services that the cluster requires."""
 
-    check_interval = timedelta(minutes=2).total_seconds()
+    check_interval = timedelta(minutes=1).total_seconds()
 
     def __init__(self, clock=None):
         # Call self.monitor_services() every self.check_interval.
@@ -36,8 +35,8 @@ class ServiceMonitorService(TimerService, object):
         if is_dev_environment():
             log.msg(
                 "Skipping check of services; they're not running under "
-                "the supervision of Upstart or systemd.")
+                "the supervision of systemd.")
         else:
-            d = deferToThread(service_monitor.ensure_all_services)
+            d = service_monitor.ensureServices()
             d.addErrback(log.err, "Failed to monitor services.")
             return d

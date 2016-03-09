@@ -29,7 +29,7 @@ class TestServiceMonitorService(MAASTestCase):
         service = sms.ServiceMonitorService()
         self.assertThat(service, MatchesStructure.byEquality(
             call=(service.monitor_services, (), {}),
-            step=(2 * 60), clock=None))
+            step=(60), clock=None))
 
     def make_monitor_service(self):
         service = sms.ServiceMonitorService(Clock())
@@ -46,15 +46,15 @@ class TestServiceMonitorService(MAASTestCase):
         self.assertThat(mock_deferToThread, MockNotCalled())
         self.assertDocTestMatches(
             "Skipping check of services; they're not running under the "
-            "supervision of Upstart or systemd.", logger.output)
+            "supervision of systemd.", logger.output)
 
-    def test_monitor_services_defers_ensure_all_services_to_thread(self):
+    def test_monitor_services_calls_ensureServices(self):
         # Pretend we're in a production environment.
         self.patch(sms, "is_dev_environment").return_value = False
 
         service = self.make_monitor_service()
-        mock_deferToThread = self.patch(sms, "deferToThread")
+        mock_ensureServices = self.patch(service_monitor, "ensureServices")
         service.monitor_services()
         self.assertThat(
-            mock_deferToThread,
-            MockCalledOnceWith(service_monitor.ensure_all_services))
+            mock_ensureServices,
+            MockCalledOnceWith())

@@ -326,17 +326,6 @@ def sudo(command_args):
         return ['sudo', '-n'] + command_args
 
 
-SYSTEMD_RUN_PATH = '/run/systemd/system'
-
-
-def get_init_system():
-    """Returns 'upstart' or 'systemd'."""
-    if os.path.exists(SYSTEMD_RUN_PATH):
-        return 'systemd'
-    else:
-        return 'upstart'
-
-
 class CircularDependency(ValueError):
     """A circular dependency has been found."""
 

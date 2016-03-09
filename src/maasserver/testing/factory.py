@@ -185,20 +185,6 @@ class Factory(maastesting.factory.Factory):
         upload.name = name
         return upload
 
-    def pick_enum(self, enum, but_not=None):
-        """Pick a random item from an enumeration class.
-
-        :param enum: An enumeration class such as `NODE_STATUS`.
-        :return: The value of one of its items.
-        :param but_not: A list of choices' IDs to exclude.
-        :type but_not: Sequence.
-        """
-        if but_not is None:
-            but_not = ()
-        return random.choice([
-            value for value in list(map_enum(enum).values())
-            if value not in but_not])
-
     def pick_choice(self, choices, but_not=None):
         """Pick a random item from `choices`.
 

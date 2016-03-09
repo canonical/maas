@@ -1,716 +1,105 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.service_monitor`."""
+"""Tests for the DHCPv4 and DHCPv6 service driver."""
 
 __all__ = []
 
-import logging
-from textwrap import dedent
-
-from fixtures import FakeLogger
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    call,
-    sentinel,
-)
-from provisioningserver import service_monitor as service_monitor_module
-from provisioningserver.drivers.service import (
-    Service,
-    SERVICE_STATE,
-    ServiceRegistry,
-)
+from mock import sentinel
 from provisioningserver.service_monitor import (
-    ServiceActionError,
-    ServiceMonitor,
-    ServiceNotOnError,
-    ServiceParsingError,
-    UnknownServiceError,
+    DHCPService,
+    DHCPv4Service,
+    DHCPv6Service,
+    service_monitor,
+    TGTService,
 )
-from provisioningserver.utils.testing import RegistryFixture
-from testtools import ExpectedException
-from testtools.matchers import Equals
+from provisioningserver.utils.service_monitor import SERVICE_STATE
 
 
-class TestServiceMonitor(MAASTestCase):
-    """Tests for `ServiceMonitor`."""
+class TestDHCPService(MAASTestCase):
 
-    def setUp(self):
-        super(TestServiceMonitor, self).setUp()
-        # Ensure the global registry is empty for each test run.
-        self.useFixture(RegistryFixture())
+    def make_dhcp_service(self):
 
-    def make_service_driver(self, expected_state=None):
-        fake_name = factory.make_name("name")
-        fake_service_name = factory.make_name("service")
-        if expected_state is None:
-            if factory.pick_bool():
-                expected_state = SERVICE_STATE.ON
-            else:
-                expected_state = SERVICE_STATE.OFF
+        class FakeDHCPService(DHCPService):
 
-        class FakeService(Service):
-            name = fake_name
-            service_name = fake_service_name
+            name = factory.make_name("name")
+            service_name = factory.make_name("service")
 
-            def get_expected_state(self):
-                return expected_state
+        return FakeDHCPService()
 
-        service = FakeService()
-        ServiceRegistry.register_item(service.name, service)
-        return service
+    def test_expected_state_starts_off(self):
+        service = self.make_dhcp_service()
+        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
 
-    def test_init_determines_init_system(self):
-        mock_has_cmd = self.patch(
-            service_monitor_module, "get_init_system")
-        mock_has_cmd.return_value = sentinel.init_system
-        service_monitor = ServiceMonitor()
-        self.assertEqual(sentinel.init_system, service_monitor.init_system)
+    def test_get_expected_state_returns_from_expected_state(self):
+        service = self.make_dhcp_service()
+        service.expected_state = sentinel.state
+        self.assertEqual(sentinel.state, service.get_expected_state())
 
-    def test__get_service_lock_adds_lock_to_service_locks(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        service_lock = service_monitor._get_service_lock(service_name)
-        self.assertIs(
-            service_lock, service_monitor.service_locks[service_name])
+    def test_is_on_returns_True_when_expected_state_on(self):
+        service = self.make_dhcp_service()
+        service.expected_state = SERVICE_STATE.ON
+        self.assertTrue(
+            service.is_on(),
+            "Did not return true when expected_state was on.")
 
-    def test__get_service_lock_uses_shared_lock(self):
-        service_monitor = ServiceMonitor()
-        service_shared_lock = self.patch(service_monitor, "_lock")
-        service_name = factory.make_name("service")
-        service_monitor._get_service_lock(service_name)
-        self.assertThat(
-            service_shared_lock.__enter__, MockCalledOnceWith())
-        self.assertThat(
-            service_shared_lock.__exit__, MockCalledOnceWith(None, None, None))
-
-    def test__lock_service_acquires_lock_for_service(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        service_lock = service_monitor._get_service_lock(service_name)
-        with service_lock:
-            self.assertTrue(
-                service_lock.locked(), "Service lock was not acquired.")
+    def test_is_on_returns_False_when_expected_state_off(self):
+        service = self.make_dhcp_service()
+        service.expected_state = SERVICE_STATE.OFF
         self.assertFalse(
-            service_lock.locked(), "Service lock was not released.")
+            service.is_on(),
+            "Did not return false when expected_state was off.")
 
-    def test_get_service_state_raises_UnknownServiceError(self):
-        service_monitor = ServiceMonitor()
-        with ExpectedException(UnknownServiceError):
-            service_monitor.get_service_state(factory.make_name("service"))
+    def test_on_sets_expected_state_to_on(self):
+        service = self.make_dhcp_service()
+        service.expected_state = SERVICE_STATE.OFF
+        service.on()
+        self.assertEqual(SERVICE_STATE.ON, service.expected_state)
 
-    def test_get_service_state_returns_state_from__get_service_status(self):
-        service = self.make_service_driver()
-        service_monitor = ServiceMonitor()
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            sentinel.state, sentinel.process_state)
-        self.assertEqual(
-            sentinel.state, service_monitor.get_service_state(service.name))
+    def test_off_sets_expected_state_to_off(self):
+        service = self.make_dhcp_service()
+        service.expected_state = SERVICE_STATE.ON
+        service.off()
+        self.assertEqual(SERVICE_STATE.OFF, service.expected_state)
 
-    def test_ensure_all_services_calls_ensure_service_for_all_services(self):
-        service_names = sorted([
-            self.make_service_driver().name
-            for _ in range(3)
-            ])
-        service_calls = [
-            call(name)
-            for name in service_names
-            ]
-        service_monitor = ServiceMonitor()
-        mock_ensure_service = self.patch(service_monitor, "ensure_service")
-        service_monitor.ensure_all_services()
-        self.assertThat(mock_ensure_service, MockCallsMatch(*service_calls))
 
-    def test_ensure_all_services_log_unknown_errors(self):
-        service = self.make_service_driver()
-        service_monitor = ServiceMonitor()
-        raised_exception = factory.make_exception()
-        mock_ensure_service = self.patch(service_monitor, "ensure_service")
-        mock_ensure_service.side_effect = raised_exception
-        with FakeLogger(
-                "maas.service_monitor", level=logging.ERROR) as maaslog:
-            service_monitor.ensure_all_services()
+class TestDHCPv4Service(MAASTestCase):
 
-        self.assertDocTestMatches(
-            "While monitoring service '%s' an error was encountered: %s" % (
-                service.service_name, raised_exception),
-            maaslog.output)
+    def test_name(self):
+        service = DHCPv4Service()
+        self.assertEqual("dhcp4", service.name)
 
-    def test_ensure_service_raises_UnknownServiceError(self):
-        service_monitor = ServiceMonitor()
-        with ExpectedException(UnknownServiceError):
-            service_monitor.ensure_service(factory.make_name("service"))
+    def test_service_name(self):
+        service = DHCPv4Service()
+        self.assertEqual("maas-dhcpd", service.service_name)
 
-    def test_ensure_service_calls_lock_and_unlock_even_with_exception(self):
-        service = self.make_service_driver()
-        service_monitor = ServiceMonitor()
-        exception_type = factory.make_exception_type()
-        mock_ensure_service = self.patch(service_monitor, "_ensure_service")
-        mock_ensure_service.side_effect = exception_type
-        get_service_lock = self.patch(service_monitor, "_get_service_lock")
 
-        self.assertRaises(
-            exception_type, service_monitor.ensure_service, service.name)
+class TestDHCPv6Service(MAASTestCase):
 
-        self.expectThat(get_service_lock, MockCalledOnceWith(service.name))
-        lock = get_service_lock.return_value
-        self.expectThat(
-            lock.__enter__, MockCalledOnceWith())
-        self.expectThat(
-            lock.__exit__, MockCalledOnceWith(exception_type, ANY, ANY))
+    def test_name(self):
+        service = DHCPv6Service()
+        self.assertEqual("dhcp6", service.name)
 
-    def test_async_ensure_service_defers_to_a_thread(self):
-        service_monitor = ServiceMonitor()
-        mock_deferToThread = self.patch(
-            service_monitor_module, "deferToThread")
-        mock_deferToThread.return_value = sentinel.defer
-        service_name = factory.make_name("service")
-        self.assertEqual(
-            sentinel.defer,
-            service_monitor.async_ensure_service(service_name))
-        self.assertThat(
-            mock_deferToThread,
-            MockCalledOnceWith(service_monitor.ensure_service, service_name))
+    def test_service_name(self):
+        service = DHCPv6Service()
+        self.assertEqual("maas-dhcpd6", service.service_name)
 
-    def test_restart_service_raises_UnknownServiceError(self):
-        service_monitor = ServiceMonitor()
-        with ExpectedException(UnknownServiceError):
-            service_monitor.restart_service(factory.make_name("service"))
 
-    def test_restart_service_raises_ServiceNotOnError(self):
-        service = self.make_service_driver(SERVICE_STATE.OFF)
-        service_monitor = ServiceMonitor()
-        with ExpectedException(ServiceNotOnError):
-            service_monitor.restart_service(service.name)
+class TestTGTService(MAASTestCase):
 
-    def test_restart_service_calls_lock_and_unlock_even_with_exception(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        exception_type = factory.make_exception_type()
-        mock_service_action = self.patch(service_monitor, "_service_action")
-        mock_service_action.side_effect = exception_type
-        get_service_lock = self.patch(service_monitor, "_get_service_lock")
+    def test_service_name(self):
+        tgt = TGTService()
+        self.assertEqual("tgt", tgt.service_name)
 
-        self.assertRaises(
-            exception_type, service_monitor.restart_service, service.name)
+    def test_get_expected_state(self):
+        tgt = TGTService()
+        self.assertEqual(SERVICE_STATE.ON, tgt.get_expected_state())
 
-        self.expectThat(get_service_lock, MockCalledOnceWith(service.name))
-        lock = get_service_lock.return_value
-        self.expectThat(
-            lock.__enter__, MockCalledOnceWith())
-        self.expectThat(
-            lock.__exit__, MockCalledOnceWith(exception_type, ANY, ANY))
 
-    def test_restart_service_calls__service_action_with_restart(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        mock_service_action = self.patch(service_monitor, "_service_action")
-        mock_service_action.side_effect = factory.make_exception()
-        try:
-            service_monitor.restart_service(service.name)
-        except:
-            pass
-        self.assertThat(
-            mock_service_action, MockCalledOnceWith(service, "restart"))
+class TestGlobalServiceMonitor(MAASTestCase):
 
-    def test_restart_service_raised_ServiceActionError_if_service_off(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        self.patch(service_monitor, "_service_action")
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            SERVICE_STATE.OFF, "dead")
-        with ExpectedException(ServiceActionError):
-            service_monitor.restart_service(service.name)
-
-    def test_restart_service_logs_error_if_service_off(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        self.patch(service_monitor, "_service_action")
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            SERVICE_STATE.OFF, "dead")
-        with FakeLogger(
-                "maas.service_monitor", level=logging.ERROR) as maaslog:
-            with ExpectedException(ServiceActionError):
-                service_monitor.restart_service(service.name)
-
-        self.assertDocTestMatches(
-            "Service '%s' failed to restart. Its current state "
-            "is 'off' and 'dead'." % service.service_name,
-            maaslog.output)
-
-    def test_restart_service_logs_info_if_service_on(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        self.patch(service_monitor, "_service_action")
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            SERVICE_STATE.ON, "running")
-        with FakeLogger(
-                "maas.service_monitor", level=logging.INFO) as maaslog:
-            service_monitor.restart_service(service.name)
-
-        self.assertDocTestMatches(
-            "Service '%s' has been restarted. Its current state "
-            "is 'on' and 'running'." % service.service_name,
-            maaslog.output)
-
-    def test_async_restart_service_defers_to_a_thread(self):
-        service_monitor = ServiceMonitor()
-        mock_deferToThread = self.patch(
-            service_monitor_module, "deferToThread")
-        mock_deferToThread.return_value = sentinel.defer
-        service_name = factory.make_name("service")
-        self.assertEqual(
-            sentinel.defer,
-            service_monitor.async_restart_service(service_name))
-        self.assertThat(
-            mock_deferToThread,
-            MockCalledOnceWith(
-                service_monitor.restart_service, service_name))
-
-    def test__exec_service_action_calls_service_with_name_and_action(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (b"", b"")
-        service_monitor._exec_service_action(service_name, action)
-        self.assertEqual(
-            ["sudo", "service", service_name, action],
-            mock_popen.call_args[0][0])
-
-    def test__exec_service_action_calls_service_with_LC_ALL_in_env(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (b"", b"")
-        service_monitor._exec_service_action(service_name, action)
-        self.assertEqual(
-            "C.UTF-8",
-            mock_popen.call_args[1]['env']['LC_ALL'])
-
-    def test__exec_service_action_decodes_stdout(self):
-        # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
-        example_text = (
-            '\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf '
-            '\u16bb\u16d6 \u16d2\u16a2\u16de\u16d6 \u16a9\u16be \u16a6'
-            '\u16ab\u16d7 \u16da\u16aa\u16be\u16de\u16d6 \u16be\u16a9'
-            '\u16b1\u16a6\u16b9\u16d6\u16aa\u16b1\u16de\u16a2\u16d7 '
-            '\u16b9\u16c1\u16a6 \u16a6\u16aa \u16b9\u16d6\u16e5\u16ab'
-        )
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        action = factory.make_name("action")
-        mock_popen = self.patch(service_monitor_module, "Popen")
-        mock_popen.return_value.communicate.return_value = (
-            example_text.encode("utf-8"), b"")
-        _, output = service_monitor._exec_service_action(service_name, action)
-        self.assertThat(output, Equals(example_text))
-
-    def test__service_action_calls__exec_service_action(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (0, "")
-        action = factory.make_name("action")
-        service_monitor._service_action(service, action)
-        self.assertThat(
-            mock_exec_service_action,
-            MockCalledOnceWith(service.service_name, action))
-
-    def test__service_action_raises_ServiceActionError_if_action_fails(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (1, "")
-        action = factory.make_name("action")
-        with ExpectedException(ServiceActionError):
-            service_monitor._service_action(service, action)
-
-    def test__service_action_logs_error_if_action_fails(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        error_output = factory.make_name("error")
-        mock_exec_service_action.return_value = (1, error_output)
-        action = factory.make_name("action")
-        with FakeLogger(
-                "maas.service_monitor", level=logging.ERROR) as maaslog:
-            with ExpectedException(ServiceActionError):
-                service_monitor._service_action(service, action)
-
-        self.assertDocTestMatches(
-            "Service '%s' failed to %s: %s" % (
-                service.service_name, action, error_output),
-            maaslog.output)
-
-    def test__get_service_status_uses__get_systemd_service_status(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "systemd"
-        mock_get_systemd_service_status = self.patch(
-            service_monitor, "_get_systemd_service_status")
-        service_monitor._get_service_status(service)
-        self.assertThat(
-            mock_get_systemd_service_status,
-            MockCalledOnceWith(service.service_name))
-
-    def test__get_service_status_uses__get_upstart_service_status(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "upstart"
-        mock_get_upstart_service_status = self.patch(
-            service_monitor, "_get_upstart_service_status")
-        service_monitor._get_service_status(service)
-        self.assertThat(
-            mock_get_upstart_service_status,
-            MockCalledOnceWith(service.service_name))
-
-    def test__get_systemd_service_status_calls__exec_service_action(self):
-        service_monitor = ServiceMonitor()
-        service_name = factory.make_name("service")
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.side_effect = factory.make_exception()
-        try:
-            service_monitor._get_systemd_service_status(service_name)
-        except:
-            pass
-        self.assertThat(
-            mock_exec_service_action,
-            MockCalledOnceWith(service_name, "status"))
-
-    def test__get_systemd_service_status_raises_UnknownServiceError(self):
-        systemd_status_output = dedent("""\
-            missing.service
-                Loaded: not-found (Reason: No such file or directory)
-                Active: inactive (dead)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (3, systemd_status_output)
-
-        with ExpectedException(UnknownServiceError):
-            service_monitor._get_systemd_service_status("missing")
-
-    def test__get_systemd_service_status_returns_off_and_dead(self):
-        systemd_status_output = dedent("""\
-            tgt.service - LSB: iscsi target daemon
-                Loaded: loaded (/etc/init.d/tgt)
-                Active: inactive (dead)
-                Docs: man:systemd-sysv-generator(8)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (3, systemd_status_output)
-        active_state, process_state = (
-            service_monitor._get_systemd_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.OFF, active_state)
-        self.assertEqual("dead", process_state)
-
-    def test__get_systemd_service_status_returns_off_and_dead_for_failed(self):
-        systemd_status_output = dedent("""\
-            maas-dhcpd.service - MAAS instance of ISC DHCP server for IPv4
-                Loaded: loaded (/lib/systemd/system/maas-dhcpd.service; ...
-                Active: failed (Result: exit-code) since Wed 2016-01-20...
-                Docs: man:dhcpd(8)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (3, systemd_status_output)
-        active_state, process_state = (
-            service_monitor._get_systemd_service_status("maas-dhcpd"))
-        self.assertEqual(SERVICE_STATE.OFF, active_state)
-
-    def test__get_systemd_service_status_returns_on_and_running(self):
-        systemd_status_output = dedent("""\
-            tgt.service - LSB: iscsi target daemon
-                Loaded: loaded (/etc/init.d/tgt)
-                Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (0, systemd_status_output)
-        active_state, process_state = (
-            service_monitor._get_systemd_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    def test__get_systemd_service_status_ignores_sudo_output(self):
-        systemd_status_output = dedent("""\
-            sudo: unable to resolve host sub-etha-sens-o-matic
-            tgt.service - LSB: iscsi target daemon
-                Loaded: loaded (/etc/init.d/tgt)
-                Active: active (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (0, systemd_status_output)
-        active_state, process_state = (
-            service_monitor._get_systemd_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    def test__get_systemd_service_status_raise_error_for_invalid_active(self):
-        systemd_status_output = dedent("""\
-            tgt.service - LSB: iscsi target daemon
-                Loaded: loaded (/etc/init.d/tgt)
-                Active: unknown (running) since Fri 2015-05-15 15:08:26 UTC;
-                Docs: man:systemd-sysv-generator(8)
-            """)
-
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (0, systemd_status_output)
-
-        with ExpectedException(ServiceParsingError):
-            service_monitor._get_systemd_service_status("tgt")
-
-    def test__get_systemd_service_status_raise_error_for_invalid_output(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            3, factory.make_name("invalid"))
-
-        with ExpectedException(ServiceParsingError):
-            service_monitor._get_systemd_service_status("tgt")
-
-    def test__get_upstart_service_status_raises_UnknownServiceError(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            1, "missing: unrecognized service")
-
-        with ExpectedException(UnknownServiceError):
-            service_monitor._get_upstart_service_status("missing")
-
-    def test__get_upstart_service_status_returns_off_and_waiting(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            0, "tgt stop/waiting")
-        active_state, process_state = (
-            service_monitor._get_upstart_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.OFF, active_state)
-        self.assertEqual("waiting", process_state)
-
-    def test__get_upstart_service_status_returns_on_and_running(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            0, "tgt start/running, process 23239")
-        active_state, process_state = (
-            service_monitor._get_upstart_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    def test__get_upstart_service_status_parsing_ignores_sudo_output(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (0, dedent("""\
-                sudo: unable to resolve host infinite-improbability
-                tgt start/running, process 23239"""))
-        active_state, process_state = (
-            service_monitor._get_upstart_service_status("tgt"))
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    def test__get_upstart_service_status_raise_error_for_invalid_active(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            0, "tgt unknown/running, process 23239")
-
-        with ExpectedException(ServiceParsingError):
-            service_monitor._get_upstart_service_status("tgt")
-
-    def test__get_upstart_service_status_raise_error_for_invalid_output(self):
-        service_monitor = ServiceMonitor()
-        mock_exec_service_action = self.patch(
-            service_monitor, "_exec_service_action")
-        mock_exec_service_action.return_value = (
-            0, factory.make_name("invalid"))
-
-        with ExpectedException(ServiceParsingError):
-            service_monitor._get_upstart_service_status("tgt")
-
-    def test__get_expected_process_state_returns_upstart_running_for_on(self):
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "upstart"
-        self.assertEqual(
-            "running",
-            service_monitor._get_expected_process_state(SERVICE_STATE.ON))
-
-    def test__get_expected_process_state_returns_upstart_waiting_for_off(self):
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "upstart"
-        self.assertEqual(
-            "waiting",
-            service_monitor._get_expected_process_state(SERVICE_STATE.OFF))
-
-    def test__get_expected_process_state_returns_systemd_running_for_on(self):
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "systemd"
-        self.assertEqual(
-            "running",
-            service_monitor._get_expected_process_state(SERVICE_STATE.ON))
-
-    def test__get_expected_process_state_returns_systemd_dead_for_off(self):
-        service_monitor = ServiceMonitor()
-        service_monitor.init_system = "systemd"
-        self.assertEqual(
-            "dead",
-            service_monitor._get_expected_process_state(SERVICE_STATE.OFF))
-
-    def test__ensure_service_logs_warning_in_mismatch_process_state(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-
-        expected_state = service.get_expected_state()
-        invalid_process_state = factory.make_name("invalid_state")
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            expected_state, invalid_process_state)
-
-        with FakeLogger(
-                "maas.service_monitor", level=logging.WARNING) as maaslog:
-            service_monitor._ensure_service(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s but not in the expected state of "
-            "'%s', its current state is '%s'." % (
-                service.service_name, expected_state,
-                service_monitor._get_expected_process_state(expected_state),
-                invalid_process_state),
-            maaslog.output)
-
-    def test__ensure_service_logs_debug_in_expected_states(self):
-        service = self.make_service_driver()
-        service_monitor = ServiceMonitor()
-
-        expected_state = service.get_expected_state()
-        expected_process_state = service_monitor._get_expected_process_state(
-            expected_state)
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.return_value = (
-            expected_state, expected_process_state)
-
-        with FakeLogger(
-                "maas.service_monitor", level=logging.DEBUG) as maaslog:
-            service_monitor._ensure_service(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s and '%s'." % (
-                service.service_name, expected_state, expected_process_state),
-            maaslog.output)
-
-    def test__ensure_service_performs_start_for_off_service(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.side_effect = [
-            (SERVICE_STATE.OFF, "waiting"),
-            (SERVICE_STATE.ON, "running"),
-            ]
-        mock_service_action = self.patch(service_monitor, "_service_action")
-
-        with FakeLogger(
-                "maas.service_monitor", level=logging.INFO) as maaslog:
-            service_monitor._ensure_service(service)
-        self.assertThat(
-            mock_service_action, MockCalledOnceWith(service, "start"))
-        self.assertDocTestMatches(
-            """\
-            Service '%s' is not on, it will be started.
-            Service '%s' has been started and is 'running'.
-            """ % (service.service_name, service.service_name),
-            maaslog.output)
-
-    def test__ensure_service_performs_stop_for_on_service(self):
-        service = self.make_service_driver(SERVICE_STATE.OFF)
-        service_monitor = ServiceMonitor()
-
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.side_effect = [
-            (SERVICE_STATE.ON, "running"),
-            (SERVICE_STATE.OFF, "waiting"),
-            ]
-        mock_service_action = self.patch(service_monitor, "_service_action")
-
-        with FakeLogger(
-                "maas.service_monitor", level=logging.INFO) as maaslog:
-            service_monitor._ensure_service(service)
-        self.assertThat(
-            mock_service_action, MockCalledOnceWith(service, "stop"))
-        self.assertDocTestMatches(
-            """\
-            Service '%s' is not off, it will be stopped.
-            Service '%s' has been stopped and is 'waiting'.
-            """ % (service.service_name, service.service_name),
-            maaslog.output)
-
-    def test__ensure_service_performs_raises_ServiceActionError(self):
-        service = self.make_service_driver(SERVICE_STATE.ON)
-        service_monitor = ServiceMonitor()
-
-        mock_get_service_status = self.patch(
-            service_monitor, "_get_service_status")
-        mock_get_service_status.side_effect = [
-            (SERVICE_STATE.OFF, "waiting"),
-            (SERVICE_STATE.OFF, "waiting"),
-            ]
-        self.patch(service_monitor, "_service_action")
-
-        with ExpectedException(ServiceActionError):
-            with FakeLogger(
-                    "maas.service_monitor", level=logging.INFO) as maaslog:
-                service_monitor._ensure_service(service)
-        lint_sucks = (
-            service.service_name,
-            service.service_name,
-            SERVICE_STATE.OFF,
-            "waiting",
-        )
-        self.assertDocTestMatches("""\
-            Service '%s' is not on, it will be started.
-            Service '%s' failed to start. Its current state is '%s' and '%s'.
-            """ % lint_sucks, maaslog.output)
+    def test__includes_all_services(self):
+        self.assertItemsEqual(
+            ["dhcp4", "dhcp6", "tgt"], service_monitor._services.keys())

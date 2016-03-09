@@ -185,7 +185,7 @@ def write_targets_conf(snapshot):
 def update_targets_conf(snapshot):
     """Runs tgt-admin to update the new targets from "maas.tgt"."""
     # Ensure that tgt is running before tgt-admin is used.
-    service_monitor.ensure_service("tgt")
+    service_monitor.ensureService("tgt").wait(30)
 
     # Update the tgt config.
     targets_conf = os.path.join(snapshot, 'maas.tgt')

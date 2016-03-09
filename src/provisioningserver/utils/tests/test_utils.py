@@ -29,7 +29,6 @@ from provisioningserver.utils import (
     escape_py_literal,
     filter_dict,
     flatten,
-    get_init_system,
     in_develop_mode,
     locate_config,
     maas_custom_config_markers,
@@ -453,19 +452,6 @@ class TestSudo(MAASTestCase):
     def test_returns_command_with_sudo_prepended_not_in_develop_mode(self):
         cmd = [factory.make_name('cmd') for _ in range(3)]
         self.assertEqual(['sudo', '-n'] + cmd, sudo(cmd))
-
-
-class TestGetInitSystem(MAASTestCase):
-
-    def test__identifies_upstart(self):
-        filename = os.path.join(factory.make_name(), factory.make_name())
-        self.patch(provisioningserver.utils, 'SYSTEMD_RUN_PATH', filename)
-        self.assertEqual('upstart', get_init_system())
-
-    def test__identifies_systemd(self):
-        dirname = self.make_dir()
-        self.patch(provisioningserver.utils, 'SYSTEMD_RUN_PATH', dirname)
-        self.assertEqual('systemd', get_init_system())
 
 
 EMPTY = frozenset()

@@ -284,7 +284,7 @@ class Cluster(RPCProtocol):
             hosts, interfaces):
         server = dhcp.DHCPv4Server(omapi_key)
         d = concurrency.dhcp.run(
-            deferToThread, dhcp.configure, server,
+            dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces)
         d.addCallback(lambda _: {})
         return d
@@ -295,7 +295,7 @@ class Cluster(RPCProtocol):
             hosts, interfaces):
         server = dhcp.DHCPv6Server(omapi_key)
         d = concurrency.dhcp.run(
-            deferToThread, dhcp.configure, server,
+            dhcp.configure, server,
             failover_peers, shared_networks, hosts, interfaces)
         d.addCallback(lambda _: {})
         return d

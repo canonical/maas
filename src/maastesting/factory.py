@@ -127,6 +127,22 @@ class Factory:
         """Return an arbitrary Boolean value (`True` or `False`)."""
         return random.choice((True, False))
 
+    def pick_enum(self, enum, but_not=None):
+        """Pick a random item from an enumeration class.
+
+        :param enum: An enumeration class such as `NODE_STATUS`.
+        :return: The value of one of its items.
+        :param but_not: A list of choices' IDs to exclude.
+        :type but_not: Sequence.
+        """
+        if but_not is None:
+            but_not = ()
+        return random.choice([
+            value
+            for key, value in vars(enum).items()
+            if not key.startswith('_') and value not in but_not
+        ])
+
     def pick_port(self, port_min=1024, port_max=65535):
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
