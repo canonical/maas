@@ -13,7 +13,10 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnce,
+    MockCalledOnceWith,
+)
 
 
 class TestRackControllerAPI(APITestCase):
@@ -47,7 +50,7 @@ class TestRackControllerAPI(APITestCase):
 
     def test_POST_import_boot_images_import_to_rack_controllers(self):
         from maasserver.clusterrpc import boot_images
-        self.patch(boot_images, "ClustersImporter")
+        self.patch(boot_images, "RackControllersImporter")
         self.become_admin()
         rack = factory.make_RackController(owner=factory.make_User())
         response = self.client.post(
@@ -56,7 +59,7 @@ class TestRackControllerAPI(APITestCase):
             http.client.OK, response.status_code,
             explain_unexpected_response(http.client.OK, response))
         self.assertThat(
-            boot_images.ClustersImporter.schedule,
+            boot_images.RackControllersImporter.schedule,
             MockCalledOnceWith(rack.system_id))
 
     def test_POST_import_boot_images_denied_if_not_admin(self):
@@ -70,6 +73,11 @@ class TestRackControllerAPI(APITestCase):
 
 class TestRackControllersAPI(APITestCase):
     """Tests for /api/2.0/rackcontrollers/."""
+
+    @staticmethod
+    def get_rack_uri():
+        """Get the API URI for `rack`."""
+        return reverse('rackcontrollers_handler')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -100,3 +108,25 @@ class TestRackControllersAPI(APITestCase):
                 'node_type_name',
             ],
             list(parsed_result[0]))
+
+    def test_POST_import_boot_images_import_to_rack_controllers(self):
+        from maasserver.clusterrpc import boot_images
+        self.patch(boot_images, "RackControllersImporter")
+        self.become_admin()
+        factory.make_RackController(owner=factory.make_User())
+        response = self.client.post(
+            self.get_rack_uri(), {'op': 'import_boot_images'})
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        self.assertThat(
+            boot_images.RackControllersImporter.schedule,
+            MockCalledOnce())
+
+    def test_POST_import_boot_images_denied_if_not_admin(self):
+        factory.make_RackController(owner=factory.make_User())
+        response = self.client.post(
+            self.get_rack_uri(), {'op': 'import_boot_images'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))

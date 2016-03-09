@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -48,6 +48,7 @@ from maasserver.models import (
     PhysicalInterface,
     RackController,
     RegionController,
+    RegionRackRPCConnection,
     Space,
     Subnet,
     UnknownInterface,
@@ -5724,3 +5725,23 @@ class TestRackController(MAASServerTestCase):
             rackcontroller.owner,
             EVENT_TYPES.REQUEST_RACK_CONTROLLER_ADD_CHASSIS,
             action="Adding chassis %s" % hostname))
+
+    def test_allows_delete_when_not_connected(self):
+        rackcontroller = factory.make_RackController()
+        rackcontroller.delete()
+        self.assertIsNone(reload_object(rackcontroller))
+
+    def test_prevents_delete_when_connected(self):
+        rackcontroller = factory.make_RackController()
+        mock_filter = self.patch(RegionRackRPCConnection.objects, 'filter')
+        mock_filter.return_value = [rackcontroller]
+        self.assertRaises(ValidationError, rackcontroller.delete)
+
+    def test_delete_converts_region_and_rack_to_region(self):
+        region_and_rack = factory.make_Node(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        system_id = region_and_rack.system_id
+        typecast_node(region_and_rack, RackController).delete()
+        self.assertEquals(
+            NODE_TYPE.REGION_CONTROLLER,
+            Node.objects.get(system_id=system_id).node_type)

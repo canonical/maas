@@ -182,7 +182,7 @@ class NodeHandler(OperationsHandler):
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
-        node.delete()
+        typecast_to_node_type(node).delete()
         return rc.DELETED
 
     @classmethod
@@ -228,12 +228,6 @@ class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
     create = update = delete = None
     model = Node
-
-    # Override the 'hostname' field so that it returns the FQDN instead as
-    # this is used by Juju to reach that node.
-    @classmethod
-    def hostname(handler, node):
-        return node.fqdn
 
     @operation(idempotent=True)
     def is_registered(self, request):

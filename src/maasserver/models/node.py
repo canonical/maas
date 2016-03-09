@@ -3405,6 +3405,23 @@ class RackController(Node):
             bmc__ip_address__subnet_id__in=subnet_ids).distinct()
         return nodes
 
+    def delete(self):
+        """Delete this rack controller."""
+        # Avoid circular dependency
+        from maasserver.models import RegionRackRPCConnection
+        connections = RegionRackRPCConnection.objects.filter(
+            rack_controller=self)
+
+        if len(connections) != 0:
+            raise ValidationError(
+                "Unable to delete %s as its currently connected to one or "
+                "more regions." % self.hostname)
+        if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
+            self.node_type = NODE_TYPE.REGION_CONTROLLER
+            self.save()
+        else:
+            super().delete()
+
 
 class RegionController(Node):
     """A node which is running multiple regiond's."""

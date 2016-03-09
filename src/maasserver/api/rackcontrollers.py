@@ -90,11 +90,11 @@ class RackControllerHandler(NodeHandler):
         Returns 404 if the rack controller is not found.
         """
         # Avoid circular import.
-        from maasserver.clusterrpc.boot_images import ClustersImporter
+        from maasserver.clusterrpc.boot_images import RackControllersImporter
 
         rack = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        post_commit_do(ClustersImporter.schedule, rack.system_id)
+        post_commit_do(RackControllersImporter.schedule, rack.system_id)
         return HttpResponse(
             "Import of boot images started on %s" % rack.hostname,
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
@@ -117,9 +117,9 @@ class RackControllersHandler(NodesHandler):
     def import_boot_images(self, request):
         """Import the boot images on all rack controllers."""
         # Avoid circular import.
-        from maasserver.clusterrpc.boot_images import ClustersImporter
+        from maasserver.clusterrpc.boot_images import RackControllersImporter
 
-        post_commit_do(ClustersImporter.schedule)
+        post_commit_do(RackControllersImporter.schedule)
         return HttpResponse(
             "Import of boot images started on all rack controllers",
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
