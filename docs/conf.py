@@ -60,13 +60,12 @@ versions_path = '_static/versions.js'
 # The first item should be the development version.
 doc_versions = OrderedDict([
     ('dev', 'Development trunk'),
+    ('2.0', 'MAAS 2.0'),
+    ('1.9', 'MAAS 1.9'),
     ('1.8', 'MAAS 1.8'),
     ('1.7', 'MAAS 1.7'),
-    ('1.6', 'MAAS 1.6'),
     ('1.5', 'MAAS 1.5'),
     ('1.4', 'MAAS 1.4'),
-    ('1.3', 'MAAS 1.3'),
-    ('1.2', 'MAAS 1.2'),
 ])
 
 # -- General configuration -----------------------------------------------------
