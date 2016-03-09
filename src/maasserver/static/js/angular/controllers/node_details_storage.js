@@ -1105,7 +1105,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         };
 
         // Enter partition mode.
-        $scope.availablePartiton = function(disk) {
+        $scope.availablePartition = function(disk) {
             $scope.availableMode = SELECTION_MODE.PARTITION;
             // Set starting size to the maximum available space.
             var size_and_units = disk.available_size_human.split(" ");
@@ -1122,7 +1122,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             deselectAll($scope.available);
             disk.$selected = true;
             $scope.updateAvailableSelection(true);
-            $scope.availablePartiton(disk);
+            $scope.availablePartition(disk);
         };
 
         // Get the new name of the partition.

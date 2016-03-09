@@ -2287,7 +2287,7 @@ describe("NodeStorageController", function() {
         });
     });
 
-    describe("availablePartiton", function() {
+    describe("availablePartition", function() {
 
         it("sets availableMode to 'partition'", function() {
             var controller = makeController();
@@ -2295,7 +2295,7 @@ describe("NodeStorageController", function() {
                 available_size_human: "10 GB"
             };
             $scope.availableMode = "other";
-            $scope.availablePartiton(disk);
+            $scope.availablePartition(disk);
             expect($scope.availableMode).toBe("partition");
         });
 
@@ -2304,7 +2304,7 @@ describe("NodeStorageController", function() {
             var disk = {
                 available_size_human: "10 GB"
             };
-            $scope.availablePartiton(disk);
+            $scope.availablePartition(disk);
             expect(disk.$options).toEqual({
                 size: "10",
                 sizeUnits: "GB",
@@ -2321,7 +2321,7 @@ describe("NodeStorageController", function() {
             var available = [{ $selected: false }, { $selected: true }];
             $scope.available = available;
             spyOn($scope, "updateAvailableSelection");
-            spyOn($scope, "availablePartiton");
+            spyOn($scope, "availablePartition");
 
             $scope.availableQuickPartition(available[0]);
 
@@ -2333,7 +2333,7 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
-            spyOn($scope, "availablePartiton");
+            spyOn($scope, "availablePartition");
 
             $scope.availableQuickPartition(available[0]);
 
@@ -2341,15 +2341,15 @@ describe("NodeStorageController", function() {
                 true);
         });
 
-        it("calls availablePartiton", function() {
+        it("calls availablePartition", function() {
             var controller = makeController();
             var available = [{ $selected: false }, { $selected: true }];
             spyOn($scope, "updateAvailableSelection");
-            spyOn($scope, "availablePartiton");
+            spyOn($scope, "availablePartition");
 
             $scope.availableQuickPartition(available[0]);
 
-            expect($scope.availablePartiton).toHaveBeenCalledWith(
+            expect($scope.availablePartition).toHaveBeenCalledWith(
                 available[0]);
         });
     });
