@@ -238,13 +238,13 @@ class TestDeviceAPI(APITestCase):
             '/api/2.0/devices/%s/' % system_id,
             reverse('device_handler', args=[system_id]))
 
-    def test_POST_method_doesnt_exist(self):
+    def test_POST_method_not_allowed(self):
         device = factory.make_Node(
             node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
 
         response = self.client.post(get_device_uri(device))
         self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code,
+            http.client.METHOD_NOT_ALLOWED, response.status_code,
             response.content)
 
     def test_GET_reads_device(self):

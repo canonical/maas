@@ -14,7 +14,6 @@ import json
 import bson
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -24,7 +23,6 @@ from maasserver.api.support import (
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_list,
-    get_optional_param,
 )
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
@@ -224,49 +222,6 @@ class NodeHandler(OperationsHandler):
             bson.BSON.encode(probe_details_report),
             # Not sure what media type to use here.
             content_type='application/bson')
-
-    @operation(idempotent=False)
-    def mark_broken(self, request, system_id):
-        """Mark a node as 'broken'.
-
-        If the node is allocated, release it first.
-
-        :param comment: Optional comment for the event log. Will be
-            displayed on the Node as an error description until marked fixed.
-        :type comment: unicode
-
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to mark the node
-        broken.
-        """
-        node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
-        comment = get_optional_param(request.POST, 'comment')
-        if not comment:
-            # read old error_description to for backward compatibility
-            comment = get_optional_param(request.POST, 'error_description')
-        node.mark_broken(request.user, comment)
-        return node
-
-    @operation(idempotent=False)
-    def mark_fixed(self, request, system_id):
-        """Mark a broken node as fixed and set its status as 'ready'.
-
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to mark the node
-        fixed.
-        """
-        comment = get_optional_param(request.POST, 'comment')
-        node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
-        node.mark_fixed(request.user, comment)
-        maaslog.info(
-            "%s: User %s marked node as fixed", node.hostname,
-            request.user.username)
-        return node
 
 
 class AnonNodesHandler(AnonymousOperationsHandler):
