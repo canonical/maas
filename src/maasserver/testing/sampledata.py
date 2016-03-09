@@ -74,18 +74,31 @@ def populate(seed="sampledata"):
     fabric0_vlan10 = factory.make_VLAN(fabric=fabric0, vid=10)
     fabric1 = factory.make_Fabric()
     fabric1_untagged = fabric1.get_default_vlan()
+    fabric1_vlan42 = factory.make_VLAN(fabric=fabric1, vid=42)
     fabrics = [fabric0, fabric1]
+    empty_fabric = factory.make_Fabric()  # noqa
+
+    space_mgmt = factory.make_Space("management")
+    space_storage = factory.make_Space("storage")
+    space_internal = factory.make_Space("internal")
+    space_ipv6_testbed = factory.make_Space("ipv6-testbed")
 
     # Subnets used by regions, racks, machines, and devices.
     subnet_1 = factory.make_Subnet(
         cidr="192.168.1.0/24", gateway_ip="192.168.1.1",
-        vlan=fabric0_untagged)
+        vlan=fabric0_untagged, space=space_mgmt)
     subnet_2 = factory.make_Subnet(
         cidr="192.168.2.0/24", gateway_ip="192.168.2.1",
-        vlan=fabric1_untagged)
+        vlan=fabric1_untagged, space=space_mgmt)
     subnet_3 = factory.make_Subnet(
         cidr="192.168.3.0/24", gateway_ip="192.168.3.1",
-        vlan=fabric0_vlan10)
+        vlan=fabric0_vlan10, space=space_storage)
+    subnet_4 = factory.make_Subnet(  # noqa
+        cidr="192.168.4.0/24", gateway_ip="192.168.4.1",
+        vlan=fabric0_vlan10, space=space_internal)
+    subnet_2001_db8_42 = factory.make_Subnet(  # noqa
+        cidr="2001:db8:42::/64", gateway_ip="",
+        vlan=fabric1_vlan42, space=space_ipv6_testbed)
 
     hostname = gethostname()
 

@@ -42,19 +42,20 @@
     line-height: 16px;
     font-weight: 300;
     padding: 0px 13px;
-    max-height: 36px;
+    max-height: 37px;
 
     &:hover {
-
+      border-color: #B2B2B2;
+      outline: none;
     }
 
     &:active {
-        border-color: #B2B2B2;
+        border-color: #888;
         outline: none;
     }
 
     &:focus {
-        border-color: #B2B2B2;
+        border-color: #888;
         outline: none;
     }
 
@@ -160,8 +161,9 @@ textarea {
     height: auto;
     min-height: 175px;
     padding: 7px 10px;
-
     vertical-align: top;
+    resize: both;
+    width: 100%;
 }
 
 select {

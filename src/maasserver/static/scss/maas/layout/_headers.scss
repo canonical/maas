@@ -26,8 +26,12 @@ header.banner {
 
     .logo {
       padding-left: 15px;
+
+      a {
+        border-bottom: 0;
+      }
     }
-    
+
     nav.nav-primary {
         border-bottom: none;
     }
@@ -289,6 +293,7 @@ header.banner {
 
             a {
                 color: #888;
+                border-bottom: 0;
 
                 &:hover {
                     text-decoration: none;

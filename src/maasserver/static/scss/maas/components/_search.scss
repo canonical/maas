@@ -27,6 +27,7 @@
         border: none;
         padding: 13px 20px;
         font-size: 1.25em;
+        max-height: none;
 
         &::-webkit-input-placeholder {
            color: #000 !important;

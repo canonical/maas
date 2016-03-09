@@ -52,12 +52,12 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     controller: 'DomainDetailsController'
                 }).
                 when('/subnets', {
-                    templateUrl: 'static/partials/subnets-list.html',
-                    controller: 'SubnetsListController'
+                    redirectTo: '/networks?by=fabric'
                 }).
                 when('/networks', {
                     templateUrl: 'static/partials/networks-list.html',
-                    controller: 'NetworksListController'
+                    controller: 'NetworksListController',
+                    reloadOnSearch: false
                 }).
                 when('/subnet/:subnet_id', {
                     templateUrl: 'static/partials/subnet-details.html',

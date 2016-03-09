@@ -55,12 +55,17 @@ ol {
     margin-left: 0;
 }
 
-a.alt {
-    color: #333;
+a:link,
+a:visited {
+  color: #333;
+  border-bottom: 1px solid #CDCDCD;
+  text-decoration: none;
 
-    &:hover {
-        color: $ubuntu-orange;
-    }
+  &:hover {
+    color: $ubuntu-orange;
+    border-bottom-color: $ubuntu-orange;
+    text-decoration: none;
+  }
 }
 
 a.link--alt {

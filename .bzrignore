@@ -1,6 +1,7 @@
 *.egg
 *.egg-info
 *.log
+*.DS_Store
 ./.db.lock
 ./.hypothesis
 ./.idea

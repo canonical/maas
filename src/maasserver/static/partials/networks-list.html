@@ -1,104 +1,186 @@
 <header class="page-header margin-bottom" data-maas-sticky-header>
     <div class="inner-wrapper">
         <h1 class="page-header__title eight-col">
-            <ng-pluralize data-ng-hide="loading" count="subnets.length"
-                          when="{'one': '{$ subnets.length $} subnet in ', 'other': '{$ subnets.length $} subnets in '}"></ng-pluralize>
-            {$ $parent.site $} MAAS
+            Networks
             <span class="page-header__title--identicator" id="bulk-actions">
-                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <a href=""
-                   data-ng-hide="loading"
-                   data-ng-class="{ active: currentpage === 'fabrics' }"
-                   data-ng-click="toggleTab('fabrics')">{$ fabrics.length $} <ng-pluralize
-                        count="fabrics.length"
-                        when="{'one': 'Fabric', 'other': 'Fabrics'}"></ng-pluralize></a>
-                <span class="divide" data-ng-hide="loading"></span>
-                <a href=""
-                   data-ng-hide="loading"
-                   data-ng-class="{ active: currentpage === 'spaces' }"
-                   data-ng-click="toggleTab('spaces')">{$ spaces.length $} <ng-pluralize
-                        count="spaces.length"
-                        when="{'one': 'Space', 'other': 'Spaces'}"></ng-pluralize></a>
                 <span class="power-status--power" data-ng-show="loading">
                     <span class="loader"></span>
                     Loading...
                 </span>
             </span>
         </h1>
+        <!-- XXX mpontillo temporarily hidden -->
+        <div class="page-header__actions ng-hide">
+            <div class="page-header__cta">
+                <div class="right cta-group">
+                    <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Add</a>
+                    <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
+                        <li class="cta-group__item ng-scope">
+                            <a>Fabric</a>
+                        </li>
+                        <li class="cta-group__item ng-scope">
+                            <a>VLAN</a>
+                        </li>
+                        <li class="cta-group__item ng-scope">
+                            <a>Space</a>
+                        </li>
+                        <li class="cta-group__item ng-scope">
+                            <a>Subnet</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="page-header__cta ng-hide">
+                <!-- Selected state and action for fabrics -->
+                <span class="page-header__cta-feedback">
+                    2 Selected
+                </span>
+                <div class="right cta-group">
+                    <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
+                    <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
+                        <li class="cta-group__item ng-scope">
+                            <a>Merge fabrics</a>
+                        </li>
+                        <li class="cta-group__item ng-scope">
+                            <a>Remove fabrics</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="page-header__dropdown border ng-hide">
+            <!-- Add fabric dropdown -->
+            <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
+                <div class="form__group">
+                    <label for="add-fabric">Add fabric</label>
+                    <input type="text" name="add-fabric" id="add-fabric" placeholder="Fabric name">
+                    <div class="right">
+                        <button class="cta-ubuntu text-button">Cancel</button>
+                        <button class="cta-ubuntu">Add fabric</button>
+                    </div>
+                </div>
+            </form>
+            <!-- Merge fabric dropdown -->
+            <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
+                <div class="form__group">
+                    <label for="merge-fabric">Merge selected fabrics into</label>
+                    <select name="merge-fabric" id="merge-fabric">
+                        <option value="1">fabric-1</option>
+                        <option value="2">fabric-2</option>
+                        <option value="3">fabric-3</option>
+                    </select>
+                    <div class="right">
+                        <button class="cta-ubuntu text-button">Cancel</button>
+                        <button class="cta-ubuntu">Merge fabrics</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 </header>
-<div data-ng-show="currentpage === 'fabrics' && !loading">
-    <section class="row" data-ng-repeat="data in tabs.fabrics.data">
-        <div class="inner-wrapper">
-            <div class="twelve-col">
-                <h2>{$ data.fabric.name $}</h2>
-            </div>
-            <div class="twelve-col">
-                <div class="table">
-                    <header class="table__head">
-                        <div class="table__row">
-                            <div class="table__header table__column--20">VLAN</div>
-                            <div class="table__header table__column--15">Space</div>
-                            <div class="table__header table__column--45">Subnet</div>
-                            <div class="table__header table__column--20">Available IP Addresses</div>
-                            <!--
-                            <div class="table__header table__column--10">IP Addresses allocated but not used</div>
-                            -->
-                        </div>
-                    </header>
-                    <main class="table-body">
-                        <div class="table__row table__row--no-hover"
-                             data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['vlan.vid','space.name','subnet.cidr'])">
-                            <div class="table__data table__column--20"><a href="#/vlan/{$ row.vlan.id $}">{$ getVLANName(row, data.sortedData) $}</a></div>
-                            <div class="table__data table__column--15">{$ getSpaceName(row, data.sortedData) $}</div>
-                            <div class="table__data table__column--45"><a href="#/subnet/{$ row.subnet.id $}">{$ getSubnetName(row.subnet) $}</a></div>
-                            <div class="table__data table__column--20">{$ row.subnet.statistics.available_string $}</div>
-                            <!--
-                            <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
-                            -->
-                        </div>
-                    </main>
+<section class="row no-padding-top">
+    <div class="inner-wrapper">
+        <div class="tweleve-col">
+            <form class="form-inline form form--inline four-col">
+                <div class="form__group listing-filter">
+                    <label class="listing-filter__label one-col" for="network-filter">Group by</label>
+                    <select name="network-filter" class="listing-filter__select three-col last-col" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
+                        <option value="fabric" selected="selected">Fabric</option>
+                        <option value="space">Space</option>
+                    </select>
                 </div>
+            </form>
+            <!-- XXX mpontillo temporarily hidden -->
+            <div class="eight-col last-col ng-hide">
+                <div class="search">
+                  <input placeholder="Search" class="search__input" type="search">
+                  <input class="search__submit" type="submit">
+              </div>
             </div>
         </div>
-    </section>
-</div>
-<div data-ng-show="currentpage === 'spaces' && !loading">
-    <section class="row" data-ng-repeat="data in tabs.spaces.data">
-        <div class="inner-wrapper">
-            <div class="twelve-col">
-                <h2>{$ data.space.name $}</h2>
-            </div>
-            <div class="twelve-col">
-                <div class="table">
-                    <header class="table__head">
-                        <div class="table__row">
-                            <div class="table__header table__column--15">Fabric</div>
-                            <div class="table__header table__column--20">VLAN</div>
-                            <div class="table__header table__column--45">Subnet</div>
-                            <div class="table__header table__column--20">Available IP Addresses</div>
-                            <!--
-                            <div class="table__header table__column--10">INEFFICIENCY allocated, not used</div>
-                            -->
-                        </div>
-                    </header>
-                    <main class="table-body">
-                        <div class="table__row table__row--no-hover" data-ng-show="data.rows.length == 0">
-                            <div class="table__data table__column--100">There are currently no subnets in this space.</div>
-                        </div>
-                        <div class="table__row table__row--no-hover"
-                             data-ng-repeat="row in data.sortedData = (data.rows | orderBy:['fabric.name','vlan.vid','subnet.cidr'])">
-                            <div class="table__data table__column--15">{$ getFabricName(row, data.sortedData) $}</div>
-                            <div class="table__data table__column--20">{$ getVLANName(row, data.sortedData) $}</div>
-                            <div class="table__data table__column--45"><a href="#/subnet/{$ row.subnet.id $}">{$ getSubnetName(row.subnet) $}</a></div>
-                            <div class="table__data table__column--20">{$ row.subnet.statistics.available_string $}</div>
-                            <!--
-                            <div class="table__data table__column--10">{$ row.subnet.statistics.inefficiency_string $}</div>
-                            -->
-                        </div>
-                    </main>
-                </div>
-            </div>
+        <div class="tweleve-col ng-hide" data-ng-show="!loading">
+            <!-- Spaces grouped table -->
+            <table class="table-listing ng-hide" data-ng-show="groupBy === 'space'">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th class="table__column--3 ng-hide">
+                            <input class="checkbox" type="checkbox" id="spaces-all" />
+                            <label class="checkbox-label" for="spaces-all"></label>
+                        </th>
+                        <th class="table__column--20">Space</th>
+                        <th class="table__column--30">Subnet</th>
+                        <th class="table__column--13 align-right">Available IPs</th>
+                        <th class="table__column--20">VLAN</th>
+                        <th class="table__column--20">Fabric</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row" data-ng-repeat="row in group.spaces.rows">
+                        <td class="table-listing__cell table__column--3 ng-hide">
+                            <div data-ng-if="row.space_name">
+                                <input class="checkbox" type="checkbox" id="space-{$ row.space.id $}" />
+                                <label class="checkbox-label" for="space-{$ row.space.id $}"></label>
+                            </div>
+                        </td>
+                        <td class="table-listing__cell table__column--20">
+                            {$ row.space_name $}
+                        </td>
+                        <td class="table-listing__cell table__column--30">
+                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--13 align-right">
+                            {$ row.subnet.statistics.available_string $}
+                        </td>
+                        <td class="table-listing__cell table__column--20">
+                            <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--20">
+                            {$ row.fabric.name $}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <!-- Fabric grouped table -->
+            <table class="table-listing ng-hide" data-ng-show="groupBy === 'fabric'">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th class="table__column--3 ng-hide">
+                            <input class="checkbox" type="checkbox" id="fabrics-all" />
+                            <label class="checkbox-label" for="fabrics-all"></label>
+                        </th>
+                        <th class="table__column--15">Fabric</th>
+                        <th class="table__column--15">VLAN</th>
+                        <th class="table__column--27">Subnet</th>
+                        <th class="table__column--15 align-right">Available IPs</th>
+                        <th class="table__column--25">Space</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row" data-ng-repeat="row in group.fabrics.rows">
+                        <td class="table-listing__cell table__column--3 ng-hide">
+                            <div data-ng-if="row.fabric_name">
+                                <input class="checkbox" type="checkbox" id="fabric-{$ row.fabric.id $}" />
+                                <label class="checkbox-label" for="fabric-{$ row.fabric.id $}"></label>
+                            </div>
+                        </td>
+                        <td class="table-listing__cell table__column--15">
+                            {$ row.fabric_name $}
+                        </td>
+                        <td class="table-listing__cell table__column--15">
+                            <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--27">
+                            <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
+                        </td>
+                        <td class="table-listing__cell table__column--15 align-right">
+                            {$ row.subnet.statistics.available_string $}
+                        </td>
+                        <td class="table-listing__cell table__column--25">
+                            {$ row.space.name $}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-    </section>
-</div>
+    </div>
+</section>

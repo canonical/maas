@@ -1,14 +1,16 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Subnets List Controller
  */
 
 angular.module('MAAS').controller('NetworksListController', [
-    '$scope', '$rootScope', '$routeParams', '$filter', 'SubnetsManager',
-    'FabricsManager', 'SpacesManager', 'VLANsManager', 'ManagerHelperService',
-    function($scope, $rootScope, $routeParams, $filter, SubnetsManager,
-        FabricsManager, SpacesManager, VLANsManager, ManagerHelperService) {
+    '$scope', '$rootScope', '$routeParams', '$filter', '$location',
+    'SubnetsManager', 'FabricsManager', 'SpacesManager', 'VLANsManager',
+    'ManagerHelperService',
+    function($scope, $rootScope, $routeParams, $filter, $location,
+             SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
+             ManagerHelperService) {
 
         // Load the filters that are used inside the controller.
         var filterByVLAN = $filter('filterByVLAN');
@@ -16,36 +18,46 @@ angular.module('MAAS').controller('NetworksListController', [
         var filterBySpace = $filter('filterBySpace');
 
         // Set title and page.
-        $rootScope.title = "Fabrics";
+        $rootScope.title = "Networks";
         $rootScope.page = "networks";
+
+        // Set the initial value of $scope.groupBy based on the URL
+        // parameters, but default to the 'fabric' groupBy if it's not found.
+        $scope.getURLParameters = function() {
+            if(angular.isString($location.search().by)) {
+                $scope.groupBy = $location.search().by;
+            } else {
+                $scope.groupBy = 'fabric';
+            }
+        };
+
+        $scope.getURLParameters();
 
         // Set initial values.
         $scope.subnets = SubnetsManager.getItems();
         $scope.fabrics = FabricsManager.getItems();
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
-        $scope.currentpage = "fabrics";
         $scope.loading = true;
 
-        $scope.tabs = {};
-        // Fabrics tab.
-        $scope.tabs.fabrics = {};
-        $scope.tabs.fabrics.pagetitle = "Fabrics";
-        $scope.tabs.fabrics.currentpage = "fabrics";
-        $scope.tabs.fabrics.data = [];
+        $scope.group = {};
+        // Used when grouping by fabrics.
+        $scope.group.fabrics = {};
+        // User when grouping by spaces.
+        $scope.group.spaces = {};
 
-        // Spaces tab.
-        $scope.tabs.spaces = {};
-        $scope.tabs.spaces.pagetitle = "Spaces";
-        $scope.tabs.spaces.currentpage = "spaces";
-        $scope.tabs.spaces.data = [];
-
-        // Update the data that is displayed on the fabrics tab.
-        function updateFabricsData() {
-            var data = [];
-            angular.forEach($scope.fabrics, function(fabric) {
-                var rows = [];
+        // Generate a table that can be easily rendered in the view.
+        // Traverses the fabrics and VLANs in-order so that if previous
+        // fabrics and VLANs' names are identical, they can be hidden from
+        // the table cell.
+        function updateFabricsGroupBy() {
+            var rows = [];
+            var previous_fabric = {id:-1};
+            var previous_vlan = {id:-1};
+            var fabrics = $filter('orderBy')($scope.fabrics, ['name']);
+            angular.forEach(fabrics, function(fabric) {
                 var vlans = filterByFabric($scope.vlans, fabric);
+                vlans = $filter('orderBy')(vlans, ['vid']);
                 angular.forEach(vlans, function(vlan) {
                     var subnets = filterByVLAN($scope.subnets, vlan);
                     if(subnets.length > 0) {
@@ -53,53 +65,95 @@ angular.module('MAAS').controller('NetworksListController', [
                             var space = SpacesManager.getItemFromList(
                                 subnet.space);
                             var row = {
+                                fabric: fabric,
+                                fabric_name: "",
                                 vlan: vlan,
+                                vlan_name: "",
                                 space: space,
-                                subnet: subnet
+                                subnet: subnet,
+                                subnet_name: getSubnetName(subnet)
                             };
+                            if(fabric.id !== previous_fabric.id) {
+                                previous_fabric.id = fabric.id;
+                                row.fabric_name = fabric.name;
+                            }
+                            if(vlan.id !== previous_vlan.id) {
+                                previous_vlan.id = vlan.id;
+                                row.vlan_name = getVLANName(vlan);
+                            }
                             rows.push(row);
                         });
                     } else {
-                        rows.push({
+                        var row = {
+                            fabric: fabric,
+                            fabric_name: fabric.name,
                             vlan: vlan,
-                            space: null,
-                            subnet: null
-                        });
+                            vlan_name: getVLANName(vlan)
+                        };
+                        if(fabric.id !== previous_fabric.id) {
+                            previous_fabric.id = fabric.id;
+                            row.fabric_name = fabric.name;
+                        }
+                        rows.push(row);
                     }
                 });
-
-                data.push({
-                    fabric: fabric,
-                    rows: rows
-                });
             });
-            $scope.tabs.fabrics.data = data;
+            $scope.group.fabrics.rows = rows;
         }
 
-        // Update the data that is displayed on the spaces tab.
-        function updateSpacesData() {
-            var data = [];
-            angular.forEach($scope.spaces, function(space) {
-                var rows = [];
+        // Generate a table that can be easily rendered in the view.
+        // Traverses the spaces in-order so that if the previous space's name
+        // is identical, it can be hidden from the table cell.
+        // Note that this view only shows items that can be related to a space.
+        // That is, VLANs and fabrics with no corresponding subnets (and
+        // therefore spaces) cannot be shown in this table.
+        function updateSpacesGroupBy() {
+            var rows = [];
+            var spaces = $filter('orderBy')($scope.spaces, ['name']);
+            var previous_space = {id: -1};
+            angular.forEach(spaces, function(space) {
                 var subnets = filterBySpace($scope.subnets, space);
+                subnets = $filter('orderBy')(subnets, ['cidr']);
                 angular.forEach(subnets, function(subnet) {
                     var vlan = VLANsManager.getItemFromList(subnet.vlan);
                     var fabric = FabricsManager.getItemFromList(vlan.fabric);
                     var row = {
                         fabric: fabric,
                         vlan: vlan,
-                        subnet: subnet
+                        vlan_name: getVLANName(vlan),
+                        subnet: subnet,
+                        subnet_name: getSubnetName(subnet),
+                        space: space,
+                        space_name: ""
                     };
+                    if(space.id !== previous_space.id) {
+                        previous_space.id = space.id;
+                        row.space_name = space.name;
+                    }
                     rows.push(row);
                 });
-
-                data.push({
-                    space: space,
-                    rows: rows
-                });
             });
-            $scope.tabs.spaces.data = data;
+            $scope.group.spaces.rows = rows;
         }
+
+        // Update the "Group by" selection. This is called from a few places:
+        // * When the $watch notices data has changed
+        // * When the URL bar is updated, after the URL is parsed and
+        //   $scope.groupBy is updated
+        // * When the drop-down "Group by" selection box changes
+        $scope.updateGroupBy = function() {
+            var groupBy = $scope.groupBy;
+            if(groupBy === 'space') {
+                $location.search('by', 'space');
+                updateSpacesGroupBy();
+            } else {
+                // The only other option is 'fabric', but in case the user
+                // made a typo on the URL bar we just assume it was 'fabric'
+                // as a fallback.
+                $location.search('by', 'fabric');
+                updateFabricsGroupBy();
+            }
+        };
 
         // Return the name name for the VLAN.
         function getVLANName(vlan) {
@@ -112,80 +166,9 @@ angular.module('MAAS').controller('NetworksListController', [
             return name;
         }
 
-        // Toggles between the current tab.
-        $scope.toggleTab = function(tab) {
-            $rootScope.title = $scope.tabs[tab].pagetitle;
-            $scope.currentpage = tab;
-        };
-
-        // Get the name of the fabric. Will return empty if the previous
-        // row already included the same fabric.
-        $scope.getFabricName = function(row, sortedData) {
-            if(!angular.isObject(row.fabric)) {
-                return "";
-            }
-
-            var idx = sortedData.indexOf(row);
-            if(idx === 0) {
-                return row.fabric.name;
-            } else {
-                var prevRow = sortedData[idx - 1];
-                if(prevRow.fabric === row.fabric) {
-                    return "";
-                } else {
-                    return row.fabric.name;
-                }
-            }
-        };
-
-        // Get the name of the VLAN. Will return empty if the previous
-        // row already included the same VLAN unless the fabric is different.
-        $scope.getVLANName = function(row, sortedData) {
-            if(!angular.isObject(row.vlan)) {
-                return "";
-            }
-
-            var idx = sortedData.indexOf(row);
-            if(idx === 0) {
-                return getVLANName(row.vlan);
-            } else {
-                var prevRow = sortedData[idx - 1];
-                var differentFabric = false;
-                if(angular.isObject(row.fabric) &&
-                    angular.isObject(prevRow.fabric)) {
-                    differentFabric = prevRow.fabric !== row.fabric;
-                }
-                if(prevRow.vlan === row.vlan && !differentFabric) {
-                    return "";
-                } else {
-                    return getVLANName(row.vlan);
-                }
-            }
-        };
-
-        // Get the name of the space. Will return empty if the previous
-        // row already included the same space unless the vlan is different.
-        $scope.getSpaceName = function(row, sortedData) {
-            if(!angular.isObject(row.space)) {
-                return "";
-            }
-
-            var idx = sortedData.indexOf(row);
-            if(idx === 0) {
-                return row.space.name;
-            } else {
-                var prevRow = sortedData[idx - 1];
-                if(prevRow.vlan === row.vlan && prevRow.space === row.space) {
-                    return "";
-                } else {
-                    return row.space.name;
-                }
-            }
-        };
-
         // Return the name of the subnet. Will include the name of the subnet
         // in '(', ')' if it exists and not the same as the cidr.
-        $scope.getSubnetName = function(subnet) {
+        function getSubnetName(subnet) {
             if(!angular.isObject(subnet)) {
                 return "";
             }
@@ -197,28 +180,24 @@ angular.module('MAAS').controller('NetworksListController', [
                 name += " (" + subnet.name + ")";
             }
             return name;
-        };
+        }
 
         ManagerHelperService.loadManagers([
             SubnetsManager, FabricsManager, SpacesManager, VLANsManager]).then(
             function() {
                 $scope.loading = false;
 
-                // Fabrics
-                $scope.$watchCollection("fabrics", updateFabricsData);
-                $scope.$watchCollection("vlans", updateFabricsData);
-                $scope.$watchCollection("subnets", updateFabricsData);
-                $scope.$watchCollection("spaces", updateFabricsData);
+                $scope.$watchCollection("subnets", $scope.updateGroupBy);
+                $scope.$watchCollection("fabrics", $scope.updateGroupBy);
+                $scope.$watchCollection("spaces", $scope.updateGroupBy);
+                $scope.$watchCollection("vlans", $scope.updateGroupBy);
 
-                // Spaces
-                $scope.$watchCollection("fabrics", updateSpacesData);
-                $scope.$watchCollection("vlans", updateSpacesData);
-                $scope.$watchCollection("subnets", updateSpacesData);
-                $scope.$watchCollection("spaces", updateSpacesData);
+                // If the route has been updated, a new search string must
+                // potentially be rendered.
+                $scope.$on("$routeUpdate", function() {
+                    $scope.getURLParameters();
+                    $scope.updateGroupBy();
+                });
             });
-
-        // Switch to the specified tab, if specified.
-        if($routeParams.tab === "fabrics" || $routeParams.tab === "spaces") {
-            $scope.toggleTab($routeParams.tab);
-        }
-    }]);
+    }
+]);
