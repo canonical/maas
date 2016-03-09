@@ -43,8 +43,10 @@ class TestFilesystemManager(MAASServerTestCase):
         partition = factory.make_Partition(partition_table=partition_table)
         filesystem_on_bd = factory.make_Filesystem(block_device=block_device)
         filesystem_on_partition = factory.make_Filesystem(partition=partition)
+        filesystem_on_node = factory.make_Filesystem(node=node)
         self.assertItemsEqual(
-            [root_fs, filesystem_on_bd, filesystem_on_partition],
+            [root_fs, filesystem_on_bd, filesystem_on_partition,
+             filesystem_on_node],
             Filesystem.objects.filter_by_node(node))
 
 

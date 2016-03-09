@@ -6,13 +6,22 @@
 __all__ = []
 
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
 )
-from maasserver.forms_filesystem import MountFilesystemForm
+from maasserver.forms_filesystem import (
+    MountFilesystemForm,
+    MountNonStorageFilesystemForm,
+)
+from maasserver.models import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from testtools.matchers import Is
+from testtools.matchers import (
+    Equals,
+    Is,
+    MatchesStructure,
+)
 
 
 class TestMountFilesystemFormWithoutSubstrate(MAASServerTestCase):
@@ -155,3 +164,39 @@ class TestMountFilesystemForm(MAASServerTestCase):
         self.assertEqual("none", filesystem.mount_point)
         self.assertEqual(mount_options, filesystem.mount_options)
         self.assertThat(filesystem.is_mounted, Is(True))
+
+
+class TestMountNonStorageFilesystemForm(MAASServerTestCase):
+
+    def test_requires_fstype_and_mount_point(self):
+        node = factory.make_Node()
+        form = MountNonStorageFilesystemForm(node, data={})
+        self.assertFalse(form.is_valid())
+        self.assertThat(form.errors, Equals({
+            'fstype': ['This field is required.'],
+            'mount_point': ['This field is required.'],
+        }))
+
+
+class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def test_creates_filesystem_with_mount_point_and_options(self):
+        node = factory.make_Node()
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        form = MountNonStorageFilesystemForm(node, data={
+            "fstype": self.fstype, "mount_point": mount_point,
+            # Whitespace is stripped by form validation.
+            'mount_options': "  " + mount_options + "\t\n",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        filesystem = form.save()
+        self.assertThat(filesystem, MatchesStructure.byEquality(
+            node=node, fstype=self.fstype, mount_point=mount_point,
+            mount_options=mount_options, is_mounted=True))

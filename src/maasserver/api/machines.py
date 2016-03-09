@@ -63,9 +63,14 @@ from maasserver.forms import (
     get_machine_edit_form,
 )
 from maasserver.forms_commission import CommissionForm
+from maasserver.forms_filesystem import (
+    MountNonStorageFilesystemForm,
+    UnmountNonStorageFilesystemForm,
+)
 from maasserver.models import (
     Config,
     Domain,
+    Filesystem,
     Machine,
     RackController,
 )
@@ -141,6 +146,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'status_name',
     'node_type',
     'node_type_name',
+    'special_filesystems',
 )
 
 
@@ -542,6 +548,67 @@ class MachineHandler(NodeHandler):
                 "Failed to configure storage layout '%s': %s" % (
                     storage_layout, str(e)))
         return machine
+
+    @classmethod
+    def special_filesystems(cls, machine):
+        """Render special-purpose filesystems, like tmpfs."""
+        return [
+            {
+                'fstype': filesystem.fstype,
+                'label': filesystem.label,
+                'uuid': filesystem.uuid,
+                'mount_point': filesystem.mount_point,
+                'mount_options': filesystem.mount_options,
+            }
+            for filesystem in Filesystem.objects.filter(node=machine)
+        ]
+
+    @operation(idempotent=False)
+    def mount_special(self, request, system_id):
+        """Mount a special-purpose filesystem, like tmpfs.
+
+        :param fstype: The filesystem type. This must be a filesystem that
+            does not require a block special device.
+        :param mount_point: Path on the filesystem to mount.
+        :param mount_option: Options to pass to mount(8).
+
+        Returns 403 when the user is not permitted to mount the partition.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
+            raise NodeStateViolation(
+                "Cannot mount the filesystem because the machine is not "
+                "Ready or Allocated.")
+        form = MountNonStorageFilesystemForm(machine, data=request.data)
+        if form.is_valid():
+            # Filesystem is not a first-class object in the Web API, so save
+            # it but return the machine.
+            form.save()
+            return machine
+        else:
+            raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def unmount_special(self, request, system_id):
+        """Unmount a special-purpose filesystem, like tmpfs.
+
+        :param mount_point: Path on the filesystem to unmount.
+
+        Returns 403 when the user is not permitted to unmount the partition.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        if machine.status not in {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}:
+            raise NodeStateViolation(
+                "Cannot unmount the filesystem because the machine is not "
+                "Ready or Allocated.")
+        form = UnmountNonStorageFilesystemForm(machine, data=request.data)
+        if form.is_valid():
+            form.save()  # Returns nothing.
+            return machine
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=False)
     def clear_default_gateways(self, request, system_id):

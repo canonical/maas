@@ -38,7 +38,7 @@ class FilesystemManager(Manager):
     def filter_by_node(self, node):
         """Return all filesystems on this node."""
         return self.filter(
-            Q(block_device__node=node) |
+            Q(node=node) | Q(block_device__node=node) |
             Q(partition__partition_table__block_device__node=node))
 
 

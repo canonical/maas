@@ -14,9 +14,12 @@ from django.db import transaction
 from maasserver import forms
 from maasserver.api import machines as machines_module
 from maasserver.enum import (
+    FILESYSTEM_FORMAT_TYPE_CHOICES,
+    FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
@@ -25,6 +28,7 @@ from maasserver.enum import (
 from maasserver.models import (
     Config,
     Domain,
+    Filesystem,
     Machine,
     Node,
     node as node_module,
@@ -52,6 +56,7 @@ from maasserver.utils.orm import (
 )
 from maastesting.matchers import (
     Equals,
+    HasLength,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -64,6 +69,12 @@ from mock import ANY
 from netaddr import IPNetwork
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
+from testtools.matchers import (
+    ContainsDict,
+    MatchesListwise,
+    MatchesStructure,
+    StartsWith,
+)
 from twisted.internet import defer
 import yaml
 
@@ -1658,6 +1669,273 @@ class TestSetStorageLayout(APITestCase):
         self.assertThat(
             mock_set_storage_layout,
             MockCalledOnceWith('flat', params=ANY, allow_fallback=False))
+
+
+class TestMountSpecial(APITestCase):
+    """Tests for op=mount_special."""
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test__fstype_and_mount_point_is_required_but_options_is_not(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'mount_special'})
+        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertThat(
+            json_load_bytes(response.content), Equals({
+                'fstype': ['This field is required.'],
+                'mount_point': ['This field is required.'],
+            }))
+
+    def test__fstype_must_be_a_non_storage_type(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        for fstype in Filesystem.TYPES_REQUIRING_STORAGE:
+            response = self.client.post(
+                self.get_machine_uri(machine), {
+                    'op': 'mount_special', 'fstype': fstype,
+                    'mount_point': factory.make_absolute_path(),
+                })
+            self.assertThat(
+                response.status_code, Equals(http.client.BAD_REQUEST))
+            self.expectThat(
+                json_load_bytes(response.content),
+                ContainsDict({
+                    'fstype': MatchesListwise([
+                        StartsWith("Select a valid choice."),
+                    ]),
+                }),
+                "using fstype " + fstype)
+
+    def test__mount_point_must_be_absolute(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'mount_special', 'fstype': FILESYSTEM_TYPE.RAMFS,
+                'mount_point': factory.make_name("path"),
+            })
+        self.assertThat(
+            response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertThat(
+            json_load_bytes(response.content), ContainsDict({
+                # XXX: Wow, what a lame error from AbsolutePathField!
+                'mount_point': Equals(["Enter a valid value."]),
+            }))
+
+
+class TestMountSpecialScenarios(APITestCase):
+    """Scenario tests for op=mount_special."""
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test__machine_representation_includes_non_storage_filesystem(self):
+        self.become_admin()
+        machine = factory.make_Node(status=NODE_STATUS.READY)
+        filesystem = factory.make_Filesystem(node=machine, fstype=self.fstype)
+        response = self.client.get(self.get_machine_uri(machine))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            json_load_bytes(response.content),
+            ContainsDict({
+                "special_filesystems": MatchesListwise([
+                    ContainsDict({
+                        "fstype": Equals(filesystem.fstype),
+                        "label": Equals(filesystem.label),
+                        "mount_options": Equals(filesystem.mount_options),
+                        "mount_point": Equals(filesystem.mount_point),
+                        "uuid": Equals(filesystem.uuid),
+                    }),
+                ]),
+            }))
+
+    def assertCanMountFilesystem(self, machine):
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'mount_special', 'fstype': self.fstype,
+                'mount_point': mount_point,
+                'mount_options': mount_options,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            list(Filesystem.objects.filter(node=machine)),
+            MatchesListwise([
+                MatchesStructure.byEquality(
+                    fstype=self.fstype, mount_point=mount_point,
+                    mount_options=mount_options, node=machine),
+            ]))
+
+    def test__user_mounts_non_storage_filesystem_on_allocated_machine(self):
+        self.assertCanMountFilesystem(factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user))
+
+    def test__user_forbidden_to_mount_on_non_allocated_machine(self):
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.ALLOCATED}
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            response = self.client.post(
+                self.get_machine_uri(machine), {
+                    'op': 'mount_special', 'fstype': self.fstype,
+                    'mount_point': factory.make_absolute_path(),
+                    'mount_options': factory.make_name("options"),
+                })
+            self.expectThat(
+                response.status_code, Equals(http.client.FORBIDDEN),
+                "using status %d" % status)
+
+    def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
+        self.become_admin()
+        self.assertCanMountFilesystem(factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user))
+
+    def test__admin_mounts_non_storage_filesystem_on_ready_machine(self):
+        self.become_admin()
+        self.assertCanMountFilesystem(
+            factory.make_Node(status=NODE_STATUS.READY))
+
+    def test__admin_cannot_mount_on_non_ready_or_allocated_machine(self):
+        self.become_admin()
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            response = self.client.post(
+                self.get_machine_uri(machine), {
+                    'op': 'mount_special', 'fstype': self.fstype,
+                    'mount_point': factory.make_absolute_path(),
+                    'mount_options': factory.make_name("options"),
+                })
+            self.expectThat(
+                response.status_code, Equals(http.client.CONFLICT),
+                "using status %d" % status)
+
+
+class TestUnmountSpecial(APITestCase):
+    """Tests for op=unmount_special."""
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test__mount_point_is_required(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {'op': 'unmount_special'})
+        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertThat(
+            json_load_bytes(response.content), Equals({
+                'mount_point': ['This field is required.'],
+            }))
+
+    def test__mount_point_must_be_absolute(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'unmount_special',
+                'mount_point': factory.make_name("path"),
+            })
+        self.assertThat(
+            response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertThat(
+            json_load_bytes(response.content), ContainsDict({
+                # XXX: Wow, what a lame error from AbsolutePathField!
+                'mount_point': Equals(["Enter a valid value."]),
+            }))
+
+
+class TestUnmountSpecialScenarios(APITestCase):
+    """Scenario tests for op=unmount_special."""
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def assertCanUnmountFilesystem(self, machine):
+        filesystem = factory.make_Filesystem(
+            node=machine, fstype=self.fstype,
+            mount_point=factory.make_absolute_path())
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'unmount_special', 'mount_point': filesystem.mount_point,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertThat(
+            Filesystem.objects.filter(node=machine),
+            HasLength(0))
+
+    def test__user_unmounts_non_storage_filesystem_on_allocated_machine(self):
+        self.assertCanUnmountFilesystem(factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user))
+
+    def test__user_forbidden_to_unmount_on_non_allocated_machine(self):
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.ALLOCATED}
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            filesystem = factory.make_Filesystem(
+                node=machine, fstype=self.fstype,
+                mount_point=factory.make_absolute_path())
+            response = self.client.post(
+                self.get_machine_uri(machine), {
+                    'op': 'unmount_special',
+                    'mount_point': filesystem.mount_point,
+                })
+            self.expectThat(
+                response.status_code, Equals(http.client.FORBIDDEN),
+                "using status %d" % status)
+
+    def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
+        self.become_admin()
+        self.assertCanUnmountFilesystem(factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user))
+
+    def test__admin_unmounts_non_storage_filesystem_on_ready_machine(self):
+        self.become_admin()
+        self.assertCanUnmountFilesystem(
+            factory.make_Node(status=NODE_STATUS.READY))
+
+    def test__admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
+        self.become_admin()
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            filesystem = factory.make_Filesystem(
+                node=machine, fstype=self.fstype,
+                mount_point=factory.make_absolute_path())
+            response = self.client.post(
+                self.get_machine_uri(machine), {
+                    'op': 'unmount_special',
+                    'mount_point': filesystem.mount_point,
+                })
+            self.expectThat(
+                response.status_code, Equals(http.client.CONFLICT),
+                "using status %d" % status)
 
 
 class TestClearDefaultGateways(APITestCase):
