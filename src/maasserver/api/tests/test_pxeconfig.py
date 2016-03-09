@@ -380,11 +380,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 response.content.decode(settings.DEFAULT_CHARSET))["subarch"])
 
     def test_pxeconfig_has_preseed_url_for_known_node(self):
+        rack_controller = factory.make_RackController()
         params = self.get_mac_params()
+        params["rackcontroller_id"] = rack_controller.system_id
         node = Interface.objects.get(mac_address=params['mac']).node
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
-            compose_preseed_url(node),
+            compose_preseed_url(node, rack_controller),
             json.loads(
                 response.content.decode(
                     settings.DEFAULT_CHARSET))["preseed_url"])
@@ -408,6 +410,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             primary_rack=rack_controller)
         params = self.get_default_params()
         params['mac'] = str(node.get_boot_interface().mac_address)
+        params['rackcontroller_id'] = rack_controller.system_id
 
         # Simulate that the request originates from ip by setting
         # 'REMOTE_ADDR'.

@@ -1117,12 +1117,15 @@ class TestPreseedURLs(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         self.configure_get_boot_images_for_node(node, 'install')
-        response = self.client.get(compose_preseed_url(node))
+        response = self.client.get(
+            compose_preseed_url(node, self.rpc_rack_controller))
         self.assertEqual(
             (http.client.OK, get_preseed(node)),
             (response.status_code, response.content))
 
     def test_compose_preseed_url_returns_absolute_link(self):
         self.assertThat(
-            compose_preseed_url(factory.make_Node_with_Interface_on_Subnet()),
+            compose_preseed_url(
+                factory.make_Node_with_Interface_on_Subnet(),
+                self.rpc_rack_controller),
             StartsWith('http://'))

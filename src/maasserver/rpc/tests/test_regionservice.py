@@ -114,6 +114,7 @@ from provisioningserver.rpc.region import (
     CommissionNode,
     CreateNode,
     GetArchiveMirrors,
+    GetBootConfig,
     GetBootSources,
     GetBootSourcesV2,
     GetClusterInterfaces,
@@ -145,6 +146,7 @@ from testtools.deferredruntest import (
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
+    ContainsAll,
     Equals,
     HasLength,
     Is,
@@ -358,6 +360,43 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
 
         # Test is that no exceptions are raised. If this test passes then all
         # works as expected.
+
+
+class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
+
+    def test_get_boot_config_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetBootConfig.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_boot_config_returns_expected_result(self):
+        rack_controller = yield deferToDatabase(
+            transactional(factory.make_RackController))
+        local_ip = factory.make_ip_address()
+
+        response = yield call_responder(
+            Region(), GetBootConfig, {
+                "system_id": rack_controller.system_id,
+                "local_ip": local_ip,
+            })
+
+        self.assertThat(
+            response,
+            ContainsAll([
+                "arch",
+                "subarch",
+                "osystem",
+                "release",
+                "purpose",
+                "hostname",
+                "domain",
+                "preseed_url",
+                "fs_host",
+                "log_host",
+                "extra_opts",
+            ]))
 
 
 class TestRegionProtocol_GetBootSources(MAASTransactionServerTestCase):

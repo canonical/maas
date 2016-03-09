@@ -697,11 +697,10 @@ def compose_enlistment_preseed_url(rack_controller=None):
         query={'op': 'get_enlist_preseed'}, base_url=base_url)
 
 
-def compose_preseed_url(node):
+def compose_preseed_url(node, rack_controller):
     """Compose a metadata URL for `node`'s preseed data."""
     # Always uses the latest version of the metadata API.
     version = 'latest'
-    base_url = node.get_boot_primary_rack_controller().url
     return absolute_reverse(
         'metadata-node-by-id', args=[version, node.system_id],
-        query={'op': 'get_preseed'}, base_url=base_url)
+        query={'op': 'get_preseed'}, base_url=rack_controller.url)

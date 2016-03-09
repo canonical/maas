@@ -11,6 +11,7 @@ __all__ = [
     "CreateNode",
     "CommissionNode",
     "GetArchiveMirrors",
+    "GetBootConfig",
     "GetBootSources",
     "GetBootSourcesV2",
     "GetClusterInterfaces",
@@ -40,6 +41,7 @@ from provisioningserver.rpc.common import (
     Identify,
 )
 from provisioningserver.rpc.exceptions import (
+    BootConfigNoResponse,
     CannotRegisterRackController,
     CommissionNodeFailed,
     NodeAlreadyExists,
@@ -94,6 +96,39 @@ class ReportBootImages(amp.Command):
     ]
     response = []
     errors = []
+
+
+class GetBootConfig(amp.Command):
+    """Get the boot configuration for booting machine.
+
+    :since: 2.0
+    """
+
+    arguments = [
+        # The system_id for the rack controller.
+        (b"system_id", amp.Unicode()),
+        (b"local_ip", amp.Unicode()),
+        (b"arch", amp.Unicode(optional=True)),
+        (b"subarch", amp.Unicode(optional=True)),
+        (b"mac", amp.Unicode(optional=True)),
+        (b"bios_boot_method", amp.Unicode(optional=True)),
+    ]
+    response = [
+        (b"arch", amp.Unicode()),
+        (b"subarch", amp.Unicode()),
+        (b"osystem", amp.Unicode()),
+        (b"release", amp.Unicode()),
+        (b"purpose", amp.Unicode()),
+        (b"hostname", amp.Unicode()),
+        (b"domain", amp.Unicode()),
+        (b"preseed_url", amp.Unicode()),
+        (b"fs_host", amp.Unicode()),
+        (b"log_host", amp.Unicode()),
+        (b"extra_opts", amp.Unicode()),
+    ]
+    errors = {
+        BootConfigNoResponse: b"BootConfigNoResponse",
+    }
 
 
 class GetBootSources(amp.Command):

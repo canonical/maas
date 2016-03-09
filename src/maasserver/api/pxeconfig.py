@@ -199,7 +199,7 @@ def pxeconfig(request):
     rack_controller = find_rack_controller_for_pxeconfig_request(request)
     if node:
         arch, subarch = node.architecture.split('/')
-        preseed_url = compose_preseed_url(node)
+        preseed_url = compose_preseed_url(node, rack_controller)
         hostname = node.hostname
         domain = node.domain.name
 

@@ -42,6 +42,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
+    boot,
     configuration,
     events,
     leases,
@@ -197,6 +198,20 @@ class Region(RPCProtocol):
             return {}
         else:
             return tls.get_tls_parameters_for_region()
+
+    @region.GetBootConfig.responder
+    def get_boot_config(
+            self, system_id, local_ip, arch=None, subarch=None, mac=None,
+            bios_boot_method=None):
+        """get_boot_config()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetBootConfig`.
+        """
+        return deferToDatabase(
+            boot.get_config, system_id, local_ip,
+            arch=arch, subarch=subarch, mac=mac,
+            bios_boot_method=bios_boot_method)
 
     @region.GetBootSources.responder
     def get_boot_sources(self, uuid):

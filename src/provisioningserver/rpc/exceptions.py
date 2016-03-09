@@ -137,3 +137,7 @@ class AuthenticationFailed(Exception):
 
 class RegistrationFailed(Exception):
     """The region did not or was not able to register the cluster."""
+
+
+class BootConfigNoResponse(Exception):
+    """The region gave no response for the boot configuration."""
