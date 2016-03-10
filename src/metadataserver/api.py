@@ -493,15 +493,16 @@ class VersionIndexHandler(MetadataViewHandler):
             # Store the commissioning results.
             self._store_commissioning_results(node, request)
 
-            # Commissioning was successful setup the default storage layout
-            # and the initial networking configuration for the node. This is
-            # skipped when its the rack controller using this endpoint.
-            if (status == SIGNAL_STATUS.OK and
-                    node.node_type not in (
-                        NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER)):
-                node.set_default_storage_layout()
-                node.set_initial_networking_configuration()
+            # This is skipped when its the rack controller using this endpoint.
+            if node.node_type not in (
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER):
+
+                # Commissioning was successful setup the default storage layout
+                # and the initial networking configuration for the node.
+                if status == SIGNAL_STATUS.OK:
+                    node.set_default_storage_layout()
+                    node.set_initial_networking_configuration()
 
                 # XXX 2014-10-21 newell, bug=1382075
                 # Auto detection for IPMI tries to save power parameters
