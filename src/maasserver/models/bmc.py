@@ -22,10 +22,8 @@ from django.db import transaction
 from django.db.models import (
     CharField,
     ForeignKey,
-    PROTECT,
+    SET_NULL,
 )
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.fields import JSONObjectField
@@ -67,7 +65,7 @@ class BMC(CleanSave, TimestampedModel):
 
     ip_address = ForeignKey(
         StaticIPAddress, default=None, blank=True, null=True, editable=False,
-        on_delete=PROTECT)
+        on_delete=SET_NULL)
 
     # The possible choices for this field depend on the power types advertised
     # by the rack controllers.  This needs to be populated on the fly, in
@@ -86,49 +84,35 @@ class BMC(CleanSave, TimestampedModel):
         else:
             return self.id
 
-    def clean_ip_from_power_parameters(self):
-        """ If an IP address can be extracted from our power parameters, create
-        or update our ip_address field and its subnet. """
+    def clean(self):
+        """ Update our ip_address if the address extracted from our power
+        parameters has changed. """
         new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
-        old_ip = self.ip_address.ip if self.ip_address else None
-        if new_ip != old_ip:
+        current_ip = None if self.ip_address is None else self.ip_address.ip
+        # Set the ip_address field.
+        if new_ip != current_ip:
             if new_ip is None:
-                # Set ip to None, save, then return the old ip.
-                old_ip_address = self.ip_address
                 self.ip_address = None
-                return old_ip_address
-            try:
-                # Update or create StaticIPAddress.
-                with transaction.atomic():
-                    if self.ip_address:
-                        self.ip_address.ip = new_ip
-                        self.ip_address.save()
-                        ip_address = self.ip_address
-                    else:
-                        ip_address = StaticIPAddress(
-                            ip=new_ip, alloc_type=IPADDRESS_TYPE.STICKY)
-                        ip_address.save()
-                        self.ip_address = ip_address
-            except Exception as error:
-                maaslog.info(
-                    "BMC could not save extracted IP "
-                    "address '%s': '%s'", new_ip, error)
             else:
-                # StaticIPAddress saved successfully - update the Subnet.
-                subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
-                if subnet is not None:
-                    ip_address.subnet = subnet
-                    ip_address.save()
-        return None
-
-    def clean(self, *args, **kwargs):
-        super(BMC, self).clean(*args, **kwargs)
-        self.old_ip_address = self.clean_ip_from_power_parameters()
-
-    def save(self, *args, **kwargs):
-        super(BMC, self).save(*args, **kwargs)
-        if self.old_ip_address is not None:
-            self.old_ip_address.delete()
+                # Update or create a StaticIPAddress for the new IP.
+                try:
+                    # This atomic block ensures that an exception within will
+                    # roll back only this block's DB changes. This allows us to
+                    # swallow exceptions in here and keep all changes made
+                    # before or after this block is executed.
+                    with transaction.atomic():
+                        subnet = Subnet.objects.get_best_subnet_for_ip(new_ip)
+                        (self.ip_address,
+                         _) = StaticIPAddress.objects.get_or_create(
+                            ip=new_ip,
+                            defaults={
+                                'alloc_type': IPADDRESS_TYPE.STICKY,
+                                'subnet': subnet,
+                            })
+                except Exception as error:
+                    maaslog.info(
+                        "BMC could not save extracted IP "
+                        "address '%s': '%s'", new_ip, error)
 
     @staticmethod
     def scope_power_parameters(power_type, power_params):
@@ -207,7 +191,7 @@ class BMC(CleanSave, TimestampedModel):
             ip_address.ip, with_connection=with_connection)
 
     def get_client_identifiers(self):
-        """Return a list of indetifiers that can be used to get the
+        """Return a list of identifiers that can be used to get the
         `rpc.common.Client` for this `BMC`.
 
         :raise NoBMCAccessError: Raised when no rack controllers have access
@@ -219,12 +203,3 @@ class BMC(CleanSave, TimestampedModel):
             for controller in rack_controllers
         ]
         return identifers
-
-
-@receiver(post_delete)
-def delete_bmc(sender, instance, **kwargs):
-    """Clean up related ip_address when a BMC is deleted."""
-    if sender == BMC:
-        # Delete the related interfaces.
-        if instance.ip_address is not None:
-            instance.ip_address.delete()

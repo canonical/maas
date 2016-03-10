@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from maasserver.enum import IPADDRESS_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+)
 from maasserver.models.bmc import BMC
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
@@ -15,11 +18,225 @@ from maasserver.utils.orm import reload_object
 
 class TestBMC(MAASServerTestCase):
 
-    def test_delete_bmc_deletes_related_ip_address(self):
-        ip = factory.make_StaticIPAddress()
-        bmc = factory.make_BMC(ip_address=ip)
+    @staticmethod
+    def get_machine_ip_address(machine):
+        return machine.interface_set.all()[0].ip_addresses.all()[0]
+
+    def make_machine_and_bmc_with_shared_ip(self):
+        machine = factory.make_Node(interface=False)
+        machine.interface_set = []
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=machine)
+        machine_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=interface)
+        self.assertEqual(1, machine.interface_set.count())
+
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % machine_ip.ip})
+        # Make sure they're sharing an IP.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(machine_ip_addr.id, bmc.ip_address.id)
+        return machine, bmc, machine_ip
+
+    def make_machine_and_bmc_differing_ips(self):
+        machine = factory.make_Node(interface=False)
+        machine.interface_set = []
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=machine)
+        machine_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet,
+            interface=interface)
+        self.assertEqual(1, machine.interface_set.count())
+
+        ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+        bmc_ip = ip_address.ip
+        ip_address.delete()
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % bmc_ip})
+        # Make sure they're not sharing an IP.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
+        return machine, bmc, machine_ip
+
+    def test_bmc_save_extracts_ip_address(self):
+        subnet = factory.make_Subnet()
+        sticky_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+        power_parameters = {
+            'power_address':
+            "protocol://%s:8080/path/to/thing#tag" % sticky_ip.ip,
+        }
+        bmc = factory.make_BMC(
+            power_type="virsh", power_parameters=power_parameters)
+        self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
+        self.assertEqual(subnet, bmc.ip_address.subnet)
+
+    def test_bmc_changing_power_parameters_changes_ip(self):
+        ip = factory.make_ipv4_address()
+        power_parameters = {
+            'power_address':
+            "protocol://%s:8080/path#tag" % ip,
+        }
+        bmc = factory.make_BMC(
+            power_type="virsh", power_parameters=power_parameters)
+        self.assertEqual(ip, bmc.ip_address.ip)
+        self.assertIsNone(bmc.ip_address.subnet)
+
+        subnet = factory.make_Subnet()
+        sticky_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet)
+        bmc.power_parameters = {
+            'power_address':
+            "protocol://%s:8080/path/to/thing#tag" % sticky_ip.ip,
+        }
+        bmc.save()
+        self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
+        self.assertEqual(subnet, bmc.ip_address.subnet)
+
+    def test_deleting_machine_ip_when_shared_with_bmc(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
+
+        # Now delete the machine.
+        old_ip = machine_ip.ip
+        machine.delete()
+
+        # Check BMC still has old IP.
+        bmc = reload_object(bmc)
+        self.assertIsNotNone(bmc.ip_address)
+        self.assertEqual(old_ip, bmc.ip_address.ip)
+
+        # Make sure DB ID's of StaticIPAddress instances differ.
+        self.assertNotEqual(machine_ip.id, bmc.ip_address.id)
+
+    def test_removing_bmc_ip_when_shared_with_bmc(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
+
+        # Clear the BMC IP.
+        old_ip = bmc.ip_address.ip
+        bmc.power_type = "manual"
+        bmc.save()
+        self.assertIsNone(bmc.ip_address)
+
+        # Check Machine still has same IP address.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(old_ip, machine_ip_addr.ip)
+        self.assertEqual(machine_ip.id, machine_ip_addr.id)
+
+    def test_changing_machine_ip_when_shared_with_bmc_keeps_both(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
+
+        # Now change the Machine's IP to a new address on same subnet.
+        old_ip = machine_ip.ip
+        new_ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=machine_ip.subnet)
+        new_ip = new_ip_address.ip
+        # Remove IP so we can set machine_ip to its address.
+        new_ip_address.delete()
+        self.assertNotEqual(new_ip, old_ip)
+        machine_ip.ip = new_ip
+        machine_ip.save()
+
+        # Check Machine has new IP address but kept same instance: machine_ip.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(new_ip, machine_ip_addr.ip)
+        self.assertEqual(machine_ip.id, machine_ip_addr.id)
+
+        # Check BMC still has old IP.
+        bmc = reload_object(bmc)
+        self.assertEqual(old_ip, bmc.ip_address.ip)
+
+        # Make sure DB ID's of StaticIPAddress instances differ.
+        self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
+
+    def test_changing_bmc_ip_when_shared_with_machine_keeps_both(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
+
+        # Now change the BMC's IP to a new address on same subnet.
+        old_ip = machine_ip.ip
+        new_ip_address = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, subnet=machine_ip.subnet)
+        new_ip = new_ip_address.ip
+        # Remove IP so we can set machine_ip to its address.
+        new_ip_address.delete()
+        self.assertNotEqual(new_ip, old_ip)
+
+        bmc.power_parameters = {
+            'power_address':
+            "protocol://%s:8080/path/to/thing#tag" % new_ip}
+        bmc.save()
+
+        # Check Machine has old IP address and kept same instance: machine_ip.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(old_ip, machine_ip_addr.ip)
+        self.assertEqual(machine_ip.id, machine_ip_addr.id)
+
+        # Check BMC has new IP.
+        bmc = reload_object(bmc)
+        self.assertEqual(new_ip, bmc.ip_address.ip)
+
+        # Make sure DB ID's of StaticIPAddress instances differ.
+        self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
+
+    def test_merging_machine_into_bmc_ip(self):
+        machine, bmc, _ = self.make_machine_and_bmc_differing_ips()
+
+        # Now change the machine's address to match bmc's.
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr.ip = bmc.ip_address.ip
+        machine_ip_addr.save()
+
+        # Make sure BMC and Machine now using same StaticIPAddress instance.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(machine_ip_addr.id, reload_object(bmc).ip_address.id)
+
+    def test_merging_bmc_into_machine_ip(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_differing_ips()
+
+        # Now change the BMC's address to match machine's.
+        bmc.power_parameters = {
+            'power_address':
+            "protocol://%s:8080/path/to/thing#tag" % machine_ip.ip}
+        bmc.save()
+
+        # Make sure BMC and Machine are using same StaticIPAddress instance.
+        machine = reload_object(machine)
+        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        self.assertEqual(machine_ip_addr.id, bmc.ip_address.id)
+
+    def test_delete_bmc_deletes_orphaned_ip_address(self):
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.make_ipv4_address())})
+        ip = bmc.ip_address
         bmc.delete()
-        self.assertIsNone(reload_object(ip))
+        self.assertEqual(0, StaticIPAddress.objects.filter(id=ip.id).count())
+
+    def test_delete_bmc_spares_non_orphaned_ip_address(self):
+        machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
+        bmc.delete()
+        self.assertEqual(
+            1, StaticIPAddress.objects.filter(id=machine_ip.id).count())
 
     def test_scope_power_parameters(self):
         bmc_parameters = dict(

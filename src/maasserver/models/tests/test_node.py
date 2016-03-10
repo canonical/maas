@@ -35,6 +35,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
+    bmc as bmc_module,
     BondInterface,
     Config,
     Device,
@@ -2912,11 +2913,17 @@ class TestNodePowerParameters(MAASServerTestCase):
 
     def test_power_parameters_non_ip_address_tolerated(self):
         node = factory.make_Node(power_type='hmc')
-        parameters = dict(power_address=factory.make_string())
+        power_address = factory.make_string()
+        parameters = dict(power_address=power_address)
+        maaslog = self.patch(bmc_module, "maaslog")
         node.power_parameters = parameters
         node.save()
         self.assertEqual(parameters, node.power_parameters)
         self.assertEqual(None, node.bmc.ip_address)
+        self.assertThat(
+            maaslog.info, MockCalledOnceWith(
+                "BMC could not save extracted IP "
+                "address '%s': '%s'", power_address, ANY))
 
     def test_power_parameters_ip_address_reset(self):
         node = factory.make_Node(power_type='hmc')
