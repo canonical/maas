@@ -68,6 +68,7 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
     POWER_STATE_CHOICES,
+    SERVICE_STATUS,
 )
 from maasserver.exceptions import (
     NodeStateViolation,
@@ -95,6 +96,7 @@ from maasserver.models.interface import (
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
@@ -3421,6 +3423,46 @@ class RackController(Node):
             self.save()
         else:
             super().delete()
+
+    def update_rackd_status(self):
+        """Update the status of the "rackd" service for this rack controller.
+
+        The "rackd" service status is determined based on the number of
+        connections it has to all region controller processes.
+        """
+        # Circular imports.
+        from maasserver.models import (
+            RegionRackRPCConnection,
+            RegionControllerProcess,
+        )
+        connections = RegionRackRPCConnection.objects.filter(
+            rack_controller=self).prefetch_related("endpoint__process")
+        if len(connections) == 0:
+            # Not connected to any regions so the rackd is considered dead.
+            Service.objects.mark_dead(self, dead_rack=True)
+        else:
+            connected_to_processes = set(
+                conn.endpoint.process
+                for conn in connections
+            )
+            all_processes = set(RegionControllerProcess.objects.all())
+            dead_regions = RegionController.objects.exclude(
+                processes__in=all_processes).count()
+            missing_processes = all_processes - connected_to_processes
+            if dead_regions == 0 and len(missing_processes) == 0:
+                # Connected to all processes.
+                Service.objects.update_service_for(
+                    self, "rackd", SERVICE_STATUS.RUNNING)
+            else:
+                # Not connected to all regions.
+                missing_regions = set(
+                    process.region
+                    for process in missing_processes
+                )
+                Service.objects.update_service_for(
+                    self, "rackd", SERVICE_STATUS.DEGRADED,
+                    "Missing connections to %d region controller(s)." % (
+                        dead_regions + len(missing_regions)))
 
 
 class RegionController(Node):

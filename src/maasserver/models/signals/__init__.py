@@ -10,6 +10,7 @@ __all__ = [
     "interfaces",
     "nodes",
     "power",
+    "services",
     "staticipaddress",
 ]
 
@@ -20,5 +21,6 @@ from maasserver.models.signals import (
     interfaces,
     nodes,
     power,
+    services,
     staticipaddress,
 )

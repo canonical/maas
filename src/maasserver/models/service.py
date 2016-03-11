@@ -104,10 +104,15 @@ class ServiceManager(Manager):
             service.save(update_fields=update_fields)
         return service
 
-    def mark_dead(self, node):
+    def mark_dead(self, node, dead_region=False, dead_rack=False):
         """Mark all the services on `node` to the correct dead state."""
+        dead_services = set()
+        if dead_region:
+            dead_services |= set(REGION_SERVICES)
+        if dead_rack:
+            dead_services |= set(RACK_SERVICES)
         for service in self.filter(node=node):
-            if service.name in DEAD_STATUSES:
+            if service.name in dead_services and service.name in DEAD_STATUSES:
                 service.status = DEAD_STATUSES[service.name]
                 service.status_info = ""
                 service.save()
@@ -136,3 +141,9 @@ class Service(CleanSave, TimestampedModel):
 
     status_info = CharField(
         max_length=255, null=False, blank=True, editable=False)
+
+    def __str__(self):
+        info = "%s - %s" % (self.name, self.status)
+        if len(self.status_info) > 0 and not self.status_info.isspace():
+            info += " (%s)" % self.status_info
+        return info

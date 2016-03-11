@@ -32,6 +32,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     POWER_STATE,
+    SERVICE_STATUS,
 )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.models import (
@@ -50,6 +51,7 @@ from maasserver.models import (
     RackController,
     RegionController,
     RegionRackRPCConnection,
+    Service,
     Space,
     Subnet,
     UnknownInterface,
@@ -5752,3 +5754,47 @@ class TestRackController(MAASServerTestCase):
         self.assertEquals(
             NODE_TYPE.REGION_CONTROLLER,
             Node.objects.get(system_id=system_id).node_type)
+
+    def test_update_rackd_status_calls_mark_dead_when_no_connections(self):
+        rack_controller = factory.make_RackController()
+        mock_mark_dead = self.patch(Service.objects, "mark_dead")
+        rack_controller.update_rackd_status()
+        self.assertThat(
+            mock_mark_dead,
+            MockCalledOnceWith(rack_controller, dead_rack=True))
+
+    def test_update_rackd_status_sets_rackd_running_when_all_connected(self):
+        rack_controller = factory.make_RackController()
+        endpoint = factory.make_RegionControllerProcessEndpoint()
+        RegionRackRPCConnection.objects.create(
+            endpoint=endpoint, rack_controller=rack_controller)
+        rack_controller.update_rackd_status()
+        self.assertThat(
+            Service.objects.get(node=rack_controller, name="rackd"),
+            MatchesStructure.byEquality(
+                status=SERVICE_STATUS.RUNNING, status_info=""))
+
+    def test_update_rackd_status_sets_rackd_degraded(self):
+        rack_controller = factory.make_RackController()
+        regions_with_processes = []
+        for _ in range(3):
+            region = factory.make_RegionController()
+            process = factory.make_RegionControllerProcess(region=region)
+            factory.make_RegionControllerProcessEndpoint(
+                process=process)
+            regions_with_processes.append(region)
+        regions_without_processes = []
+        for _ in range(3):
+            region = factory.make_RegionController()
+            regions_without_processes.append(region)
+        connected_endpoint = factory.make_RegionControllerProcessEndpoint()
+        RegionRackRPCConnection.objects.create(
+            endpoint=connected_endpoint, rack_controller=rack_controller)
+        rack_controller.update_rackd_status()
+        self.assertThat(
+            Service.objects.get(node=rack_controller, name="rackd"),
+            MatchesStructure.byEquality(
+                status=SERVICE_STATUS.DEGRADED, status_info=(
+                    "Missing connections to %d region controller(s)." % (
+                        len(regions_with_processes) +
+                        len(regions_without_processes)))))

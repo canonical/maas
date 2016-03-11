@@ -1126,6 +1126,9 @@ class TestRegisterAndUnregisterConnection(MAASServerTestCase):
             RegionRackRPCConnection.objects.filter(
                 endpoint=endpoint, rack_controller=rack_controller).first())
 
+        # Checks that an exception is not raised if already registered.
+        registerConnection(rack_controller, host)
+
         unregisterConnection(rack_controller.system_id, host)
         self.assertIsNone(
             RegionRackRPCConnection.objects.filter(
@@ -2385,7 +2388,9 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service.update()
 
-        self.assertThat(mock_mark_dead, MockCalledOnceWith(other_region))
+        self.assertThat(
+            mock_mark_dead,
+            MockCalledOnceWith(other_region, dead_region=True))
 
     def patch_port(self, port):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")

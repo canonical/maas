@@ -284,7 +284,7 @@ class Factory(maastesting.factory.Factory):
     def make_RegionControllerProcessEndpoint(
             self, process=None, address=None, port=None):
         if process is None:
-            process = self.make_RegionControllerEndpoint()
+            process = self.make_RegionControllerProcess()
         if address is None:
             address = self.make_ip_address()
         if port is None:

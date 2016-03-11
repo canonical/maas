@@ -455,8 +455,12 @@ def registerConnection(rack_controller, host):
         region=region, pid=os.getpid())
     endpoint = RegionControllerProcessEndpoint.objects.get(
         process=process, address=host.host, port=host.port)
-    RegionRackRPCConnection.objects.create(
+    connection, created = RegionRackRPCConnection.objects.get_or_create(
         endpoint=endpoint, rack_controller=rack_controller)
+    if not created:
+        # Force the save so that signals connected to the
+        # RegionRackRPCConnection are performed.
+        connection.save()
 
 
 @transactional
@@ -1120,7 +1124,7 @@ class RegionAdvertisingService(TimerService, object):
                 system_id=self.maas_id).prefetch_related("processes"):
             # Use len with `all` so the prefetch cache is used.
             if len(other_region.processes.all()) == 0:
-                Service.objects.mark_dead(other_region)
+                Service.objects.mark_dead(other_region, dead_region=True)
 
     @synchronous
     @synchronised(lock)

@@ -9,6 +9,7 @@ import random
 
 from maasserver.enum import (
     NODE_TYPE,
+    SERVICE_STATUS,
     SERVICE_STATUS_CHOICES,
 )
 from maasserver.models.service import (
@@ -107,7 +108,7 @@ class TestServiceManager(MAASServerTestCase):
     def test_mark_dead_for_region_controller(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
-        Service.objects.mark_dead(controller)
+        Service.objects.mark_dead(controller, dead_region=True)
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
@@ -116,18 +117,50 @@ class TestServiceManager(MAASServerTestCase):
     def test_mark_dead_for_rack_controller(self):
         controller = factory.make_RackController()
         Service.objects.create_services_for(controller)
-        Service.objects.mark_dead(controller)
+        Service.objects.mark_dead(controller, dead_rack=True)
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
                 Equals((DEAD_STATUSES[service.name], "")))
 
-    def test_mark_dead_for_region_rack_controller(self):
+    def test_mark_dead_for_region_rack_controller_dead_rack_only(self):
         controller = factory.make_RegionController()
         controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         controller.save()
         Service.objects.create_services_for(controller)
-        Service.objects.mark_dead(controller)
+        Service.objects.mark_dead(controller, dead_rack=True)
+        for service in Service.objects.filter(node=controller):
+            if service.name in RACK_SERVICES:
+                self.expectThat(
+                    (service.status, service.status_info),
+                    Equals((DEAD_STATUSES[service.name], "")))
+            else:
+                self.expectThat(
+                    (service.status, service.status_info),
+                    Equals((SERVICE_STATUS.UNKNOWN, "")))
+
+    def test_mark_dead_for_region_rack_controller_dead_region_only(self):
+        controller = factory.make_RegionController()
+        controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        controller.save()
+        Service.objects.create_services_for(controller)
+        Service.objects.mark_dead(controller, dead_region=True)
+        for service in Service.objects.filter(node=controller):
+            if service.name in REGION_SERVICES:
+                self.expectThat(
+                    (service.status, service.status_info),
+                    Equals((DEAD_STATUSES[service.name], "")))
+            else:
+                self.expectThat(
+                    (service.status, service.status_info),
+                    Equals((SERVICE_STATUS.UNKNOWN, "")))
+
+    def test_mark_dead_for_region_rack_controller_region_and_rack_dead(self):
+        controller = factory.make_RegionController()
+        controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+        controller.save()
+        Service.objects.create_services_for(controller)
+        Service.objects.mark_dead(controller, dead_region=True, dead_rack=True)
         for service in Service.objects.filter(node=controller):
             self.expectThat(
                 (service.status, service.status_info),
