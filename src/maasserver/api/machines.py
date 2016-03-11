@@ -188,11 +188,7 @@ class MachineHandler(NodeHandler):
     @classmethod
     def boot_interface(handler, machine):
         """The network interface which is used to boot over the network."""
-        boot_interface = machine.get_boot_interface()
-        if boot_interface is None:
-            return None
-        else:
-            return {"mac_address": "%s" % boot_interface.mac_address}
+        return machine.get_boot_interface()
 
     @admin_method
     def update(self, request, system_id):

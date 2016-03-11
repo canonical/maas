@@ -140,6 +140,20 @@ class TestMachineAPI(APITestCase):
             parsed_result['fqdn'])
         self.assertEqual(machine.system_id, parsed_result['system_id'])
 
+    def test_GET_returns_boot_interface_object(self):
+        # The api allows for fetching a single Machine (using system_id).
+        machine = factory.make_Node(interface=True)
+        boot_interface = machine.get_boot_interface()
+        response = self.client.get(self.get_machine_uri(machine))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(
+            boot_interface.id, parsed_result['boot_interface']['id'])
+        self.assertEqual(
+            str(boot_interface.mac_address),
+            parsed_result['boot_interface']['mac_address'])
+
     def test_GET_returns_associated_tag(self):
         machine = factory.make_Node()
         tag = factory.make_Tag()

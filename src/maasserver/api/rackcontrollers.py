@@ -55,6 +55,11 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'status_action',
     'node_type',
     'node_type_name',
+    ('service_set', (
+        'name',
+        'status',
+        'status_info',
+        )),
 )
 
 

@@ -106,6 +106,7 @@ class TestRackControllersAPI(APITestCase):
                 'status_action',
                 'node_type',
                 'node_type_name',
+                'service_set',
             ],
             list(parsed_result[0]))
 
