@@ -283,11 +283,11 @@ class TestDeferringChangesPostCommit_by_node(MAASServerTestCase):
         # It turns out that all the above causes 2 calls to dns_add_zones_now.
         self.assertEqual(2, dns_add_zones_now.call_count)
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
-        # Now make sure that dns_update_zones_now gets called once and only
-        # once.
-        self.assertThat(dns_update_zones_now, MockNotCalled())
+        # The above results in 4 calls to dns_update_zones, because of linking
+        # the node to the IP.
+        self.assertEqual(4, dns_update_zones_now.call_count)
         dns_update_by_node(node)
-        self.assertEqual(1, dns_update_zones_now.call_count)
+        self.assertEqual(5, dns_update_zones_now.call_count)
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
 
 

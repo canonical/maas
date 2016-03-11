@@ -1530,7 +1530,7 @@ class TestUnlinkSubnet(MAASServerTestCase):
         interface.unlink_subnet_by_id(static_ip.id)
         self.assertThat(
             mock_dns_update_subnets,
-            MockCalledOnceWith({subnet}))
+            MockCallsMatch(call({subnet}), call({subnet}), call(set())))
         self.assertThat(
             mock_dns_update_by_node,
             MockCalledOnceWith(interface.node))
@@ -2162,7 +2162,7 @@ class TestReleaseAutoIPs(MAASServerTestCase):
         interface.release_auto_ips()
         self.assertThat(
             mock_dns_update_subnets,
-            MockCalledOnceWith({subnet}))
+            MockCallsMatch(call({subnet}), call({subnet})))
         self.assertThat(
             mock_dns_update_by_node,
             MockCalledOnceWith(interface.node))
