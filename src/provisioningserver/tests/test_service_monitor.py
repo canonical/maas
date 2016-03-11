@@ -69,7 +69,7 @@ class TestDHCPv4Service(MAASTestCase):
 
     def test_name(self):
         service = DHCPv4Service()
-        self.assertEqual("dhcp4", service.name)
+        self.assertEqual("dhcpd", service.name)
 
     def test_service_name(self):
         service = DHCPv4Service()
@@ -80,7 +80,7 @@ class TestDHCPv6Service(MAASTestCase):
 
     def test_name(self):
         service = DHCPv6Service()
-        self.assertEqual("dhcp6", service.name)
+        self.assertEqual("dhcpd6", service.name)
 
     def test_service_name(self):
         service = DHCPv6Service()
@@ -102,4 +102,4 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
     def test__includes_all_services(self):
         self.assertItemsEqual(
-            ["dhcp4", "dhcp6", "tgt"], service_monitor._services.keys())
+            ["dhcpd", "dhcpd6", "tgt"], service_monitor._services.keys())

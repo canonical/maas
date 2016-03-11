@@ -463,3 +463,22 @@ class UpdateLease(amp.Command):
     errors = {
         NoSuchCluster: b"NoSuchCluster",
     }
+
+
+class UpdateServices(amp.Command):
+    """Report service statuses that are monitored on the rackd.
+
+    :since: 2.0
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        (b"services", AmpList(
+            [(b"name", amp.Unicode()),
+             (b"status", amp.Unicode()),
+             (b"status_info", amp.Unicode())])),
+    ]
+    response = []
+    errors = {
+        NoSuchCluster: b"NoSuchCluster",
+    }

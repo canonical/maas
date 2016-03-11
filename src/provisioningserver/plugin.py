@@ -139,10 +139,10 @@ class ProvisioningServiceMaker:
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
 
-    def _makeServiceMonitorService(self):
+    def _makeServiceMonitorService(self, rpc_service):
         from provisioningserver.pserv_services.service_monitor_service \
             import ServiceMonitorService
-        service_monitor = ServiceMonitorService(reactor)
+        service_monitor = ServiceMonitorService(rpc_service, reactor)
         service_monitor.setName("service_monitor")
         return service_monitor
 
@@ -155,7 +155,7 @@ class ProvisioningServiceMaker:
         yield self._makeDHCPProbeService(rpc_service)
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
-        yield self._makeServiceMonitorService()
+        yield self._makeServiceMonitorService(rpc_service)
         yield self._makeImageDownloadService(
             rpc_service, config.tftp_root)
         # The following are network-accessible services.

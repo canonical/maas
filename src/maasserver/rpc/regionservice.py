@@ -54,6 +54,7 @@ from maasserver.rpc.nodes import (
     create_node,
     request_node_info_by_mac_address,
 )
+from maasserver.rpc.services import update_services
 from maasserver.security import get_shared_secret
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -424,6 +425,16 @@ class Region(RPCProtocol):
             }
         d.addCallback(get_node_info)
         return d
+
+    @region.UpdateServices.responder
+    def update_services(self, system_id, services):
+        """update_services(system_id, services)
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.UpdateServices`.
+        """
+        return deferToDatabase(
+            update_services, system_id, services)
 
 
 @transactional

@@ -64,6 +64,7 @@ from maasserver.rpc.regionservice import (
     registerConnection,
     unregisterConnection,
 )
+from maasserver.rpc.services import update_services
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
 from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
@@ -132,6 +133,7 @@ from provisioningserver.rpc.region import (
     UpdateInterfaces,
     UpdateLease,
     UpdateNodePowerState,
+    UpdateServices,
 )
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
@@ -1055,6 +1057,45 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
                 "'%s'.", name, event_description, mac_address))
 
 
+class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
+
+    def setUp(self):
+        super(TestRegionProtocol_UpdateServices, self).setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks"))
+
+    def test_update_services_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(UpdateServices.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_update_services_in_database_thread(self):
+        system_id = factory.make_name("system_id")
+        services = [{
+            "name": factory.make_name("service"),
+            "status": factory.make_name("status"),
+            "status_info": factory.make_name("status_info"),
+        }]
+
+        mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
+        mock_deferToDatabase.return_value = succeed({})
+
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(), UpdateServices, {
+                    "system_id": system_id,
+                    "services": services,
+                    })
+        finally:
+            yield eventloop.reset()
+
+        self.assertThat(
+            mock_deferToDatabase,
+            MockCalledOnceWith(update_services, system_id, services))
+
+
 class TestRegisterAndUnregisterConnection(MAASServerTestCase):
     """Tests for the `registerConnection` and `unregisterConnection`
     function."""
@@ -1075,6 +1116,7 @@ class TestRegisterAndUnregisterConnection(MAASServerTestCase):
         host = MagicMock()
         host.host = endpoint.address
         host.port = endpoint.port
+
         rack_controller = factory.make_RackController()
 
         registerConnection(rack_controller, host)

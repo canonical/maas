@@ -66,7 +66,7 @@ class DHCPv4Server(DHCPServer):
     template_basename = 'dhcpd.conf.template'
     interfaces_filename = get_path(DHCPv4_INTERFACES_FILE)
     config_filename = get_path(DHCPv4_CONFIG_FILE)
-    dhcp_service = "dhcp4"
+    dhcp_service = "dhcpd"
 
 
 class DHCPv6Server(DHCPServer):
@@ -79,4 +79,4 @@ class DHCPv6Server(DHCPServer):
     template_basename = 'dhcpd6.conf.template'
     interfaces_filename = get_path(DHCPv6_INTERFACES_FILE)
     config_filename = get_path(DHCPv6_CONFIG_FILE)
-    dhcp_service = "dhcp6"
+    dhcp_service = "dhcpd6"

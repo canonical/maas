@@ -12,23 +12,54 @@ __all__ = [
 from datetime import timedelta
 
 from provisioningserver.config import is_dev_environment
+from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.region import UpdateServices
 from provisioningserver.service_monitor import service_monitor
+from provisioningserver.utils.service_monitor import SERVICE_STATE
+from provisioningserver.utils.twisted import (
+    pause,
+    retries,
+)
 from twisted.application.internet import TimerService
+from twisted.internet.defer import inlineCallbacks
 from twisted.python import log
+
+
+maaslog = get_maas_logger("service_monitor_service")
 
 
 class ServiceMonitorService(TimerService, object):
     """Service to monitor external services that the cluster requires."""
 
+    # Services that we don't perform any checks on at the moment and we
+    # always considered working as since they run in the same process as rackd.
+    # "rackd" should not show in this list as the region controller handles
+    # updating the status of "rackd". This is because its status all depends
+    # on the connections across the multiple regions.
+    ALWAYS_RUNNING_SERVICES = [
+        {
+            "name": "http",
+            "status": SERVICE_STATE.ON,
+            "status_info": "",
+        },
+        {
+            "name": "tftp",
+            "status": SERVICE_STATE.ON,
+            "status_info": "",
+        },
+    ]
+
     check_interval = timedelta(minutes=1).total_seconds()
 
-    def __init__(self, clock=None):
-        # Call self.monitor_services() every self.check_interval.
+    def __init__(self, client_service, clock):
+        # Call self.monitorServices() every self.check_interval.
         super(ServiceMonitorService, self).__init__(
-            self.check_interval, self.monitor_services)
+            self.check_interval, self.monitorServices)
+        self.client_service = client_service
         self.clock = clock
 
-    def monitor_services(self):
+    def monitorServices(self):
         """Monitors all of the external services and makes sure they
         stay running.
         """
@@ -38,5 +69,43 @@ class ServiceMonitorService(TimerService, object):
                 "the supervision of systemd.")
         else:
             d = service_monitor.ensureServices()
-            d.addErrback(log.err, "Failed to monitor services.")
+            d.addCallback(self._updateRegion)
+            d.addErrback(
+                log.err, "Failed to monitor services and update region.")
             return d
+
+    @inlineCallbacks
+    def _updateRegion(self, services):
+        """Update region about services status."""
+        client = None
+        for elapsed, remaining, wait in retries(30, 10, self.clock):
+            try:
+                client = self.client_service.getClient()
+                break
+            except NoConnectionsAvailable:
+                yield pause(wait, self.clock)
+        else:
+            maaslog.error(
+                "Can't update service statuses, no RPC "
+                "connection to region.")
+            return
+        services = yield self._buildServices(services)
+        yield client(
+            UpdateServices,
+            system_id=client.localIdent,
+            services=services)
+
+    @inlineCallbacks
+    def _buildServices(self, services):
+        """Build the list of services to be sent over RPC."""
+        msg_services = list(self.ALWAYS_RUNNING_SERVICES)
+        for name, state in services.items():
+            service = service_monitor.getServiceByName(name)
+            status, status_info = yield state.get_status_and_status_info_for(
+                service)
+            msg_services.append({
+                "name": name,
+                "status": status,
+                "status_info": status_info,
+            })
+        return msg_services

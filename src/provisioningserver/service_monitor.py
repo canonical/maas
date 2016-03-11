@@ -43,13 +43,13 @@ class DHCPService(Service):
 
 class DHCPv4Service(DHCPService):
 
-    name = "dhcp4"
+    name = "dhcpd"
     service_name = "maas-dhcpd"
 
 
 class DHCPv6Service(DHCPService):
 
-    name = "dhcp6"
+    name = "dhcpd6"
     service_name = "maas-dhcpd6"
 
 

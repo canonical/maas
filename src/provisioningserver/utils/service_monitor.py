@@ -68,6 +68,33 @@ class ServiceState(ServiceStateBase):
         return ServiceStateBase.__new__(
             cls, active_state=active_state, process_state=process_state)
 
+    @asynchronous
+    @inlineCallbacks
+    def get_status_and_status_info_for(self, service):
+        """Return the status and status_info for the state of `service`."""
+        if self.active_state == SERVICE_STATE.UNKNOWN:
+            status = "unknown"
+            status_info = ""
+        elif self.active_state == SERVICE_STATE.ON:
+            status = "running"
+            status_info = ""
+        else:
+            expected_state = yield maybeDeferred(
+                service.get_expected_state)
+            if expected_state == SERVICE_STATE.ON:
+                status = "dead"
+                if self.active_state == SERVICE_STATE.OFF:
+                    status_info = "%s is currently stopped." % (
+                        service.service_name)
+                else:
+                    status_info = (
+                        "%s failed to start, process result: (%s)" % (
+                            service.service_name, self.process_state))
+            else:
+                status = "off"
+                status_info = ""
+        returnValue((status, status_info))
+
 
 class Service(metaclass=ABCMeta):
     """Skeleton for a monitored service."""
