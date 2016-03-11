@@ -96,6 +96,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "rpc-advertise",
             "postgres-listener",
             "status-monitor",
+            "service-monitor",
             "system-controller",
             "web",
         ]

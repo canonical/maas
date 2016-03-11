@@ -36,6 +36,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
+    SERVICE_STATUS,
 )
 from maasserver.models import (
     Config,
@@ -47,6 +48,7 @@ from maasserver.models import (
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
+    Service as ServiceModel,
     timestampedmodel,
 )
 from maasserver.models.interface import PhysicalInterface
@@ -2043,7 +2045,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         self.patch_autospec(regionservice, "pause").return_value = None
         # Ensure that service.prepare fails with a obvious error.
         exception = ValueError("You don't vote for kings!")
-        self.patch(service, "prepare").side_effect = [exception, None]
+        self.patch(service, "prepared").side_effect = [exception, None]
         # Capture all Twisted logs.
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -2102,7 +2104,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             0, RegionController.objects.count(),
             "No RegionControllers should exist.")
 
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         # RegionController exists for with hostname and region_id written to.
         region = RegionController.objects.get(hostname=gethostname())
@@ -2121,7 +2124,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             for interface in interfaces
         ]
 
-        service.prepare(mac_addresses)
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), mac_addresses)))
 
         # Node should have been converted to a RegionController.
         node = reload_object(node)
@@ -2135,7 +2139,9 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             interface=True, node_type=NODE_TYPE.RACK_CONTROLLER)
         interface = node.get_boot_interface()
 
-        service.prepare([str(interface.mac_address)])
+        service.prepared(
+            service.prepare(
+                (self.maas_id, gethostname(), [str(interface.mac_address)])))
 
         # Node should have been converted to a RegionRackController.
         node = reload_object(node)
@@ -2148,7 +2154,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
         self.maas_id = node.system_id
 
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         # RegionController should have hostname updated.
         node = reload_object(node)
@@ -2168,16 +2175,22 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # patched-in _do_create() is called.
         locked = []
 
-        def get_maas_id():
-            locked.append(locks.eventloop.is_locked())
-            return self.maas_id
+        region = factory.make_RegionController()
+        self.maas_id = region.system_id
 
         service = RegionAdvertisingService()
-        self.get_maas_id.side_effect = get_maas_id
+        original_fix_node_for_region = service._fix_node_for_region
+
+        def catch_lock(*args, **kwargs):
+            locked.append(locks.eventloop.is_locked())
+            return original_fix_node_for_region(*args, **kwargs)
+
+        self.patch(service, "_fix_node_for_region").side_effect = catch_lock
 
         # The lock is not held before and after prepare() is called.
         self.assertFalse(locks.eventloop.is_locked())
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
         self.assertFalse(locks.eventloop.is_locked())
 
         # The lock was held when _get_region_id() was called.
@@ -2186,7 +2199,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_update_updates_region_hostname(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         region = RegionController.objects.get(system_id=self.maas_id)
         region.hostname = factory.make_name("host")
@@ -2201,7 +2215,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_update_creates_process(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
         service.update()
 
         region = RegionController.objects.get(system_id=self.maas_id)
@@ -2211,7 +2226,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_update_removes_old_processes(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         old_time = now() - timedelta(seconds=90)
         region = RegionController.objects.get(system_id=self.maas_id)
@@ -2234,7 +2250,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         old_time = current_time - timedelta(seconds=90)
         region = RegionController.objects.get(system_id=self.maas_id)
@@ -2261,7 +2278,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service = RegionAdvertisingService()
         service._get_addresses = lambda: addresses
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         service.update()
 
@@ -2277,7 +2295,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_update_does_not_insert_endpoints_when_nothings_listening(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         service.update()
 
@@ -2292,7 +2311,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
     def test_update_deletes_old_endpoints(self):
         service = RegionAdvertisingService()
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         process = RegionControllerProcess.objects.get(
             id=service.processId.value)
@@ -2316,6 +2336,57 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(addresses, saved_endpoints)
 
+    def test_update_sets_regiond_degraded_with_less_than_4_processes(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
+
+        service.update()
+
+        region = RegionController.objects.get(system_id=self.maas_id)
+        [process] = region.processes.all()
+        regiond_service = ServiceModel.objects.get(node=region, name="regiond")
+        self.assertThat(regiond_service, MatchesStructure.byEquality(
+            status=SERVICE_STATUS.DEGRADED,
+            status_info="1 process running but 4 were expected."))
+
+    def test_update_sets_regiond_running_with_4_processes(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
+
+        region = RegionController.objects.get(system_id=self.maas_id)
+        [process] = region.processes.all()
+
+        # Make 3 more processes.
+        for _ in range(3):
+            factory.make_RegionControllerProcess(region=region)
+
+        service.update()
+
+        regiond_service = ServiceModel.objects.get(node=region, name="regiond")
+        self.assertThat(regiond_service, MatchesStructure.byEquality(
+            status=SERVICE_STATUS.RUNNING,
+            status_info=""))
+
+    def test_update_calls_mark_dead_on_regions_without_processes(self):
+        service = RegionAdvertisingService()
+        service._get_addresses = lambda: []
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
+
+        region = RegionController.objects.get(system_id=self.maas_id)
+        [process] = region.processes.all()
+
+        other_region = factory.make_RegionController()
+        mock_mark_dead = self.patch(ServiceModel.objects, "mark_dead")
+
+        service.update()
+
+        self.assertThat(mock_mark_dead, MockCalledOnceWith(other_region))
+
     def patch_port(self, port):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         getPort = getServiceNamed.return_value.getPort
@@ -2334,7 +2405,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
 
         service = RegionAdvertisingService()
         service._get_addresses = lambda: example_addresses
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
 
         service.update()
 
@@ -2348,7 +2420,8 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
     def test_remove(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: [("192.168.0.1", 9876)]
-        service.prepare([])
+        service.prepared(
+            service.prepare((self.maas_id, gethostname(), [])))
         service.update()
         service.remove()
 

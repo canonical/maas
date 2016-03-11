@@ -112,6 +112,14 @@ class Service(metaclass=ABCMeta):
         """Return a the expected state for the service."""
 
 
+class AlwaysOnService(Service):
+    """Service that should always be on."""
+
+    def get_expected_state(self):
+        """Service is should always on."""
+        return SERVICE_STATE.ON
+
+
 class ServiceUnknownError(Exception):
     """Raised when a check is called for a service the `ServiceMonitor` does
     not know about."""

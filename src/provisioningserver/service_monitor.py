@@ -7,6 +7,7 @@ __all__ = [
     ]
 
 from provisioningserver.utils.service_monitor import (
+    AlwaysOnService,
     Service,
     SERVICE_STATE,
     ServiceMonitor,
@@ -53,19 +54,11 @@ class DHCPv6Service(DHCPService):
     service_name = "maas-dhcpd6"
 
 
-class TGTService(Service):
+class TGTService(AlwaysOnService):
     """Monitored tgt service."""
 
     name = "tgt"
     service_name = "tgt"
-
-    def get_expected_state(self):
-        """Return a the expected state for the tgt service.
-
-        The tgt service should always be on. No condition exists where it
-        should be off.
-        """
-        return SERVICE_STATE.ON
 
 
 # Global service monitor for rackd.

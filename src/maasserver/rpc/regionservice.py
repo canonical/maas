@@ -29,7 +29,10 @@ from maasserver import (
     locks,
 )
 from maasserver.bootresources import get_simplestream_endpoint
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import (
+    NODE_TYPE,
+    SERVICE_STATUS,
+)
 from maasserver.models.node import (
     Node,
     RackController,
@@ -40,6 +43,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.service import Service
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     boot,
@@ -59,7 +63,6 @@ from maasserver.security import get_shared_secret
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_one,
-    post_commit,
     transactional,
     with_connection,
 )
@@ -115,6 +118,11 @@ from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from zope.interface import implementer
+
+# Number of regiond processes that should be running for a regiond.
+# XXX blake_r 2016-03-10 bug=1555901: It would be better to determine this
+# value from systemd or other means instead of hard coding the number.
+NUMBER_OF_REGIOND_PROCESSES = 4
 
 
 class Region(RPCProtocol):
@@ -975,8 +983,11 @@ class RegionAdvertisingService(TimerService, object):
         """
         while True:
             try:
-                d = deferToThread(get_mac_addresses)
+                d = deferToThread(
+                    lambda: (
+                        get_maas_id(), gethostname(), get_mac_addresses()))
                 d.addCallback(partial(deferToDatabase, self.prepare))
+                d.addCallback(self.prepared)
                 yield d
             except defer.CancelledError:
                 raise
@@ -993,7 +1004,7 @@ class RegionAdvertisingService(TimerService, object):
     @with_connection  # Needed by the following lock.
     @synchronised(locks.eventloop)
     @transactional
-    def prepare(self, mac_addresses):
+    def prepare(self, result):
         """Ensure that the `RegionController` exists.
 
         If not, create it. On first creation the `system_id` of the
@@ -1001,36 +1012,35 @@ class RegionAdvertisingService(TimerService, object):
         is used by the other `RegionControllerProcess` on this region to use
         the same `RegionController`.
         """
-        self.maas_id = get_maas_id()
-        if self.maas_id is None:
-            # See if any other nodes is this node, by checkin interfaces on
-            # this node.
-            hostname = gethostname()
-            region_obj = get_one(Node.objects.filter(
-                Q(interface__mac_address__in=mac_addresses) |
-                Q(hostname=hostname)).distinct())
-            if region_obj is not None:
-                # Already a node with a MAC address that matches this machine.
-                # Convert that into a region.
-                region_obj = self._fix_node_for_region(region_obj)
-            else:
-                # This is the first time MAAS has ran on this node. Create a
-                # new `RegionController` and save the maas_id.
-                region_obj = RegionController.objects.create(
-                    hostname=hostname)
-            self.maas_id = region_obj.system_id
-            set_maas_id(self.maas_id)
+        maas_id, hostname, mac_addresses = result
+        region_filter = Q()
+        if maas_id is not None:
+            region_filter |= Q(system_id=maas_id)
+        region_filter |= Q(hostname=hostname)
+        region_filter |= Q(interface__mac_address__in=mac_addresses)
+        region_obj = get_one(Node.objects.filter(region_filter).distinct())
+        if region_obj is not None:
+            # Already exists make sure its set as a region.
+            region_obj = self._fix_node_for_region(region_obj)
         else:
-            # Region already exists load it from the database.
-            region_obj = Node.objects.get(system_id=self.maas_id)
-            self._fix_node_for_region(region_obj)
+            # This is the first time MAAS has ran on this node. Create a
+            # new `RegionController`.
+            region_obj = RegionController.objects.create(
+                hostname=hostname)
 
         # Create the process for this region. This process object will
         # continuously be updated in the database in the `update` loop. The
         # `update` loop also removes the old processes from the database.
         process, _ = RegionControllerProcess.objects.get_or_create(
             region=region_obj, pid=os.getpid())
-        post_commit().addCallback(callOut, self.processId.set, process.id)
+        return region_obj.system_id, process.id
+
+    def prepared(self, ids):
+        """Called after `prepare` to set the maas_id and processId."""
+        maas_id, process_id = ids
+        self.maas_id = maas_id
+        set_maas_id(maas_id)
+        self.processId.set(process_id)
 
     @synchronous
     @synchronised(lock)
@@ -1084,6 +1094,33 @@ class RegionAdvertisingService(TimerService, object):
         # Remove any previous endpoints.
         RegionControllerProcessEndpoint.objects.filter(
             id__in=previous_endpoint_ids).delete()
+
+        # Update the status of this regiond service for this region based on
+        # the number of running processes.
+        Service.objects.create_services_for(region_obj)
+        number_of_processes = RegionControllerProcess.objects.filter(
+            region=region_obj).count()
+        not_running_count = NUMBER_OF_REGIOND_PROCESSES - number_of_processes
+        if not_running_count > 0:
+            if number_of_processes == 1:
+                process_text = "process"
+            else:
+                process_text = "processes"
+            Service.objects.update_service_for(
+                region_obj, "regiond", SERVICE_STATUS.DEGRADED,
+                "%d %s running but %d were expected." % (
+                    number_of_processes, process_text,
+                    NUMBER_OF_REGIOND_PROCESSES))
+        else:
+            Service.objects.update_service_for(
+                region_obj, "regiond", SERVICE_STATUS.RUNNING, "")
+
+        # Update the status of all regions that have no processes running.
+        for other_region in RegionController.objects.exclude(
+                system_id=self.maas_id).prefetch_related("processes"):
+            # Use len with `all` so the prefetch cache is used.
+            if len(other_region.processes.all()) == 0:
+                Service.objects.mark_dead(other_region)
 
     @synchronous
     @synchronised(lock)

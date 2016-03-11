@@ -13,6 +13,7 @@ from maasserver import (
     bootresources,
     eventloop,
     nonces_cleanup,
+    service_monitor,
     status_monitor,
     system_controller,
     webapp,
@@ -233,6 +234,20 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["postgres-listener", "rpc-advertise"],
             eventloop.loop.factories["system-controller"]["requires"])
+
+    def test_make_ServiceMonitorService(self):
+        service = eventloop.make_ServiceMonitorService(
+            sentinel.rpc_advertise)
+        self.assertThat(service, IsInstance(
+            service_monitor.ServiceMonitorService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_ServiceMonitorService,
+            eventloop.loop.factories["service-monitor"]["factory"])
+        # Has a dependency of rpc-advertise.
+        self.assertEquals(
+            ["rpc-advertise"],
+            eventloop.loop.factories["service-monitor"]["requires"])
 
 
 class TestDisablingDatabaseConnections(MAASTestCase):
