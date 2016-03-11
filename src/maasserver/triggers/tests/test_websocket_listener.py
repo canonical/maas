@@ -7,6 +7,7 @@
 __all__ = []
 
 import random
+from unittest import skip
 
 from crochet import wait_for
 from maasserver.enum import (
@@ -1943,6 +1944,7 @@ class TestMachinePartitionListener(
         finally:
             yield listener.stopService()
 
+    @skip("XXX: GavinPanella 2016-03-11 bug=1556188: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_with_update_on_update(self):

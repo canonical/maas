@@ -32,13 +32,17 @@ from provisioningserver.utils.service_monitor import (
     ServiceUnknownError,
 )
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Contains,
+    Equals,
+)
+from twisted.internet import reactor
 from twisted.internet.defer import (
     DeferredLock,
-    fail,
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 
 
@@ -134,19 +138,6 @@ class TestServiceMonitor(MAASTestCase):
         lock = yield service_monitor._getServiceLock(name)
         self.assertIsInstance(lock, DeferredLock)
 
-    @inlineCallbacks
-    def test___getServiceLock_uses_shared_lock(self):
-        service_monitor = self.make_service_monitor()
-        service_shared_lock = self.patch(service_monitor, "_lock")
-        service_shared_lock.acquire.return_value = succeed(
-            service_shared_lock)
-        name = factory.make_name("service")
-        yield service_monitor._getServiceLock(name)
-        self.assertThat(
-            service_shared_lock.acquire, MockCalledOnceWith())
-        self.assertThat(
-            service_shared_lock.release, MockCalledOnceWith())
-
     def test__getServiceByName_returns_service(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
@@ -175,22 +166,16 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEquals(state, observered_state)
 
     @inlineCallbacks
-    def test__updateServiceState_holds_service_lock(self):
+    def test__updateServiceState_does_not_hold_service_lock(self):
         service_monitor = self.make_service_monitor()
-        service_lock = Mock()
-        service_lock.acquire.return_value = succeed(service_lock)
-        self.patch(
-            service_monitor,
-            "_getServiceLock").return_value = succeed(service_lock)
+        service_lock = self.patch(service_monitor, "_getServiceLock")
         name = factory.make_name("service")
         active_state = factory.pick_enum(SERVICE_STATE)
         process_state = random.choice(["running", "dead"])
         yield service_monitor._updateServiceState(
             name, active_state, process_state)
-        self.assertThat(
-            service_lock.acquire, MockCalledOnceWith())
-        self.assertThat(
-            service_lock.release, MockCalledOnceWith())
+        self.assertThat(service_lock.acquire, MockNotCalled())
+        self.assertThat(service_lock.release, MockNotCalled())
 
     @inlineCallbacks
     def test__getServiceState_with_now_True(self):
@@ -248,18 +233,41 @@ class TestServiceMonitor(MAASTestCase):
 
     @inlineCallbacks
     def test__ensureServices_handles_errors(self):
-        fake_service = make_fake_service()
-        service_monitor = self.make_service_monitor([fake_service])
-        active_state = factory.pick_enum(SERVICE_STATE)
-        process_state = random.choice(["running", "dead"])
-        service_state = ServiceState(active_state, process_state)
-        service_monitor._serviceStates[fake_service.name] = service_state
-        self.patch(service_monitor, "ensureService").return_value = fail(
-            ServiceActionError())
-        observered = yield service_monitor.ensureServices()
-        self.assertEquals({
-            fake_service.name: service_state,
-        }, observered)
+        services = make_fake_service(), make_fake_service()
+        service_monitor = self.make_service_monitor(services)
+        # Plant some states into the monitor's memory.
+        service_states = {
+            service.name: ServiceState(
+                factory.pick_enum(SERVICE_STATE),
+                random.choice(["running", "dead"]))
+            for service in services
+        }
+        service_monitor._serviceStates.update(service_states)
+
+        # Make both service monitor checks fail with a distinct error.
+        self.patch(service_monitor, "ensureService")
+
+        def raise_exception(service_name):
+            raise factory.make_exception(service_name + " broke")
+
+        def raise_exception_later(service_name):
+            # We use deferLater() to ensure that `raise_exception` is called
+            # asynchronously; this helps to ensure that ensureServices() has
+            # not closed over mutating local state, e.g. a loop variable.
+            return deferLater(reactor, 0, raise_exception, service_name)
+
+        service_monitor.ensureService.side_effect = raise_exception_later
+
+        # Capture logs when calling ensureServices().
+        with FakeLogger("maas.service_monitor") as logger:
+            observed = yield service_monitor.ensureServices()
+        # The errors mean we were returned the states planted earlier.
+        self.assertThat(observed, Equals(service_states))
+        # The errors were logged with the service name and message.
+        for service in services:
+            self.assertThat(logger.output, Contains(
+                "While monitoring service '%s' an error was encountered: "
+                "%s broke" % (service.name, service.name)))
 
     @inlineCallbacks
     def test__ensureService_calls__ensureService(self):
@@ -369,7 +377,7 @@ class TestServiceMonitor(MAASTestCase):
         service_lock.acquire.return_value = succeed(service_lock)
         self.patch(
             service_monitor,
-            "_getServiceLock").return_value = succeed(service_lock)
+            "_getServiceLock").return_value = service_lock
         mock_execServiceAction = self.patch(
             service_monitor, "_execServiceAction")
         mock_execServiceAction.return_value = (0, "")

@@ -17,7 +17,6 @@ from collections import (
     defaultdict,
     namedtuple,
 )
-import os
 from subprocess import (
     PIPE,
     Popen,
@@ -25,9 +24,9 @@ from subprocess import (
 )
 
 from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.utils.shell import select_c_utf8_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
-    callOut,
     synchronous,
 )
 from twisted.internet.defer import (
@@ -166,16 +165,12 @@ class ServiceMonitor:
         }
         self._serviceStates = defaultdict(ServiceState)
         self._serviceLocks = defaultdict(DeferredLock)
-        # A shared lock for critical sections.
-        self._lock = DeferredLock()
 
     def _getServiceLock(self, name):
-        """Return the lock for the whole service monitor."""
-        d = self._lock.acquire()
-        d.addCallback(lambda _: self._serviceLocks[name])
-        d.addBoth(callOut, self._lock.release)
-        return d
+        """Return the lock for the named service."""
+        return self._serviceLocks[name]
 
+    @asynchronous
     def getServiceByName(self, name):
         """Return service from its name."""
         service = self._services.get(name)
@@ -184,18 +179,11 @@ class ServiceMonitor:
                 "Service '%s' is not registered." % name)
         return service
 
-    @asynchronous
-    @inlineCallbacks
     def _updateServiceState(self, name, active_state, process_state):
         """Update the internally held state of a service."""
-        lock = yield self._getServiceLock(name)
-        yield lock.acquire()
-        try:
-            state = ServiceState(active_state, process_state)
-            self._serviceStates[name] = state
-        finally:
-            lock.release()
-        returnValue(state)
+        state = ServiceState(active_state, process_state)
+        self._serviceStates[name] = state
+        return state
 
     @asynchronous
     @inlineCallbacks
@@ -207,47 +195,44 @@ class ServiceMonitor:
         service = self.getServiceByName(name)
         if now:
             active_state, process_state = yield self._loadServiceState(service)
-            state = yield self._updateServiceState(
-                name, active_state, process_state)
+            state = self._updateServiceState(name, active_state, process_state)
         else:
-            lock = yield self._getServiceLock(name)
-            yield lock.acquire()
-            try:
-                state = self._serviceStates[name]
-            finally:
-                lock.release()
+            state = self._serviceStates[name]
         returnValue(state)
 
     @asynchronous
     def ensureServices(self):
-        """Ensures that services are in their desired state."""
-        defers = []
-        order_of_process = []
-        for name, service in self._services.items():
+        """Ensures that services are in their desired state.
 
-            def eb_log(failure):
-                if failure.check(ServiceActionError) is None:
-                    # Only log if its not the ServiceActionError.
-                    # ServiceActionError is already logged.
-                    maaslog.error(
-                        "While monitoring service '%s' an error was "
-                        "encountered: %s", name, failure.value)
-                # Return the current service state.
-                return self._serviceStates[name]
+        :return: A mapping of service names to their current known state.
+        """
 
-            d = self.ensureService(name)
-            d.addErrback(eb_log)
-            defers.append(d)
-            order_of_process.append(name)
+        def eb_ensureService(failure, service_name):
+            # Only log if it's not the ServiceActionError;
+            # ServiceActionError is already logged.
+            if failure.check(ServiceActionError) is None:
+                maaslog.error(
+                    "While monitoring service '%s' an error was "
+                    "encountered: %s", service_name, failure.value)
+            # Return the current service state.
+            return self._serviceStates[service_name]
+
+        def cb_ensureService(state, service_name):
+            return service_name, state
+
+        def ensureService(service_name):
+            # Wraps self.ensureService in error handling. Returns a Deferred.
+            # Errors are logged and consumed; the Deferred always fires with a
+            # (service-name, state) tuple.
+            d = self.ensureService(service_name)
+            d.addErrback(eb_ensureService, service_name)
+            d.addCallback(cb_ensureService, service_name)
+            return d
 
         def cb_buildResult(results):
-            return {
-                service_name: state
-                for (success, state), service_name in zip(
-                    results, order_of_process)
-            }
+            return dict(result for _, result in results)
 
-        d = DeferredList(defers)
+        d = DeferredList(map(ensureService, self._services))
         d.addCallback(cb_buildResult)
         return d
 
@@ -299,22 +284,17 @@ class ServiceMonitor:
 
         :return: tuple (exit code, output)
         """
-        # Force systemd to output in UTF-8 by selecting the C.UTF-8 locale.
-        env = os.environ.copy()
-        env["LANG"] = "C.UTF-8"
-        env["LC_ALL"] = "C.UTF-8"
         process = Popen(
             ["sudo", "systemctl", action, service_name],
-            stdin=PIPE, stdout=PIPE,
-            stderr=STDOUT, close_fds=True, env=env)
+            stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True,
+            env=select_c_utf8_locale())
         output, _ = process.communicate()
         return process.wait(), output.decode("utf-8").strip()
 
-    @asynchronous
     @inlineCallbacks
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
-        lock = yield self._getServiceLock(service.name)
+        lock = self._getServiceLock(service.name)
         yield lock.acquire()
         try:
             exit_code, output = yield deferToThread(
@@ -328,7 +308,6 @@ class ServiceMonitor:
             maaslog.error(error_msg)
             raise ServiceActionError(error_msg)
 
-    @asynchronous
     @inlineCallbacks
     def _loadServiceState(self, service):
         """Return service status from systemd."""

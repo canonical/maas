@@ -848,6 +848,7 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
         event = yield deferToDatabase(self.get_event, system_id, event_type)
         self.expectThat(event.created, Equals(timestamp))
 
+    @skip("XXX: GavinPanella 2016-03-11 bug=1556188: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
     def test_send_event_does_not_fail_if_unknown_type(self):
