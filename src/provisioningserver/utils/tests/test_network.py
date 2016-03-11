@@ -720,7 +720,6 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['usage'], Equals(float(4) / float(254)))
         self.assertThat(json['usage_string'], Equals("2%"))
         self.assertThat(json['available_string'], Equals("98%"))
-        self.assertThat(json['inefficiency_string'], Equals("TBD"))
         self.assertThat(json, Not(Contains("ranges")))
 
     def test__statistics_are_accurate_and_ranges_are_returned_if_desired(self):
@@ -734,9 +733,60 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['usage'], Equals(float(4) / float(254)))
         self.assertThat(json['usage_string'], Equals('2%'))
         self.assertThat(json['available_string'], Equals("98%"))
-        self.assertThat(json['inefficiency_string'], Equals("TBD"))
         self.assertThat(json, Contains('ranges'))
         self.assertThat(json['ranges'], Equals(stats.ranges.render_json()))
+
+    def test__statistics_are_accurate_for_full_slash_32(self):
+        s = MAASIPSet(['10.0.0.1'])
+        u = s.get_full_range('10.0.0.1/32')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(0))
+        self.assertThat(json['largest_available'], Equals(0))
+        self.assertThat(json['num_unavailable'], Equals(1))
+        self.assertThat(json['usage'], Equals(float(1) / float(1)))
+        self.assertThat(json['usage_string'], Equals("100%"))
+        self.assertThat(json['available_string'], Equals("0%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
+    def test__statistics_are_accurate_for_empty_slash_32(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('10.0.0.1/32')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(1))
+        self.assertThat(json['largest_available'], Equals(1))
+        self.assertThat(json['num_unavailable'], Equals(0))
+        self.assertThat(json['usage'], Equals(float(0) / float(1)))
+        self.assertThat(json['usage_string'], Equals("0%"))
+        self.assertThat(json['available_string'], Equals("100%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
+    def test__statistics_are_accurate_for_full_slash_128(self):
+        s = MAASIPSet(['2001:db8::1'])
+        u = s.get_full_range('2001:db8::1/128')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(0))
+        self.assertThat(json['largest_available'], Equals(0))
+        self.assertThat(json['num_unavailable'], Equals(1))
+        self.assertThat(json['usage'], Equals(float(1) / float(1)))
+        self.assertThat(json['usage_string'], Equals("100%"))
+        self.assertThat(json['available_string'], Equals("0%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
+    def test__statistics_are_accurate_for_empty_slash_128(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::1/128')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(1))
+        self.assertThat(json['largest_available'], Equals(1))
+        self.assertThat(json['num_unavailable'], Equals(0))
+        self.assertThat(json['usage'], Equals(float(0) / float(1)))
+        self.assertThat(json['usage_string'], Equals("0%"))
+        self.assertThat(json['available_string'], Equals("100%"))
+        self.assertThat(json, Not(Contains("ranges")))
 
 
 class TestParseInteger(MAASTestCase):

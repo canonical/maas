@@ -191,8 +191,6 @@ class IPRangeStatistics(object):
             "usage": self.usage_percentage,
             "usage_string": self.usage_percentage_string,
             "available_string": self.available_percentage_string,
-            # XXX LJ 20151004: determine the right calculation, and do it.
-            "inefficiency_string": "TBD",
         }
         if include_ranges:
             data["ranges"] = self.ranges.render_json()
@@ -254,7 +252,12 @@ class MAASIPSet(set):
         unused_ranges = []
         if type(outer_range) == IPNetwork:
             # Skip the network address, if this is a network
-            start = outer_range.first + 1
+            if outer_range.version == 4 and outer_range.prefixlen == 32:
+                start = outer_range.first
+            elif outer_range.version == 6 and outer_range.prefixlen == 128:
+                start = outer_range.first
+            else:
+                start = outer_range.first + 1
         else:
             # Otherwise, assume the first address is the start of the range
             start = outer_range.first
@@ -271,8 +274,11 @@ class MAASIPSet(set):
                     make_iprange(candidate_start, candidate_end, comment))
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
-        if type(outer_range) == IPNetwork and outer_range.version == 4:
-            candidate_end = outer_range.last - 1
+        if type(outer_range) == IPNetwork:
+            if outer_range.version == 4 and outer_range.prefixlen != 32:
+                candidate_end = outer_range.last - 1
+            else:
+                candidate_end = outer_range.last
         else:
             candidate_end = outer_range.last
         # Check if there is a gap between the last used range and the end
