@@ -89,6 +89,7 @@ from provisioningserver.rpc.testing.doubles import (
     StubOS,
 )
 from provisioningserver.security import set_shared_secret_on_filesystem
+from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.network import get_all_interfaces_definition
 from testtools import ExpectedException
@@ -716,6 +717,30 @@ class TestClusterClientService(MAASTestCase):
         self.assertThat(
             connection.transport.loseConnection,
             MockCalledOnceWith())
+
+    def test__remove_connection_removes_from_connections(self):
+        service = ClusterClientService(Clock())
+        endpoint = Mock()
+        connection = Mock()
+        service.connections[endpoint] = connection
+        service.remove_connection(endpoint, connection)
+        self.assertThat(service.connections, Equals({}))
+
+    def test__remove_connection_stops_both_dhcpd_and_dhcpd6(self):
+        service = ClusterClientService(Clock())
+        endpoint = Mock()
+        connection = Mock()
+        service.connections[endpoint] = connection
+
+        # Enable both dhcpd and dhcpd6.
+        service_monitor.getServiceByName("dhcpd").on()
+        service_monitor.getServiceByName("dhcpd6").on()
+        mock_ensureServices = self.patch(service_monitor, "ensureServices")
+        service.remove_connection(endpoint, connection)
+
+        self.assertFalse(service_monitor.getServiceByName("dhcpd").is_on())
+        self.assertFalse(service_monitor.getServiceByName("dhcpd").is_on())
+        self.assertThat(mock_ensureServices, MockCalledOnceWith())
 
     def test_getClient(self):
         service = ClusterClientService(Clock())

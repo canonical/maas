@@ -67,6 +67,7 @@ from provisioningserver.security import (
     calculate_digest,
     get_shared_secret_from_filesystem,
 )
+from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
@@ -599,9 +600,7 @@ class ClusterClient(Cluster):
                 self.handshakeSucceeded, self.handshakeFailed)
 
     def connectionLost(self, reason):
-        if self.eventloop in self.service.connections:
-            if self.service.connections[self.eventloop] is self:
-                del self.service.connections[self.eventloop]
+        self.service.remove_connection(self.eventloop, self)
         super(ClusterClient, self).connectionLost(reason)
 
     @inlineCallbacks
@@ -893,3 +892,29 @@ class ClusterClientService(TimerService, object):
     def _drop_connection(self, connection):
         """Drop the given `connection`."""
         return connection.transport.loseConnection()
+
+    def remove_connection(self, eventloop, connection):
+        """Remove the connection from the tracked connections.
+
+        If this is the last connection that was keeping rackd connected to
+        a regiond then dhcpd and dhcpd6 services will be turned off.
+        """
+        if eventloop in self.connections:
+            if self.connections[eventloop] is connection:
+                del self.connections[eventloop]
+        if len(self.connections) == 0:
+            # No connections to any region. DHCP should be turned off.
+            stopping_services = []
+            dhcp_v4 = service_monitor.getServiceByName("dhcpd")
+            if dhcp_v4.is_on():
+                dhcp_v4.off()
+                stopping_services.append("dhcpd")
+            dhcp_v6 = service_monitor.getServiceByName("dhcpd6")
+            if dhcp_v6.is_on():
+                dhcp_v6.off()
+                stopping_services.append("dhcpd6")
+            if len(stopping_services) > 0:
+                maaslog.error(
+                    "Lost all connections to region controllers. "
+                    "Stopping service(s) %s." % ",".join(stopping_services))
+                service_monitor.ensureServices()
