@@ -8,7 +8,6 @@ __all__ = [
     ]
 
 from cgi import escape
-import sys
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -25,15 +24,6 @@ from maasserver import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-
-# XXX: 2016-03-08 GavinPanella bug=1549731: Temporarily work around the lack
-# of the _cryptography_backports module from Twisted's Python 3 packaging.
-try:
-    from twisted.conch.ssh import _cryptography_backports as _cb
-except ImportError:
-    from provisioningserver.twisted import _cryptography_backports as _cb
-    sys.modules["twisted.conch.ssh._cryptography_backports"] = _cb
-
 from twisted.conch.ssh.keys import Key
 
 
