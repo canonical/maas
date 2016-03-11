@@ -61,19 +61,19 @@
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table__column--55" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</div>
-                            <div class="table__header table__column--15" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{sort: predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</div>
-                            <div class="table__header table__column--15" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{sort: predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</div>
-                            <div class="table__header table__column--15" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{sort: predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</div>
+                            <div class="table__header table-col--55" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</div>
+                            <div class="table__header table-col--15" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{sort: predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</div>
+                            <div class="table__header table-col--15" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{sort: predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</div>
+                            <div class="table__header table-col--15" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{sort: predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</div>
                         </div>
                     </header>
                     <main class="table-body">
                         <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                            <div class="table__data table__column--55"><a href="#/domain/{$ row.id $}">{$ row.name $}</a></div>
-                            <div class="table__data table__column--15">{$ row.hosts $}</div>
-                            <div class="table__data table__column--15">{$ row.resource_count $}</div>
-                            <div class="table__data table__column--15">{$ row.authoritative ? "Yes" : "No" $}</div>
+                            <div class="table__data table-col--55"><a href="#/domain/{$ row.id $}">{$ row.name $}</a></div>
+                            <div class="table__data table-col--15">{$ row.hosts $}</div>
+                            <div class="table__data table-col--15">{$ row.resource_count $}</div>
+                            <div class="table__data table-col--15">{$ row.authoritative ? "Yes" : "No" $}</div>
                         </div>
                     </main>
                 </div>

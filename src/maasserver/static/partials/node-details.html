@@ -306,16 +306,16 @@
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table__column--30">Name</div>
-                            <div class="table__header table__column--30">MAC</div>
-                            <div class="table__header table__column--40">IP Address</div>
+                            <div class="table__header table-col--30">Name</div>
+                            <div class="table__header table-col--30">MAC</div>
+                            <div class="table__header table-col--40">IP Address</div>
                         </div>
                     </header>
                     <main class="table__body" data-selected-rows>
                         <div class="table__row" data-ng-repeat="device in devices">
-                            <div class="table__data table__column--30">{$ device.name $}</div>
-                            <div class="table__data table__column--30">{$ device.mac_address $}</div>
-                            <div class="table__data table__column--40">{$ device.ip_address $}</div>
+                            <div class="table__data table-col--30">{$ device.name $}</div>
+                            <div class="table__data table-col--30">{$ device.mac_address $}</div>
+                            <div class="table__data table-col--40">{$ device.ip_address $}</div>
                         </div>
                     </main>
                 </div>
@@ -410,20 +410,20 @@
                 <form class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table__column--10">VLAN</div>
-                            <div class="table__header table__column--10">Fabric</div>
-                            <div class="table__header table__column--30">Subnet</div>
-                            <div class="table__header table__column--20">Primary rack</div>
-                            <div class="table__header table__column--20">Secondary rack</div>
-                            <div class="table__header table__column--10">HA</div>
+                            <div class="table__header table-col--10">VLAN</div>
+                            <div class="table__header table-col--10">Fabric</div>
+                            <div class="table__header table-col--30">Subnet</div>
+                            <div class="table__header table-col--20">Primary rack</div>
+                            <div class="table__header table-col--20">Secondary rack</div>
+                            <div class="table__header table-col--10">HA</div>
                         </div>
                     </header>
                     <main class="table__body">
                         <div class="table__row">
-                            <div class="table__data table__column--10"><a href="#">10</a></div>
-                            <div class="table__data table__column--10"><a href="#">Fabric-1</a></div>
-                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--10"><a href="#">10</a></div>
+                            <div class="table__data table-col--10"><a href="#">Fabric-1</a></div>
+                            <div class="table__data table-col--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -432,7 +432,7 @@
                                     <option value="4">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled" selected="selected">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -441,13 +441,13 @@
                                     <option value="4">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__header table__column--10"></div>
+                            <div class="table__header table-col--10"></div>
                         </div>
                         <div class="table__row">
-                            <div class="table__data table__column--10"><a href="#">Untagged</a></div>
-                            <div class="table__data table__column--10"><a href="#">Fabric-2</a></div>
-                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--10"><a href="#">Untagged</a></div>
+                            <div class="table__data table-col--10"><a href="#">Fabric-2</a></div>
+                            <div class="table__data table-col--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -456,7 +456,7 @@
                                     <option value="4">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -465,13 +465,13 @@
                                     <option value="4" selected="selected">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__header table__column--10"><span class="icon simple-tick"></span></div>
+                            <div class="table__header table-col--10"><span class="icon simple-tick"></span></div>
                         </div>
                         <div class="table__row">
-                            <div class="table__data table__column--10"><a href="#">Untagged</a></div>
-                            <div class="table__data table__column--10"><a href="#">Fabric-3</a></div>
-                            <div class="table__data table__column--30"><a href="#">192.168.10.0/24</a></div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--10"><a href="#">Untagged</a></div>
+                            <div class="table__data table-col--10"><a href="#">Fabric-3</a></div>
+                            <div class="table__data table-col--30"><a href="#">192.168.10.0/24</a></div>
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -480,7 +480,7 @@
                                     <option value="4">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__data table__column--20">
+                            <div class="table__data table-col--20">
                                 <select name="rackCtrlr" id="rackCtrlr" class="table__input">
                                     <option value="" disabled="disabled">Choose rack controller...</option>
                                     <option value="1">rack-controller-1</option>
@@ -489,7 +489,7 @@
                                     <option value="4">rack-controller-4</option>
                                 </select>
                             </div>
-                            <div class="table__header table__column--10"><span class="icon simple-tick"></span></div>
+                            <div class="table__header table-col--10"><span class="icon simple-tick"></span></div>
                         </div>
                     </main>
                 </form>
@@ -525,32 +525,32 @@
                     <div class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--12">
-                                    <a class="active"
+                                <div class="table__header table-col--3"></div>
+                                <div class="table__header table-col--12">
+                                    <a class="table__header-link active"
                                         data-ng-class="{ active: column == 'name' }"
                                         data-ng-click="column = 'name'">
                                         Name
                                     </a>
                                     <span class="divide"></span>
-                                    <a data-ng-class="{ active: column == 'mac' }"
+                                    <a class="table__header-link" data-ng-class="{ active: column == 'mac' }"
                                         data-ng-click="column = 'mac'">
                                         MAC
                                     </a>
                                 </div>
-                                <div class="table__header table__column--3"><span data-ng-if="!isController">PXE</span></div>
-                                <div class="table__header table__column--9">Type</div>
-                                <div class="table__header table__column--14">Fabric</div>
-                                <div class="table__header table__column--14">VLAN</div>
-                                <div class="table__header table__column--18">Subnet</div>
-                                <div class="table__header table__column--27">IP Address</div>
+                                <div class="table__header table-col--3"><span data-ng-if="!isController">PXE</span></div>
+                                <div class="table__header table-col--9">Type</div>
+                                <div class="table__header table-col--14">Fabric</div>
+                                <div class="table__header table-col--14">VLAN</div>
+                                <div class="table__header table-col--18">Subnet</div>
+                                <div class="table__header table-col--27">IP Address</div>
                             </div>
                         </header>
                         <main class="table__body" data-selected-rows>
                             <div class="table__row"
                                 data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), noEdit: cannotEditInterface(interface) }"
                                 data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <span data-ng-hide="isAllNetworkingDisabled()">
                                         <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
                                             data-ng-checked="isInterfaceSelected(interface)"
@@ -560,7 +560,7 @@
                                         <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--12" data-ng-show="column == 'name'">
+                                <div class="table__data table-col--12" data-ng-show="column == 'name'">
                                     <span class="ng-hide" data-ng-show="interface.type == 'alias' || interface.type == 'vlan'">{$ interface.name $}</span>
                                     <input type="text" class="table__input"
                                         data-ng-show="interface.type != 'alias' && interface.type != 'vlan'"
@@ -577,7 +577,7 @@
                                         </a>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--12 ng-hide" data-ng-show="column == 'mac'">
+                                <div class="table__data table-col--12 ng-hide" data-ng-show="column == 'mac'">
                                     {$ interface.mac_address $}
                                     <span class="table__label active ng-hide" data-ng-show="interface.members">
                                         <a data-ng-click="toggleMembers(interface)">
@@ -586,12 +586,12 @@
                                         </a>
                                     </span>
                                 </div>
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="align-center" type="radio" name="bootInterface" checked
                                         data-ng-if="!isController || isBootInterface(interface)">
                                 </div>
-                                <div class="table__data table__column--9">{$ getInterfaceTypeText(interface) $}</div>
-                                <div class="table__data table__column--14">
+                                <div class="table__data table-col--9">{$ getInterfaceTypeText(interface) $}</div>
+                                <div class="table__data table-col--14">
                                     <select class="table__input" name="fabric" id="fabric"
                                         data-ng-model="interface.fabric"
                                         data-ng-disabled="interface.type == 'alias' || interface.type == 'vlan'"
@@ -599,7 +599,7 @@
                                         data-ng-options="fabric as fabric.name for fabric in fabrics">
                                     </select>
                                 </div>
-                                <div class="table__data table__column--14">
+                                <div class="table__data table-col--14">
                                     <select class="table__input" name="vlan" id="vlan"
                                         data-ng-model="interface.vlan"
                                         data-ng-disabled="isController || interface.type == 'alias' || interface.vlan.vid === 0"
@@ -607,7 +607,7 @@
                                         data-ng-options="vlan as getVLANText(vlan) for vlan in vlans | removeDefaultVLANIfVLAN:interface.type | filterByFabric:interface.fabric">
                                     </select>
                                 </div>
-                                <div class="table__data table__column--18">
+                                <div class="table__data table-col--18">
                                     <select class="table__input" name="subnet" id="subnet"
                                         data-ng-hide="isAllNetworkingDisabled() && interface.discovered[0].subnet_id"
                                         data-ng-disabled="isController"
@@ -620,7 +620,7 @@
                                         {$ getSubnetText(getSubnet(interface.discovered[0].subnet_id)) $}
                                     </span>
                                 </div>
-                                <div class="table__data table__column--21">
+                                <div class="table__data table-col--21">
                                     <ul class="no-bullets no-margin-bottom" data-ng-if="!isController && !isAllNetworkingDisabled()">
                                         <li>
                                             <select class="table__input" name="link-mode" id="link-mode"
@@ -647,7 +647,7 @@
                                         {$ interface.discovered[0].ip_address $} (DHCP)
                                     </span>
                                 </div>
-                                <div class="table__data table__column--6">
+                                <div class="table__data table-col--6">
                                     <div class="table__controls align-right">
                                         <a class="icon add tooltip"
                                             data-tooltip="Add"
@@ -663,13 +663,13 @@
                                 <div class="table__dropdown--info">
                                     <div class="table__row table__dropdown-row--info" data-ng-class="{ active: isShowingMembers(interface) }" data-ng-repeat="member in interface.members">
                                         <div data-ng-show="isShowingMembers(interface)">
-                                            <div class="table__data no-padding-top table__column--3"></div>
-                                            <div class="table__data no-padding-top table__column--15"
+                                            <div class="table__data no-padding-top table-col--3"></div>
+                                            <div class="table__data no-padding-top table-col--15"
                                                 data-ng-show="column == 'name'">{$ member.name $}</div>
-                                            <div class="table__data no-padding-top table__column--15 ng-hide"
+                                            <div class="table__data no-padding-top table-col--15 ng-hide"
                                                 data-ng-show="column == 'mac'">{$ member.mac_address $}</div>
-                                            <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(member) $}</div>
-                                            <div class="table__data no-padding-top table__column--67">
+                                            <div class="table__data no-padding-top table-col--15">{$ getInterfaceTypeText(member) $}</div>
+                                            <div class="table__data no-padding-top table-col--67">
                                             </div>
                                         </div>
                                     </div>
@@ -677,14 +677,14 @@
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row" data-ng-class="{ active: isShowingAdd() }">
                                         <div data-ng-show="isShowingAdd()">
-                                            <div class="table__data table__column--3">
+                                            <div class="table__data table-col--3">
                                             </div>
-                                            <div class="table__data table__column--12">
+                                            <div class="table__data table-col--12">
                                                 {$ getAddName() $}
                                             </div>
-                                            <div class="table__data table__column--3">
+                                            <div class="table__data table-col--3">
                                             </div>
-                                            <div class="table__data table__column--9">
+                                            <div class="table__data table-col--9">
                                                 <select class="table__input" name="type" id="type"
                                                     data-ng-model="newInterface.type"
                                                     data-ng-change="addTypeChanged()">
@@ -692,10 +692,10 @@
                                                     <option value="vlan" data-ng-show="canAddVLAN(newInterface.parent)">VLAN</option>
                                                 </select>
                                             </div>
-                                            <div class="table__data table__column--14">
+                                            <div class="table__data table-col--14">
                                                 {$ newInterface.parent.fabric.name $}
                                             </div>
-                                            <div class="table__data table__column--14">
+                                            <div class="table__data table-col--14">
                                                 <span data-ng-show="newInterface.type === 'alias'">{$ getVLANText(newInterface.parent.vlan) $}</span>
                                                 <select class="table__input" name="vlan" id="vlan"
                                                     data-ng-model="newInterface.vlan"
@@ -705,7 +705,7 @@
                                                     data-ng-change="addVLANChanged()">
                                                 </select>
                                             </div>
-                                            <div class="table__data table__column--18">
+                                            <div class="table__data table-col--18">
                                                 <select class="table__input" name="subnet" id="subnet"
                                                     data-ng-model="newInterface.subnet"
                                                     data-ng-change="addSubnetChanged()"
@@ -713,7 +713,7 @@
                                                     <option value="" data-ng-hide="newInterface.type === 'alias'">Unconfigured</option>
                                                 </select>
                                             </div>
-                                            <div class="table__data table__column--21">
+                                            <div class="table__data table-col--21">
                                                 <select class="table__input" name="link-mode" id="link-mode"
                                                     data-ng-model="newInterface.mode"
                                                     data-ng-disabled="isLinkModeDisabled(newInterface)"
@@ -763,46 +763,46 @@
                                 </div>
                             </div>
                             <div class="table__row active ng-hide" data-ng-show="isShowingCreateBond()">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="checkbox" type="checkbox" id="bond-create" disabled="disabled" checked />
                                     <label class="checkbox-label" for="bond-create"></label>
                                 </div>
-                                <div class="table__data table__column--12">
+                                <div class="table__data table-col--12">
                                     <input type="text" class="table__input editible"
                                         data-ng-class="{ invalid: isInterfaceNameInvalid(newBondInterface) }"
                                         data-ng-model="newBondInterface.name">
                                 </div>
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="align-center" type="radio" name="bondBootInterface" checked
                                         data-ng-if="getBondIsBootInterface()">
                                 </div>
-                                <div class="table__data table__column--9">Bond</div>
-                                <div class="table__data table__column--73"></div>
+                                <div class="table__data table-col--9">Bond</div>
+                                <div class="table__data table-col--73"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table__column--3">
+                                        <div class="table__data table-col--3">
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--15">
                                             <label for="type">Bond mode</label>
                                             <select name="bond-mode" id="bond-mode"
                                                 data-ng-model="newBondInterface.mode"
                                                 data-ng-options="mode[0] as mode[1] for mode in bondOptions.modes">
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--15">
                                             <label for="mac">MAC address</label>
                                             <input type="text" data-ng-model="newBondInterface.macAddress"
                                                 data-ng-class="{ invalid: isMACAddressInvalid(newBondInterface.macAddress) }"
                                                 data-ng-placeholder="getBondPlaceholderMACAddress()">
                                         </div>
-                                        <div class="table__data table__column--15" data-ng-show="showLACPRate()">
+                                        <div class="table__data table-col--15" data-ng-show="showLACPRate()">
                                             <label for="rates">LACP rate</label>
                                             <select name="bond-mode" id="bond-mode"
                                                 data-ng-model="newBondInterface.lacpRate"
                                                 data-ng-options="rate[0] as rate[1] for rate in bondOptions.lacp_rates">
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15" data-ng-show="showXMITHashPolicy()">
+                                        <div class="table__data table-col--15" data-ng-show="showXMITHashPolicy()">
                                             <label for="rates">XMIT hash policy</label>
                                             <select name="xmit-hash-policy" id="xmit-hash-policy"
                                                 data-ng-model="newBondInterface.xmitHashPolicy"
@@ -811,17 +811,17 @@
                                         </div>
                                     </div>
                                     <div class="table__row table__dropdown-row table__dropdown-row--head active">
-                                        <div class="table__header table__column--3"></div>
-                                        <div class="table__header table__column--15">Name</div>
-                                        <div class="table__header table__column--15">Type</div>
-                                        <div class="table__header table__column--67">Primary</div>
+                                        <div class="table__header table-col--3"></div>
+                                        <div class="table__header table-col--15">Name</div>
+                                        <div class="table__header table-col--15">Type</div>
+                                        <div class="table__header table-col--67">Primary</div>
                                     </div>
                                     <div class="table__row table__dropdown-row no-border active"
                                         data-ng-repeat="parent in newBondInterface.parents | orderBy:'name'">
-                                        <div class="table__data no-padding-top table__column--3"></div>
-                                        <div class="table__data no-padding-top table__column--15">{$ parent.name $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ getInterfaceTypeText(parent) $}</div>
-                                        <div class="table__data no-padding-top table__column--67">
+                                        <div class="table__data no-padding-top table-col--3"></div>
+                                        <div class="table__data no-padding-top table-col--15">{$ parent.name $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ getInterfaceTypeText(parent) $}</div>
+                                        <div class="table__data no-padding-top table-col--67">
                                             <input type="radio" name="bondPrimary" data-ng-model="newBondInterface.primary" data-ng-value="parent">
                                         </div>
                                     </div>
@@ -836,30 +836,30 @@
                                 </div>
                             </div>
                             <div class="table__row active" data-ng-show="isShowingCreatePhysical()">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="checkbox" type="checkbox" id="interface-create" disabled="disabled" checked />
                                     <label class="checkbox-label" for="interface-create"></label>
                                 </div>
-                                <div class="table__data table__column--12">
+                                <div class="table__data table-col--12">
                                     <input type="text" class="table__input"
                                         data-ng-class="{ invalid: isInterfaceNameInvalid(newInterface) }"
                                         data-ng-model="newInterface.name">
                                 </div>
-                                <div class="table__data table__column--3"></div>
-                                <div class="table__data table__column--9">Physical</div>
-                                <div class="table__data table__column--14">
+                                <div class="table__data table-col--3"></div>
+                                <div class="table__data table-col--9">Physical</div>
+                                <div class="table__data table-col--14">
                                     <select class="table__input" name="fabric" id="fabric"
                                         data-ng-model="newInterface.fabric"
                                         data-ng-change="newPhysicalFabricChanged()"
                                         data-ng-options="fabric as fabric.name for fabric in fabrics">
                                     </select>
                                 </div>
-                                <div class="table__data table__column--14">
+                                <div class="table__data table-col--14">
                                     <select class="table__input" name="vlan" id="vlan" disabled="disabled">
                                         <option value="" selected>untagged</option>
                                     </select>
                                 </div>
-                                <div class="table__data table__column--18">
+                                <div class="table__data table-col--18">
                                     <select class="table__input" name="subnet" id="subnet"
                                         data-ng-model="newInterface.subnet"
                                         data-ng-change="newPhysicalSubnetChanged()"
@@ -867,24 +867,24 @@
                                         <option value="">Unconfigured</option>
                                     </select>
                                 </div>
-                                <div class="table__data table__column--14">
+                                <div class="table__data table-col--14">
                                     <select class="table__input" name="link-mode" id="link-mode"
                                         data-ng-model="newInterface.mode"
                                         data-ng-disabled="isLinkModeDisabled(newInterface)"
                                         data-ng-options="mode.mode as mode.text for mode in modes">
                                     </select>
                                 </div>
-                                <div class="table__data table__column--13"></div>
+                                <div class="table__data table-col--13"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table__column--3">
+                                        <div class="table__data table-col--3">
                                         </div>
-                                        <div class="table__data table__column--12">
+                                        <div class="table__data table-col--12">
                                             <label>MAC address</label>
                                             <input type="text" data-ng-model="newInterface.macAddress"
                                                 data-ng-class="{ invalid: isMACAddressInvalid(newInterface.macAddress, false) || newInterface.macError }">
                                         </div>
-                                        <div class="table__data table__column--85"></div>
+                                        <div class="table__data table-col--85"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data left" data-ng-show="newInterface.errorMsg">
@@ -953,12 +953,12 @@
                         </ul>
                     </div>
                 </div>
-                <div class="twelve-col padding-bottom no-margin">
+                <div class="twelve-col padding-bottom">
                     <h3>File systems</h3>
-                    <section class="table">
+                    <section class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table__column--3">
+                                <div class="table__header table-col--3">
                                    <span data-ng-hide="isAllStorageDisabled()">
                                         <input class="checkbox" type="checkbox" id="filesystem-check-all"
                                             data-ng-checked="filesystemAllSelected"
@@ -967,23 +967,22 @@
                                         <label class="checkbox-label" for="filesystem-check-all"></label>
                                    </span>
                                 </div>
-                                <div class="table__header table__column--20">Name</div>
-                                <div class="table__header table__column--15">Size</div>
-                                <div class="table__header table__column--15">Mountpoint</div>
-                                <div class="table__header table__column--47">File system</div>
+                                <div class="table__header table-col--20">Name</div>
+                                <div class="table__header table-col--15">Size</div>
+                                <div class="table__header table-col--15">File system</div>
+                                <div class="table__header table-col--47">Mountpoint</div>
                             </div>
-
                         </header>
                         <main class="table__body">
                             <div class="table__row" data-ng-hide="filesystems.length">
-                                <div class="table__header table__column--100">
+                                <div class="table__header table-col--100">
                                     No filesystems defined.
                                 </div>
                             </div>
                             <div data-ng-repeat="filesystem in filesystems">
                                 <div class="table__row"
                                     data-ng-class="{ active: filesystem.$selected }">
-                                    <div class="table__data table__column--3">
+                                    <div class="table__data table-col--3">
                                         <span data-ng-hide="isAllStorageDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ filesystem.name $}"
                                                 data-ng-checked="filesystem.$selected"
@@ -992,11 +991,11 @@
                                             <label class="checkbox-label" for="{$ filesystem.name $}" ></label>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--20">{$ filesystem.name $}</div>
-                                    <div class="table__data table__column--15">{$ filesystem.size_human $}</div>
-                                    <div class="table__data table__column--15">{$ filesystem.mount_point $}</div>
-                                    <div class="table__data table__column--37">{$ filesystem.fstype $}</div>
-                                    <div class="table__data table__column--10">
+                                    <div class="table__data table-col--20">{$ filesystem.name $}</div>
+                                    <div class="table__data table-col--15">{$ filesystem.size_human $}</div>
+                                    <div class="table__data table-col--15">{$ filesystem.fstype $}</div>
+                                    <div class="table__data table-col--37">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table-col--10">
                                         <div class="table__controls">
                                             <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)" data-ng-show="!isAllStorageDisabled()">Unmount</a>
                                             <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)" data-ng-show="!isAllStorageDisabled()">Remove</a>
@@ -1034,15 +1033,78 @@
                                     </div>
                                 </div>
                             </div>
+                            <!--
+
+                            // Adding a new TMPFS or RAMFPS file system
+
+
+                            <div class="table__row active">
+                                <div class="table__data table-col--3">
+                                    <input class="checkbox" type="checkbox" id="virt-create" checked />
+                                    <label class="checkbox-label" for="virt-create"></label>
+                                </div>
+                                <div class="table__data table-col--16">TMPFS</div>
+                                <div class="table__data table-col--4"></div>
+                                <div class="table__data table-col--15"></div>
+                                <div class="table__data table-col--15">TMPFS</div>
+                                <div class="table__data table-col--37">/</div>
+                                <div class="table__data table-col--10">
+                                    <div class="table__controls">
+                                        <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)" data-ng-show="!isAllStorageDisabled()">Remove</a>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown">
+                                    <div class="table__row form active padding-top--ten padding-right--ten padding-left--ten box-sizing">
+                                        <div class="six-col no-margin-bottom">
+                                            <dl>
+                                                <dt class="two-col">Name</dt>
+                                                    <dd class="three-col">TMPFS</dd>
+                                            </dl>
+                                            <div class="form__group form__group--inline">
+                                                <label for="file-sys" class="two-col">Filesystem</label>
+                                                <select name="type" id="type" class="table__input three-col no-margin">
+                                                    <option value="" disabled="disabled">Select type</option>
+                                                    <option value="1" selected>TMPFS</option>
+                                                    <option value="2">RAMFS</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="six-col last-col no-margin-bottom">
+                                            <div class="form__group form__group--inline">
+                                                <label class="two-col" for="mountpoint">Mountpoint</label>
+                                                <input type="text" id="mountpoint" class="table__input three-col" placeholder="/">
+                                            </div>
+                                            <div class="form__group form__group--inline">
+                                                <label for="mount-options" class="two-col">Mount options</label>
+                                                <input type="text" id="mount-options" class="table__input three-col" placeholder="Seperate by comma, no spaces">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="table__row active">
+                                      <div class="table__data right">
+                                          <a class="link-cta-ubuntu text-button">Cancel</a>
+                                          <button class="cta-ubuntu ng-binding">Mount</button>
+                                      </div>
+                                    </div>
+                                </div>
+                            </div>
+                          -->
                         </main>
                     </section>
+                    <!--
+
+                    // Add special filesystem button for TMPFS or RAMFS
+
+                    <a class="link-cta-ubuntu secondary tooltip"
+                       data-tooltip="Create a TMPFS or RAMFS filesystem">Add special filesystem</a>
+                     -->
                 </div>
                 <div class="twelve-col padding-bottom" data-ng-show="cachesets.length">
                     <h3>Available cache sets</h3>
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table__column--3">
+                                <div class="table__header table-col--3">
                                     <span data-ng-hide="isAllStorageDisabled()">
                                         <input class="checkbox" type="checkbox" id="cachesets-check-all"
                                             data-ng-checked="cachesetsAllSelected"
@@ -1051,17 +1113,16 @@
                                         <label class="checkbox-label" for="cachesets-check-all"></label>
                                     </span>
                                 </div>
-                                <div class="table__header table__column--15">Name</div>
-                                <div class="table__header table__column--27">Size</div>
-                                <div class="table__header table__column--55">Used by</div>
+                                <div class="table__header table-col--15">Name</div>
+                                <div class="table__header table-col--27">Size</div>
+                                <div class="table__header table-col--55">Used by</div>
                             </div>
-
                         </header>
                         <main class="table__body">
                             <div data-ng-repeat="cacheset in cachesets">
                                 <div class="table__row"
                                     data-ng-class="{ active: cacheset.$selected }">
-                                    <div class="table__data table__column--3">
+                                    <div class="table__data table-col--3">
                                         <span data-ng-hide="isAllStorageDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
                                                 data-ng-checked="cacheset.$selected"
@@ -1070,10 +1131,10 @@
                                             <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--15">{$ cacheset.name $}</div>
-                                    <div class="table__data table__column--27">{$ cacheset.size_human $}</div>
-                                    <div class="table__data table__column--45">{$ cacheset.used_by $}</div>
-                                    <div class="table__data table__column--10">
+                                    <div class="table__data table-col--15">{$ cacheset.name $}</div>
+                                    <div class="table__data table-col--27">{$ cacheset.size_human $}</div>
+                                    <div class="table__data table-col--45">{$ cacheset.used_by $}</div>
+                                    <div class="table__data table-col--10">
                                         <div class="table__controls">
                                             <a class="icon delete tooltip" data-tooltip="Remove"
                                                 data-ng-show="canDeleteCacheSet(cacheset)"
@@ -1110,7 +1171,7 @@
                     <section class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table__column--3">
+                                <div class="table__header table-col--3">
                                     <span data-ng-hide="isAllStorageDisabled()">
                                         <input class="checkbox" type="checkbox" id="available-check-all"
                                             data-ng-checked="availableAllSelected"
@@ -1119,31 +1180,31 @@
                                         <label class="checkbox-label" for="available-check-all"></label>
                                     </span>
                                 </div>
-                                <div class="table__header table__column--17">
-                                    <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
+                                <div class="table__header table-col--16">
+                                    <a class="table__header-link" data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
                                     <span class="divide"></span>
-                                    <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
+                                    <a class="table__header-link" data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
+                                    <a class="table__header-link" data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__header table__column--3">Boot</div>
-                                <div class="table__header table__column--15">Size</div>
-                                <div class="table__header table__column--15">Device Type</div>
-                                <div class="table__header table__column--15">File system</div>
-                                <div class="table__header table__column--25">Tags</div>
-                                <div class="table__header table__column--7"></div>
+                                <div class="table__header table-col--4">Boot</div>
+                                <div class="table__header table-col--15">Size</div>
+                                <div class="table__header table-col--15">Device Type</div>
+                                <div class="table__header table-col--15">File system</div>
+                                <div class="table__header table-col--25">Tags</div>
+                                <div class="table__header table-col--7"></div>
                             </div>
                         </header>
                         <main class="table__body">
                             <div class="table__row" data-ng-hide="available.length">
-                                <div class="table__header table__column--100">
+                                <div class="table__header table-col--100">
                                     No available disks or partitions.
                                 </div>
                             </div>
                             <div data-ng-repeat="item in available | removeAvailableByNew:availableNew">
                                 <div class="table__row"
                                     data-ng-class="{ active: item.$selected }">
-                                    <div class="table__data table__column--3">
+                                    <div class="table__data table-col--3">
                                         <span data-ng-hide="isAllStorageDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ item.name $}"
                                                 data-ng-checked="item.$selected"
@@ -1152,7 +1213,7 @@
                                             <label class="checkbox-label" for="{$ item.name $}" ></label>
                                         </span>
                                     </div>
-                                    <div class="table__data table__column--17" data-ng-show="column === 'name'">
+                                    <div class="table__data table-col--16" data-ng-show="column === 'name'">
                                         <input type="text" class="table__input"
                                             data-ng-model="item.name"
                                             data-maas-enter-blur
@@ -1161,18 +1222,18 @@
                                             data-ng-disabled="item.type === 'partition' || isAllStorageDisabled() || !isSuperUser()"
                                             data-ng-change="nameHasChanged(item)">
                                     </div>
-                                    <div class="table__data table__column--17 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--17 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__column--3">
+                                    <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table-col--16 ng-hide" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table-col--4">
                                         <input class="align-center" type="radio"
                                             data-ng-click="setAsBootDisk(item)"
                                             data-ng-checked="item.is_boot"
                                             data-ng-if="item.type === 'physical'"
                                             data-ng-disabled="isBootDiskDisabled(item, 'available')">
                                     </div>
-                                    <div class="table__data table__column--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
-                                    <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table__column--15">
+                                    <div class="table__data table-col--15">{$ item.size_human $} <span class="table__label ng-hide" data-ng-show="showFreeSpace(item)">Free: {$ item.available_size_human $}</span></div>
+                                    <div class="table__data table-col--15">{$ getDeviceType(item) $}</div>
+                                    <div class="table__data table-col--15">
                                         {$ item.fstype $}
                                         <span class="table__controls table__controls--secondary">
                                             <a data-ng-show="canFormatAndMount(item)"
@@ -1180,7 +1241,7 @@
                                                 data-ng-class="{ 'margin-left--ten': item.fstype }">{$ getFormatAndMountButtonText (item) $}</a>
                                         </span>
                                     </div>
-                                    <div class="table__data table__tags table__column--25">
+                                    <div class="table__data table__tags table-col--25">
                                         <span class="table__tag" data-ng-repeat="tag in item.tags" data-ng-hide="item.$options.editingTags">
                                             <a href="#/node/?query=storage_tags:({$ tag.text $})">{$ tag.text $}</a>
                                         </span>
@@ -1192,7 +1253,7 @@
                                             data-ng-show="item.$options.editingTags"
                                             data-ng-click="availableSaveTags(item)">Save</button>
                                     </div>
-                                    <div class="table__data table__column--7">
+                                    <div class="table__data table-col--7">
                                         <div class="table__controls">
                                             <a class="icon partition tooltip ng-hide"
                                                 data-tooltip="Partition"
@@ -1211,11 +1272,11 @@
                                     <div class="table__dropdown">
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'partition' }">
                                             <div data-ng-show="availableMode === 'partition'">
-                                                <div class="table__data table__column--3"></div>
-                                                <div class="table__data table__column--20">
+                                                <div class="table__data table-col--3"></div>
+                                                <div class="table__data table-col--20">
                                                     {$ getAddPartitionName(item) $}
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     <input type="text" class="six-col table__input margin-right"
                                                         ng-model="item.$options.size"
                                                         ng-class="{ invalid: isAddPartitionSizeInvalid(item) }">
@@ -1227,10 +1288,10 @@
                                                         <option value="TB">TB</option>
                                                     </select>
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     Partition
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     <select class="table__input"
                                                         name="filesys"
                                                         data-ng-model="item.$options.fstype"
@@ -1239,7 +1300,7 @@
                                                         <option value="">Unformatted</option>
                                                     </select>
                                                 </div>
-                                                <div class="table__data table__column--30">
+                                                <div class="table__data table-col--30">
                                                     <input class="table__input"
                                                         type="text" id="mountpoint"
                                                         placeholder="Mount point"
@@ -1247,38 +1308,38 @@
                                                         data-ng-disabled="item.$options.fstype === null"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
-                                                <div class="table__data table__column--2"></div>
+                                                <div class="table__data table-col--2"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'format-mount' }">
                                             <div data-ng-show="availableMode === 'format-mount'">
-                                                <div class="table__data table__column--3"></div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--3"></div>
+                                                <div class="table__data table-col--15">
                                                     <label for="filesys">Filesystem</label>
                                                     <select name="filesys"
                                                         ng-model="item.$options.fstype"
                                                         data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                     </select>
                                                 </div>
-                                                <div class="table__data table__column--30">
+                                                <div class="table__data table-col--30">
                                                     <label for="mountpoint">Mountpoint</label>
                                                     <input type="text" id="mountpoint"
                                                         ng-model="item.$options.mountPoint"
                                                         ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
-                                                <div class="table__data table__column--52"></div>
+                                                <div class="table__data table-col--52"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'logical-volume' }">
                                             <div data-ng-show="availableMode === 'logical-volume'">
-                                                <div class="table__data table__column--3"></div>
-                                                <div class="table__data table__column--20">
+                                                <div class="table__data table-col--3"></div>
+                                                <div class="table__data table-col--20">
                                                     <input type="text" class="table__input"
                                                         data-ng-class="{ invalid: isLogicalVolumeNameInvalid(item) }"
                                                         data-ng-change="newLogicalVolumeNameChanged(item)"
                                                         data-ng-model="item.$options.name">
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     <input type="text" id="mountpoint" class="six-col table__input margin-right"
                                                         ng-model="item.$options.size"
                                                         ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
@@ -1290,10 +1351,10 @@
                                                         <option value="TB">TB</option>
                                                     </select>
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     Logical volume
                                                 </div>
-                                                <div class="table__data table__column--15">
+                                                <div class="table__data table-col--15">
                                                     <select name="filesys"
                                                         class="table__input"
                                                         data-ng-model="item.$options.fstype"
@@ -1302,7 +1363,7 @@
                                                         <option value="">Unformatted</option>
                                                     </select>
                                                 </div>
-                                                <div class="table__data table__column--30">
+                                                <div class="table__data table-col--30">
                                                     <input type="text" id="mountpoint"
                                                         class="table__input"
                                                         placeholder="Mount point"
@@ -1310,7 +1371,7 @@
                                                         data-ng-disabled="item.$options.fstype === null"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
-                                                <div class="table__data table__column--2"></div>
+                                                <div class="table__data table-col--2"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode !== null && activeMode !== 'multi' }">
@@ -1376,34 +1437,75 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        <!--
+
+                                        // New mount and filesystem dropdown, adds new form for mount options and added a
+                                        // None edit alternative for when a swap filesystem has been selected
+                                        
+                                        <div class="table__row active form padding-top--ten padding-right--ten padding-left--ten box-sizing">
+                                            <div class="six-col no-margin-bottom">
+                                                <div class="form__group form__group--inline">
+                                                    <label class="two-col" for="filesys">Filesystem</label>
+                                                    <select name="filesys" id="filesys" class="table__input three-col">
+                                                        <option value="" disabled="disabled">Unselected</option>
+                                                        <option value="">EXT2</option>
+                                                        <option value="">EXT4</option>
+                                                        <option value="">FAT32</option>
+                                                        <option value="">VFAT</option>
+                                                        <option value="" selected="selected">Swap</option>
+                                                    </select>
+                                                </div>
+                                                <div class="form__group form__group--inline">
+                                                    <label for="mount-options" class="two-col">Mount options</label>
+                                                    <input type="text" id="mount-options" class="table__input three-col" placeholder="Seperate by comma, no spaces">
+                                                </div>
+                                            </div>
+                                            <div class="six-col no-margin-bottom last-col">
+                                                <div class="form__group form__group--inline">
+                                                    <label class="two-col" for="mountpoint">Mountpoint</label>
+                                                    <input type="text" id="mountpoint" class="table__input three-col" placeholder="/">
+                                                </div>
+                                                <dl class="ng-hide">
+                                                    <dt class="two-col">Mountpoint</dt>
+                                                        <dd class="four-col last-col">Swap</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                        <div class="table__row active">
+                                            <div class="table__data right">
+                                                <a class="link-cta-ubuntu text-button">Cancel</a>
+                                                <button class="cta-ubuntu ng-binding">Mount</button>
+                                            </div>
+                                        </div>
+                                        -->
                                     </div>
                                 </div>
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'bcache'">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="checkbox" type="checkbox" id="bcache-create" disabled="disabled" checked />
                                     <label class="checkbox-label" for="bcache-create"></label>
                                 </div>
-                                <div class="table__data table__column--15">
+                                <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table__column--15">{$ availableNew.device.size_human $}</div>
-                                <div class="table__data table__column--15">Bcache</div>
-                                <div class="table__data table__column--45"></div>
-                                <div class="table__data table__column--7"></div>
+                                <div class="table__data table-col--15">{$ availableNew.device.size_human $}</div>
+                                <div class="table__data table-col--15">Bcache</div>
+                                <div class="table__data table-col--45"></div>
+                                <div class="table__data table-col--7"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table__column--3"></div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--3"></div>
+                                        <div class="table__data table-col--15">
                                             <label for="type">Cache set</label>
                                             <select name="cache-set" id="cache-set"
                                                 data-ng-model="availableNew.cacheset"
                                                 data-ng-options="cacheset as cacheset.name for cacheset in cachesets">
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--15">
                                             <label for="type">Cache mode</label>
                                             <select name="cache-mode" id="cache-mode"
                                                 data-ng-model="availableNew.cacheMode">
@@ -1412,7 +1514,7 @@
                                                 <option value="writearound">writearound</option>
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--15">
                                             <label for="type">File system</label>
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
@@ -1421,29 +1523,29 @@
                                                 <option value="">Unformatted</option>
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--30">
+                                        <div class="table__data table-col--30">
                                             <label for="mountpoint">Mount point</label>
                                             <input type="text" id="mountpoint"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
-                                        <div class="table__data table__column--15"></div>
-                                        <div class="table__data table__column--7"></div>
+                                        <div class="table__data table-col--15"></div>
+                                        <div class="table__data table-col--7"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row table__dropdown-row--head active">
-                                        <div class="table__header table__column--5"></div>
-                                        <div class="table__header table__column--15">Name</div>
-                                        <div class="table__header table__column--15">Size</div>
-                                        <div class="table__header table__column--15">Device type</div>
-                                        <div class="table__header table__column--40"></div>
+                                        <div class="table__header table-col--5"></div>
+                                        <div class="table__header table-col--15">Name</div>
+                                        <div class="table__header table-col--15">Size</div>
+                                        <div class="table__header table-col--15">Device type</div>
+                                        <div class="table__header table-col--40"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row no-border active">
-                                        <div class="table__data no-padding-top table__column--5"></div>
-                                        <div class="table__data no-padding-top table__column--15">{$ availableNew.device.name $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ availableNew.device.size_human $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(availableNew.device) $}</div>
-                                        <div class="table__data no-padding-top table__column--40"></div>
+                                        <div class="table__data no-padding-top table-col--5"></div>
+                                        <div class="table__data no-padding-top table-col--15">{$ availableNew.device.name $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ availableNew.device.size_human $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(availableNew.device) $}</div>
+                                        <div class="table__data no-padding-top table-col--40"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
@@ -1457,23 +1559,23 @@
                                 </div>
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'raid'">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="checkbox" type="checkbox" id="raid-create" disabled="disabled" checked />
                                     <label class="checkbox-label" for="raid-create"></label>
                                 </div>
-                                <div class="table__data table__column--15">
+                                <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table__column--15">{$ getNewRAIDSize() $}</div>
-                                <div class="table__data table__column--15">{$ availableNew.mode.title $}</div>
-                                <div class="table__data table__column--45"></div>
-                                <div class="table__data table__column--7"></div>
+                                <div class="table__data table-col--15">{$ getNewRAIDSize() $}</div>
+                                <div class="table__data table-col--15">{$ availableNew.mode.title $}</div>
+                                <div class="table__data table-col--45"></div>
+                                <div class="table__data table-col--7"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active">
-                                        <div class="table__data table__column--3"></div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--3"></div>
+                                        <div class="table__data table-col--15">
                                             <label for="type">RAID type</label>
                                             <select name="type" id="type"
                                                 data-ng-model="availableNew.mode"
@@ -1481,7 +1583,7 @@
                                                 data-ng-options="mode as mode.title for mode in getAvailableRAIDModes()">
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--15">
+                                        <div class="table__data table-col--15">
                                             <label for="type">File system</label>
                                             <select name="filesys"
                                                 data-ng-model="availableNew.fstype"
@@ -1490,47 +1592,47 @@
                                                 <option value="">Unformatted</option>
                                             </select>
                                         </div>
-                                        <div class="table__data table__column--30">
+                                        <div class="table__data table-col--30">
                                             <label for="mountpoint">Mount point</label>
                                             <input type="text" id="mountpoint"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
-                                        <div class="table__data table__column--15"></div>
-                                        <div class="table__data table__column--15"></div>
-                                        <div class="table__data table__column--7"></div>
+                                        <div class="table__data table-col--15"></div>
+                                        <div class="table__data table-col--15"></div>
+                                        <div class="table__data table-col--7"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row table__dropdown-row--head active">
-                                        <div class="table__header table__column--5"></div>
-                                        <div class="table__header table__column--15">Name</div>
-                                        <div class="table__header table__column--15">Size</div>
-                                        <div class="table__header table__column--15">Device type</div>
-                                        <div class="table__header table__column--10">Active</div>
-                                        <div class="table__header table__column--15">
+                                        <div class="table__header table-col--5"></div>
+                                        <div class="table__header table-col--15">Name</div>
+                                        <div class="table__header table-col--15">Size</div>
+                                        <div class="table__header table-col--15">Device type</div>
+                                        <div class="table__header table-col--10">Active</div>
+                                        <div class="table__header table-col--15">
                                             <span data-ng-show="showSparesColumn()">Spare (Maximum {$ getTotalNumberOfAvailableSpares() $})</span>
                                         </div>
-                                        <div class="table__header table__column--25"></div>
+                                        <div class="table__header table-col--25"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row no-border active"
                                         data-ng-repeat="device in availableNew.devices">
-                                        <div class="table__data no-padding-top table__column--5"></div>
-                                        <div class="table__data no-padding-top table__column--15">{$ device.name $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ device.size_human $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(device) $}</div>
-                                        <div class="table__data no-padding-top table__column--10">
+                                        <div class="table__data no-padding-top table-col--5"></div>
+                                        <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
+                                        <div class="table__data no-padding-top table-col--10">
                                             <input type="radio"
                                                 data-ng-checked="isActiveRAIDMember(device)"
                                                 data-ng-click="setAsActiveRAIDMember(device)">
                                         </div>
-                                        <div class="table__data no-padding-top table__column--15">
+                                        <div class="table__data no-padding-top table-col--15">
                                             <input type="radio"
                                                 data-ng-show="showSparesColumn()"
                                                 data-ng-checked="isSpareRAIDMember(device)"
                                                 data-ng-click="setAsSpareRAIDMember(device)"
                                                 data-ng-disabled="getNumberOfRemainingSpares() <= 0">
                                         </div>
-                                        <div class="table__data no-padding-top table__column--25"></div>
+                                        <div class="table__data no-padding-top table-col--25"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
@@ -1544,34 +1646,34 @@
                                 </div>
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'volume-group'">
-                                <div class="table__data table__column--3">
+                                <div class="table__data table-col--3">
                                     <input class="checkbox" type="checkbox" id="vg-create" disabled="disabled" checked />
                                     <label class="checkbox-label" for="vg-create"></label>
                                 </div>
-                                <div class="table__data table__column--15">
+                                <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
                                         data-ng-class="{ invalid: isNewDiskNameInvalid() }"
                                         data-ng-model="availableNew.name">
                                 </div>
-                                <div class="table__data table__column--15">{$ getNewVolumeGroupSize() $}</div>
-                                <div class="table__data table__column--15">Volume group</div>
-                                <div class="table__data table__column--45"></div>
-                                <div class="table__data table__column--7"></div>
+                                <div class="table__data table-col--15">{$ getNewVolumeGroupSize() $}</div>
+                                <div class="table__data table-col--15">Volume group</div>
+                                <div class="table__data table-col--45"></div>
+                                <div class="table__data table-col--7"></div>
                                 <div class="table__dropdown">
                                     <div class="table__row table__dropdown-row active table__dropdown-row--head">
-                                        <div class="table__header table__column--5"></div>
-                                        <div class="table__header table__column--15">Name</div>
-                                        <div class="table__header table__column--15">Size</div>
-                                        <div class="table__header table__column--15">Device type</div>
-                                        <div class="table__header table__column--50"></div>
+                                        <div class="table__header table-col--5"></div>
+                                        <div class="table__header table-col--15">Name</div>
+                                        <div class="table__header table-col--15">Size</div>
+                                        <div class="table__header table-col--15">Device type</div>
+                                        <div class="table__header table-col--50"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active no-border"
                                         data-ng-repeat="device in availableNew.devices">
-                                        <div class="table__data no-padding-top table__column--5"></div>
-                                        <div class="table__data no-padding-top table__column--15">{$ device.name $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ device.size_human $}</div>
-                                        <div class="table__data no-padding-top table__column--15">{$ getDeviceType(device) $}</div>
-                                        <div class="table__data no-padding-top table__column--50"></div>
+                                        <div class="table__data no-padding-top table-col--5"></div>
+                                        <div class="table__data no-padding-top table-col--15">{$ device.name $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ device.size_human $}</div>
+                                        <div class="table__data no-padding-top table-col--15">{$ getDeviceType(device) $}</div>
+                                        <div class="table__data no-padding-top table-col--50"></div>
                                     </div>
                                     <div class="table__row table__dropdown-row active">
                                         <div class="table__data right">
@@ -1601,7 +1703,7 @@
                         data-ng-disabled="!canCreateCacheSet()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
                         data-ng-click="createCacheSet()">Create cache Set</a>
-                    <a class="link-cta-ubuntu secondary tooltip"
+                    <a class="link-cta-ubuntu secondary margin-right tooltip"
                         data-tooltip="Create at least one cache set, then select your backing device to create bcache"
                         data-ng-disabled="!canCreateBcache()"
                         data-ng-hide="isAllStorageDisabled() || !isSuperUser()"
@@ -1612,40 +1714,40 @@
                     <section class="table">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table__column--3"></div>
-                                <div class="table__header table__column--17">
-                                    <a data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
+                                <div class="table__header table-col--3"></div>
+                                <div class="table__header table-col--16">
+                                    <a class="table__header-link" data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
                                     <span class="divide"></span>
-                                    <a data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
+                                    <a class="table__header-link" data-ng-click="column = 'model'" data-ng-class="{active: column === 'model'}">Model</a>
                                     <span class="divide"></span>
-                                    <a data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
+                                    <a class="table__header-link" data-ng-click="column = 'serial'" data-ng-class="{active: column === 'serial'}">Serial</a>
                                 </div>
-                                <div class="table__header table__column--3">Boot</div>
-                                <div class="table__header table__column--15">Device type</div>
-                                <div class="table__header table__column--52">Used for</div>
+                                <div class="table__header table-col--4">Boot</div>
+                                <div class="table__header table-col--15">Device type</div>
+                                <div class="table__header table-col--52">Used for</div>
                             </div>
                         </header>
                         <main class="table-body">
                             <div class="table__row" data-ng-hide="used.length">
-                                <div class="table__header table__column--100">
+                                <div class="table__header table-col--100">
                                     No disk or partition has been fully utilized.
                                 </div>
                             </div>
                             <div data-ng-repeat="item in used">
                                 <div class="table__row details__used">
-                                    <div class="table__data table__column--3"></div>
-                                    <div class="table__data table__column--17" data-ng-show="column === 'name'">{$ item.name $}</div>
-                                    <div class="table__data table__column--17" data-ng-show="column === 'model'">{$ item.model $}</div>
-                                    <div class="table__data table__column--17" data-ng-show="column === 'serial'">{$ item.serial $}</div>
-                                    <div class="table__data table__column--3">
+                                    <div class="table__data table-col--3"></div>
+                                    <div class="table__data table-col--16" data-ng-show="column === 'name'">{$ item.name $}</div>
+                                    <div class="table__data table-col--16" data-ng-show="column === 'model'">{$ item.model $}</div>
+                                    <div class="table__data table-col--16" data-ng-show="column === 'serial'">{$ item.serial $}</div>
+                                    <div class="table__data table-col--4">
                                         <input class="align-center" type="radio"
                                             data-ng-click="setAsBootDisk(item)"
                                             data-ng-checked="item.is_boot"
                                             data-ng-if="item.type === 'physical'"
                                             data-ng-disabled="isBootDiskDisabled(item, 'used')">
                                     </div>
-                                    <div class="table__data table__column--15">{$ getDeviceType(item) $}</div>
-                                    <div class="table__data table__column--52">{$ item.used_for $}</div>
+                                    <div class="table__data table-col--15">{$ getDeviceType(item) $}</div>
+                                    <div class="table__data table-col--52">{$ item.used_for $}</div>
                                 </div>
                             </div>
                         </main>
@@ -1662,17 +1764,17 @@
                 // open or close the dropdown
 
                 <div class="table__row active">
-                    <div class="table__data table__column--3">
+                    <div class="table__data table-col--3">
                         <input class="checkbox" type="checkbox" id="check-all" />
                         <label class="checkbox-label" for="check-all"></label>
                     </div>
-                    <div class="table__data table__column--15">
+                    <div class="table__data table-col--15">
                         <input type="text" value="VG0" class="table__input"><span class="table__label active">
                         <a href="">Hide disks</a></span></div>
-                    <div class="table__data table__column--15">25.5 G <span class="table__label">Free: 25.5 G</span></div>
-                    <div class="table__data table__column--15">Volume group</div>
-                    <div class="table__data table__column--45"></div>
-                    <div class="table__data table__column--7">
+                    <div class="table__data table-col--15">25.5 G <span class="table__label">Free: 25.5 G</span></div>
+                    <div class="table__data table-col--15">Volume group</div>
+                    <div class="table__data table-col--45"></div>
+                    <div class="table__data table-col--7">
                         <div class="table__controls">
                             <a href="" class="icon add">Add logic volume</a>
                             <a class="icon delete tooltip" data-tooltip="Remove">Delete</a>
@@ -1680,37 +1782,37 @@
                     </div>
                     <div class="table__dropdown--info">
                         <div class="table__row">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15">sda</div>
-                            <div class="table__data table__column--15">8.5 G</div>
-                            <div class="table__data table__column--15">Physical disk</div>
-                            <div class="table__data table__column--15"></div>
-                            <div class="table__data table__column--15">QEMU HARDDISK</div>
-                            <div class="table__data table__column--15 ng-hide">1234567890</div>
-                            <div class="table__data table__column--15">rotary, storage, test</div>
-                            <div class="table__data table__column--7"></div>
+                            <div class="table__data table-col--3"></div>
+                            <div class="table__data table-col--15">sda</div>
+                            <div class="table__data table-col--15">8.5 G</div>
+                            <div class="table__data table-col--15">Physical disk</div>
+                            <div class="table__data table-col--15"></div>
+                            <div class="table__data table-col--15">QEMU HARDDISK</div>
+                            <div class="table__data table-col--15 ng-hide">1234567890</div>
+                            <div class="table__data table-col--15">rotary, storage, test</div>
+                            <div class="table__data table-col--7"></div>
                         </div>
                         <div class="table__row">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15">sdb</div>
-                            <div class="table__data table__column--15">8.5 G</div>
-                            <div class="table__data table__column--15">Physical disk</div>
-                            <div class="table__data table__column--15"></div>
-                            <div class="table__data table__column--15">QEMU HARDDISK</div>
-                            <div class="table__data table__column--15 ng-hide">1234567890</div>
-                            <div class="table__data table__column--15">rotary, storage, test</div>
-                            <div class="table__data table__column--7"></div>
+                            <div class="table__data table-col--3"></div>
+                            <div class="table__data table-col--15">sdb</div>
+                            <div class="table__data table-col--15">8.5 G</div>
+                            <div class="table__data table-col--15">Physical disk</div>
+                            <div class="table__data table-col--15"></div>
+                            <div class="table__data table-col--15">QEMU HARDDISK</div>
+                            <div class="table__data table-col--15 ng-hide">1234567890</div>
+                            <div class="table__data table-col--15">rotary, storage, test</div>
+                            <div class="table__data table-col--7"></div>
                         </div>
                         <div class="table__row">
-                            <div class="table__data table__column--3"></div>
-                            <div class="table__data table__column--15">sdc</div>
-                            <div class="table__data table__column--15">8.5 G</div>
-                            <div class="table__data table__column--15">Physical disk</div>
-                            <div class="table__data table__column--15"></div>
-                            <div class="table__data table__column--15">QEMU HARDDISK</div>
-                            <div class="table__data table__column--15 ng-hide">1234567890</div>
-                            <div class="table__data table__column--15">rotary, storage, test</div>
-                            <div class="table__data table__column--7"></div>
+                            <div class="table__data table-col--3"></div>
+                            <div class="table__data table-col--15">sdc</div>
+                            <div class="table__data table-col--15">8.5 G</div>
+                            <div class="table__data table-col--15">Physical disk</div>
+                            <div class="table__data table-col--15"></div>
+                            <div class="table__data table-col--15">QEMU HARDDISK</div>
+                            <div class="table__data table-col--15 ng-hide">1234567890</div>
+                            <div class="table__data table-col--15">rotary, storage, test</div>
+                            <div class="table__data table-col--7"></div>
                         </div>
                     </div>
                 </div>

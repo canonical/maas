@@ -25,12 +25,19 @@
     width: 16px;
     height: 16px;
     display: inline-block;
-    text-indent: 999em;
+    text-indent: -999em;
     background-repeat: no-repeat;
     background-size: 16px 16px;
     vertical-align: middle;
     margin-top: -3px;
     position: relative;
+    text-align: left;
+    border-bottom: 0 !important;
+    padding: 0;
+
+    &:hover {
+      border-bottom: 0;
+    }
 
     &.info {
         background-image: url('../img/icons/info.png');
@@ -192,6 +199,14 @@
     }
 }
 
+.padding {
+  padding: 20px;
+
+  &--ten {
+    padding: 10px;
+  }
+}
+
 %padding-top,
 .padding-top {
     padding-top: 20px;
@@ -204,6 +219,10 @@
 %padding-right,
 .padding-right {
     padding-right: 20px;
+
+    &--ten {
+      padding-right: 10px;
+    }
 }
 
 %padding-bottom,
@@ -218,6 +237,10 @@
 %padding-left,
 .padding-left {
     padding-left: 20px !important;
+
+    &--ten {
+      padding-left: 10px;
+    }
 
     &--30,
     &--thirty {
@@ -288,6 +311,10 @@
   &--full {
     width: 100%;
   }
+}
+
+.box-sizing {
+  box-sizing: border-box;
 }
 
 .tooltip {

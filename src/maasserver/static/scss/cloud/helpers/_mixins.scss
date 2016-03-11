@@ -4,11 +4,6 @@
  * @section mixins
  */
 
-@mixin font_size ($size: 16) {
-  font-size: ($size / $base)em;
-  margin-bottom: (12 / $size)em;
-}
-
 @mixin box_sizing ($type: border-box) {
     -webkit-box-sizing: $type;
     -moz-box-sizing:    $type;

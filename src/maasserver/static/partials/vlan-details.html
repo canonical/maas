@@ -128,18 +128,18 @@
               <div class="table">
                   <header class="table__head">
                       <div class="table__row">
-                          <div class="table__header table__column--40">Subnet</div>
-                          <div class="table__header table__column--10">Used</div>
-                          <div class="table__header table__column--25">Space</div>
-                          <div class="table__header table__column--25">Fabric</div>
+                          <div class="table__header table-col--40">Subnet</div>
+                          <div class="table__header table-col--10">Used</div>
+                          <div class="table__header table-col--25">Space</div>
+                          <div class="table__header table-col--25">Fabric</div>
                       </div>
                   </header>
                   <section class="table__body">
                       <div class="table__row" data-ng-repeat="row in vlanDetails.relatedSubnets">
-                          <div class="table__data table__column--40"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
-                          <div class="table__data table__column--10">{$ row.subnet.statistics.usage_string $}</div>
-                          <div class="table__data table__column--25">{$ row.space.name $}</div>
-                          <div class="table__data table__column--25">{$ row.fabric.name $}</div>
+                          <div class="table__data table-col--40"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
+                          <div class="table__data table-col--10">{$ row.subnet.statistics.usage_string $}</div>
+                          <div class="table__data table-col--25">{$ row.space.name $}</div>
+                          <div class="table__data table-col--25">{$ row.fabric.name $}</div>
                       </div>
                   </section>
               </div>

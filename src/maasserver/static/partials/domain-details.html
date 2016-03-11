@@ -37,11 +37,11 @@
                 <div class="twelve-col">
                     <div class="table">
                         <div class="table__row table__row--no-hover">
-                            <div class="table__data table__column--70">
+                            <div class="table__data table-col--70">
                                 Are you sure you want to delete this domain?
                             </div>
-                            <div class="table__data table__column--10" data-ng-click="cancelDeleteButton()">Cancel</div>
-                            <div class="table__data table__column--10">
+                            <div class="table__data table-col--10" data-ng-click="cancelDeleteButton()">Cancel</div>
+                            <div class="table__data table-col--10">
                                 <button class="cta-ubuntu secondary" data-ng-click="deleteConfirmButton()">Confirm</button>
                             </div>
                         </div>
@@ -56,17 +56,17 @@
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table__column--20" data-ng-click="predicate='name'; reverse = !reverse"
+                            <div class="table__header table-col--20" data-ng-click="predicate='name'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
-                            <div class="table__header table__column--5" data-ng-click="predicate='rrtype'; reverse = !reverse"
+                            <div class="table__header table-col--5" data-ng-click="predicate='rrtype'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
-                            <div class="table__header table__column--75" data-ng-click="predicate='rrdata'; reverse = !reverse"
+                            <div class="table__header table-col--75" data-ng-click="predicate='rrdata'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</div>
                         </div>
                     </header>
                     <main class="table-body">
                         <div class="table__row table__row--no-hover" data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
-                          <div class="table__data table__column--20">
+                          <div class="table__data table-col--20">
                             <span data-ng-if="row.system_id == null">{$ row.name $}</span>
                             <span data-ng-if="row.system_id !== null">
                                 <div data-ng-switch="row.node_type">
@@ -79,8 +79,8 @@
                                 </div>
                             </span>
                           </div>
-                          <div class="table__data table__column--5">{$ row.rrtype $}</div>
-                          <div class="table__data table__column--75">{$ row.rrdata $}</div>
+                          <div class="table__data table-col--5">{$ row.rrtype $}</div>
+                          <div class="table__data table-col--75">{$ row.rrdata $}</div>
                         </div>
                     </main>
                 </div>

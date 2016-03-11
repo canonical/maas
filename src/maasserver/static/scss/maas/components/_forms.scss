@@ -32,17 +32,16 @@
 %input--styles {
     @include rounded-corners(2px);
     @include box-sizing();
-    -webkit-appearance: none;
-    background: #FFF;
-    color: #333;
-    border: 1px solid #D2D2D2;
-    display: block;
-    font-family: Ubuntu,Arial,"libra sans",sans-serif;
-    font-size: 1em;
-    line-height: 16px;
+    -webkit-appearance: textfield;
+    border-radius: 2px;
+    border: 1px solid #d2d2d2;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, .12);
+    font-size: 16px;
+    margin: 0;
+    outline: none;
+    padding: .6956522em .869565em;
+    vertical-align: baseline;
     font-weight: 300;
-    padding: 0px 13px;
-    max-height: 37px;
 
     &:hover {
       border-color: #B2B2B2;
@@ -66,8 +65,8 @@
 
     .disabled,
     &[disabled="disabled"] {
-        -webkit-text-fill-color: #e3e3e3;
-        color: #e3e3e3;
+        -webkit-text-fill-color: #333;
+        color: #333;
         border-color: #e3e3e3;
         background-color: transparent;
         cursor: not-allowed;
@@ -116,7 +115,10 @@ input {
     &[type='email'],
     &[type='url'] {
         @extend %input--styles;
-        padding: 7px 10px;
+        padding: 7px 10px !important;
+        box-shadow: none;
+        width: 100%;
+        border: 1px solid #d2d2d2;
 
         &::-webkit-input-placeholder {
            color: #888;
@@ -174,12 +176,15 @@ select {
     margin: 0;
     background-image: url('../img/icons/accordion-open.svg');
     background-repeat: no-repeat;
-    background-position: top 16px right 10px;
-    padding: 6px 30px 6px 10px;
+    background-position: top 14px right 10px;
+    background-color: $white;
+    padding: 7px 30px 7px 10px !important;
+    box-shadow: none;
+    width: 100%;
 
-    /* Removes firefox select styles & arrow */
+    // Removes firefox select styles & arrow
     -moz-appearance: none;
-    text-indent: 0.01px;
+    text-indent: .01px;
     text-overflow: '';
 
     &[multiple],
@@ -402,4 +407,67 @@ select {
     button {
         margin-left: 20px;
     }
+}
+
+// Vanilla form styles
+
+.form {
+
+  .form__group {
+    margin-bottom: 10px;
+
+    &.form__group--inline {
+      width: 100%;
+      float: left;
+
+      [class*='-col'] {
+        margin-bottom: 0;
+      }
+
+      label {
+        display: inline-block;
+        float: none;
+        font-size: 16px;
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+
+      input,
+      select {
+        display: inline-block;
+        clear: none;
+        margin: 0;
+        float: none;
+        font-size: 16px
+      }
+    }
+  }
+
+  &.form--inline {
+
+    .form__group {
+      display: inline-block;
+      margin-bottom: 0;
+      vertical-align: middle;
+
+      label {
+        display: inline-block;
+        max-width: 100%;
+        margin-bottom: 5px;
+      }
+
+      input,
+      select {
+        display: inline-block;
+        width: auto;
+        vertical-align: middle;
+        margin: 0;
+      }
+    }
+  }
+
+  .form__help-text {
+    @include font-size(14px);
+    color: $warm-grey;
+  }
 }

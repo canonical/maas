@@ -219,6 +219,7 @@ header.banner {
     position: fixed;
     z-index: 10;
     top: 48px;
+    min-height: 104px;
 
     .page-header__nav {
         position: absolute;

@@ -1,664 +1,509 @@
-@charset 'UTF-8';
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/maas-gui-vanilla-theme/docs/#mixin-maas-header
+/// @since        0.0.3
+////
 
-/**
- * MAAS table styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
- */
+/// MAAS table styling
+/// @group maas table
 
-table {
-    text-align: left;
-    width: 100%;
-    margin-bottom: 40px;
-    border-collapse: separate;
+$alto-grey:             #d2d2d2 !default;
+$text-color:            #333;
+$pale-grey:             #bcbcbc;
+
+// scss-lint:disable SelectorFormat
+@mixin tables($table-border-color, $table-header-color, $table-font-size, $table-header-size) {
+
+  // scss-lint:disable NestingDepth
+
+  // Here is the main placeholder styles for tables. All main elements can be
+  // changed or amended here and will effect standard table markup / class based
+  // div created tables.
+  %table {
+    border-color: $table-border-color;
+    border-collapse: collapse;
     border-spacing: 0;
-    font-size: 16px;
-
-    th,
-    td {
-        background: transparent;
-        text-align: left;
-        padding: 13px 10px;
-
-        .checkbox + .checkbox-label::before {
-            top: -2px;
-        }
-    }
-
-    thead {
-
-        th {
-            background: transparent;
-            color: #888;
-            border: none;
-            border-bottom: 1px solid #B2B2B2;
-        }
-    }
-
-    tbody {
-
-        tr {
-            &:hover .icon-controls a {
-                opacity: 1;
-            }
-        }
-
-        td {
-            border: none;
-            border-bottom: 1px dotted #B2B2B2;
-            position: relative;
-            word-wrap: break-word;
-
-            a:link,
-            a:visited {
-              color: #333;
-              border-bottom: 1px solid #CDCDCD;
-
-              &:hover {
-                color: $ubuntu-orange;
-                text-decoration: none;
-              }
-            }
-
-            &.icon-controls {
-                text-align: right;
-
-                a {
-                    opacity: 0;
-                }
-            }
-
-            input[type="text"] {
-                position: absolute;
-                left: 10px;
-                top: 6px;
-                width: 80%;
-            }
-        }
-    }
-}
-
-.table-listing {
-    text-align: left;
+    overflow-x: scroll;
+    margin-bottom: 20px;
+    margin: 0 0 2.5em;
     width: 100%;
-    margin: 0 0 40px 0;
-    border-collapse: separate;
-    border-spacing: 0;
+    table-layout: fixed;
 
-    .table-listing__row {
-
-        &:hover .table-listing__cell {
-            background-color: #FFF;
-        }
-
-        &.error {
-            background-color: #F3E3E2;
-
-            .status {
-                color: #DD3832;
-            }
-        }
-
-        &.progress {
-            background-color: rgba(25, 182, 238, 0.10);
-        }
-
-        &.selected {
-            background-color: #FFF;
-        }
+    // Table row styles
+    %table-row {
+      width: 100%;
+      border-bottom: 1px dotted $table-border-color;
     }
 
-    .table-listing__header {
-        background: transparent;
-        color: #888;
-        border: none;
-        border-bottom: 1px solid #B2B2B2;
-
-        .table-listing__header-link {
-            background-repeat: no-repeat;
-            background-position: top 8px right 0;
-            color: #888;
-
-            &:hover {
-                color: #333;
-                text-decoration: none;
-                border-bottom: 1px solid #333;
-            }
-
-            &:focus,
-            &:active,
-            &:visited {
-                text-decoration: none;
-            }
-
-            &.active {
-                color: #333;
-            }
-
-            &.sort {
-                border-bottom: 1px solid #333;
-            }
-        }
-
-        .divide {
-            width: 1px;
-            display: inline-block;
-            background: #D2D2D2 none repeat scroll 0% 0%;
-            height: 10px;
-            padding: 0px;
-            margin: 0px 5px;
-        }
-    }
-
-    .table-listing__cell {
-        @include box-sizing();
-        border: none;
-        border-bottom: 1px dotted #B2B2B2;
-        position: relative;
-        word-wrap: break-word;
-
-        &.icon-controls {
-            text-align: right;
-            opacity: 0;
-        }
-
-        input,
-        select {
-            position: absolute;
-            left: 10px;
-            top: 5px;
-            width: 80%;
-        }
-    }
-
-    .fixed {
-        max-width: 200px;
-        min-width: 200px;
-        width: 200px;
-        padding-left: 0;
-
-        .table-listing__header & {
-            padding-left: 0;
-        }
-    }
-
-    &.no-hover {
-
-        .table-listing__row:hover {
-
-            .table-listing__cell,
-            td {
-                background-color: transparent;
-            }
-        }
-    }
-}
-
-/* TABLE GRID --------------------------------------------------------
---------------------------------------------------------------------*/
-
-@mixin table-columns($table-columns) {
-  $table-list: null;
-  $max-width: 1440px;
-  @for $i from 1 through $table-columns {
-    .t#{$i} {
-      width: percentage($i / 100);
-    }
-  }
-
-  @for $i from 1 through $table-columns {
-    .table__column--#{$i} {
-      width: percentage($i / 100);
-    }
-  }
-}
-
-@include table-columns(100);
-
-#commissioning_scripts {
-
-    .script-content.slider {
-        overflow: hidden;
-
-        pre {
-            margin-top: 20px;
-        }
-    }
-}
-
-.table {
-  display: table;
-  border-color: #B2B2B2;
-  border-collapse: collapse;
-  border-spacing: 0;
-  overflow-x: scroll;
-  margin-bottom: 20px;
-  margin: 0 0 2.5em;
-  width: 100%;
-
-  a {
-    color: #333;
-    border-bottom: 1px solid #CDCDCD;
-
-    &:hover {
-      color: $ubuntu-orange;
-      text-decoration: none;
-    }
-  }
-
-  .table__row {
-    float: left;
-    width: 100%;
-    display: table-row;
-    border-bottom: 1px dotted #B2B2B2;
-
-    &:hover {
-      background-color: #FFF;
-
-      .table__input {
-        background-color: #FFF;
-        border-color: #D2D2D2;
-        background-position: right 10px top 16px;
-
-        &.invalid {
-          border-color: #D90000;
-        }
-
-        &[disabled] {
-          border-color: transparent;
-          color: #333;
-        }
-      }
-
-      .table__controls {
-        z-index: 1;
-        opacity: 1;
-
-        &--secondary {
-          z-index: 1;
-          opacity: 1;
-        }
-      }
-    }
-
-    &.table__row--no-hover {
-
-        &:hover {
-          background-color: transparent;
-        }
-    }
-
-    &.active {
-      background-color: #FFF;
-
-      .table__dropdown {
-
-        .table__data,
-        .table__input {
-          color: #333;
-        }
-      }
-
-      &:hover {
-
-        .table__controls {
-          opacity: 0;
-          z-index: -1000;
-          pointer-events: none;
-
-          &--secondary {
-            z-index: -1000;
-            opacity: 0;
-            pointer-events: none;
-          }
-        }
-
-        .table__dropdown {
-
-          .table__input {
-            pointer-events: all;
-            background-color: #FFF;
-            border-color: #D2D2D2;
-            background-position: right 10px top 16px;
-          }
-        }
-      }
-
-      .table__input {
-        background-color: #FFF;
-        border-color: #D2D2D2;
-        background-position: right 10px top 16px;
-
-        &.editible {
-          pointer-events: all;
-          background-color: #FFF;
-          border-color: #D2D2D2;
-          background-position: right 10px top 16px;
-        }
-
-        &[disabled] {
-          border-color: transparent;
-          color: #333;
-        }
-      }
-
-      .table__dropdown {
-        max-height: 3000px;
-      }
-    }
-
-    &.selected {
-
-      .table__input {
-        background-color: transparent;
-        border-color: transparent;
-        background-position: right -9999em top -9999em;
-        pointer-events: none;
-      }
-
-      &:hover {
-
-        .table__controls {
-          opacity: 0;
-          z-index: -1000;
-          pointer-events: none;
-
-          &--secondary {
-            z-index: -1000;
-            opacity: 0;
-            pointer-events: none;
-          }
-        }
-
-        .table__dropdown {
-
-          .table__input {
-            pointer-events: all;
-            background-color: #FFF;
-            border-color: #D2D2D2;
-            background-position: right 10px top 16px;
-          }
-        }
-      }
-    }
-
-    &.disabled {
-
-      & > .table__data {
-        color: #888;
-        pointer-events: none;
-
-        & > .table__input {
-          color: #888;
-          pointer-events: none;
-        }
-      }
-
-      .table__input {
-        background-color: transparent;
-        border-color: transparent;
-        background-position: right -9999em top -9999em;
-        pointer-events: none;
-      }
-
-      &:hover {
-
-        .table__input {
-          background-color: transparent;
-          border-color: transparent;
-          background-position: right -9999em top -9999em;
-          pointer-events: none;
-        }
-
-        .table__controls {
-          opacity: 0;
-          z-index: -1000;
-          pointer-events: none;
-
-          &--secondary {
-            z-index: -1000;
-            opacity: 0;
-            pointer-events: none;
-          }
-        }
-      }
-    }
-
-    &.noEdit {
-
-      .table__input {
-        background-color: transparent;
-        border-color: transparent;
-        background-position: right -9999em top -9999em;
-        pointer-events: none;
-      }
-
-      &:hover {
-
-        .table__input {
-          background-color: transparent;
-          border-color: transparent;
-          background-position: right -9999em top -9999em;
-          pointer-events: none;
-        }
-
-        .table__controls {
-          opacity: 0;
-          z-index: -1000;
-          pointer-events: none;
-
-          &--secondary {
-            z-index: -1000;
-            opacity: 0;
-            pointer-events: none;
-          }
-        }
-      }
-    }
-  }
-
-  .table__header,
-  .table__data {
-    font-size: 16px;
-    display: table-cell;
-    padding: 13px 10px;
-    box-sizing: border-box;
-    height: 100%;
-    background: none;
-    border: 0;
-    text-align: left;
-    float: left;
-    word-wrap: break-word;
-  }
-
-  .table__head {
-    display: table-head;
-    width: 100%;
-    box-sizing: border-box;
-
-    a {
-      color: $ubuntu-orange;
-      border: 0;
-
-      &:hover {
-        cursor: pointer;
-      }
-    }
-
-    .table__row {
-      border-bottom: 1px solid #B2B2B2;
-
-      &:hover {
-        background-color: transparent;
-      }
-    }
-
-    .table__header {
-      font-size: 13px;
+    // Table cell styles
+    %table-cell {
+      @include font-size($table-font-size);
+      padding: 10px;
+      box-sizing: border-box;
+      min-height: 21px;
       background: none;
-      color: #888;
+      border: 0;
+      text-align: left;
+      border-collapse: collapse;
     }
 
-    a,
-    .table__header-link {
-      color: #888;
+    // Table header row styles
+    %table-header-row {
+      color: $table-header-color;
+      border-bottom: 1px solid;
 
       &:hover {
-        color: #333;
+        background-color: transparent;
+      }
+    }
+
+    // Table header cell styles
+    %table-header {
+      @include font-size($table-header-size);
+      background: none;
+      color: $table-header-color;
+      font-size: 13px;
+
+      input {
+
+        &[type="radio"],
+        &[type="checkbox"] {
+
+          + label {
+            margin: 0;
+            top: -3px;
+          }
+        }
+      }
+    }
+
+    // Table header hyperlink styles
+    %table-header-link {
+      color: $table-header-color;
+
+      &:hover {
+        color: $text-color;
         text-decoration: none;
-        border-bottom: 1px solid #333;
+        border-bottom: 1px solid $text-color;
       }
 
+      // Sorting and active styles when filtering a table
       &.active {
-        color: #333;
+        color: $text-color;
         text-decoration: none;
       }
 
       &.sort {
-        border-bottom: 1px solid inherit;
+        border-bottom: 1px solid $text-color;
       }
     }
 
-    .divide {
+    // Table divide is used for multiple table header options
+    %table-divide {
       width: 1px;
       display: inline-block;
-      background: #888;
+      background: $table-header-color;
       height: 10px;
       margin: 0 5px;
     }
+
+    .numerical {
+      text-align: right;
+    }
+
+    // Generic table form elements, covers general alignment of common form
+    // elements which can be found in all tables.
+    input,
+    select {
+      margin: 0 0 0 -14px;
+    }
+
+    input {
+
+      &[type="radio"],
+      &[type="checkbox"] {
+
+        + label {
+          margin: 0;
+          top: -1px;
+        }
+      }
+    }
   }
 
-  .table__body {
-    display: table-row-group;
-  }
+  // Generic table styles, this is to be used for simple display of data which
+  // doesn't reqire dropdowns or form input interaction. Example would be a
+  // listing of machines or generic report information.
+  //
+  // @example
+  // <table>
+  //   <thead>
+  //     <tr>
+  //       <th>...</th>
+  //       ...
+  //     </tr>
+  //   </thead>
+  //   <tfoot>
+  //     <tr>
+  //       <td>...</td>
+  //       ...
+  //     </tr>
+  //   </tfoot>
+  //   <tbody>
+  //     <tr>
+  //       <td>...</td>
+  //       ...
+  //     </tr>
+  //   </tbody>
+  // </table>
+  table {
+    @extend %table;
 
-  .table__footer {
-    display: table-footer-group;
-  }
+    tr {
+      @extend %table-row;
+    }
 
-  .table__label {
-    clear: both;
-    display: block;
-    margin-top: 11px;
-    color: #BCBCBC;
+    th,
+    td {
+      @extend %table-cell;
+    }
 
-    a {
-      color: #BCBCBC;
+    td {
 
-      &:hover {
-        color: $ubuntu-orange;
+      a:link,
+      a:visited {
+        color: $text-color;
+        border-bottom: 1px solid #d2d2d2;
+
+        &:hover {
+          text-decoration: none;
+          color: $ubuntu-orange;
+        }
       }
     }
 
-    &.active {
+    thead {
+
+      tr {
+        @extend %table-header-row;
+      }
+
+      th {
+        @extend %table-header;
+
+        a:link,
+        a:visited {
+          @extend %table-header-link;
+        }
+      }
+
+      .divide {
+        @extend %table-divide;
+      }
+    }
+  }
+
+  // Table styles used to replicate the table layout but where extra interaction
+  // can not be created using standard table elements. This includes in table
+  // form editing, dropdown elements and layouts not possibile using tables.
+  //
+  // @example
+  // <div class="table">
+  //   <header class="table__head">
+  //     <div class="table__row">
+  //       <div class="table__header">...</div>
+  //       ...
+  //     </div>
+  //   </div>
+  //   <footer class="table__footer">
+  //     <div class="table__row">
+  //       <div class="table__data>...</div>
+  //       ...
+  //     </div>
+  //   </footer>
+  //   <section class="table__body">
+  //     <div class="table__row">
+  //       <div class="table__data>...</div>
+  //       ...
+  //     </div>
+  //   </section>
+  // </div>
+  .table {
+    @extend %table;
+    display: table;
+
+    // Table row style
+    .table__row {
+      @extend %table-row;
+      float: left;
+      display: table-row;
+
+      // Table row hover style, this can reveal control elements
+      &:hover {
+        background-color: $white;
+
+        // Show input / select styles when on hover over a parent .table__row
+        .table__input {
+          background-color: $white;
+          border-color: $alto-grey;
+          background-position: right 10px top 16px;
+
+          &[disabled] {
+            border-color: transparent;
+          }
+        }
+
+        // Set controls z-index and opacity so it is visible
+        .table__controls {
+          z-index: 1;
+          opacity: 1;
+
+          &--secondary {
+            z-index: 1;
+            opacity: 1;
+          }
+        }
+      }
+
+      // Active state on .table__row
+      &.active {
+        background-color: $white;
+
+        .table__input {
+          background-color: $white;
+          border-color: $alto-grey;
+          background-position: right 10px top 16px;
+        }
+
+        .table__controls {
+          z-index: 1;
+          opacity: 1;
+
+          &--secondary {
+            z-index: 1;
+            opacity: 1;
+          }
+        }
+
+        .table__dropdown {
+
+          .table__row {
+            display: none;
+
+            &.active {
+              display: block;
+            }
+          }
+        }
+      }
+    }
+
+    .table__header,
+    .table__data {
+      @extend %table-cell;
+      display: table-cell;
+      float: left;
+    }
+
+    .table__data {
+
+      a:link,
+      a:visited {
+        color: $text-color;
+        border-bottom: 1px solid #d2d2d2;
+
+        &:hover {
+          text-decoration: none;
+          color: $ubuntu-orange;
+        }
+      }
+    }
+
+    .table__head {
+      display: table-head;
+      width: 100%;
+      box-sizing: border-box;
+
+      .table__row {
+        @extend %table-header-row;
+      }
+
+      .table__header {
+        @extend %table-header;
+
+        .table__header-link {
+          @extend %table-header-link;
+        }
+      }
+
+      .table__header-divide,
+      .divide {
+        @extend %table-divide;
+      }
+    }
+
+    .table__body {
+      display: table-row-group;
+    }
+
+    .table__footer {
+      display: table-footer-group;
+    }
+
+    // Table label style used as secondary information with in a table cell. Can
+    // also be used as a toggle.
+    //
+    // @example
+    // <div class="table__data">
+    //    ...
+    //    <span class="table__label">
+    //        <a href="#">Show more</a>
+    //    </span>
+    // </div>
+    //
+    // <div class="table__data active">
+    //     ...
+    //     <span class="table__label">
+    //         <a href="#">Hide</a>
+    //     </span>
+    // </div>
+    .table__label {
+      clear: both;
+      display: block;
+      margin-top: 11px;
+      color: $pale-grey;
 
       a {
-        color: $ubuntu-orange;
+        color: $pale-grey;
+
+        &:hover {
+          color: $link-color;
+        }
+      }
+
+      &.active {
+
+        a {
+          color: $link-color;
+        }
       }
     }
-  }
 
-  .table__controls {
-    width: 100%;
-    text-align: right;
-    opacity: 0;
-    z-index: -1000;
-
-    &--secondary {
+    // Table contol container, hidden unless hovered on the table row. Will have
+    // action controls which can effect the parent table row or other actions.
+    //
+    // @example
+    // <div class="table">
+    //     <div class="table__row">
+    //         <div class="table__data">
+    //             ...
+    //         </div>
+    //         <div class="table__data">
+    //             <div class="table__controls">
+    //                 <a href="#">Delete</a>
+    //                 <a href="#">Save</a>
+    //             </div>
+    //         </div>
+    //     </div>
+    // </div>
+    .table__controls {
+      width: 100%;
+      text-align: right;
       opacity: 0;
       z-index: -1000;
-      width: auto;
-      text-align: left;
-    }
-  }
 
-  .table__tags {
-
-    .table__tag {
-      display: inline-block;
-      margin-right: 5px;
-    }
-  }
-
-  // Form styles
-  .table__input {
-    display: inline-block;
-    margin: -7px 0 -8px -14px;
-    background-color: transparent;
-    border-color: transparent;
-    background-position: -9999px -9999px;
-
-    &.invalid {
-      border-color: transparent;
-
-      &:focus {
-        border-color: #D90000;
+      &--secondary {
+        opacity: 0;
+        z-index: -1000;
+        width: auto;
+        text-align: left;
       }
-    }
 
-    &[disabled] {
-      border-color: transparent;
-      color: #333;
-    }
+      a,
+      a:link,
+      a:visited {
+        color: $text-color;
+        border-bottom: 1px solid #d2d2d2;
 
-    &:focus {
-      background-color: #FFF;
-      border-color: #D2D2D2;
-    }
-  }
-
-  label {
-    font-size: 13px;
-    color: #BCBCBC;
-  }
-
-  input,
-  select {
-    margin: 0 0 0 -14px;
-  }
-
-  input[type="radio"] {
-    margin-left: 0;
-  }
-
-  ul {
-
-    li {
-      margin: 0;
-      margin-top: 14px;
-
-      &:first-of-type {
-        margin-top: 0;
-      }
-    }
-  }
-
-  // Table dropdown
-  .table__dropdown {
-    width: 100%;
-    max-height: 0;
-    overflow-y: hidden;
-
-    .table__dropdown-row {
-        border-bottom: 0;
-        position: relative;
-        max-height: 0;
-        transition: max-height 0.10s ease-out;
-        overflow: hidden;
-
-        &.active {
-          max-height: 500px;
-          transition: max-height 0.25s ease-in;
+        &:hover {
+          text-decoration: none;
+          color: $ubuntu-orange;
         }
+      }
+    }
+
+    // Table input styles act in a similar way to table controls. They are only
+    // active on hover. This style can effect input boxes or select boxes.
+    //
+    // @example
+    // <div class="table">
+    //     <div class="table__row">
+    //         <div class="table__data">
+    //             ...
+    //         </div>
+    //         <div class="table__data">
+    //             <input type="text" class="table__input" placeholder="Enter text...">
+    //         </div>
+    //     </div>
+    // </div>
+    .table__input {
+      display: inline-block;
+      margin: -7px 0 -7px -14px;
+      background-color: transparent;
+      border-color: transparent;
+      background-position: -9999px -9999px;
+
+      &[disabled] {
+        background-color: transparent;
+        border-color: transparent;
+        pointer-events: none;
+        background-position: -9999px -9999px;
+        color: $text-color;
+      }
+    }
+
+    // Table dropdowns are used for extra condenced information and to expand
+    // form elements. The class .table__dropdown must be within a .table__row and
+    // acts as a container.
+    //
+    // @example
+    // <div class="table">
+    //     <div class="table__row active">
+    //         <div class="table__data">
+    //             ...
+    //         </div>
+    //         <div class="table__data">
+    //             ...
+    //         </div>
+    //         <div class="table__dropdown">
+    //             <div class="table__row table__dropdown-row">
+    //                 <div class="table__data">
+    //                     ...
+    //                 </div>
+    //                 <div class="table__data">
+    //                     ...
+    //                 </div>
+    //                 <div class="table__data">
+    //                     ...
+    //                 </div>
+    //             </div>
+    //         </div>
+    //     </div>
+    // </div>
+    .table__dropdown {
+      width: 100%;
+
+      // Table dropdown row style, add class to .table__row
+      .table__row {
+        border-bottom: 0;
+        display: none;
+        position: relative;
 
         &:before {
           display: block;
           margin: 0 auto;
           width: calc(100% - 20px);
-          border-top: 1px dotted #B2B2B2;
+          border-top: 1px dotted $alto-grey;
           position: absolute;
           height: 1px;
           content: '';
@@ -666,54 +511,120 @@ table {
           left: 10px;
         }
 
+        // Table dropdown header row removes border styling from .table__row
         &.table__dropdown-row--head {
           border-bottom: 0;
 
           .table__header {
-            color: #BCBCBC;
+            color: $pale-grey;
             font-size: 13px;
           }
         }
 
+        // If no borders are required, removes all borders and before elements
         &.no-border {
-          border: 0;
 
           &:before {
-             border: 0;
+            display: none;
           }
         }
 
-        .table__input {
-          display: inline-block;
-          margin: -7px 0 -8px -14px;
-          background-color: #FFF;
-          border-color: #D2D2D2;
-          background-position: right 10px top 16px;
+        &.border {
+
+          &:before {
+            display: block;
+            margin: 0 auto;
+            width: calc(100% - 20px);
+            border-top: 1px dotted $alto-grey;
+            position: absolute;
+            height: 1px;
+            content: '';
+            top: 0;
+            left: 10px;
+          }
         }
-    }
-
-    &--info {
-      width: 100%;
-      max-height: 0;
-      background-color: transparent;
-
-      // Info dropdown
-      .table__dropdown-row--info {
-        border-bottom: 0;
-        position: relative;
-        max-height: 0;
-        transition: max-height 0.10s ease-out;
-        overflow: hidden;
 
         &.active {
-          max-height: 500px;
-          transition: max-height 0.25s ease-in;
+
+          .table__input {
+            background-color: $white;
+            border-color: $alto-grey;
+            background-position: right 10px top 16px;
+            pointer-events: all;
+
+            &[disabled] {
+              border-color: transparent;
+              cursor: pointer;
+            }
+          }
+        }
+      }
+
+      // .table__dropdown--info Information style dropdown sets all colours
+      // styles to pale to inform users this is not an interactive table
+      &--info {
+
+        .table__row {
+          border-bottom: 0;
         }
 
         .table__data {
-          color: #BCBCBC;
+          color: $pale-grey;
         }
       }
     }
   }
+
+  .form {
+
+    .form__group {
+
+      input,
+      select {
+        margin: 0;
+      }
+    }
+  }
+
+  $states: (
+    error: $error,
+    warning: $warning,
+    success: $success,
+    information: $information
+  );
+
+  @each $state, $color in $states {
+    &.table--#{$state} {
+      border-color: $color;
+
+      .table__header,
+      .table__data,
+      th,
+      td {
+        border-color: $color;
+        background-color: lighten($color, 40%);
+      }
+    }
+  }
+  // scss-lint:enable NestingDepth
 }
+
+// Generates column classes use for tables
+// the column class generated will look like '.table-col--1'
+// Number value at the end signifies the width percentage
+@mixin table-columns($table-columns) {
+
+  @for $i from 1 through $table-columns {
+    .table-col--#{$i} {
+      width: percentage($i / 100);
+    }
+  }
+}
+
+@mixin maas-table {
+  @include tables($alto-grey, $warm-grey, 16px, 13px);
+  @include table-columns(100);
+}
+
+@include maas-table();
+// scss-lint:enable SelectorFormat
