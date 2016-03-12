@@ -14,6 +14,7 @@ from django.db.models.signals import (
 from maasserver.models.node import RackController
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.service import Service
 from maasserver.utils.signals import SignalsManager
 
 
@@ -24,6 +25,7 @@ def update_rackd_status(sender, instance, **kwargs):
     """Update status of the rackd service for the rack controller the
     RPC connection was added or removed.
     """
+    Service.objects.create_services_for(instance.rack_controller)
     instance.rack_controller.update_rackd_status()
 
 
@@ -41,6 +43,7 @@ def update_all_rackd_status(sender, instance, **kwargs):
     added or removed.
     """
     for rack_controller in RackController.objects.all():
+        Service.objects.create_services_for(rack_controller)
         rack_controller.update_rackd_status()
 
 
