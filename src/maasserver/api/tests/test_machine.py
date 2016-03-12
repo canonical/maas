@@ -113,9 +113,7 @@ class TestMachineAPI(APITestCase):
 
     def setUp(self):
         super(TestMachineAPI, self).setUp()
-        self.patch(node_module.Node, '_power_control_node')
-        self.patch(node_module, 'power_driver_check')
-        self.patch(node_module.Node, '_power_control_node')
+        self.patch(node_module.Node, '_pc_power_control_node')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -620,7 +618,6 @@ class TestMachineAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
 
     def test_POST_deploy_stores_user_data(self):
-        self.patch(node_module.Node, "_power_control_node")
         rack_controller = factory.make_RackController()
         self.patch(
             node_module.RackControllerManager, "filter_by_url_accessible"

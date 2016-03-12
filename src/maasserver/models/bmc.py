@@ -20,8 +20,10 @@ import re
 
 from django.db import transaction
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
+    ManyToManyField,
     SET_NULL,
 )
 from maasserver import DefaultMeta
@@ -31,6 +33,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.rpc import getAllClients
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.schema import (
     POWER_FIELDS_BY_TYPE,
@@ -77,6 +80,13 @@ class BMC(CleanSave, TimestampedModel):
     # encoded as JSON. These apply to all Nodes controlled by this BMC.
     power_parameters = JSONObjectField(
         max_length=(2 ** 15), blank=True, default='')
+
+    # Rack controllers that have access to the BMC by routing instead of
+    # having direct layer 2 access.
+    routable_rack_controllers = ManyToManyField(
+        "RackController", blank=True, editable=True,
+        through="BMCRoutableRackControllerRelationship",
+        related_name="routable_bmcs")
 
     def __unicode__(self):
         if self.ip_address:
@@ -171,9 +181,9 @@ class BMC(CleanSave, TimestampedModel):
         # no match found - return None
         return None
 
-    def get_usable_rack_controllers(self, with_connection=True):
+    def get_layer2_usable_rack_controllers(self, with_connection=True):
         """Return a list of `RackController`'s that have the ability to access
-        this `BMC`."""
+        this `BMC` directly through a layer 2 connection."""
         ip_address = self.ip_address
         if ip_address is None or ip_address.ip is None or ip_address.ip == '':
             return set()
@@ -190,6 +200,39 @@ class BMC(CleanSave, TimestampedModel):
         return RackController.objects.filter_by_url_accessible(
             ip_address.ip, with_connection=with_connection)
 
+    def get_routable_usable_rack_controllers(self, with_connection=True):
+        """Return a list of `RackController`'s that have the ability to access
+        this `BMC` through a route on the rack controller."""
+        routable_racks = [
+            relationship.rack_controller
+            for relationship in (
+                self.routable_rack_relationships.all().select_related(
+                    "rack_controller"))
+            if relationship.routable
+        ]
+        if with_connection:
+            conn_rack_ids = [client.ident for client in getAllClients()]
+            return [
+                rack
+                for rack in routable_racks
+                if rack.system_id in conn_rack_ids
+            ]
+        else:
+            return routable_racks
+
+    def get_usable_rack_controllers(self, with_connection=True):
+        """Return a list of `RackController`'s that have the ability to access
+        this `BMC` either using layer2 or routable if no layer2 are available.
+        """
+        racks = self.get_layer2_usable_rack_controllers(
+            with_connection=with_connection)
+        if len(racks) == 0:
+            # No layer2 routable rack controllers. Use routable rack
+            # controllers.
+            racks = self.get_routable_usable_rack_controllers(
+                with_connection=with_connection)
+        return racks
+
     def get_client_identifiers(self):
         """Return a list of identifiers that can be used to get the
         `rpc.common.Client` for this `BMC`.
@@ -203,3 +246,50 @@ class BMC(CleanSave, TimestampedModel):
             for controller in rack_controllers
         ]
         return identifers
+
+    def is_accessible(self):
+        """If the BMC is accessible by at least one rack controller."""
+        racks = self.get_usable_rack_controllers(with_connection=False)
+        return len(racks) > 0
+
+    def update_routable_racks(
+            self, routable_racks_ids, non_routable_racks_ids):
+        """Set the `routable_rack_controllers` relationship to the new
+        information."""
+        BMCRoutableRackControllerRelationship.objects.filter(bmc=self).delete()
+        self._create_racks_relationship(routable_racks_ids, True)
+        self._create_racks_relationship(non_routable_racks_ids, False)
+
+    def _create_racks_relationship(self, rack_ids, routable):
+        """Create `BMCRoutableRackControllerRelationship` for list of
+        `rack_ids` and wether they are `routable`."""
+        # Circular imports.
+        from maasserver.models.node import RackController
+        for rack_id in rack_ids:
+            try:
+                rack = RackController.objects.get(system_id=rack_id)
+            except RackController.DoesNotExist:
+                # Possible it was delete before this call, but very very rare.
+                pass
+            BMCRoutableRackControllerRelationship(
+                bmc=self, rack_controller=rack, routable=routable).save()
+
+
+class BMCRoutableRackControllerRelationship(CleanSave, TimestampedModel):
+    """Records the link routable status of a BMC from a RackController.
+
+    When a BMC is first created all rack controllers are check to see which
+    have access to the BMC through a route (not directly connected).
+    Periodically this information is updated for every rack controller when
+    it asks the region controller for the machines it needs to power check.
+
+    The `updated` field is used to track the last time this information was
+    updated and if the rack controller should check its routable status
+    again. A link will be created between every `BMC` and `RackController` in
+    this table to record the last time it was checked and if it was `routable`
+    or not.
+    """
+    bmc = ForeignKey(BMC, related_name="routable_rack_relationships")
+    rack_controller = ForeignKey(
+        "RackController", related_name="routable_bmc_relationships")
+    routable = BooleanField()

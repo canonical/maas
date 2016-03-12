@@ -14,6 +14,7 @@ __all__ = [
 
 from collections import namedtuple
 from datetime import timedelta
+from functools import partial
 from operator import attrgetter
 import random
 import re
@@ -51,6 +52,7 @@ from maasserver.clusterrpc.power import (
     power_driver_check,
     power_off_node,
     power_on_node,
+    power_query_all,
 )
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
@@ -130,7 +132,6 @@ from maasserver.utils.orm import (
     get_one,
     MAASQueriesMixin,
     post_commit,
-    post_commit_do,
     transactional,
 )
 from maasserver.utils.threads import (
@@ -155,7 +156,6 @@ from provisioningserver.rpc.cluster import (
     RefreshRackControllerInfo,
 )
 from provisioningserver.rpc.exceptions import (
-    CannotRemoveHostMap,
     NoConnectionsAvailable,
     PowerActionFail,
     UnknownPowerType,
@@ -171,7 +171,6 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
 )
-from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
@@ -1191,13 +1190,15 @@ class Node(CleanSave, TimestampedModel):
         if self.status == old_status:
             # No transition is always a safe transition.
             pass
+        elif old_status is None:
+            # No transition to check as it has no previous status.
+            pass
         elif self.status in NODE_TRANSITIONS.get(old_status, ()):
             # Valid transition.
-            if old_status is not None:
-                stat = map_enum_reverse(NODE_STATUS, ignore=['DEFAULT'])
-                maaslog.info(
-                    "%s: Status transition from %s to %s",
-                    self.hostname, stat[old_status], stat[self.status])
+            stat = map_enum_reverse(NODE_STATUS, ignore=['DEFAULT'])
+            maaslog.info(
+                "%s: Status transition from %s to %s",
+                self.hostname, stat[old_status], stat[self.status])
         else:
             # Transition not permitted.
             error_text = "Invalid transition: %s -> %s." % (
@@ -2128,12 +2129,9 @@ class Node(CleanSave, TimestampedModel):
         # If this node has non-installable children, remove them.
         self.children.all().delete()
 
+        # Power was off or cannot be powered off so release to ready now.
         if release_to_ready:
-            # Release IP addresses later to avoid creating deadlocks with
-            # other node editing operations (it can be slow).
-            post_commit_do(
-                reactor.callLater, 0, deferToDatabase,
-                self._release_to_ready)
+            self._release_to_ready()
 
     @transactional
     def _release_to_ready(self):
@@ -2144,17 +2142,10 @@ class Node(CleanSave, TimestampedModel):
         final power-down. This method should be the absolute last method
         called.
         """
-        try:
-            # XXX: This should be a 2-step process: update the database, then
-            # perform RPC to mutate DHCP servers. Presently it does everything
-            # from within a single database transaction.
-            self.release_auto_ips()
-        except CannotRemoveHostMap:
-            self.mark_failed(None, "Could not release IP addresses")
-        else:
-            self.status = NODE_STATUS.READY
-            self.owner = None
-            self.save()
+        self.release_auto_ips()
+        self.status = NODE_STATUS.READY
+        self.owner = None
+        self.save()
 
     def release_or_erase(self, user, comment=None):
         """Either release the node or erase the node then release it, depending
@@ -2701,7 +2692,7 @@ class Node(CleanSave, TimestampedModel):
             user, event, action='start', comment=comment)
         return self._start(user, user_data)
 
-    def _get_bmc_client_connection_info(self):
+    def _get_bmc_client_connection_info(self, *args, **kwargs):
         """Return a tuple that list the rack controllers that can communicate
         to the BMC for this node.
 
@@ -2771,8 +2762,10 @@ class Node(CleanSave, TimestampedModel):
             self.claim_auto_ips()
             deployment_timeout = self.get_deployment_time()
             self._start_deployment()
+            claimed_ips = True
         else:
             deployment_timeout = None
+            claimed_ips = False
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_started:
@@ -2781,24 +2774,21 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return None
 
-        def pc_power_on_node(
-                system_id, hostname, client_idents, fallback_idents,
-                power_info):
+        # Request that the node be powered on post-commit.
+        d = self._pc_power_control_node(power_on_node, power_info)
 
-            d = Node._power_control_node(
-                power_on_node, system_id, hostname,
-                client_idents, fallback_idents, power_info)
-            if deployment_timeout is not None:
-                d.addCallback(
-                    callOutToDatabase, Node._set_status_expires,
-                    self.system_id, deployment_timeout)
+        # Set the deployment timeout so the node is marked failed after
+        # a period of time.
+        if deployment_timeout is not None:
+            d.addCallback(
+                callOutToDatabase, Node._set_status_expires,
+                self.system_id, deployment_timeout)
+
+        # If any part of this processes fails be sure to release the grabbed
+        # auto IP addresses.
+        if claimed_ips:
             d.addErrback(callOutToDatabase, self.release_auto_ips)
-            return d
-
-        client_idents, fallback_idents = self._get_bmc_client_connection_info()
-        return post_commit_do(
-            pc_power_on_node, self.system_id, self.hostname,
-            client_idents, fallback_idents, power_info)
+        return d
 
     @transactional
     def stop(self, user, stop_mode='hard', comment=None):
@@ -2844,32 +2834,70 @@ class Node(CleanSave, TimestampedModel):
         power_info.power_parameters['power_off_mode'] = stop_mode
 
         # Request that the node be powered off post-commit.
-        client_idents, fallback_idents = self._get_bmc_client_connection_info()
-        return post_commit_do(
-            Node._power_control_node, power_off_node,
-            self.system_id, self.hostname,
-            client_idents, fallback_idents, power_info)
+        return self._pc_power_control_node(power_off_node, power_info)
 
-    @staticmethod
-    def _power_control_node(
-            power_method, system_id, hostname, client_idents, fallback_idents,
-            power_info):
-        """Perform the `power_method` with the given parameters."""
+    def _pc_power_control_node(self, power_method, power_info):
+        d = post_commit()
 
-        def eb_fallback_clients(failure):
-            failure.trap(NoConnectionsAvailable)
-            return getClientFromIdentifiers(fallback_idents)
+        # Check if the BMC is accessible. If not we need to do some work to
+        # make sure we can determine which rack controller can power
+        # control this node.
+        if not self.bmc.is_accessible():
+            # Perform power query on all of the rack controllers to determine
+            # which has access to this node's BMC.
+            d.addCallback(
+                lambda _: power_query_all(
+                    self.system_id, self.hostname, power_info))
 
-        def cb_check_power_driver(client, power_info):
-            d = Node.confirm_power_driver_operable(
-                client, power_info.power_type, client.ident)
-            d.addCallback(lambda _: client)
+            def cb_update_routable(result):
+                power_state, routable_racks, non_routable_racks = result
+                if (power_info.can_be_queried and
+                        self.power_state != power_state):
+                    # MAAS will query power types that even say they don't
+                    # support query. But we only update the power_state on
+                    # those we are saying MAAS reports on.
+                    self.power_state = power_state
+                    self.save(update_fields=["power_state"])
+                self.bmc.update_routable_racks(
+                    routable_racks, non_routable_racks)
+
+            # Update the routable information for the BMC.
+            d.addCallback(partial(deferToDatabase, cb_update_routable))
+
+        # Get the client connection information for the node.
+        d.addCallback(
+            partial(deferToDatabase, self._get_bmc_client_connection_info))
+
+        def cb_power_control(result):
+            client_idents, fallback_idents = result
+
+            def eb_fallback_clients(failure):
+                failure.trap(NoConnectionsAvailable)
+                return getClientFromIdentifiers(fallback_idents)
+
+            def cb_check_power_driver(client, power_info):
+                d = Node.confirm_power_driver_operable(
+                    client, power_info.power_type, client.ident)
+                d.addCallback(lambda _: client)
+                return d
+
+            # Check that we should just not start with the fallback.
+            try_fallback = True
+            if len(client_idents) == 0:
+                client_idents = fallback_idents
+                try_fallback = False
+
+            # Get the client and fallback if needed.
+            d = getClientFromIdentifiers(client_idents)
+            if try_fallback:
+                d.addErrback(eb_fallback_clients)
+            d.addCallback(cb_check_power_driver, power_info)
+            d.addCallback(
+                power_method, self.system_id, self.hostname, power_info)
             return d
 
-        d = getClientFromIdentifiers(client_idents)
-        d.addErrback(eb_fallback_clients)
-        d.addCallback(cb_check_power_driver, power_info)
-        d.addCallback(power_method, system_id, hostname, power_info)
+        # Power control the node.
+        d.addCallback(cb_power_control)
         return d
 
     @classmethod

@@ -5,13 +5,23 @@
 
 __all__ = []
 
+from crochet import wait_for
+from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power import (
+    pick_best_power_state,
     power_driver_check,
     power_off_node,
     power_on_node,
+    power_query_all,
 )
+from maasserver.enum import POWER_STATE
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
 from provisioningserver.rpc.cluster import (
@@ -20,6 +30,16 @@ from provisioningserver.rpc.cluster import (
     PowerOn,
 )
 from provisioningserver.utils.twisted import reactor_sync
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+    succeed,
+)
+from twisted.internet.task import deferLater
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestPowerNode(MAASServerTestCase):
@@ -70,3 +90,75 @@ class TestPowerDriverCheck(MAASServerTestCase):
             MockCalledOnceWith(
                 PowerDriverCheck, power_type=power_info.power_type
             ))
+
+
+class TestPowerQueryAll(MAASTransactionServerTestCase):
+    """Tests for `power_query_all`."""
+
+    @transactional
+    def make_node_with_power_info(self):
+        node = factory.make_Node()
+        power_info = node.get_effective_power_info()
+        return node, power_info
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_PowerQuery_on_all_clients(self):
+        node, power_info = yield deferToDatabase(
+            self.make_node_with_power_info)
+
+        successful_rack_ids = [
+            factory.make_name("system_id")
+            for _ in range(3)
+        ]
+        failed_rack_ids = [
+            factory.make_name("system_id")
+            for _ in range(3)
+        ]
+        clients = []
+        power_states = []
+        for rack_id in successful_rack_ids:
+            power_state = factory.pick_enum(POWER_STATE)
+            power_states.append(power_state)
+            client = Mock()
+            client.ident = rack_id
+            client.return_value = succeed({
+                "state": power_state,
+            })
+            clients.append(client)
+        for rack_id in failed_rack_ids:
+            client = Mock()
+            client.ident = rack_id
+            client.return_value = fail(factory.make_exception())
+            clients.append(client)
+
+        self.patch(power_module, "getAllClients").return_value = clients
+        power_state, success_racks, failed_racks = yield power_query_all(
+            node.system_id, node.hostname, power_info)
+
+        self.assertEqual(pick_best_power_state(power_states), power_state)
+        self.assertItemsEqual(successful_rack_ids, success_racks)
+        self.assertItemsEqual(failed_rack_ids, failed_racks)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__handles_timeout(self):
+        node, power_info = yield deferToDatabase(
+            self.make_node_with_power_info)
+
+        def defer_way_later(*args, **kwargs):
+            # Create a defer that will finish in 1 minute.
+            return deferLater(reactor, 60 * 60, lambda: None)
+
+        rack_id = factory.make_name("system_id")
+        client = Mock()
+        client.ident = rack_id
+        client.side_effect = defer_way_later
+
+        self.patch(power_module, "getAllClients").return_value = [client]
+        power_state, success_racks, failed_racks = yield power_query_all(
+            node.system_id, node.hostname, power_info, timeout=0.5)
+
+        self.assertEqual(POWER_STATE.UNKNOWN, power_state)
+        self.assertItemsEqual([], success_racks)
+        self.assertItemsEqual([rack_id], failed_racks)

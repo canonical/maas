@@ -19,7 +19,10 @@ from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    POWER_STATE,
+)
 from maasserver.exceptions import (
     MAASAPINotFound,
     Unauthorized,
@@ -1089,7 +1092,8 @@ class TestDiskErasingAPI(MAASServerTestCase):
     def test_signaling_erasing_ok_releases_node(self):
         self.patch(Node, "_stop")
         node = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
+            status=NODE_STATUS.DISK_ERASING, owner=factory.make_User(),
+            power_state=POWER_STATE.ON, power_type="virsh")
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(http.client.OK, response.status_code)

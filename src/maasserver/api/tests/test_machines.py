@@ -14,10 +14,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test import RequestFactory
-from maasserver import (
-    eventloop,
-    forms,
-)
+from maasserver import eventloop
 from maasserver.api import machines as machines_module
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
@@ -27,7 +24,6 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
 )
-from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import (
     Config,
     Domain,
@@ -187,9 +183,6 @@ class TestMachinesAPI(APITestCase):
         # then make sure that power_type is defaulted to the empty
         # string rather than being entirely absent, which results in a
         # crash.
-        cluster_error = factory.make_name("cluster error")
-        self.patch(forms, 'get_power_types').side_effect = (
-            ClusterUnavailable(cluster_error))
         self.become_admin()
         # The patching behind the scenes to avoid *real* RPC is
         # complex and the available power types is actually a
@@ -205,7 +198,9 @@ class TestMachinesAPI(APITestCase):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         validation_errors = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))['power_type']
-        self.assertIn(cluster_error, validation_errors[1])
+        self.assertEquals(
+            "Select a valid choice. %s is not one of the "
+            "available choices." % power_type, validation_errors[0])
 
     def test_GET_lists_machines(self):
         # The api allows for fetching the list of Machines.

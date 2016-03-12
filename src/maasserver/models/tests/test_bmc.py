@@ -5,15 +5,24 @@
 
 __all__ = []
 
+import random
+
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
 )
-from maasserver.models.bmc import BMC
+from maasserver.models import bmc as bmc_module
+from maasserver.models.bmc import (
+    BMC,
+    BMCRoutableRackControllerRelationship,
+)
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
+from mock import Mock
+from testtools.matchers import HasLength
 
 
 class TestBMC(MAASServerTestCase):
@@ -310,9 +319,53 @@ class TestBMC(MAASServerTestCase):
         self.assertEqual(
             "", BMC.extract_ip_address("virsh", power_parameters))
 
-    def test_get_usable_rack_controllers_returns_empty_when_no_ip(self):
+    def test_get_usable_rack_controllers_returns_empty_when_none(self):
         bmc = factory.make_BMC()
-        self.assertEquals(set(), bmc.get_usable_rack_controllers())
+        self.assertThat(bmc.get_usable_rack_controllers(), HasLength(0))
+
+    def test_get_usable_rack_controllers_returns_routable_racks(self):
+        bmc = factory.make_BMC()
+        routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        not_routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        for rack in routable_racks:
+            BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack, routable=True).save()
+        for rack in not_routable_racks:
+            BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack, routable=False).save()
+        self.assertItemsEqual(
+            routable_racks,
+            bmc.get_usable_rack_controllers(with_connection=False))
+
+    def test_get_usable_rack_controllers_returns_routable_racks_conn(self):
+        bmc = factory.make_BMC()
+        routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        not_routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        for rack in routable_racks:
+            BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack, routable=True).save()
+        for rack in not_routable_racks:
+            BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack, routable=False).save()
+        connected_rack = random.choice(routable_racks)
+        client = Mock()
+        client.ident = connected_rack.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.assertItemsEqual(
+            [connected_rack],
+            bmc.get_usable_rack_controllers(with_connection=True))
 
     def test_get_usable_rack_controllers_updates_subnet_on_sip(self):
         network = factory.make_ipv4_network()
@@ -364,3 +417,67 @@ class TestBMC(MAASServerTestCase):
         ]
         self.assertItemsEqual(
             expected_system_ids, bmc.get_client_identifiers())
+
+    def test_is_accessible_calls_get_usable_rack_controllers(self):
+        bmc = factory.make_BMC()
+        mock_get_usable_rack_controllers = self.patch(
+            bmc, "get_usable_rack_controllers")
+        bmc.is_accessible()
+        self.assertThat(
+            mock_get_usable_rack_controllers,
+            MockCalledOnceWith(with_connection=False))
+
+    def test_is_accessible_returns_true(self):
+        bmc = factory.make_BMC()
+        mock_get_usable_rack_controllers = self.patch(
+            bmc, "get_usable_rack_controllers")
+        mock_get_usable_rack_controllers.return_value = [
+            factory.make_RackController()]
+        self.assertTrue(bmc.is_accessible())
+
+    def test_is_accessible_returns_false(self):
+        bmc = factory.make_BMC()
+        mock_get_usable_rack_controllers = self.patch(
+            bmc, "get_usable_rack_controllers")
+        mock_get_usable_rack_controllers.return_value = []
+        self.assertFalse(bmc.is_accessible())
+
+    def test_update_routable_racks_updates_rack_relationship(self):
+        node = factory.make_Node(power_type="virsh")
+
+        # Create old relationships that should be removed.
+        old_relationship_ids = [
+            BMCRoutableRackControllerRelationship.objects.create(
+                bmc=node.bmc, rack_controller=factory.make_RackController(),
+                routable=True).id
+            for _ in range(3)
+        ]
+
+        routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+        non_routable_racks = [
+            factory.make_RackController()
+            for _ in range(3)
+        ]
+
+        node.bmc.update_routable_racks([
+            rack.system_id
+            for rack in routable_racks
+        ], [
+            rack.system_id
+            for rack in non_routable_racks
+        ])
+
+        self.assertThat(
+            BMCRoutableRackControllerRelationship.objects.filter(
+                id__in=old_relationship_ids), HasLength(0))
+        self.assertThat(
+            BMCRoutableRackControllerRelationship.objects.filter(
+                rack_controller__in=routable_racks, routable=True),
+            HasLength(len(routable_racks)))
+        self.assertThat(
+            BMCRoutableRackControllerRelationship.objects.filter(
+                rack_controller__in=non_routable_racks, routable=False),
+            HasLength(len(non_routable_racks)))

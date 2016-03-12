@@ -8,6 +8,7 @@ __all__ = []
 from datetime import datetime
 import random
 
+from crochet import wait_for
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -15,10 +16,7 @@ from django.core.exceptions import (
 from django.db import transaction
 from fixtures import LoggerFixture
 from maasserver import preseed as preseed_module
-from maasserver.clusterrpc.power import (
-    power_off_node,
-    power_on_node,
-)
+from maasserver.clusterrpc.power import power_off_node
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
@@ -58,7 +56,10 @@ from maasserver.models import (
     VLAN,
     VLANInterface,
 )
-from maasserver.models.bmc import BMC
+from maasserver.models.bmc import (
+    BMC,
+    BMCRoutableRackControllerRelationship,
+)
 from maasserver.models.event import Event
 from maasserver.models.node import (
     PowerInfo,
@@ -82,19 +83,25 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
     reload_object,
+    transactional,
 )
-from maasserver.utils.threads import deferToDatabase
+from maasserver.utils.threads import (
+    callOutToDatabase,
+    deferToDatabase,
+)
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.twisted import always_succeed_with
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -110,6 +117,7 @@ from mock import (
     ANY,
     call,
     MagicMock,
+    Mock,
     sentinel,
 )
 from provisioningserver.events import (
@@ -118,7 +126,6 @@ from provisioningserver.events import (
 )
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
-from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import (
     AddChassis,
     RefreshRackControllerInfo,
@@ -145,10 +152,10 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
-from twisted.internet import (
-    defer,
-    reactor,
-)
+from twisted.internet import defer
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestTypeCastNode(MAASServerTestCase):
@@ -511,6 +518,12 @@ class TestNode(MAASServerTestCase):
             ValidationError,
             factory.make_Node, node_type=NODE_TYPE.RACK_CONTROLLER,
             architecture='')
+
+    def test__set_zone(self):
+        zone = factory.make_Zone()
+        node = factory.make_Node()
+        node.set_zone(zone)
+        self.assertEqual(node.zone, zone)
 
     def test_hostname_is_validated(self):
         bad_hostname = '-_?!@*-'
@@ -1295,10 +1308,11 @@ class TestNode(MAASServerTestCase):
         owner = factory.make_User()
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
+            status=NODE_STATUS.DEPLOYING, owner=owner, agent_name=agent_name,
             power_type="virsh", primary_rack=rack)
         self.patch(Node, '_set_status_expires')
         self.patch(node_module, "post_commit_do")
+        self.patch(node, '_pc_power_control_node')
         node.power_state = POWER_STATE.ON
         with post_commit_hooks:
             node.release()
@@ -1317,11 +1331,8 @@ class TestNode(MAASServerTestCase):
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = "hard"
         self.expectThat(
-            node_module.post_commit_do, MockCalledOnceWith(
-                Node._power_control_node, power_off_node,
-                node.system_id, node.hostname,
-                [], [rack.system_id], expected_power_info,
-            ))
+            node._pc_power_control_node, MockCalledOnceWith(
+                power_off_node, expected_power_info))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
         agent_name = factory.make_name('agent-name')
@@ -1343,7 +1354,8 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type, primary_rack=rack)
         self.patch(Node, '_set_status_expires')
-        self.patch(node_module, "post_commit_do")
+        mock_stop = self.patch(node, "_stop")
+        mock_release_to_ready = self.patch(node, "_release_to_ready")
         node.power_state = POWER_STATE.ON
         node.release()
         self.expectThat(Node._set_status_expires, MockNotCalled())
@@ -1355,21 +1367,8 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
-
-        expected_power_info = node.get_effective_power_info()
-        expected_power_info.power_parameters['power_off_mode'] = "hard"
-        self.expectThat(
-            node_module.post_commit_do, MockCallsMatch(
-                # A call to power off the node is first scheduled.
-                call(
-                    Node._power_control_node, power_off_node,
-                    node.system_id, node.hostname,
-                    [], [rack.system_id], expected_power_info),
-                # Also a call to deallocate AUTO IP addresses.
-                call(
-                    reactor.callLater, 0, deferToDatabase,
-                    node._release_to_ready),
-            ))
+        self.expectThat(mock_stop, MockCalledOnceWith(node.owner))
+        self.expectThat(mock_release_to_ready, MockCalledOnceWith())
 
     def test_release_node_that_has_power_off(self):
         agent_name = factory.make_name('agent-name')
@@ -1383,8 +1382,8 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.expectThat(node._stop, MockNotCalled())
         self.expectThat(Node._set_status_expires, MockNotCalled())
-        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
-        self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.owner, Equals(None))
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))
@@ -1617,8 +1616,8 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertThat(node_stop, MockNotCalled())
 
-    def test_release_does_not_release_ips_when_node_is_off(self):
-        """Releasing a powered down node does not call `release_auto_ips`."""
+    def test_release_calls_release_ips_when_node_is_off(self):
+        """Releasing a powered down node calls `release_auto_ips`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
@@ -1628,21 +1627,20 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
-        self.assertThat(release_auto_ips, MockNotCalled())
+        self.assertThat(release_auto_ips, MockCalledOnceWith())
 
-    def test_release_does_not_release_ips_when_node_cant_be_queried(self):
-        """Releasing a node that can't be queried does not call
-        `release_auto_ips`."""
+    def test_release_calls_release_ips_when_node_cant_be_queried(self):
+        """Releasing a node that can't be queried calls `release_auto_ips`."""
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='manual')
-        release = self.patch_autospec(
+        release_auto_ips = self.patch_autospec(
             node, "release_auto_ips")
         self.patch(Node, '_set_status_expires')
         with post_commit_hooks:
             node.release()
-        self.assertThat(release, MockNotCalled())
+        self.assertThat(release_auto_ips, MockCalledOnceWith())
 
     def test_release_doesnt_release_auto_ips_when_node_releasing(self):
         user = factory.make_User()
@@ -2442,17 +2440,6 @@ class TestNode(MAASServerTestCase):
         node._start_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
-    def test_start_deployment_logs_user_request(self):
-        admin = factory.make_admin()
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=admin)
-        register_event = self.patch(node, '_register_request_event')
-        self.patch(node, 'on_network').return_value = True
-        self.patch(Node, "_start").return_value = None
-        node.start(admin)
-        self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT, action='start',
-            comment=None))
-
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
         # of node parameters.
@@ -2745,6 +2732,48 @@ class TestNode(MAASServerTestCase):
     def test__status_message_returns_none_for_new_node(self):
         node = factory.make_Node()
         self.assertIsNone(node.status_message())
+
+    def test_on_network_returns_true_when_connected(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.ALLOCATED)
+        self.assertTrue(node.on_network())
+
+    def test_on_network_returns_false_when_not_connected(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.assertFalse(node.on_network())
+
+    def test_storage_layout_issues_is_valid_when_flat(self):
+        node = factory.make_Node()
+        self.assertEqual([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
+        node = factory.make_Node(with_boot_disk=False)
+        boot_partition = factory.make_Partition(node=node)
+        factory.make_Filesystem(partition=boot_partition, mount_point='/boot')
+        fs_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        bcache = fs_group.virtual_device
+        factory.make_Filesystem(block_device=bcache, mount_point="/")
+        self.assertEqual([], node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_invalid_when_no_disk(self):
+        node = factory.make_Node(with_boot_disk=False)
+        self.assertEqual(
+            ["Specify a storage device to be able to deploy this node.",
+             "Mount the root '/' filesystem to be able to deploy this node."],
+            node.storage_layout_issues())
+
+    def test_storage_layout_issues_returns_invalid_when_root_on_bcache(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_Partition(node=node)
+        fs_group = factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
+        bcache = fs_group.virtual_device
+        factory.make_Filesystem(block_device=bcache, mount_point="/")
+        self.assertEqual(
+            ["This node cannot be deployed because it cannot boot from a "
+             "bcache volume. Mount /boot on a non-bcache device to be able to "
+             "deploy this node."], node.storage_layout_issues())
 
 
 class TestNodePowerParameters(MAASServerTestCase):
@@ -3825,308 +3854,119 @@ class TestGetDefaultGateways(MAASServerTestCase):
 class TestNode_Start(MAASServerTestCase):
     """Tests for Node.start()."""
 
-    def setUp(self):
-        super(TestNode_Start, self).setUp()
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        self.patch_autospec(node_module, 'power_driver_check')
-
-    def prepare_rpc_to_rack_controller(self, rack_controller):
-        protocol = self.rpc_fixture.makeCluster(
-            rack_controller,
-            cluster_module.PowerOn)
-        protocol.PowerOn.side_effect = always_succeed_with({})
-        return protocol
-
-    def make_acquired_node_with_interface(self, user, bmc_connected_to=None):
+    def make_acquired_node_with_interface(
+            self, user, bmc_connected_to=None, power_type="virsh"):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY, with_boot_disk=True,
-            bmc_connected_to=bmc_connected_to)
+            bmc_connected_to=bmc_connected_to, power_type=power_type)
         node.acquire(user)
         return node
 
+    def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(user)
+        self.assertRaises(PermissionDenied, node.start, factory.make_User())
+
+    def test__start_logs_user_request(self):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
+        register_event = self.patch(node, '_register_request_event')
+        node.start(admin)
+        self.assertThat(
+            register_event, MockCalledOnceWith(
+                admin, EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT,
+                action='start', comment=None))
+
     def test__sets_user_data(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        self.prepare_rpc_to_rack_controller(rack_controller)
-        node = self.make_acquired_node_with_interface(user, rack_controller)
-        self.patch(node, 'on_network').return_value = True
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
         user_data = factory.make_bytes()
-
-        with post_commit_hooks:
-            node.start(user, user_data=user_data)
-
+        node.start(user, user_data=user_data)
         nud = NodeUserData.objects.get(node=node)
         self.assertEqual(user_data, nud.data)
 
     def test__resets_user_data(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        self.prepare_rpc_to_rack_controller(rack_controller)
-        node = self.make_acquired_node_with_interface(user, rack_controller)
-        self.patch(node, 'on_network').return_value = True
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
         user_data = factory.make_bytes()
         NodeUserData.objects.set_user_data(node, user_data)
-
-        with post_commit_hooks:
-            node.start(user, user_data=None)
-
+        node.start(user, user_data=None)
         self.assertFalse(NodeUserData.objects.filter(node=node).exists())
+
+    def test__sets_to_deploying(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node.start(user)
+        self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
+
+    def test__doesnt_change_broken(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        node.status = NODE_STATUS.BROKEN
+        node.save()
+        node.start(user)
+        self.assertEquals(NODE_STATUS.BROKEN, node.status)
 
     def test__claims_auto_ip_addresses(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        self.prepare_rpc_to_rack_controller(rack_controller)
-        node = self.make_acquired_node_with_interface(user, rack_controller)
-        self.patch(node, 'on_network').return_value = True
-
-        claim_auto_ips = self.patch_autospec(
-            node, "claim_auto_ips")
-
-        with post_commit_hooks:
-            node.start(user)
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
+        claim_auto_ips = self.patch_autospec(node, "claim_auto_ips")
+        node.start(user)
 
         self.expectThat(
             claim_auto_ips, MockCalledOnceWith())
 
     def test__only_claims_auto_addresses_when_allocated(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        self.prepare_rpc_to_rack_controller(rack_controller)
-        node = self.make_acquired_node_with_interface(user, rack_controller)
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual")
         node.status = NODE_STATUS.BROKEN
         node.save()
 
-        self.patch(node, "_get_bmc_client_connection_info").return_value = (
-            [], [])
-        self.patch(Node, "_power_control_node")
         claim_auto_ips = self.patch_autospec(
             node, "claim_auto_ips", spec_set=False)
-
-        with post_commit_hooks:
-            node.start(user)
+        node.start(user)
 
         # No calls are made to claim_auto_ips, since the node
         # isn't ALLOCATED.
         self.assertThat(claim_auto_ips, MockNotCalled())
 
-    def test__set_zone(self):
-        """Verifies whether the set_zone sets the node's zone"""
-        zone = factory.make_Zone()
-        node = factory.make_Node()
-        node.set_zone(zone)
-        self.assertEqual(node.zone, zone)
-
-    def test__starts_nodes(self):
+    def test__manual_power_type_doesnt_call__pc_power_control_node(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
         node = self.make_acquired_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-        power_info = node.get_effective_power_info()
+            user, power_type="manual")
+        node.save()
+        mock_power_control = self.patch(node, "_pc_power_control_node")
+        node.start(user)
 
-        power_control_node = self.patch(Node, "_power_control_node")
-        power_control_node.return_value = defer.succeed(None)
-        self.patch(Node, '_set_status_expires')
+        self.assertThat(mock_power_control, MockNotCalled())
 
-        with post_commit_hooks:
-            node.start(user)
-
-        # If the following fails the diff is big, but it's useful.
-        self.maxDiff = None
-
-        client_idents, fallback_idents = node._get_bmc_client_connection_info()
-        self.expectThat(power_control_node, MockCalledOnceWith(
-            power_on_node, node.system_id, node.hostname,
-            client_idents, fallback_idents,
-            power_info))
-
-        # Set status expires was called.
-        self.expectThat(
-            Node._set_status_expires,
-            MockCalledOnceWith(node.system_id, ANY))
-
-    def test__node_start_checks_power_driver(self):
-        client = MagicMock()
-        client.ident = sentinel.ident
-        mock_getClientFromIdentifiers = self.patch(
-            node_module, "getClientFromIdentifiers")
-        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
-
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_acquired_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-        driver_check = self.patch(node_module, "power_driver_check")
-        with post_commit_hooks:
-            node.start(user)
-        self.expectThat(driver_check, MockCalledOnceWith(
-            client, node.get_effective_power_type()))
-
-    def test__start_logs_user_request(self):
-        admin = factory.make_admin()
-        node = factory.make_Node(status=NODE_STATUS.NEW, owner=admin)
-        self.patch(node, '_start')
-        register_event = self.patch(node, '_register_request_event')
-        node.start(admin)
-        self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_START, action='start',
-            comment=None))
-
-    def test__raises_failures_when_power_action_fails(self):
-        class PraiseBeToJTVException(Exception):
-            """A nonsense exception for this test.
-
-            (Though jtv is praiseworthy, and that's worth noting).
-            """
-
-        power_control_node = self.patch(Node, '_power_control_node')
-        power_control_node.return_value = defer.fail(
-            PraiseBeToJTVException("Defiance is futile"))
-
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_acquired_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-
-        with ExpectedException(PraiseBeToJTVException):
-            with post_commit_hooks:
-                node.start(user)
-
-    def test__marks_allocated_node_as_deploying(self):
-        self.patch(Node, '_power_control_node')
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_acquired_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-        with post_commit_hooks:
-            node.start(user)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYING, reload_object(node).status)
-
-    def test__does_not_change_state_of_deployed_node(self):
-        self.patch(Node, "_power_control_node")
-        user = factory.make_User()
-        # Create a node that we can execute power actions on, so that we
-        # exercise the whole of start().
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type='manual', status=NODE_STATUS.DEPLOYED,
-            owner=user, interface=True)
-        boot_interface = node.get_boot_interface()
-        boot_interface.vlan.dhcp_on = True
-        boot_interface.vlan.primary_rack = rack_controller
-        boot_interface.vlan.save()
-        with post_commit_hooks:
-            node.start(user)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYED, reload_object(node).status)
-
-    def test__does_not_try_to_start_nodes_that_cant_be_started_by_MAAS(self):
+    def test__adds_callbacks_and_errbacks_to_post_commit(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
-        power_info = PowerInfo(
-            can_be_started=False,
-            can_be_stopped=True,
-            can_be_queried=True,
-            power_type=node.get_effective_power_type(),
-            power_parameters=node.get_effective_power_parameters(),
-        )
-        self.patch(node, 'get_effective_power_info').return_value = power_info
-        power_control_node = self.patch_autospec(Node, "_power_control_node")
+
+        post_commit_defer = Mock()
+        mock_power_control = self.patch(Node, "_pc_power_control_node")
+        mock_power_control.return_value = post_commit_defer
+
         node.start(user)
-        self.assertThat(power_control_node, MockNotCalled())
 
-    def test__does_not_start_nodes_the_user_cannot_edit(self):
-        power_control_node = self.patch_autospec(Node, "_power_control_node")
-        owner = factory.make_User()
-        node = self.make_acquired_node_with_interface(owner)
+        # Adds callback to set status expires.
+        self.assertThat(
+            post_commit_defer.addCallback, MockCalledOnceWith(
+                callOutToDatabase, Node._set_status_expires,
+                node.system_id, node.get_deployment_time()))
 
-        user = factory.make_User()
-        with ExpectedException(PermissionDenied):
-            node.start(user)
-            self.assertThat(power_control_node, MockNotCalled())
-
-    def test__allows_admin_to_start_any_node(self):
-        power_control_node = self.patch_autospec(Node, "_power_control_node")
-        owner = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_acquired_node_with_interface(
-            owner, bmc_connected_to=rack_controller)
-
-        admin = factory.make_admin()
-        with post_commit_hooks:
-            node.start(admin)
-
-        client_idents, fallback_idents = node._get_bmc_client_connection_info()
-        self.expectThat(
-            power_control_node, MockCalledOnceWith(
-                power_on_node, node.system_id, node.hostname,
-                client_idents, fallback_idents,
-                node.get_effective_power_info()))
-
-    def test__releases_auto_ips_when_power_action_fails(self):
-        exception_type = factory.make_exception_type()
-
-        power_control_node = self.patch(Node, '_power_control_node')
-        power_control_node.return_value = defer.fail(
-            exception_type("He's fallen in the water!"))
-
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_acquired_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-
-        release_auto_ips = self.patch_autospec(
-            node, "release_auto_ips")
-
-        with ExpectedException(exception_type):
-            with post_commit_hooks:
-                node.start(user)
-
-        self.assertThat(release_auto_ips, MockCalledOnceWith())
-
-    def test_on_network_returns_true_when_connected(self):
-        node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED)
-        self.assertTrue(node.on_network())
-
-    def test_on_network_returns_false_when_not_connected(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        self.assertFalse(node.on_network())
-
-    def test_storage_layout_issues_is_valid_when_flat(self):
-        node = factory.make_Node()
-        self.assertEqual([], node.storage_layout_issues())
-
-    def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
-        node = factory.make_Node(with_boot_disk=False)
-        boot_partition = factory.make_Partition(node=node)
-        factory.make_Filesystem(partition=boot_partition, mount_point='/boot')
-        fs_group = factory.make_FilesystemGroup(
-            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
-        bcache = fs_group.virtual_device
-        factory.make_Filesystem(block_device=bcache, mount_point="/")
-        self.assertEqual([], node.storage_layout_issues())
-
-    def test_storage_layout_issues_returns_invalid_when_no_disk(self):
-        node = factory.make_Node(with_boot_disk=False)
-        self.assertEqual(
-            ["Specify a storage device to be able to deploy this node.",
-             "Mount the root '/' filesystem to be able to deploy this node."],
-            node.storage_layout_issues())
-
-    def test_storage_layout_issues_returns_invalid_when_root_on_bcache(self):
-        node = factory.make_Node(with_boot_disk=False)
-        factory.make_Partition(node=node)
-        fs_group = factory.make_FilesystemGroup(
-            node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE)
-        bcache = fs_group.virtual_device
-        factory.make_Filesystem(block_device=bcache, mount_point="/")
-        self.assertEqual(
-            ["This node cannot be deployed because it cannot boot from a "
-             "bcache volume. Mount /boot on a non-bcache device to be able to "
-             "deploy this node."], node.storage_layout_issues())
+        # Adds errback to release auto ips.
+        self.assertThat(
+            post_commit_defer.addErrback, MockCalledOnceWith(
+                callOutToDatabase, node.release_auto_ips))
 
 
 class TestNode_Stop(MAASServerTestCase):
@@ -4145,167 +3985,326 @@ class TestNode_Stop(MAASServerTestCase):
         node.acquire(user)
         return node
 
-    def test__stops_nodes(self):
-        power_control_node = self.patch_autospec(
-            Node, "_power_control_node")
-
+    def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
         user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            user, bmc_connected_to=rack_controller)
+        node = self.make_node_with_interface(user)
+        other_user = factory.make_User()
+        self.assertRaises(PermissionDenied, node.stop, other_user)
+
+    def test__logs_user_request(self):
+        admin = factory.make_admin()
+        node = self.make_node_with_interface(admin)
+        self.patch_autospec(node, "_pc_power_control_node")
+        register_event = self.patch(node, '_register_request_event')
+        node.stop(admin)
+        self.assertThat(register_event, MockCalledOnceWith(
+            admin, EVENT_TYPES.REQUEST_NODE_STOP, action='stop', comment=None))
+
+    def test__doesnt_call__pc_power_control_node_if_cant_be_stopped(self):
+        admin = factory.make_admin()
+        node = self.make_node_with_interface(admin, power_type="manual")
+        mock_power_control = self.patch_autospec(
+            node, "_pc_power_control_node")
+        node.stop(admin)
+        self.assertThat(mock_power_control, MockNotCalled())
+
+    def test__calls__pc_power_control_node_with_stop_mode(self):
+        admin = factory.make_admin()
+        stop_mode = factory.make_name("stop")
+        node = self.make_node_with_interface(admin)
+        mock_power_control = self.patch_autospec(
+            node, "_pc_power_control_node")
+        node.stop(admin, stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
-
-        stop_mode = factory.make_name('stop-mode')
         expected_power_info.power_parameters['power_off_mode'] = stop_mode
-        with post_commit_hooks:
-            node.stop(user, stop_mode)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(power_off_node, expected_power_info))
 
-        # If the following fails the diff is big, but it's useful.
-        self.maxDiff = None
 
-        client_idents, fallback_idents = node._get_bmc_client_connection_info()
-        self.expectThat(
-            power_control_node, MockCalledOnceWith(
-                power_off_node, node.system_id, node.hostname,
-                client_idents, fallback_idents,
-                expected_power_info))
+class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
 
-    def test__fallback_to_pxe_rack_controllers(self):
-        client = MagicMock()
-        client.ident = sentinel.ident
+    @transactional
+    def make_node(
+            self, power_type="virsh",
+            layer2_rack=None, routable_racks=None,
+            primary_rack=None, with_dhcp_rack_primary=True):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY, power_type=power_type,
+            with_boot_disk=True, bmc_connected_to=layer2_rack,
+            primary_rack=primary_rack)
+        node.acquire(user)
+        if routable_racks is not None:
+            for rack in routable_racks:
+                BMCRoutableRackControllerRelationship(
+                    bmc=node.bmc, rack_controller=rack, routable=True).save()
+        return node, node.get_effective_power_info()
+
+    @transactional
+    def make_rack_controller(self):
+        return factory.make_RackController()
+
+    @transactional
+    def make_rack_controllers_with_clients(self, count):
+        racks = []
+        clients = []
+        for _ in range(count):
+            rack = factory.make_RackController()
+            client = Mock()
+            client.ident = rack.system_id
+            racks.append(rack)
+            clients.append(client)
+        return racks, clients
+
+    def patch_post_commit(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        return d
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_bmc_is_accessible_uses_directly_connected_client(self):
+        self.patch_post_commit()
+        rack_controller = yield deferToDatabase(self.make_rack_controller)
+        node, power_info = yield deferToDatabase(
+            self.make_node, layer2_rack=rack_controller)
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        # Add the client to getAllClients in so that its considered a to be a
+        # valid connection.
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable")
+        mock_confirm_power_driver.return_value = defer.succeed(None)
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        power_method = Mock()
+        yield node._pc_power_control_node(power_method, power_info)
+
+        self.assertThat(
+            mock_getClientFromIdentifiers,
+            MockCalledOnceWith([rack_controller.system_id]))
+        self.assertThat(
+            mock_confirm_power_driver,
+            MockCalledOnceWith(client, power_info.power_type, client.ident))
+        self.assertThat(
+            power_method,
+            MockCalledOnceWith(
+                client, node.system_id, node.hostname, power_info))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_bmc_is_accessible_uses_fallback_client_first(self):
+        self.patch_post_commit()
+        rack_controller = yield deferToDatabase(self.make_rack_controller)
+        node, power_info = yield deferToDatabase(
+            self.make_node, primary_rack=rack_controller)
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers")
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable")
+        mock_confirm_power_driver.return_value = defer.succeed(None)
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        power_method = Mock()
+        yield node._pc_power_control_node(power_method, power_info)
+
+        self.assertThat(
+            mock_getClientFromIdentifiers,
+            MockCalledOnceWith([rack_controller.system_id]))
+        self.assertThat(
+            mock_confirm_power_driver,
+            MockCalledOnceWith(client, power_info.power_type, client.ident))
+        self.assertThat(
+            power_method,
+            MockCalledOnceWith(
+                client, node.system_id, node.hostname, power_info))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_bmc_is_accessible_falls_back_to_fallback_clients(self):
+        self.patch_post_commit()
+        layer2_rack_controller = yield deferToDatabase(
+            self.make_rack_controller)
+        primary_rack = yield deferToDatabase(
+            self.make_rack_controller)
+        node, power_info = yield deferToDatabase(
+            self.make_node, layer2_rack=layer2_rack_controller,
+            primary_rack=primary_rack)
+
+        client = Mock()
+        client.ident = primary_rack.system_id
         mock_getClientFromIdentifiers = self.patch(
             node_module, "getClientFromIdentifiers")
         mock_getClientFromIdentifiers.side_effect = [
             defer.fail(NoConnectionsAvailable()),
             defer.succeed(client),
+            ]
+
+        # Add the client to getAllClients in so that its considered a to be a
+        # valid connection, but will actually fail.
+        bad_client = Mock()
+        bad_client.ident = layer2_rack_controller.system_id
+        self.patch(node_module, "getAllClients").return_value = [bad_client]
+
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable")
+        mock_confirm_power_driver.return_value = defer.succeed(None)
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        power_method = Mock()
+        yield node._pc_power_control_node(power_method, power_info)
+
+        self.assertThat(
+            mock_getClientFromIdentifiers,
+            MockCallsMatch(
+                call([layer2_rack_controller.system_id]),
+                call([primary_rack.system_id])))
+        self.assertThat(
+            mock_confirm_power_driver,
+            MockCalledOnceWith(client, power_info.power_type, client.ident))
+        self.assertThat(
+            power_method,
+            MockCalledOnceWith(
+                client, node.system_id, node.hostname, power_info))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_bmc_is_not_accessible_updates_routable_racks_and_powers(self):
+        self.patch_post_commit()
+        node, power_info = yield deferToDatabase(
+            self.make_node, with_dhcp_rack_primary=False)
+
+        routable_racks, routable_clients = yield deferToDatabase(
+            self.make_rack_controllers_with_clients, 3)
+        routable_racks_system_ids = [
+            rack.system_id
+            for rack in routable_racks
         ]
+        none_routable_racks, none_routable_clients = yield deferToDatabase(
+            self.make_rack_controllers_with_clients, 3)
+        none_routable_racks_system_ids = [
+            rack.system_id
+            for rack in none_routable_racks
+        ]
+        all_clients = routable_clients + none_routable_clients
+        all_clients_by_ident = {
+            client.ident: client
+            for client in all_clients
+        }
 
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(user)
-        boot_interface = node.get_boot_interface()
-        boot_interface.vlan.dhcp_on = True
-        boot_interface.vlan.primary_rack = rack_controller
-        boot_interface.vlan.save()
+        new_power_state = factory.pick_enum(
+            POWER_STATE, but_not=[node.power_state])
+        mock_power_query_all = self.patch(node_module, "power_query_all")
+        mock_power_query_all.return_value = (
+            new_power_state,
+            routable_racks_system_ids,
+            none_routable_racks_system_ids)
 
-        driver_check = self.patch(node_module, "power_driver_check")
-        with post_commit_hooks:
-            node.stop(user, factory.make_name('stop-mode'))
-        self.expectThat(driver_check, MockCalledOnceWith(
-            client, node.get_effective_power_type()))
-        self.expectThat(mock_getClientFromIdentifiers, MockCallsMatch(
-            call([]),
-            call([rack_controller.system_id])))
+        # Holds the selected client.
+        selected_client = []
 
-    def test__node_stop_checks_power_driver(self):
-        client = MagicMock()
-        client.ident = sentinel.ident
+        def fake_get_client(identifiers):
+            for ident in identifiers:
+                if ident in all_clients_by_ident:
+                    client = all_clients_by_ident[ident]
+                    selected_client.append(client)
+                    return defer.succeed(client)
+            return defer.fail(NoConnectionsAvailable())
+
         mock_getClientFromIdentifiers = self.patch(
             node_module, "getClientFromIdentifiers")
-        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+        mock_getClientFromIdentifiers.side_effect = fake_get_client
 
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-        driver_check = self.patch(node_module, "power_driver_check")
-        with post_commit_hooks:
-            node.stop(user, factory.make_name('stop-mode'))
-        self.expectThat(driver_check, MockCalledOnceWith(
-            client, node.get_effective_power_type()))
+        # Add the clients to getAllClients in so that its considered a to be a
+        # valid connections.
+        self.patch(node_module, "getAllClients").return_value = all_clients
+        self.patch(bmc_module, "getAllClients").return_value = all_clients
 
-    def test__does_not_stop_nodes_the_user_cannot_edit(self):
-        power_off_node = self.patch_autospec(node_module, "power_off_node")
-        owner = factory.make_User()
-        node = self.make_node_with_interface(owner)
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable")
+        mock_confirm_power_driver.return_value = defer.succeed(None)
 
-        user = factory.make_User()
-        self.assertRaises(PermissionDenied, node.stop, user)
-        self.assertThat(power_off_node, MockNotCalled())
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = False
 
-    def test_stop_logs_user_request(self):
-        admin = factory.make_admin()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            admin, bmc_connected_to=rack_controller)
-        self.patch_autospec(Node, "_power_control_node")
-        register_event = self.patch(node, '_register_request_event')
-        with post_commit_hooks:
-            node.stop(admin)
-        self.assertThat(register_event, MockCalledOnceWith(
-            admin, EVENT_TYPES.REQUEST_NODE_STOP, action='stop', comment=None))
+        power_method = Mock()
+        yield node._pc_power_control_node(power_method, power_info)
 
-    def test__allows_admin_to_stop_any_node(self):
-        power_control_node = self.patch_autospec(
-            Node, "_power_control_node")
-        owner = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            owner, bmc_connected_to=rack_controller)
-        expected_power_info = node.get_effective_power_info()
+        # Makes the correct calls.
+        client = selected_client[0]
+        self.assertThat(
+            mock_power_query_all,
+            MockCalledOnceWith(node.system_id, node.hostname, power_info))
+        self.assertThat(
+            mock_getClientFromIdentifiers,
+            MockCalledOnceWith(routable_racks_system_ids))
+        self.assertThat(
+            mock_confirm_power_driver,
+            MockCalledOnceWith(client, power_info.power_type, client.ident))
+        self.assertThat(
+            power_method,
+            MockCalledOnceWith(
+                client, node.system_id, node.hostname, power_info))
 
-        stop_mode = factory.make_name('stop-mode')
-        expected_power_info.power_parameters['power_off_mode'] = stop_mode
-
-        admin = factory.make_admin()
-        with post_commit_hooks:
-            node.stop(admin, stop_mode)
-
-        client_idents, fallback_idents = node._get_bmc_client_connection_info()
-        self.expectThat(
-            power_control_node, MockCalledOnceWith(
-                power_off_node, node.system_id, node.hostname,
-                client_idents, fallback_idents, expected_power_info))
-
-    def test__does_not_attempt_power_off_if_no_power_type(self):
-        # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
-        # won't attempt to power it off.
-        user = factory.make_User()
-        node = self.make_node_with_interface(user)
-        node.power_type = ""
-        node.save()
-
-        power_off_node = self.patch_autospec(node_module, "power_off_node")
-        node.stop(user)
-        self.assertThat(power_off_node, MockNotCalled())
-
-    def test__does_not_attempt_power_off_if_cannot_be_stopped(self):
-        # If the node has a power_type that doesn't allow MAAS to power
-        # the node off, stop() won't attempt to send the power command.
-        user = factory.make_User()
-        node = self.make_node_with_interface(user, power_type="manual")
-        node.save()
-
-        power_off_node = self.patch_autospec(node_module, "power_off_node")
-        node.stop(user)
-        self.assertThat(power_off_node, MockNotCalled())
-
-    def test__propagates_failures_when_power_action_fails(self):
-        fake_exception_type = factory.make_exception_type()
-
-        mock_getClientFromIdentifiers = self.patch(
-            node_module, 'getClientFromIdentifiers')
-        mock_getClientFromIdentifiers.return_value = defer.fail(
-            fake_exception_type("Soon be the weekend!"))
-
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            user, bmc_connected_to=rack_controller)
-
-        with ExpectedException(fake_exception_type):
-            with post_commit_hooks:
-                node.stop(user)
-
-    def test__returns_Deferred_if_power_action_sent(self):
-        user = factory.make_User()
-        rack_controller = factory.make_RackController()
-        node = self.make_node_with_interface(
-            user, power_type="virsh", bmc_connected_to=rack_controller)
-
-        self.patch_autospec(Node, "_power_control_node")
-        with post_commit_hooks:
-            self.assertThat(node.stop(user), IsInstance(defer.Deferred))
+        # Test that the node and the BMC routable rack information was
+        # updated.
+        @transactional
+        def updates_node_and_bmc(
+                node, power_state, routable_racks, none_routable_racks):
+            node = reload_object(node)
+            self.expectThat(node.power_state, Equals(power_state))
+            self.expectThat(
+                BMCRoutableRackControllerRelationship.objects.filter(
+                    bmc=node.bmc, rack_controller__in=routable_racks,
+                    routable=True),
+                HasLength(len(routable_racks)))
+            self.expectThat(
+                BMCRoutableRackControllerRelationship.objects.filter(
+                    bmc=node.bmc, rack_controller__in=none_routable_racks,
+                    routable=False),
+                HasLength(len(none_routable_racks)))
+        yield deferToDatabase(
+            updates_node_and_bmc, node, new_power_state,
+            routable_racks, none_routable_racks)
 
 
 class TestRackControllerUpdateInterfaces(MAASServerTestCase):

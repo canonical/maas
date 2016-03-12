@@ -40,7 +40,6 @@ import pipes
 import re
 
 from django import forms
-from django.contrib import messages
 from django.contrib.auth.forms import (
     UserChangeForm,
     UserCreationForm,
@@ -77,10 +76,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_TYPE,
 )
-from maasserver.exceptions import (
-    ClusterUnavailable,
-    NodeActionError,
-)
+from maasserver.exceptions import NodeActionError
 from maasserver.fields import (
     LargeObjectFile,
     MACAddressFormField,
@@ -784,15 +780,8 @@ class AdminMachineForm(MachineForm, AdminNodeForm):
         # form deals with an API call which does not change the value of
         # 'power_type') or invalid: get the machine's current 'power_type'
         # value or the default value if this form is not linked to a machine.
-        try:
-            power_types = get_power_types()
-        except ClusterUnavailable as e:
-            # If there's no request then this is an API call, so
-            # there's no need to add a UI message, a suitable
-            # ValidationError is raised elsewhere.
-            if form.request is not None:
-                messages.error(
-                    form.request, CLUSTER_NOT_AVAILABLE + e.args[0])
+        power_types = get_power_types(ignore_errors=True)
+        if len(power_types) == 0:
             return ''
 
         if power_type not in power_types:
@@ -825,11 +814,13 @@ class AdminMachineForm(MachineForm, AdminNodeForm):
         # prevent saving the form as we can't validate the power
         # parameters and type.
         if not skip_check:
-            try:
-                get_power_types()
-            except ClusterUnavailable as e:
+            power_types = get_power_types(ignore_errors=True)
+            if len(power_types) == 0:
                 set_form_error(
-                    form, "power_type", CLUSTER_NOT_AVAILABLE + e.args[0])
+                    form, "power_type",
+                    "No rack controllers are connected, unable to "
+                    "validate the power type.")
+
             # If power_type is not set and power_parameters_skip_check is not
             # on, reset power_parameters (set it to the empty string).
             if cleaned_data.get('power_type', '') == '':

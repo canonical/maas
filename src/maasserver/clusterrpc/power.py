@@ -11,13 +11,22 @@ __all__ = [
 from functools import partial
 import logging
 
+from maasserver.enum import POWER_STATE
+from maasserver.rpc import getAllClients
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
     PowerDriverCheck,
     PowerOff,
     PowerOn,
+    PowerQuery,
 )
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    FOREVER,
+)
+from twisted.internet import reactor
+from twisted.internet.defer import DeferredList
 from twisted.protocols.amp import UnhandledCommand
 
 
@@ -94,3 +103,83 @@ def power_driver_check(client, power_type):
     d = client(PowerDriverCheck, power_type=power_type)
     d.addCallbacks(extract_missing_packages, ignore_unhandled_command)
     return d
+
+
+def pick_best_power_state(power_states):
+    """Return the best power state from `power_states`.
+
+    Selected in order:
+        1. On
+        2. Off
+        3. Error
+        4. Unknown
+    """
+    if POWER_STATE.ON in power_states:
+        return POWER_STATE.ON
+    if POWER_STATE.OFF in power_states:
+        return POWER_STATE.OFF
+    if POWER_STATE.ERROR in power_states:
+        return POWER_STATE.ERROR
+    return POWER_STATE.UNKNOWN
+
+
+@asynchronous(timeout=FOREVER)
+def power_query_all(system_id, hostname, power_info, timeout=30):
+    """Query every connected rack controller and get the power status from all
+    rack controllers.
+
+    :return: a tuple with the power state for the node and a list of
+        rack controller system_id's that responded and a list of rack
+        controller system_id's that failed to respond.
+    """
+    deferreds = []
+    call_order = []
+    clients = getAllClients()
+    for client in clients:
+        d = client(
+            PowerQuery,
+            system_id=system_id, hostname=hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters)
+        deferreds.append(d)
+        call_order.append(client.ident)
+
+    def cb_result(result):
+        power_states = set()
+        responded_rack_ids = set()
+        failed_rack_ids = set()
+        for rack_system_id, (success, response) in zip(call_order, result):
+            if success:
+                power_states.add(response["state"])
+                responded_rack_ids.add(rack_system_id)
+            else:
+                failed_rack_ids.add(rack_system_id)
+        return (
+            pick_best_power_state(power_states),
+            responded_rack_ids,
+            failed_rack_ids)
+
+    # Process all defers and build the result.
+    dList = DeferredList(deferreds, consumeErrors=True)
+    dList.addCallback(cb_result)
+
+    def cancel():
+        try:
+            dList.cancel()
+        except:
+            # Don't care about the error.
+            pass
+
+    # Create the canceller if timeout provided.
+    if timeout is None:
+        canceller = None
+    else:
+        canceller = reactor.callLater(timeout, cancel)
+
+    def done():
+        if canceller is not None and canceller.active():
+            canceller.cancel()
+
+    # Cancel the canceller once finished.
+    dList.addBoth(callOut, done)
+    return dList
