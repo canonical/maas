@@ -9,12 +9,40 @@ describe("SubnetDetailsController", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
+    // Make a fake fabric
+    function makeFabric() {
+        var fabric = {
+            id: 0,
+            name: "fabric-0"
+        };
+        FabricsManager._items.push(fabric);
+    }
+
+    function makeVLAN() {
+        var vlan = {
+            id: 0,
+            fabric: 0,
+            vid: 0
+        };
+        VLANsManager._items.push(vlan);
+    }
+
+    function makeSpace() {
+        var space = {
+            id: 0,
+            name: "default"
+        };
+        SpacesManager._items.push(space);
+    }
+
     // Make a fake subnet
     function makeSubnet() {
         var subnet = {
             id: makeInteger(1, 10000),
             cidr: '169.254.0.0/24',
-            name: 'Link Local'
+            name: 'Link Local',
+            vlan: 0,
+            dns_servers: []
         };
         SubnetsManager._items.push(subnet);
         return subnet;
@@ -42,16 +70,23 @@ describe("SubnetDetailsController", function() {
     }));
 
     // Load any injected managers and services.
-    var SubnetsManager, IPRangesManager, ManagerHelperService, ErrorService;
+    var SubnetsManager, IPRangesManager, SpacesManager, VLANsManager;
+    var FabricsManager, ManagerHelperService, ErrorService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         IPRangesManager = $injector.get("IPRangesManager");
+        SpacesManager = $injector.get("SpacesManager");
+        VLANsManager = $injector.get("VLANsManager");
+        FabricsManager = $injector.get("FabricsManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
 
-    var subnet;
+    var fabric, vlan, space, subnet;
     beforeEach(function() {
+        fabric = makeFabric();
+        vlan = makeVLAN();
+        space = makeSpace();
         subnet = makeSubnet();
     });
 
@@ -71,6 +106,10 @@ describe("SubnetDetailsController", function() {
             $routeParams: $routeParams,
             $location: $location,
             SubnetsManager: SubnetsManager,
+            IPRangesManager: IPRangesManager,
+            SpacesManager: SpacesManager,
+            VLANsManager: VLANsManager,
+            FabricsManager: FabricsManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -104,8 +143,10 @@ describe("SubnetDetailsController", function() {
     it("calls loadManagers with required managers" +
         function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [SubnetsManager, IPRangesManager]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
+                SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
+                FabricsManager
+            ]);
     });
 
     it("raises error if subnet identifier is invalid", function() {
@@ -167,12 +208,17 @@ describe("SubnetDetailsController", function() {
         expect($rootScope.title).toBe(subnet.cidr + " (" + subnet.name + ")");
     });
 
-    it("updates relatedSubnets when subnets list changes", function() {
+    it("updates all_dns_servers when dns_servers changes", function() {
         var controller = makeControllerResolveSetActiveItem();
-        makeIPRange();
-        expect($scope.relatedIPRanges.length).toBe(0);
-        expect($scope.ipranges.length).toBe(1);
+        expect($scope.subnet.dns_servers).toEqual([]);
+        expect($scope.all_dns_servers).toBe("");
+        $scope.subnet.dns_servers.push("127.0.0.1");
         $scope.$digest();
-        expect($scope.relatedIPRanges.length).toBe(1);
+        expect($scope.subnet.dns_servers).toEqual(["127.0.0.1"]);
+        expect($scope.all_dns_servers).toBe("127.0.0.1");
+        $scope.subnet.dns_servers.push("127.0.0.2");
+        $scope.$digest();
+        expect($scope.subnet.dns_servers).toEqual(["127.0.0.1", "127.0.0.2"]);
+        expect($scope.all_dns_servers).toBe("127.0.0.1 127.0.0.2");
     });
 });

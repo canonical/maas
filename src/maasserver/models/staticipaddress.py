@@ -624,9 +624,16 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """Render a representation of this `StaticIPAddress` object suitable
         for converting to JSON. Includes optional parameters wherever a join
         would be implied by including a specific piece of information."""
+        # Circular imports.
+        # XXX mpontillo 2016-03-11 we should do the formatting client side.
+        from maasserver.websockets.handlers.timestampedmodel import (
+            dehydrate_datetime
+        )
         data = {
             "ip": self.ip,
             "alloc_type": self.alloc_type,
+            "created": dehydrate_datetime(self.created),
+            "updated": dehydrate_datetime(self.updated),
         }
         if with_username and self.user is not None:
             data["user"] = self.user.username

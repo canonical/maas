@@ -39,6 +39,7 @@ from maasserver.utils.orm import (
     reload_object,
     transactional,
 )
+from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -885,7 +886,7 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Contains("node_summary"))
 
-    def test__data_is_accurate(self):
+    def test__data_is_accurate_and_complete(self):
         user = factory.make_User()
         hostname = factory.make_name('hostname')
         subnet = factory.make_Subnet()
@@ -895,6 +896,10 @@ class TestRenderJSON(MAASServerTestCase):
             ip=factory.pick_ip_in_Subnet(subnet), user=user,
             interface=node.get_boot_interface())
         json = ip.render_json(with_username=True, with_node_summary=True)
+        self.expectThat(
+            json["created"], Equals(dehydrate_datetime(ip.created)))
+        self.expectThat(
+            json["updated"], Equals(dehydrate_datetime(ip.updated)))
         self.expectThat(json["user"], Equals(user.username))
         self.assertThat(json, Contains("node_summary"))
         node_summary = json["node_summary"]

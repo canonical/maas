@@ -428,6 +428,12 @@ header.banner {
                     }
                 }
 
+                &.warning {
+                    background-image: url('../img/icons/warning.png');
+                    background-image: url('../img/icons/warning.svg'), none;
+                    background-position: 0px 9px;
+                }
+
                 &.progress {
                     padding-left: 0;
 

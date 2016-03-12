@@ -1,121 +1,360 @@
+<div data-ng-hide="loaded">
+    <header class="page-header">
+        <div class="inner-wrapper">
+            <h1 class="page-header__title twelve-col">Loading...</h1>
+        </div>
+    </header>
+</div>
+<
 <div data-ng-if="loaded">
     <header class="page-header margin-bottom" data-maas-sticky-header>
         <div class="inner-wrapper">
-            <h1 class="page-header__title twelvel-col">
-                {$ subnet.cidr $}
-                <span class="page-header__title--identicator">
-                    <span class="power-status" data-ng-if="subnet.name && subnet.cidr != subnet.name">
-                        {$ subnet.name $}
+            <h1 class="page-header__title eight-col">{$ subnet.cidr $}</h1>
+            <div class="page-header__actions">
+                <div class="page-header__cta">
+                    <div class="right cta-group ng-hide">
+                        <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
+                        <ul class="cta-group__dropdown" role="menu" data-ng-show="shown">
+                            <!-- <li class="cta-group__item ng-scope">
+                                <a>Fabric</a>
+                            </li>
+                            <li class="cta-group__item ng-scope">
+                                <a>VLAN</a>
+                            </li>
+                            <li class="cta-group__item ng-scope">
+                                <a>Space</a>
+                            </li>
+                            <li class="cta-group__item ng-scope">
+                                <a>Subnet</a>
+                            </li> -->
+                        </ul>
+                    </div>
+                </div>
+                <div class="page-header__cta ng-hide">
+                    <span class="page-header__cta-feedback">
+                        2 Selected
                     </span>
-                </span>
-            </h1>
+                    <div class="right cta-group">
+                        <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
+                        <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
+                            <li class="cta-group__item ng-scope">
+                                <a>Move subnet</a>
+                            </li>
+                            <li class="cta-group__item ng-scope">
+                                <a>Remove subnet</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="page-header__dropdown border ng-hide">
+                <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
+                    <div class="form__group">
+                        <label for="move-subnet">Move this subnet to</label>
+                        <select name="move-subnet" id="move-subnet">
+                            <option value="1">Space 1</option>
+                            <option value="2">Space 2</option>
+                            <option value="3">Space 3</option>
+                        </select>
+                        <div class="right">
+                            <button class="cta-ubuntu text-button">Cancel</button>
+                            <button class="cta-ubuntu">Move subnet</button>
+                        </div>
+                    </div>
+                </form>
+                <div class="page-header__feedback">
+                    <p class="page-header__feedback-message warning">Are you sure you want to remove this subnet release all IP addresses assigned within its range?</p>
+                    <div class="right">
+                        <button class="cta-ubuntu text-button">Cancel</button>
+                        <button class="cta-ubuntu">Remove subnet</button>
+                    </div>
+                </div>
+                <div class="page-header__feedback">
+                    <p class="page-header__feedback-message warning">Are you sure you want to remove this subnet?</p>
+                    <div class="right">
+                        <button class="cta-ubuntu text-button">Cancel</button>
+                        <button class="cta-ubuntu">Remove subnet</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
     <section class="row">
         <div class="inner-wrapper">
-           <dl class="six-col">
-                <div data-ng-if="subnet.dns_servers.length">
-                    <dt class="two-col">
-                        DNS <ng-pluralize count="subnet.dns_servers.length"
-                          when="{'one': 'Server', 'other': 'Servers'}"></ng-pluralize>
-                    </dt>
-                    <dd class="four-col last-col" >
-                        <span data-ng-repeat="server in subnet.dns_servers">
-                            {$ server $}{$ $last ? '' : ', ' $}
-                        </span>
-                    </dd>
+            <div class="tweleve-col">
+                <h2>Subnet summary</h2>
+            </div>
+            <form>
+                <fieldset class="six-col">
+                    <div class="inline">
+                        <label for="CIDR" class="two-col">CIDR</label>
+                        <div class="three-col last-col">
+                           <input type="text" id="CIDR" placeholder="169.254.0.0/16" data-ng-disabled="true" value="{$ subnet.cidr $}">
+                        </div>
+                    </div>
+                    <div class="inline">
+                        <label for="Name" class="two-col">Name</label>
+                        <div class="three-col last-col">
+                           <input data-ng-disabled="true" type="text" id="Name" placeholder="Name" value="{$ subnet.name $}">
+                        </div>
+                    </div>
+                    <div class="inline">
+                        <label for="DNS" class="two-col">DNS</label>
+                        <div class="three-col last-col">
+                           <input data-ng-disabled="true" type="text" id="DNS" placeholder="0.0.0.0" value="{$ all_dns_servers $}">
+                        </div>
+                    </div>
+                    <div class="inline">
+                        <label for="Gateway-IP" class="two-col">Gateway IP</label>
+                        <div class="three-col last-col">
+                           <input data-ng-disabled="true" type="text" id="Gateway-IP" placeholder="0.0.0.0" value="{$ subnet.gateway_ip $}">
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset class="six-col last-col">
+                    <dl class="six-col no-margin-bottom">
+                        <dt class="two-col">Fabric</dt>
+                        <dd class="three-col"><a href="#/fabric/{$ fabric.id $}">{$ fabric.name $}</a></dd>
+                    </dl>
+                    <div class="inline">
+                        <label for="vlan" class="two-col">VLAN</label>
+                        <div class="four-col last-col">
+                            <select name="vlan" id="vlan"
+                                    data-ng-disabled="true"
+                                    data-ng-model="vlan"
+                                    data-ng-options="v as getVLANName(v) group by getFabricNameById(v.fabric) for v in vlans">
+                            </select>
+                        </div>
+                    </div>
+                    <div class="inline">
+                        <label for="space" class="two-col">Space</label>
+                        <div class="four-col last-col">
+                            <select name="space" id="space"
+                                data-ng-disabled="true"
+                                data-ng-model="space"
+                                data-ng-options="space as space.name for space in spaces">
+                            </select>
+                        </div>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+    </section>
+    <section class="row">
+        <div class="inner-wrapper">
+            <div class="tweleve-col">
+                <h2>Utilisation</h2>
+            </div>
+            <div class="equal-height">
+                <div class="six-col">
+                    <dl class="six-col">
+                        <dt class="two-col">Subnet addresses</dt>
+                            <dd class="four-col last-col">{$ subnet.statistics.total_addresses $}</dd>
+                        <dt class="two-col">Availability</dt>
+                            <dd class="four-col last-col">{$ subnet.statistics.num_available $} ({$ subnet.statistics.available_string $})</dd>
+                    </dl>
                 </div>
-                <dt class="two-col">Default Gateway</dt>
-                <dd class="four-col last-col">{$ subnet.gateway_ip $}</dd>
-                <!-- XXX mpontillo 2015-09-29
-                    Missing: Fabric name, VID (optional name), clusters (with links)
-                --->
-            </dl>
-            <dl class="six-col last-col">
-                <!--
-                XXX mpontillo 2015-09-29
-                Missing: description, management, allocation ranges
-                TBD: Move to new format.
-                -->
-                <dt class="two-col">Utilisation</dt>
-                <dd class="four-col last-col">{$ subnet.statistics.usage_string $} used ({$ subnet.statistics.num_unavailable $}/{$ subnet.statistics.total_addresses $})</dd>
-                <dt class="two-col">Largest available range</dt>
-                <dd class="four-col last-col">
-                    {$ subnet.statistics.largest_available $}
-                    <ng-pluralize count="subnet.statistics.largest_available"
-                                  when="{'one': 'address', 'other': 'addresses'}"></ng-pluralize>
-                </dd>
-            </dl>
-            <div class="twelve-col">
-                <h2>IP Ranges</h2>
-                <div class="table">
-                    <header class="table__head">
-                        <div class="table__row">
-                            <!-- XXX mpontillo IPv6 addresses may overflow the column width. -->
-                            <div class="table__header table-col--25">Start IP Address</div>
-                            <div class="table__header table-col--25">End IP Address</div>
-                            <!-- XXX mpontillo these fields are in the design, but we do not yet have the data.
-                            <div class="table__header table-col--10">Amount</div>
-                            <div class="table__header table-col--10">Used</div>
-                            -->
-                            <div class="table__header table-col--25">Purpose</div>
-                            <div class="table__header table-col--25">Owner</div>
-                            <!-- XXX mpontillo this field is in the design, but only "half way" - is it needed?
-                            <div class="table__header table-col--20">Date created</div>
-                            -->
-                        </div>
-                    </header>
-                    <section class="table__body">
-                        <div class="table__row" data-ng-repeat="iprange in relatedIPRanges">
-                            <div class="table__data table-col--25">{$ iprange.start_ip $}</div>
-                            <div class="table__data table-col--25">{$ iprange.end_ip $}</div>
-                            <div class="table__data table-col--25">{$ iprange.type $}</div>
-                            <div class="table__data table-col--25">{$ iprange.user $}</div>
-                        </div>
-                    </section>
+                <div class="six-col last-col">
+                    <dl class="six-col">
+                        <!-- XXX mpontillo we don't have data for "Reserved" yet. -->
+                        <dt class="two-col ng-hide">Reserved</dt>
+                            <dd class="four-col last-col ng-hide">10%</dd>
+                        <dt class="two-col">Used</dt>
+                            <dd class="four-col last-col">{$ subnet.statistics.usage_string $}</dd>
+                    </dl>
                 </div>
             </div>
-            <div class="twelve-col">
-                <h2>IP Addresses Used</h2>
-                <div class="table">
+        </div>
+        <div class="inner-wrapper">
+            <div class="tweleve-col">
+                <h2>Reserved</h2>
+            </div>
+            <div class="tweleve-col padding-bottom">
+                <div class="table margin-bottom">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table-col--15">IP Address</div>
-                            <div class="table__header table-col--15">Owner</div>
-                            <div class="table__header table-col--20">Usage</div>
-                            <div class="table__header table-col--15">Usage type</div>
-                            <div class="table__header table-col--15">Allocation type</div>
-                            <div class="table__header table-col--20">Fully Qualified Name</div>
+                            <div class="table__header table-col--15">Start IP Address</div>
+                            <div class="table__header table-col--15">End IP Address</div>
+                            <div class="table__header table-col--10 ng-hide">Amount</div>
+                            <div class="table__header table-col--10 ng-hide">Used</div>
+                            <div class="table__header table-col--10">Owner</div>
+                            <div class="table__header table-col--40">Purpose</div>
                         </div>
                     </header>
-                    <section class="table__body">
-                        <div class="table__row" data-ng-repeat="ip in subnet.ip_addresses">
-                            <div class="table__data table-col--15">{$ ip.ip $}</div>
-                            <div class="table__data table-col--15">{$ ip.user $}</div>
-                            <div class="table__data table-col--20">
-			      <!--
-                              XXX ltrager 2015-12-02
-                              node_type is an enum of node(0), device(1), or rack_controller(2). We need to create some type of Javascript enum to represent this
-                              -->
-                                <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.hostname $}</a>
-                                <span data-ng-if="ip.node_summary.node_type == 1">{$ ip.node_summary.hostname $}</span>
-			    </div>
-                            <div class="table__data table-col--15">{$ ip.node_summary.node_type == 0 ? "Node" : "Device" $}</div>
-                            <div class="table__data table-col--15" data-ng-switch="ip.alloc_type">
+                    <main class="table__body">
+                        <div class="table__row" data-ng-repeat="iprange in ipranges | filterBySubnet:subnet">
+                            <div class="table__data table-col--15">{$ iprange.start_ip $}</div>
+                            <div class="table__data table-col--15">{$ iprange.end_ip $}</div>
+                            <!-- XXX mpontillo need amount, usage% -->
+                            <div class="table__data table-col--10 ng-hide">100</div>
+                            <div class="table__data table-col--10 ng-hide">54%</div>
+                            <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user $}</div>
+                            <div class="table__data table-col--34">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved: " + iprange.comment$}</div>
+                            <!-- XXX mpontillo need to implement edit mode -->
+                            <div class="table__data table-col--6 ng-hide">
+                                <div class="table__controls align-right">
+                                    <a class="icon edit"></a>
+                                    <a class="icon delete"></a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- XXX mpontillo editing examples commented out for now -->
+                        <!--
+                        <div class="table__row active">
+                            <div class="table__data table-col--15">172.168.10.131</div>
+                            <div class="table__data table-col--15">172.168.10.140</div>
+                            <div class="table__data table-col--10">9</div>
+                            <div class="table__data table-col--10"><a href="#">54%</a></div>
+                            <div class="table__data table-col--10">mark</div>
+                            <div class="table__data table-col--34">Dynamic</div>
+                            <div class="table__data table-col--6">
+                                <div class="table__controls align-right">
+                                    <a class="icon edit"></a>
+                                    <a class="icon delete"></a>
+                                </div>
+                            </div>
+                            <div class="table__dropdown">
+                                <div class="table__row table__dropdown-row active">
+                                    <div class="table__data table-col--50">
+                                        <div class="six-col inline">
+                                            <label class="two-col" for="start-ip">Start IP address</label>
+                                            <input class="three-col last-col" type="text" id="start-ip" placeholder="127.0.0.1" value="172.168.10.131">
+                                        </div>
+                                        <div class="six-col inline">
+                                            <label class="two-col" for="addresses">Number of addresses</label>
+                                            <input class="three-col last-col" type="text" id="addresses" placeholder="100" value="9">
+                                        </div>
+                                    </div>
+                                    <div class="table__data table-col--50">
+                                        <div class="six-col inline">
+                                            <label class="two-col" for="end-ip">End IP address</label>
+                                            <input class="three-col last-col" type="text" id="end-ip" placeholder="127.0.0.1" value="172.168.10.140">
+                                        </div>
+                                        <div class="six-col inline">
+                                            <label class="two-col" for="purpose">Purpose</label>
+                                            <input class="three-col last-col" type="text" id="purpose" placeholder="OpenStack cloud" value="Dynamic">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table__row table__dropdown-row active">
+                                    <div class="table__data right">
+                                        <a class="link-cta-ubuntu text-button">Cancel</a>
+                                        <button class="cta-ubuntu">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table__row">
+                            <div class="table__data table-col--15">172.168.10.141</div>
+                            <div class="table__data table-col--15">172.168.10.189</div>
+                            <div class="table__data table-col--10">39</div>
+                            <div class="table__data table-col--10"><a href="#">4%</a></div>
+                            <div class="table__data table-col--10">mark</div>
+                            <div class="table__data table-col--34">Dynamic</div>
+                            <div class="table__data table-col--6">
+                                <div class="table__controls align-right">
+                                    <a class="icon edit"></a>
+                                    <a class="icon delete"></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table__row active">
+                            <div class="table__data table-col--50">
+                                <div class="six-col inline">
+                                    <label class="two-col" for="start-ip">Start IP address</label>
+                                    <input class="three-col last-col" type="text" id="start-ip" placeholder="127.0.0.1">
+                                </div>
+                                <div class="six-col inline">
+                                    <label class="two-col" for="addresses">Number of addresses</label>
+                                    <input class="three-col last-col" type="text" id="addresses" placeholder="100">
+                                </div>
+                            </div>
+                            <div class="table__data table-col--50">
+                                <div class="six-col inline">
+                                    <label class="two-col" for="end-ip">End IP address</label>
+                                    <input class="three-col last-col" type="text" id="end-ip" placeholder="127.0.0.1">
+                                </div>
+                                <div class="six-col inline">
+                                    <label class="two-col" for="purpose">Purpose</label>
+                                    <input class="three-col last-col" type="text" id="purpose" placeholder="OpenStack cloud">
+                                </div>
+                            </div>
+                            <div class="table__dropdown">
+                                <div class="table__row table__dropdown-row active">
+                                    <div class="table__data right">
+                                        <a class="link-cta-ubuntu text-button">Cancel</a>
+                                        <button class="cta-ubuntu">Reserve</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        -->
+                    </main>
+                </div>
+                <!-- XXX mpontillo re-enable buttons when adding edit mode -->
+                <div class="tweleve-col padding-bottom ng-hide">
+                    <a class="link-cta-ubuntu secondary margin-right">Reserve range</a>
+                    <a class="link-cta-ubuntu secondary">Reserve dynamic range</a>
+                </div>
+            </div>
+            <div class="tweleve-col">
+                <div class="six-col">
+                    <h2>Used</h2>
+                </div>
+                <div class="six-col last-col">
+                    <div class="search ng-hide">
+                        <input placeholder="Search IP addresses" class="search__input" type="search">
+                        <input class="search__submit" type="submit">
+                    </div>
+                </div>
+            </div>
+            <div class="tweleve-col">
+                <table class="table-listing">
+                    <thead>
+                        <tr class="table-listing__row">
+                            <th class="table-listing__header table-col--40">IP Address</th>
+                            <th class="table-listing__header table-col--10">Owner</th>
+                            <th class="table-listing__header table-col--10">Usage</th>
+                            <th class="table-listing__header table-col--15">Type</th>
+                            <th class="table-listing__header table-col--25">Last seen</th>
+                            <!-- XXX mpontillo need data for this -->
+                            <!--
+                            <th class="table-listing__header table-col--25" colspan="2">
+                                <a class="table-listing__header-link" href="#">Purpose</a>
+                                <span class="divide"></span>
+                                <a class="table-listing__header-link active" href="#">Last seen</a>
+                                <span class="divide"></span>
+                                <a  class="table-listing__header-link" href="#">Detected</a>
+                            </th>
+                            -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr data-ng-repeat="ip in subnet.ip_addresses">
+                            <td class="table-col--40">{$ ip.ip $}</td>
+                            <td class="table-col--10">{$ ip.user ? ip.user : "MAAS" $}</td>
+                            <td class="table-col--10" data-ng-switch="ip.node_summary.node_type">
+                                <span data-ng-switch-when="0">Machine</span>
+                                <span data-ng-switch-when="1">Device</span>
+                                <span data-ng-switch-when="2">Rack controller</span>
+                                <span data-ng-switch-when="3">Region controller</span>
+                                <span data-ng-switch-when="4">Rack and region controller</span>
+                                <span data-ng-switch-default>Unknown</span>
+                            </td>
+                            <td class="table-col--15" data-ng-switch="ip.alloc_type">
                                 <span data-ng-switch-when="0">Automatic</span>
-                                <span data-ng-switch-when="1">Sticky</span>
+                                <span data-ng-switch-when="1">Static</span>
                                 <span data-ng-switch-when="4">User reserved</span>
                                 <span data-ng-switch-when="5">DHCP</span>
                                 <span data-ng-switch-when="6">Observed</span>
                                 <span data-ng-switch-default>Unknown</span>
-                            </div>
-                            <div class="table__data table-col--20">
-                                <a href="#/node/{$ ip.node_summary.system_id $}" data-ng-if="ip.node_summary.node_type == 0">{$ ip.node_summary.fqdn $}.</a>
-                                <span data-ng-if="ip.node_summary.node_type != 0">{$ ip.node_summary.fqdn $}.</span>
-                            </div>
-                        </div>
-                    </section>
-                </div>
+                            </td>
+                            <td class="table-col--25">
+                                <time>{$ ip.updated $}</time>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </section>

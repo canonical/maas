@@ -6,13 +6,12 @@
 
 angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
-    'SubnetsManager', 'IPRangesManager', 'ManagerHelperService',
-    'ErrorService',
+    'SubnetsManager', 'IPRangesManager', 'SpacesManager', 'VLANsManager',
+    'FabricsManager', 'ManagerHelperService', 'ErrorService',
     function(
-        $scope, $rootScope, $routeParams, $filter, $location,
-        SubnetsManager, IPRangesManager, ManagerHelperService, ErrorService) {
-
-        var filterBySubnet = $filter('filterBySubnet');
+        $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
+        IPRangesManager, SpacesManager, VLANsManager, FabricsManager,
+        ManagerHelperService, ErrorService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -24,7 +23,14 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
+        $scope.space = null;
+        $scope.vlan = null;
+        $scope.fabric = null;
+        $scope.all_dns_servers = "";
         $scope.ipranges = IPRangesManager.getItems();
+        $scope.spaces = SpacesManager.getItems();
+        $scope.vlans = VLANsManager.getItems();
+        $scope.fabrics = FabricsManager.getItems();
         $scope.relatedIPRanges = [];
 
         // Updates the page title.
@@ -38,26 +44,41 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             }
         }
 
-        function updateRelatedIPRanges() {
+        // Called when the dns_servers array is updated.
+        $scope.updateDNSServers = function() {
             var subnet = $scope.subnet;
-            if(!angular.isObject(subnet)) {
-                return;
+            if(angular.isObject(subnet) &&
+                angular.isArray(subnet.dns_servers)) {
+                $scope.all_dns_servers = subnet.dns_servers.join(" ");
+            } else {
+                $scope.all_dns_servers = "";
             }
-            $scope.relatedIPRanges = filterBySubnet($scope.ipranges, subnet);
-        }
+        };
+
+        $scope.getVLANName = function(vlan) {
+           return VLANsManager.getName(vlan);
+        };
+
+        $scope.getFabricNameById = function(fabric_id) {
+            return FabricsManager.getItemFromList(fabric_id).name;
+        };
 
         // Called when the subnet has been loaded.
         function subnetLoaded(subnet) {
             $scope.subnet = subnet;
+            $scope.space = SpacesManager.getItemFromList(subnet.space);
+            $scope.vlan = VLANsManager.getItemFromList(subnet.vlan);
+            $scope.fabric = FabricsManager.getItemFromList($scope.vlan.fabric);
+            $scope.updateDNSServers();
             $scope.loaded = true;
 
             updateTitle();
-            updateRelatedIPRanges();
         }
 
         // Load all the required managers.
         ManagerHelperService.loadManagers([
-            SubnetsManager, IPRangesManager
+            SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
+            FabricsManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not
@@ -77,6 +98,6 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                         ErrorService.raiseError(error);
                     });
             }
-            $scope.$watchCollection("ipranges", updateRelatedIPRanges);
+            $scope.$watch("subnet.dns_servers", $scope.updateDNSServers, true);
         });
     }]);

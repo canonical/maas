@@ -157,14 +157,8 @@ angular.module('MAAS').controller('NetworksListController', [
 
         // Return the name name for the VLAN.
         function getVLANName(vlan) {
-            var name = vlan.vid;
-            if(vlan.vid === 0) {
-                name = "untagged";
-            } else if(angular.isString(vlan.name) && vlan.name !== "") {
-                name += " (" + vlan.name + ")";
-            }
-            return name;
-        }
+            return VLANsManager.getName(vlan);
+       }
 
         // Return the name of the subnet. Will include the name of the subnet
         // in '(', ')' if it exists and not the same as the cidr.

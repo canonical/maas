@@ -43,6 +43,16 @@ angular.module('MAAS').factory(
             return subnets;
         };
 
+        VLANsManager.prototype.getName = function(vlan) {
+            var name = vlan.vid;
+            if(vlan.vid === 0) {
+                name = "untagged";
+            } else if(angular.isString(vlan.name) && vlan.name !== "") {
+                name += " (" + vlan.name + ")";
+            }
+            return name;
+        };
+
         // Delete the VLAN.
         VLANsManager.prototype.deleteVLAN = function(vlan) {
             return RegionConnection.callMethod(
