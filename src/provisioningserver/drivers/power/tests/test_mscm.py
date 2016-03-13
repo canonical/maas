@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power.mscm`."""
@@ -17,8 +17,12 @@ __all__ = []
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.hardware.mscm import MSCMError
 from provisioningserver.drivers.hardware.tests.test_mscm import make_node_id
-from provisioningserver.drivers.power import mscm as mscm_module
+from provisioningserver.drivers.power import (
+    mscm as mscm_module,
+    PowerError,
+)
 from provisioningserver.drivers.power.mscm import (
     extract_mscm_parameters,
     MSCMPowerDriver,
@@ -52,7 +56,6 @@ class TestMSCMPowerDriver(MAASTestCase):
     def test_extract_mscm_parameters_extracts_parameters(self):
         system_id, host, username, password, node_id, context = (
             self.make_parameters())
-
         self.assertItemsEqual(
             (host, username, password, node_id),
             extract_mscm_parameters(context))
@@ -64,10 +67,19 @@ class TestMSCMPowerDriver(MAASTestCase):
         power_control_mscm = self.patch(
             mscm_module, 'power_control_mscm')
         mscm_power_driver.power_on(system_id, context)
-
         self.assertThat(
             power_control_mscm, MockCalledOnceWith(
                 host, username, password, node_id, power_change='on'))
+
+    def test_power_on_raises_power_error(self):
+        system_id, _, _, _, _, context = (
+            self.make_parameters())
+        mscm_power_driver = MSCMPowerDriver()
+        power_control_mscm = self.patch(
+            mscm_module, 'power_control_mscm')
+        power_control_mscm.side_effect = MSCMError("Error")
+        self.assertRaises(
+            PowerError, mscm_power_driver.power_on, system_id, context)
 
     def test_power_off_calls_power_control_mscm(self):
         system_id, host, username, password, node_id, context = (
@@ -76,10 +88,19 @@ class TestMSCMPowerDriver(MAASTestCase):
         power_control_mscm = self.patch(
             mscm_module, 'power_control_mscm')
         mscm_power_driver.power_off(system_id, context)
-
         self.assertThat(
             power_control_mscm, MockCalledOnceWith(
                 host, username, password, node_id, power_change='off'))
+
+    def test_power_off_raises_power_error(self):
+        system_id, _, _, _, _, context = (
+            self.make_parameters())
+        mscm_power_driver = MSCMPowerDriver()
+        power_control_mscm = self.patch(
+            mscm_module, 'power_control_mscm')
+        power_control_mscm.side_effect = MSCMError("Error")
+        self.assertRaises(
+            PowerError, mscm_power_driver.power_off, system_id, context)
 
     def test_power_query_calls_power_state_mscm(self):
         system_id, host, username, password, node_id, context = (
@@ -89,8 +110,17 @@ class TestMSCMPowerDriver(MAASTestCase):
             mscm_module, 'power_state_mscm')
         power_state_mscm.return_value = 'off'
         expected_result = mscm_power_driver.power_query(system_id, context)
-
         self.expectThat(
             power_state_mscm, MockCalledOnceWith(
                 host, username, password, node_id))
         self.expectThat(expected_result, Equals('off'))
+
+    def test_power_query_raises_power_error(self):
+        system_id, _, _, _, _, context = (
+            self.make_parameters())
+        mscm_power_driver = MSCMPowerDriver()
+        power_control_mscm = self.patch(
+            mscm_module, 'power_control_mscm')
+        power_control_mscm.side_effect = MSCMError("Error")
+        self.assertRaises(
+            PowerError, mscm_power_driver.power_query, system_id, context)
