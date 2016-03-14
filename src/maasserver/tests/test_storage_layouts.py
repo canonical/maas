@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the storage layouts."""
@@ -68,6 +68,13 @@ def make_ppc64el_Node_with_uefi_boot_method(*args, **kwargs):
     kwargs['bios_boot_method'] = "powerkvm"
     kwargs['with_boot_disk'] = False
     kwargs['architecture'] = "ppc64el/generic"
+    return factory.make_Node(*args, **kwargs)
+
+
+def make_arm64_Node_without_uefi_boot_method(*args, **kwargs):
+    kwargs['bios_boot_method'] = "pxe"
+    kwargs['with_boot_disk'] = False
+    kwargs['architecture'] = "arm64/generic"
     return factory.make_Node(*args, **kwargs)
 
 
@@ -615,6 +622,51 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                 label="root",
                 mount_point="/",
                 ))
+
+    def test__creates_layout_for_arm64(self):
+        node = make_arm64_Node_without_uefi_boot_method()
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE)
+        layout = FlatStorageLayout(node)
+        layout.configure()
+
+        # Validate partition table.
+        partition_table = boot_disk.get_partitiontable()
+        self.assertEqual(PARTITION_TABLE_TYPE.MBR, partition_table.table_type)
+
+        # Validate boot partition.
+        partitions = partition_table.partitions.order_by('id').all()
+        boot_partition = partitions[0]
+        self.assertIsNotNone(boot_partition)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                MIN_BOOT_PARTITION_SIZE, PARTITION_ALIGNMENT_SIZE, False),
+            boot_partition.size)
+        self.assertThat(
+            boot_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot",
+            ))
+
+        # Validate root partition.
+        root_partition = partitions[1]
+        self.assertIsNotNone(root_partition)
+        self.assertEqual(
+            round_size_to_nearest_block(
+                boot_disk.size - EFI_PARTITION_SIZE -
+                PARTITION_TABLE_EXTRA_SPACE,
+                PARTITION_ALIGNMENT_SIZE,
+                False),
+            root_partition.size)
+        self.assertThat(
+            root_partition.get_effective_filesystem(),
+            MatchesStructure.byEquality(
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="root",
+                mount_point="/",
+            ))
 
     def test__creates_layout_with_boot_size(self):
         node = make_Node_with_uefi_boot_method()

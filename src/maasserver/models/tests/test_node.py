@@ -3988,6 +3988,14 @@ class TestNode_Start(MAASServerTestCase):
             post_commit_defer.addErrback, MockCalledOnceWith(
                 callOutToDatabase, node.release_auto_ips))
 
+    def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
+        node = factory.make_Node(
+            architecture="arm64/generic", bios_boot_method="pxe")
+        self.assertEqual(
+            ["This node cannot be deployed because it needs a separate "
+             "/boot partition.  Mount /boot on a device to be able to "
+             "deploy this node."], node.storage_layout_issues())
+
 
 class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
