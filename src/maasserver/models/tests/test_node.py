@@ -3824,6 +3824,14 @@ class TestNode_Start(MAASServerTestCase):
              "bcache volume. Mount /boot on a non-bcache device to be able to "
              "deploy this node."], node.storage_layout_issues())
 
+    def test_storage_layout_issues_returns_invalid_no_boot_arm64_non_efi(self):
+        node = factory.make_Node(
+            architecture="arm64/generic", bios_boot_method="pxe")
+        self.assertEqual(
+            ["This node cannot be deployed because it needs a separate "
+             "/boot partition.  Mount /boot on a device to be able to "
+             "deploy this node."], node.storage_layout_issues())
+
 
 class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""

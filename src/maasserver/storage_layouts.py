@@ -42,7 +42,7 @@ from maasserver.utils.forms import (
 
 
 EFI_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB
-MIN_BOOT_PARTITION_SIZE = 512 * 1024 * 1024  # 512 GiB
+MIN_BOOT_PARTITION_SIZE = 512 * 1024 * 1024  # 512 MiB
 MIN_ROOT_PARTITION_SIZE = 3 * 1024 * 1024 * 1024  # 3 GiB
 
 
@@ -191,6 +191,17 @@ class StorageLayoutBase(Form):
                 fstype=FILESYSTEM_TYPE.FAT32,
                 label="efi",
                 mount_point="/boot/efi")
+        elif (bios_boot_method != "uefi" and node_arch == "arm64" and
+                boot_size is None):
+            # Add boot partition only if booting an arm64 architecture and
+            # not UEFI and boot_size is None.
+            boot_partition = boot_partition_table.add_partition(
+                size=MIN_BOOT_PARTITION_SIZE, bootable=True)
+            Filesystem.objects.create(
+                partition=boot_partition,
+                fstype=FILESYSTEM_TYPE.EXT4,
+                label="boot",
+                mount_point="/boot")
         if boot_size is None:
             boot_size = self.get_boot_size()
         if boot_size > 0:

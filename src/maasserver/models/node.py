@@ -797,10 +797,6 @@ class Node(CleanSave, TimestampedModel):
                         root_mounted = True
                         if on_bcache(block_device):
                             root_on_bcache = True
-                        else:
-                            # If / is mounted and its not on bcache the system
-                            # is bootable
-                            return []
                     elif (fs.mount_point == '/boot' and
                           not on_bcache(block_device)):
                         boot_mounted = True
@@ -812,10 +808,6 @@ class Node(CleanSave, TimestampedModel):
                     root_mounted = True
                     if on_bcache(block_device):
                         root_on_bcache = True
-                    else:
-                        # If / is mounted and its not on bcache the system
-                        # is bootable.
-                        return []
                 elif fs.mount_point == '/boot' and not on_bcache(block_device):
                     boot_mounted = True
         issues = []
@@ -831,6 +823,12 @@ class Node(CleanSave, TimestampedModel):
                 "This node cannot be deployed because it cannot boot from a "
                 "bcache volume. Mount /boot on a non-bcache device to be "
                 "able to deploy this node.")
+        if (not boot_mounted and "arm64" in self.architecture and
+                self.get_bios_boot_method() != "uefi"):
+            issues.append(
+                "This node cannot be deployed because it needs a separate "
+                "/boot partition.  Mount /boot on a device to be able to "
+                "deploy this node.")
         return issues
 
     def on_network(self):
