@@ -135,7 +135,7 @@
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                         </td>
                         <td class="table-listing__cell table__column--20">
-                            {$ row.fabric.name $}
+                            <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric.name $}</a>
                         </td>
                     </tr>
                 </tbody>
@@ -164,7 +164,7 @@
                             </div>
                         </td>
                         <td class="table-listing__cell table__column--15">
-                            {$ row.fabric_name $}
+                            <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                         </td>
                         <td class="table-listing__cell table__column--15">
                             <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>

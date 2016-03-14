@@ -51,7 +51,7 @@ angular.module('MAAS').controller('DomainDetailsController', [
             return UsersManager.isSuperUser();
         };
 
-        // Return true if the authenticated user is super user.
+        // Return true if this is the default domain.
         $scope.isDefaultDomain = function() {
             return $scope.domain.id === 0;
         };
@@ -117,8 +117,8 @@ angular.module('MAAS').controller('DomainDetailsController', [
                 domainLoaded(activeDomain);
             } else {
                 DomainsManager.setActiveItem(
-                    requestedDomain).then(function(node) {
-                        domainLoaded(node);
+                    requestedDomain).then(function(domain) {
+                        domainLoaded(domain);
                     }, function(error) {
                         ErrorService.raiseError(error);
                     });

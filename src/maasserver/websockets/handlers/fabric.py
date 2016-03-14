@@ -7,6 +7,7 @@ __all__ = [
     "FabricHandler",
     ]
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.fabric import Fabric
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -20,7 +21,7 @@ class FabricHandler(TimestampedModelHandler):
             Fabric.objects.all().prefetch_related(
                 "vlan_set__interface_set"))
         pk = 'id'
-        allowed_methods = ['list', 'get', 'set_active']
+        allowed_methods = ['list', 'get', 'create', 'delete', 'set_active']
         listen_channels = [
             "fabric",
             ]
@@ -31,10 +32,11 @@ class FabricHandler(TimestampedModelHandler):
             vlan.id
             for vlan in obj.vlan_set.all()
         ]
-        data["nodes_count"] = len({
-            interface.node_id
-            for vlan in obj.vlan_set.all()
-            for interface in vlan.interface_set.all()
-            if interface.node_id is not None
-        })
         return data
+
+    def delete(self, parameters):
+        """Delete this Domain."""
+        domain = self.get_object(parameters)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, domain), "Permission denied."
+        domain.delete()

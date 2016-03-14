@@ -163,6 +163,8 @@ textarea {
     height: auto;
     min-height: 175px;
     padding: 7px 10px;
+    max-width: 900px;
+    max-height: none;
     vertical-align: top;
     resize: both;
     width: 100%;
@@ -287,7 +289,7 @@ select {
 
     label {
         display: inline-block;
-        float: none;
+        line-height: 37px;
 
         /**
          * Required to fix the inline block invisible margin

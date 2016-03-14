@@ -24,13 +24,6 @@ class TestSpaceHandler(MAASServerTestCase):
                 subnet.id
                 for subnet in space.subnet_set.all()
             ],
-            "nodes_count": len({
-                interface.node_id
-                for subnet in space.subnet_set.all()
-                for ipaddress in subnet.staticipaddress_set.all()
-                for interface in ipaddress.interface_set.all()
-                if interface.node_id is not None
-            }),
         }
         return data
 

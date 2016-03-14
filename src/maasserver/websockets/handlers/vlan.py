@@ -36,6 +36,7 @@ class VLANHandler(TimestampedModelHandler):
             VLAN.objects.all()
                 .select_related('primary_rack', 'secondary_rack')
                 .prefetch_related("interface_set")
+                .prefetch_related("interface_set__node")
                 .prefetch_related("subnet_set"))
         pk = 'id'
         allowed_methods = [
@@ -60,14 +61,15 @@ class VLANHandler(TimestampedModelHandler):
             subnet.id
             for subnet in obj.subnet_set.all()
         ])
-        node_ids = {
-            interface.node_id
+        nodes = {
+            interface.node
             for interface in obj.interface_set.all()
             if interface.node_id is not None
         }
-        data["nodes_count"] = len(node_ids)
+        data["rack_sids"] = sorted([
+            node.system_id for node in nodes if node.is_rack_controller])
         if not for_list:
-            data["node_ids"] = sorted(list(node_ids))
+            data["node_ids"] = sorted([node.id for node in nodes])
             data["space_ids"] = sorted(list({
                 subnet.space_id
                 for subnet in obj.subnet_set.all()

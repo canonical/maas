@@ -160,20 +160,9 @@ angular.module('MAAS').controller('NetworksListController', [
             return VLANsManager.getName(vlan);
        }
 
-        // Return the name of the subnet. Will include the name of the subnet
-        // in '(', ')' if it exists and not the same as the cidr.
+        // Return the name of the subnet.
         function getSubnetName(subnet) {
-            if(!angular.isObject(subnet)) {
-                return "";
-            }
-
-            var name = subnet.cidr;
-            if(angular.isString(subnet.name) &&
-                subnet.name !== "" &&
-                subnet.name !== subnet.cidr) {
-                name += " (" + subnet.name + ")";
-            }
-            return name;
+            return SubnetsManager.getName(subnet);
         }
 
         ManagerHelperService.loadManagers([

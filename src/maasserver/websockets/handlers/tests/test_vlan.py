@@ -38,12 +38,13 @@ class TestVLANHandler(MAASServerTestCase):
                 subnet.id
                 for subnet in vlan.subnet_set.all()
             ]),
-            "nodes_count": len({
-                interface.node_id
-                for interface in vlan.interface_set.all()
-                if interface.node_id is not None
-            }),
         }
+        data['rack_sids'] = sorted(list({
+            interface.node.system_id
+            for interface in vlan.interface_set.all()
+            if interface.node_id is not None and
+            interface.node.is_rack_controller
+        }))
         if not for_list:
             data['node_ids'] = sorted(list({
                 interface.node_id

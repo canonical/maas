@@ -25,12 +25,6 @@ class TestFabricHandler(MAASServerTestCase):
                 vlan.id
                 for vlan in fabric.vlan_set.all()
             ],
-            "nodes_count": len({
-                interface.node_id
-                for vlan in fabric.vlan_set.all()
-                for interface in vlan.interface_set.all()
-                if interface.node_id is not None
-            }),
         }
         return data
 

@@ -11,7 +11,8 @@
 angular.module('MAAS').factory(
     'FabricsManager',
     ['$q', '$rootScope', 'RegionConnection', 'Manager', 'VLANsManager',
-    function($q, $rootScope, RegionConnection, Manager, VLANsManager) {
+    function(
+    $q, $rootScope, RegionConnection, Manager, VLANsManager) {
 
         function FabricsManager() {
             Manager.call(this);
@@ -41,6 +42,12 @@ angular.module('MAAS').factory(
                 }
             });
             return vlans;
+        };
+
+        // Delete the Fabric.
+        FabricsManager.prototype.deleteFabric = function(fabric) {
+            return RegionConnection.callMethod(
+                "fabric.delete", { "id": fabric.id }, true);
         };
 
         return new FabricsManager();
