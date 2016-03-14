@@ -273,8 +273,14 @@ angular.module('MAAS').controller('VLANDetailsController', [
             if(!angular.isObject(vlan)) {
                 return;
             }
-            vm.relatedControllers =
-                filterControllersByVLAN(vm.controllers, vlan);
+            var racks = [];
+            angular.forEach(vlan.rack_sids, function(rack_sid) {
+                var rack = ControllersManager.getItemFromList(rack_sid);
+                if(angular.isObject(rack)) {
+                    racks.push(rack);
+                }
+            });
+            vm.relatedControllers = racks;
         }
 
         // Called from a $watch when the related subnets or spaces may have

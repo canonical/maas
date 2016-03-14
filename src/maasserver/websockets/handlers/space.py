@@ -7,6 +7,7 @@ __all__ = [
     "SpaceHandler",
     ]
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.space import Space
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -20,7 +21,7 @@ class SpaceHandler(TimestampedModelHandler):
             Space.objects.all().prefetch_related(
                 "subnet_set__staticipaddress_set__interface_set"))
         pk = 'id'
-        allowed_methods = ['list', 'get', 'set_active']
+        allowed_methods = ['list', 'get', 'create', 'delete', 'set_active']
         listen_channels = [
             "space",
             ]
@@ -32,3 +33,10 @@ class SpaceHandler(TimestampedModelHandler):
             for subnet in obj.subnet_set.all()
         ]
         return data
+
+    def delete(self, parameters):
+        """Delete this Space."""
+        space = self.get_object(parameters)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, space), "Permission denied."
+        space.delete()

@@ -51,6 +51,10 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: 'static/partials/domain-details.html',
                     controller: 'DomainDetailsController'
                 }).
+                when('/space/:space_id', {
+                    templateUrl: 'static/partials/space-details.html',
+                    controller: 'SpaceDetailsController'
+                }).
                 when('/fabric/:fabric_id', {
                     templateUrl: 'static/partials/fabric-details.html',
                     controller: 'FabricDetailsController'

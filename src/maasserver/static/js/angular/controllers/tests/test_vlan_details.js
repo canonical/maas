@@ -23,7 +23,8 @@ describe("VLANDetailsController", function() {
             primary_rack: primaryController.id,
             secondary_rack: secondaryController.id,
             primary_rack_sid: primaryController.system_id,
-            secondary_rack_sid: secondaryController.system_id
+            secondary_rack_sid: secondaryController.system_id,
+            rack_sids: []
         };
         VLANsManager._items.push(vlan);
         return vlan;
@@ -73,7 +74,7 @@ describe("VLANDetailsController", function() {
     }
 
     // Make a fake controller
-    function makeRackController(id, name, sid) {
+    function makeRackController(id, name, sid, vlan) {
         var rack = {
             id: id,
             system_id: sid,
@@ -82,6 +83,9 @@ describe("VLANDetailsController", function() {
             vlan_ids: [VLAN_ID]
         };
         ControllersManager._items.push(rack);
+        if(angular.isObject(vlan)) {
+            VLANsManager.addRackController(vlan, rack);
+        }
         return rack;
     }
 
@@ -116,6 +120,8 @@ describe("VLANDetailsController", function() {
         primaryController = makeRackController(1, "primary", "p1");
         secondaryController = makeRackController(2, "secondary", "p2");
         vlan = makeVLAN();
+        VLANsManager.addRackController(vlan, primaryController);
+        VLANsManager.addRackController(vlan, secondaryController);
         fabric = makeFabric();
         space = makeSpace();
         subnet = makeSubnet();
@@ -299,7 +305,7 @@ describe("VLANDetailsController", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect(controller.controllers.length).toBe(2);
         expect(controller.relatedControllers.length).toBe(2);
-        makeRackController(3, "three", "t3");
+        makeRackController(3, "three", "t3", vlan);
         expect(controller.relatedControllers.length).toBe(2);
         expect(controller.controllers.length).toBe(3);
         $scope.$digest();

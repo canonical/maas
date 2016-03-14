@@ -114,7 +114,7 @@
                </div>
                <dt class="two-col">MTU</dt><dd class="four-col last-col">{$ vlanDetails.vlan.mtu $}</dd>
                <dt class="two-col">Fabric</dt><dd class="four-col last-col">{$ vlanDetails.fabric.name $}</dd>
-               <dt class="two-col">Spaces</dt><dd class="four-col last-col"><span data-ng-repeat="space in vlanDetails.relatedSpaces">{$ space.name $} </span></dd>
+               <dt class="two-col">Spaces</dt><dd class="four-col last-col"><span data-ng-repeat="space in vlanDetails.relatedSpaces"><a href="#/space/{$ space.id $}">{$ space.name $}</a> </span></dd>
            </dl>
             <dl class="six-col last-col">
                 <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlanDetails.vlan.dhcp_on ? "Enabled" : "Disabled" $}</dd>
@@ -124,7 +124,12 @@
                 <div class="ng-hide" data-ng-show="vlanDetails.secondaryRack">
                     <dt class="two-col">Secondary controller</dt><dd class="four-col last-col">{$ vlanDetails.secondaryRack.hostname $}</dd>
                 </div>
-                <dt class="two-col">Rack&nbsp;controllers</dt><dd class="four-col last-col"><span data-ng-repeat="controller in vlanDetails.relatedControllers">{$ controller.hostname $} </span></dd>
+                <dt class="two-col">Rack controllers</dt>
+                <dd class="four-col last-col">
+                    <span data-ng-repeat="rack in vlanDetails.relatedControllers">
+                        <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                    </span>
+                </dd>
             </dl>
         </div>
     </section>
@@ -144,7 +149,7 @@
                       <div class="table__row" data-ng-repeat="row in vlanDetails.relatedSubnets">
                           <div class="table__data table-col--60"><a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet.cidr $}</a></div>
                           <div class="table__data table-col--10">{$ row.subnet.statistics.usage_string $}</div>
-                          <div class="table__data table-col--30">{$ row.space.name $}</div>
+                          <div class="table__data table-col--30"><a href="#space/{$ row.space.id $}">{$ row.space.name $}</a></div>
                       </div>
                   </section>
               </div>

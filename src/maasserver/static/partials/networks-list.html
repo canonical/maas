@@ -123,7 +123,7 @@
                             </div>
                         </td>
                         <td class="table-listing__cell table__column--20">
-                            {$ row.space_name $}
+                            <a href="#/space/{$ row.space.id $}">{$ row.space_name $}</a>
                         </td>
                         <td class="table-listing__cell table__column--30">
                             <a href="#/subnet/{$ row.subnet.id $}">{$ row.subnet_name $}</a>
@@ -176,7 +176,7 @@
                             {$ row.subnet.statistics.available_string $}
                         </td>
                         <td class="table-listing__cell table__column--25">
-                            {$ row.space.name $}
+                            <a href="#/space/{$ row.space.id $}">{$ row.space.name $}</a>
                         </td>
                     </tr>
                 </tbody>

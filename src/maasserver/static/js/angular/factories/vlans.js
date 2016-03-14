@@ -59,6 +59,12 @@ angular.module('MAAS').factory(
                 "vlan.delete", { "id": vlan.id }, true);
         };
 
+        // This is needed for testing: in the normal course of things,
+        // rack_sids is generated entirely by the websocket handler.
+        VLANsManager.prototype.addRackController = function(vlan, rack) {
+            vlan.rack_sids.push(rack.system_id);
+        };
+
         // Configure DHCP on the VLAN
         VLANsManager.prototype.configureDHCP = function(
             vlan, controllers, extra) {

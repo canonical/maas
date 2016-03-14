@@ -43,5 +43,10 @@ angular.module('MAAS').factory(
             return subnets;
         };
 
+        // Delete the space.
+        SpacesManager.prototype.deleteSpace = function(space) {
+            return RegionConnection.callMethod("space.delete", space);
+        };
+
         return new SpacesManager();
     }]);

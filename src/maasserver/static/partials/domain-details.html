@@ -1,6 +1,6 @@
 <header class="page-header margin-bottom" data-maas-sticky-header>
     <div class="inner-wrapper">
-        <h1 class="page-header__title twelvel-col">
+        <h1 class="page-header__title twelve-col">
             {$ domain.displayname $}:
             <ng-pluralize data-ng-hide="loading" count="domain.hosts"
                           when="{'one': '{$ domain.hosts $} host,', 'other': '{$ domain.hosts $} hosts,'}"></ng-pluralize>
@@ -13,16 +13,14 @@
                 </span>
             </span>
         </h1>
-        <div class="page-header__actions four-col last-col ng-hide" data-ng-show="isSuperUser() && !isDefaultDomain()">
-            <div class="page-header__cta two-col no-margin-bottom last-col">
-                <div class="two-col no-margin-bottom last-col">
-                    <button class="cta-ubuntu"
-                        data-ng-click="deleteButton()"
-                        data-ng-hide="loading || confirmingDelete">Delete Domain</button>
-                    <button class="cta-ubuntu secondary ng-hide"
-                        data-ng-click="cancelDeleteButton()"
-                        data-ng-show="loading || confirmingDelete">Cancel</button>
-                </div>
+        <div class="page-header__actions ng-hide" data-ng-show="isSuperUser() && !isDefaultFabric() && !loading">
+            <div class="right no-margin-bottom last-col">
+                <button class="cta-ubuntu"
+                    data-ng-click="deleteButton()"
+                    data-ng-hide="loading || confirmingDelete">Delete Domain</button>
+                <button class="cta-ubuntu secondary ng-hide"
+                    data-ng-click="cancelDeleteButton()"
+                    data-ng-show="loading || confirmingDelete">Cancel</button>
             </div>
         </div>
     </div>
@@ -37,12 +35,14 @@
                 <div class="twelve-col">
                     <div class="table">
                         <div class="table__row table__row--no-hover">
-                            <div class="table__data table-col--70">
-                                Are you sure you want to delete this domain?
-                            </div>
-                            <div class="table__data table-col--10" data-ng-click="cancelDeleteButton()">Cancel</div>
-                            <div class="table__data table-col--10">
-                                <button class="cta-ubuntu secondary" data-ng-click="deleteConfirmButton()">Confirm</button>
+                            <div class="form-inline">
+                                <div class="left">
+                                    Are you sure you want to delete this domain?
+                                </div>
+                                <div class="right">
+                                    <a data-ng-click="cancelDeleteButton()">Cancel</a>
+                                    <button class="cta-ubuntu secondary" data-ng-click="deleteConfirmButton()">Confirm</button>
+                                </div>
                             </div>
                         </div>
                     </div>
