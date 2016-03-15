@@ -986,6 +986,7 @@ class Node(CleanSave, TimestampedModel):
         root_mounted = False
         root_on_bcache = False
         boot_mounted = False
+        arch, subarch = self.split_arch()
 
         for block_device in self.blockdevice_set.all():
             if block_device.is_boot_disk():
@@ -1026,7 +1027,7 @@ class Node(CleanSave, TimestampedModel):
                 "This node cannot be deployed because it cannot boot from a "
                 "bcache volume. Mount /boot on a non-bcache device to be "
                 "able to deploy this node.")
-        if (not boot_mounted and "arm64" in self.architecture and
+        if (not boot_mounted and arch == "arm64" and
                 self.get_bios_boot_method() != "uefi"):
             issues.append(
                 "This node cannot be deployed because it needs a separate "
