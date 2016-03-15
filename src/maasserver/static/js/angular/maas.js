@@ -27,14 +27,6 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     templateUrl: 'static/partials/nodes-list.html',
                     controller: 'NodesListController'
                 }).
-                when('/node/:type/:system_id', {
-                    templateUrl: 'static/partials/node-details.html',
-                    controller: 'NodeDetailsController'
-                }).
-                when('/node/:system_id', {
-                    templateUrl: 'static/partials/node-details.html',
-                    controller: 'NodeDetailsController'
-                }).
                 when('/node/:system_id/result/:filename', {
                     templateUrl: 'static/partials/node-result.html',
                     controller: 'NodeResultController'
@@ -42,6 +34,14 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                 when('/node/:system_id/events', {
                     templateUrl: 'static/partials/node-events.html',
                     controller: 'NodeEventsController'
+                }).
+                when('/node/:type/:system_id', {
+                    templateUrl: 'static/partials/node-details.html',
+                    controller: 'NodeDetailsController'
+                }).
+                when('/node/:system_id', {
+                    templateUrl: 'static/partials/node-details.html',
+                    controller: 'NodeDetailsController'
                 }).
                 when('/domains', {
                     templateUrl: 'static/partials/domains-list.html',
