@@ -8,13 +8,19 @@
 <div class="ng-hide" data-ng-show="loaded">
     <header class="page-header" data-maas-sticky-header>
         <div class="inner-wrapper">
-            <h1 class="page-header__title eight-col">
+            <h1 class="page-header__title">
                 <span contenteditable="true"
-                    data-ng-class="{ editable: canEdit(), invalid: editNameInvalid() }"
-                    data-ng-model="nameHeader.value"
+                    data-ng-class="{ editable: canEdit(), invalid: editHeaderInvalid() }"
+                    data-ng-model="header.hostname.value"
                     data-ng-disabled="!canEdit()"
-                    data-maas-editing="editName()"></span>
-                <span class="page-header__title--identicator" id="bulk-actions" data-ng-hide="isController || nameHeader.editing">
+                    data-maas-editing="editHeader()"></span>
+                <span class="page-header__title-dot ng-hide" data-ng-show="header.editing">.</span>
+                <select class="page-header__title-domain ng-hide"
+                    data-ng-show="header.editing"
+                    data-ng-model="header.domain.selected"
+                    data-ng-options="domain as domain.name for domain in header.domain.options">
+                </select>
+                <span class="page-header__title--identicator" id="bulk-actions" data-ng-hide="isController || header.editing">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <span class="power-status">{$ node.status $}</span>
                     <span class="power-status--power {$ getPowerStateClass() $}">
@@ -26,12 +32,12 @@
                     </span>
                 </span>
                 <a href="" class="alt ng-hide"
-                    data-ng-show="nameHeader.editing"
-                    data-ng-click="cancelEditName()">Cancel</a>
+                    data-ng-show="header.editing"
+                    data-ng-click="cancelEditHeader()">Cancel</a>
                 <a href="" class="link-cta-ubuntu ng-hide"
-                    data-ng-show="nameHeader.editing"
-                    data-ng-class="{ secondary: editNameInvalid() }"
-                    data-ng-click="saveEditName()">Save</a>
+                    data-ng-show="header.editing"
+                    data-ng-class="{ secondary: editHeaderInvalid() }"
+                    data-ng-click="saveEditHeader()">Save</a>
             </h1>
             <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
             <div class="page-header__actions four-col last-col" data-ng-show="false && isController">
@@ -42,7 +48,7 @@
                 </div>
             </div>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <div data-ng-show="!isController && !nameHeader.editing && availableActionOptions.length">
+            <div data-ng-show="!isController && !header.editing && availableActionOptions.length">
                 <div class="page-header__actions four-col last-col">
                      <div class="page-header__cta two-col no-margin-bottom last-col">
                         <div class="two-col no-margin-bottom last-col">

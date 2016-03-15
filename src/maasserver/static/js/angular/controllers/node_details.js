@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * MAAS Node Details Controller
@@ -7,12 +7,12 @@
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
     'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
-    'UsersManager', 'TagsManager', 'ManagerHelperService', 'ErrorService',
-    'ValidationService', function(
+    'UsersManager', 'TagsManager', 'DomainsManager', 'ManagerHelperService',
+    'ErrorService', 'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
-        UsersManager, TagsManager, ManagerHelperService, ErrorService,
-        ValidationService) {
+        UsersManager, TagsManager, DomainsManager, ManagerHelperService,
+        ErrorService, ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -55,10 +55,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         };
 
-        // Node name header section.
-        $scope.nameHeader = {
+        // Node header section.
+        $scope.header = {
             editing: false,
-            value: ""
+            hostname: {
+                value: ""
+            },
+            domain: {
+                selected: null,
+                options: DomainsManager.getItems()
+            }
         };
 
         // Summary section.
@@ -153,13 +159,27 @@ angular.module('MAAS').controller('NodeDetailsController', [
             }
         }
 
-        function updateName() {
+        function updateHeader() {
             // Don't update the value if in editing mode. As this would
             // overwrite the users changes.
-            if($scope.nameHeader.editing) {
+            if($scope.header.editing) {
                 return;
             }
-            $scope.nameHeader.value = $scope.node.fqdn;
+            $scope.header.hostname.value = $scope.node.fqdn;
+            // DomainsManager gives us all Domain information while the node
+            // only contains the name and id. Because of this we need to loop
+            // through the DomainsManager options and find the option with the
+            // id matching the node id. Otherwise we end up setting our
+            // selected field to an option not from DomainsManager which
+            // doesn't work.
+            var i;
+            for(i=0;i<$scope.header.domain.options.length;i++) {
+                var option = $scope.header.domain.options[i];
+                if(option.id === $scope.node.domain.id) {
+                    $scope.header.domain.selected = option;
+                    break;
+                }
+            }
         }
 
         // Update the available action options for the node.
@@ -370,7 +390,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Update the title and name when the node fqdn changes.
             $scope.$watch("node.fqdn", function() {
                 updateTitle();
-                updateName();
+                updateHeader();
             });
 
             // Update the devices on the node.
@@ -413,11 +433,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Update the node with new data on the region.
         $scope.updateNode = function(node) {
             return $scope.nodesManager.updateItem(node).then(function(node) {
-                updateName();
+                updateHeader();
                 updateSummary();
             }, function(error) {
                 console.log(error);
-                updateName();
+                updateHeader();
                 updateSummary();
             });
         };
@@ -658,55 +678,56 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
 
         // Called to edit the node name.
-        $scope.editName = function() {
+        $scope.editHeader = function() {
             if(!$scope.canEdit()) {
                 return;
             }
 
             // Do nothing if already editing because we don't want to reset
             // the current value.
-            if($scope.nameHeader.editing) {
+            if($scope.header.editing) {
                 return;
             }
-            $scope.nameHeader.editing = true;
+            $scope.header.editing = true;
 
-            // Set the value to the hostname, as that is what can be changed
-            // not the fqdn.
-            $scope.nameHeader.value = $scope.node.hostname;
+            // Set the value to the hostname, as hostname and domain are edited
+            // using different fields.
+            $scope.header.hostname.value = $scope.node.hostname;
         };
 
-        // Return true when the value in nameHeader is invalid.
-        $scope.editNameInvalid = function() {
+        // Return true when the hostname or domain in the header is invalid.
+        $scope.editHeaderInvalid = function() {
             // Not invalid unless editing.
-            if(!$scope.nameHeader.editing) {
+            if(!$scope.header.editing) {
                 return false;
             }
 
             // The value cannot be blank.
-            var value = $scope.nameHeader.value;
+            var value = $scope.header.hostname.value;
             if(value.length === 0) {
                 return true;
             }
             return !ValidationService.validateHostname(value);
         };
 
-        // Called to cancel editing of the node name.
-        $scope.cancelEditName = function() {
-            $scope.nameHeader.editing = false;
-            updateName();
+        // Called to cancel editing of the node hostname and domain.
+        $scope.cancelEditHeader = function() {
+            $scope.header.editing = false;
+            updateHeader();
         };
 
-        // Called to save editing of node name.
-        $scope.saveEditName = function() {
+        // Called to save editing of node hostname or domain.
+        $scope.saveEditHeader = function() {
             // Does nothing if invalid.
-            if($scope.editNameInvalid()) {
+            if($scope.editHeaderInvalid()) {
                 return;
             }
-            $scope.nameHeader.editing = false;
+            $scope.header.editing = false;
 
             // Copy the node and make the changes.
             var node = angular.copy($scope.node);
-            node.hostname = $scope.nameHeader.value;
+            node.hostname = $scope.header.hostname.value;
+            node.domain = $scope.header.domain.selected;
 
             // Update the node.
             $scope.updateNode(node);
@@ -929,7 +950,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             ZonesManager,
             GeneralManager,
             UsersManager,
-            TagsManager
+            TagsManager,
+            DomainsManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already

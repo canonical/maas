@@ -241,7 +241,6 @@ header.banner {
         font-size: 32px;
 
         [contenteditable="true"] {
-            display: inline-block;
             padding: 8px 10px;
             width: auto;
             box-sizing: border-box;
@@ -251,6 +250,7 @@ header.banner {
             color: #333;
             cursor: default;
             font-size: 32px;
+            display: inline-block;
 
             &.editable:hover {
                 border: 1px solid #D2D2D2;
@@ -274,6 +274,22 @@ header.banner {
             br {
                 display:none;
             }
+        }
+
+        .page-header__title-dot {
+          display: inline-block;
+          width: auto;
+          padding: 0 ;
+        }
+
+        .page-header__title-domain {
+          display: inline-block;
+          width: auto;
+          max-height: 59px;
+          line-height: 25px;
+          min-height: 59px;
+          background-position: top 27px right 10px;
+          margin: -9px 0;
         }
 
         .icon {

@@ -37,7 +37,7 @@ describe("NodeDetailsController", function() {
     // Load the required dependencies for the NodeDetails controller and
     // mock the websocket connection.
     var MachinesManager, ControllersManager;
-    var DevicesManager, GeneralManager, UsersManager;
+    var DevicesManager, GeneralManager, UsersManager, DomainsManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
     var webSocket;
     beforeEach(inject(function($injector) {
@@ -47,6 +47,7 @@ describe("NodeDetailsController", function() {
         GeneralManager = $injector.get("GeneralManager");
         UsersManager = $injector.get("UsersManager");
         TagsManager = $injector.get("TagsManager");
+        DomainsManager = $injector.get("DomainsManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -139,6 +140,7 @@ describe("NodeDetailsController", function() {
             GeneralManager: GeneralManager,
             UsersManager: UsersManager,
             TagsManager: TagsManager,
+            DomainsManager: DomainsManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -255,7 +257,7 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
             MachinesManager, ControllersManager, ZonesManager, GeneralManager,
-            UsersManager, TagsManager]);
+            UsersManager, TagsManager, DomainsManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -1205,57 +1207,57 @@ describe("NodeDetailsController", function() {
             });
     });
 
-    describe("editName", function() {
+    describe("editHeader", function() {
 
-        it("doesnt sets editing to true if cannot edit", function() {
+        it("doesnt set editing to true if cannot edit", function() {
             var controller = makeController();
             spyOn($scope, "canEdit").and.returnValue(false);
-            $scope.nameHeader.editing = false;
-            $scope.editName();
-            expect($scope.nameHeader.editing).toBe(false);
+            $scope.header.editing = false;
+            $scope.editHeader();
+            expect($scope.header.editing).toBe(false);
         });
 
-        it("sets editing to true for nameHeader section", function() {
+        it("sets editing to true if able", function() {
             var controller = makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
-            $scope.nameHeader.editing = false;
-            $scope.editName();
-            expect($scope.nameHeader.editing).toBe(true);
+            $scope.header.editing = false;
+            $scope.editHeader();
+            expect($scope.header.editing).toBe(true);
         });
 
-        it("sets nameHeader.value to node hostname", function() {
+        it("sets header.hostname.value to node hostname", function() {
             var controller = makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
-            $scope.editName();
-            expect($scope.nameHeader.value).toBe(node.hostname);
+            $scope.editHeader();
+            expect($scope.header.hostname.value).toBe(node.hostname);
         });
 
-        it("doesnt reset nameHeader.value on multiple calls", function() {
+        it("doesnt reset header.hostname.value on multiple calls", function() {
             var controller = makeController();
             $scope.node = node;
             spyOn($scope, "canEdit").and.returnValue(true);
-            $scope.editName();
+            $scope.editHeader();
             var updatedName = makeName("name");
-            $scope.nameHeader.value = updatedName;
-            $scope.editName();
-            expect($scope.nameHeader.value).toBe(updatedName);
+            $scope.header.hostname.value = updatedName;
+            $scope.editHeader();
+            expect($scope.header.hostname.value).toBe(updatedName);
         });
     });
 
-    describe("editNameInvalid", function() {
+    describe("editHeaderInvalid", function() {
 
         it("returns false if not editing", function() {
             var controller = makeController();
-            $scope.nameHeader.editing = false;
-            $scope.nameHeader.value = "abc_invalid.local";
-            expect($scope.editNameInvalid()).toBe(false);
+            $scope.header.editing = false;
+            $scope.header.hostname.value = "abc_invalid.local";
+            expect($scope.editHeaderInvalid()).toBe(false);
         });
 
         it("returns true for bad values", function() {
             var controller = makeController();
-            $scope.nameHeader.editing = true;
+            $scope.header.editing = true;
             var values = [
                 {
                     input: "aB0-z",
@@ -1275,68 +1277,68 @@ describe("NodeDetailsController", function() {
                 }
             ];
             angular.forEach(values, function(value) {
-                $scope.nameHeader.value = value.input;
-                expect($scope.editNameInvalid()).toBe(value.output);
+                $scope.header.hostname.value = value.input;
+                expect($scope.editHeaderInvalid()).toBe(value.output);
             });
         });
     });
 
-    describe("cancelEditName", function() {
+    describe("cancelEditHeader", function() {
 
         it("sets editing to false for nameHeader section", function() {
             var controller = makeController();
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.cancelEditName();
-            expect($scope.nameHeader.editing).toBe(false);
+            $scope.header.editing = true;
+            $scope.cancelEditHeader();
+            expect($scope.header.editing).toBe(false);
         });
 
-        it("sets nameHeader.value back to fqdn", function() {
+        it("sets header.hostname.value back to fqdn", function() {
             var controller = makeController();
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.nameHeader.value = makeName("name");
-            $scope.cancelEditName();
-            expect($scope.nameHeader.value).toBe(node.fqdn);
+            $scope.header.editing = true;
+            $scope.header.hostname.value = makeName("name");
+            $scope.cancelEditHeader();
+            expect($scope.header.hostname.value).toBe(node.fqdn);
         });
     });
 
-    describe("saveEditName", function() {
+    describe("saveEditHeader", function() {
 
         it("does nothing if value is invalid", function() {
             var controller = makeController();
             $scope.node = node;
-            spyOn($scope, "editNameInvalid").and.returnValue(true);
+            spyOn($scope, "editHeaderInvalid").and.returnValue(true);
             var sentinel = {};
-            $scope.nameHeader.editing = sentinel;
-            $scope.saveEditName();
-            expect($scope.nameHeader.editing).toBe(sentinel);
+            $scope.header.editing = sentinel;
+            $scope.saveEditHeader();
+            expect($scope.header.editing).toBe(sentinel);
         });
 
         it("sets editing to false", function() {
             var controller = makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
-            spyOn($scope, "editNameInvalid").and.returnValue(false);
+            spyOn($scope, "editHeaderInvalid").and.returnValue(false);
 
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.nameHeader.value = makeName("name");
-            $scope.saveEditName();
+            $scope.header.editing = true;
+            $scope.header.hostname.value = makeName("name");
+            $scope.saveEditHeader();
 
-            expect($scope.nameHeader.editing).toBe(false);
+            expect($scope.header.editing).toBe(false);
         });
 
         it("calls updateItem with copy of node", function() {
             var controller = makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
-            spyOn($scope, "editNameInvalid").and.returnValue(false);
+            spyOn($scope, "editHeaderInvalid").and.returnValue(false);
 
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.nameHeader.value = makeName("name");
-            $scope.saveEditName();
+            $scope.header.editing = true;
+            $scope.header.hostname.value = makeName("name");
+            $scope.saveEditHeader();
 
             var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode).not.toBe(node);
@@ -1346,13 +1348,13 @@ describe("NodeDetailsController", function() {
             var controller = makeController();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 $q.defer().promise);
-            spyOn($scope, "editNameInvalid").and.returnValue(false);
+            spyOn($scope, "editHeaderInvalid").and.returnValue(false);
 
             var newName = makeName("name");
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.nameHeader.value = newName;
-            $scope.saveEditName();
+            $scope.header.editing = true;
+            $scope.header.hostname.value = newName;
+            $scope.saveEditHeader();
 
             var calledWithNode = MachinesManager.updateItem.calls.argsFor(0)[0];
             expect(calledWithNode.hostname).toBe(newName);
@@ -1363,19 +1365,19 @@ describe("NodeDetailsController", function() {
             var defer = $q.defer();
             spyOn(MachinesManager, "updateItem").and.returnValue(
                 defer.promise);
-            spyOn($scope, "editNameInvalid").and.returnValue(false);
+            spyOn($scope, "editHeaderInvalid").and.returnValue(false);
 
             $scope.node = node;
-            $scope.nameHeader.editing = true;
-            $scope.nameHeader.value = makeName("name");
-            $scope.saveEditName();
+            $scope.header.editing = true;
+            $scope.header.hostname.value = makeName("name");
+            $scope.saveEditHeader();
 
             defer.resolve(node);
             $rootScope.$digest();
 
             // Since updateName is private in the controller, check
-            // that the nameHeader.value is set to the nodes fqdn.
-            expect($scope.nameHeader.value).toBe(node.fqdn);
+            // that the header.hostname.value is set to the nodes fqdn.
+            expect($scope.header.hostname.value).toBe(node.fqdn);
         });
     });
 
