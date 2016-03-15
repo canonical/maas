@@ -125,6 +125,53 @@ code inside of a running browser you can launch Karma_ manually.::
 .. _Karma: http://karma-runner.github.io/
 
 
+Production MAAS server debugging
+================================
+
+When MAAS is installed from packaging it can help to enable debugging features
+to triage issues.
+
+Log all API and UI exceptions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default MAAS only logs HTTP 500 - INTERNAL_SERVER_ERROR into the
+regiond.log. To enable logging of all exceptions even exceptions where MAAS
+will return the correct HTTP status code.::
+
+    $ sudo sed -i 's/DEBUG = False/DEBUG = True/g' /usr/share/maas/maas/settings.py
+    $ sudo service maas-regiond restart
+
+Run regiond in foreground
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It can help when debugging to run regiond a foreground process so you can
+interact with the regiond by placing a breakpoint in the code. Once you have
+placed a breakpoint into the code you want to inspect you can start the regiond
+process in the foreground.::
+
+    $ sudo service maas-regiond stop
+    $ sudo -u maas -H DJANGO_SETTINGS_MODULE=maas.settings PYTHONPATH=/usr/share/maas twistd3 --nodaemon --pidfile= maas-regiond
+
+
+.. Note::
+
+   By default a MAAS installation runs 4 regiond processes at the same time.
+   This will change it to only run 1 process in the foreground. This should
+   only be used for debugging. Once finished the breakpoint should be removed
+   and maas-regiond service should be started.
+
+Run rackd in foreground
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It can help when debugging to run rackd a foreground process so you can
+interact with the rackd by placing a breakpoint in the code. Once you have
+placed a breakpoint into the code you want to inspect you can start the rackd
+process in the foreground.::
+
+   $ sudo service maas-rackd stop
+   $ sudo -u maas -H /usr/bin/authbind --deep /usr/bin/twistd3 --nodaemon --pidfile= maas-rackd
+
+
 Development MAAS server setup
 =============================
 

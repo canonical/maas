@@ -191,12 +191,15 @@ class ExceptionMiddleware(metaclass=ABCMeta):
         encoding = 'utf-8'
         if isinstance(exception, MAASAPIException):
             # Print a traceback if this is a 500 error.
-            if exception.api_error == http.client.INTERNAL_SERVER_ERROR:
+            if (settings.DEBUG or
+                    exception.api_error == http.client.INTERNAL_SERVER_ERROR):
                 self.log_exception(exception)
             # This type of exception knows how to translate itself into
             # an http response.
             return exception.make_http_response()
         elif isinstance(exception, ValidationError):
+            if settings.DEBUG:
+                self.log_exception(exception)
             if hasattr(exception, 'message_dict'):
                 # Complex validation error with multiple fields:
                 # return a json version of the message_dict.
@@ -209,6 +212,8 @@ class ExceptionMiddleware(metaclass=ABCMeta):
                     str(''.join(exception.messages)).encode(encoding),
                     content_type="text/plain; charset=%s" % encoding)
         elif isinstance(exception, PermissionDenied):
+            if settings.DEBUG:
+                self.log_exception(exception)
             return HttpResponseForbidden(
                 content=str(exception).encode(encoding),
                 content_type="text/plain; charset=%s" % encoding)
@@ -220,6 +225,8 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             # one as the admin should be checking and fixing, or it
             # could be spurious.  There's no way of knowing, so the best
             # course of action is to ask the caller to repeat.
+            if settings.DEBUG:
+                self.log_exception(exception)
             response = HttpResponse(
                 content=str(exception).encode(encoding),
                 status=int(http.client.SERVICE_UNAVAILABLE),
