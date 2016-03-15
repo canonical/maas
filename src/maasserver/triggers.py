@@ -321,28 +321,36 @@ PARTITION_NODE_NOTIFY = dedent("""\
 
 # Procedure that is called when the filesystem on a partition is updated.
 FILESYSTEM_NODE_NOTIFY = dedent("""\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    CREATE OR REPLACE FUNCTION {0}() RETURNS trigger as $$
     DECLARE
       node RECORD;
     BEGIN
-      SELECT system_id, installable INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable
-      WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND (
-        maasserver_blockdevice.id = %s
-        OR (
-          maasserver_blockdevice.id =
-              maasserver_partitiontable.block_device_id
-          AND maasserver_partitiontable.id =
-              maasserver_partition.partition_table_id
-          AND maasserver_partition.id = %s));
+      IF {1} IS NOT NULL
+      THEN
+        SELECT system_id, installable INTO node
+          FROM maasserver_node,
+               maasserver_blockdevice
+         WHERE maasserver_node.id = maasserver_blockdevice.node_id
+           AND maasserver_blockdevice.id = {1};
+      ELSIF {2} IS NOT NULL
+      THEN
+        SELECT system_id, installable INTO node
+          FROM maasserver_node,
+               maasserver_blockdevice,
+               maasserver_partition,
+               maasserver_partitiontable
+         WHERE maasserver_node.id = maasserver_blockdevice.node_id
+           AND maasserver_blockdevice.id =
+               maasserver_partitiontable.block_device_id
+           AND maasserver_partitiontable.id =
+               maasserver_partition.partition_table_id
+           AND maasserver_partition.id = {2};
+      END IF;
 
       IF node.installable THEN
-          PERFORM pg_notify('node_update',CAST(node.system_id AS text));
+          PERFORM pg_notify('node_update', CAST(node.system_id AS text));
       END IF;
+
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -1124,15 +1132,15 @@ def register_all_triggers():
 
     # Filesystem, update to linked user.
     register_procedure(
-        FILESYSTEM_NODE_NOTIFY % (
+        FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_link_notify', 'NEW.block_device_id',
             'NEW.partition_id'))
     register_procedure(
-        FILESYSTEM_NODE_NOTIFY % (
+        FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_update_notify', 'NEW.block_device_id',
             'NEW.partition_id'))
     register_procedure(
-        FILESYSTEM_NODE_NOTIFY % (
+        FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_unlink_notify', 'OLD.block_device_id',
             'OLD.partition_id'))
     register_trigger(
