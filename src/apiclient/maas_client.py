@@ -230,7 +230,7 @@ class MAASClient:
         return self.dispatcher.dispatch_query(
             url, method="GET", headers=headers)
 
-    def post(self, path, op, as_json=False, **kwargs):
+    def post(self, path, op="update", as_json=False, **kwargs):
         """Dispatch POST method `op` on `path`, with the given parameters.
 
         :param as_json: Instead of POSTing the content as multipart/form-data
