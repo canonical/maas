@@ -50,7 +50,7 @@ from provisioningserver.utils import typed
 import psycopg2.extensions
 
 
-MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\s*$')
+MAC_RE = re.compile(r'^\s*([0-9a-fA-F]{1,2}[:-]){5}[0-9a-fA-F]{1,2}\s*$')
 
 MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
 

@@ -235,8 +235,12 @@ class TestMACAddressField(MAASServerTestCase):
         self.assertRaises(
             ValidationError, validate_mac, '00:11:22:33:44:55:66')
 
-    def test_rejects_short_octet(self):
-        self.assertRaises(ValidationError, validate_mac, '00:1:22:33:44:55')
+    def test_accepts_short_octet(self):
+        # Hit both parts of the regex.
+        validate_mac('00:1:22:33:44:55')
+        validate_mac('00:11:22:33:44:5')
+        # No error.
+        pass
 
     def test_rejects_long_octet(self):
         self.assertRaises(ValidationError, validate_mac, '00:11:222:33:44:55')
