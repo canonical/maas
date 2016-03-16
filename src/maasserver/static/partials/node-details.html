@@ -1468,7 +1468,7 @@
 
                                         // New mount and filesystem dropdown, adds new form for mount options and added a
                                         // None edit alternative for when a swap filesystem has been selected
-                                        
+
                                         <div class="table__row active form padding-top--ten padding-right--ten padding-left--ten box-sizing">
                                             <div class="six-col no-margin-bottom">
                                                 <div class="form__group form__group--inline">
@@ -1870,18 +1870,19 @@
                 <table class="table-listing no-hover" data-ng-show="node.events.length">
                     <thead>
                         <tr class="table-listing__row">
-                            <th class="t80" colspan="2">Event</th>
-                            <th class="t20">Time</th>
+                            <th class="table-col--2"></th>
+                            <th class="table-col--79">Event</th>
+                            <th class="table-col--20">Time</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="table-listing__row"
                             data-ng-repeat="event in node.events | limitTo:events.limit">
-                            <td class="t1 no-padding-right no-padding-left">
+                            <td class="table-col--2 no-padding-right no-padding-left">
                                 <span class="icon {$ event.type.level $}"></span>
                             </td>
-                            <td class="t79">{$ getEventText(event) $}</td>
-                            <td class="t20">{$ event.created $}</td>
+                            <td class="table-col--79">{$ getEventText(event) $}</td>
+                            <td class="table-col--20">{$ event.created $}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1920,22 +1921,22 @@
                 <table class="table-listing no-hover">
                     <thead>
                         <tr class="table-listing__row">
-                            <th class="t1 no-padding-left no-padding-right"></th>
-                            <th class="t35">Filename</th>
-                            <th class="t30">Time</th>
-                            <th class="t30">Output</th>
+                            <th class="table-col--1 no-padding-left no-padding-right"></th>
+                            <th class="table-col--35">Filename</th>
+                            <th class="table-col--30">Time</th>
+                            <th class="table-col--30">Output</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="table-listing__row"
                             data-ng-repeat="output in node.commissioning_results">
-                            <td class="t1 no-padding-right no-padding-left">
+                            <td class="table-col--1 no-padding-right no-padding-left">
                                 <span class="icon"
                                     data-ng-class="{ success: output.result === 0, error: output.result !== 0 }"></span>
                             </td>
-                            <td class="t35"><a href="#/node/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
-                            <td class="t30">{$ output.created $}</td>
-                            <td class="t30">{$ output.line_count $} lines</td>
+                            <td class="table-col--35"><a href="#/node/{$ node.system_id $}/result/{$ output.name $}">{$ output.name $}</a></td>
+                            <td class="table-col--30">{$ output.created $}</td>
+                            <td class="table-col--30">{$ output.line_count $} lines</td>
                         </tr>
                     </tbody>
                 </table>

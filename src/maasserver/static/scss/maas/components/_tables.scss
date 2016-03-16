@@ -45,6 +45,8 @@ $pale-grey:             #bcbcbc;
       border: 0;
       text-align: left;
       border-collapse: collapse;
+      vertical-align: top;
+      word-wrap: break-word;
     }
 
     // Table header row styles
@@ -622,7 +624,7 @@ $pale-grey:             #bcbcbc;
 }
 
 @mixin maas-table {
-  @include tables($alto-grey, $warm-grey, 16px, 13px);
+  @include tables($alto-grey, $warm-grey, 16, 13);
   @include table-columns(100);
 }
 

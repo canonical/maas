@@ -6,7 +6,6 @@
 
 @mixin font-size ($size: 16) {
   font-size: ($size / $base)+em;
-  margin-bottom: (12 / $size)+em;
 }
 
 @mixin box-sizing ($type: border-box) {

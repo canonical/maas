@@ -20,3 +20,16 @@
 a.icon {
     cursor: pointer;
 }
+
+.icon-controls {
+
+  .icon {
+    display: none;
+    float: right;
+    text-align: left;
+  }
+}
+
+table tr:hover .icon-controls .icon {
+  display: block;
+}
