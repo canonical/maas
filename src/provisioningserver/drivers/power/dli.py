@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import re
 from time import sleep
 
 from provisioningserver.drivers.power import (
@@ -70,16 +71,22 @@ class DLIPowerDriver(PowerDriver):
                 power_user, power_pass, power_address)
             # --auth-no-challenge: send Basic HTTP authentication
             # information without first waiting for the server's challenge.
-            query = call_and_check([
+            wget_output = call_and_check([
                 'wget', '--auth-no-challenge', '-qO-', url])
-            state = query.split('<!-- state=')[1].split()[0]
-            # state is a bitmap of the DLI's oulet states, where bit 0
-            # corresponds to oulet 1's power state, bit 1 corresponds to
-            # outlet 2's power state, etc., encoded as hexadecimal.
-            if (int(state, 16) & (1 << int(outlet_id) - 1)) > 0:
-                return 'on'
+            match = re.search("<!-- state=([0-9a-fA-F]+)", wget_output)
+            if match is None:
+                raise PowerError(
+                    "Unable to extract power state for outlet %s from "
+                    "wget output: %s" % (outlet_id, wget_output))
             else:
-                return 'off'
+                state = match.group(1)
+                # state is a bitmap of the DLI's oulet states, where bit 0
+                # corresponds to oulet 1's power state, bit 1 corresponds to
+                # outlet 2's power state, etc., encoded as hexadecimal.
+                if (int(state, 16) & (1 << int(outlet_id) - 1)) > 0:
+                    return 'on'
+                else:
+                    return 'off'
         except ExternalProcessError as e:
             raise PowerFatalError(
                 "Failed to power query outlet %s: %s" % (
