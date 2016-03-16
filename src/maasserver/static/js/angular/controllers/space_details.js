@@ -123,7 +123,7 @@ angular.module('MAAS').controller('SpaceDetailsController', [
 
         // Load all the required managers.
         ManagerHelperService.loadManagers([
-            SpacesManager, SubnetsManager, SubnetsManager, FabricsManager,
+            SpacesManager, SubnetsManager, VLANsManager, FabricsManager,
             UsersManager]).then(function() {
             // Possibly redirected from another controller that already had
             // this space set to active. Only call setActiveItem if not

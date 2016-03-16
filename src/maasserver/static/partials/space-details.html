@@ -84,7 +84,7 @@
                             <th class="table__header table__column--15" data-ng-click="predicate='vlan_name'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'vlan_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">VLAN</th>
                             <th class="table__header table__column--25" data-ng-click="predicate='fabric_name'; reverse = !reverse"
-                                 data-ng-class="{sort: predicate === 'fabric_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Space</th>
+                                 data-ng-class="{sort: predicate === 'fabric_name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Fabric</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -97,7 +97,7 @@
                                 <a href="#/vlan/{$ row.vlan.id $}">{$ row.vlan_name $}</a>
                             </td>
                             <td class="table__column--25">
-                                <a href="#/fabric/{$ row.fabric_id $}">{$ row.fabric_name $}</a>
+                                <a href="#/fabric/{$ row.fabric.id $}">{$ row.fabric_name $}</a>
                             </td>
                         </tr>
                     </tbody>
