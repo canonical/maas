@@ -27,12 +27,12 @@ from maasserver.models.partitiontable import (
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BcacheStorageLayoutBase,
-    calculate_size_from_precentage,
+    calculate_size_from_percentage,
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
     get_storage_layout_choices,
     get_storage_layout_for_node,
-    is_precentage,
+    is_percentage,
     LVMStorageLayout,
     MIN_BOOT_PARTITION_SIZE,
     MIN_ROOT_PARTITION_SIZE,
@@ -108,81 +108,81 @@ class TestStorageLayoutForm(MAASServerTestCase):
             }, form.errors)
 
 
-class TestIsPrecentageHelper(MAASServerTestCase):
-    """Tests for `is_precentage`."""
+class TestIsPercentageHelper(MAASServerTestCase):
+    """Tests for `is_percentage`."""
 
     scenarios = [
         ('100%', {
             'value': '100%',
-            'is_precentage': True,
+            'is_percentage': True,
             }),
         ('10%', {
             'value': '10%',
-            'is_precentage': True,
+            'is_percentage': True,
             }),
         ('1.5%', {
             'value': '1.5%',
-            'is_precentage': True,
+            'is_percentage': True,
             }),
         ('1000.42%', {
             'value': '1000.42%',
-            'is_precentage': True,
+            'is_percentage': True,
             }),
         ('0.816112383915%', {
             'value': '0.816112383915%',
-            'is_precentage': True,
+            'is_percentage': True,
             }),
         ('1000', {
             'value': '1000',
-            'is_precentage': False,
+            'is_percentage': False,
             }),
         ('10', {
             'value': '10',
-            'is_precentage': False,
+            'is_percentage': False,
             }),
         ('0', {
             'value': '0',
-            'is_precentage': False,
+            'is_percentage': False,
             }),
         ('int(0)', {
             'value': 0,
-            'is_precentage': False,
+            'is_percentage': False,
             }),
     ]
 
     def test__returns_correct_result(self):
         self.assertEqual(
-            self.is_precentage, is_precentage(self.value),
+            self.is_percentage, is_percentage(self.value),
             "%s gave incorrect result." % self.value)
 
 
-class TestCalculateSizeFromPrecentHelper(MAASServerTestCase):
-    """Tests for `calculate_size_from_precentage`."""
+class TestCalculateSizeFromPercentHelper(MAASServerTestCase):
+    """Tests for `calculate_size_from_percentage`."""
 
     scenarios = [
         ('100%', {
             'input': 10000,
-            'precent': '100%',
+            'percent': '100%',
             'output': 10000,
             }),
         ('10%', {
             'input': 10000,
-            'precent': '10%',
+            'percent': '10%',
             'output': 1000,
             }),
         ('1%', {
             'input': 10000,
-            'precent': '1%',
+            'percent': '1%',
             'output': 100,
             }),
         ('5%', {
             'input': 4096,
-            'precent': '5%',
+            'percent': '5%',
             'output': int(ceil(4096 * .05)),
             }),
         ('0.816112383915%', {
             'input': 4096,
-            'precent': '0.816112383915%',
+            'percent': '0.816112383915%',
             'output': int(ceil(4096 * 0.00816112383915)),
             }),
     ]
@@ -190,8 +190,8 @@ class TestCalculateSizeFromPrecentHelper(MAASServerTestCase):
     def test__returns_correct_result(self):
         self.assertEqual(
             self.output,
-            calculate_size_from_precentage(self.input, self.precent),
-            "%s gave incorrect result." % self.precent)
+            calculate_size_from_percentage(self.input, self.percent),
+            "%s gave incorrect result." % self.percent)
 
 
 class TestStorageLayoutBase(MAASServerTestCase):
@@ -220,7 +220,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             "Node doesn't have any storage devices to configure.",
             str(error))
 
-    def test_raises_error_when_precentage_to_low_for_boot_disk(self):
+    def test_raises_error_when_percentage_to_low_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -248,16 +248,16 @@ class TestStorageLayoutBase(MAASServerTestCase):
                     MIN_BOOT_PARTITION_SIZE)],
             }, error.message_dict)
 
-    def test_raises_error_when_precentage_to_high_for_boot_disk(self):
+    def test_raises_error_when_percentage_to_high_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
             boot_disk.size - EFI_PARTITION_SIZE - MIN_ROOT_PARTITION_SIZE)
-        to_high_precent = max_size / float(boot_disk.size)
-        to_high_precent = "%s%%" % ((to_high_precent + 1) * 100)
+        to_high_percent = max_size / float(boot_disk.size)
+        to_high_percent = "%s%%" % ((to_high_percent + 1) * 100)
         layout = StorageLayoutBase(node, {
-            'boot_size': to_high_precent,
+            'boot_size': to_high_percent,
             })
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual({
@@ -280,7 +280,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
                 "Size is too large. Maximum size is %s." % max_size],
             }, error.message_dict)
 
-    def test_raises_error_when_precentage_to_low_for_root_disk(self):
+    def test_raises_error_when_percentage_to_low_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -308,16 +308,16 @@ class TestStorageLayoutBase(MAASServerTestCase):
                     MIN_ROOT_PARTITION_SIZE)],
             }, error.message_dict)
 
-    def test_raises_error_when_precentage_to_high_for_root_disk(self):
+    def test_raises_error_when_percentage_to_high_for_root_disk(self):
         node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
         max_size = (
             boot_disk.size - EFI_PARTITION_SIZE - MIN_BOOT_PARTITION_SIZE)
-        to_high_precent = max_size / float(boot_disk.size)
-        to_high_precent = "%s%%" % ((to_high_precent + 1) * 100)
+        to_high_percent = max_size / float(boot_disk.size)
+        to_high_percent = "%s%%" % ((to_high_percent + 1) * 100)
         layout = StorageLayoutBase(node, {
-            'root_size': to_high_precent,
+            'root_size': to_high_percent,
             })
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual({
@@ -955,7 +955,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             volume_group.get_size(),
             layout.get_calculated_lv_size(volume_group))
 
-    def test_raises_error_when_precentage_to_low_for_logical_volume(self):
+    def test_raises_error_when_percentage_to_low_for_logical_volume(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -983,7 +983,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
                     MIN_ROOT_PARTITION_SIZE)],
             }, error.message_dict)
 
-    def test_raises_error_when_precentage_to_high_for_logical_volume(self):
+    def test_raises_error_when_percentage_to_high_for_logical_volume(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -1367,7 +1367,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             },
             layout.errors)
 
-    def test_raises_error_when_precentage_to_low_for_cache_size(self):
+    def test_raises_error_when_percentage_to_low_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)
@@ -1401,7 +1401,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
                     MIN_BLOCK_DEVICE_SIZE)],
             }, error.message_dict)
 
-    def test_raises_error_when_precentage_to_high_for_cache_size(self):
+    def test_raises_error_when_percentage_to_high_for_cache_size(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE)

@@ -157,13 +157,13 @@ class TestServiceMonitor(MAASTestCase):
         name = factory.make_name("service")
         active_state = factory.pick_enum(SERVICE_STATE)
         process_state = random.choice(["running", "dead"])
-        observered_state = yield service_monitor._updateServiceState(
+        observed_state = yield service_monitor._updateServiceState(
             name, active_state, process_state)
         state = service_monitor._serviceStates[name]
         self.assertEquals(
             (active_state, process_state),
             (state.active_state, state.process_state))
-        self.assertEquals(state, observered_state)
+        self.assertEquals(state, observed_state)
 
     @inlineCallbacks
     def test__updateServiceState_does_not_hold_service_lock(self):
@@ -187,13 +187,13 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "_loadServiceState")
         mock_loadServiceState.return_value = succeed(
             (active_state, process_state))
-        observered_state = yield service_monitor.getServiceState(
+        observed_state = yield service_monitor.getServiceState(
             fake_service.name, now=True)
         state = service_monitor._serviceStates[fake_service.name]
         self.assertEquals(
             (active_state, process_state),
             (state.active_state, state.process_state))
-        self.assertEquals(state, observered_state)
+        self.assertEquals(state, observed_state)
         self.assertThat(
             mock_loadServiceState, MockCalledOnceWith(fake_service))
 
@@ -203,13 +203,13 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor([fake_service])
         mock_loadServiceState = self.patch(
             service_monitor, "_loadServiceState")
-        observered_state = yield service_monitor.getServiceState(
+        observed_state = yield service_monitor.getServiceState(
             fake_service.name, now=False)
         state = service_monitor._serviceStates[fake_service.name]
         self.assertEquals(
             (SERVICE_STATE.UNKNOWN, None),
             (state.active_state, state.process_state))
-        self.assertEquals(state, observered_state)
+        self.assertEquals(state, observed_state)
         self.assertThat(
             mock_loadServiceState, MockNotCalled())
 
@@ -228,8 +228,8 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor(fake_services)
         self.patch(service_monitor, "ensureService").side_effect = (
             lambda name: succeed(expected_states[name]))
-        observered = yield service_monitor.ensureServices()
-        self.assertEquals(expected_states, observered)
+        observed = yield service_monitor.ensureServices()
+        self.assertEquals(expected_states, observed)
 
     @inlineCallbacks
     def test__ensureServices_handles_errors(self):
@@ -278,8 +278,8 @@ class TestServiceMonitor(MAASTestCase):
         service_state = ServiceState(active_state, process_state)
         mock_ensureService = self.patch(service_monitor, "_ensureService")
         mock_ensureService.return_value = succeed(service_state)
-        observered = yield service_monitor.ensureService(fake_service.name)
-        self.assertEquals(service_state, observered)
+        observed = yield service_monitor.ensureService(fake_service.name)
+        self.assertEquals(service_state, observed)
         self.assertThat(mock_ensureService, MockCalledOnceWith(fake_service))
 
     @inlineCallbacks
@@ -299,8 +299,8 @@ class TestServiceMonitor(MAASTestCase):
         service_state = ServiceState(SERVICE_STATE.ON, "running")
         mock_getServiceState = self.patch(service_monitor, "getServiceState")
         mock_getServiceState.return_value = succeed(service_state)
-        observered = yield service_monitor.restartService(fake_service.name)
-        self.assertEquals(service_state, observered)
+        observed = yield service_monitor.restartService(fake_service.name)
+        self.assertEquals(service_state, observed)
         self.assertThat(
             mock_getServiceState,
             MockCalledOnceWith(fake_service.name, now=True))

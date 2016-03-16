@@ -121,10 +121,10 @@ class TestFixSourcesForCluster(PservTestCase):
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observered = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(sources)
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
-            observered[0]['url'])
+            observed[0]['url'])
 
     def test__removes_matching_path_from_maas_url(self):
         self.set_maas_url("http://192.168.122.2/MAAS/")
@@ -133,10 +133,10 @@ class TestFixSourcesForCluster(PservTestCase):
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observered = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(sources)
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
-            observered[0]['url'])
+            observed[0]['url'])
 
     def test__removes_matching_path_with_extra_slashes_from_maas_url(self):
         self.set_maas_url("http://192.168.122.2/MAAS/")
@@ -145,10 +145,10 @@ class TestFixSourcesForCluster(PservTestCase):
                 "url": "http://localhost///MAAS///images/index.json"
             }
         ]
-        observered = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(sources)
         self.assertEqual(
             "http://192.168.122.2/MAAS/images/index.json",
-            observered[0]['url'])
+            observed[0]['url'])
 
     def test__doesnt_remove_non_matching_path_from_maas_url(self):
         self.set_maas_url("http://192.168.122.2/not-matching/")
@@ -157,10 +157,10 @@ class TestFixSourcesForCluster(PservTestCase):
                 "url": "http://localhost/MAAS/images/index.json"
             }
         ]
-        observered = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(sources)
         self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
-            observered[0]['url'])
+            observed[0]['url'])
 
     def test__doesnt_remove_non_matching_path_from_maas_url_with_slashes(self):
         self.set_maas_url("http://192.168.122.2/not-matching////")
@@ -169,10 +169,10 @@ class TestFixSourcesForCluster(PservTestCase):
                 "url": "http://localhost///MAAS/images/index.json"
             }
         ]
-        observered = fix_sources_for_cluster(sources)
+        observed = fix_sources_for_cluster(sources)
         self.assertEqual(
             "http://192.168.122.2/not-matching/MAAS/images/index.json",
-            observered[0]['url'])
+            observed[0]['url'])
 
 
 class TestRunImport(PservTestCase):

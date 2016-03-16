@@ -17,9 +17,9 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.fields_storage import (
-    BytesOrPrecentageField,
-    calculate_size_from_precentage,
-    is_precentage,
+    BytesOrPercentageField,
+    calculate_size_from_percentage,
+    is_percentage,
 )
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.partition import (
@@ -52,8 +52,8 @@ class StorageLayoutFieldsError(MAASAPIValidationError):
 class StorageLayoutBase(Form):
     """Base class all storage layouts extend from."""
 
-    boot_size = BytesOrPrecentageField(required=False)
-    root_size = BytesOrPrecentageField(required=False)
+    boot_size = BytesOrPercentageField(required=False)
+    root_size = BytesOrPercentageField(required=False)
 
     def __init__(self, node, params={}):
         super(StorageLayoutBase, self).__init__(data=params)
@@ -83,9 +83,9 @@ class StorageLayoutBase(Form):
         size = self.cleaned_data[field]
         if size is None:
             return None
-        if is_precentage(size):
-            # Calculate the precentage not counting the EFI partition.
-            size = calculate_size_from_precentage(
+        if is_percentage(size):
+            # Calculate the percentage not counting the EFI partition.
+            size = calculate_size_from_percentage(
                 self.boot_disk.size - EFI_PARTITION_SIZE, size)
         if min_size is not None and size < min_size:
             raise ValidationError(
@@ -281,7 +281,7 @@ class LVMStorageLayout(StorageLayoutBase):
 
     vg_name = forms.CharField(required=False)
     lv_name = forms.CharField(required=False)
-    lv_size = BytesOrPrecentageField(required=False)
+    lv_size = BytesOrPercentageField(required=False)
 
     def get_vg_name(self):
         """Get the name of the volume group."""
@@ -325,8 +325,8 @@ class LVMStorageLayout(StorageLayoutBase):
                 root_size = (
                     self.boot_disk.size - EFI_PARTITION_SIZE -
                     self.get_boot_size())
-            if is_precentage(lv_size):
-                lv_size = calculate_size_from_precentage(
+            if is_percentage(lv_size):
+                lv_size = calculate_size_from_percentage(
                     root_size, lv_size)
             if lv_size < MIN_ROOT_PARTITION_SIZE:
                 set_form_error(
@@ -379,7 +379,7 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
 
     cache_mode = forms.ChoiceField(
         choices=CACHE_MODE_TYPE_CHOICES, required=False)
-    cache_size = BytesOrPrecentageField(required=False)
+    cache_size = BytesOrPercentageField(required=False)
     cache_no_part = forms.BooleanField(required=False)
 
     def setup_cache_device_field(self):
@@ -472,8 +472,8 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
             set_form_error(self, "cache_size", error_msg)
             set_form_error(self, "cache_no_part", error_msg)
         elif cache_device is not None and cache_size is not None:
-            if is_precentage(cache_size):
-                cache_size = calculate_size_from_precentage(
+            if is_percentage(cache_size):
+                cache_size = calculate_size_from_percentage(
                     cache_device.size, cache_size)
             if cache_size < MIN_BLOCK_DEVICE_SIZE:
                 set_form_error(

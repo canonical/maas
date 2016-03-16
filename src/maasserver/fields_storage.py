@@ -17,32 +17,32 @@ from django.core.validators import (
 from maasserver.utils.converters import machine_readable_bytes
 
 
-PRECENTAGE_REGEX = r"\d+(\.\d*)?%"
+PERCENTAGE_REGEX = r"\d+(\.\d*)?%"
 BYTES_REGEX = r"-?[0-9]+([KkMmGgTtPpEe]{1})?"
 
 
-def is_precentage(value):
+def is_percentage(value):
     """Return true if value is percentage."""
     if isinstance(value, (str, bytes)):
-        return re.match(PRECENTAGE_REGEX, value) is not None
+        return re.match(PERCENTAGE_REGEX, value) is not None
     else:
         return False
 
 
-def calculate_size_from_precentage(size, precentage):
-    """Convert precentage string into precentage of size."""
-    multipler = float(precentage.strip("%")) / 100
+def calculate_size_from_percentage(size, percentage):
+    """Convert percentage string into percentage of size."""
+    multipler = float(percentage.strip("%")) / 100
     return int(ceil(size * multipler))
 
 
-class BytesOrPrecentageField(forms.RegexField):
-    """Validates and converts a byte value or a precentage."""
+class BytesOrPercentageField(forms.RegexField):
+    """Validates and converts a byte value or a percentage."""
 
     def __init__(self, *args, **kwargs):
         self.min_value = kwargs.pop("min_value", None)
         self.max_value = kwargs.pop("max_value", None)
-        regex = r"^(%s|%s)$" % (PRECENTAGE_REGEX, BYTES_REGEX)
-        super(BytesOrPrecentageField, self).__init__(
+        regex = r"^(%s|%s)$" % (PERCENTAGE_REGEX, BYTES_REGEX)
+        super(BytesOrPercentageField, self).__init__(
             regex, *args, **kwargs)
 
     def to_python(self, value):
@@ -52,10 +52,10 @@ class BytesOrPrecentageField(forms.RegexField):
         return value
 
     def clean(self, value):
-        value = super(BytesOrPrecentageField, self).clean(value)
+        value = super(BytesOrPercentageField, self).clean(value)
         if value is not None:
-            # Exit early if this is precentage value.
-            if is_precentage(value):
+            # Exit early if this is percentage value.
+            if is_percentage(value):
                 return value
             else:
                 value = machine_readable_bytes(value)

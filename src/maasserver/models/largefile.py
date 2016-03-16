@@ -120,7 +120,7 @@ class LargeFile(CleanSave, TimestampedModel):
 
     @property
     def progress(self):
-        """Precentage of `content` saved."""
+        """Percentage of `content` saved."""
         if self.size <= 0:
             # Handle division of zero
             return 0
