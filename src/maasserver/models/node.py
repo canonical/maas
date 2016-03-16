@@ -37,6 +37,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     ManyToManyField,
+    Model,
     OneToOneField,
     PositiveIntegerField,
     PROTECT,
@@ -3527,3 +3528,16 @@ class Device(Node):
     def clean_architecture(self, prev):
         # Devices aren't required to have a defined architecture
         pass
+
+
+class NodeGroupToRackController(CleanSave, Model):
+    """Store some of the old NodeGroup data so we can migrate it when a rack
+    controller is registered.
+    """
+
+    # The uuid of the nodegroup from < 2.0
+    uuid = CharField(max_length=36, null=False, blank=False, editable=True)
+
+    # The subnet that the nodegroup is connected to. There can be multiple
+    # rows for multiple subnets on a signal nodegroup
+    subnet = ForeignKey('Subnet', null=False, blank=False, editable=True)

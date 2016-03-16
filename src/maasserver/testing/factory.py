@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -52,6 +52,7 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Device,
+    DHCPSnippet,
     DNSData,
     DNSResource,
     Domain,
@@ -80,6 +81,7 @@ from maasserver.models import (
     StaticIPAddress,
     Subnet,
     Tag,
+    VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
     VolumeGroup,
@@ -1600,6 +1602,19 @@ class Factory(maastesting.factory.Factory):
         return VirtualBlockDevice.objects.create(
             name=name, size=size, block_size=block_size,
             tags=tags, uuid=uuid, filesystem_group=filesystem_group)
+
+    def make_DHCPSnippet(
+            self, name=None, value=None, description=None, enabled=True,
+            node=None, subnet=None):
+        if name is None:
+            name = self.make_name("dhcp_snippet")
+        if value is None:
+            value = VersionedTextFile.objects.create(data=self.make_string())
+        if description is None:
+            description = self.make_string()
+        return DHCPSnippet.objects.create(
+            name=name, value=value, description=description, enabled=enabled,
+            node=node, subnet=subnet)
 
 
 # Create factory singleton.

@@ -1,12 +1,12 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
 
 __all__ = [
+    'BMC',
     'Bcache',
     'BlockDevice',
-    'BMC',
     'BootResource',
     'BootResourceFile',
     'BootResourceSet',
@@ -16,9 +16,10 @@ __all__ = [
     'CacheSet',
     'ComponentError',
     'Config',
-    'Device',
+    'DHCPSnippet',
     'DNSData',
     'DNSResource',
+    'Device',
     'Domain',
     'DownloadProgress',
     'Event',
@@ -27,11 +28,10 @@ __all__ = [
     'FileStorage',
     'Filesystem',
     'FilesystemGroup',
-    'Interface',
     'IPRange',
+    'Interface',
     'LargeFile',
     'LicenseKey',
-    'logger',
     'Machine',
     'Node',
     'Partition',
@@ -44,19 +44,20 @@ __all__ = [
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
-    'Service',
-    'Space',
     'SSHKey',
     'SSLKey',
+    'Service',
+    'Space',
     'Subnet',
     'Tag',
     'Template',
-    'VersionedTextFile',
     'UserProfile',
-    'VirtualBlockDevice',
     'VLAN',
+    'VersionedTextFile',
+    'VirtualBlockDevice',
     'VolumeGroup',
     'Zone',
+    'logger',
     ]
 
 from django.contrib.auth.backends import ModelBackend
@@ -83,6 +84,7 @@ from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
+from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
@@ -112,11 +114,9 @@ from maasserver.models.node import (
     Device,
     Machine,
     Node,
+    NodeGroupToRackController,
     RackController,
     RegionController,
-)
-from maasserver.models.nodegroup_to_rackcontroller import (
-    NodeGroupToRackController,
 )
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
@@ -146,8 +146,8 @@ from piston3.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    Bcache,
     BMC,
+    Bcache,
     BondInterface,
     BootResource,
     BootResourceFile,
@@ -155,17 +155,17 @@ ignore_unused(
     CacheSet,
     ComponentError,
     Config,
+    DHCPSnippet,
     Event,
     EventType,
     Fabric,
     FileStorage,
     Filesystem,
     FilesystemGroup,
-    Interface,
     IPRange,
+    Interface,
     LargeFile,
     LicenseKey,
-    logger,
     NodeGroupToRackController,
     Partition,
     PartitionTable,
@@ -174,19 +174,20 @@ ignore_unused(
     RegionController,
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
-    Service,
     SSHKey,
+    Service,
     StaticIPAddress,
     Tag,
     Template,
-    VersionedTextFile,
+    UnknownInterface,
     UserProfile,
-    VirtualBlockDevice,
     VLAN,
     VLANInterface,
-    UnknownInterface,
+    VersionedTextFile,
+    VirtualBlockDevice,
     VolumeGroup,
     Zone,
+    logger,
 )
 
 

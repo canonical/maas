@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model definition for IPRange.
@@ -6,11 +6,6 @@
 Specifies all types of IP address ranges MAAS can work with, such as
 DHCP ranges and user-reserved ranges.
 """
-from maasserver.utils.orm import MAASQueriesMixin
-import netaddr
-from provisioningserver.utils.network import make_iprange
-
-
 __all__ = [
     'IPRange',
 ]
@@ -20,18 +15,23 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
+    Manager,
     PROTECT,
-    QuerySet, Manager)
+    QuerySet,
+)
 from maasserver.enum import IPRANGE_TYPE_CHOICES
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import MAASQueriesMixin
+import netaddr
 from netaddr import (
     AddrFormatError,
     IPAddress,
     IPNetwork,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.network import make_iprange
 
 
 maaslog = get_maas_logger("iprange")
