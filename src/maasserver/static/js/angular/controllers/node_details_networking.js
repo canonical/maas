@@ -119,12 +119,12 @@ angular.module('MAAS').filter('filterLinkModes', function() {
 
 angular.module('MAAS').controller('NodeNetworkingController', [
     '$scope', '$filter', 'FabricsManager', 'VLANsManager', 'SubnetsManager',
-    'MachinesManager', 'GeneralManager', 'UsersManager', 'ManagerHelperService',
-    'ValidationService', 'JSONService',
+    'MachinesManager', 'ControllersManager', 'GeneralManager', 'UsersManager',
+    'ManagerHelperService', 'ValidationService', 'JSONService',
     function(
         $scope, $filter, FabricsManager, VLANsManager, SubnetsManager,
-        MachinesManager, GeneralManager, UsersManager, ManagerHelperService,
-        ValidationService, JSONService) {
+        MachinesManager, ControllersManager, GeneralManager, UsersManager,
+        ManagerHelperService, ValidationService, JSONService) {
 
         // Different interface types.
         var INTERFACE_TYPE = {
@@ -225,6 +225,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             });
 
             var interfaces = [];
+            // vlanTable contains data packaged for the 'Served VLANs' section,
+            // which is essentially Interface LEFT JOIN VLAN LEFT JOIN Subnet.
+            var vlanTable = [];
+
             angular.forEach($scope.node.interfaces, function(nic) {
                 // When a interface has a child that is a bond. Then that
                 // interface is not included in the interface list. Parent
@@ -255,11 +259,37 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     });
                 }
 
-                // Add the VLAN and fabric to the interface.
                 nic.vlan = VLANsManager.getItemFromList(nic.vlan_id);
                 if(angular.isObject(nic.vlan)) {
                     nic.fabric = FabricsManager.getItemFromList(
-                        nic.vlan.fabric);
+                            nic.vlan.fabric);
+                    // Only build the vlanTable for controllers.
+                    if ($scope.$parent.isController) {
+                        var vlanRecord = {
+                            "vlan": nic.vlan,
+                            "subnet": null,
+                            "fabric": nic.fabric,
+                            "primary_rack": null,
+                            "secondary_rack": null
+                        };
+                        if(nic.vlan.primary_rack_sid) {
+                            vlanRecord.primary_rack =
+                                ControllersManager.getItemFromList(
+                                    nic.vlan.primary_rack_sid);
+                        }
+                        if(nic.vlan.secondary_rack_sid) {
+                            vlanRecord.secondary_rack =
+                                ControllersManager.getItemFromList(
+                                    nic.vlan.secondary_rack_sid);
+                        }
+                        angular.forEach(VLANsManager.getSubnets(nic.vlan),
+                                function(subnet) {
+                            // Reuse same base record for each different subnet.
+                            var vlanRow = angular.copy(vlanRecord);
+                            vlanRow.subnet = subnet;
+                            vlanTable.push(vlanRow);
+                        });
+                    }
                 }
 
                 // Update the interface based on its links or duplicate the
@@ -303,6 +333,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             // Update the scopes interfaces.
             $scope.interfaces = interfaces;
+            $scope.vlanTable = vlanTable;
 
             // Update the scope interface links mapping.
             $scope.interfaceLinksMap = {};
@@ -459,6 +490,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Called by $parent when the node has been loaded.
         $scope.nodeLoaded = function() {
             $scope.$watch("node.interfaces", updateInterfaces);
+            $scope.$watchCollection($scope.subnets, updateInterfaces);
             $scope.nodeHasLoaded = true;
             updateLoaded();
         };
@@ -1266,7 +1298,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             FabricsManager,
             VLANsManager,
             SubnetsManager,
-            UsersManager
+            UsersManager,
+            ControllersManager
         ]).then(function() {
             $scope.managersHaveLoaded = true;
             updateLoaded();

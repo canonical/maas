@@ -402,10 +402,10 @@ describe("NodeNetworkingController", function() {
         expect($scope.managersHaveLoaded).toBe(true);
     });
 
-    it("starts watching interfaces once nodeLoaded called", function() {
+    it("watches interfaces and subnets once nodeLoaded called", function() {
         var controller = makeController();
-
         spyOn($scope, "$watch");
+        spyOn($scope, "$watchCollection");
         $scope.nodeLoaded();
 
         var watches = [];
@@ -413,8 +413,14 @@ describe("NodeNetworkingController", function() {
         for(i = 0; i < calls.length; i++) {
             watches.push(calls[i][0]);
         }
+        var watchCollections = [];
+        calls = $scope.$watchCollection.calls.allArgs();
+        for(i = 0; i < calls.length; i++) {
+            watchCollections.push(calls[i][0]);
+        }
 
         expect(watches).toEqual(["node.interfaces"]);
+        expect(watchCollections).toEqual([ $scope.subnets ]);
     });
 
     describe("updateInterfaces", function() {
@@ -664,6 +670,171 @@ describe("NodeNetworkingController", function() {
                     subnet: subnet2,
                     mode: "static",
                     ip_address: "192.168.122.10"
+                }
+            ]);
+        });
+
+        it("renders empty vlanTable for non-controllers", function() {
+            var fabric0 = {
+                id: 0
+            };
+            var vlan0 = {
+                id: 0,
+                fabric: 0
+            };
+            var subnet0 = { id: 0 };
+            var nic0 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            SubnetsManager._items = [subnet0];
+            FabricsManager._items = [fabric0];
+            VLANsManager._items = [vlan0];
+            node.interfaces = [nic0];
+
+            // Should be blank for non-controller.
+            updateInterfaces();
+            expect($scope.vlanTable).toEqual([]);
+        });
+
+        it("renders blank vlanTable when no subnets", function() {
+            var fabric0 = {
+                id: 0
+            };
+            var vlan0 = {
+                id: 0,
+                fabric: 0
+            };
+            var nic0 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            SubnetsManager._items = [];
+            spyOn(VLANsManager, "getSubnets").and.returnValue([]);
+            FabricsManager._items = [fabric0];
+            VLANsManager._items = [vlan0];
+            node.interfaces = [nic0];
+
+            $parentScope.isController = true;
+            updateInterfaces();
+            expect($scope.vlanTable).toEqual([]);
+        });
+
+        it("renders single entry vlanTable", function() {
+            var subnet0 = { id: 0 };
+            var fabric0 = {
+                id: 0
+            };
+            var vlan0 = {
+                id: 0,
+                fabric: 0,
+                subnet_ids: [0]
+            };
+            var nic0 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            SubnetsManager._items = [subnet0];
+            FabricsManager._items = [fabric0];
+            VLANsManager._items = [vlan0];
+            node.interfaces = [nic0];
+
+            // Should not blank for a controller.
+            $parentScope.isController = true;
+            updateInterfaces();
+            expect($scope.vlanTable).toEqual([
+                {
+                    vlan: vlan0,
+                    fabric: fabric0,
+                    subnet: subnet0,
+                    primary_rack: null,
+                    secondary_rack: null
+                }
+            ]);
+        });
+
+        it("renders multi-entry vlanTable", function() {
+            var subnet0 = { id: 0 };
+            var subnet1 = { id: 1 };
+            var subnet2 = { id: 2 };
+            var fabric0 = {
+                id: 0
+            };
+            var fabric1 = {
+                id: 1
+            };
+            var vlan0 = {
+                id: 0,
+                fabric: 0,
+                subnet_ids: [0, 1]
+            };
+            var vlan1 = {
+                id: 1,
+                fabric: 1,
+                subnet_ids: [2]
+            };
+            var nic0 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            var nic1 = {
+                id: 1,
+                name: "eth1",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 1
+            };
+            SubnetsManager._items = [subnet0, subnet1, subnet2];
+            FabricsManager._items = [fabric0, fabric1];
+            VLANsManager._items = [vlan0, vlan1];
+            node.interfaces = [nic0, nic1];
+
+            // Should not blank for a controller.
+            $parentScope.isController = true;
+            updateInterfaces();
+            expect($scope.vlanTable).toEqual([
+                {
+                    vlan: vlan0,
+                    fabric: fabric0,
+                    subnet: subnet0,
+                    primary_rack: null,
+                    secondary_rack: null
+                },
+                {
+                    vlan: vlan0,
+                    fabric: fabric0,
+                    subnet: subnet1,
+                    primary_rack: null,
+                    secondary_rack: null
+                },
+                {
+                    vlan: vlan1,
+                    fabric: fabric1,
+                    subnet: subnet2,
+                    primary_rack: null,
+                    secondary_rack: null
                 }
             ]);
         });
