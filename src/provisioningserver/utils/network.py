@@ -625,12 +625,28 @@ def get_all_interfaces_definition():
     exclude_types = ["loopback", "ipip"]
     if not running_in_container():
         exclude_types.append("ethernet")
+    original_ipaddr_info = get_ip_addr()
     ipaddr_info = {
         name: ipaddr
-        for name, ipaddr in get_ip_addr().items()
+        for name, ipaddr in original_ipaddr_info.items()
         if (ipaddr["type"] not in exclude_types and
             not ipaddr["type"].startswith("unknown-"))
     }
+
+    # It's not always 100% that we can determine that this machine is running
+    # in a container. To handle this case we include "ethernet" interfaces
+    # when no other interfaces could be identified. See lp:1554999.
+    if len(ipaddr_info) == 0 and "ethernet" in exclude_types:
+        # No interfaces have been discovered from "ip addr" excluding
+        # "ethernet". Re-filter including ethernet.
+        exclude_types.remove("ethernet")
+        ipaddr_info = {
+            name: ipaddr
+            for name, ipaddr in original_ipaddr_info.items()
+            if (ipaddr["type"] not in exclude_types and
+                not ipaddr["type"].startswith("unknown-"))
+        }
+
     for name, ipaddr in ipaddr_info.items():
         iface_type = "physical"
         parents = []
