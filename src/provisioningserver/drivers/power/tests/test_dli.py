@@ -137,6 +137,14 @@ class TestDLIPowerDriver(MAASTestCase):
                 ['wget', '--auth-no-challenge', '-qO-', url]))
         self.expectThat(result, Equals('off'))
 
+    def test__query_outlet_state_crashes_when_state_not_found(self):
+        driver = dli_module.DLIPowerDriver()
+        call_and_check_mock = self.patch(dli_module, 'call_and_check')
+        call_and_check_mock.return_value = "Rubbish"
+        self.assertRaises(
+            PowerError, driver._query_outlet_state, sentinel.outlet_id,
+            sentinel.power_user, sentinel.power_pass, sentinel.power_address)
+
     def test__query_outlet_state_crashes_when_wget_exits_nonzero(self):
         driver = dli_module.DLIPowerDriver()
         call_and_check_mock = self.patch(dli_module, 'call_and_check')
