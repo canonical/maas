@@ -23,8 +23,8 @@ describe("ConverterService", function() {
                 output: {
                     original: 99,
                     converted: 99,
-                    units: "Bytes",
-                    string: "99 Bytes"
+                    units: "bytes",
+                    string: "99 bytes"
                 }
             },
             {
@@ -32,8 +32,8 @@ describe("ConverterService", function() {
                 output: {
                     original: 99,
                     converted: 99,
-                    units: "Bytes",
-                    string: "99 Bytes"
+                    units: "bytes",
+                    string: "99 bytes"
                 }
             },
             {
@@ -41,8 +41,8 @@ describe("ConverterService", function() {
                 output: {
                     original: 8100,
                     converted: 8.1,
-                    units: "KB",
-                    string: "8.1 KB"
+                    units: "kB",
+                    string: "8.1 kB"
                 }
             },
             {
@@ -97,17 +97,17 @@ describe("ConverterService", function() {
         var scenarios = [
             {
                 input: "99",
-                units: "Bytes",
+                units: "bytes",
                 output: 99
             },
             {
                 input: 99,
-                units: "Bytes",
+                units: "bytes",
                 output: 99
             },
             {
                 input: 8.1,
-                units: "KB",
+                units: "kB",
                 output: 8100
             },
             {
@@ -146,17 +146,17 @@ describe("ConverterService", function() {
         var scenarios = [
             {
                 input: "99",
-                units: "Bytes",
+                units: "bytes",
                 output: 99
             },
             {
                 input: 99,
-                units: "Bytes",
+                units: "bytes",
                 output: 99
             },
             {
                 input: 8.14,
-                units: "KB",
+                units: "kB",
                 output: 8090
             },
             {

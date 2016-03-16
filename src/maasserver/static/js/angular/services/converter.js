@@ -8,11 +8,14 @@
 
 angular.module('MAAS').service('ConverterService', function() {
 
-        var UNITS = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        var KB = 1000.0;
-        var MB = 1000.0 * 1000.0;
-        var GB = 1000.0 * 1000.0 * 1000.0;
-        var TB = 1000.0 * 1000.0 * 1000.0 * 1000.0;
+        // Case is important: 1kB is 1000 bytes, whereas 1KB is 1024 bytes.
+        // See https://en.wikipedia.org/wiki/Byte#Unit_symbol
+        var UNITS = ['bytes', 'kB', 'MB', 'GB', 'TB'];
+
+        var KILOBYTE = 1000.0;
+        var MEGABYTE = 1000.0 * 1000.0;
+        var GIGABYTE = 1000.0 * 1000.0 * 1000.0;
+        var TERABYTE = 1000.0 * 1000.0 * 1000.0 * 1000.0;
 
         // Convert the bytes to a unit.
         this.bytesToUnits = function(bytes) {
@@ -26,7 +29,7 @@ angular.module('MAAS').service('ConverterService', function() {
                 unit = UNITS[i];
                 if(Math.abs(converted) < 1000.0 || unit === 'TB') {
                     var string = converted.toFixed(1) + " " + unit;
-                    if(unit === 'Bytes') {
+                    if(unit === 'bytes') {
                         string = converted + " " + unit;
                     }
                     return {
@@ -46,16 +49,16 @@ angular.module('MAAS').service('ConverterService', function() {
             if(angular.isString(data)) {
                 data = parseFloat(data);
             }
-            if(unit === 'Bytes') {
+            if(unit === 'bytes') {
                 return Math.floor(data);
-            } else if(unit === 'KB') {
-                return Math.floor(data * KB);
+            } else if(unit === 'kB') {
+                return Math.floor(data * KILOBYTE);
             } else if(unit === 'MB') {
-                return Math.floor(data * MB);
+                return Math.floor(data * MEGABYTE);
             } else if(unit === 'GB') {
-                return Math.floor(data * GB);
+                return Math.floor(data * GIGABYTE);
             } else if(unit === 'TB') {
-                return Math.floor(data * TB);
+                return Math.floor(data * TERABYTE);
             }
         };
 
@@ -66,16 +69,16 @@ angular.module('MAAS').service('ConverterService', function() {
             if(angular.isString(data)) {
                 data = parseFloat(data);
             }
-            if(unit === 'Bytes') {
+            if(unit === 'bytes') {
                 return Math.floor(data);
-            } else if(unit === 'KB') {
-                return Math.floor(data * KB) - (0.05 * KB);
+            } else if(unit === 'kB') {
+                return Math.floor(data * KILOBYTE) - (0.05 * KILOBYTE);
             } else if(unit === 'MB') {
-                return Math.floor(data * MB) - (0.05 * MB);
+                return Math.floor(data * MEGABYTE) - (0.05 * MEGABYTE);
             } else if(unit === 'GB') {
-                return Math.floor(data * GB) - (0.05 * GB);
+                return Math.floor(data * GIGABYTE) - (0.05 * GIGABYTE);
             } else if(unit === 'TB') {
-                return Math.floor(data * TB) - (0.05 * TB);
+                return Math.floor(data * TERABYTE) - (0.05 * TERABYTE);
             }
         };
 

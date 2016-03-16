@@ -44,10 +44,10 @@ class TestHumanReadableBytes(MAASTestCase):
     scenarios = [
         ("bytes", dict(
             size=987,
-            output="987.0", suffix="bytes")),
-        ("KB", dict(
+            output="987", suffix="bytes")),
+        ("kB", dict(
             size=1000 * 35 + 500,
-            output="35.5", suffix="KB")),
+            output="35.5", suffix="kB")),
         ("MB", dict(
             size=(1000 ** 2) * 28,
             output="28.0", suffix="MB")),

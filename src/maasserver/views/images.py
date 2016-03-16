@@ -47,17 +47,9 @@ from maasserver.models import (
     LargeFile,
     Node,
 )
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.views import HelpfulDeleteView
 from requests import ConnectionError
-
-
-def format_size(size):
-    """Formats the size into human readable."""
-    for x in ['bytes', 'KB', 'MB', 'GB']:
-        if size < 1024.0:
-            return "%3.1f %s" % (size, x)
-        size /= 1024.0
-    return "%3.1f %s" % (size, ' TB')
 
 
 def get_distro_series_info_row(series):
@@ -246,13 +238,13 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             resource)
         resource_set = resource.get_latest_set()
         if resource_set is None:
-            resource.size = format_size(0)
+            resource.size = human_readable_bytes(0)
             resource.last_update = resource.updated
             resource.complete = False
             resource.status = "Queued for download"
             resource.downloading = False
         else:
-            resource.size = format_size(resource_set.total_size)
+            resource.size = human_readable_bytes(resource_set.total_size)
             resource.last_update = resource_set.updated
             resource.complete = resource_set.complete
             if not resource.complete:
@@ -535,7 +527,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         resource.arch, resource.subarch = resource.split_arch()
         resource.title = self.get_resource_title(resource)
         resource.complete = complete
-        resource.size = format_size(unique_size)
+        resource.size = human_readable_bytes(unique_size)
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
         resource.complete = complete

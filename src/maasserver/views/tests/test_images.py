@@ -27,12 +27,12 @@ from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import (
     get_one,
     reload_object,
 )
 from maasserver.views import images as images_view
-from maasserver.views.images import format_size
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
@@ -759,7 +759,7 @@ class TestImageAjax(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET))
         json_resource = json_obj['resources'][0]
         self.assertEqual(
-            format_size(largefile.total_size), json_resource['size'])
+            human_readable_bytes(largefile.total_size), json_resource['size'])
 
     def test_combined_subarch_resource_calculates_num_of_nodes_deployed(self):
         self.client_log_in()

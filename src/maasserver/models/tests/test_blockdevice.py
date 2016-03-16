@@ -316,8 +316,8 @@ class TestBlockDevice(MAASServerTestCase):
 
     def test_display_size(self):
         sizes = (
-            (45, '45.0 bytes'),
-            (1000, '1.0 KB'),
+            (45, '45 bytes'),
+            (1000, '1.0 kB'),
             (1000 * 1000, '1.0 MB'),
             (1000 * 1000 * 500, '500.0 MB'),
             (1000 * 1000 * 1000, '1.0 GB'),
