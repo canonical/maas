@@ -320,6 +320,7 @@ class NodeHandler(TimestampedModelHandler):
         return {
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
+            "mount_options": filesystem.mount_options,
             "fstype": filesystem.fstype,
             "is_format_fstype": (
                 filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),

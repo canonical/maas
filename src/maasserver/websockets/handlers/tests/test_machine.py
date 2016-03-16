@@ -104,7 +104,10 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    MatchesStructure,
+)
 from twisted.internet.defer import CancelledError
 
 
@@ -525,6 +528,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual({
             "label": filesystem.label,
             "mount_point": filesystem.mount_point,
+            "mount_options": filesystem.mount_options,
             "fstype": filesystem.fstype,
             "is_format_fstype": (
                 filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
@@ -1116,10 +1120,12 @@ class TestMachineHandler(MAASServerTestCase):
             'system_id': node.system_id,
             'block_id': block_device.id,
             'fstype': fs.fstype,
-            'mount_point': None
+            'mount_point': None,
+            'mount_options': None,
             })
-        self.assertEqual(
-            None, block_device.get_effective_filesystem().mount_point)
+        efs = block_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=None, mount_options=None))
 
     def test_unmount_partition_filesystem(self):
         user = factory.make_admin()
@@ -1136,10 +1142,12 @@ class TestMachineHandler(MAASServerTestCase):
             'block_id': partition.partition_table.block_device.id,
             'partition_id': partition.id,
             'fstype': fs.fstype,
-            'mount_point': None
+            'mount_point': None,
+            'mount_options': None,
             })
-        self.assertEqual(
-            None, partition.get_effective_filesystem().mount_point)
+        efs = partition.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=None, mount_options=None))
 
     def test_mount_blockdevice_filesystem(self):
         user = factory.make_admin()
@@ -1151,14 +1159,18 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         fs = factory.make_Filesystem(block_device=block_device)
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': block_device.id,
             'fstype': fs.fstype,
-            'mount_point': '/mnt'
+            'mount_point': mount_point,
+            'mount_options': mount_options,
             })
-        self.assertEqual(
-            '/mnt', block_device.get_effective_filesystem().mount_point)
+        efs = block_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=mount_point, mount_options=mount_options))
 
     def test_mount_partition_filesystem(self):
         user = factory.make_admin()
@@ -1170,15 +1182,19 @@ class TestMachineHandler(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED)
         partition = factory.make_Partition(node=node)
         fs = factory.make_Filesystem(partition=partition)
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.update_filesystem({
             'system_id': node.system_id,
             'block_id': partition.partition_table.block_device.id,
             'partition_id': partition.id,
             'fstype': fs.fstype,
-            'mount_point': '/mnt'
+            'mount_point': mount_point,
+            'mount_options': mount_options,
             })
-        self.assertEqual(
-            '/mnt', partition.get_effective_filesystem().mount_point)
+        efs = partition.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            mount_point=mount_point, mount_options=mount_options))
 
     def test_change_blockdevice_filesystem(self):
         user = factory.make_admin()
@@ -1435,12 +1451,14 @@ class TestMachineHandler(MAASServerTestCase):
         size = partition_table.block_device.size // 2
         fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.create_partition({
             'system_id': node.system_id,
             'block_id': partition_table.block_device_id,
             'partition_size': size,
             'fstype': fstype,
             'mount_point': mount_point,
+            'mount_options': mount_options,
             })
         partition = partition_table.partitions.first()
         self.assertEqual(
@@ -1450,12 +1468,10 @@ class TestMachineHandler(MAASServerTestCase):
                 round_size_to_nearest_block(
                     size, PARTITION_ALIGNMENT_SIZE, False)),
             human_readable_bytes(partition.size))
-        self.assertEqual(
-            fstype,
-            partition.get_effective_filesystem().fstype)
-        self.assertEqual(
-            mount_point,
-            partition.get_effective_filesystem().mount_point)
+        efs = partition.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=fstype, mount_point=mount_point,
+            mount_options=mount_options))
 
     def test_create_cache_set_for_partition(self):
         user = factory.make_admin()
@@ -1522,6 +1538,7 @@ class TestMachineHandler(MAASServerTestCase):
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
         fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.create_bcache({
             'system_id': node.system_id,
             'partition_id': partition.id,
@@ -1531,6 +1548,7 @@ class TestMachineHandler(MAASServerTestCase):
             'cache_mode': cache_mode,
             'fstype': fstype,
             'mount_point': mount_point,
+            'mount_options': mount_options,
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
@@ -1539,12 +1557,10 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(cache_mode, bcache.cache_mode)
         self.assertEqual(
             partition, bcache.get_bcache_backing_filesystem().partition)
-        self.assertEqual(
-            fstype,
-            bcache.virtual_device.get_effective_filesystem().fstype)
-        self.assertEqual(
-            mount_point,
-            bcache.virtual_device.get_effective_filesystem().mount_point)
+        efs = bcache.virtual_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=fstype, mount_point=mount_point,
+            mount_options=mount_options))
 
     def test_create_bcache_for_block_device(self):
         user = factory.make_admin()
@@ -1582,6 +1598,7 @@ class TestMachineHandler(MAASServerTestCase):
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
         fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.create_bcache({
             'system_id': node.system_id,
             'block_id': block_device.id,
@@ -1590,6 +1607,7 @@ class TestMachineHandler(MAASServerTestCase):
             'cache_mode': cache_mode,
             'fstype': fstype,
             'mount_point': mount_point,
+            'mount_options': mount_options,
             })
         bcache = Bcache.objects.filter_by_node(node).first()
         self.assertIsNotNone(bcache)
@@ -1599,12 +1617,10 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             block_device.id,
             bcache.get_bcache_backing_filesystem().block_device.id)
-        self.assertEqual(
-            fstype,
-            bcache.virtual_device.get_effective_filesystem().fstype)
-        self.assertEqual(
-            mount_point,
-            bcache.virtual_device.get_effective_filesystem().mount_point)
+        efs = bcache.virtual_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=fstype, mount_point=mount_point,
+            mount_options=mount_options))
 
     def test_create_raid(self):
         user = factory.make_admin()
@@ -1640,6 +1656,7 @@ class TestMachineHandler(MAASServerTestCase):
         name = factory.make_name("md")
         fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.create_raid({
             'system_id': node.system_id,
             'name': name,
@@ -1648,17 +1665,16 @@ class TestMachineHandler(MAASServerTestCase):
             'spare_devices': [spare_disk.id],
             'fstype': fstype,
             'mount_point': mount_point,
+            'mount_options': mount_options,
             })
         raid = RAID.objects.filter_by_node(node).first()
         self.assertIsNotNone(raid)
         self.assertEqual(name, raid.name)
         self.assertEqual("raid-5", raid.group_type)
-        self.assertEqual(
-            fstype,
-            raid.virtual_device.get_effective_filesystem().fstype)
-        self.assertEqual(
-            mount_point,
-            raid.virtual_device.get_effective_filesystem().mount_point)
+        efs = raid.virtual_device.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=fstype, mount_point=mount_point,
+            mount_options=mount_options))
 
     def test_create_volume_group(self):
         user = factory.make_admin()
@@ -1710,6 +1726,7 @@ class TestMachineHandler(MAASServerTestCase):
         size = volume_group.get_lvm_free_space()
         fstype = factory.pick_filesystem_type()
         mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
         handler.create_logical_volume({
             'system_id': node.system_id,
             'name': name,
@@ -1717,18 +1734,17 @@ class TestMachineHandler(MAASServerTestCase):
             'size': size,
             'fstype': fstype,
             'mount_point': mount_point,
+            'mount_options': mount_options,
             })
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
         self.assertEqual(
             "%s-%s" % (volume_group.name, name), logical_volume.get_name())
         self.assertEqual(size, logical_volume.size)
-        self.assertEqual(
-            fstype,
-            logical_volume.get_effective_filesystem().fstype)
-        self.assertEqual(
-            mount_point,
-            logical_volume.get_effective_filesystem().mount_point)
+        efs = logical_volume.get_effective_filesystem()
+        self.assertThat(efs, MatchesStructure.byEquality(
+            fstype=fstype, mount_point=mount_point,
+            mount_options=mount_options))
 
     def test_set_boot_disk(self):
         user = factory.make_admin()

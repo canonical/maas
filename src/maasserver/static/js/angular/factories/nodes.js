@@ -143,7 +143,7 @@ angular.module('MAAS').service(
 
         // Send the update information to the region.
         NodesManager.prototype.updateFilesystem = function(
-            node, block_id, partition_id, fstype, mount_point) {
+            node, block_id, partition_id, fstype, mount_point, mount_options) {
                 var self = this;
                 var method = this._handler + ".update_filesystem";
                 var params = {
@@ -151,7 +151,8 @@ angular.module('MAAS').service(
                     block_id: block_id,
                     partition_id: partition_id,
                     fstype: fstype,
-                    mount_point: mount_point
+                    mount_point: mount_point,
+                    mount_options: mount_options
                 };
                 return RegionConnection.callMethod(method, params);
             };

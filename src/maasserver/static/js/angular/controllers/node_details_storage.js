@@ -215,6 +215,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "size_human": disk.size_human,
                         "fstype": disk.filesystem.fstype,
                         "mount_point": disk.filesystem.mount_point,
+                        "mount_options": disk.filesystem.mount_options,
                         "block_id": disk.id,
                         "partition_id": null,
                         "original_type": disk.type,
@@ -233,6 +234,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "size_human": partition.size_human,
                             "fstype": partition.filesystem.fstype,
                             "mount_point": partition.filesystem.mount_point,
+                            "mount_options":
+                                partition.filesystem.mount_options,
                             "block_id": disk.id,
                             "partition_id": partition.id,
                             "original_type": "partition",
@@ -325,6 +328,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                         "tags": getTags(disk),
                         "fstype": hasFormattedUnmountedFilesystem(disk),
                         "mount_point": null,
+                        "mount_options": null,
                         "block_id": disk.id,
                         "partition_id": null,
                         "has_partitions": has_partitions,
@@ -351,6 +355,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                             "fstype":
                                 hasFormattedUnmountedFilesystem(partition),
                             "mount_point": null,
+                            "mount_options": null,
                             "block_id": disk.id,
                             "partition_id": partition.id,
                             "has_partitions": false,
@@ -676,7 +681,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             MachinesManager.updateFilesystem(
                 $scope.node,
                 filesystem.block_id, filesystem.partition_id,
-                filesystem.fstype, null);
+                filesystem.fstype, null, null);
 
             var idx = $scope.filesystems.indexOf(filesystem);
             $scope.filesystems.splice(idx, 1);
@@ -939,7 +944,7 @@ angular.module('MAAS').controller('NodeStorageController', [
             MachinesManager.updateFilesystem(
                 $scope.node,
                 disk.block_id, disk.partition_id,
-                null, null);
+                null, null, null);
 
             // Clear the fstype.
             disk.fstype = null;
@@ -950,7 +955,8 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.availableFormatAndMount = function(disk) {
             disk.$options = {
                 fstype: disk.fstype || "ext4",
-                mountPoint: disk.mount_point || ""
+                mountPoint: disk.mount_point || "",
+                mountOptions: disk.mount_options || ""
             };
             $scope.availableMode = SELECTION_MODE.FORMAT_AND_MOUNT;
         };
@@ -982,14 +988,15 @@ angular.module('MAAS').controller('NodeStorageController', [
 
             // Update the filesystem.
             MachinesManager.updateFilesystem(
-                $scope.node,
-                disk.block_id, disk.partition_id,
-                disk.$options.fstype, disk.$options.mountPoint);
+                $scope.node, disk.block_id, disk.partition_id,
+                disk.$options.fstype, disk.$options.mountPoint,
+                disk.$options.mountOptions);
 
             // Set the options on the object so no flicker occurs while waiting
             // for the new object to be received.
             disk.fstype = disk.$options.fstype;
             disk.mount_point = disk.$options.mountPoint;
+            disk.mount_options = disk.$options.mountOptions;
             $scope.updateAvailableSelection(true);
 
             // If the mount_point is set the we need to transition this to
@@ -1000,6 +1007,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                     "size_human": disk.size_human,
                     "fstype": disk.fstype,
                     "mount_point": disk.mount_point,
+                    "mount_options": disk.mount_options,
                     "block_id": disk.block_id,
                     "partition_id": disk.partition_id
                 });
@@ -1113,7 +1121,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 size: size_and_units[0],
                 sizeUnits: size_and_units[1],
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
         };
 
@@ -1206,6 +1215,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 params.fstype = disk.$options.fstype;
                 if(disk.$options.mountPoint !== "") {
                     params.mount_point = disk.$options.mountPoint;
+                    params.mount_options = disk.$options.mountOptions;
                 }
             }
             MachinesManager.createPartition(
@@ -1378,7 +1388,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 cacheset: $scope.cachesets[0],
                 cacheMode: "writeback",
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
         };
 
@@ -1386,6 +1397,7 @@ angular.module('MAAS').controller('NodeStorageController', [
         $scope.fstypeChanged = function(options) {
             if(options.fstype === null) {
                 options.mountPoint = "";
+                options.mountOptions = "";
             }
         };
 
@@ -1445,8 +1457,14 @@ angular.module('MAAS').controller('NodeStorageController', [
             if(angular.isString($scope.availableNew.fstype) &&
                 $scope.availableNew.fstype !== "") {
                 params.fstype = $scope.availableNew.fstype;
+                // XXX: Inconsistent tests of mountPoint/mount_point; in
+                // places it's compared to "" (like here), in others
+                // it's tested with angular.isDefined(), others with
+                // angular.isString(), others angular.isString() ===
+                // false. This is *begging* for bugs.
                 if($scope.availableNew.mountPoint !== "") {
                     params.mount_point = $scope.availableNew.mountPoint;
+                    params.mount_options = $scope.availableNew.mountOptions;
                 }
             }
             MachinesManager.createBcache($scope.node, params);
@@ -1493,7 +1511,8 @@ angular.module('MAAS').controller('NodeStorageController', [
                 mode: null,
                 spares: [],
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
             $scope.availableNew.mode = $scope.getAvailableRAIDModes()[0];
         };
@@ -1651,6 +1670,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 params.fstype = $scope.availableNew.fstype;
                 if($scope.availableNew.mountPoint !== "") {
                     params.mount_point = $scope.availableNew.mountPoint;
+                    params.mount_options = $scope.availableNew.mountOptions;
                 }
             }
             MachinesManager.createRAID($scope.node, params);
@@ -1844,6 +1864,7 @@ angular.module('MAAS').controller('NodeStorageController', [
                 params.fstype = disk.$options.fstype;
                 if(disk.$options.mountPoint !== "") {
                     params.mount_point = disk.$options.mountPoint;
+                    params.mount_options = disk.$options.mountOptions;
                 }
             }
             MachinesManager.createLogicalVolume(

@@ -165,7 +165,8 @@ describe("NodeStorageController", function() {
                 filesystem: {
                     is_format_fstype: true,
                     fstype: "ext4",
-                    mount_point: null
+                    mount_point: null,
+                    mount_options: null
                     },
                 partitions: null
             },
@@ -189,7 +190,8 @@ describe("NodeStorageController", function() {
                 filesystem: {
                     is_format_fstype: true,
                     fstype: "ext4",
-                    mount_point: "/"
+                    mount_point: "/",
+                    mount_options: makeName("options")
                     },
                 partitions: null
             },
@@ -227,7 +229,8 @@ describe("NodeStorageController", function() {
                         filesystem: {
                             is_format_fstype: true,
                             fstype: "ext4",
-                            mount_point: "/mnt"
+                            mount_point: "/mnt",
+                            mount_options: makeName("options")
                         },
                         used_for: "ext4 formatted filesystem mounted at /mnt."
                     }
@@ -301,6 +304,7 @@ describe("NodeStorageController", function() {
                 size_human: disks[2].size_human,
                 fstype: disks[2].filesystem.fstype,
                 mount_point: disks[2].filesystem.mount_point,
+                mount_options: disks[2].filesystem.mount_options,
                 block_id: disks[2].id,
                 partition_id: null,
                 original_type: disks[2].type,
@@ -313,6 +317,7 @@ describe("NodeStorageController", function() {
                 size_human: disks[3].partitions[1].size_human,
                 fstype: disks[3].partitions[1].filesystem.fstype,
                 mount_point: disks[3].partitions[1].filesystem.mount_point,
+                mount_options: disks[3].partitions[1].filesystem.mount_options,
                 block_id: disks[3].id,
                 partition_id: disks[3].partitions[1].id,
                 original_type: "partition",
@@ -343,6 +348,7 @@ describe("NodeStorageController", function() {
                 tags: disks[0].tags,
                 fstype: null,
                 mount_point: null,
+                mount_options: null,
                 block_id: 0,
                 partition_id: null,
                 has_partitions: false,
@@ -362,6 +368,7 @@ describe("NodeStorageController", function() {
                 tags: disks[1].tags,
                 fstype: "ext4",
                 mount_point: null,
+                mount_options: null,
                 block_id: 1,
                 partition_id: null,
                 has_partitions: false,
@@ -382,6 +389,7 @@ describe("NodeStorageController", function() {
                 tags: [],
                 fstype: null,
                 mount_point: null,
+                mount_options: null,
                 block_id: 3,
                 partition_id: 0,
                 has_partitions: false,
@@ -852,7 +860,7 @@ describe("NodeStorageController", function() {
 
             expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                 node, filesystem.block_id, filesystem.partition_id,
-                filesystem.fstype, null);
+                filesystem.fstype, null, null);
         });
 
         it("removes filesystem from filesystems", function() {
@@ -1712,7 +1720,7 @@ describe("NodeStorageController", function() {
 
             expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                 node, disk.block_id, disk.partition_id,
-                null, null);
+                null, null, null);
         });
 
         it("clears fstype", function() {
@@ -1743,7 +1751,8 @@ describe("NodeStorageController", function() {
 
             expect(disk.$options).toEqual({
                 fstype: "ext4",
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             });
         });
 
@@ -1751,14 +1760,16 @@ describe("NodeStorageController", function() {
             var controller = makeController();
             var disk = {
                 fstype: makeName("fs"),
-                mount_point: makeName("mount")
+                mount_point: makeName("mount"),
+                mount_options: makeName("options")
             };
 
             $scope.availableFormatAndMount(disk);
 
             expect(disk.$options).toEqual({
                 fstype: disk.fstype,
-                mountPoint: disk.mount_point
+                mountPoint: disk.mount_point,
+                mountOptions: disk.mount_options
             });
         });
 
@@ -1867,7 +1878,8 @@ describe("NodeStorageController", function() {
             expect(MachinesManager.updateFilesystem).not.toHaveBeenCalled();
         });
 
-        it("calls MachinesManager.updateFilesystem with fstype and mount_point",
+        it("calls MachinesManager.updateFilesystem with " +
+           "fstype, mount_point, and mount_options",
             function() {
                 var controller = makeController();
                 var disk = {
@@ -1875,7 +1887,8 @@ describe("NodeStorageController", function() {
                     partition_id: makeInteger(0, 100),
                     $options: {
                         fstype: makeName("fs"),
-                        mountPoint: makeName("/path")
+                        mountPoint: makeName("/path"),
+                        mountOptions: makeName("options")
                     }
                 };
                 spyOn(MachinesManager, "updateFilesystem");
@@ -1883,7 +1896,8 @@ describe("NodeStorageController", function() {
                 $scope.availableConfirmFormatAndMount(disk);
                 expect(MachinesManager.updateFilesystem).toHaveBeenCalledWith(
                     node, disk.block_id, disk.partition_id,
-                    disk.$options.fstype, disk.$options.mountPoint);
+                    disk.$options.fstype, disk.$options.mountPoint,
+                    disk.$options.mountOptions);
             });
 
         it("sets new values on disk", function() {
@@ -1893,7 +1907,8 @@ describe("NodeStorageController", function() {
                 partition_id: makeInteger(0, 100),
                 $options: {
                     fstype: makeName("fs"),
-                    mountPoint: makeName("/path")
+                    mountPoint: makeName("/path"),
+                    mountOptions: makeName("options")
                 }
             };
             spyOn(MachinesManager, "updateFilesystem");
@@ -1902,6 +1917,7 @@ describe("NodeStorageController", function() {
             $scope.availableConfirmFormatAndMount(disk);
             expect(disk.fstype).toBe(disk.$options.fstype);
             expect(disk.mount_point).toBe(disk.$options.mountPoint);
+            expect(disk.mount_options).toBe(disk.$options.mountOptions);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
                 true);
         });
@@ -1916,7 +1932,8 @@ describe("NodeStorageController", function() {
                 used_size_human: makeName("used_size"),
                 $options: {
                     fstype: makeName("fs"),
-                    mountPoint: makeName("/path")
+                    mountPoint: makeName("/path"),
+                    mountOptions: makeName("options")
                 }
             };
             spyOn(MachinesManager, "updateFilesystem");
@@ -1928,6 +1945,7 @@ describe("NodeStorageController", function() {
                 "size_human": disk.size_human,
                 "fstype": disk.fstype,
                 "mount_point": disk.mount_point,
+                "mount_options": disk.mount_options,
                 "block_id": disk.block_id,
                 "partition_id": disk.partition_id
             }]);
@@ -2309,7 +2327,8 @@ describe("NodeStorageController", function() {
                 size: "10",
                 sizeUnits: "GB",
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             });
         });
     });
@@ -2557,7 +2576,8 @@ describe("NodeStorageController", function() {
                 node, disk.block_id, 2 * 1000 * 1000 * 1000, {});
         });
 
-        it("calls createPartition with fstype and mountPoint", function() {
+        it("calls createPartition with fstype, " +
+           "mountPoint, and mountOptions", function() {
             var controller = makeController();
             var disk = {
                 block_id: makeInteger(0, 100),
@@ -2571,7 +2591,8 @@ describe("NodeStorageController", function() {
                     size: "2",
                     sizeUnits: "GB",
                     fstype: "ext4",
-                    mountPoint: "/"
+                    mountPoint: makeName("/path"),
+                    mountOptions: makeName("options")
                 }
             };
             spyOn(MachinesManager, "createPartition");
@@ -2581,7 +2602,8 @@ describe("NodeStorageController", function() {
             expect(MachinesManager.createPartition).toHaveBeenCalledWith(
                 node, disk.block_id, 2 * 1000 * 1000 * 1000, {
                     fstype: "ext4",
-                    mount_point: "/"
+                    mount_point: disk.$options.mountPoint,
+                    mount_options: disk.$options.mountOptions
                 });
         });
 
@@ -3243,7 +3265,8 @@ describe("NodeStorageController", function() {
                 cacheset: cacheset,
                 cacheMode: "writeback",
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             });
             expect($scope.availableNew.device).toBe(disk);
             expect($scope.availableNew.cacheset).toBe(cacheset);
@@ -3255,24 +3278,29 @@ describe("NodeStorageController", function() {
         it("leave mountPoint when fstype is not null", function() {
             var controller = makeController();
             var mountPoint = makeName("srv");
+            var mountOptions = makeName("options");
             $scope.availableNew = {
                 fstype: "ext4",
-                mountPoint: mountPoint
+                mountPoint: mountPoint,
+                mountOptions: mountOptions
             };
 
             $scope.fstypeChanged($scope.availableNew);
             expect($scope.availableNew.mountPoint).toBe(mountPoint);
+            expect($scope.availableNew.mountOptions).toBe(mountOptions);
         });
 
         it("clear mountPoint when fstype null", function() {
             var controller = makeController();
             $scope.availableNew = {
                 fstype: null,
-                mountPoint: makeName("srv")
+                mountPoint: makeName("srv"),
+                mountOptions: makeName("options")
             };
 
             $scope.fstypeChanged($scope.availableNew);
             expect($scope.availableNew.mountPoint).toBe("");
+            expect($scope.availableNew.mountOptions).toBe("");
         });
     });
 
@@ -3373,7 +3401,8 @@ describe("NodeStorageController", function() {
                     partition_id: makeInteger(0, 100)
                 },
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
             $scope.availableNew = availableNew;
             spyOn(MachinesManager, "createBcache");
@@ -3398,7 +3427,8 @@ describe("NodeStorageController", function() {
                 cacheMode: "writearound",
                 device: device,
                 fstype: "ext4",
-                mountPoint: "/"
+                mountPoint: makeName("/path"),
+                mountOptions: makeName("options")
             };
             $scope.available = [device];
             $scope.availableNew = availableNew;
@@ -3413,7 +3443,8 @@ describe("NodeStorageController", function() {
                     cache_mode: "writearound",
                     partition_id: device.partition_id,
                     fstype: "ext4",
-                    mount_point: "/"
+                    mount_point: availableNew.mountPoint,
+                    mount_options: availableNew.mountOptions
                 });
             expect($scope.available).toEqual([]);
             expect($scope.updateAvailableSelection).toHaveBeenCalledWith(
@@ -3436,7 +3467,8 @@ describe("NodeStorageController", function() {
                 cacheMode: "writearound",
                 device: device,
                 fstype: null,
-                mountPoint: "/"
+                mountPoint: "/",
+                mountOptions: makeName("options")
             };
             $scope.available = [device];
             $scope.availableNew = availableNew;
@@ -3558,6 +3590,7 @@ describe("NodeStorageController", function() {
             expect($scope.availableNew.spares).toEqual([]);
             expect($scope.availableNew.fstype).toBeNull();
             expect($scope.availableNew.mountPoint).toEqual("");
+            expect($scope.availableNew.mountOptions).toEqual("");
         });
     });
 
@@ -4043,7 +4076,8 @@ describe("NodeStorageController", function() {
                 devices: [partition0, partition1, disk0, disk1],
                 spares: [],
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
@@ -4083,7 +4117,8 @@ describe("NodeStorageController", function() {
                 devices: [partition0, partition1, disk0, disk1],
                 spares: [],
                 fstype: null,
-                mountPoint: ""
+                mountPoint: "",
+                mountOptions: ""
             };
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
@@ -4131,7 +4166,8 @@ describe("NodeStorageController", function() {
                 devices: [partition0, partition1, disk0, disk1],
                 spares: [],
                 fstype: "ext4",
-                mountPoint: "/"
+                mountPoint: makeName("/path"),
+                mountOptions: makeName("options")
             };
             $scope.availableNew = availableNew;
             $scope.setAsSpareRAIDMember(partition0);
@@ -4148,7 +4184,8 @@ describe("NodeStorageController", function() {
                     spare_devices: [disk0.block_id],
                     spare_partitions: [partition0.partition_id],
                     fstype: "ext4",
-                    mount_point: "/"
+                    mount_point: availableNew.mountPoint,
+                    mount_options: availableNew.mountOptions
                 });
         });
     });
@@ -4554,7 +4591,8 @@ describe("NodeStorageController", function() {
                     size: "2",
                     sizeUnits: "GB",
                     fstype: null,
-                    mountPoint: ""
+                    mountPoint: "",
+                    mountOptions: ""
                 }
             };
             spyOn(MachinesManager, "createLogicalVolume");
@@ -4565,7 +4603,8 @@ describe("NodeStorageController", function() {
                 node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {});
         });
 
-        it("calls createLogicalVolume with fstype and mountPoint", function() {
+        it("calls createLogicalVolume with fstype, " +
+           "mountPoint, and mountOptions", function() {
             var controller = makeController();
             var disk = {
                 name: "vg0",
@@ -4579,7 +4618,8 @@ describe("NodeStorageController", function() {
                     size: "2",
                     sizeUnits: "GB",
                     fstype: "ext4",
-                    mountPoint: "/"
+                    mountPoint: makeName("/path"),
+                    mountOptions: makeName("options")
                 }
             };
             spyOn(MachinesManager, "createLogicalVolume");
@@ -4589,7 +4629,8 @@ describe("NodeStorageController", function() {
             expect(MachinesManager.createLogicalVolume).toHaveBeenCalledWith(
                 node, disk.block_id, "lv0", 2 * 1000 * 1000 * 1000, {
                     fstype: "ext4",
-                    mount_point: "/"
+                    mount_point: disk.$options.mountPoint,
+                    mount_options: disk.$options.mountOptions
                 });
         });
 
@@ -4607,7 +4648,8 @@ describe("NodeStorageController", function() {
                     size: "2.62",
                     sizeUnits: "GB",
                     fstype: null,
-                    mountPoint: ""
+                    mountPoint: "",
+                    mountOptions: ""
                 }
             };
             spyOn(MachinesManager, "createLogicalVolume");
@@ -4635,7 +4677,8 @@ describe("NodeStorageController", function() {
                     size: "2.0",
                     sizeUnits: "GB",
                     fstype: null,
-                    mountPoint: ""
+                    mountPoint: "",
+                    mountOptions: ""
                 }
             };
             spyOn(MachinesManager, "createLogicalVolume");

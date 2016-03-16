@@ -976,7 +976,8 @@
                                 <div class="table__header table-col--20">Name</div>
                                 <div class="table__header table-col--15">Size</div>
                                 <div class="table__header table-col--15">File system</div>
-                                <div class="table__header table-col--47">Mountpoint</div>
+                                <div class="table__header table-col--15">Mount point</div>
+                                <div class="table__header table-col--32">Mount options</div>
                             </div>
                         </header>
                         <main class="table__body">
@@ -1000,7 +1001,8 @@
                                     <div class="table__data table-col--20">{$ filesystem.name $}</div>
                                     <div class="table__data table-col--15">{$ filesystem.size_human $}</div>
                                     <div class="table__data table-col--15">{$ filesystem.fstype $}</div>
-                                    <div class="table__data table-col--37">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table-col--15">{$ filesystem.mount_point $}</div>
+                                    <div class="table__data table-col--22">{$ filesystem.mount_options $}</div>
                                     <div class="table__data table-col--10">
                                         <div class="table__controls">
                                             <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)" data-ng-show="!isAllStorageDisabled()">Unmount</a>
@@ -1077,8 +1079,8 @@
                                         </div>
                                         <div class="six-col last-col no-margin-bottom">
                                             <div class="form__group form__group--inline">
-                                                <label class="two-col" for="mountpoint">Mountpoint</label>
-                                                <input type="text" id="mountpoint" class="table__input three-col" placeholder="/">
+                                                <label class="two-col" for="mount-point">Mount point</label>
+                                                <input type="text" id="mount-point" class="table__input three-col" placeholder="/">
                                             </div>
                                             <div class="form__group form__group--inline">
                                                 <label for="mount-options" class="two-col">Mount options</label>
@@ -1306,13 +1308,20 @@
                                                         <option value="">Unformatted</option>
                                                     </select>
                                                 </div>
-                                                <div class="table__data table-col--30">
+                                                <div class="table__data table-col--15">
                                                     <input class="table__input"
-                                                        type="text" id="mountpoint"
+                                                        type="text" id="mount-point"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
                                                         data-ng-disabled="item.$options.fstype === null"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                </div>
+                                                <div class="table__data table-col--15">
+                                                    <input class="table__input"
+                                                        type="text" id="mount-options"
+                                                        placeholder="Mount options"
+                                                        data-ng-model="item.$options.mountOptions"
+                                                        data-ng-disabled="item.$options.fstype === null">
                                                 </div>
                                                 <div class="table__data table-col--2"></div>
                                             </div>
@@ -1328,12 +1337,17 @@
                                                     </select>
                                                 </div>
                                                 <div class="table__data table-col--30">
-                                                    <label for="mountpoint">Mountpoint</label>
-                                                    <input type="text" id="mountpoint"
+                                                    <label for="mount-point">Mount point</label>
+                                                    <input type="text" id="mount-point"
                                                         ng-model="item.$options.mountPoint"
                                                         ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
-                                                <div class="table__data table-col--52"></div>
+                                                <div class="table__data table-col--30">
+                                                    <label for="mount-options">Mount options</label>
+                                                    <input type="text" id="mount-options"
+                                                        ng-model="item.$options.mountOptions">
+                                                </div>
+                                                <div class="table__data table-col--22"></div>
                                             </div>
                                         </div>
                                         <div class="table__row table__dropdown-row" data-ng-class="{ active: availableMode === 'logical-volume' }">
@@ -1346,7 +1360,7 @@
                                                         data-ng-model="item.$options.name">
                                                 </div>
                                                 <div class="table__data table-col--15">
-                                                    <input type="text" id="mountpoint" class="six-col table__input margin-right"
+                                                    <input type="text" id="mount-point" class="six-col table__input margin-right"
                                                         ng-model="item.$options.size"
                                                         ng-class="{ invalid: isAddLogicalVolumeSizeInvalid(item) }">
                                                     <select name="size-units" class="five-col table__input"
@@ -1370,12 +1384,19 @@
                                                     </select>
                                                 </div>
                                                 <div class="table__data table-col--30">
-                                                    <input type="text" id="mountpoint"
+                                                    <input type="text" id="mount-point"
                                                         class="table__input"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
                                                         data-ng-disabled="item.$options.fstype === null"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
+                                                </div>
+                                                <div class="table__data table-col--30">
+                                                    <input type="text" id="mount-options"
+                                                        class="table__input"
+                                                        placeholder="Mount options"
+                                                        data-ng-model="item.$options.mountOptions"
+                                                        data-ng-disabled="item.$options.fstype === null">
                                                 </div>
                                                 <div class="table__data table-col--2"></div>
                                             </div>
@@ -1468,11 +1489,11 @@
                                             </div>
                                             <div class="six-col no-margin-bottom last-col">
                                                 <div class="form__group form__group--inline">
-                                                    <label class="two-col" for="mountpoint">Mountpoint</label>
-                                                    <input type="text" id="mountpoint" class="table__input three-col" placeholder="/">
+                                                    <label class="two-col" for="mount-point">Mount point</label>
+                                                    <input type="text" id="mount-point" class="table__input three-col" placeholder="/">
                                                 </div>
                                                 <dl class="ng-hide">
-                                                    <dt class="two-col">Mountpoint</dt>
+                                                    <dt class="two-col">Mount point</dt>
                                                         <dd class="four-col last-col">Swap</dd>
                                                 </dl>
                                             </div>
@@ -1530,11 +1551,17 @@
                                             </select>
                                         </div>
                                         <div class="table__data table-col--30">
-                                            <label for="mountpoint">Mount point</label>
-                                            <input type="text" id="mountpoint"
+                                            <label for="mount-point">Mount point</label>
+                                            <input type="text" id="mount-point"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                        </div>
+                                        <div class="table__data table-col--30">
+                                            <label for="mount-options">Mount options</label>
+                                            <input type="text" id="mount-options"
+                                                data-ng-model="availableNew.mountOptions"
+                                                data-ng-disabled="availableNew.fstype === null">
                                         </div>
                                         <div class="table__data table-col--15"></div>
                                         <div class="table__data table-col--7"></div>
@@ -1599,11 +1626,17 @@
                                             </select>
                                         </div>
                                         <div class="table__data table-col--30">
-                                            <label for="mountpoint">Mount point</label>
-                                            <input type="text" id="mountpoint"
+                                            <label for="mount-point">Mount point</label>
+                                            <input type="text" id="mount-point"
                                                 data-ng-model="availableNew.mountPoint"
                                                 data-ng-disabled="availableNew.fstype === null"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
+                                        </div>
+                                        <div class="table__data table-col--30">
+                                            <label for="mount-options">Mount options</label>
+                                            <input type="text" id="mount-options"
+                                                data-ng-model="availableNew.mountOptions"
+                                                data-ng-disabled="availableNew.fstype === null">
                                         </div>
                                         <div class="table__data table-col--15"></div>
                                         <div class="table__data table-col--15"></div>

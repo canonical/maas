@@ -276,6 +276,7 @@ class MachineHandler(NodeHandler):
         partition_id = params.get('partition_id')
         fstype = params.get('fstype')
         mount_point = params.get('mount_point')
+        mount_options = params.get('mount_options')
 
         if node.status not in [NODE_STATUS.ALLOCATED, NODE_STATUS.READY]:
             raise HandlerError(
@@ -285,13 +286,15 @@ class MachineHandler(NodeHandler):
 
         if partition_id:
             self.update_partition_filesystem(
-                node, block_id, partition_id, fstype, mount_point)
+                node, block_id, partition_id, fstype, mount_point,
+                mount_options)
         else:
             self.update_blockdevice_filesystem(
-                node, block_id, fstype, mount_point)
+                node, block_id, fstype, mount_point, mount_options)
 
     def update_partition_filesystem(
-            self, node, block_id, partition_id, fstype, mount_point):
+            self, node, block_id, partition_id, fstype, mount_point,
+            mount_options):
         partition = Partition.objects.get(
             id=partition_id,
             partition_table__block_device__node=node)
@@ -313,18 +316,20 @@ class MachineHandler(NodeHandler):
             # behaviour is maintained here.
             if mount_point is None or mount_point == "":
                 fs.mount_point = None
+                fs.mount_options = None
                 fs.save()
             else:
                 form = MountFilesystemForm(
                     partition.get_effective_filesystem(),
-                    {'mount_point': mount_point})
+                    {'mount_point': mount_point,
+                     'mount_options': mount_options})
                 if not form.is_valid():
                     raise HandlerError(form.errors)
                 else:
                     form.save()
 
     def update_blockdevice_filesystem(
-            self, node, block_id, fstype, mount_point):
+            self, node, block_id, fstype, mount_point, mount_options):
         blockdevice = BlockDevice.objects.get(id=block_id, node=node)
         fs = blockdevice.get_effective_filesystem()
         if not fstype:
@@ -344,11 +349,13 @@ class MachineHandler(NodeHandler):
             # behaviour is maintained here.
             if mount_point is None or mount_point == "":
                 fs.mount_point = None
+                fs.mount_options = None
                 fs.save()
             else:
                 form = MountFilesystemForm(
                     blockdevice.get_effective_filesystem(),
-                    {'mount_point': mount_point})
+                    {'mount_point': mount_point,
+                     'mount_options': mount_options})
                 if not form.is_valid():
                     raise HandlerError(form.errors)
                 else:
@@ -474,8 +481,8 @@ class MachineHandler(NodeHandler):
 
         if 'fstype' in params:
             self.update_partition_filesystem(
-                node, disk_obj.id, partition.id,
-                params.get("fstype"), params.get("mount_point"))
+                node, disk_obj.id, partition.id, params.get("fstype"),
+                params.get("mount_point"), params.get("mount_options"))
 
     def create_cache_set(self, params):
         """Create a cache set."""
@@ -534,8 +541,8 @@ class MachineHandler(NodeHandler):
 
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, bcache.virtual_device.id,
-                params.get("fstype"), params.get("mount_point"))
+                node, bcache.virtual_device.id, params.get("fstype"),
+                params.get("mount_point"), params.get("mount_options"))
 
     def create_raid(self, params):
         """Create a RAID."""
@@ -552,8 +559,8 @@ class MachineHandler(NodeHandler):
 
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, raid.virtual_device.id,
-                params.get("fstype"), params.get("mount_point"))
+                node, raid.virtual_device.id, params.get("fstype"),
+                params.get("mount_point"), params.get("mount_options"))
 
     def create_volume_group(self, params):
         """Create a volume group."""
@@ -590,8 +597,8 @@ class MachineHandler(NodeHandler):
 
         if 'fstype' in params:
             self.update_blockdevice_filesystem(
-                node, logical_volume.id,
-                params.get("fstype"), params.get("mount_point"))
+                node, logical_volume.id, params.get("fstype"),
+                params.get("mount_point"), params.get("mount_options"))
 
     def set_boot_disk(self, params):
         """Set the disk as the boot disk."""
