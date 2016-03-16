@@ -102,7 +102,7 @@ class TestLeaseSocketService(PservTestCase):
 
         # Stop the looping call to check that the notification gets added
         # to notifications.
-        process_done = service.processor.deferred
+        process_done = service.done
         service.processor.stop()
         yield process_done
         service.processor = MagicMock()

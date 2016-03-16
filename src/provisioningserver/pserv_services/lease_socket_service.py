@@ -39,6 +39,9 @@ def get_socket_path():
 class LeaseSocketService(Service, DatagramProtocol):
     """Service for recieving lease information over MAAS dhcpd.sock."""
 
+    # None, or a Deferred that will fire when the processor exits.
+    done = None
+
     def __init__(self, client_service, reactor):
         self.client_service = client_service
         self.reactor = reactor
@@ -54,7 +57,7 @@ class LeaseSocketService(Service, DatagramProtocol):
         self.port = self.reactor.listenUNIXDatagram(self.address, self)
 
         # Start the looping call to handle received notifications.
-        self.processor.start(0.1, now=False)
+        self.done = self.processor.start(0.1, now=False)
 
     def stopService(self):
         """Stop the service."""
@@ -67,7 +70,7 @@ class LeaseSocketService(Service, DatagramProtocol):
         os.remove(self.address)
 
         # Stop the processor once it has flushed all data.
-        done = self.processor.deferred
+        done, self.done = self.done, None
         self.processor.stop()
         return done
 

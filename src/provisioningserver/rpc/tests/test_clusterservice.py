@@ -2260,11 +2260,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
                 "UCS", fake_error))
 
     def test_chassis_type_unknown_logs_error_to_maaslog(self):
-        fake_error = factory.make_name('error')
         self.patch(clusterservice, 'maaslog')
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, 'deferToThread')
-        mock_deferToThread.return_value = fail(Exception(fake_error))
         user = factory.make_name('user')
         chassis_type = factory.make_name('chassis_type')
         call_responder(Cluster(), cluster.AddChassis, {

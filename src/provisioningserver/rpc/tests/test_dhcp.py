@@ -43,6 +43,13 @@ class TestConfigureDHCP(MAASTestCase):
         ("DHCPv6", {"server": dhcp.DHCPv6Server}),
     )
 
+    def setUp(self):
+        super(TestConfigureDHCP, self).setUp()
+        # The service monitor is an application global and so are the services
+        # it monitors, and tests must leave them as they found them.
+        self.addCleanup(dhcp.service_monitor.getServiceByName("dhcpd").off)
+        self.addCleanup(dhcp.service_monitor.getServiceByName("dhcpd6").off)
+
     def configure(
             self, omapi_key, failover_peers, shared_networks,
             hosts, interfaces):
