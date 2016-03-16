@@ -1781,6 +1781,42 @@ describe("NodeStorageController", function() {
 
             expect($scope.availableMode).toBe("format-mount");
         });
+
+        it("sets mountPoint to 'none' for a partition that " +
+           "cannot be mounted at a directory", function() {
+            var controller = makeController();
+            var disk = {
+                fstype: "swap",
+                mount_point: makeName("mount"),
+                mount_options: makeName("options")
+            };
+
+            $scope.availableFormatAndMount(disk);
+
+            expect(disk.$options).toEqual({
+                fstype: disk.fstype,
+                mountPoint: "none",
+                mountOptions: disk.mount_options
+            });
+        });
+
+        it("clears mountPoint from 'none' for a partition that " +
+           "can be mounted at a directory", function() {
+            var controller = makeController();
+            var disk = {
+                fstype: makeName("fs"),
+                mount_point: "none",
+                mount_options: makeName("options")
+            };
+
+            $scope.availableFormatAndMount(disk);
+
+            expect(disk.$options).toEqual({
+                fstype: disk.fstype,
+                mountPoint: "",
+                mountOptions: disk.mount_options
+            });
+        });
     });
 
     describe("availableQuickFormatAndMount", function() {
@@ -1953,6 +1989,40 @@ describe("NodeStorageController", function() {
         });
     });
 
+    describe("usesMountPoint", function() {
+
+        it("returns false if filesystem is undefined", function() {
+            var controller = makeController();
+
+            expect($scope.usesMountPoint(undefined)).toBe(false);
+        });
+
+        it("returns false if filesystem is null", function() {
+            var controller = makeController();
+
+            expect($scope.usesMountPoint(null)).toBe(false);
+        });
+
+        it("returns false if filesystem is not a string", function() {
+            var controller = makeController();
+
+            expect($scope.usesMountPoint(1234)).toBe(false);
+        });
+
+        it("returns false if filesystem is 'swap'", function() {
+            var controller = makeController();
+
+            expect($scope.usesMountPoint("swap")).toBe(false);
+        });
+
+        it("returns true if filesystem is not 'swap'", function() {
+            var controller = makeController();
+
+            expect($scope.usesMountPoint("any-string")).toBe(true);
+        });
+
+    });
+
     describe("isMountPointInvalid", function() {
 
         it("returns false if mount_point is undefined", function() {
@@ -1965,6 +2035,12 @@ describe("NodeStorageController", function() {
             var controller = makeController();
 
             expect($scope.isMountPointInvalid("")).toBe(false);
+        });
+
+        it("returns false if mount_point is 'none'", function() {
+            var controller = makeController();
+
+            expect($scope.isMountPointInvalid("none")).toBe(false);
         });
 
         it("returns true if mount_point doesn't start with '/'", function() {
@@ -3275,33 +3351,67 @@ describe("NodeStorageController", function() {
 
     describe("fstypeChanged", function() {
 
-        it("leave mountPoint when fstype is not null", function() {
+        it("leaves mountPoint when fstype is not null", function() {
             var controller = makeController();
             var mountPoint = makeName("srv");
             var mountOptions = makeName("options");
-            $scope.availableNew = {
+            var options = {
                 fstype: "ext4",
                 mountPoint: mountPoint,
                 mountOptions: mountOptions
             };
 
-            $scope.fstypeChanged($scope.availableNew);
-            expect($scope.availableNew.mountPoint).toBe(mountPoint);
-            expect($scope.availableNew.mountOptions).toBe(mountOptions);
+            $scope.fstypeChanged(options);
+            expect(options.mountPoint).toBe(mountPoint);
+            expect(options.mountOptions).toBe(mountOptions);
         });
 
-        it("clear mountPoint when fstype null", function() {
+        it("clears mountPoint when fstype null", function() {
             var controller = makeController();
-            $scope.availableNew = {
+            var options = {
                 fstype: null,
                 mountPoint: makeName("srv"),
                 mountOptions: makeName("options")
             };
 
-            $scope.fstypeChanged($scope.availableNew);
-            expect($scope.availableNew.mountPoint).toBe("");
-            expect($scope.availableNew.mountOptions).toBe("");
+            $scope.fstypeChanged(options);
+            expect(options.mountPoint).toBe("");
+            expect(options.mountOptions).toBe("");
         });
+
+        it("sets mountPoint to 'none' for a partition that " +
+           "cannot be mounted at a directory", function() {
+            var controller = makeController();
+            var mountPoint = makeName("srv");
+            var mountOptions = makeName("options");
+            var options = {
+                fstype: "swap",
+                mountPoint: mountPoint,
+                mountOptions: mountOptions
+            };
+
+            $scope.fstypeChanged(options);
+            expect(options.mountPoint).toBe("none");
+            // Mount options are unchanged.
+            expect(options.mountOptions).toBe(mountOptions);
+        });
+
+        it("clears mountPoint from 'none' for a partition that " +
+           "can be mounted at a directory", function() {
+            var controller = makeController();
+            var mountOptions = makeName("options");
+            var options = {
+                fstype: "ext4",
+                mountPoint: "none",
+                mountOptions: mountOptions
+            };
+
+            $scope.fstypeChanged(options);
+            expect(options.mountPoint).toBe("");
+            // Mount options are unchanged.
+            expect(options.mountOptions).toBe(mountOptions);
+        });
+
     });
 
     describe("isNewDiskNameInvalid", function() {

@@ -959,6 +959,10 @@ angular.module('MAAS').controller('NodeStorageController', [
                 mountOptions: disk.mount_options || ""
             };
             $scope.availableMode = SELECTION_MODE.FORMAT_AND_MOUNT;
+            // The filesystem type hasn't actually changed, but we call
+            // fstypeChanged() to update the mount point and mount
+            // options fields to reflect the chosen filesystem.
+            $scope.fstypeChanged(disk.$options);
         };
 
         // Quickly enter the format and mount mode.
@@ -1019,9 +1023,20 @@ angular.module('MAAS').controller('NodeStorageController', [
             }
         };
 
+        // Return true if the filesystem can be mounted at a directory.
+        $scope.usesMountPoint = function(fstype) {
+            return angular.isString(fstype) && fstype !== "swap";
+        };
+
         // Return true if the mount point is invalid.
         $scope.isMountPointInvalid = function(mountPoint) {
             if(angular.isUndefined(mountPoint) || mountPoint === "") {
+                return false;
+            } else if (mountPoint === "none") {
+                // XXX: Hack to allow "swap" filesystems to be mounted.
+                // This should be allowed only when fstype is 'swap' but
+                // doing that would require more refactoring (or more
+                // hacks) that I have time for right now.
                 return false;
             } else if(mountPoint[0] !== "/") {
                 return true;
@@ -1398,6 +1413,18 @@ angular.module('MAAS').controller('NodeStorageController', [
             if(options.fstype === null) {
                 options.mountPoint = "";
                 options.mountOptions = "";
+            }
+            else {
+                // Update the mount point to "none" if "swap" is
+                // selected, and vice-versa.
+                if ($scope.usesMountPoint(options.fstype)) {
+                    if (options.mountPoint === "none") {
+                        options.mountPoint = "";
+                    }
+                }
+                else {
+                    options.mountPoint = "none";
+                }
             }
         };
 

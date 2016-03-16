@@ -1313,7 +1313,7 @@
                                                         type="text" id="mount-point"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
-                                                        data-ng-disabled="item.$options.fstype === null"
+                                                        data-ng-disabled="!usesMountPoint(item.$options.fstype)"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
                                                 <div class="table__data table-col--15">
@@ -1333,6 +1333,7 @@
                                                     <label for="filesys">Filesystem</label>
                                                     <select name="filesys"
                                                         ng-model="item.$options.fstype"
+                                                        data-ng-change="fstypeChanged(item.$options)"
                                                         data-ng-options="fs.key as fs.key for fs in node.supported_filesystems">
                                                     </select>
                                                 </div>
@@ -1340,6 +1341,7 @@
                                                     <label for="mount-point">Mount point</label>
                                                     <input type="text" id="mount-point"
                                                         ng-model="item.$options.mountPoint"
+                                                        ng-disabled="!usesMountPoint(item.$options.fstype)"
                                                         ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
                                                 <div class="table__data table-col--30">
@@ -1388,7 +1390,7 @@
                                                         class="table__input"
                                                         placeholder="Mount point"
                                                         data-ng-model="item.$options.mountPoint"
-                                                        data-ng-disabled="item.$options.fstype === null"
+                                                        data-ng-disabled="!usesMountPoint(item.$options.fstype)"
                                                         data-ng-class="{ invalid: isMountPointInvalid(item.$options.mountPoint) }">
                                                 </div>
                                                 <div class="table__data table-col--30">
@@ -1554,7 +1556,7 @@
                                             <label for="mount-point">Mount point</label>
                                             <input type="text" id="mount-point"
                                                 data-ng-model="availableNew.mountPoint"
-                                                data-ng-disabled="availableNew.fstype === null"
+                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
                                         <div class="table__data table-col--30">
@@ -1629,7 +1631,7 @@
                                             <label for="mount-point">Mount point</label>
                                             <input type="text" id="mount-point"
                                                 data-ng-model="availableNew.mountPoint"
-                                                data-ng-disabled="availableNew.fstype === null"
+                                                data-ng-disabled="!usesMountPoint(availableNew.fstype)"
                                                 data-ng-class="{ invalid: isMountPointInvalid(availableNew.mountPoint) }">
                                         </div>
                                         <div class="table__data table-col--30">
