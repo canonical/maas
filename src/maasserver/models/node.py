@@ -2600,6 +2600,22 @@ class Node(CleanSave, TimestampedModel):
             return None
         return interfaces[0]
 
+    def get_boot_rack_controller(self):
+        """Return the `RackController` that this node booted from last.
+
+        This uses the `boot_cluster_ip` to determine which rack controller
+        this node booted from last. If empty or not a rack controller
+        then it will fallback to the primary rack controller for the boot
+        interface."""
+        rack_controller = None
+        if self.boot_cluster_ip is not None:
+            rack_controller = RackController.objects.filter(
+                interface__ip_addresses__ip=self.boot_cluster_ip).first()
+        if rack_controller is None:
+            return self.get_boot_primary_rack_controller()
+        else:
+            return rack_controller
+
     def get_boot_primary_rack_controller(self):
         """Return the `RackController` that this node will boot from as its
         primary rack controller ."""

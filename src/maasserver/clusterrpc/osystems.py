@@ -115,7 +115,7 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
     :raises TimeoutError: If a response has not been received within 30
         seconds.
     """
-    client = getClientFor(node.get_boot_primary_rack_controller().system_id)
+    client = getClientFor(node.get_boot_rack_controller().system_id)
     call = client(
         GetPreseedData, osystem=node.get_osystem(), preseed_type=preseed_type,
         node_system_id=node.system_id, node_hostname=node.hostname,

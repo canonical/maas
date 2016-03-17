@@ -2712,6 +2712,65 @@ class TestNode(MAASServerTestCase):
         node.boot_interface = interface
         node.save()
 
+    def test_get_boot_rack_controller_returns_rack_from_boot_ip(self):
+        node = factory.make_Node()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        subnet = factory.make_Subnet(vlan=vlan)
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        primary_rack = factory.make_RackController()
+        primary_rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=primary_rack_interface)
+        secondary_rack = factory.make_RackController()
+        secondary_rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
+        secondary_rack_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=secondary_rack_interface)
+        vlan.dhcp_on = True
+        vlan.primary_rack = primary_rack
+        vlan.secondary_rack = secondary_rack
+        vlan.save()
+        node.boot_interface = boot_interface
+        node.boot_cluster_ip = secondary_rack_ip.ip
+        node.save()
+        self.assertEqual(secondary_rack, node.get_boot_rack_controller())
+
+    def test_get_boot_rack_controller_returns_primary_rack(self):
+        node = factory.make_Node()
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        subnet = factory.make_Subnet(vlan=vlan)
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+        primary_rack = factory.make_RackController()
+        primary_rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=primary_rack_interface)
+        secondary_rack = factory.make_RackController()
+        secondary_rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet, interface=secondary_rack_interface)
+        vlan.dhcp_on = True
+        vlan.primary_rack = primary_rack
+        vlan.secondary_rack = secondary_rack
+        vlan.save()
+        node.boot_interface = boot_interface
+        node.save()
+        self.assertEqual(primary_rack, node.get_boot_rack_controller())
+
     def test__register_request_event_saves_event(self):
         node = factory.make_Node()
         user = factory.make_User()

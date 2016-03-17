@@ -104,7 +104,7 @@ def get_enlist_userdata(rack_controller=None):
 
 def curtin_maas_reporter(node, events_support=True):
     token = NodeKey.objects.get_token_for_node(node)
-    rack_controller = node.get_boot_primary_rack_controller()
+    rack_controller = node.get_boot_rack_controller()
     base_url = rack_controller.url
     if events_support:
         return {
@@ -271,7 +271,7 @@ def get_curtin_image(node):
     osystem = node.get_osystem()
     series = node.get_distro_series()
     arch, subarch = node.split_arch()
-    rack_controller = node.get_boot_primary_rack_controller()
+    rack_controller = node.get_boot_rack_controller()
     try:
         images = get_boot_images_for(
             rack_controller, osystem, arch, subarch, series)
@@ -332,7 +332,7 @@ def get_curtin_config(node):
     series = node.get_distro_series()
     template = load_preseed_template(
         node, USERDATA_TYPE.CURTIN, osystem, series)
-    rack_controller = node.get_boot_primary_rack_controller()
+    rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
         osystem, series, rack_controller=rack_controller)
     context.update(
@@ -351,7 +351,7 @@ def get_curtin_context(node, rack_controller=None):
     """
     token = NodeKey.objects.get_token_for_node(node)
     if rack_controller is None:
-        rack_controller = node.get_boot_primary_rack_controller()
+        rack_controller = node.get_boot_rack_controller()
     base_url = rack_controller.url
     return {
         'curtin_preseed': compose_cloud_init_preseed(node, token, base_url)
@@ -620,7 +620,7 @@ def get_node_preseed_context(
     :rtype: dict.
     """
     if rack_controller is None:
-        rack_controller = node.get_boot_primary_rack_controller()
+        rack_controller = node.get_boot_rack_controller()
     # Create the url and the url-data (POST parameters) used to turn off
     # PXE booting once the install of the node is finished.
     node_disable_pxe_url = absolute_reverse(
@@ -672,7 +672,7 @@ def render_preseed(node, prefix, osystem='', release=''):
     :rtype: unicode.
     """
     template = load_preseed_template(node, prefix, osystem, release)
-    rack_controller = node.get_boot_primary_rack_controller()
+    rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
         osystem, release, rack_controller=rack_controller)
     context.update(
