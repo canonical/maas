@@ -837,14 +837,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
-    def test__ignores_ethernet_when_physical(self):
+    def test__ignores_ethernet(self):
         ip_addr = {
-            "eth0": {
-                "type": "ethernet.physical",
-                "mac": factory.make_mac_address(),
-                "flags": ["UP"],
-                "inet": [],
-            },
             "vnet": {
                 "type": "ethernet",
                 "mac": factory.make_mac_address(),
@@ -852,38 +846,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "inet": ["192.168.122.2/24"],
             },
         }
-        expected_result = MatchesDict({
-            "eth0": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                "enabled": Is(True),
-                "parents": Equals([]),
-                "links": Equals([]),
-                "source": Equals("ipaddr"),
-            }),
-        })
-        self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
-
-    def test__includes_ethernet_when_only_ethernet(self):
-        ip_addr = {
-            "vnet": {
-                "type": "ethernet",
-                "mac": factory.make_mac_address(),
-                "flags": ["UP"],
-                "inet": [],
-            },
-        }
-        expected_result = MatchesDict({
-            "vnet": MatchesDict({
-                "type": Equals("physical"),
-                "mac_address": Equals(ip_addr["vnet"]["mac"]),
-                "enabled": Is(True),
-                "parents": Equals([]),
-                "links": Equals([]),
-                "source": Equals("ipaddr"),
-            }),
-        })
-        self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
+        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test__ignores_ipip(self):
         ip_addr = {

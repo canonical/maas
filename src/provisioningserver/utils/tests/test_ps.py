@@ -11,12 +11,14 @@ from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils import ps as ps_module
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.ps import (
     get_running_pids_with_command,
     is_pid_in_container,
     running_in_container,
 )
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 NOT_IN_CONTAINER = dedent("""\
@@ -92,30 +94,17 @@ class TestIsPIDInContainer(MAASTestCase):
 
 class TestRunningInContainer(MAASTestCase):
 
-    scenarios = (
-        ("not_in_container", {
-            "result": False,
-            "cgroup": NOT_IN_CONTAINER,
-        }),
-        ("in_docker_container", {
-            "result": True,
-            "cgroup": IN_DOCKER_CONTAINER,
-        }),
-        ("in_lxc_container", {
-            "result": True,
-            "cgroup": IN_LXC_CONTAINER,
-        }),
-    )
+    def test__returns_False_when_ExternalProcessError(self):
+        mock_call = self.patch(ps_module, "call_and_check")
+        mock_call.side_effect = ExternalProcessError(
+            1, ["systemd-detect-virt", "-c"], output="none")
+        running_in_container.cache_clear()
+        self.assertFalse(running_in_container())
 
-    def test__result(self):
-        proc_path = self.make_dir()
-        pid_path = os.path.join(proc_path, "1")
-        os.mkdir(pid_path)
-        atomic_write(
-            self.cgroup.encode("ascii"),
-            os.path.join(pid_path, "cgroup"))
-        self.assertEqual(
-            self.result, running_in_container(proc_path=proc_path))
+    def test__returns_True_when_not_ExternalProcessError(self):
+        self.patch(ps_module, "call_and_check")
+        running_in_container.cache_clear()
+        self.assertTrue(running_in_container())
 
 
 class TestGetRunningPIDsWithCommand(MAASTestCase):
@@ -162,6 +151,9 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             self.make_process(
                 proc_path, pid,
                 in_container=True, command=command)
+        mock_running_in_container = self.patch(
+            ps_module, "running_in_container")
+        mock_running_in_container.return_value = False
         self.assertItemsEqual(
             pids_running_command,
             get_running_pids_with_command(command, proc_path=proc_path))
@@ -201,6 +193,9 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             self.make_process(
                 proc_path, pid,
                 in_container=True, command=factory.make_name("command"))
+        mock_running_in_container = self.patch(
+            ps_module, "running_in_container")
+        mock_running_in_container.return_value = True
         self.assertItemsEqual(
             pids_running_command,
             get_running_pids_with_command(command, proc_path=proc_path))

@@ -7,9 +7,14 @@ __all__ = [
     'running_in_container',
     ]
 
+from functools import lru_cache
 import os
 
 from provisioningserver.utils.fs import read_text_file
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 
 
 def is_pid_in_container(pid, proc_path="/proc"):
@@ -28,9 +33,17 @@ def is_pid_in_container(pid, proc_path="/proc"):
     return False
 
 
-def running_in_container(proc_path="/proc"):
+@lru_cache(maxsize=1)
+def running_in_container():
     """Return True if running in an LXC or Docker container."""
-    return is_pid_in_container(1, proc_path=proc_path)
+    try:
+        call_and_check(["systemd-detect-virt", "-c"])
+    except ExternalProcessError:
+        # Exited non-zero so not in a container.
+        return False
+    else:
+        # Exited zero so inside a container.
+        return True
 
 
 def get_running_pids_with_command(
@@ -56,7 +69,7 @@ def get_running_pids_with_command(
                 pids.append(int(pid))
 
     if (exclude_container_processes and
-            not running_in_container(proc_path=proc_path)):
+            not running_in_container()):
         return [
             pid
             for pid in pids
