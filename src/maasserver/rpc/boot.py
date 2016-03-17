@@ -65,7 +65,7 @@ def event_log_pxe_request(machine, purpose):
 @synchronous
 @transactional
 def get_config(
-        system_id, local_ip, arch=None, subarch=None, mac=None,
+        system_id, local_ip, remote_ip, arch=None, subarch=None, mac=None,
         bios_boot_method=None):
     """Get the booting configration for the a machine.
 
@@ -103,6 +103,15 @@ def get_config(
             update_fields.append("bios_boot_method")
         if len(update_fields) > 0:
             machine.save(update_fields=update_fields)
+
+        # Update the VLAN of the boot interface to be the same VLAN for the
+        # interface on the rack controller that the machine communicated with.
+        rack_interface = rack_controller.interface_set.filter(
+            ip_addresses__ip=local_ip).first()
+        if (rack_interface is not None and
+                machine.boot_interface.vlan != rack_interface.vlan):
+            machine.boot_interface.vlan = rack_interface.vlan
+            machine.boot_interface.save()
 
         arch, subarch = machine.split_arch()
         preseed_url = compose_preseed_url(machine, rack_controller)
@@ -209,7 +218,9 @@ def get_config(
     server_address = get_maas_facing_server_address(
         rack_controller=rack_controller)
 
-    return {
+    # Return the params to the rack controller. Include the system_id only
+    # if the machine was known.
+    params = {
         "arch": arch,
         "subarch": subarch,
         "osystem": osystem,
@@ -222,3 +233,6 @@ def get_config(
         "log_host": server_address,
         "extra_opts": '' if extra_kernel_opts is None else extra_kernel_opts,
     }
+    if machine is not None:
+        params["system_id"] = machine.system_id
+    return params

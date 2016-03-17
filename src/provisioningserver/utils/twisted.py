@@ -24,7 +24,10 @@ __all__ = [
     'ThreadUnpool',
     ]
 
-from collections import Iterable
+from collections import (
+    defaultdict,
+    Iterable,
+)
 from contextlib import contextmanager
 from functools import (
     partial,
@@ -581,6 +584,51 @@ class DeferredValue:
         if capturing is not None:
             capturing.cancel()
         self.observing = None
+
+
+class RPCFetcher:
+    """Coalesces concurrent RPC requests.
+
+    If a RPC request is being made to `client` then its is dispatched,
+    and a `Deferred` is returned.
+
+    If another RPC request is being made to the same `client` with the same
+    parameters before the first has finished then a `Deferred` is still
+    returned, but no new request is dispated. The second request piggy-backs
+    onto the first.
+
+    If a RPC request is being made to the same `client` but with different
+    parameters then this is treated as a completely separate request.
+
+    Once the first RPC request to `client` is complete, all the
+    interested parties are notified, but this object then forgets all about
+    it. A subsequent request is treated as new.
+    """
+
+    def __init__(self):
+        super(RPCFetcher, self).__init__()
+        self.pending = defaultdict(dict)
+
+    def __call__(self, client, *args, **kwargs):
+        """Call the command on the client."""
+        command = (tuple(args), tuple(sorted(kwargs.items())))
+        calls = self.pending[client]
+        if command in calls:
+            dvalue = calls[command]
+        else:
+            dvalue = calls[command] = DeferredValue()
+            response = client(*args, **kwargs)
+            response.addBoth(callOut, self._cleanup, client, command)
+            dvalue.capture(response)
+
+        return dvalue.get()
+
+    def _cleanup(self, client, command):
+        """Remove the command and/or client from `pending`."""
+        self.pending[client].pop(command)
+        if len(self.pending[client]) == 0:
+            # Prevent leaking of clients that no longer are making any calls.
+            del self.pending[client]
 
 
 class PageFetcher:

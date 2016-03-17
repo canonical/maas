@@ -50,6 +50,7 @@ from provisioningserver.utils.twisted import (
     pause,
     reactor_sync,
     retries,
+    RPCFetcher,
     synchronous,
     ThreadPool,
     ThreadPoolLimiter,
@@ -975,6 +976,100 @@ class TestDeferredValue(MAASTestCase):
         dvalue = DeferredValue()
         dvalue.fail(factory.make_exception())
         self.assertTrue(dvalue.isSet)
+
+
+class TestRPCFetcher(MAASTestCase):
+    """Tests for `RPCFetcher`."""
+
+    def test_call_returns_deferred(self):
+        client = Mock()
+        fetcher = RPCFetcher()
+        d = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+
+        self.assertThat(d, IsInstance(Deferred))
+        self.assertThat(client, MockCalledOnceWith(
+            sentinel.arg, test=sentinel.kwarg_test))
+
+    def test__deferred_fires_when_client_completes(self):
+        client = Mock()
+        client.return_value = Deferred()
+
+        fetcher = RPCFetcher()
+        d = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+
+        self.assertThat(d, IsUnfiredDeferred())
+        client.return_value.callback(sentinel.content)
+        self.assertThat(d, IsFiredDeferred())
+        self.assertThat(extract_result(d), Is(sentinel.content))
+        self.assertNotIn(client, fetcher.pending)
+
+    def test__concurrent_gets_become_related(self):
+        client = Mock()
+        client.return_value = Deferred()
+
+        fetcher = RPCFetcher()
+        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+
+        self.expectThat(d1, IsUnfiredDeferred())
+        self.expectThat(d2, IsUnfiredDeferred())
+        self.assertThat(d1, Not(Is(d2)))
+
+        client.return_value.callback(sentinel.content)
+        self.assertThat(extract_result(d1), Is(sentinel.content))
+        self.assertThat(extract_result(d2), Is(sentinel.content))
+
+    def test__non_concurrent_gets_do_not_become_related(self):
+        client_d1, client_d2 = Deferred(), Deferred()
+
+        client = Mock()
+        client.side_effect = [client_d1, client_d2]
+
+        fetcher = RPCFetcher()
+
+        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        self.expectThat(d1, IsUnfiredDeferred())
+        client_d1.callback(sentinel.foo)
+        self.assertThat(extract_result(d1), Is(sentinel.foo))
+
+        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        self.expectThat(d2, IsUnfiredDeferred())
+        client_d2.callback(sentinel.bar)
+        self.assertThat(extract_result(d2), Is(sentinel.bar))
+
+    def test__errors_are_treated_just_the_same(self):
+        client = Mock()
+        client.return_value = Deferred()
+
+        fetcher = RPCFetcher()
+        d1 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+        d2 = fetcher(client, sentinel.arg, test=sentinel.kwarg_test)
+
+        exception_type = factory.make_exception_type()
+        client.return_value.errback(exception_type())
+
+        self.assertRaises(exception_type, extract_result, d1)
+        self.assertRaises(exception_type, extract_result, d2)
+
+    def test__clients_are_treated_differently(self):
+        client1_d, client2_d = Deferred(), Deferred()
+
+        client1 = Mock()
+        client1.return_value = client1_d
+        client2 = Mock()
+        client2.return_value = client2_d
+
+        fetcher = RPCFetcher()
+
+        d1 = fetcher(client1, sentinel.arg, test=sentinel.kwarg_test)
+        self.expectThat(d1, IsUnfiredDeferred())
+        client1_d.callback(sentinel.foo)
+        self.assertThat(extract_result(d1), Is(sentinel.foo))
+
+        d2 = fetcher(client2, sentinel.arg, test=sentinel.kwarg_test)
+        self.expectThat(d2, IsUnfiredDeferred())
+        client2_d.callback(sentinel.bar)
+        self.assertThat(extract_result(d2), Is(sentinel.bar))
 
 
 class TestPageFetcher(MAASTestCase):

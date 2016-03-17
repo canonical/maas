@@ -157,7 +157,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(tftp_service, TFTPService)
 
         with ClusterConfiguration.open() as config:
-            tftp_generator_url = config.tftp_generator_url
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
 
@@ -165,10 +164,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             IsInstance(TFTPBackend),
             AfterPreprocessing(
                 lambda backend: backend.base.path,
-                Equals(tftp_root)),
-            AfterPreprocessing(
-                lambda backend: backend.generator_url.geturl(),
-                Equals(tftp_generator_url)))
+                Equals(tftp_root)))
 
         self.assertThat(
             tftp_service, MatchesStructure(

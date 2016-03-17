@@ -9,19 +9,11 @@ __all__ = [
     ]
 
 from functools import partial
-import http.client
-import json
 from socket import (
     AF_INET,
     AF_INET6,
 )
-from urllib.parse import (
-    parse_qsl,
-    urlencode,
-    urlparse,
-)
 
-from apiclient.utils import ascii_url
 from netaddr import IPAddress
 from provisioningserver.boot import (
     BootMethodRegistry,
@@ -33,16 +25,21 @@ from provisioningserver.events import (
     send_event_node_mac_address,
 )
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.rpc.boot_images import list_boot_images
+from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.rpc.region import (
+    GetBootConfig,
+    MarkNodeFailed,
+)
 from provisioningserver.utils import (
     tftp,
     typed,
 )
-from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.tftp import TFTPPath
 from provisioningserver.utils.twisted import (
     deferred,
-    PageFetcher,
+    RPCFetcher,
 )
 from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import (
@@ -69,7 +66,41 @@ from twisted.internet.defer import (
 from twisted.internet.task import deferLater
 from twisted.python import log
 from twisted.python.filepath import FilePath
-import twisted.web.error
+
+
+def get_boot_image(params):
+    """Get the boot image for the params on this rack controller."""
+    # Match on purpose; enlist uses the commissioning purpose.
+    purpose = params["purpose"]
+    if purpose == "enlist":
+        purpose = "commissioning"
+
+    # Get the matching boot images, minus subarchitecture.
+    boot_images = list_boot_images()
+    boot_images = [
+        image
+        for image in boot_images
+        if (image['osystem'] == params['osystem'] and
+            image['release'] == params['release'] and
+            image['architecture'] == params['arch'] and
+            image['purpose'] == purpose)
+    ]
+
+    # See if exact subarchitecture match.
+    for image in boot_images:
+        if image["subarchitecture"] == params["subarch"]:
+            return image
+
+    # Not exact match check if subarchitecture is in the supported
+    # subarchitectures list.
+    for image in boot_images:
+        subarches = image.get("supported_subarches", "")
+        subarches = subarches.split(",")
+        if params["subarch"] in subarches:
+            return image
+
+    # No matching boot image was found.
+    return None
 
 
 def log_request(mac_address, file_name, clock=reactor):
@@ -110,36 +141,17 @@ class TFTPBackend(FilesystemSynchronousBackend):
     fetch files at many similar paths which must not be passed on.
     """
 
-    def __init__(self, base_path, generator_url):
+    def __init__(self, base_path, client_service):
         """
         :param base_path: The root directory for this TFTP server.
-        :param generator_url: The URL which can be queried for the PXE
-            config. See `get_generator_url` for the types of queries it is
-            expected to accept.
+        :param client_service: The RPC client service for the rack controller.
         """
         if not isinstance(base_path, FilePath):
             base_path = FilePath(base_path)
         super(TFTPBackend, self).__init__(
             base_path, can_read=True, can_write=False)
-        self.generator_url = urlparse(generator_url)
-        self.fetcher = PageFetcher(agent=self.__class__)
-        self.get_page = self.fetcher.get
-
-    def get_generator_url(self, params):
-        """Calculate the URL, including query, from which we can fetch
-        additional configuration parameters.
-
-        :param params: A dict, or iterable suitable for updating a dict, of
-            additional query parameters.
-        """
-        query = {}
-        # Merge parameters from the generator URL.
-        query.update(parse_qsl(self.generator_url.query))
-        # Merge parameters obtained from the request.
-        query.update(params)
-        # Merge updated query into the generator URL.
-        url = self.generator_url._replace(query=urlencode(query))
-        return ascii_url(url.geturl())
+        self.client_service = client_service
+        self.fetcher = RPCFetcher()
 
     @inlineCallbacks
     @typed
@@ -152,6 +164,38 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 returnValue((method, params))
         returnValue((None, None))
 
+    def get_boot_image(self, params, client):
+        """Get the boot image for the params on this rack controller.
+
+        Calls `MarkNodeFailed` for the machine if its a known machine.
+        """
+        system_id = params.pop("system_id", None)
+        if params["purpose"] == "local":
+            # Local purpose doesn't use a boot image so jsut set the label
+            # to "local", but this value will no be used.
+            params["label"] = "local"
+            return params
+        else:
+            boot_image = get_boot_image(params)
+            if boot_image is None:
+                # No matching boot image.
+                description = "Missing boot image %s/%s/%s/%s." % (
+                    params['osystem'], params["arch"],
+                    params["subarch"], params["release"])
+                # Call MarkNodeFailed if this was a known machine.
+                if system_id is not None:
+                    d = client(
+                        MarkNodeFailed,
+                        system_id=system_id,
+                        error_description=description)
+                    d.addErrback(
+                        log.err,
+                        "Failed to mark machine failed: %s" % description)
+                params["label"] = "no-such-image"
+            else:
+                params["label"] = boot_image["label"]
+            return params
+
     @deferred
     def get_kernel_params(self, params):
         """Return kernel parameters obtained from the API.
@@ -160,15 +204,11 @@ class TFTPBackend(FilesystemSynchronousBackend):
             path requested.
         :return: A `KernelParameters` instance.
         """
-        url = self.get_generator_url(params)
-
-        def reassemble(data):
-            return KernelParameters(**data)
-
-        d = self.get_page(url)
-        d.addCallback(lambda data: data.decode("ascii"))
-        d.addCallback(json.loads)
-        d.addCallback(reassemble)
+        client = self.client_service.getClient()
+        params["system_id"] = client.localIdent
+        d = self.fetcher(client, GetBootConfig, **params)
+        d.addCallback(self.get_boot_image, client)
+        d.addCallback(lambda data: KernelParameters(**data))
         return d
 
     @deferred
@@ -188,26 +228,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return d
 
     @staticmethod
-    def get_page_errback(failure, file_name):
-        failure.trap(twisted.web.error.Error)
-        # This twisted.web.error.Error.status object ends up being a
-        # string for some reason, but the constants we can compare against
-        # (both in httplib and twisted.web.http) are ints.
-        try:
-            status_int = int(failure.value.status)
-        except ValueError:
-            # Assume that it's some other error and propagate it
-            return failure
-
-        if status_int == http.client.NO_CONTENT:
-            # Convert HTTP No Content to a TFTP file not found
-            raise FileNotFound(file_name)
-        elif status_int == http.client.NOT_FOUND:
-            # Convert HTTP NotFound to a TFTP file not found
-            raise FileNotFound(file_name)
-        else:
-            # Otherwise propogate the unknown error
-            return failure
+    def no_response_errback(failure, file_name):
+        failure.trap(BootConfigNoResponse)
+        # Convert to a TFTP file not found.
+        raise FileNotFound(file_name)
 
     @deferred
     @typed
@@ -225,10 +249,9 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
         # Send the local and remote endpoint addresses.
         local_host, local_port = tftp.get_local_address()
-        params["local"] = local_host
+        params["local_ip"] = local_host
         remote_host, remote_port = tftp.get_remote_address()
-        params["remote"] = remote_host
-        params["rackcontroller_id"] = get_maas_id()
+        params["remote_ip"] = remote_host
         d = self.get_boot_method_reader(boot_method, params)
         return d
 
@@ -240,7 +263,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return failure
         else:
             # Something broke badly; record it.
-            log.err(failure, "Starting TFTP back-end failed.")
+            log.err(failure, "TFTP back-end failed.")
             # Don't keep people waiting; tell them something broke right now.
             raise BackendError(failure.getErrorMessage())
 
@@ -262,7 +285,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             log_request(mac_address, file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
-        d.addErrback(self.get_page_errback, file_name)
+        d.addErrback(self.no_response_errback, file_name)
         d.addErrback(self.all_is_lost_errback)
         return d
 
@@ -320,16 +343,14 @@ class TFTPService(MultiService, object):
 
     """
 
-    def __init__(self, resource_root, port, generator):
+    def __init__(self, resource_root, port, client_service):
         """
         :param resource_root: The root directory for this TFTP server.
         :param port: The port on which each server should be started.
-        :param generator: The URL to be queried for PXE configuration.
-            This will normally point to the `pxeconfig` endpoint on the
-            region-controller API.
+        :param client_service: The RPC client service for the rack controller.
         """
         super(TFTPService, self).__init__()
-        self.backend = TFTPBackend(resource_root, generator)
+        self.backend = TFTPBackend(resource_root, client_service)
         self.port = port
         # Establish a periodic call to self.updateServers() every 45
         # seconds, so that this service eventually converges on truth.

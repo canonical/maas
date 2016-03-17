@@ -380,11 +380,13 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
         rack_controller = yield deferToDatabase(
             transactional(factory.make_RackController))
         local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
 
         response = yield call_responder(
             Region(), GetBootConfig, {
                 "system_id": rack_controller.system_id,
                 "local_ip": local_ip,
+                "remote_ip": remote_ip,
             })
 
         self.assertThat(

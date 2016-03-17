@@ -6,7 +6,6 @@
 __all__ = []
 
 from functools import partial
-import http.client
 import json
 import os
 import random
@@ -14,11 +13,6 @@ import re
 from socket import (
     AF_INET,
     AF_INET6,
-)
-from urllib.parse import (
-    parse_qsl,
-    urlencode,
-    urlparse,
 )
 
 from maastesting.factory import factory
@@ -31,10 +25,10 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-import mock
 from mock import (
-    sentinel,
     ANY,
+    Mock,
+    sentinel,
 )
 from netaddr import IPNetwork
 from netaddr.ip import (
@@ -47,11 +41,17 @@ from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.pserv_services import tftp as tftp_module
 from provisioningserver.pserv_services.tftp import (
+    get_boot_image,
     log_request,
     Port,
     TFTPBackend,
     TFTPService,
     UDPServer,
+)
+from provisioningserver.rpc.exceptions import BootConfigNoResponse
+from provisioningserver.testing.boot_images import (
+    make_boot_image_params,
+    make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
@@ -79,18 +79,106 @@ from twisted.internet.address import (
     IPv6Address,
 )
 from twisted.internet.defer import (
+    fail,
     inlineCallbacks,
     succeed,
 )
 from twisted.internet.protocol import Protocol
 from twisted.internet.task import Clock
 from twisted.python import context
-import twisted.web.error
 from zope.interface.verify import verifyObject
 
 
+class TestGetBootImage(MAASTestCase):
+    """Tests for `get_boot_image`."""
+
+    def make_boot_image(self, params, purpose, subarch=None, subarches=None):
+        image = make_image(params, purpose)
+        if subarch is not None:
+            image["subarchitecture"] = subarch
+        if subarches is not None:
+            image["supported_subarches"] = subarches
+        return image
+
+    def make_all_boot_images(
+            self, return_purpose, subarch=None, subarches=None):
+        params = make_boot_image_params()
+        images = []
+        return_image = None
+        all_purposes = ["commissioning", "xinstall", "install"]
+        for purpose in all_purposes:
+            image = self.make_boot_image(
+                params, purpose, subarch=subarch, subarches=subarches)
+            if purpose == return_purpose:
+                return_image = image
+            images.append(image)
+        return images, return_image
+
+    def patch_list_boot_images(self, images):
+        self.patch(tftp_module, "list_boot_images").return_value = images
+
+    def get_params_from_boot_image(self, image):
+        return {
+            "osystem": image["osystem"],
+            "release": image["release"],
+            "arch": image["architecture"],
+            "subarch": image["subarchitecture"],
+            "purpose": image["purpose"],
+        }
+
+    def test_returns_commissioning_image_for_enlist(self):
+        images, expected_image = self.make_all_boot_images("commissioning")
+        self.patch_list_boot_images(images)
+        params = self.get_params_from_boot_image(expected_image)
+        params["purpose"] = "enlist"
+        self.assertEquals(expected_image, get_boot_image(params))
+
+    def test_returns_commissioning_image_for_commissioning(self):
+        images, expected_image = self.make_all_boot_images("commissioning")
+        self.patch_list_boot_images(images)
+        params = self.get_params_from_boot_image(expected_image)
+        self.assertEquals(expected_image, get_boot_image(params))
+
+    def test_returns_xinstall_image_for_xinstall(self):
+        images, expected_image = self.make_all_boot_images("xinstall")
+        self.patch_list_boot_images(images)
+        params = self.get_params_from_boot_image(expected_image)
+        self.assertEquals(expected_image, get_boot_image(params))
+
+    def test_returns_install_image_for_install(self):
+        images, expected_image = self.make_all_boot_images("install")
+        self.patch_list_boot_images(images)
+        params = self.get_params_from_boot_image(expected_image)
+        self.assertEquals(expected_image, get_boot_image(params))
+
+    def test_returns_image_by_its_supported_subarches(self):
+        subarch = factory.make_name("hwe")
+        other_subarches = [
+            factory.make_name("hwe")
+            for _ in range(3)
+        ]
+        subarches = ",".join(other_subarches + [subarch])
+        images, expected_image = self.make_all_boot_images(
+            "commissioning", subarch="generic", subarches=subarches)
+        self.patch_list_boot_images(images)
+        params = self.get_params_from_boot_image(expected_image)
+        params["subarch"] = subarch
+        self.assertEquals(expected_image, get_boot_image(params))
+
+    def test_returns_None_if_missing_image(self):
+        images, _ = self.make_all_boot_images(None)
+        self.patch_list_boot_images(images)
+        self.assertIsNone(get_boot_image({
+            "osystem": factory.make_name("os"),
+            "release": factory.make_name("release"),
+            "arch": factory.make_name("arch"),
+            "subarch": factory.make_name("subarch"),
+            "purpose": factory.make_name("purpose"),
+        }))
+
+
 class TestBytesReader(MAASTestCase):
-    """Tests for `provisioningserver.tftp.BytesReader`."""
+    """Tests for `BytesReader`."""
 
     def test_interfaces(self):
         reader = BytesReader(b"")
@@ -112,7 +200,7 @@ class TestBytesReader(MAASTestCase):
 
 
 class TestTFTPBackend(MAASTestCase):
-    """Tests for `provisioningserver.tftp.TFTPBackend`."""
+    """Tests for `TFTPBackend`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -125,36 +213,16 @@ class TestTFTPBackend(MAASTestCase):
 
     def test_init(self):
         temp_dir = self.make_dir()
-        generator_url = "http://%s.example.com/%s" % (
-            factory.make_name("domain"), factory.make_name("path"))
-        backend = TFTPBackend(temp_dir, generator_url)
+        client_service = Mock()
+        backend = TFTPBackend(temp_dir, client_service)
         self.assertEqual((True, False), (backend.can_read, backend.can_write))
         self.assertEqual(temp_dir, backend.base.path)
-        self.assertEqual(generator_url, backend.generator_url.geturl())
-
-    def test_get_generator_url(self):
-        # get_generator_url() merges the parameters obtained from the request
-        # file path (arch, subarch, name) into the configured generator URL.
-        mac = factory.make_mac_address("-")
-        dummy = factory.make_name("dummy")
-        backend_url = "http://example.com/?" + urlencode({"dummy": dummy})
-        backend = TFTPBackend(self.make_dir(), backend_url)
-        # params is an example of the parameters obtained from a request.
-        params = {"mac": mac}
-        generator_url = urlparse(backend.get_generator_url(params))
-        self.assertEqual(b"example.com", generator_url.hostname)
-        query = parse_qsl(generator_url.query)
-        query_expected = [
-            (b"dummy", dummy.encode("ascii")),
-            (b"mac", mac.encode("ascii")),
-            ]
-        self.assertItemsEqual(query_expected, query)
+        self.assertEqual(client_service, backend.client_service)
 
     def get_reader(self, data):
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = os.path.dirname(temp_file)
-        backend = TFTPBackend(
-            temp_dir, "http://nowhere.example.com/")
+        backend = TFTPBackend(temp_dir, Mock())
         return backend.get_reader(b"example")
 
     @inlineCallbacks
@@ -212,11 +280,14 @@ class TestTFTPBackend(MAASTestCase):
             MockNotCalled())
 
     @inlineCallbacks
-    def test_get_reader_converts_404s_to_tftp_error(self):
+    def test_get_reader_converts_BootConfigNoResponse_to_FileNotFound(self):
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = fail(BootConfigNoResponse())
+        client_service = Mock()
+        client_service.getClient.return_value = client
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/")
-        get_page = self.patch(backend, 'get_page')
-        get_page.side_effect = twisted.web.error.Error(http.client.NOT_FOUND)
+            self.make_dir(), client_service)
 
         with ExpectedException(FileNotFound):
             yield backend.get_reader(b'pxelinux.cfg/default')
@@ -225,10 +296,13 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_reader_converts_other_exceptions_to_tftp_error(self):
         exception_type = factory.make_exception_type()
         exception_message = factory.make_string()
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = fail(exception_type(exception_message))
+        client_service = Mock()
+        client_service.getClient.return_value = client
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/")
-        get_page = self.patch(backend, 'get_page')
-        get_page.side_effect = exception_type(exception_message)
+            self.make_dir(), client_service)
 
         with TwistedLoggerFixture() as logger:
             with ExpectedException(BackendError, re.escape(exception_message)):
@@ -237,7 +311,7 @@ class TestTFTPBackend(MAASTestCase):
         # The original exception is logged.
         self.assertDocTestMatches(
             """\
-            Starting TFTP back-end failed.
+            TFTP back-end failed.
             Traceback (most recent call last):
             ...
             maastesting.factory.TestException#...
@@ -251,7 +325,7 @@ class TestTFTPBackend(MAASTestCase):
         mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(
-            self.make_dir(), b"http://example.com/")
+            self.make_dir(), Mock())
         # python-tx-tftp sets up call context so that backends can discover
         # more about the environment in which they're running.
         call_context = {"local": local, "remote": remote}
@@ -262,9 +336,6 @@ class TestTFTPBackend(MAASTestCase):
             params_json_reader = BytesReader(params_json)
             return succeed(params_json_reader)
 
-        maas_id = factory.make_UUID()
-        self.patch(tftp_module, "get_maas_id").return_value = maas_id
-
         reader = yield context.call(
             call_context, backend.get_reader, config_path)
         output = reader.read(10000).decode("ascii")
@@ -272,9 +343,8 @@ class TestTFTPBackend(MAASTestCase):
         # passed over the wire as address:port strings.
         expected_params = {
             "mac": mac,
-            "local": call_context["local"][0],  # address only.
-            "remote": call_context["remote"][0],  # address only.
-            "rackcontroller_id": maas_id,
+            "local_ip": call_context["local"][0],  # address only.
+            "remote_ip": call_context["remote"][0],  # address only.
             "bios_boot_method": "pxe",
             }
         observed_params = json.loads(output)
@@ -309,21 +379,38 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters()
+        fake_params = fake_kernel_params._asdict()
+
+        # Stub the output of list_boot_images so the label is set in the
+        # kernel parameters.
+        boot_image = {
+            "osystem": fake_params["osystem"],
+            "release": fake_params["release"],
+            "architecture": fake_params["arch"],
+            "subarchitecture": fake_params["subarch"],
+            "purpose": fake_params["purpose"],
+            "supported_subarches": "",
+            "label": fake_params["label"],
+        }
+        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = succeed(fake_params)
+        client_service = Mock()
+        client_service.getClient.return_value = client
+
         # get_boot_method_reader() takes a dict() of parameters and returns an
         # `IReader` of a PXE configuration, rendered by
         # `PXEBootMethod.get_reader`.
         backend = TFTPBackend(
-            self.make_dir(), "http://example.com/")
-        # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.make_mac_address("-")}
-        # Fake kernel configuration parameters, as returned from the API call.
-        fake_kernel_params = make_kernel_parameters()
-
-        # Stub get_page to return the fake API configuration parameters.
-        fake_get_page_result = json.dumps(
-            fake_kernel_params._asdict()).encode("ascii")
-        get_page_patch = self.patch(backend, "get_page")
-        get_page_patch.return_value = succeed(fake_get_page_result)
+            self.make_dir(), client_service)
 
         # Stub get_reader to return the render parameters.
         method = PXEBootMethod()
@@ -338,8 +425,46 @@ class TestTFTPBackend(MAASTestCase):
         self.assertIsInstance(reader, BytesReader)
         output = reader.read(10000)
 
-        # The kernel parameters were fetched using `backend.get_page`.
-        self.assertThat(backend.get_page, MockCalledOnceWith(mock.ANY))
+        # The result has been rendered by `method.get_reader`.
+        self.assertEqual(fake_render_result, output)
+        self.assertThat(method.get_reader, MockCalledOnceWith(
+            backend, kernel_params=fake_kernel_params, **fake_params))
+
+    @inlineCallbacks
+    def test_get_boot_method_reader_returns_rendered_params_for_local(self):
+        # Fake configuration parameters, as discovered from the file path.
+        fake_params = {"mac": factory.make_mac_address("-")}
+        # Fake kernel configuration parameters, as returned from the RPC call.
+        fake_kernel_params = make_kernel_parameters(
+            purpose="local", label="local")
+        fake_params = fake_kernel_params._asdict()
+        del fake_params["label"]
+
+        # Stub RPC call to return the fake configuration parameters.
+        client = Mock()
+        client.localIdent = factory.make_name("system_id")
+        client.return_value = succeed(fake_params)
+        client_service = Mock()
+        client_service.getClient.return_value = client
+
+        # get_boot_method_reader() takes a dict() of parameters and returns an
+        # `IReader` of a PXE configuration, rendered by
+        # `PXEBootMethod.get_reader`.
+        backend = TFTPBackend(
+            self.make_dir(), client_service)
+
+        # Stub get_reader to return the render parameters.
+        method = PXEBootMethod()
+        fake_render_result = factory.make_name("render").encode("utf-8")
+        render_patch = self.patch(method, "get_reader")
+        render_patch.return_value = BytesReader(fake_render_result)
+
+        # Get the rendered configuration, which will actually be a JSON dump
+        # of the render-time parameters.
+        reader = yield backend.get_boot_method_reader(method, fake_params)
+        self.addCleanup(reader.finish)
+        self.assertIsInstance(reader, BytesReader)
+        output = reader.read(10000)
 
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
@@ -392,10 +517,10 @@ class TestTFTPService(MAASTestCase):
             tftp_module, "get_all_interface_addresses",
             lambda: interfaces)
         example_root = self.make_dir()
-        example_generator = "http://example.com/generator"
+        example_client_service = Mock()
         example_port = factory.pick_port()
         tftp_service = TFTPService(
-            resource_root=example_root, generator=example_generator,
+            resource_root=example_root, client_service=example_client_service,
             port=example_port)
         tftp_service.updateServers()
         # The "tftp" service is a multi-service containing UDP servers for
@@ -413,8 +538,8 @@ class TestTFTPService(MAASTestCase):
                 lambda backend: backend.base.path,
                 Equals(example_root)),
             AfterPreprocessing(
-                lambda backend: backend.generator_url.geturl(),
-                Equals(example_generator)))
+                lambda backend: backend.client_service,
+                Equals(example_client_service)))
         expected_protocol = MatchesAll(
             IsInstance(TFTP),
             AfterPreprocessing(
@@ -447,7 +572,7 @@ class TestTFTPService(MAASTestCase):
             lambda: interfaces)
 
         tftp_service = TFTPService(
-            resource_root=self.make_dir(), generator="http://mighty/wind",
+            resource_root=self.make_dir(), client_service=Mock(),
             port=factory.pick_port())
         tftp_service.updateServers()
 
@@ -489,7 +614,7 @@ class TestTFTPService(MAASTestCase):
             lambda: normal_addresses | link_local_addresses)
 
         tftp_service = TFTPService(
-            resource_root=self.make_dir(), generator="http://mighty/wind",
+            resource_root=self.make_dir(), client_service=Mock(),
             port=factory.pick_port())
         tftp_service.updateServers()
 

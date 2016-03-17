@@ -87,11 +87,12 @@ class ProvisioningServiceMaker:
         return image_service
 
     def _makeTFTPService(
-            self, tftp_root, tftp_port, tftp_generator):
+            self, tftp_root, tftp_port, rpc_service):
         """Create the dynamic TFTP service."""
         from provisioningserver.pserv_services.tftp import TFTPService
         tftp_service = TFTPService(
-            resource_root=tftp_root, port=tftp_port, generator=tftp_generator)
+            resource_root=tftp_root, port=tftp_port,
+            client_service=rpc_service)
         tftp_service.setName("tftp")
         return tftp_service
 
@@ -146,7 +147,7 @@ class ProvisioningServiceMaker:
         service_monitor.setName("service_monitor")
         return service_monitor
 
-    def _makeServices(self, config):
+    def _makeServices(self, tftp_root, tftp_port):
         # Several services need to make use of the RPC service.
         rpc_service = self._makeRPCService()
         yield rpc_service
@@ -157,12 +158,11 @@ class ProvisioningServiceMaker:
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
         yield self._makeImageDownloadService(
-            rpc_service, config.tftp_root)
+            rpc_service, tftp_root)
         # The following are network-accessible services.
-        yield self._makeImageService(config.tftp_root)
+        yield self._makeImageService(tftp_root)
         yield self._makeTFTPService(
-            config.tftp_root, config.tftp_port,
-            config.tftp_generator_url)
+            tftp_root, tftp_port, rpc_service)
 
     def _configureCrochet(self):
         # Prevent other libraries from starting the reactor via crochet.
@@ -177,9 +177,12 @@ class ProvisioningServiceMaker:
 
         self._configureCrochet()
 
-        from provisioningserver import services
         with ClusterConfiguration.open() as config:
-            for service in self._makeServices(config):
-                service.setServiceParent(services)
+            tftp_root = config.tftp_root
+            tftp_port = config.tftp_port
+
+        from provisioningserver import services
+        for service in self._makeServices(tftp_root, tftp_port):
+            service.setServiceParent(services)
 
         return services

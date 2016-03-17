@@ -210,15 +210,15 @@ class Region(RPCProtocol):
 
     @region.GetBootConfig.responder
     def get_boot_config(
-            self, system_id, local_ip, arch=None, subarch=None, mac=None,
-            bios_boot_method=None):
+            self, system_id, local_ip, remote_ip, arch=None, subarch=None,
+            mac=None, bios_boot_method=None):
         """get_boot_config()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootConfig`.
         """
         return deferToDatabase(
-            boot.get_config, system_id, local_ip,
+            boot.get_config, system_id, local_ip, remote_ip,
             arch=arch, subarch=subarch, mac=mac,
             bios_boot_method=bios_boot_method)
 

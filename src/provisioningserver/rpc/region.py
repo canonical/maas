@@ -108,6 +108,7 @@ class GetBootConfig(amp.Command):
         # The system_id for the rack controller.
         (b"system_id", amp.Unicode()),
         (b"local_ip", amp.Unicode()),
+        (b"remote_ip", amp.Unicode()),
         (b"arch", amp.Unicode(optional=True)),
         (b"subarch", amp.Unicode(optional=True)),
         (b"mac", amp.Unicode(optional=True)),
@@ -125,6 +126,7 @@ class GetBootConfig(amp.Command):
         (b"fs_host", amp.Unicode()),
         (b"log_host", amp.Unicode()),
         (b"extra_opts", amp.Unicode()),
+        (b"system_id", amp.Unicode(optional=True)),
     ]
     errors = {
         BootConfigNoResponse: b"BootConfigNoResponse",
