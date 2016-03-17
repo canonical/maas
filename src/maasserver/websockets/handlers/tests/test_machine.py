@@ -5,9 +5,11 @@
 
 __all__ = []
 
+from functools import partial
 import logging
 from operator import itemgetter
 import random
+import re
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -23,13 +25,18 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
 )
-from maasserver.exceptions import NodeActionError
+from maasserver.exceptions import (
+    NodeActionError,
+    NodeStateViolation,
+)
 from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.config import Config
+from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import (
     Bcache,
     RAID,
@@ -105,8 +112,15 @@ from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
 from testtools.matchers import (
+    ContainsDict,
     Equals,
+    HasLength,
+    Is,
+    MatchesException,
+    MatchesListwise,
     MatchesStructure,
+    Raises,
+    StartsWith,
 )
 from twisted.internet.defer import CancelledError
 
@@ -2257,3 +2271,257 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
         node = self.make_node(bmc_connected_to=rack).wait(30)
         self.prepare_rpc(rack, side_effect=PowerActionFail())
         self.assertCheckPower(node, "error")
+
+
+class TestMachineHandlerMountSpecial(MAASServerTestCase):
+    """Tests for MachineHandler.mount_special."""
+
+    def test__fstype_and_mount_point_is_required_but_options_is_not(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        params = {'system_id': machine.system_id}
+        error = self.assertRaises(
+            HandlerValidationError, handler.mount_special, params)
+        self.assertThat(
+            dict(error), Equals({
+                'fstype': ['This field is required.'],
+                'mount_point': ['This field is required.'],
+            }))
+
+    def test__fstype_must_be_a_non_storage_type(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        for fstype in Filesystem.TYPES_REQUIRING_STORAGE:
+            params = {
+                'system_id': machine.system_id, 'fstype': fstype,
+                'mount_point': factory.make_absolute_path(),
+            }
+            error = self.assertRaises(
+                HandlerValidationError, handler.mount_special, params)
+            self.expectThat(
+                dict(error), ContainsDict({
+                    'fstype': MatchesListwise([
+                        StartsWith("Select a valid choice."),
+                    ]),
+                }),
+                "using fstype " + fstype)
+
+    def test__mount_point_must_be_absolute(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        params = {
+            'system_id': machine.system_id, 'fstype': FILESYSTEM_TYPE.RAMFS,
+            'mount_point': factory.make_name("path"),
+        }
+        error = self.assertRaises(
+            HandlerValidationError, handler.mount_special, params)
+        self.assertThat(
+            dict(error), ContainsDict({
+                # XXX: Wow, what a lame error from AbsolutePathField!
+                'mount_point': Equals(["Enter a valid value."]),
+            }))
+
+
+class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
+    """Scenario tests for MachineHandler.mount_special."""
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def assertCanMountFilesystem(self, user, machine):
+        handler = MachineHandler(user, {})
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        params = {
+            'system_id': machine.system_id, 'fstype': self.fstype,
+            'mount_point': mount_point,
+            'mount_options': mount_options,
+        }
+        self.assertThat(handler.mount_special(params), Is(None))
+        self.assertThat(
+            list(Filesystem.objects.filter(node=machine)),
+            MatchesListwise([
+                MatchesStructure.byEquality(
+                    fstype=self.fstype, mount_point=mount_point,
+                    mount_options=mount_options, node=machine),
+            ]))
+
+    def test__user_mounts_non_storage_filesystem_on_allocated_machine(self):
+        user = factory.make_User()
+        self.assertCanMountFilesystem(user, factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=user))
+
+    def test__user_forbidden_to_mount_on_non_allocated_machine(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {})
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.ALLOCATED}
+        raises_node_state_violation = Raises(
+            MatchesException(NodeStateViolation, re.escape(
+                "Cannot mount the filesystem because "
+                "the machine is not Allocated.")))
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            params = {
+                'system_id': machine.system_id, 'fstype': self.fstype,
+                'mount_point': factory.make_absolute_path(),
+                'mount_options': factory.make_name("options"),
+            }
+            self.expectThat(
+                partial(handler.mount_special, params),
+                raises_node_state_violation,
+                "using status %d on %s" % (status, self.fstype))
+
+    def test__admin_mounts_non_storage_filesystem_on_allocated_machine(self):
+        admin = factory.make_admin()
+        self.assertCanMountFilesystem(admin, factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=admin))
+
+    def test__admin_mounts_non_storage_filesystem_on_ready_machine(self):
+        admin = factory.make_admin()
+        self.assertCanMountFilesystem(
+            admin, factory.make_Node(status=NODE_STATUS.READY))
+
+    def test__admin_cannot_mount_on_non_ready_or_allocated_machine(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {})
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        raises_node_state_violation = Raises(
+            MatchesException(NodeStateViolation, re.escape(
+                "Cannot mount the filesystem because the "
+                "machine is not Allocated or Ready.")))
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            params = {
+                'system_id': machine.system_id, 'fstype': self.fstype,
+                'mount_point': factory.make_absolute_path(),
+                'mount_options': factory.make_name("options"),
+            }
+            self.expectThat(
+                partial(handler.mount_special, params),
+                raises_node_state_violation,
+                "using status %d on %s" % (status, self.fstype))
+
+
+class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
+    """Tests for MachineHandler.unmount_special."""
+
+    def test__mount_point_is_required(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        params = {'system_id': machine.system_id}
+        error = self.assertRaises(
+            HandlerValidationError, handler.unmount_special, params)
+        self.assertThat(
+            dict(error), Equals({
+                'mount_point': ['This field is required.'],
+            }))
+
+    def test__mount_point_must_be_absolute(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {})
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        params = {
+            'system_id': machine.system_id, 'fstype': FILESYSTEM_TYPE.RAMFS,
+            'mount_point': factory.make_name("path"),
+        }
+        error = self.assertRaises(
+            HandlerValidationError, handler.unmount_special, params)
+        self.assertThat(
+            dict(error), ContainsDict({
+                # XXX: Wow, what a lame error from AbsolutePathField!
+                'mount_point': Equals(["Enter a valid value."]),
+            }))
+
+
+class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
+    """Scenario tests for MachineHandler.unmount_special."""
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def assertCanUnmountFilesystem(self, user, machine):
+        handler = MachineHandler(user, {})
+        filesystem = factory.make_Filesystem(
+            node=machine, fstype=self.fstype,
+            mount_point=factory.make_absolute_path())
+        params = {
+            'system_id': machine.system_id,
+            'mount_point': filesystem.mount_point,
+        }
+        self.assertThat(handler.unmount_special(params), Is(None))
+        self.assertThat(
+            Filesystem.objects.filter(node=machine),
+            HasLength(0))
+
+    def test__user_unmounts_non_storage_filesystem_on_allocated_machine(self):
+        user = factory.make_User()
+        self.assertCanUnmountFilesystem(user, factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=user))
+
+    def test__user_forbidden_to_unmount_on_non_allocated_machine(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {})
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.ALLOCATED}
+        raises_node_state_violation = Raises(
+            MatchesException(NodeStateViolation, re.escape(
+                "Cannot unmount the filesystem because "
+                "the machine is not Allocated.")))
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            filesystem = factory.make_Filesystem(
+                node=machine, fstype=self.fstype,
+                mount_point=factory.make_absolute_path())
+            params = {
+                'system_id': machine.system_id,
+                'mount_point': filesystem.mount_point,
+            }
+            self.expectThat(
+                partial(handler.unmount_special, params),
+                raises_node_state_violation,
+                "using status %d on %s" % (status, self.fstype))
+
+    def test__admin_unmounts_non_storage_filesystem_on_allocated_machine(self):
+        admin = factory.make_admin()
+        self.assertCanUnmountFilesystem(admin, factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=admin))
+
+    def test__admin_unmounts_non_storage_filesystem_on_ready_machine(self):
+        admin = factory.make_admin()
+        self.assertCanUnmountFilesystem(
+            admin, factory.make_Node(status=NODE_STATUS.READY))
+
+    def test__admin_cannot_unmount_on_non_ready_or_allocated_machine(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {})
+        statuses = {name for name, _ in NODE_STATUS_CHOICES}
+        statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        raises_node_state_violation = Raises(
+            MatchesException(NodeStateViolation, re.escape(
+                "Cannot unmount the filesystem because the "
+                "machine is not Allocated or Ready.")))
+        for status in statuses:
+            machine = factory.make_Node(status=status)
+            filesystem = factory.make_Filesystem(
+                node=machine, fstype=self.fstype,
+                mount_point=factory.make_absolute_path())
+            params = {
+                'system_id': machine.system_id,
+                'mount_point': filesystem.mount_point,
+            }
+            self.expectThat(
+                partial(handler.unmount_special, params),
+                raises_node_state_violation,
+                "using status %d on %s" % (status, self.fstype))

@@ -15,8 +15,12 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
 )
-from maasserver.exceptions import NodeActionError
+from maasserver.exceptions import (
+    NodeActionError,
+    NodeStateViolation,
+)
 from maasserver.forms import (
     AddPartitionForm,
     AdminMachineWithMACAddressesForm,
@@ -30,7 +34,11 @@ from maasserver.forms import (
     UpdatePhysicalBlockDeviceForm,
     UpdateVirtualBlockDeviceForm,
 )
-from maasserver.forms_filesystem import MountFilesystemForm
+from maasserver.forms_filesystem import (
+    MountFilesystemForm,
+    MountNonStorageFilesystemForm,
+    UnmountNonStorageFilesystemForm,
+)
 from maasserver.forms_interface import (
     BondInterfaceForm,
     InterfaceForm,
@@ -56,6 +64,7 @@ from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     HandlerError,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.node import (
     node_prefetch,
@@ -103,6 +112,8 @@ class MachineHandler(NodeHandler):
             'delete_interface',
             'link_subnet',
             'unlink_subnet',
+            'mount_special',
+            'unmount_special',
             'update_filesystem',
             'update_disk_tags',
             'update_disk',
@@ -269,6 +280,55 @@ class MachineHandler(NodeHandler):
         self.update_tags(node_obj, params['tags'])
         node_obj.save()
         return self.full_dehydrate(node_obj)
+
+    def mount_special(self, params):
+        """Mount a special-purpose filesystem, like tmpfs.
+
+        :param fstype: The filesystem type. This must be a filesystem that
+            does not require a block special device.
+        :param mount_point: Path on the filesystem to mount.
+        :param mount_option: Options to pass to mount(8).
+
+        :attention: This is more or less a copy of `mount_special` from
+            `m.api.machines`.
+        """
+        machine = self.get_object(params)
+        self._preflight_special_filesystem_modifications("mount", machine)
+        form = MountNonStorageFilesystemForm(machine, data=params)
+        if form.is_valid():
+            form.save()
+        else:
+            raise HandlerValidationError(form.errors)
+
+    def unmount_special(self, params):
+        """Unmount a special-purpose filesystem, like tmpfs.
+
+        :param mount_point: Path on the filesystem to unmount.
+
+        :attention: This is more or less a copy of `unmount_special` from
+            `m.api.machines`.
+        """
+        machine = self.get_object(params)
+        self._preflight_special_filesystem_modifications("unmount", machine)
+        form = UnmountNonStorageFilesystemForm(machine, data=params)
+        if form.is_valid():
+            form.save()
+        else:
+            raise HandlerValidationError(form.errors)
+
+    def _preflight_special_filesystem_modifications(self, op, machine):
+        """Check that `machine` is okay for special fs modifications."""
+        if self.user.is_superuser:
+            statuses_permitted = {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        else:
+            statuses_permitted = {NODE_STATUS.ALLOCATED}
+        if machine.status not in statuses_permitted:
+            status_names = sorted(
+                title for value, title in NODE_STATUS_CHOICES
+                if value in statuses_permitted)
+            raise NodeStateViolation(
+                "Cannot %s the filesystem because the machine is not %s."
+                % (op, " or ".join(status_names)))
 
     def update_filesystem(self, params):
         node = self.get_object(params)
