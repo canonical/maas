@@ -767,11 +767,6 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
             accept_python=True, if_missing=get_tentative_path(
                 "/var/lib/maas/boot-resources/current")))
 
-    @property
-    def tftp_generator_url(self):
-        """The URL at which to obtain the TFTP options for a node."""
-        return "%s/api/2.0/pxeconfig/" % self.maas_url.rstrip("/")
-
     # GRUB options.
 
     @property

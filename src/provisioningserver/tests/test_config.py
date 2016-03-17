@@ -667,26 +667,6 @@ class TestClusterConfiguration(MAASTestCase):
         self.assertEqual({"cluster_uuid": str(example_uuid)}, config.store)
 
 
-class TestClusterConfigurationTFTPGeneratorURL(MAASTestCase):
-    """Tests for `ClusterConfiguration.tftp_generator_url`."""
-
-    def test__is_relative_to_maas_url(self):
-        random_url = factory.make_simple_http_url()
-        self.useFixture(ClusterConfigurationFixture(maas_url=random_url))
-        with ClusterConfiguration.open() as configuration:
-            self.assertEqual(
-                random_url + "/api/2.0/pxeconfig/",
-                configuration.tftp_generator_url)
-
-    def test__strips_trailing_slashes_from_maas_url(self):
-        random_url = factory.make_simple_http_url(path="foobar/")
-        self.useFixture(ClusterConfigurationFixture(maas_url=random_url))
-        with ClusterConfiguration.open() as configuration:
-            self.assertEqual(
-                random_url.rstrip("/") + "/api/2.0/pxeconfig/",
-                configuration.tftp_generator_url)
-
-
 class TestClusterConfigurationGRUBRoot(MAASTestCase):
     """Tests for `ClusterConfiguration.grub_root`."""
 

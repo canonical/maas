@@ -2585,7 +2585,7 @@ class Node(CleanSave, TimestampedModel):
         """Get the boot interface this node is expected to boot from.
 
         Normally, this will be the boot interface last used in a
-        pxeconfig() API request for the node, as recorded in the
+        GetBootConfig RPC request for the node, as recorded in the
         'boot_interface' property. However, if the node hasn't booted since
         the 'boot_interface' property was added to the Node model, this will
         return the node's first interface instead.

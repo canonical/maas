@@ -111,7 +111,6 @@ from maasserver.api.partitions import (
     PartitionHandler,
     PartitionsHandler,
 )
-from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.rackcontrollers import (
     RackControllerHandler,
     RackControllersHandler,
@@ -292,7 +291,6 @@ urlpatterns = patterns(
     '',
     url(r'doc/$', api_doc, name='api-doc'),
     url(r'describe/$', describe, name='describe'),
-    url(r'pxeconfig/$', pxeconfig, name='pxeconfig'),
     url(r'version/$', version_handler, name='version_handler'),
 )
 
