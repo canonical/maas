@@ -89,7 +89,7 @@ on commit {
    set cllt = binary-to-ascii(10, 32, "", encode-int(lease-time, 32));
    set clht = pick-first-value(option host-name, "(none)");
    execute(
-       "sudo", "maas-rack", "dhcp-notify",
+       "/usr/sbin/maas-rack", "dhcp-notify",
        "--action", "commit", "--mac", clhw,
        "--ip-family", "ipv4", "--ip", clip,
        "--lease-time", cllt, "--hostname", clht);
@@ -98,7 +98,7 @@ on expiry {
    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
    set clip = binary-to-ascii(10, 8, ".", leased-address);
    execute(
-       "sudo", "maas-rack", "dhcp-notify",
+       "/usr/sbin/maas-rack", "dhcp-notify",
        "--action", "expiry", "--mac", clhw,
        "--ip-family", "ipv4", "--ip", clip);
 }
@@ -106,7 +106,7 @@ on release {
    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
    set clip = binary-to-ascii(10, 8, ".", leased-address);
    execute(
-       "sudo", "maas-rack", "dhcp-notify",
+       "/usr/sbin/maas-rack", "dhcp-notify",
        "--action", "release", "--mac", clhw,
        "--ip-family", "ipv4", "--ip", clip);
 }
