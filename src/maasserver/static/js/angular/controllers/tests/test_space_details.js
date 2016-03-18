@@ -174,17 +174,51 @@ describe("SpaceDetailsController", function() {
         expect($rootScope.title).toBe(space.name);
     });
 
-    it("confirms delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        expect($scope.confirmingDelete).toBe(true);
+    describe("canBeDeleted", function() {
+
+        it("returns false if space is null", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.space = null;
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns false if space has subnets", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.space.subnet_ids = [makeInteger()];
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns true if space has no subnets", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.space.subnet_ids = [];
+            expect($scope.canBeDeleted()).toBe(true);
+        });
     });
 
-    it("can cancel delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        $scope.cancelDeleteButton();
-        expect($scope.confirmingDelete).toBe(false);
+    describe("deleteButton", function() {
+
+        it("confirms delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            expect($scope.confirmingDelete).toBe(true);
+        });
+
+        it("clears error", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.error = makeName("error");
+            $scope.deleteButton();
+            expect($scope.error).toBeNull();
+        });
+    });
+
+    describe("cancelDeleteButton", function() {
+
+        it("cancels delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            $scope.cancelDeleteButton();
+            expect($scope.confirmingDelete).toBe(false);
+        });
     });
 
     describe("deleteSpace", function() {

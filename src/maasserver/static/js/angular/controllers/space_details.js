@@ -76,8 +76,17 @@ angular.module('MAAS').controller('SpaceDetailsController', [
             return $scope.space.id === 0;
         };
 
+        // Called to check if the space can be deleted.
+        $scope.canBeDeleted = function() {
+            if(angular.isObject($scope.space)) {
+                return $scope.space.subnet_ids.length === 0;
+            }
+            return false;
+        };
+
         // Called when the delete space button is pressed.
         $scope.deleteButton = function() {
+            $scope.error = null;
             $scope.confirmingDelete = true;
         };
 

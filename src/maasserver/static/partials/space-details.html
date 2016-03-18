@@ -10,39 +10,40 @@
             <div class="right no-margin-bottom last-col">
                 <button class="cta-ubuntu"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="loading || confirmingDelete">Delete Space</button>
-                <button class="cta-ubuntu secondary ng-hide"
-                    data-ng-click="cancelDeleteButton()"
-                    data-ng-show="loading || confirmingDelete">Cancel</button>
+                    data-ng-hide="confirmingDelete">Delete Space</button>
+            </div>
+        </div>
+        <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
+            <div class="page-header__feedback ng-hide" data-ng-hide="canBeDeleted()">
+                <p class="page-header__feedback-message error">
+                    Space cannot be deleted because it has subnets attached. Remove all subnets from the space to allow deletion.
+                </p>
+                <div class="right">
+                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                </div>
+            </div>
+            <div class="page-header__feedback ng-hide" data-ng-show="canBeDeleted() && !error">
+                <p class="page-header__feedback-message error">
+                    Are you sure you want to delete this space?
+                </p>
+                <div class="right">
+                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Go</button>
+                </div>
+            </div>
+            <div class="page-header__feedback ng-hide" data-ng-show="canBeDeleted() && error">
+                <p class="page-header__feedback-message error">
+                    {$ error $}
+                </p>
+                <div class="right">
+                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Retry</button>
+                </div>
             </div>
         </div>
     </div>
 </header>
 <div data-ng-show="!loading">
-    <div class="page-header__dropdown border ng-hide" data-ng-show="confirmingDelete">
-        <div class="page-header__feedback twelve-col no-margin-bottom">
-            <div class="twelve-col ng-hide" data-ng-show="error">
-                <p class="page-header__feedback-message info">{$ error $}</p>
-            </div>
-            <div class="inner-wrapper">
-                <div class="twelve-col">
-                    <div class="table">
-                        <div class="table__row table__row--no-hover">
-                            <div class="form-inline">
-                                <div class="left">
-                                    Are you sure you want to delete this space?
-                                </div>
-                                <div class="right">
-                                    <a data-ng-click="cancelDeleteButton()">Cancel</a>
-                                    <button class="cta-ubuntu secondary" data-ng-click="deleteConfirmButton()">Confirm</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     <section class="row">
         <div class="inner-wrapper">
             <div class="tweleve-col">
