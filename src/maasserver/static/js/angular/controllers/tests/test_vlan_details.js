@@ -15,7 +15,7 @@ describe("VLANDetailsController", function() {
     function makeVLAN() {
         var vlan = {
             id: VLAN_ID,
-            vid: makeInteger(1,4095),
+            vid: makeInteger(1,4094),
             fabric: 1,
             name: null,
             dhcp_on: true,

@@ -1,16 +1,16 @@
 /* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
- * MAAS Subnets List Controller
+ * MAAS Networks List Controller
  */
 
 angular.module('MAAS').controller('NetworksListController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'SubnetsManager', 'FabricsManager', 'SpacesManager', 'VLANsManager',
-    'ManagerHelperService',
+    'UsersManager', 'ManagerHelperService',
     function($scope, $rootScope, $routeParams, $filter, $location,
              SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
-             ManagerHelperService) {
+             UsersManager, ManagerHelperService) {
 
         // Load the filters that are used inside the controller.
         var filterByVLAN = $filter('filterByVLAN');
@@ -31,6 +31,105 @@ angular.module('MAAS').controller('NetworksListController', [
             }
         };
 
+        $scope.ADD_FABRIC_ACTION = {
+            name: "add_fabric",
+            title: "Fabric",
+            selectedTitle: "Add Fabric",
+            form:
+            {
+                items: [
+                    {
+                        title: "Name",
+                        placeholder: "Fabric name"
+                    }
+                ],
+                submit: "Add Fabric",
+                manager: FabricsManager
+            }
+        };
+        $scope.ADD_VLAN_ACTION = {
+            name: "add_vlan",
+            title: "VLAN",
+            selectedTitle: "Add VLAN",
+            form:
+            {
+                items: [
+                    {
+                        title: "Fabric",
+                        placeholder: "Select fabric",
+                        manager: FabricsManager
+                    },
+                    {
+                        title: "VID",
+                        placeholder: "VID (1-4094)"
+                    },
+                    {
+                        title: "Name",
+                        placeholder: "VLAN name (optional)"
+                    }
+                ],
+                submit: "Add VLAN",
+                manager: VLANsManager
+            }
+        };
+        $scope.ADD_SPACE_ACTION = {
+            name: "add_space",
+            title: "Space",
+            selectedTitle: "Add Space",
+            form:
+            {
+                items: [
+                    {
+                        title: "Name",
+                        placeholder: "Space name"
+                    }
+                ],
+                submit: "Add Space",
+                manager: SpacesManager
+            }
+        };
+        $scope.ADD_SUBNET_ACTION = {
+            name: "add_subnet",
+            title: "Subnet",
+            selectedTitle: "Add Subnet",
+            form:
+            {
+                items: [
+                    {
+                        title: "VLAN",
+                        placeholder: "Select VLAN",
+                        manager: VLANsManager,
+                        groupReference: "fabric",
+                        group: FabricsManager
+                    },
+                    {
+                        title: "Space",
+                        defaultItem: 0,
+                        manager: SpacesManager
+                    },
+                    {
+                        title: "CIDR",
+                        placeholder: "169.254.0.0/16"
+                    },
+                    {
+                        title: "Name",
+                        placeholder: "Subnet name (optional)"
+                    },
+                    {
+                        title: "Gateway IP",
+                        placeholder: "169.254.0.1"
+                    },
+                    {
+                        title: "DNS Servers",
+                        placeholder: "8.8.8.8 8.8.4.4"
+                    }
+                ],
+                submit: "Add Subnet",
+                manager: SubnetsManager
+            }
+
+        };
+
         $scope.getURLParameters();
 
         // Set initial values.
@@ -39,6 +138,8 @@ angular.module('MAAS').controller('NetworksListController', [
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
         $scope.loading = true;
+
+        $scope.requesting = false;
 
         $scope.group = {};
         // Used when grouping by fabrics.
@@ -86,7 +187,7 @@ angular.module('MAAS').controller('NetworksListController', [
                     } else {
                         var row = {
                             fabric: fabric,
-                            fabric_name: fabric.name,
+                            fabric_name: "",
                             vlan: vlan,
                             vlan_name: getVLANName(vlan)
                         };
@@ -114,7 +215,9 @@ angular.module('MAAS').controller('NetworksListController', [
             angular.forEach(spaces, function(space) {
                 var subnets = filterBySpace($scope.subnets, space);
                 subnets = $filter('orderBy')(subnets, ['cidr']);
+                var index = 0;
                 angular.forEach(subnets, function(subnet) {
+                    index++;
                     var vlan = VLANsManager.getItemFromList(subnet.vlan);
                     var fabric = FabricsManager.getItemFromList(vlan.fabric);
                     var row = {
@@ -132,6 +235,12 @@ angular.module('MAAS').controller('NetworksListController', [
                     }
                     rows.push(row);
                 });
+                if(index === 0) {
+                    rows.push({
+                        space: space,
+                        space_name: space.name
+                    });
+                }
             });
             $scope.group.spaces.rows = rows;
         }
@@ -155,10 +264,94 @@ angular.module('MAAS').controller('NetworksListController', [
             }
         };
 
+        // Called when the managers load to populate the actions the user
+        // is allowed to perform.
+        $scope.updateActions = function() {
+            if(UsersManager.isSuperUser()) {
+                $scope.actionOptions = [
+                    $scope.ADD_FABRIC_ACTION,
+                    $scope.ADD_VLAN_ACTION,
+                    $scope.ADD_SPACE_ACTION,
+                    $scope.ADD_SUBNET_ACTION
+                ];
+            } else {
+                $scope.actionOptions = [];
+            }
+        };
+
+        // Called to submit the specified action to the server, and then
+        // wait for a reply.
+        $scope.submitAction = function(option) {
+            var data = {};
+            // Scan through the items array and look for form fields to submit
+            // to the server.
+            angular.forEach(option.form.items, function(item) {
+                // Note: If the item has a manager, the `current` value is
+                // the primary key.
+                data[item.name] = item.current;
+            });
+            // By setting $scope.requesting, we allow the view access to the
+            // information it needs to know when to disable the input boxes.
+            // This prevents duplicate submissions from clicking multiple
+            // times,if the server does not respond quickly.
+            $scope.requesting = true;
+            option.form.manager.create(data).then(function(){
+                // Success.
+                $scope.requesting = false;
+                $scope.actionOption = null;
+            }, function(error){
+                // Failure. Try parsing the resulting error message as a JSON
+                // string; if that works, it's most likely a Django error,
+                // which we can format appropriately. If not, just display
+                // the error.
+                $scope.requesting = false;
+                error = ManagerHelperService.tryParsingJSON(error);
+                if(angular.isObject(error)) {
+                    fixErrorTitles(option, error);
+                    option.error = ManagerHelperService.getPrintableString(
+                        error, true);
+                } else {
+                    option.error = error;
+                }
+                // If we got this far but still don't have an error string,
+                // just display a generic error to the user.
+                if(option.error.trim() === "") {
+                    option.error = "Unknown error during request.";
+                }
+            });
+        };
+
+        // Deletes the current value from each form field for the specified
+        // action option.
+        function clearOptionData(option) {
+            angular.forEach(option.form.items, function(item){
+                delete item.current;
+            });
+        }
+
+        // Given the specified option and the specified dictionary of errors,
+        // fix up the dictionary keys so that they correspond to the form
+        // titles.
+        function fixErrorTitles(option, errors) {
+            angular.forEach(option.form.items, function(item){
+                if(angular.isObject(errors[item.name])) {
+                    errors[item.title] = errors[item.name];
+                    delete errors[item.name];
+                }
+            });
+        }
+
+        // Called when the "Cancel" button is pressed.
+        $scope.cancelAction = function(option) {
+            clearOptionData(option);
+            option.error = null;
+            $scope.actionOption = null;
+        };
+
         // Return the name name for the VLAN.
         function getVLANName(vlan) {
             return VLANsManager.getName(vlan);
-       }
+        }
 
         // Return the name of the subnet.
         function getSubnetName(subnet) {
@@ -166,9 +359,12 @@ angular.module('MAAS').controller('NetworksListController', [
         }
 
         ManagerHelperService.loadManagers([
-            SubnetsManager, FabricsManager, SpacesManager, VLANsManager]).then(
+            SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
+            UsersManager]).then(
             function() {
                 $scope.loading = false;
+
+                $scope.updateActions();
 
                 $scope.$watchCollection("subnets", $scope.updateGroupBy);
                 $scope.$watchCollection("fabrics", $scope.updateGroupBy);

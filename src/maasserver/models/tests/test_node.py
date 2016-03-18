@@ -4878,7 +4878,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
-        vid_on_fabric = random.randint(1, 4095)
+        vid_on_fabric = random.randint(1, 4094)
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -4939,7 +4939,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
-        vid_on_fabric = random.randint(1, 4095)
+        vid_on_fabric = random.randint(1, 4094)
         vlan_network = factory.make_ip4_or_6_network()
         vlan_ip = factory.pick_ip_in_network(vlan_network)
         interfaces = {
@@ -5022,7 +5022,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
-        vid_on_fabric = random.randint(1, 4095)
+        vid_on_fabric = random.randint(1, 4094)
         wrong_subnet = factory.make_Subnet()
         vlan_ip = factory.pick_ip_in_Subnet(wrong_subnet)
         interfaces = {
@@ -5095,7 +5095,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
-        vid_on_fabric = random.randint(1, 4095)
+        vid_on_fabric = random.randint(1, 4094)
         interfaces = {
             "eth0": {
                 "type": "physical",

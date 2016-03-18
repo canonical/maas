@@ -11,10 +11,11 @@ describe("SpacesManager", function() {
     beforeEach(module("MAAS"));
 
     // Load the SpacesManager.
-    var SpacesManager, SubnetsManager;
+    var SpacesManager, SubnetsManager, RegionConnection;
     beforeEach(inject(function($injector) {
         SpacesManager = $injector.get("SpacesManager");
         SubnetsManager = $injector.get("SubnetsManager");
+        RegionConnection = $injector.get("RegionConnection");
     }));
 
     // Make a fake subnet.
@@ -52,6 +53,19 @@ describe("SpacesManager", function() {
                 "subnet_ids": subnet_ids
             };
             expect(space_subnets).toEqual(SpacesManager.getSubnets(space));
+        });
+    });
+
+    describe("create", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(SpacesManager.create(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "space.create", obj
+            );
         });
     });
 });

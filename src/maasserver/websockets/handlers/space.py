@@ -21,10 +21,16 @@ class SpaceHandler(TimestampedModelHandler):
             Space.objects.all().prefetch_related(
                 "subnet_set__staticipaddress_set__interface_set"))
         pk = 'id'
-        allowed_methods = ['list', 'get', 'create', 'delete', 'set_active']
+        allowed_methods = [
+            'create',
+            'delete',
+            'get',
+            'list',
+            'set_active'
+        ]
         listen_channels = [
             "space",
-            ]
+        ]
 
     def dehydrate(self, obj, data, for_list=False):
         data["name"] = obj.get_name()

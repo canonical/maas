@@ -76,5 +76,13 @@ angular.module('MAAS').factory(
                 }, true);
         };
 
+        // Create a VLAN.
+        VLANsManager.prototype.create = function(vlan) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the domain to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("vlan.create", vlan);
+        };
+
         return new VLANsManager();
     }]);

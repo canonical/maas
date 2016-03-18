@@ -1144,7 +1144,7 @@ class MachinesHandler(NodesHandler):
             assigned to it in MAAS; or by an `ip:` prefix followed by any IP
             address that falls within the network; or a `vlan:` prefix
             followed by a numeric VLAN tag, e.g. `vlan:23` for VLAN number 23.
-            Valid VLAN tags must be in the range of 1 to 4095 inclusive.
+            Valid VLAN tags must be in the range of 1 to 4094 inclusive.
         :type networks: list of unicodes
         :param not_networks: List of networks (defined in MAAS) to which the
             machine must not be attached.  The returned machine won't be
@@ -1152,7 +1152,7 @@ class MachinesHandler(NodesHandler):
             identified by the name assigned to it in MAAS; or by an `ip:`
             prefix followed by any IP address that falls within the network; or
             a `vlan:` prefix followed by a numeric VLAN tag, e.g. `vlan:23` for
-            VLAN number 23. Valid VLAN tags must be in the range of 1 to 4095
+            VLAN number 23. Valid VLAN tags must be in the range of 1 to 4094
             inclusive.
         :type not_networks: list of unicodes
         :param zone: An optional name for a physical zone the acquired

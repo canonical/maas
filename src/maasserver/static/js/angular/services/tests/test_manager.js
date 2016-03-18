@@ -1301,4 +1301,24 @@ describe("Manager", function() {
             expect(NodesManager._metadata.tags).toEqual([]);
         });
     });
+
+    describe("getName", function() {
+
+        it("returns undefined if no object is passed in", function() {
+            expect(NodesManager.getName()).toBe(undefined);
+        });
+
+        it("returns undefined if name field cannot be found", function() {
+            var node = {};
+            expect(NodesManager.getName(node)).toBe(undefined);
+        });
+
+        it("returns the name based on the _name_field", function() {
+            var node = makeNode();
+            expect(NodesManager.getName(node)).toBe(node.name);
+            NodesManager._name_field = "system_id";
+            expect(NodesManager.getName(node)).toBe(node.system_id);
+        });
+    });
+
 });

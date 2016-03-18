@@ -26,10 +26,15 @@ class SubnetHandler(TimestampedModelHandler):
                   .prefetch_related(
                       'staticipaddress_set__interface_set__node'))
         pk = 'id'
-        allowed_methods = ['list', 'get', 'set_active']
+        allowed_methods = [
+            'create',
+            'get',
+            'list',
+            'set_active'
+        ]
         listen_channels = [
             "subnet",
-            ]
+        ]
 
     def dehydrate(self, subnet, data, for_list=False):
         full_range = subnet.get_iprange_usage()

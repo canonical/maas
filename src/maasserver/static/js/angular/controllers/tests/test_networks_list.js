@@ -22,12 +22,13 @@ describe("NetworksListController", function() {
 
     // Load the managers and services.
     var SubnetsManager, FabricsManager, SpacesManager, VLANsManager;
-    var ManagerHelperService, RegionConnection;
+    var UsersManager, ManagerHelperService, RegionConnection;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         FabricsManager = $injector.get("FabricsManager");
         SpacesManager = $injector.get("SpacesManager");
         VLANsManager = $injector.get("VLANsManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
     }));
 
@@ -50,6 +51,7 @@ describe("NetworksListController", function() {
             FabricsManager: FabricsManager,
             SpacesManager: SpacesManager,
             VLANsManager: VLANsManager,
+            UsersManager: UsersManager,
             ManagerHelperService: ManagerHelperService
         });
 
@@ -72,12 +74,12 @@ describe("NetworksListController", function() {
         expect($scope.loading).toBe(true);
     });
 
-    it("calls loadManagers with SubnetsManager, FabricsManager, " +
-        "SpacesManager, VLANsManager",
-        function() {
+    it("calls loadManagers with expected managers", function() {
             var controller = makeController();
-            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [SubnetsManager, FabricsManager, SpacesManager, VLANsManager]);
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
+                SubnetsManager, FabricsManager, SpacesManager, VLANsManager,
+                UsersManager
+            ]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {
@@ -86,6 +88,25 @@ describe("NetworksListController", function() {
         defer.resolve();
         $rootScope.$digest();
         expect($scope.loading).toBe(false);
+    });
+
+    it("populates actions when loadManagers resolves", function() {
+        UsersManager._authUser = { is_superuser: true };
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        expect($scope.actionOptions.length).toBe(4);
+    });
+
+    it("creates empty actions array when loadManagers resolves " +
+        "if not superuser", function() {
+        UsersManager._authUser = { is_superuser: false };
+        var defer = $q.defer();
+        var controller = makeController(defer);
+        defer.resolve();
+        $rootScope.$digest();
+        expect($scope.actionOptions.length).toBe(0);
     });
 
     setupController = function(fabrics, spaces, vlans, subnets) {
@@ -185,11 +206,11 @@ describe("NetworksListController", function() {
     });
 
     it("adding fabric updates lists", function() {
-        var fabrics = [ { id: 0, name: "fabric 0" } ];
-        var spaces = [ { id: 0, name: "space 0" } ];
+        var fabrics = [ { id: 0, name: "fabric-0" } ];
+        var spaces = [ { id: 0, name: "space-0" } ];
         var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: 0 } ];
         var subnets = [
-            { id:0, name:"subnet 0", vlan:1, space:0, cidr:"10.20.0.0/16" }
+            { id:0, name:"subnet-0", vlan:1, space:0, cidr:"10.20.0.0/16" }
         ];
 
         var controller = setupController(fabrics, spaces, vlans, subnets);
@@ -205,9 +226,11 @@ describe("NetworksListController", function() {
         expect($scope.group.spaces.rows.length).toBe(1);
         subnets.push(
             {id:1, name:"subnet 1", vlan: 2, space: 0, cidr:"10.21.0.0/16"});
-        spaces.push({});
+        spaces.push({id: 1, name: "space-1"});
         doUpdates(controller, fabrics, spaces, vlans, subnets);
-        expect($scope.group.spaces.rows.length).toBe(2);
+        // We expect an extra row here for the space which isn't associated
+        // with any subnets.
+        expect($scope.group.spaces.rows.length).toBe(3);
     });
 
     it("adding space updates lists", function() {
@@ -278,4 +301,38 @@ describe("NetworksListController", function() {
         $scope.updateGroupBy();
         expect($scope.group.spaces.rows.length).toBe(2);
     });
+
+    it("each action submit calls create on related manager", function() {
+        // Ensure the user is authorized to access all actions.
+        UsersManager._authUser = {
+            is_superuser: true
+        };
+        var controller = setupController([], [], [], []);
+        angular.forEach($scope.actionOptions, function(option) {
+            $scope.actionOption = option;
+            // Create some bogus data for the submitAction() function.
+            var expectedCall = {};
+            angular.forEach(option.form.items, function(item) {
+                // Mimic what the directive does by populating "name" with
+                // something to be used as a dictionary key, and "current"
+                // with an arbitrary value. The values don't matter since we
+                // mock the call to create.
+                item.name = makeName(item.title);
+                item.current = makeName(item.name);
+                expectedCall[item.name] = item.current;
+            });
+            var defer = $q.defer();
+            spyOn(option.form.manager, "create").and.returnValue(
+                defer.promise);
+            $scope.submitAction(option);
+            expect($scope.requesting).toBe(true);
+            defer.resolve();
+            $scope.$digest();
+            expect(option.form.manager.create).toHaveBeenCalledWith(
+                expectedCall);
+            expect($scope.requesting).toBe(false);
+            expect($scope.actionOption).toBe(null);
+        });
+    });
+
 });

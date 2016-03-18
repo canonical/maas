@@ -11,10 +11,11 @@ describe("VLANsManager", function() {
     beforeEach(module("MAAS"));
 
     // Load the VLANsManager.
-    var VLANsManager, SubnetsManager;
+    var VLANsManager, SubnetsManager, RegionConnection;
     beforeEach(inject(function($injector) {
         VLANsManager = $injector.get("VLANsManager");
         SubnetsManager = $injector.get("SubnetsManager");
+        RegionConnection = $injector.get("RegionConnection");
     }));
 
     // Make a fake subnet.
@@ -52,6 +53,19 @@ describe("VLANsManager", function() {
                 "subnet_ids": subnet_ids
             };
             expect(vlan_subnets).toEqual(VLANsManager.getSubnets(vlan));
+        });
+    });
+
+    describe("create", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(VLANsManager.create(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "vlan.create", obj
+            );
         });
     });
 });

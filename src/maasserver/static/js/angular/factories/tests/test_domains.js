@@ -25,7 +25,7 @@ describe("DomainsManager", function() {
         if(angular.isDefined(id)) {
             domain.id = id;
         } else {
-            domain.id = makeInteger(0, 100);
+            domain.id = makeInteger(1, 100);
         }
         if(angular.isDefined(selected)) {
             domain.$selected = selected;

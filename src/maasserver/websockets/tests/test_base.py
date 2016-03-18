@@ -6,6 +6,7 @@
 __all__ = []
 
 from operator import attrgetter
+import random
 
 from django.db.models.query import QuerySet
 from maasserver.forms import (
@@ -13,6 +14,7 @@ from maasserver.forms import (
     AdminMachineWithMACAddressesForm,
 )
 from maasserver.models.node import Node
+from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -440,6 +442,22 @@ class TestHandler(MAASServerTestCase):
             "description": "",
             }, Equals(json_obj))
         self.expectThat(name, Equals(Zone.objects.get(name=name).name))
+
+    def test_create_without_form_uses_object_id(self):
+        # Uses a VLAN, which only requires a Fabric.
+        handler = make_handler(
+            "TestVLANHandler",
+            queryset=VLAN.objects.all(), fields=['fabric', 'vid'])
+        fabric = factory.make_Fabric()
+        vid = random.randint(1, 4094)
+        json_obj = handler.create({"vid": vid, "fabric": fabric.id})
+        self.expectThat({
+            "vid": vid,
+            "fabric": fabric.id
+            }, Equals(json_obj))
+        vlan = VLAN.objects.get(vid=vid)
+        self.expectThat(vid, Equals(vlan.vid))
+        self.expectThat(fabric, Equals(fabric))
 
     def test_create_with_form_creates_node(self):
         hostname = factory.make_name("hostname")

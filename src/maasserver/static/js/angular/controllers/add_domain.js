@@ -81,39 +81,10 @@ angular.module('MAAS').controller('AddDomainController', [
             $scope.hide();
         };
 
-        // Convert the Python dict error message to displayed message.
-        // We know it's probably a form ValidationError dictionary, so just use
-        // it as such, and recover if that doesn't parse as JSON.
-        $scope.convertPythonDictToErrorMsg = function(pythonError) {
-            var dictionary;
-            try {
-                dictionary = JSON.parse(pythonError);
-            } catch(e) {
-                if (e instanceof SyntaxError) {
-                    return pythonError;
-                } else {
-                    throw e;
-                }
-            }
-            var result = '', msg = '';
-            var key;
-            angular.forEach(dictionary, function(value, key) {
-                elements = dictionary[key];
-                switch(key) {
-                    case 'name':
-                        angular.forEach(elements, function(value) {
-                            result += value + "  ";
-                        });
-                        break;
-                    default:
-                        result += key + "  ";
-                        angular.forEach(elements, function(value) {
-                            result += value + "  ";
-                        });
-                        break;
-                }
-            });
-            return result;
+        // Called when an error message from the Python world needs to be
+        // rendered in the UI.
+        $scope.convertPythonDictToErrorMsg = function(error) {
+            return ManagerHelperService.parseLikelyValidationError(error);
         };
 
         // Called when save is clicked.

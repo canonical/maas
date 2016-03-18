@@ -29,7 +29,7 @@ class SubnetForm(MAASModelForm):
         queryset=VLAN.objects.all(), required=False)
 
     vid = forms.IntegerField(
-        min_value=0, max_value=4095, required=False)
+        min_value=0, max_value=4094, required=False)
 
     space = forms.ModelChoiceField(
         queryset=Space.objects.all(), required=False)

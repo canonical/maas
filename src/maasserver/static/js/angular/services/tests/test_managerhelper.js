@@ -121,4 +121,86 @@ describe("ManagerHelperService", function() {
             $rootScope.$digest();
         });
     });
+
+    describe("tryParsingJSON", function() {
+
+        // Note: we're putting a lot of trust in JSON.parse(), so one simple
+        // test should be enough.
+        it("converts a JSON string into a JSON object", function() {
+            var result = ManagerHelperService.tryParsingJSON(
+                '{ "a": "b" }');
+            expect(result).toEqual({ a: 'b' });
+        });
+
+        it("converts a non-JSON string into a string", function() {
+            var result = ManagerHelperService.tryParsingJSON(
+                'Not a JSON string.');
+            expect(result).toEqual("Not a JSON string.");
+        });
+
+    });
+
+    describe("getPrintableString", function() {
+
+        it("converts a flat dictionary to a printable string", function() {
+            var result = ManagerHelperService.getPrintableString(
+                {
+                    a: 'bc',
+                    d: 1
+                }, true);
+            expect(result).toEqual("a: bc\nd: 1");
+        });
+
+        it("converts a dictionary of lists to a string with labels",
+            function() {
+            var result = ManagerHelperService.getPrintableString(
+                {
+                    a: ['b', 'cd']
+                }, true);
+            expect(result).toEqual("a: b  cd");
+        });
+
+        it("converts a dictionary of lists to a string without labels",
+            function() {
+            var result = ManagerHelperService.getPrintableString(
+                {
+                    a: ['b', 'c']
+                }, false);
+            expect(result).toEqual("b  c");
+        });
+
+        it("converts multiple key dictionary to multi-line string with labels",
+            function() {
+            var result = ManagerHelperService.getPrintableString(
+                {
+                    a: ['b', 'cx'],
+                    d: ['e', 'f']
+                }, true
+            );
+            expect(result).toEqual("a: b  cx\nd: e  f");
+        });
+    });
+
+    describe("parseLikelyValidationError", function() {
+
+        it("returns a flat error for a flat string", function() {
+            var result = ManagerHelperService.parseLikelyValidationError(
+                "This is an error.");
+            expect(result).toEqual("This is an error.");
+        });
+
+        it("returns a formatted error for a JSON string without names",
+            function() {
+            var result = ManagerHelperService.parseLikelyValidationError(
+                '{"This": "is an error on JSON."}', false);
+            expect(result).toEqual("is an error on JSON.");
+        });
+
+        it("returns a formatted error for a JSON string with names",
+            function() {
+            var result = ManagerHelperService.parseLikelyValidationError(
+                '{"This": "is an error on JSON."}', true);
+            expect(result).toEqual("This: is an error on JSON.");
+        });
+    });
 });

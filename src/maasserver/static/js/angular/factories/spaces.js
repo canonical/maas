@@ -43,6 +43,15 @@ angular.module('MAAS').factory(
             return subnets;
         };
 
+        // Create a space.
+        SpacesManager.prototype.create = function(space) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the domain to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("space.create", space);
+        };
+
+
         // Delete the space.
         SpacesManager.prototype.deleteSpace = function(space) {
             return RegionConnection.callMethod("space.delete", space);

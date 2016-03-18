@@ -23,7 +23,7 @@ class TestVLANForm(MAASServerTestCase):
         self.assertEqual({
             "vid": [
                 "This field is required.",
-                "Vid must be between 0 and 4095.",
+                "VID must be between 0 and 4094.",
                 ],
             }, form.errors)
 

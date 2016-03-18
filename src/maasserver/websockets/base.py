@@ -14,6 +14,7 @@ from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.db.models import Model
 from django.http import HttpRequest
 from django.utils.encoding import is_protected_type
 from maasserver import concurrency
@@ -203,6 +204,16 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return data
 
+    def _is_foreign_key_for(self, field_name, obj, value):
+        """Given the specified field name for the specified object, returns
+        True if the specified value is a foreign key; otherwise returns False.
+        """
+        if isinstance(obj, Model):
+            field_type = obj._meta.get_field(field_name).get_internal_type()
+            if field_type == 'ForeignKey' and not isinstance(value, Model):
+                return True
+        return False
+
     def full_hydrate(self, obj, data):
         """Convert the given dictionary to a object."""
         allowed_fields = self._meta.fields
@@ -230,6 +241,11 @@ class Handler(metaclass=HandlerMetaclass):
                 hydrate_method = getattr(self, "hydrate_%s" % field_name, None)
                 if hydrate_method is not None:
                     value = hydrate_method(value)
+                if self._is_foreign_key_for(field_name, obj, value):
+                    # We're trying to populate a foreign key relationship, but
+                    # we don't have a model object. Assume we were given the
+                    # primary key.
+                    field_name += "_id"
                 setattr(obj, field_name, value)
 
         # Return the hydrated object once its done the final hydrate.

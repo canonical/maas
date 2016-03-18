@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Unit tests for Call-To-Action dropdown directive.
@@ -155,6 +155,29 @@ describe("maasCta", function() {
 
         angular.element(links[0]).click();
         expect(directive.isolateScope().secondary).toBe(true);
+    });
+
+    it("dropdown select sets selectedTitle", function() {
+        $scope.items[0].selectedTitle = "Different if Selected";
+        var directive = compileDirective("items", "active");
+        var links = directive.find("li.cta-group__item > a");
+
+        var iscope = directive.isolateScope();
+        expect(iscope.getTitle()).toBe("Take action");
+        angular.element(links[0]).click();
+        expect(iscope.getTitle()).toBe("Different if Selected");
+    });
+
+    it("dropdown select sets other options' selectedTitle", function() {
+        $scope.items[1].selectedTitle = "Different if Selected";
+        var directive = compileDirective("items", "active");
+        var links = directive.find("li.cta-group__item > a");
+
+        var iscope = directive.isolateScope();
+        expect(iscope.getTitle()).toBe("Take action");
+        angular.element(links[0]).click();
+        var linkOneText = angular.element(links[1]).text().trim();
+        expect(linkOneText).toBe("Different if Selected");
     });
 
     it("clicking body will set shown to false", function() {

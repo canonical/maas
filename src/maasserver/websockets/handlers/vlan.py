@@ -40,6 +40,7 @@ class VLANHandler(TimestampedModelHandler):
                 .prefetch_related("subnet_set"))
         pk = 'id'
         allowed_methods = [
+            'create',
             'list',
             'get',
             'set_active',

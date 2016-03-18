@@ -174,10 +174,10 @@ class VLAN(CleanSave, TimestampedModel):
         return "%s.%s" % (self.fabric.get_name(), self.get_name())
 
     def clean_vid(self):
-        if self.vid is None or self.vid < 0 or self.vid > 4095:
+        if self.vid is None or self.vid < 0 or self.vid > 4094:
             raise ValidationError(
                 {'vid':
-                    ["Vid must be between 0 and 4095."]})
+                    ["VID must be between 0 and 4094."]})
 
     def clean_mtu(self):
         # Linux doesn't allow lower than 552 for the MTU.

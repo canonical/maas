@@ -57,4 +57,54 @@ angular.module('MAAS').service('ManagerHelperService', [
             });
             return defer.promise;
         };
+
+        // Tries to parse the specified string as JSON. If parsing fails,
+        // returns the original string. (This is useful since some manager
+        // calls return an error that could be either plain text, or JSON.)
+        this.tryParsingJSON = function(string) {
+            var error;
+            try {
+                error = JSON.parse(string);
+            } catch(e) {
+                if (e instanceof SyntaxError) {
+                    return string;
+                } else {
+                    throw e;
+                }
+            }
+            return error;
+        };
+
+        // Returns a printable version of the specified dictionary (useful
+        // for displaying an error to the user).
+        this.getPrintableString = function(dict, showNames) {
+           var result = '';
+            angular.forEach(dict, function(value, key) {
+                var error = dict[key];
+                if(showNames === true) {
+                    result += key + ": ";
+                }
+                if(angular.isString(error) || angular.isNumber(error)) {
+                    result += error + "  ";
+                } else if(angular.isObject(error)) {
+                    angular.forEach(error, function(error) {
+                        result += error + "  ";
+                    });
+                }
+                result = result.trim() + "\n";
+            });
+            return result.trim();
+        };
+
+        // Convert the Python dict error message to displayed message.
+        // We know it's probably a form ValidationError dictionary, so just use
+        // it as such, and recover if that doesn't parse as JSON.
+        this.parseLikelyValidationError = function(error, showNames) {
+            error = this.tryParsingJSON(error);
+            if(!angular.isObject(error)) {
+                return error;
+            } else {
+                return this.getPrintableString(error, showNames);
+            }
+        };
     }]);

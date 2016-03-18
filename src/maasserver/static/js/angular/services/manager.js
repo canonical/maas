@@ -25,6 +25,8 @@ angular.module('MAAS').service(
             // Primary key on the items in the list. Used to match items.
             this._pk = "id";
 
+            this._name_field = "name";
+
             // Handler on the region to call to list, create, update, delete,
             // and listen for notifications. Must be set by overriding manager.
             this._handler = null;
@@ -689,6 +691,17 @@ angular.module('MAAS').service(
                 self._updateMetadataEntry(
                     self._metadata[attr], newValue, action, oldValue);
             });
+        };
+
+        // Default implementation of getName(): returns the default name for
+        // this object, if it exists.
+        Manager.prototype.getName = function(obj) {
+            if(!angular.isObject(obj)) {
+                return;
+            }
+            if(angular.isString(obj[this._name_field])) {
+                return obj[this._name_field];
+            }
         };
 
         return Manager;

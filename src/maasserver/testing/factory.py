@@ -811,7 +811,7 @@ class Factory(maastesting.factory.Factory):
         """Return a free vid in the given Fabric."""
         taken_vids = set(fabric.vlan_set.all().values_list('vid', flat=True))
         for attempt in range(1000):
-            vid = random.randint(1, 4095)
+            vid = random.randint(1, 4094)
             if vid not in taken_vids:
                 return vid
         raise maastesting.factory.TooManyRandomRetries(

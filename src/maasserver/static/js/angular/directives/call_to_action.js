@@ -1,4 +1,4 @@
-/* Copyright 2015 Canonical Ltd.  This software is licensed under the
+/* Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Call to action directive.
@@ -16,7 +16,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                 '<li class="cta-group__item" ',
                     'data-ng-repeat="select in maasCta">',
                     '<a data-ng-click="selectItem(select)">',
-                        '{$ select.title $}',
+                        '{$ getOptionTitle(select) $}',
                     '</a>',
                 '</li>',
             '</ul>',
@@ -54,11 +54,31 @@ angular.module('MAAS').directive('maasCta', function() {
             // Return the title of the dropdown button.
             scope.getTitle = function() {
                 if(angular.isObject(ngModelCtrl.$modelValue)) {
+                    option = ngModelCtrl.$modelValue;
                     scope.secondary = true;
-                    return ngModelCtrl.$modelValue.title;
+                    // Some designs have the requirement that the title of
+                    // the menu option change if it is selected.
+                    if(angular.isString(option.selectedTitle)) {
+                        return option.selectedTitle;
+                    }
+                    return option.title;
                 } else {
                     scope.secondary = false;
                     return defaultTitle;
+                }
+            };
+
+            // Called to get the title for each option. (Sometimes the title
+            // of an option is different when it is selected.)
+            scope.getOptionTitle = function(option) {
+                if(!scope.secondary) {
+                    return option.title;
+                } else {
+                    if(angular.isString(option.selectedTitle)) {
+                        return option.selectedTitle;
+                    } else {
+                        return option.title;
+                    }
                 }
             };
 

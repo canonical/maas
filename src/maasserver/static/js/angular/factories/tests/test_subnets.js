@@ -11,13 +11,66 @@ describe("SubnetsManager", function() {
     beforeEach(module("MAAS"));
 
     // Load the SubnetsManager.
-    var SubnetsManager;
+    var SubnetsManager, RegionConnection;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
+        RegionConnection = $injector.get("RegionConnection");
     }));
 
     it("set requires attributes", function() {
         expect(SubnetsManager._pk).toBe("id");
         expect(SubnetsManager._handler).toBe("subnet");
+    });
+
+    describe("getName", function() {
+
+        it("returns empty string if no object is passed in", function() {
+            expect(SubnetsManager.getName()).toBe('');
+        });
+
+        it("returns cidr only if name equals cidr", function() {
+            var subnet = {
+                cidr: "169.254.0.0/16",
+                name: "169.254.0.0/16"
+            };
+            expect(SubnetsManager.getName(subnet)).toBe('169.254.0.0/16');
+        });
+
+        it("returns cidr only if name does not exist", function() {
+            var subnet = {
+                cidr: "169.254.0.0/16"
+            };
+            expect(SubnetsManager.getName(subnet)).toBe('169.254.0.0/16');
+        });
+
+        it("returns cidr only if name is an empty string", function() {
+            var subnet = {
+                cidr: "169.254.0.0/16",
+                name: ""
+            };
+            expect(SubnetsManager.getName(subnet)).toBe('169.254.0.0/16');
+        });
+
+        it("returns cidr with parenthetical name if name exists", function() {
+            var subnet = {
+                cidr: "169.254.0.0/16",
+                name: "name"
+            };
+            expect(SubnetsManager.getName(subnet)).toBe(
+                '169.254.0.0/16 (name)');
+        });
+    });
+
+    describe("create", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(SubnetsManager.create(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "subnet.create", obj
+            );
+        });
     });
 });

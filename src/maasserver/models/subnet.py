@@ -377,6 +377,14 @@ class Subnet(CleanSave, TimestampedModel):
             message = "Gateway IP must be within CIDR range."
             raise ValidationError({'gateway_ip': [message]})
 
+    def clean_fields(self, *args, **kwargs):
+        # XXX mpontillo 2016-03-16: this function exists due to bug #1557767.
+        # This workaround exists to prevent potential unintended consequences
+        # of making the name optional.
+        if (self.name is None or self.name == '') and self.cidr is not None:
+            self.name = str(self.cidr)
+        super().clean_fields(*args, **kwargs)
+
     def clean(self, *args, **kwargs):
         self.validate_gateway_ip()
 

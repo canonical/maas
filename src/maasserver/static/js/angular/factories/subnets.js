@@ -67,6 +67,13 @@ angular.module('MAAS').factory(
             return false;
         };
 
+        // Create a subnet.
+        SubnetsManager.prototype.create = function(subnet) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the domain to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("subnet.create", subnet);
+        };
 
         return new SubnetsManager();
     }]);

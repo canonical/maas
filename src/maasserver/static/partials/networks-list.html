@@ -9,58 +9,59 @@
                 </span>
             </span>
         </h1>
-        <!-- XXX mpontillo temporarily hidden -->
-        <div class="page-header__actions ng-hide">
+        <!-- Drop-down box -->
+        <div class="page-header__actions" data-ng-show="actionOptions.length">
             <div class="page-header__cta">
-                <div class="right cta-group">
-                    <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Add</a>
-                    <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
-                        <li class="cta-group__item ng-scope">
-                            <a>Fabric</a>
-                        </li>
-                        <li class="cta-group__item ng-scope">
-                            <a>VLAN</a>
-                        </li>
-                        <li class="cta-group__item ng-scope">
-                            <a>Space</a>
-                        </li>
-                        <li class="cta-group__item ng-scope">
-                            <a>Subnet</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <div class="page-header__cta ng-hide">
-                <!-- Selected state and action for fabrics -->
-                <span class="page-header__cta-feedback">
-                    2 Selected
-                </span>
-                <div class="right cta-group">
-                    <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
-                    <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
-                        <li class="cta-group__item ng-scope">
-                            <a>Merge fabrics</a>
-                        </li>
-                        <li class="cta-group__item ng-scope">
-                            <a>Remove fabrics</a>
-                        </li>
-                    </ul>
+                 <div class="right cta-group">
+                    <div data-maas-cta="actionOptions"
+                         data-default-title="Add"
+                         data-ng-model="actionOption"
+                         data-ng-change="actionOptionChanged()">
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="page-header__dropdown border ng-hide">
-            <!-- Add fabric dropdown -->
-            <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
-                <div class="form__group">
-                    <label for="add-fabric">Add fabric</label>
-                    <input type="text" name="add-fabric" id="add-fabric" placeholder="Fabric name">
-                    <div class="right">
-                        <button class="cta-ubuntu text-button">Cancel</button>
-                        <button class="cta-ubuntu">Add fabric</button>
+        <!-- Forms -->
+        <div data-ng-repeat="option in actionOptions">
+            <div class="ng-hide clearfix border-bottom margin-bottom padding-bottom" data-ng-show="actionOption.name === option.name">
+                <div class="page-header__dropdown border no-padding-bottom">
+                    <form class="twelve-col padding-top--ten no-margin-bottom">
+                        <div class="inline six-col {$ $odd ? 'last-col' : '' $}"
+                             data-maas-model-field="item"
+                             data-maas-label-class="two-col"
+                             data-maas-select-class="three-col {$ $odd ? 'last-col' : '' $}"
+                             data-maas-input-text-class="three-col {$ $odd ? 'last-col' : '' $}"
+                             data-ng-repeat="item in option.form.items"></div>
+                    </form>
+                    <div class="ng-hide" data-ng-show="!option.error">
+                        <div class="right">
+                            <button class="cta-ubuntu text-button"
+                                    data-ng-disabled="requesting"
+                                    data-ng-click="cancelAction(option)">Cancel</button>
+                            <button class="cta-ubuntu"
+                                    data-ng-disabled="requesting"
+                                    data-ng-click="submitAction(option)">
+                                {$ option.form.submit ? option.form.submit : "Go" $}
+                            </button>
+                        </div>
                     </div>
+                    <div class="ng-hide" data-ng-show="option.error">
+                        <p class="page-header__feedback-message info" style="white-space: pre-wrap;">{$ option.error $}</p>
+                        <div class="right">
+                            <button class="cta-ubuntu text-button"
+                                    data-ng-disabled="requesting"
+                                    data-ng-click="cancelAction(option)">Cancel</button>
+                            <button class="cta-ubuntu"
+                                    data-ng-disabled="requesting"
+                                    data-ng-click="submitAction(option)">Retry</button>
+                        </div>
+                    </div>
+
                 </div>
-            </form>
-            <!-- Merge fabric dropdown -->
+           </div>
+        </div>
+        <!--
+        <div class="page-header__dropdown border ng-hide" data-ng-if="actionOption.name === 'merge_fabrics'">
             <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
                 <div class="form__group">
                     <label for="merge-fabric">Merge selected fabrics into</label>
@@ -76,6 +77,7 @@
                 </div>
             </form>
         </div>
+        -->
     </div>
 </header>
 <section class="row no-padding-top">
