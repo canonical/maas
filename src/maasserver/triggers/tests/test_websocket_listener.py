@@ -6,6 +6,7 @@
 
 __all__ = []
 
+from contextlib import contextmanager
 import random
 from unittest import skip
 
@@ -22,11 +23,62 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.tests.helper import TransactionalHelpersMixin
 from maasserver.triggers.websocket import register_websocket_triggers
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.utils.twisted import DeferredValue
-from twisted.internet.defer import inlineCallbacks
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    DeferredValue,
+    deferWithTimeout,
+    FOREVER,
+    synchronous,
+)
+from twisted.internet.defer import (
+    DeferredQueue,
+    inlineCallbacks,
+)
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
+@synchronous
+@contextmanager
+def listenFor(channel):
+    """Context manager to start and stop a listener service.
+
+    The context object returned is a callable that returns a captured value.
+    If you want to capture more than one value, call the callable more than
+    once.
+
+    Note that database changes MUST be committed for the listener to receive
+    notifications. If you find that the returned callable times-out, consider
+    if you've committed all changes to the database!
+
+    A convenient way to deal with this is `MAASTransactionServerTestCase`
+    which will mean you're running auto-commit by default.
+    """
+    listener = PostgresListenerService()
+    values = DeferredQueue()
+
+    def capture(*args):
+        values.put(args)
+
+    @asynchronous(timeout=10)
+    def start():
+        listener.register(channel, capture)
+        return listener.startService()
+
+    @asynchronous(timeout=10)
+    def stop():
+        return listener.stopService()
+
+    @asynchronous(timeout=FOREVER)
+    def get(timeout=2):
+        return deferWithTimeout(timeout, values.get)
+
+    start()
+    try:
+        yield get
+    finally:
+        stop()
 
 
 class TestNodeListener(
@@ -1978,72 +2030,79 @@ class TestMachineFilesystemListener(
     scenarios = (
         ('machine', {
             'params': {'node_type': NODE_TYPE.MACHINE},
-            'listener': 'machine',
+            'channel': 'machine',
             }),
     )
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
-        node = yield deferToDatabase(self.create_node, self.params)
-        partition = yield deferToDatabase(
-            self.create_partition, {"node": node})
+    def setUp(self):
+        super(TestMachineFilesystemListener, self).setUp()
+        register_websocket_triggers()
 
-        listener = PostgresListenerService()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.create_filesystem, {"partition": partition})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % node.system_id), dv.value)
-        finally:
-            yield listener.stopService()
+    def test__calls_handler_with_update_on_create_fs_on_partition(self):
+        node = factory.make_Node(**self.params)
+        partition = factory.make_Partition(node=node)
+        with listenFor(self.channel) as get:
+            factory.make_Filesystem(partition=partition)
+            self.assertEqual(('update', '%s' % node.system_id), get())
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
-        node = yield deferToDatabase(self.create_node, self.params)
-        partition = yield deferToDatabase(
-            self.create_partition, {"node": node})
-        filesystem = yield deferToDatabase(
-            self.create_filesystem, {"partition": partition})
+    def test__calls_handler_with_update_on_create_fs_on_block_device(self):
+        node = factory.make_Node(**self.params)
+        block_device = factory.make_BlockDevice(node=node)
+        with listenFor(self.channel) as get:
+            factory.make_Filesystem(block_device=block_device)
+            self.assertEqual(('update', '%s' % node.system_id), get())
 
-        listener = PostgresListenerService()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_filesystem, filesystem.id)
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % node.system_id), dv.value)
-        finally:
-            yield listener.stopService()
+    def test__calls_handler_with_update_on_create_special_fs(self):
+        node = factory.make_Node(**self.params)
+        with listenFor(self.channel) as get:
+            factory.make_Filesystem(node=node)
+            self.assertEqual(('update', '%s' % node.system_id), get())
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test__calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
-        node = yield deferToDatabase(self.create_node, self.params)
-        partition = yield deferToDatabase(
-            self.create_partition, {"node": node})
-        filesystem = yield deferToDatabase(
-            self.create_filesystem, {"partition": partition})
+    def test__calls_handler_with_update_on_delete_fs_on_partition(self):
+        node = factory.make_Node(**self.params)
+        partition = factory.make_Partition(node=node)
+        filesystem = factory.make_Filesystem(partition=partition)
+        with listenFor(self.channel) as get:
+            filesystem.delete()
+            self.assertEqual(('update', '%s' % node.system_id), get())
 
-        listener = PostgresListenerService()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            # No changes to apply, but trigger a save nonetheless.
-            yield deferToDatabase(self.update_filesystem, filesystem.id, {})
-            yield dv.get(timeout=2)
-            self.assertEqual(('update', '%s' % node.system_id), dv.value)
-        finally:
-            yield listener.stopService()
+    def test__calls_handler_with_update_on_delete_fs_on_block_device(self):
+        node = factory.make_Node(**self.params)
+        block_device = factory.make_BlockDevice(node=node)
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        with listenFor(self.channel) as get:
+            filesystem.delete()
+            self.assertEqual(('update', '%s' % node.system_id), get())
+
+    def test__calls_handler_with_update_on_delete_special_fs(self):
+        node = factory.make_Node(**self.params)
+        filesystem = factory.make_Filesystem(node=node)
+        with listenFor(self.channel) as get:
+            filesystem.delete()
+            self.assertEqual(('update', '%s' % node.system_id), get())
+
+    def test__calls_handler_with_update_on_update_fs_on_partition(self):
+        node = factory.make_Node(**self.params)
+        partition = factory.make_Partition(node=node)
+        filesystem = factory.make_Filesystem(partition=partition)
+        with listenFor(self.channel) as get:
+            filesystem.save()  # A no-op update is enough.
+            self.assertEqual(('update', '%s' % node.system_id), get())
+
+    def test__calls_handler_with_update_on_update_fs_on_block_device(self):
+        node = factory.make_Node(**self.params)
+        block_device = factory.make_BlockDevice(node=node)
+        filesystem = factory.make_Filesystem(block_device=block_device)
+        with listenFor(self.channel) as get:
+            filesystem.save()  # A no-op update is enough.
+            self.assertEqual(('update', '%s' % node.system_id), get())
+
+    def test__calls_handler_with_update_on_update_special_fs(self):
+        node = factory.make_Node(**self.params)
+        filesystem = factory.make_Filesystem(node=node)
+        with listenFor(self.channel) as get:
+            filesystem.save()  # A no-op update is enough.
+            self.assertEqual(('update', '%s' % node.system_id), get())
 
 
 class TestMachineFilesystemgroupListener(

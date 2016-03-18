@@ -308,9 +308,14 @@ FILESYSTEM_NODE_NOTIFY = dedent("""\
            AND maasserver_partitiontable.id =
                maasserver_partition.partition_table_id
            AND maasserver_partition.id = {2};
+      ELSIF {3} IS NOT NULL
+      THEN
+        SELECT system_id, node_type INTO node
+          FROM maasserver_node
+         WHERE maasserver_node.id = {3};
       END IF;
 
-      IF node.node_type = {3:d} THEN
+      IF node.node_type = {4:d} THEN
           PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
 
@@ -1291,15 +1296,15 @@ def register_websocket_triggers():
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_link_notify', 'NEW.block_device_id',
-            'NEW.partition_id', NODE_TYPE.MACHINE))
+            'NEW.partition_id', 'NEW.node_id', NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_update_notify', 'NEW.block_device_id',
-            'NEW.partition_id', NODE_TYPE.MACHINE))
+            'NEW.partition_id', 'NEW.node_id', NODE_TYPE.MACHINE))
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
             'nd_filesystem_unlink_notify', 'OLD.block_device_id',
-            'OLD.partition_id', NODE_TYPE.MACHINE))
+            'OLD.partition_id', 'OLD.node_id', NODE_TYPE.MACHINE))
     register_trigger(
         "maasserver_filesystem",
         "nd_filesystem_link_notify", "insert")
