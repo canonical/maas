@@ -21,7 +21,7 @@ from django.db import transaction
 from django.template.response import SimpleTemplateResponse
 from maasserver.utils.orm import (
     gen_retry_intervals,
-    is_serialization_failure,
+    is_retryable_failure,
     post_commit_hooks,
 )
 from piston3.authentication import initialize_server_request
@@ -126,7 +126,7 @@ class WebApplicationHandler(WSGIHandler):
     :ivar __retry_timeout: The number of seconds after which this request will
         no longer be considered for a retry.
     :ivar __retry: A weak set containing responses that have been generated as
-        a result of a serialization failure.
+        a result of a retryable failure.
     """
 
     def __init__(self, attempts=10, timeout=90.0):
@@ -139,15 +139,15 @@ class WebApplicationHandler(WSGIHandler):
     def handle_uncaught_exception(self, request, resolver, exc_info):
         """Override `BaseHandler.handle_uncaught_exception`.
 
-        If a serialization failure is detected, a retry is requested. It's up
+        If a retryable failure is detected, a retry is requested. It's up
         to ``get_response`` to actually do the retry.
         """
         upcall = super(WebApplicationHandler, self).handle_uncaught_exception
         response = upcall(request, resolver, exc_info)
         # Add it to the retry set if this response was caused by a
-        # serialization failure.
+        # retryable failure.
         exc_type, exc_value, exc_traceback = exc_info
-        if is_serialization_failure(exc_value):
+        if is_retryable_failure(exc_value):
             self.__retry.add(response)
         else:
             # Log the error to the regiond.log.
@@ -155,7 +155,7 @@ class WebApplicationHandler(WSGIHandler):
                 exc_value=exc_value, exc_type=exc_type, exc_tb=exc_traceback)
             log.err(failure, _why="500 Error - %s" % request.path)
         # Return the response regardless. This means that we'll get Django's
-        # error page when there's a persistent serialization failure.
+        # error page when there's a persistent retryable failure.
         return response
 
     def make_view_atomic(self, view):
@@ -193,7 +193,7 @@ class WebApplicationHandler(WSGIHandler):
 
         def get_response(request):
             # Up-call to Django's get_response() in a transaction. This
-            # transaction may fail because of a serialization conflict, so
+            # transaction may fail because of a retryable conflict, so
             # pass errors to handle_uncaught_exception().
             try:
                 with post_commit_hooks:

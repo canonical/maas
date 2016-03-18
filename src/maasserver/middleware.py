@@ -46,7 +46,7 @@ from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
 from maasserver.models.node import RackController
 from maasserver.rpc import getAllClients
-from maasserver.utils.orm import is_serialization_failure
+from maasserver.utils.orm import is_retryable_failure
 from maasserver.views.combo import MERGE_VIEWS
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -184,8 +184,8 @@ class ExceptionMiddleware(metaclass=ABCMeta):
             # Not a path we're handling exceptions for.
             return None
 
-        if is_serialization_failure(exception):
-            # We never handle serialization failures.
+        if is_retryable_failure(exception):
+            # We never handle retryable failures.
             return None
 
         encoding = 'utf-8'

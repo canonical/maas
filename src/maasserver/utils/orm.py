@@ -13,13 +13,16 @@ __all__ = [
     'get_first',
     'get_one',
     'in_transaction',
+    'is_deadlock_failure',
+    'is_retryable_failure',
     'is_serialization_failure',
+    'make_deadlock_failure',
     'make_serialization_failure',
     'post_commit',
     'post_commit_do',
     'psql_array',
     'request_transaction_retry',
-    'retry_on_serialization_failure',
+    'retry_on_retryable_failure',
     'savepoint',
     'TotallyDisconnected',
     'transactional',
@@ -66,7 +69,10 @@ from provisioningserver.utils.backoff import (
 from provisioningserver.utils.network import parse_integer
 from provisioningserver.utils.twisted import callOut
 import psycopg2
-from psycopg2.errorcodes import SERIALIZATION_FAILURE
+from psycopg2.errorcodes import (
+    DEADLOCK_DETECTED,
+    SERIALIZATION_FAILURE,
+)
 from twisted.internet.defer import Deferred
 
 
@@ -211,6 +217,62 @@ def make_serialization_failure():
     return exception
 
 
+class DeadlockFailure(psycopg2.OperationalError):
+    """Explicit deadlock failure.
+
+    A real deadlock failure, arising out of psycopg2 (and thus signalled
+    from the database) would *NOT* be an instance of this class. However, it
+    is not obvious how to create a `psycopg2.OperationalError` with ``pgcode``
+    set to `DEADLOCK_DETECTED` without subclassing. I suspect only the C
+    interface can do that.
+    """
+    pgcode = DEADLOCK_DETECTED
+
+
+def make_deadlock_failure():
+    """Make a deadlock exception.
+
+    Artificially construct an exception that resembles what Django's ORM would
+    raise when PostgreSQL fails a transaction because of a deadlock
+    failure.
+
+    :returns: an instance of :py:class:`OperationalError` that will pass the
+        `is_deadlock_failure` predicate.
+    """
+    exception = OperationalError()
+    exception.__cause__ = DeadlockFailure()
+    assert is_deadlock_failure(exception)
+    return exception
+
+
+def get_psycopg2_deadlock_exception(exception):
+    """Return the root-cause if `exception` is a deadlock failure.
+
+    PostgreSQL sets a specific error code, "40P01", when a transaction breaks
+    because of a deadlock failure.
+
+    :return: The underlying `psycopg2.Error` if it's a deadlock failure,
+    or `None` if there isn't one.
+    """
+    exception = get_psycopg2_exception(exception)
+    if exception is None:
+        return None
+    elif exception.pgcode == DEADLOCK_DETECTED:
+        return exception
+    else:
+        return None
+
+
+def is_deadlock_failure(exception):
+    """Does `exception` represent a deadlock failure?
+
+    PostgreSQL sets a specific error code, "40P01", when a transaction breaks
+    because of a deadlock failure. This is normally about the right time
+    to try again.
+    """
+    return get_psycopg2_deadlock_exception(exception) is not None
+
+
 def request_transaction_retry():
     """Raise a serialization exception.
 
@@ -221,6 +283,12 @@ def request_transaction_retry():
     :raises OperationalError:
     """
     raise make_serialization_failure()
+
+
+def is_retryable_failure(exception):
+    """Does `exception` represent a serialization or deadlock failure?"""
+    return (
+        is_serialization_failure(exception) or is_deadlock_failure(exception))
 
 
 def gen_retry_intervals(base=0.01, rate=2.5, maximum=10.0):
@@ -248,11 +316,11 @@ def noop():
     """Do nothing."""
 
 
-def retry_on_serialization_failure(func, reset=noop):
-    """Retry the wrapped function when it raises a serialization failure.
+def retry_on_retryable_failure(func, reset=noop):
+    """Retry the wrapped function when it raises a retryable failure.
 
     It will call `func` a maximum of ten times, and will only retry if a
-    serialization failure is detected.
+    retryable failure is detected.
 
     BE CAREFUL WHERE YOU USE THIS.
 
@@ -263,8 +331,8 @@ def retry_on_serialization_failure(func, reset=noop):
 
     :param reset: An optional callable that will be called between attempts.
         It is *not* called before the first attempt. If the last attempt fails
-        with a serialization failure it will *not* be called. If an attempt
-        fails with a non-serialization failure, it will *not* be called.
+        with a retryable failure it will *not* be called. If an attempt
+        fails with a non-retryable failure, it will *not* be called.
 
     """
     @wraps(func)
@@ -274,7 +342,7 @@ def retry_on_serialization_failure(func, reset=noop):
             try:
                 return func(*args, **kwargs)
             except OperationalError as error:
-                if is_serialization_failure(error):
+                if is_retryable_failure(error):
                     reset()  # Which may do nothing.
                     sleep(next(intervals))
                 else:
@@ -417,10 +485,10 @@ def transactional(func):
     happy, especially in the test suite.
 
     In addition, if `func` is being invoked from outside of a transaction,
-    this will retry if it fails with a serialization failure.
+    this will retry if it fails with a retryable failure.
     """
     func_within_txn = transaction.atomic(func)  # For savepoints.
-    func_outside_txn = retry_on_serialization_failure(
+    func_outside_txn = retry_on_retryable_failure(
         func_within_txn, reset=post_commit_hooks.reset)
 
     @wraps(func)

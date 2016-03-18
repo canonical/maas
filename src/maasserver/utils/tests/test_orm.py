@@ -37,9 +37,12 @@ from maasserver.utils.orm import (
     get_first,
     get_model_object_name,
     get_one,
+    get_psycopg2_deadlock_exception,
     get_psycopg2_exception,
     get_psycopg2_serialization_exception,
     in_transaction,
+    is_deadlock_failure,
+    is_retryable_failure,
     is_serialization_failure,
     make_serialization_failure,
     post_commit,
@@ -47,7 +50,7 @@ from maasserver.utils.orm import (
     post_commit_hooks,
     psql_array,
     request_transaction_retry,
-    retry_on_serialization_failure,
+    retry_on_retryable_failure,
     savepoint,
     TotallyDisconnected,
     validate_in_transaction,
@@ -74,7 +77,10 @@ from provisioningserver.utils.twisted import (
     DeferredValue,
 )
 import psycopg2
-from psycopg2.errorcodes import SERIALIZATION_FAILURE
+from psycopg2.errorcodes import (
+    DEADLOCK_DETECTED,
+    SERIALIZATION_FAILURE,
+)
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -226,9 +232,14 @@ class TestGetPsycopg2Exception(MAASTestCase):
         exception = factory.make_exception()
         self.assertIsNone(get_psycopg2_serialization_exception(exception))
 
-    def test__returns_psycopg2_error_root_cause(self):
+    def test__returns_psycopg2_error_root_cause_for_serialization(self):
         exception = Exception()
         exception.__cause__ = orm.SerializationFailure()
+        self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
+
+    def test__returns_psycopg2_error_root_cause_for_deadlock(self):
+        exception = Exception()
+        exception.__cause__ = orm.DeadlockFailure()
         self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
 
 
@@ -249,6 +260,25 @@ class TestGetPsycopg2SerializationException(MAASTestCase):
         self.assertIs(
             exception.__cause__,
             get_psycopg2_serialization_exception(exception))
+
+
+class TestGetPsycopg2DeadlockException(MAASTestCase):
+    """Tests for `get_psycopg2_deadlock_exception`."""
+
+    def test__returns_None_for_plain_psycopg2_error(self):
+        exception = psycopg2.Error()
+        self.assertIsNone(get_psycopg2_deadlock_exception(exception))
+
+    def test__returns_None_for_other_error(self):
+        exception = factory.make_exception()
+        self.assertIsNone(get_psycopg2_deadlock_exception(exception))
+
+    def test__returns_psycopg2_error_root_cause(self):
+        exception = Exception()
+        exception.__cause__ = orm.DeadlockFailure()
+        self.assertIs(
+            exception.__cause__,
+            get_psycopg2_deadlock_exception(exception))
 
 
 class TestIsSerializationFailure(SerializationFailureTestCase):
@@ -281,7 +311,75 @@ class TestIsSerializationFailure(SerializationFailureTestCase):
         self.assertFalse(is_serialization_failure(error))
 
 
-class TestRetryOnSerializationFailure(SerializationFailureTestCase):
+class TestIsDeadlockFailure(MAASTestCase):
+    """Tests relating to MAAS's use of catching deadlock failures."""
+
+    def test_detects_operational_error_with_matching_cause(self):
+        error = orm.make_deadlock_failure()
+        self.assertTrue(is_deadlock_failure(error))
+
+    def test_rejects_operational_error_without_matching_cause(self):
+        error = OperationalError()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = factory.make_name("pgcode")
+        self.assertFalse(is_deadlock_failure(error))
+
+    def test_rejects_operational_error_with_unrelated_cause(self):
+        error = OperationalError()
+        error.__cause__ = Exception()
+        self.assertFalse(is_deadlock_failure(error))
+
+    def test_rejects_operational_error_without_cause(self):
+        error = OperationalError()
+        self.assertFalse(is_deadlock_failure(error))
+
+    def test_rejects_non_operational_error_with_matching_cause(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = DEADLOCK_DETECTED
+        self.assertFalse(is_deadlock_failure(error))
+
+
+class TestIsRetryableFailure(MAASTestCase):
+    """Tests relating to MAAS's use of catching retryable failures."""
+
+    def test_detects_serialization_failure(self):
+        error = orm.make_serialization_failure()
+        self.assertTrue(is_retryable_failure(error))
+
+    def test_detects_deadlock_failure(self):
+        error = orm.make_deadlock_failure()
+        self.assertTrue(is_retryable_failure(error))
+
+    def test_rejects_operational_error_without_matching_cause(self):
+        error = OperationalError()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = factory.make_name("pgcode")
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_operational_error_with_unrelated_cause(self):
+        error = OperationalError()
+        error.__cause__ = Exception()
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_operational_error_without_cause(self):
+        error = OperationalError()
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_non_operational_error_with_cause_serialization(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = SERIALIZATION_FAILURE
+        self.assertFalse(is_retryable_failure(error))
+
+    def test_rejects_non_operational_error_with_cause_deadlock(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__", Exception())
+        cause.pgcode = DEADLOCK_DETECTED
+        self.assertFalse(is_retryable_failure(error))
+
+
+class TestRetryOnRetryableFailure(SerializationFailureTestCase):
 
     def make_mock_function(self):
         function_name = factory.make_name("function")
@@ -291,7 +389,7 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
     def test_retries_on_serialization_failure(self):
         function = self.make_mock_function()
         function.side_effect = self.cause_serialization_failure
-        function_wrapped = retry_on_serialization_failure(function)
+        function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(OperationalError, function_wrapped)
         expected_calls = [call()] * 10
         self.assertThat(function, MockCallsMatch(*expected_calls))
@@ -301,13 +399,28 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
             OperationalError, self.cause_serialization_failure)
         function = self.make_mock_function()
         function.side_effect = [serialization_error, sentinel.result]
-        function_wrapped = retry_on_serialization_failure(function)
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertEqual(sentinel.result, function_wrapped())
+        self.assertThat(function, MockCallsMatch(call(), call()))
+
+    def test_retries_on_deadlock_failure(self):
+        function = self.make_mock_function()
+        function.side_effect = orm.make_deadlock_failure()
+        function_wrapped = retry_on_retryable_failure(function)
+        self.assertRaises(OperationalError, function_wrapped)
+        expected_calls = [call()] * 10
+        self.assertThat(function, MockCallsMatch(*expected_calls))
+
+    def test_retries_on_deadlock_failure_until_successful(self):
+        function = self.make_mock_function()
+        function.side_effect = [orm.make_deadlock_failure(), sentinel.result]
+        function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
         self.assertThat(function, MockCallsMatch(call(), call()))
 
     def test_passes_args_to_wrapped_function(self):
         function = lambda a, b: (a, b)
-        function_wrapped = retry_on_serialization_failure(function)
+        function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(
             (sentinel.a, sentinel.b),
             function_wrapped(sentinel.a, b=sentinel.b))
@@ -316,7 +429,7 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
         reset = Mock()
         function = self.make_mock_function()
         function.side_effect = self.cause_serialization_failure
-        function_wrapped = retry_on_serialization_failure(function, reset)
+        function_wrapped = retry_on_retryable_failure(function, reset)
         self.assertRaises(OperationalError, function_wrapped)
         expected_function_calls = [call()] * 10
         self.expectThat(function, MockCallsMatch(*expected_function_calls))
@@ -328,7 +441,7 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
         reset = Mock()
         function = self.make_mock_function()
         function.return_value = sentinel.all_is_okay
-        function_wrapped = retry_on_serialization_failure(function, reset)
+        function_wrapped = retry_on_retryable_failure(function, reset)
         function_wrapped()
         self.assertThat(reset, MockNotCalled())
 

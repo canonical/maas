@@ -32,6 +32,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils import views
 from maasserver.utils.orm import (
+    make_deadlock_failure,
     post_commit_hooks,
     validate_in_transaction,
 )
@@ -283,10 +284,40 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertThat(
             response, IsInstance(HttpResponseConflict))
 
+    def test__get_response_catches_deadlock_failures(self):
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = make_deadlock_failure()
+
+        handler = views.WebApplicationHandler(1)
+        request = make_request()
+        request.path = factory.make_name("path")
+        response = handler.get_response(request)
+
+        self.assertThat(
+            get_response, MockCalledOnceWith(request))
+        self.assertThat(
+            response, IsInstance(HttpResponseConflict))
+
     def test__get_response_sends_signal_on_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = (
             lambda request: self.cause_serialization_failure())
+
+        send_request_exception = self.patch_autospec(
+            signals.got_request_exception, "send")
+
+        handler = views.WebApplicationHandler(1)
+        request = make_request()
+        request.path = factory.make_name("path")
+        handler.get_response(request)
+
+        self.assertThat(
+            send_request_exception, MockCalledOnceWith(
+                sender=views.WebApplicationHandler, request=request))
+
+    def test__get_response_sends_signal_on_deadlock_failures(self):
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = make_deadlock_failure()
 
         send_request_exception = self.patch_autospec(
             signals.got_request_exception, "send")

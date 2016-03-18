@@ -42,7 +42,10 @@ from maasserver.middleware import (
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import make_serialization_failure
+from maasserver.utils.orm import (
+    make_deadlock_failure,
+    make_serialization_failure,
+)
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from mock import Mock
@@ -95,6 +98,13 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         middleware = self.make_middleware(base_path)
         request = factory.make_fake_request(base_path)
         exception = make_serialization_failure()
+        self.assertIsNone(middleware.process_exception(request, exception))
+
+    def test_ignores_deadlock_failures(self):
+        base_path = self.make_base_path()
+        middleware = self.make_middleware(base_path)
+        request = factory.make_fake_request(base_path)
+        exception = make_deadlock_failure()
         self.assertIsNone(middleware.process_exception(request, exception))
 
     def test_unknown_exception_generates_internal_server_error(self):
