@@ -31,6 +31,7 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import (
+    ClusterUnavailable,
     MAASAPIBadRequest,
     MAASAPIValidationError,
 )
@@ -55,8 +56,10 @@ def store_node_power_parameters(node, request):
     if power_type is None:
         return
 
-    # TODO: Pass controller list to restrict to node-available power_types.
-    power_types = get_power_types(None)
+    power_types = get_power_types(ignore_errors=True)
+    if len(power_types) == 0:
+        raise ClusterUnavailable(
+            "No rack controllers connected to validate the power_type.")
 
     if power_type in power_types or power_type == UNKNOWN_POWER_TYPE:
         node.power_type = power_type

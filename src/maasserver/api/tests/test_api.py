@@ -10,9 +10,15 @@ import json
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.api import machines as machines_module
+from maasserver.api import (
+    machines as machines_module,
+    nodes as nodes_module,
+)
 from maasserver.api.nodes import store_node_power_parameters
-from maasserver.exceptions import MAASAPIBadRequest
+from maasserver.exceptions import (
+    ClusterUnavailable,
+    MAASAPIBadRequest,
+)
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
 from maasserver.models import (
     Config,
@@ -29,6 +35,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
+from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
 from testtools.matchers import (
     Contains,
@@ -73,6 +80,21 @@ class TestStoreNodeParameters(MAASServerTestCase):
         self.node = factory.make_Node()
         self.save = self.patch(self.node, "save")
         self.request = Mock()
+
+    def test_no_connected_rack_controllers(self):
+        # When get_power_types returns empty dictionary.
+        mock_get_power_types = self.patch(nodes_module, "get_power_types")
+        mock_get_power_types.return_value = {}
+        power_type = factory.pick_power_type()
+        self.request.POST = {"power_type": power_type}
+        error = self.assertRaises(
+            ClusterUnavailable, store_node_power_parameters,
+            self.node, self.request)
+        self.assertEquals(
+            "No rack controllers connected to validate the power_type.",
+            str(error))
+        self.assertThat(
+            mock_get_power_types, MockCalledOnceWith(ignore_errors=True))
 
     def test_power_type_not_given(self):
         # When power_type is not specified, nothing happens.
