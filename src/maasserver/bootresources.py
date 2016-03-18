@@ -42,6 +42,7 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE,
     COMPONENT,
 )
@@ -570,6 +571,11 @@ class BootResourceStore(ObjectStore):
         :type product: dict
         :param reader: File-like object.
         """
+        # Skip filetypes that we don't care about. We don't even import them.
+        if product['ftype'] not in dict(
+                BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
+            return
+
         resource = self.get_or_create_boot_resource(product)
         is_resource_initially_complete = (
             resource.get_latest_complete_set() is not None)

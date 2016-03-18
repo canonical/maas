@@ -10,7 +10,6 @@ import random
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
-    INSTALL_SET,
     XINSTALL_TYPES,
 )
 from maasserver.testing.factory import factory
@@ -42,20 +41,6 @@ class TestBootResourceSet(MAASServerTestCase):
         self.make_all_boot_resource_files(resource_set, types)
         self.assertFalse(resource_set.commissionable)
 
-    def test_installable_returns_true_when_all_filetypes_present(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        self.make_all_boot_resource_files(resource_set, INSTALL_SET)
-        self.assertTrue(resource_set.installable)
-
-    def test_installable_returns_false_when_missing_filetypes(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        types = INSTALL_SET.copy()
-        types.pop()
-        self.make_all_boot_resource_files(resource_set, types)
-        self.assertFalse(resource_set.installable)
-
     def test_xinstallable_returns_true_when_filetype_present(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
@@ -67,7 +52,7 @@ class TestBootResourceSet(MAASServerTestCase):
     def test_xinstallable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
-        filetype = random.choice(list(INSTALL_SET))
+        filetype = random.choice(list(COMMISSIONABLE_SET))
         factory.make_boot_resource_file_with_content(
             resource_set, filename=filetype, filetype=filetype)
         self.assertFalse(resource_set.xinstallable)

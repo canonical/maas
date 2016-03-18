@@ -24,13 +24,6 @@ COMMISSIONABLE_SET = {
     BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
     }
 
-# `BootResourceSet` must contain all file types to be consider as supporting
-# the ability to install. 'install' being the 'Debian Installer'.
-INSTALL_SET = {
-    BOOT_RESOURCE_FILE_TYPE.DI_KERNEL,
-    BOOT_RESOURCE_FILE_TYPE.DI_INITRD,
-    }
-
 # `BootResourceSet` must contain at least one of the file types to be consider
 # as supporting the ability to xinstall. 'xinstall' being the
 # fastpath-installer.
@@ -84,13 +77,6 @@ class BootResourceSet(CleanSave, TimestampedModel):
         node."""
         types = {resource_file.filetype for resource_file in self.files.all()}
         return COMMISSIONABLE_SET.issubset(types)
-
-    @property
-    def installable(self):
-        """True if `BootResourceSet` supports the ability to install to a
-        node."""
-        types = {resource_file.filetype for resource_file in self.files.all()}
-        return INSTALL_SET.issubset(types)
 
     @property
     def xinstallable(self):

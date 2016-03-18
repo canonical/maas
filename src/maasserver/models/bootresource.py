@@ -111,7 +111,7 @@ class BootResourceManager(Manager):
             resource_set = resource.get_latest_set()
             if (resource_set is not None and
                     resource_set.commissionable and
-                    resource_set.installable):
+                    resource_set.xinstallable):
                 if 'hwe-' not in resource.architecture:
                     arches.add(resource.architecture)
                 if 'subarches' in resource.extra:
@@ -229,7 +229,7 @@ class BootResourceManager(Manager):
             resource_set = resource.get_latest_set()
             if(resource_set is None or
                not resource_set.commissionable or
-               not resource_set.installable):
+               not resource_set.xinstallable):
                 continue
             subarch = resource.split_arch()[1]
             if subarch.startswith("hwe-"):

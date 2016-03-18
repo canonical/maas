@@ -91,7 +91,6 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC
 from maasserver.models.bootresourceset import (
     COMMISSIONABLE_SET,
-    INSTALL_SET,
     XINSTALL_TYPES,
 )
 from maasserver.models.interface import (
@@ -1302,7 +1301,7 @@ class Factory(maastesting.factory.Factory):
             kflavor=kflavor)
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
-        filetypes = COMMISSIONABLE_SET.union(INSTALL_SET)
+        filetypes = set(COMMISSIONABLE_SET)
         filetypes.add(random.choice(XINSTALL_TYPES))
         for filetype in filetypes:
             # We set the filename to the same value as filetype, as in most
