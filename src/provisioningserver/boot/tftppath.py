@@ -238,6 +238,16 @@ def list_boot_images(tftproot):
         paths = drill_down(tftproot, paths)
 
     # Get hold of image meta-data stored in the maas.meta file.
+    metadata = get_image_metadata(tftproot)
+
+    # Each path we find this way should be a boot image.
+    # This gets serialised to JSON, so we really have to return a list, not
+    # just any iterable.
+    return list(chain.from_iterable(
+        extract_image_params(path, metadata) for path in paths))
+
+
+def get_image_metadata(tftproot):
     meta_file_path = maas_meta_file_path(tftproot)
     try:
         with open(meta_file_path, "r", encoding="utf-8") as f:
@@ -250,8 +260,4 @@ def list_boot_images(tftproot):
         # it.
         metadata = ""
 
-    # Each path we find this way should be a boot image.
-    # This gets serialised to JSON, so we really have to return a list, not
-    # just any iterable.
-    return list(chain.from_iterable(
-        extract_image_params(path, metadata) for path in paths))
+    return metadata
