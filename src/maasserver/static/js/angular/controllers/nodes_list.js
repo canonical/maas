@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$routeParams', 'MachinesManager',
+    '$scope', '$rootScope', '$routeParams', '$location', 'MachinesManager',
     'DevicesManager', 'ControllersManager', 'GeneralManager',
     'ManagerHelperService', 'SearchService', 'ZonesManager', 'UsersManager',
-    function($scope, $rootScope, $routeParams, MachinesManager,
+    function($scope, $rootScope, $routeParams, $location, MachinesManager,
         DevicesManager, ControllersManager, GeneralManager,
         ManagerHelperService, SearchService, ZonesManager, UsersManager) {
 
@@ -287,6 +287,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.toggleTab = function(tab) {
             $rootScope.title = $scope.tabs[tab].pagetitle;
             $scope.currentpage = tab;
+            $location.search('tab', tab);
         };
 
         // Clear the search bar.

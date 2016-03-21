@@ -25,10 +25,11 @@ describe("NodesListController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $scope, $q, $routeParams;
+    var $controller, $rootScope, $scope, $q, $routeParams, $location;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
+        $location = $injector.get("$location");
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
         $routeParams = {};
@@ -85,6 +86,7 @@ describe("NodesListController", function() {
             $scope: $scope,
             $rootScope: $rootScope,
             $routeParams: $routeParams,
+            $location: $location,
             MachinesManager: MachinesManager,
             DevicesManager: DevicesManager,
             ControllersManager: ControllersManager,
@@ -258,6 +260,13 @@ describe("NodesListController", function() {
             expect($scope.currentpage).toBe('devices');
             $scope.toggleTab('nodes');
             expect($scope.currentpage).toBe('nodes');
+        });
+
+        it("calls $location search", function() {
+            var controller = makeController();
+            spyOn($location, "search");
+            $scope.toggleTab('nodes');
+            expect($location.search).toHaveBeenCalledWith('tab', 'nodes');
         });
     });
 
