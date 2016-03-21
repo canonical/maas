@@ -433,10 +433,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'status_name',
                 'status_message',
                 'status_action',
-                # XXX: GavinPanella 2016-03-09 bug=1555022:
-                # special_filesystems SHOULD be amongst the fields rendered,
-                # but is not, and neither Lee nor I could figure out why.
-                # 'special_filesystems',
+                'special_filesystems',
             ],
             list(parsed_result))
 

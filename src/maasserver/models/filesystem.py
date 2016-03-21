@@ -100,7 +100,8 @@ class Filesystem(CleanSave, TimestampedModel):
         BlockDevice, unique=False, null=True, blank=True)
 
     node = ForeignKey(
-        "Node", unique=False, null=True, blank=True)
+        "Node", unique=False, null=True, blank=True,
+        related_name="special_filesystems")
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?

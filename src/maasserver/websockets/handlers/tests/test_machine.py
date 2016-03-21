@@ -175,6 +175,10 @@ class TestMachineHandler(MAASServerTestCase):
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,
             "storage_layout_issues": node.storage_layout_issues(),
+            "special_filesystems": [
+                handler.dehydrate_filesystem(filesystem)
+                for filesystem in node.special_filesystems.order_by("id")
+            ],
             "supported_filesystems": [
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES],
@@ -828,6 +832,23 @@ class TestMachineHandler(MAASServerTestCase):
             self.dehydrate_node(node, handler, include_summary=True),
             handler.get({"system_id": node.system_id}))
 
+    def test_get_includes_special_filesystems(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {})
+        machine = factory.make_Node(owner=owner)
+        filesystems = [
+            factory.make_Filesystem(node=machine),
+            factory.make_Filesystem(node=machine),
+        ]
+        self.assertThat(
+            handler.get({"system_id": machine.system_id}),
+            ContainsDict({
+                "special_filesystems": Equals([
+                    handler.dehydrate_filesystem(filesystem)
+                    for filesystem in filesystems
+                ]),
+            }))
+
     def test_list(self):
         user = factory.make_User()
         handler = MachineHandler(user, {})
@@ -863,7 +884,7 @@ class TestMachineHandler(MAASServerTestCase):
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
         self.assertEqual(
-            query_10_count, 9,
+            query_10_count, 10,
             "Number of queries has changed; make sure this is expected.")
         self.assertEqual(
             query_10_count, query_20_count,

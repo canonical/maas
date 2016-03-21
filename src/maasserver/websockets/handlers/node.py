@@ -7,6 +7,7 @@ __all__ = [
     "NodeHandler",
 ]
 
+from itertools import chain
 import logging
 from operator import itemgetter
 
@@ -45,13 +46,14 @@ def node_prefetch(queryset):
     return (
         queryset
         .select_related('boot_interface', 'owner', 'zone', 'domain')
-        .prefetch_related(
-            'interface_set__ip_addresses__subnet__vlan__fabric')
-        .prefetch_related('interface_set__ip_addresses__subnet__space')
-        .prefetch_related('interface_set__vlan__fabric')
-        .prefetch_related('tags')
         .prefetch_related('blockdevice_set__physicalblockdevice')
-        .prefetch_related('blockdevice_set__virtualblockdevice'))
+        .prefetch_related('blockdevice_set__virtualblockdevice')
+        .prefetch_related('interface_set__ip_addresses__subnet__space')
+        .prefetch_related('interface_set__ip_addresses__subnet__vlan__fabric')
+        .prefetch_related('interface_set__vlan__fabric')
+        .prefetch_related('special_filesystems')
+        .prefetch_related('tags')
+    )
 
 
 class NodeHandler(TimestampedModelHandler):
@@ -151,23 +153,23 @@ class NodeHandler(TimestampedModelHandler):
             data["on_network"] = obj.on_network()
 
             # Storage
-            data["disks"] = [
-                self.dehydrate_blockdevice(blockdevice, obj)
-                for blockdevice in blockdevices
-            ]
-            data["disks"] = data["disks"] + [
-                self.dehydrate_volume_group(volume_group)
-                for volume_group in VolumeGroup.objects.filter_by_node(obj)
-            ] + [
-                self.dehydrate_cache_set(cache_set)
-                for cache_set in CacheSet.objects.get_cache_sets_for_node(obj)
-            ]
-            data["disks"] = sorted(data["disks"], key=itemgetter("name"))
+            data["disks"] = sorted(chain(
+                (self.dehydrate_blockdevice(blockdevice, obj)
+                 for blockdevice in blockdevices),
+                (self.dehydrate_volume_group(volume_group) for volume_group
+                 in VolumeGroup.objects.filter_by_node(obj)),
+                (self.dehydrate_cache_set(cache_set) for cache_set
+                 in CacheSet.objects.get_cache_sets_for_node(obj)),
+            ), key=itemgetter("name"))
             data["supported_filesystems"] = [
                 {'key': key, 'ui': ui}
                 for key, ui in FILESYSTEM_FORMAT_TYPE_CHOICES
             ]
             data["storage_layout_issues"] = obj.storage_layout_issues()
+            data["special_filesystems"] = [
+                self.dehydrate_filesystem(filesystem)
+                for filesystem in obj.special_filesystems.order_by("id")
+            ]
 
             # Events
             data["events"] = self.dehydrate_events(obj)

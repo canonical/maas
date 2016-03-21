@@ -92,6 +92,7 @@ class PostgresListenerService(Service, object):
         self.connectionFileno = None
         self.notifications = set()
         self.notifier = task.LoopingCall(self.handleNotifies)
+        self.notifierDone = None
         self.connecting = None
         self.disconnecting = None
         self.registeredChannels = False
@@ -387,14 +388,13 @@ class PostgresListenerService(Service, object):
     def runHandleNotify(self, delay=0, clock=reactor):
         """Defer later the `handleNotify`."""
         if not self.notifier.running:
-            self.notifier.start(delay, now=False)
+            self.notifierDone = self.notifier.start(delay, now=False)
 
     def cancelHandleNotify(self):
         """Cancel the deferred `handleNotify` call."""
         if self.notifier.running:
-            done = self.notifier.deferred
             self.notifier.stop()
-            return done
+            return self.notifierDone
         else:
             return succeed(None)
 
