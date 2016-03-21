@@ -3,6 +3,140 @@ Changelog
 =========
 
 
+2.0.0 (alpha3)
+==============
+
+Important Announcements
+-----------------------
+
+**Debian Installer Files are no longer installed**
+  Following the full drop of support for the Debian Installer (DI) in
+  1.9, MAAS no longer downloads the DI related files from simplestreams
+  and on upgrade all DI related files will be removed both from the
+  region and all rack controllers.
+
+Major new features
+------------------
+
+**Networks WebUI**
+  MAAS 2.0.0 alpha 3 is introducing a few new Web UI features that were
+  not available in MAAS 1.9 or MAAS 1.10.
+
+   * Add Fabric and Space details pages
+     MAAS 2.0.0 now displays more detailed information of the Fabric and
+     Space, by introducing the details page for each.
+
+   * Add ability to add/remove (create/delete) new Fabrics, Spaces, Subnets and VLANs
+     MAAS 2.0.0 now provides the ability to add new Fabrics, Spaces, Subnets and VLANs.
+     This can be done as actions under the Networks listing page.
+
+     The ability to delete such Fabrics, Spaces, Subnets and VLANs is also available,
+     however, this is only possible for the non-default components and from the
+     component’s details page.
+
+**WebUI for new storage features**
+  MAAS 2.0.0 alpha 3 provides the ability to add mount options via the WebUI.
+  MAAS 2.0.0 alpha 3 also provides the ability to create new swap partitions
+  via the WebUI. As a reminder, previous MAAS releases would automatically
+  create a swap file, but starting from MAAS 2.0, users will have the
+  ability to create a swap partition instead, if so desired.
+
+Minor new features
+------------------
+
+**Ability to change a machine’s domain name from the UI**
+  MAAS 2.0.0 alpha 3 introduces the ability to change a machine’s DNS domain
+  via the WebUI. It was previously supported on the API only.
+
+**Rack Controller details page now shows served VLANs**
+  The Rack Controller details page now shows what VLANs are being served on
+  this Rack Controller, and whether it is the primary or secondary Rack
+  providing services for such VLAN.
+
+**Added `maas-rack support-dump` command**
+  For increased support observability, users can now dump the contents of
+  several commonly-needed data structures by executing `sudo maas-rack support-dump`.
+  This command will dump networking diagnostics, rack configuration, and image
+  information. Information can be restricted to a particular category by using
+  the `--networking`, `--config`, or `--images` options.
+
+Known issues and work arounds
+-----------------------------
+
+**Rack Controller tries to constantly reconnect**
+  In some situations, the MAAS Rack Controller will try to constantly re-connect
+  to the region controller after a restart, causing the Rack Controller to be
+  unavailable for a period of time.
+
+  At the moment, there's no work around other than to wait for a few minutes
+  until the Rack Controller has been fully connected.
+
+  See bug `1559330`_ for more information.
+
+.. _1559330:
+  http://launchpad.net/bugs/1559330
+
+Major bugs fixed in this release
+--------------------------------
+
+LP: #1555393    python3-maas-client API 2.0 seems to no longer use op but MAASClient.post requires it and incorectly passes it along
+
+LP: #1554566    Fail to commission when Fabric on Machine Interface and Rack Interface dont match
+
+LP: #1553848    TFTP back-end crashes
+
+LP: #1554999    Can't deploy a node (no interfaces on rack controller)
+
+
+2.0.0 (alpha2)
+==============
+
+Important Announcements
+-----------------------
+
+**maas-region-admin command has been replaced**
+  The MAAS Region command, `maas-region-admin` has now been replaced
+  by the `maas-region` command.
+
+**maas-provision command has been replaced**
+  The MAAS Rack Controller command, `maas-provision`, has now been
+  replaced by the `maas-rack` command.
+
+Major new features
+------------------
+
+**Networks listing page**
+  A new Networks listing page has been introduced, that allows users
+  users to have a better view of MAAS networking concepts under the
+  'Networks' tab. It allows users to filter by `Fabric` and `Space`.
+
+**Service Tracking**
+  MAAS is now fully tracking the status of the services for the different
+  services that MAAS uses, as defined by systemd. These services are:
+
+   * maas-proxy
+   * bind
+   * maas-dhcpd and maas-dhcpd6
+   * tgt
+
+Known issues & work arounds
+---------------------------
+
+**Failure to commission when Machine interfaces are not in the same fabric as DHCP**
+  Machines fail to commission when its interfaces are in a different fabric from the
+  one DHCP is running on.
+
+  For example, if DHCP is enabled on `fabric-2`, and the machine's PXE interface is on
+  `fabric-0`, the machine will fail to commission. To work around this, you can update
+  the Rack Controller interface connected to `fabric-2`, to be under `fabric-0`, and
+  enabling DHCP on the `untagged` VLAN under `fabric-0`.
+
+  See bug `1553617`_ for more information.
+
+.. _1554566:
+  https://launchpad.net/bugs/1554566
+
+
 2.0.0 (alpha1)
 ==============
 
@@ -187,6 +321,7 @@ Major new features
      * commission - Begin commissioning process for a machine
 
   Other endpoints/commands have changed:
+
   * All list commands/operations have been converted to read
   * All new and add commands/operations have been converted to create
   * Nodes - The nodes endpoint/command is now a base endpoint/command
