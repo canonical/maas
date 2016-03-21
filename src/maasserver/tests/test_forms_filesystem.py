@@ -13,10 +13,12 @@ from maasserver.enum import (
 from maasserver.forms_filesystem import (
     MountFilesystemForm,
     MountNonStorageFilesystemForm,
+    UnmountNonStorageFilesystemForm,
 )
 from maasserver.models import Filesystem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from testtools.matchers import (
     Equals,
     Is,
@@ -200,3 +202,67 @@ class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
         self.assertThat(filesystem, MatchesStructure.byEquality(
             node=node, fstype=self.fstype, mount_point=mount_point,
             mount_options=mount_options, is_mounted=True))
+
+
+class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
+
+    def test_requires_mount_point(self):
+        node = factory.make_Node()
+        form = UnmountNonStorageFilesystemForm(node, data={})
+        self.assertFalse(form.is_valid())
+        self.assertThat(form.errors, Equals({
+            'mount_point': ['This field is required.'],
+        }))
+
+    def test_will_not_unmount_filesystem_on_partition(self):
+        node = factory.make_Node()
+        partition = factory.make_Partition(node=node)
+        filesystem = factory.make_Filesystem(
+            mount_point=factory.make_absolute_path(),
+            partition=partition)
+        form = UnmountNonStorageFilesystemForm(
+            node, data={"mount_point": filesystem.mount_point})
+        self.assertFalse(form.is_valid())
+        self.assertThat(form.errors, Equals({
+            'mount_point': [
+                "No special filesystem is "
+                "mounted at this path.",
+            ],
+        }))
+
+    def test_will_not_unmount_filesystem_on_block_device(self):
+        node = factory.make_Node()
+        block_device = factory.make_BlockDevice(node=node)
+        filesystem = factory.make_Filesystem(
+            mount_point=factory.make_absolute_path(),
+            block_device=block_device)
+        form = UnmountNonStorageFilesystemForm(
+            node, data={"mount_point": filesystem.mount_point})
+        self.assertFalse(form.is_valid())
+        self.assertThat(form.errors, Equals({
+            'mount_point': [
+                "No special filesystem is "
+                "mounted at this path.",
+            ],
+        }))
+
+
+class TestUnmountNonStorageFilesystemFormScenarios(MAASServerTestCase):
+
+    scenarios = [
+        (displayname, {"fstype": name})
+        for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
+        if name not in Filesystem.TYPES_REQUIRING_STORAGE
+    ]
+
+    def test_unmounts_filesystem_with_mount_point(self):
+        node = factory.make_Node()
+        mount_point = factory.make_absolute_path()
+        mount_options = factory.make_name("options")
+        filesystem = factory.make_Filesystem(
+            node=node, mount_point=mount_point, mount_options=mount_options)
+        form = UnmountNonStorageFilesystemForm(
+            node, data={"mount_point": mount_point})
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.assertThat(reload_object(filesystem), Is(None))

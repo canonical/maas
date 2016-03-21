@@ -107,7 +107,8 @@ class UnmountNonStorageFilesystemForm(Form):
                     node=self.node, mount_point=cleaned_data["mount_point"])
             except Filesystem.DoesNotExist:
                 self.add_error(
-                    "mount_point", "No filesystem is mounted at this path.")
+                    "mount_point", "No special filesystem is "
+                    "mounted at this path.")
         return cleaned_data
 
     @typed
