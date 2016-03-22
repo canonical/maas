@@ -1,21 +1,29 @@
-# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+#!/usr/bin/env python3
+# -*- mode: python -*-
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Write DHCP action notification to the `dhcpd.sock`."""
+"""Utility script used by maas-dhcpd and maas-dhcpd6.
 
-__all__ = [
-    "add_arguments",
-    "run",
-    ]
+`notify` is called by maas-dhcpd and maas-dhcpd6 with the on execute command
+from isc-dhcp-server when a lease is committed, released, or expired. Sends
+a JSON encoded message over the `dhcpd.sock` to the running rackd process.
+
+`clean` is called by maas-dhcpd and maas-dhcpd6 when either service starts
+to remove any host entries from the passed leases file. This is used to make
+sure that when maas-dhcpd and maas-dhcpd6 start that only the host entries
+from the dhcpd.conf or dhcpd6.conf are used.
+"""
 
 import argparse
 from contextlib import closing
 import json
+import re
 import socket
 import time
 
 
-def add_arguments(parser):
+def notify_add_arguments(parser):
     """Initialise options for sending DHCP notification over the dhcpd.sock.
 
     :param parser: An instance of :class:`ArgumentParser`.
@@ -44,7 +52,7 @@ def add_arguments(parser):
         default="/var/lib/maas/dhcpd.sock", help=argparse.SUPPRESS)
 
 
-def run(args):
+def notify(args):
     """Write DHCP action notification to the `dhcpd.sock`."""
     notify_packet = {
         "action": args.action,
@@ -71,3 +79,50 @@ def run(args):
     conn.connect(args.socket)
     with closing(conn):
         conn.send(payload.encode("utf-8"))
+
+
+def clean_add_arguments(parser):
+    """Initialise options for cleaning the dhcpd.leases file.
+
+    :param parser: An instance of :class:`ArgumentParser`.
+    """
+    parser.add_argument(
+        "leases_file", action="store",
+        help=("Leases file to remove host entries from."))
+
+
+def clean(args):
+    """Remove all host entries from leases file."""
+    with open(args.leases_file, "r", encoding="utf-8") as fp:
+        content = fp.read()
+    cleaned_content = re.sub("host [^{]+{[^}]+}\n", "", content)
+    with open(args.leases_file, "w", encoding="utf-8") as fp:
+        fp.write(cleaned_content)
+
+
+def main():
+    """Main entry point for the script."""
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(title="command")
+    subparsers.required = True
+    subparsers.dest = "command"
+
+    # Notify.
+    notify_parser = subparsers.add_parser(
+        "notify", help="Write DHCP action notification to the `dhcpd.sock`.")
+    notify_parser.set_defaults(handler=notify)
+    notify_add_arguments(notify_parser)
+
+    # Clean.
+    clean_parser = subparsers.add_parser(
+        "clean", help="Remove all host entries from leases file.")
+    clean_parser.set_defaults(handler=clean)
+    clean_add_arguments(clean_parser)
+
+    # Run the parser and the command.
+    args = parser.parse_args()
+    args.handler(args)
+
+
+if __name__ == "__main__":
+    main()

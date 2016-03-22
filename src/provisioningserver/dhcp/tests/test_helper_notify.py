@@ -1,7 +1,7 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for maas-rack dhcp-notify command."""
+"""Tests for maas-dhcp-support notify command."""
 
 __all__ = []
 
@@ -67,8 +67,8 @@ class TestDHCPNotify(PservTestCase):
         self.addCleanup(service.stopService)
 
         call_and_check([
-            "%s/bin/maas-rack" % root,
-            "dhcp-notify",
+            "%s/scripts/maas-dhcp-helper" % root,
+            "notify",
             '--action', action,
             '--mac', mac,
             '--ip-family', ip_family,
