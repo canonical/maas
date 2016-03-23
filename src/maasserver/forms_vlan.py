@@ -9,10 +9,8 @@ __all__ = [
 
 from django import forms
 from django.core.exceptions import ValidationError
-from maasserver.forms import (
-    MAASModelForm,
-    NodeChoiceField,
-)
+from maasserver.fields import NodeChoiceField
+from maasserver.forms import MAASModelForm
 from maasserver.models import RackController
 from maasserver.models.vlan import VLAN
 

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """URL API routing configuration."""
@@ -52,6 +52,10 @@ from maasserver.api.commissioning_scripts import (
 from maasserver.api.devices import (
     DeviceHandler,
     DevicesHandler,
+)
+from maasserver.api.dhcpsnippets import (
+    DHCPSnippetHandler,
+    DHCPSnippetsHandler,
 )
 from maasserver.api.dnsresourcerecords import (
     DNSResourceRecordHandler,
@@ -188,6 +192,10 @@ rackcontrollers_handler = RestrictedResource(
     RackControllersHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
+dhcp_snippet_handler = RestrictedResource(
+    DHCPSnippetHandler, authentication=api_auth)
+dhcp_snippets_handler = RestrictedResource(
+    DHCPSnippetsHandler, authentication=api_auth)
 dnsresourcerecord_handler = RestrictedResource(
     DNSResourceRecordHandler, authentication=api_auth)
 dnsresourcerecords_handler = RestrictedResource(
@@ -448,6 +456,12 @@ urlpatterns += patterns(
         r'^boot-resources/(?P<id>[^/]+)/upload/(?P<file_id>[^/]+)/$',
         boot_resource_file_upload_handler,
         name='boot_resource_file_upload_handler'),
+    url(
+        r'^dhcp-snippets/$',
+        dhcp_snippets_handler, name='dhcp_snippets_handler'),
+    url(
+        r'^dhcp-snippets/(?P<dhcp_snippet_id>[^/]+)/$',
+        dhcp_snippet_handler, name='dhcp_snippet_handler'),
 )
 
 

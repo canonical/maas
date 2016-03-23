@@ -5,13 +5,10 @@
 
 __all__ = []
 
-from django.core.exceptions import ValidationError
 from maasserver.forms import (
     AdminNodeForm,
-    NodeChoiceField,
     NodeForm,
 )
-from maasserver.models import Node
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -168,37 +165,3 @@ class TestAdminNodeForm(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(node.hostname, hostname)
         self.assertEqual(node.zone, zone)
-
-
-class TestNodeChoiceField(MAASServerTestCase):
-    def test_allows_selecting_by_system_id(self):
-        node = factory.make_Node()
-        for _ in range(3):
-            factory.make_Node()
-        node_field = NodeChoiceField(Node.objects.filter())
-        self.assertEqual(node, node_field.clean(node.system_id))
-
-    def test_allows_selecting_by_hostname(self):
-        node = factory.make_Node()
-        for _ in range(3):
-            factory.make_Node()
-        node_field = NodeChoiceField(Node.objects.filter())
-        self.assertEqual(node, node_field.clean(node.hostname))
-
-    def test_raises_exception_when_not_found(self):
-        for _ in range(3):
-            factory.make_Node()
-        node_field = NodeChoiceField(Node.objects.filter())
-        self.assertRaises(
-            ValidationError, node_field.clean, factory.make_name('query'))
-
-    def test_works_with_multiple_entries_in_queryset(self):
-        # Regression test for lp:1551399
-        vlan = factory.make_VLAN()
-        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
-        factory.make_Interface(node=node, vlan=vlan)
-        qs = Node.objects.filter_by_vids([vlan.vid])
-        node_field = NodeChoiceField(qs)
-        # Double check that we have duplicated entires
-        self.assertEqual(2, len(qs.filter(system_id=node.system_id)))
-        self.assertEqual(node, node_field.clean(node.system_id))

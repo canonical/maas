@@ -6,8 +6,11 @@
 __all__ = []
 
 
+import random
+
 from django.core.exceptions import ValidationError
 from maasserver.models.versionedtextfile import VersionedTextFile
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools import ExpectedException
 from testtools.matchers import (
@@ -78,3 +81,115 @@ class VersionedTextFileTest(MAASServerTestCase):
         self.assertThat(VersionedTextFile.objects.count(), Equals(5))
         textfile3.get_oldest_version().delete()
         self.assertThat(VersionedTextFile.objects.count(), Equals(0))
+
+    def test_previous_versions(self):
+        textfile = VersionedTextFile(data=factory.make_string())
+        textfile.save()
+        textfiles = [textfile]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfiles.append(textfile)
+        for f in textfile.previous_versions():
+            self.assertTrue(f in textfiles)
+
+    def test_revert_zero_does_nothing(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        self.assertEquals(textfile, textfile.revert(0))
+        self.assertItemsEqual(
+            textfile_ids, [f.id for f in textfile.previous_versions()])
+
+    def test_revert_by_negative_with_garbage_collection(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        revert_to = random.randint(-10, -1)
+        reverted_ids = textfile_ids[revert_to:]
+        remaining_ids = textfile_ids[:revert_to]
+        self.assertEquals(
+            textfile_ids[revert_to - 1], textfile.revert(revert_to).id)
+        for i in reverted_ids:
+            self.assertRaises(
+                VersionedTextFile.DoesNotExist,
+                VersionedTextFile.objects.get, id=i)
+        for i in remaining_ids:
+            self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+
+    def test_revert_by_negative_without_garbage_collection(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        revert_to = random.randint(-10, -1)
+        self.assertEquals(
+            textfile_ids[revert_to - 1], textfile.revert(revert_to, False).id)
+        for i in textfile_ids:
+            self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+
+    def test_revert_by_negative_raises_value_error_when_too_far_back(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        self.assertRaises(ValueError, textfile.revert, -11)
+
+    def test_revert_by_id_with_garbage_collection(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        revert_to = random.choice(textfile_ids)
+        reverted_ids = []
+        remaining_ids = []
+        reverted_or_remaining = remaining_ids
+        for i in textfile_ids:
+            reverted_or_remaining.append(i)
+            if i == revert_to:
+                reverted_or_remaining = reverted_ids
+        self.assertEquals(
+            VersionedTextFile.objects.get(id=revert_to),
+            textfile.revert(revert_to))
+        for i in reverted_ids:
+            self.assertRaises(
+                VersionedTextFile.DoesNotExist,
+                VersionedTextFile.objects.get, id=i)
+        for i in remaining_ids:
+            self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+
+    def test_revert_by_id_without_garbage_collection(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        revert_to = random.choice(textfile_ids)
+        self.assertEquals(
+            VersionedTextFile.objects.get(id=revert_to),
+            textfile.revert(revert_to, False))
+        for i in textfile_ids:
+            self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+
+    def test_revert_by_id_raises_value_error_when_id_not_in_history(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        other_textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        other_textfile.save()
+        self.assertRaises(ValueError, textfile.revert, other_textfile.id)

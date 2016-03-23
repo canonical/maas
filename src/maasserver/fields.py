@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Custom model and form fields."""
@@ -12,6 +12,7 @@ __all__ = [
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
+    "NodeChoiceField",
     "register_mac_type",
     "VerboseRegexValidator",
     ]
@@ -33,10 +34,12 @@ from django.db.models import (
     Field,
     GenericIPAddressField,
     IntegerField,
+    Q,
     SubfieldBase,
 )
 from django.db.models.fields.subclassing import Creator
 from django.utils.encoding import force_text
+from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.dns import validate_domain_name
 from maasserver.utils.orm import (
     get_one,
@@ -615,3 +618,46 @@ class DomainNameField(CharField):
         value = super(DomainNameField, self).to_python(value)
         value = value.strip().rstrip('.')
         return value
+
+
+class NodeChoiceField(forms.ModelChoiceField):
+
+    def __init__(self, queryset, *args, **kwargs):
+        super().__init__(queryset=queryset.distinct(), *args, **kwargs)
+
+    def clean(self, value):
+        if not value:
+            return None
+        # Avoid circular imports
+        from maasserver.models.node import Node
+        try:
+            return self.queryset.get(Q(system_id=value) | Q(hostname=value))
+        except Node.DoesNotExist:
+            raise ValidationError(
+                "Select a valid choice. "
+                "%s is not one of the available choices." % value)
+
+
+class VersionedTextFileField(forms.ModelChoiceField):
+
+    def __init__(self, initial, *args, **kwargs):
+        # Set the queryset to none since clean() always creates a new
+        # VersionedTextFile. Explictly require initial as without it we
+        # always create a new VersionedTextFile instead of linking against
+        # the previous version.
+        super().__init__(initial=initial, queryset=None, *args, **kwargs)
+
+    def clean(self, value):
+        if self.initial is None:
+            # Create a new VersionedTextFile if one doesn't exist
+            return VersionedTextFile.objects.create(data=value)
+        elif self.initial == value:
+            # DHCPSnippetForm has to create a VersionedTextFile object before
+            # it creates a new DHCPSnippet as a requirement. The value is set
+            # to the newly created VersionedTextFile so we can safely ignore
+            # it.
+            return self.initial
+        else:
+            # Create and return a new VersionedTextFile linked to the previous
+            # VersionedTextFile
+            return self.initial.update(value)

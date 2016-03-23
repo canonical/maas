@@ -66,3 +66,49 @@ class VersionedTextFile(CleanSave, TimestampedModel):
         while oldest_known.previous_version is not None:
             oldest_known = oldest_known.previous_version
         return oldest_known
+
+    def revert(self, to, gc=True):
+        """Return a VersionTextFile object in this objects history.
+
+        The returned object is specified by the VersionTextFile id or a
+        negative number with how far back to go. By default newer objects
+        then the one returned will be removed.
+        """
+        if to == 0:
+            return self
+        elif to < 0:
+            history = [textfile for textfile in self.previous_versions()]
+            to = -to
+            if to >= len(history):
+                raise ValueError("Goes too far back.")
+            if gc:
+                history[to - 1].delete()
+            return history[to]
+        else:
+            next_textfile = None
+            for textfile in self.previous_versions():
+                if textfile.id == to:
+                    if next_textfile is not None and gc:
+                        next_textfile.delete()
+                    return textfile
+                next_textfile = textfile
+            raise ValueError("%s not found in history" % to)
+
+    def previous_versions(self):
+        """Return an iterator of this object and all previous versions."""
+        class VersionedTextFileIterator():
+            def __init__(self, textfile):
+                self.textfile = textfile
+
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                textfile = self.textfile
+                if textfile is None:
+                    raise StopIteration
+                else:
+                    self.textfile = self.textfile.previous_version
+                    return textfile
+
+        return VersionedTextFileIterator(self)

@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom model fields."""
@@ -23,12 +23,18 @@ from maasserver.fields import (
     LargeObjectField,
     LargeObjectFile,
     MAC,
+    NodeChoiceField,
     register_mac_type,
     validate_mac,
     VerboseRegexField,
     VerboseRegexValidator,
+    VersionedTextFileField,
 )
-from maasserver.models import Interface
+from maasserver.models import (
+    Interface,
+    Node,
+    VersionedTextFile,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
@@ -545,3 +551,61 @@ class IPListFormFieldTest(MAASServerTestCase):
     def test_separators_dont_conflict_with_ipv6_address(self):
         self.assertIsNone(re.search(
             IPListFormField.separators, factory.make_ipv6_address()))
+
+
+class TestNodeChoiceField(MAASServerTestCase):
+
+    def test_allows_selecting_by_system_id(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Node()
+        node_field = NodeChoiceField(Node.objects.filter())
+        self.assertEqual(node, node_field.clean(node.system_id))
+
+    def test_allows_selecting_by_hostname(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_Node()
+        node_field = NodeChoiceField(Node.objects.filter())
+        self.assertEqual(node, node_field.clean(node.hostname))
+
+    def test_raises_exception_when_not_found(self):
+        for _ in range(3):
+            factory.make_Node()
+        node_field = NodeChoiceField(Node.objects.filter())
+        self.assertRaises(
+            ValidationError, node_field.clean, factory.make_name('query'))
+
+    def test_works_with_multiple_entries_in_queryset(self):
+        # Regression test for lp:1551399
+        vlan = factory.make_VLAN()
+        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
+        factory.make_Interface(node=node, vlan=vlan)
+        qs = Node.objects.filter_by_vids([vlan.vid])
+        node_field = NodeChoiceField(qs)
+        # Double check that we have duplicated entires
+        self.assertEqual(2, len(qs.filter(system_id=node.system_id)))
+        self.assertEqual(node, node_field.clean(node.system_id))
+
+
+class TestVersionedTextFileField(MAASServerTestCase):
+
+    def test_creates_new(self):
+        data = factory.make_string()
+        versioned_text_file_field = VersionedTextFileField(initial=None)
+        versioned_text_file = versioned_text_file_field.clean(data)
+        self.assertEquals(data, versioned_text_file.data)
+        self.assertIsNone(versioned_text_file.previous_version)
+
+    def test_ignores_self(self):
+        data = VersionedTextFile.objects.create(data=factory.make_string())
+        versioned_text_file_field = VersionedTextFileField(initial=data)
+        self.assertEquals(data, versioned_text_file_field.clean(data))
+
+    def test_creates_new_link(self):
+        old_ver = VersionedTextFile.objects.create(data=factory.make_string())
+        versioned_text_file_field = VersionedTextFileField(initial=old_ver)
+        data = factory.make_string()
+        new_ver = versioned_text_file_field.clean(data)
+        self.assertEquals(data, new_ver.data)
+        self.assertEquals(old_ver, new_ver.previous_version)
