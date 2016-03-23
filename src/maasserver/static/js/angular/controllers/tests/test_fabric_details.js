@@ -174,17 +174,51 @@ describe("FabricDetailsController", function() {
         expect($rootScope.title).toBe(fabric.name);
     });
 
-    it("confirms delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        expect($scope.confirmingDelete).toBe(true);
+    describe("canBeDeleted", function() {
+
+        it("returns false if fabric is null", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.fabric = null;
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns false if fabric is default fabric", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.fabric.id = 0;
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns true if fabric is not default fabric", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.fabric.id = 1;
+            expect($scope.canBeDeleted()).toBe(true);
+        });
     });
 
-    it("can cancel delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        $scope.cancelDeleteButton();
-        expect($scope.confirmingDelete).toBe(false);
+    describe("deleteButton", function() {
+
+        it("confirms delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            expect($scope.confirmingDelete).toBe(true);
+        });
+
+        it("clears error", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.error = makeName("error");
+            $scope.deleteButton();
+            expect($scope.error).toBeNull();
+        });
+    });
+
+    describe("cancelDeleteButton", function() {
+
+        it("cancels delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            $scope.cancelDeleteButton();
+            expect($scope.confirmingDelete).toBe(false);
+        });
     });
 
     describe("deleteFabric", function() {

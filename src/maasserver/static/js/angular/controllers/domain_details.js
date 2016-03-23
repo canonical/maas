@@ -56,8 +56,17 @@ angular.module('MAAS').controller('DomainDetailsController', [
             return $scope.domain.id === 0;
         };
 
+        // Called to check if the space can be deleted.
+        $scope.canBeDeleted = function() {
+            if(angular.isObject($scope.domain)) {
+                return $scope.domain.rrsets.length === 0;
+            }
+            return false;
+        };
+
         // Called when the delete domain button is pressed.
         $scope.deleteButton = function() {
+            $scope.error = null;
             $scope.confirmingDelete = true;
         };
 

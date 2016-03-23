@@ -199,5 +199,8 @@ class DNSResourceRecordHandler(OperationsHandler):
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             dnsresourcerecord_id, request.user, NODE_PERMISSION.ADMIN)
+        dnsrr = dnsdata.dnsresource
         dnsdata.delete()
+        if dnsrr.dnsdata_set.count() == 0 and dnsrr.ip_addresses.count() == 0:
+            dnsrr.delete()
         return rc.DELETED

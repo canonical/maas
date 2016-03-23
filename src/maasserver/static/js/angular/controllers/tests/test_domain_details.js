@@ -165,17 +165,51 @@ describe("DomainDetailsController", function() {
         expect($rootScope.title).toBe("Default domain " + domain.name);
     });
 
-    it("confirms delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        expect($scope.confirmingDelete).toBe(true);
+    describe("canBeDeleted", function() {
+
+        it("returns false if domain is null", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.domain = null;
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns false if domain has resources", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.domain.rrsets = [makeInteger()];
+            expect($scope.canBeDeleted()).toBe(false);
+        });
+
+        it("returns true if domain has no resources", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.domain.rrsets = [];
+            expect($scope.canBeDeleted()).toBe(true);
+        });
     });
 
-    it("can cancel delete", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        $scope.deleteButton();
-        $scope.cancelDeleteButton();
-        expect($scope.confirmingDelete).toBe(false);
+    describe("deleteButton", function() {
+
+        it("confirms delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            expect($scope.confirmingDelete).toBe(true);
+        });
+
+        it("clears error", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.error = makeName("error");
+            $scope.deleteButton();
+            expect($scope.error).toBeNull();
+        });
+    });
+
+    describe("cancelDeleteButton", function() {
+
+        it("cancels delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            $scope.cancelDeleteButton();
+            expect($scope.confirmingDelete).toBe(false);
+        });
     });
 
     describe("deleteDomain", function() {

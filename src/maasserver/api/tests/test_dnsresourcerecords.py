@@ -297,7 +297,7 @@ class TestDNSResourceRecordAPI(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
-    def test_delete_deletes_dnsresource(self):
+    def test_delete_deletes_dnsresource_record(self):
         self.become_admin()
         dnsdata = factory.make_DNSData()
         uri = get_dnsresourcerecord_uri(dnsdata)
@@ -305,6 +305,33 @@ class TestDNSResourceRecordAPI(APITestCase):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(dnsdata))
+
+    def test_delete_deletes_dnsresource_if_no_data(self):
+        self.become_admin()
+        dnsdata = factory.make_DNSData()
+        dnsrr = dnsdata.dnsresource
+        uri = get_dnsresourcerecord_uri(dnsdata)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content)
+        self.assertIsNone(reload_object(dnsdata))
+        self.assertIsNone(reload_object(dnsrr))
+
+    def test_delete_does_not_delete_dnsresource_if_data_present(self):
+        self.become_admin()
+        dnsdata = factory.make_DNSData()
+        dnsrr = dnsdata.dnsresource
+        while dnsdata.rrtype == 'CNAME':
+            dnsdata.delete()
+            dnsdata = factory.make_DNSData(dnsresource=dnsrr)
+        # Now create a second DNSData record for this DNSRR.
+        factory.make_DNSData(rrtype=dnsdata.rrtype, dnsresource=dnsrr)
+        uri = get_dnsresourcerecord_uri(dnsdata)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content)
+        self.assertIsNone(reload_object(dnsdata))
+        self.assertEqual(dnsrr, reload_object(dnsrr))
 
     def test_delete_403_when_not_admin(self):
         dnsdata = factory.make_DNSData()
