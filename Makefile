@@ -39,6 +39,10 @@ scss_output := src/maasserver/static/css/maas-styles.css
 # which those commands appear.
 dbrun := bin/database --preserve run --
 
+# Disable progress when running npm and warning log levels.
+npm_install := NODE_ENV=production NPM_CONFIG_PROGRESS="false" npm install \
+	--loglevel error --cache-min 600
+
 # For things that care, postgresfixture for example, we always want to
 # use the "maas" databases.
 export PGDATABASE := maas
@@ -173,19 +177,19 @@ bin/karma: deps = $(strip $(karma-deps))
 bin/karma: prefix = include/nodejs
 bin/karma:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 600 --prefix $(prefix) $(deps)
+	$(npm_install) --prefix $(prefix) $(deps)
 	@ln -srf $(prefix)/node_modules/karma/bin/karma $@
 
 bin/protractor: prefix = include/nodejs
 bin/protractor:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 600 --prefix $(prefix) protractor@3.0.0
+	$(npm_install) --prefix $(prefix) protractor@3.0.0
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
 bin/sass: prefix = include/nodejs
 bin/sass:
 	@mkdir -p $(@D) $(prefix)
-	npm install --cache-min 600 --prefix $(prefix) node-sass@3.4.2
+	$(npm_install) --prefix $(prefix) node-sass@3.4.2
 	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
 
 define test-scripts
@@ -195,7 +199,6 @@ define test-scripts
   bin/test.region
   bin/test.testing
   bin/test.js
-  bin/test.e2e
 endef
 
 test: $(strip $(test-scripts))
