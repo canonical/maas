@@ -248,7 +248,7 @@ class Filesystem(CleanSave, TimestampedModel):
                     "format the partition.")
 
         # Only ramfs and tmpfs can have a node as a parent.
-        if self.fstype in self.TYPES_REQUIRING_STORAGE:
+        if self.uses_storage:
             if self.node is not None:
                 raise ValidationError(
                     "A %s filesystem must be placed on a "
@@ -258,6 +258,11 @@ class Filesystem(CleanSave, TimestampedModel):
                 raise ValidationError(
                     "RAM-backed filesystems cannot be placed on "
                     "block devices or partitions.")
+
+        # Non-storage filesystems MUST be mounted.
+        if (not self.uses_storage) and (not self.is_mounted):
+            raise ValidationError(
+                "RAM-backed filesystems must be mounted.")
 
     def save(self, *args, **kwargs):
         if not self.uuid:

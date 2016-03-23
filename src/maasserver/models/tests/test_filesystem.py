@@ -250,11 +250,13 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
             "make_substrate": lambda: {
                 "partition": factory.make_Partition(),
             },
+            "can_be_unmounted": True,
         }),
         ("block-device", {
             "make_substrate": lambda: {
                 "block_device": factory.make_PhysicalBlockDevice(),
             },
+            "can_be_unmounted": True,
         }),
     )
 
@@ -263,6 +265,7 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
             "make_substrate": lambda: {
                 "node": factory.make_Node(),
             },
+            "can_be_unmounted": False,
         }),
     )
 
@@ -294,9 +297,25 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
     def test_filesystem_is_mounted_when_mount_point_is_set(self):
         substrate = self.make_substrate()
         filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
-        self.assertThat(filesystem.is_mounted, Is(False))
-        filesystem.mount_point = factory.make_name("path")
-        self.assertThat(filesystem.is_mounted, Is(True))
+        if self.can_be_unmounted:
+            # Some filesystems can be unmounted. By default that's how the
+            # factory makes them, so we need to set mount_point to see how
+            # is_mounted behaves.
+            self.assertThat(filesystem.is_mounted, Is(False))
+            filesystem.mount_point = factory.make_name("path")
+            self.assertThat(filesystem.is_mounted, Is(True))
+        else:
+            # Some filesystems cannot be unmounted, and the factory ensures
+            # that they're always created with a mount point. We can unset
+            # mount_point and observe a change in is_mounted, but we'll be
+            # prevented from saving the amended filesystem.
+            self.assertThat(filesystem.is_mounted, Is(True))
+            filesystem.mount_point = None
+            self.assertThat(filesystem.is_mounted, Is(False))
+            error = self.assertRaises(ValidationError, filesystem.save)
+            self.assertThat(error.messages, Equals([
+                "RAM-backed filesystems must be mounted.",
+            ]))
 
 
 class TestFilesystemsUsingMountPoints(MAASServerTestCase):

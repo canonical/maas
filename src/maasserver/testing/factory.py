@@ -1435,6 +1435,8 @@ class Factory(maastesting.factory.Factory):
         else:
             if node is None:
                 node = self.make_Node()
+            if mount_point is None:
+                mount_point = factory.make_absolute_path()
         if mount_options is undefined:
             mount_options = self.make_name("mount-options")
         return Filesystem.objects.create(
