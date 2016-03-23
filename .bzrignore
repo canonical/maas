@@ -43,7 +43,6 @@
 ./run/etc/*
 ./run/etc/maas/*
 ./services/*/supervise
-./src/maasserver/data/templates.py
 ./src/maasserver/static/js/enums.js
 ./TAGS
 ./tags

@@ -25,7 +25,6 @@ py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
 templates := $(shell find etc/maas/templates -type f)
-py_data := src/maasserver/data/templates.py
 
 # MAAS SASS stylesheets. The first input file (maas-styles.css) imports
 # the others, so is treated specially in the target definitions.
@@ -99,12 +98,12 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/maas-region bin/twistd.region: \
-    data bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region
 	@touch --no-create $@
 
 bin/test.region: \
-    data bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region-test
 	@touch --no-create $@
 
@@ -198,11 +197,6 @@ define test-scripts
   bin/test.js
   bin/test.e2e
 endef
-
-data: $(py_data)
-
-src/maasserver/data/templates.py: utilities/create-python-templates $(templates)
-	utilities/create-python-templates > $@
 
 test: $(strip $(test-scripts))
 	@$(RM) coverage.data
