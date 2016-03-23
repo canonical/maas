@@ -65,7 +65,12 @@ class TestFilesystem(MAASServerTestCase):
         self.assertEqual(
             fs.block_device.node, fs.get_node())
 
-    def test_get_node_returns_None_when_partition_and_block_device_None(self):
+    def test_get_node_returns_special_filesystem_node(self):
+        machine = factory.make_Node()
+        fs = factory.make_Filesystem(node=machine)
+        self.assertEqual(machine, fs.get_node())
+
+    def test_get_node_returns_None_when_no_substrate(self):
         fs = Filesystem()
         self.assertIsNone(fs.get_node())
 
@@ -151,6 +156,11 @@ class TestFilesystem(MAASServerTestCase):
         partition = factory.make_Partition()
         filesystem = factory.make_Filesystem(partition=partition)
         self.assertEqual(partition, filesystem.get_parent())
+
+    def test_get_parent_returns_special_filesystem_node(self):
+        machine = factory.make_Node()
+        filesystem = factory.make_Filesystem(node=machine)
+        self.assertEqual(machine, filesystem.get_parent())
 
     def test_cannot_create_filesystem_directly_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -283,6 +293,31 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         self.assertThat(filesystem.fstype, Equals(self.fstype))
         self.assertThat(filesystem.is_mountable, Is(True))
         self.assertThat(filesystem, MatchesStructure.byEquality(**substrate))
+
+    def test_cannot_mount_two_filesystems_at_same_point(self):
+        substrate = self.make_substrate()
+        filesystem1 = factory.make_Filesystem(fstype=self.fstype, **substrate)
+        filesystem2 = factory.make_Filesystem(node=filesystem1.get_node())
+        mount_point = factory.make_absolute_path()
+        filesystem1.mount_point = mount_point
+        filesystem1.save()
+        filesystem2.mount_point = mount_point
+        # Filesystems that can be mounted at a directory complain when mounted
+        # at the same directory as another filesystem.
+        if filesystem1.uses_mount_point:
+            error = self.assertRaises(ValidationError, filesystem2.save)
+            self.assertThat(error.messages, Equals([
+                "Another filesystem is already mounted at %s." % mount_point,
+            ]))
+        else:
+            self.assertThat(filesystem2.save(), Is(None))
+
+    def test_can_mount_unacquired_and_acquired_filesystem_at_same_point(self):
+        substrate = self.make_substrate()
+        filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
+        filesystem.id = None
+        filesystem.acquired = True
+        self.assertThat(filesystem.save(), Is(None))
 
     def test_mount_point_is_none_for_filesystems_that_do_not_use_one(self):
         substrate = self.make_substrate()

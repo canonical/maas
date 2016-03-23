@@ -142,7 +142,10 @@ class Filesystem(CleanSave, TimestampedModel):
             return self.partition.get_node()
         elif self.block_device is not None:
             return self.block_device.node
+        elif self.node is not None:
+            return self.node
         else:
+            # XXX: Explode instead?
             return None
 
     def get_size(self):
@@ -152,6 +155,7 @@ class Filesystem(CleanSave, TimestampedModel):
         elif self.block_device is not None:
             return self.block_device.size
         else:
+            # XXX: Return None instead?
             return 0
 
     def get_block_size(self):
@@ -161,14 +165,20 @@ class Filesystem(CleanSave, TimestampedModel):
         elif self.block_device is not None:
             return self.block_device.block_size
         else:
+            # XXX: Return None instead?
             return 0
 
     def get_parent(self):
         """Return linked `BlockDevice` or linked `Partition`."""
-        if self.block_device is None:
+        if self.partition is not None:
             return self.partition
-        else:
+        elif self.block_device is not None:
             return self.block_device.actual_instance
+        elif self.node is not None:
+            return self.node
+        else:
+            # XXX: Explode instead?
+            return None
 
     @property
     def is_mountable(self):
@@ -263,6 +273,18 @@ class Filesystem(CleanSave, TimestampedModel):
         if (not self.uses_storage) and (not self.is_mounted):
             raise ValidationError(
                 "RAM-backed filesystems must be mounted.")
+
+        # There should be no duplicate mount points.
+        if self.is_mounted and self.uses_mount_point:
+            # Find another filesystem that's mounted at the same point.
+            owning_node_other_matching_mount_point = (
+                Filesystem.objects.filter_by_node(self.get_node())
+                .filter(mount_point=self.mount_point, acquired=self.acquired)
+                .exclude(id=self.id))
+            if owning_node_other_matching_mount_point.exists():
+                raise ValidationError(
+                    "Another filesystem is already mounted at %s."
+                    % (self.mount_point,))
 
     def save(self, *args, **kwargs):
         if not self.uuid:
