@@ -31,6 +31,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -170,6 +171,51 @@ class TestGetBestInterface(MAASServerTestCase):
 class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
     """Tests for `get_interfaces_with_ip_on_vlan`."""
 
+    def test__always_same_number_of_queries(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(cidr="10.0.0.0/8", vlan=vlan)
+        factory.make_IPRange(
+            subnet=subnet, start_ip="10.0.1.0", end_ip="10.0.1.254")
+        factory.make_IPRange(
+            subnet=subnet, start_ip="10.0.2.0", end_ip="10.0.2.254")
+        factory.make_IPRange(
+            subnet=subnet, start_ip="10.0.3.0", end_ip="10.0.3.254")
+        # Make a multiple interfaces.
+        for _ in range(10):
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+            for _ in range(random.randint(1, 3)):
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO,
+                    ip=factory.pick_ip_in_Subnet(subnet),
+                    subnet=subnet, interface=interface)
+        query_10_count, _ = count_queries(
+            dhcp.get_interfaces_with_ip_on_vlan,
+            rack_controller, vlan, subnet.get_ipnetwork().version)
+        # Add more interfaces and count the queries again.
+        for _ in range(10):
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+            for _ in range(random.randint(1, 3)):
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.AUTO,
+                    ip=factory.pick_ip_in_Subnet(subnet),
+                    subnet=subnet, interface=interface)
+        query_20_count, _ = count_queries(
+            dhcp.get_interfaces_with_ip_on_vlan,
+            rack_controller, vlan, subnet.get_ipnetwork().version)
+
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when performing this
+        # operation. It is important to keep this number as low as possible.
+        self.assertEqual(
+            query_10_count, 5,
+            "Number of queries has changed; make sure this is expected.")
+        self.assertEqual(
+            query_10_count, query_20_count,
+            "Number of queries is not independent to the number of objects.")
+
     def test__returns_interface_with_static_ip(self):
         rack_controller = factory.make_RackController()
         vlan = factory.make_VLAN()
@@ -199,6 +245,28 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet, interface=interface_two)
         self.assertItemsEqual(
             [interface_one, interface_two],
+            dhcp.get_interfaces_with_ip_on_vlan(
+                rack_controller, vlan, subnet.get_ipnetwork().version))
+
+    def test__returns_interfaces_with_dynamic_ranges_first(self):
+        rack_controller = factory.make_RackController()
+        vlan = factory.make_VLAN()
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
+        interface_one = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet, interface=interface_one)
+        interface_two = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        subnet_with_dynamic_range = factory.make_ipv4_Subnet_with_IPRanges(
+            vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet_with_dynamic_range, interface=interface_two)
+        self.assertEquals(
+            [interface_two, interface_one],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version))
 
@@ -769,7 +837,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.USER_RESERVED, subnet=subnet,
             interface=unknown_interface)
 
-        expected_hosts = sorted([
+        expected_hosts = [
             {
                 'host': '%s-%s' % (node.hostname, auto_with_ip_interface.name),
                 'mac': str(auto_with_ip_interface.mac_address),
@@ -791,9 +859,9 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 'mac': str(unknown_interface.mac_address),
                 'ip': str(unknown_reserved_ip.ip),
             }
-        ], key=itemgetter('host'))
-
-        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+        ]
+        self.assertItemsEqual(
+            expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
     def tests__returns_hosts_interface_once_when_on_multiple_subnets(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -812,14 +880,14 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_two,
             interface=interface)
 
-        expected_hosts = sorted([
+        expected_hosts = [
             {
                 'host': '%s-%s' % (node.hostname, interface.name),
                 'mac': str(interface.mac_address),
                 'ip': str(ip_one.ip),
             },
-        ], key=itemgetter('host'))
-        self.assertEqual(
+        ]
+        self.assertItemsEqual(
             expected_hosts,
             dhcp.make_hosts_for_subnets([subnet_one, subnet_two]))
 
@@ -865,7 +933,8 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             },
         ]
 
-        self.assertEqual(expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
+        self.assertItemsEqual(
+            expected_hosts, dhcp.make_hosts_for_subnets([subnet]))
 
     def tests__returns_hosts_first_created_ip_address(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1014,7 +1083,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             "address": str(primary_ip.ip),
             "peer_address": str(secondary_ip.ip),
         }, observed_failover)
-        self.assertItemsEqual([
+        self.assertEquals(sorted([
             {
                 "subnet": str(ha_network.network),
                 "subnet_mask": str(ha_network.netmask),
@@ -1053,7 +1122,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                         other_subnet.get_dynamic_ranges().order_by('id'))
                 ],
             },
-        ], observed_subnets)
+        ], key=itemgetter("subnet")), observed_subnets)
         self.assertItemsEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)
@@ -1135,7 +1204,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             "address": str(primary_ip.ip),
             "peer_address": str(secondary_ip.ip),
         }, observed_failover)
-        self.assertItemsEqual([
+        self.assertEquals(sorted([
             {
                 "subnet": str(ha_network.network),
                 "subnet_mask": str(ha_network.netmask),
@@ -1172,7 +1241,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                         other_subnet.get_dynamic_ranges().order_by('id'))
                 ],
             },
-        ], observed_subnets)
+        ], key=itemgetter("subnet")), observed_subnets)
         self.assertItemsEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts)
         self.assertEqual(primary_interface.name, observed_interface)

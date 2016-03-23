@@ -71,7 +71,8 @@ shared-network {{shared_network["name"]}} {
 # Hosts
 #
 {{for host in hosts}}
-host {{host['host']}} {
+# {{host['host']}}
+host {{host['mac'].replace(":", "-")}} {
    hardware ethernet {{host['mac']}};
    fixed-address6 {{host['ip']}};
 }

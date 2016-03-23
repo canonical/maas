@@ -82,7 +82,7 @@ setup(
             ['scripts/maas-generate-winrm-cert',
              'scripts/uec2roottar']),
         ('/usr/sbin',
-            ['scripts/maas-dhcp-notify']),
+            ['scripts/maas-dhcp-helper']),
     ],
 
     classifiers=[

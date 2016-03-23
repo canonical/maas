@@ -16,11 +16,6 @@ from the dhcpd.conf or dhcpd6.conf are used.
 """
 
 import argparse
-from contextlib import closing
-import json
-import re
-import socket
-import time
 
 
 def notify_add_arguments(parser):
@@ -54,6 +49,13 @@ def notify_add_arguments(parser):
 
 def notify(args):
     """Write DHCP action notification to the `dhcpd.sock`."""
+    # Perform the imports for this command. This speeds up the operation of
+    # each command.
+    from contextlib import closing
+    import json
+    import socket
+    import time
+
     notify_packet = {
         "action": args.action,
         "mac": args.mac,
@@ -93,6 +95,10 @@ def clean_add_arguments(parser):
 
 def clean(args):
     """Remove all host entries from leases file."""
+    # Perform the imports for this command. This speeds up the operation of
+    # each command.
+    import re
+
     with open(args.leases_file, "r", encoding="utf-8") as fp:
         content = fp.read()
     cleaned_content = re.sub("host [^{]+{[^}]+}\n", "", content)

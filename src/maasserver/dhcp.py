@@ -15,6 +15,7 @@ from django.db.models import Q
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    IPRANGE_TYPE,
 )
 from maasserver.exceptions import (
     DHCPConfigurationError,
@@ -98,17 +99,31 @@ def ip_is_version(ip_address, ip_version):
         IPAddress(ip_address.ip).version == ip_version)
 
 
+def _key_interface_subnet_dynamic_range_count(interface):
+    """Return the number of dynamic ranges for the subnet on the interface."""
+    count = 0
+    for ip_address in interface.ip_addresses.all():
+        for ip_range in ip_address.subnet.iprange_set.all():
+            if ip_range.type == IPRANGE_TYPE.DYNAMIC:
+                count += 1
+    return count
+
+
 def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
     """Return a list of interfaces that have an assigned IP address on `vlan`.
 
     The assigned IP address needs to be of same `ip_version`. Only a list of
     STICKY or AUTO addresses will be returned, unless none exists which will
     fallback to DISCOVERED addresses.
+
+    The interfaces will be ordered so that interfaces with IP address on
+    subnets for the VLAN that have dynamic IP ranges defined.
     """
     interfaces_with_static = []
     interfaces_with_discovered = []
     for interface in rack_controller.interface_set.all().prefetch_related(
-            "ip_addresses__subnet__vlan"):
+            "ip_addresses__subnet__vlan",
+            "ip_addresses__subnet__iprange_set"):
         for ip_address in interface.ip_addresses.all():
             if ip_address.alloc_type in [
                     IPADDRESS_TYPE.AUTO, IPADDRESS_TYPE.STICKY]:
@@ -123,10 +138,22 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
                         ip_address.subnet.vlan == vlan):
                     interfaces_with_discovered.append(interface)
                     break
-    if len(interfaces_with_static) > 0:
+    if len(interfaces_with_static) == 1:
         return interfaces_with_static
-    else:
+    elif len(interfaces_with_static) > 1:
+        return sorted(
+            interfaces_with_static,
+            key=_key_interface_subnet_dynamic_range_count,
+            reverse=True)
+    elif len(interfaces_with_discovered) == 1:
         return interfaces_with_discovered
+    elif len(interfaces_with_discovered) > 1:
+        return sorted(
+            interfaces_with_discovered,
+            key=_key_interface_subnet_dynamic_range_count,
+            reverse=True)
+    else:
+        return []
 
 
 def get_managed_vlans_for(rack_controller):
@@ -235,7 +262,7 @@ def make_hosts_for_subnets(subnets):
                     'mac': str(interface.mac_address),
                     'ip': str(sip.ip),
                 })
-    return sorted(hosts, key=itemgetter('host'))
+    return hosts
 
 
 def make_pools_for_subnet(subnet, failover_peer=None):
@@ -335,7 +362,9 @@ def get_dhcp_configure_for(
 
     # Generate the hosts for all subnets.
     hosts = make_hosts_for_subnets(subnets)
-    return peer_config, subnet_configs, hosts, interface.name
+    return (
+        peer_config, sorted(subnet_configs, key=itemgetter("subnet")),
+        hosts, interface.name)
 
 
 @synchronous
