@@ -15,6 +15,7 @@ from maasserver.enum import (
 from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
+from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.event import Event
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
@@ -510,6 +511,21 @@ class TransactionalHelpersMixin:
     def delete_region_controller(self, id):
         region = RegionController.objects.get(id=id)
         region.delete()
+
+    @transactional
+    def create_dhcp_snippet(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_DHCPSnippet(**params)
+
+    @transactional
+    def update_dhcp_snippet(self, id, params):
+        return apply_update_to_model(DHCPSnippet, id, params)
+
+    @transactional
+    def delete_dhcp_snippet(self, id):
+        dhcp_snippet = DHCPSnippet.objects.get(id=id)
+        dhcp_snippet.delete()
 
     @transactional
     def create_region_controller_process(self, params=None):

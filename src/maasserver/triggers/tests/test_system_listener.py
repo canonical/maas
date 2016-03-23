@@ -25,7 +25,10 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
 from provisioningserver.utils.twisted import DeferredValue
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    CancelledError,
+    inlineCallbacks,
+)
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -1844,5 +1847,426 @@ class TestDHCPNodeListener(
             })
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+
+class TestDHCPSnippetListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test for the DHCP triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_global_dhcp_snippet_inserted(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dhcp_snippet, {
+                "enabled": True,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_no_message_for_global_dhcp_snippet_inserted_when_disabled(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dhcp_snippet, {
+                "enabled": False,
+            })
+            try:
+                yield dv.get(timeout=1)
+            except CancelledError:
+                pass
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_inserted_with_subnet(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        subnet = yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dhcp_snippet, {
+                "enabled": True,
+                "subnet": subnet,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_inserted_with_node(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        node = yield deferToDatabase(self.create_node)
+        yield deferToDatabase(self.create_interface, {
+            "node": node,
+            "vlan": vlan,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dhcp_snippet, {
+                "enabled": True,
+                "node": node,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_updated_value(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            new_value = yield deferToDatabase(
+                dhcp_snippet.value.update, factory.make_string())
+            dhcp_snippet.value = new_value
+            yield deferToDatabase(dhcp_snippet.save)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_no_message_for_dhcp_snippet_updated_when_disabled(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": False,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            new_value = yield deferToDatabase(
+                dhcp_snippet.value.update, factory.make_string())
+            dhcp_snippet.value = new_value
+            yield deferToDatabase(dhcp_snippet.save)
+            try:
+                yield dv.get(timeout=1)
+            except CancelledError:
+                pass
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_updated_enabled(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": False,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
+                "enabled": True,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_updated_description(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
+                "description": factory.make_string(),
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_updated_subnet(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        subnet = yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
+                "subnet": subnet,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_updated_node(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        node = yield deferToDatabase(self.create_node)
+        yield deferToDatabase(self.create_interface, {
+            "vlan": vlan,
+            "node": node,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dhcp_snippet, dhcp_snippet.id, {
+                "node": node,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_global_dhcp_snippet_deleted(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_no_message_for_global_dhcp_snippet_deleted_when_disabled(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": False,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
+            try:
+                yield dv.get(timeout=1)
+            except CancelledError:
+                pass
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_with_subnet_deleted(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        subnet = yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+            "subnet": subnet,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dhcp_snippet_with_node_deleted(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(self.create_vlan, {
+            "dhcp_on": True,
+            "primary_rack": primary_rack,
+        })
+        yield deferToDatabase(self.create_subnet, {
+            "vlan": vlan,
+        })
+        node = yield deferToDatabase(self.create_node)
+        yield deferToDatabase(self.create_interface, {
+            "vlan": vlan,
+            "node": node,
+        })
+        dhcp_snippet = yield deferToDatabase(self.create_dhcp_snippet, {
+            "enabled": True,
+            "node": node,
+        })
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id,
+            lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
+            yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
