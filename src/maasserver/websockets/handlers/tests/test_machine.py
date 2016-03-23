@@ -552,6 +552,56 @@ class TestMachineHandler(MAASServerTestCase):
                 filesystem.fstype in FILESYSTEM_FORMAT_TYPE_CHOICES_DICT),
             }, handler.dehydrate_filesystem(filesystem))
 
+    def test_dehydrate_interface_for_multinic_node(self):
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, status=NODE_STATUS.READY)
+        handler = MachineHandler(owner, {})
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, ip="",
+            subnet=factory.make_Subnet(), interface=interface)
+        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        expected_links = interface.get_links()
+        for link in expected_links:
+            link["subnet_id"] = link.pop("subnet").id
+        self.assertEqual({
+            "id": interface.id,
+            "type": interface.type,
+            "name": interface.get_name(),
+            "enabled": interface.is_enabled(),
+            "is_boot": True,
+            "mac_address": "%s" % interface.mac_address,
+            "vlan_id": interface.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface.children_relationships.all()
+            ],
+            "links": expected_links,
+            }, handler.dehydrate_interface(interface, node))
+        expected_links = interface2.get_links()
+        self.assertEqual({
+            "id": interface2.id,
+            "type": interface2.type,
+            "name": interface2.get_name(),
+            "enabled": interface2.is_enabled(),
+            "is_boot": False,
+            "mac_address": "%s" % interface2.mac_address,
+            "vlan_id": interface2.vlan_id,
+            "parents": [
+                nic.id
+                for nic in interface2.parents.all()
+            ],
+            "children": [
+                nic.child.id
+                for nic in interface2.children_relationships.all()
+            ],
+            "links": expected_links,
+            }, handler.dehydrate_interface(interface2, node))
+
     def test_dehydrate_interface_for_ready_node(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, status=NODE_STATUS.READY)
@@ -568,7 +618,7 @@ class TestMachineHandler(MAASServerTestCase):
             "type": interface.type,
             "name": interface.get_name(),
             "enabled": interface.is_enabled(),
-            "is_boot": interface == node.boot_interface,
+            "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
             "parents": [
@@ -606,7 +656,7 @@ class TestMachineHandler(MAASServerTestCase):
             "type": interface.type,
             "name": interface.get_name(),
             "enabled": interface.is_enabled(),
-            "is_boot": interface == node.boot_interface,
+            "is_boot": interface == node.get_boot_interface(),
             "mac_address": "%s" % interface.mac_address,
             "vlan_id": interface.vlan_id,
             "parents": [
