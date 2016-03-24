@@ -42,6 +42,15 @@ def fix_up_databases(databases):
 
     Does not modify connections to non-PostgreSQL databases.
     """
+    # Remove keys with null values from databases.
+    databases.update({
+        alias: {
+            key: value for key, value in database.items()
+            if value is not None
+        }
+        for alias, database in databases.items()
+    })
+    # Ensure that transactions are configured correctly.
     from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
     for _, database in databases.items():
         engine = database.get("ENGINE")

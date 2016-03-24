@@ -96,20 +96,6 @@ call_command(
 """
 
 
-def register_all_triggers():
-    """Calls register_all_triggers in the maasserver module.
-
-    maasserver module cannot be in the imports of this file because of how
-    it gets called both for pre-2.0 and >2.0.
-    """
-    from maasserver.triggers import register_all_triggers
-    register_all_triggers()
-
-
-class TriggerRegistrationFailure(Exception):
-    """Raised when trigger registration fails."""
-
-
 class Command(BaseCommand):
     help = "Upgrades database schema for MAAS regiond."
     option_list = BaseCommand.option_list + (
@@ -266,6 +252,15 @@ class Command(BaseCommand):
         process = subprocess.Popen(cmd)
         return process.wait()
 
+    @classmethod
+    def _perform_trigger_installation(cls, database):
+        """Register all PL/pgSQL functions and triggers.
+
+        :attention: `database` argument is not used!
+        """
+        from maasserver import triggers
+        triggers.register_all_triggers()
+
     def handle(self, *args, **options):
         database = options.get('database')
         always_south = options.get('always_south', False)
@@ -295,6 +290,17 @@ class Command(BaseCommand):
             rc = self._perform_django_migrations(database)
             if rc != 0:
                 sys.exit(rc)
+
+            # Make sure we're going to see the same database as the migrations
+            # have left behind.
+            if connections[database].in_atomic_block:
+                raise AssertionError(
+                    "An ongoing transaction may hide changes made "
+                    "by external processes.")
+
+            # Install all database functions and triggers. This is idempotent
+            # so we run it at the end of every database upgrade.
+            self._perform_trigger_installation(database)
         else:
             # Piston has been renamed from piston to piston3.
             piston_tables = self._find_tables(database, "piston")
@@ -312,10 +318,3 @@ class Command(BaseCommand):
                 "migrate",
                 interactive=False,
                 fake_initial=self._south_was_performed(database))
-
-            # Register all the triggers into the database.
-            try:
-                register_all_triggers()
-            except Exception as exc:
-                raise TriggerRegistrationFailure(
-                    "Trigger registration failed.") from exc

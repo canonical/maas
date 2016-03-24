@@ -495,9 +495,10 @@ def main(args):
                 print_denied(imported_name)
 
     if options.show_summary:
-        if options.show_allowed or options.show_denied:
-            if allowedcount != 0 or deniedcount != 0:
-                print()
+        if (options.show_allowed and allowedcount != 0):
+            print()
+        elif (options.show_denied and deniedcount != 0):
+            print()
 
         print(allowedcount, "imported names were ALLOWED.")
         print(deniedcount, "imported names were DENIED.")

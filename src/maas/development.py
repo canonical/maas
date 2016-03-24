@@ -53,7 +53,8 @@ DATABASES = {
 }
 
 # Allow the database name to be overwritten using an environment variable.
-# This is only used for src/maastesting/tests/test_dbupgrade.py.
+# This is only used for test.e2e. This might be better handled by using
+# RegionConfigurationFixture; see test_dbupgrade.py for an example.
 if 'DEV_DB_NAME' in os.environ:
     DATABASES['default']['NAME'] = os.environ['DEV_DB_NAME']
 
