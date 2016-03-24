@@ -96,6 +96,20 @@ call_command(
 """
 
 
+def register_all_triggers():
+    """Calls register_all_triggers in the maasserver module.
+
+    maasserver module cannot be in the imports of this file because of how
+    it gets called both for pre-2.0 and >2.0.
+    """
+    from maasserver.triggers import register_all_triggers
+    register_all_triggers()
+
+
+class TriggerRegistrationFailure(Exception):
+    """Raised when trigger registration fails."""
+
+
 class Command(BaseCommand):
     help = "Upgrades database schema for MAAS regiond."
     option_list = BaseCommand.option_list + (
@@ -298,3 +312,10 @@ class Command(BaseCommand):
                 "migrate",
                 interactive=False,
                 fake_initial=self._south_was_performed(database))
+
+            # Register all the triggers into the database.
+            try:
+                register_all_triggers()
+            except Exception as exc:
+                raise TriggerRegistrationFailure(
+                    "Trigger registration failed.") from exc

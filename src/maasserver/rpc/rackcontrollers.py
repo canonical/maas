@@ -32,6 +32,33 @@ maaslog = get_maas_logger('rpc.rackcontrollers')
 
 @synchronous
 @transactional
+def handle_upgrade(rack_controller, nodegroup_uuid):
+    """Handle upgrading from MAAS 1.9. Set the VLAN the rack controller
+    should manage."""
+    if (nodegroup_uuid is not None and
+            len(nodegroup_uuid) > 0 and
+            not nodegroup_uuid.isspace()):
+        ng_to_racks = NodeGroupToRackController.objects.filter(
+            uuid=nodegroup_uuid)
+        vlans = [
+            ng_to_rack.subnet.vlan
+            for ng_to_rack in ng_to_racks
+        ]
+        # The VLAN object can only be related to a RackController
+        for nic in rack_controller.interface_set.all():
+            if nic.vlan in vlans:
+                nic.vlan.primary_rack = rack_controller
+                nic.vlan.dhcp_on = True
+                nic.vlan.save()
+                maaslog.info(
+                    "DHCP setting from NodeGroup(%s) have been migrated "
+                    "to %s." % (nodegroup_uuid, nic.vlan))
+        for ng_to_rack in ng_to_racks:
+            ng_to_rack.delete()
+
+
+@synchronous
+@transactional
 def register_rackcontroller(
         system_id=None, hostname='', interfaces={}, url=None,
         nodegroup_uuid=None):
@@ -50,35 +77,16 @@ def register_rackcontroller(
     # Update `rackcontroller.url` from the given URL, but only when the
     # hostname is not 'localhost' (i.e. the default value used when the master
     # cluster connects).
+    update_fields = []
     if url is not None and url.hostname != "localhost":
-        rackcontroller.url = url.geturl()
-    rackcontroller.owner = worker_user.get_worker_user()
-    rackcontroller.update_interfaces(interfaces)  # Calls save.
-
-    # Updating from MAAS 1.9 this will set the VLAN the rack controller
-    # should manage.
-    if (nodegroup_uuid is not None and
-            len(nodegroup_uuid) > 0 and
-            not nodegroup_uuid.isspace()):
-        ng_to_racks = NodeGroupToRackController.objects.filter(
-            uuid=nodegroup_uuid)
-        vlans = [
-            ng_to_rack.subnet.vlan
-            for ng_to_rack in ng_to_racks
-        ]
-        # The VLAN object can only be related to a RackController
-        for nic in rackcontroller.interface_set.all():
-            if nic.vlan in vlans:
-                nic.vlan.primary_rack = rackcontroller
-                nic.vlan.dhcp_on = True
-                nic.vlan.save()
-                maaslog.info(
-                    "DHCP setting from NodeGroup(%s) have been migrated to "
-                    "VID %d on fabric_id %d" %
-                    (nodegroup_uuid, nic.vlan.vid, nic.vlan.fabric_id))
-        for ng_to_rack in ng_to_racks:
-            ng_to_rack.delete()
-
+        if rackcontroller.url != url.geturl():
+            rackcontroller.url = url.geturl()
+            update_fields.append("url")
+    work_user = worker_user.get_worker_user()
+    if rackcontroller.owner != work_user:
+        rackcontroller.owner = worker_user.get_worker_user()
+        update_fields.append("owner")
+    rackcontroller.save(update_fields=update_fields)
     return rackcontroller
 
 

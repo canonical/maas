@@ -321,9 +321,12 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         # Mock the registration into the database, as the rack controller is
         # already created. We reset this once registration is complete so not
         # to interfer with other tests.
-        original_func = rackcontrollers.register_rackcontroller
+        reg_original_func = rackcontrollers.register_rackcontroller
+        update_original_func = RackController.update_interfaces
         rackcontrollers.register_rackcontroller = (
             lambda *args, **kwargs: rack_controller)
+        RackController.update_interfaces = (
+            lambda *args, **kwargs: None)
 
         # Register the rack controller with the region.
         try:
@@ -333,8 +336,9 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
                 hostname=rack_controller.hostname, interfaces={},
                 url=urlparse(""))
         finally:
-            # Restore the original function.
-            rackcontrollers.register_rackcontroller = original_func
+            # Restore the original functions.
+            rackcontrollers.register_rackcontroller = reg_original_func
+            RackController.update_interfaces = update_original_func
 
         defer.returnValue(protocol)
 

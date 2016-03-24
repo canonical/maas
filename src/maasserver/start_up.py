@@ -29,7 +29,6 @@ from maasserver.models import (
     BootSourceSelection,
 )
 from maasserver.models.domain import dns_kms_setting_changed
-from maasserver.triggers import register_all_triggers
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
@@ -181,9 +180,6 @@ def inner_start_up():
     post_commit_do(
         reactor.callLater, randrange(45, 90), reactor.callInDatabase,
         start_import_on_upgrade)
-
-    # Register all of the triggers.
-    register_all_triggers()
 
     # Freshen the kms SRV records
     dns_kms_setting_changed()

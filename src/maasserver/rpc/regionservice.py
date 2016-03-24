@@ -515,8 +515,17 @@ class RegionServer(Region):
         try:
             rack_controller = yield deferToDatabase(
                 rackcontrollers.register_rackcontroller, system_id=system_id,
-                hostname=hostname, interfaces=interfaces, url=url,
-                nodegroup_uuid=nodegroup_uuid)
+                hostname=hostname, interfaces=interfaces, url=url)
+
+            # Update the interfaces.
+            yield deferToDatabase(
+                transactional(rack_controller.update_interfaces), interfaces)
+
+            # Check for upgrade.
+            if nodegroup_uuid is not None:
+                yield deferToDatabase(
+                    rackcontrollers.handle_upgrade,
+                    rack_controller, nodegroup_uuid)
 
             # Set the identifier and add the connection into the service
             # and into the database.

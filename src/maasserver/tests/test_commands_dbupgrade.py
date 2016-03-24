@@ -15,7 +15,9 @@ from django.db import connection
 from maasserver.management.commands import dbupgrade as dbupgrade_module
 from maasserver.management.commands.dbupgrade import (
     Command as dbupgrade_command,
+    TriggerRegistrationFailure,
 )
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -182,3 +184,27 @@ class TestDBUpgrade(MAASServerTestCase):
         self.assertThat(
             mock_call, MockCalledOnceWith(
                 "migrate", interactive=False, fake_initial=False))
+
+    def test_django_calls_register_all_triggers(self):
+        self.patch(
+            dbupgrade_command, "_south_was_performed").return_value = False
+        self.patch(
+            dbupgrade_command, "_rename_piston_to_piston3")
+        self.patch(dbupgrade_module, "call_command")
+        mock_register_all_triggers = self.patch(
+            dbupgrade_module, "register_all_triggers")
+        call_command('dbupgrade', django=True)
+        self.assertThat(
+            mock_register_all_triggers, MockCalledOnceWith())
+
+    def test_django_raises_trigger_error_on_trigger_registration_fail(self):
+        self.patch(
+            dbupgrade_command, "_south_was_performed").return_value = False
+        self.patch(
+            dbupgrade_command, "_rename_piston_to_piston3")
+        self.patch(dbupgrade_module, "call_command")
+        mock_register_all_triggers = self.patch(
+            dbupgrade_module, "register_all_triggers")
+        mock_register_all_triggers.side_effect = factory.make_exception()
+        self.assertRaises(
+            TriggerRegistrationFailure, call_command, 'dbupgrade', django=True)

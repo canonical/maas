@@ -156,11 +156,6 @@ class TestInnerStartUp(MAASServerTestCase):
         start_up.inner_start_up()
         self.assertThat(start_up.create_gnupg_home, MockCalledOnceWith())
 
-    def test__calls_register_all_triggers(self):
-        self.patch(start_up, 'register_all_triggers')
-        start_up.inner_start_up()
-        self.assertThat(start_up.register_all_triggers, MockCalledOnceWith())
-
     def test__initialises_boot_source_config(self):
         self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
