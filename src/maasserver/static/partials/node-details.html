@@ -389,57 +389,75 @@
                 <div class="twelve-col" data-ng-show="node.node_type == 3 || node.node_type == 4">
                     <h3>Region Controller</h3>
                     <ul class="list__tree no-bullets">
-                        <li class="list__item" data-ng-show="node.node_type == 3 || node.node_type == 4">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.regiond)"><span class="icon error"></span>&nbsp;regiond</span>
-                            <span data-ng-show="isServiceOK(services.regiond)">&nbsp;regiond</span>
-                            <div class="list__item-feedback" data-ng-show="services.regiond.status_info">{$ services.regiond.status_info $}</div>
+                        <li class="list__item">
+                            <span class="color--{$ getServiceClass(services.regiond) $}">
+                                <span class="icon {$ getServiceClass(services.regiond) $}"></span>
+                                &nbsp;regiond
+                                <span data-ng-if="services.regiond.status_info"> &mdash; {$ services.regiond.status_info $}</span>
+                            </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.bind9)"><span class="icon error"></span>&nbsp;bind9</span>
-                            <span data-ng-show="isServiceOK(services.bind9)">&nbsp;bind9</span>
-                            <div class="list__item-feedback" data-ng-show="services.bind9.status_info">{$ services.bind9.status_info $}</div>
+                            <span class="color--{$ getServiceClass(services.bind9) $}">
+                                <span class="icon {$ getServiceClass(services.bind9) $}"></span>
+                                &nbsp;bind9
+                                <span data-ng-if="services.bind9.status_info"> &mdash; {$ services.bind9.status_info $}</span>
+                            </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.proxy)"><span class="icon error"></span>&nbsp;proxy</span>
-                            <span data-ng-show="isServiceOK(services.proxy)">&nbsp;proxy</span>
-                            <div class="list__item-feedback" data-ng-show="services.proxy.status_info">{$ services.proxy.status_info $}</div>
+                            <span class="color--{$ getServiceClass(services.proxy) $}">
+                                <span class="icon {$ getServiceClass(services.proxy) $}"></span>
+                                &nbsp;proxy
+                                <span data-ng-if="services.proxy.status_info"> &mdash; {$ services.proxy.status_info $}</span>
+                            </span>
                         </li>
                     </ul>
                 </div>
                 <div class="twelve-col" data-ng-show="node.node_type == 2 || node.node_type == 4">
                     <h3>Rack Controller</h3>
                     <ul class="list__tree no-bullets">
-                        <li class="list__item" data-ng-show="node.node_type == 2 || node.node_type == 4">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.rackd)"><span class="icon error"></span>&nbsp;rackd</span>
-                            <span data-ng-show="isServiceOK(services.rackd)">&nbsp;rackd</span>
-                            <div class="list__item-feedback" data-ng-show="services.rackd.status_info">{$ services.rackd.status_info $}</div>
+                        <li class="list__item">
+                            <span class="color--{$ getServiceClass(services.rackd) $}">
+                                <span class="icon {$ getServiceClass(services.rackd) $}"></span>
+                                &nbsp;rackd
+                                <span data-ng-if="services.rackd.status_info"> &mdash; {$ services.rackd.status_info $}</span>
+                            </span>
                             <ul class="list__tree list__tree--sub-level">
                                 <li class="list__item">
-                                    <span class="color--error" data-ng-show="isServiceErrored(services.http)"><span class="icon error"></span>&nbsp;http</span>
-                                    <span data-ng-show="isServiceOK(services.http)">&nbsp;http</span>
-                                    <div class="list__item-feedback" data-ng-show="services.http.status_info">{$ services.http.status_info $}</div>
+                                    <span class="color--{$ getServiceClass(services.http) $}">
+                                        <span class="icon {$ getServiceClass(services.http) $}"></span>
+                                        &nbsp;http
+                                        <span data-ng-if="services.http.status_info"> &mdash; {$ services.http.status_info $}</span>
+                                    </span>
                                 </li>
                                 <li class="list__item">
-                                    <span class="color--error" data-ng-show="isServiceErrored(services.tftp)"><span class="icon error"></span>&nbsp;tftp</span>
-                                    <span data-ng-show="isServiceOK(services.tftp)">&nbsp;tftp</span>
-                                    <div class="list__item-feedback" data-ng-show="services.tftp.status_info">{$ services.tftp.status_info $}</div>
+                                    <span class="color--{$ getServiceClass(services.tftp) $}">
+                                        <span class="icon {$ getServiceClass(services.tftp) $}"></span>
+                                        &nbsp;tftp
+                                        <span data-ng-if="services.tftp.status_info"> &mdash; {$ services.tftp.status_info $}</span>
+                                    </span>
                                 </li>
                             </ul>
                         </li>
                         <li class="list__item">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.dhcpd)"><span class="icon error"></span>&nbsp;dhcpd</span>
-                            <span data-ng-show="isServiceOK(services.dhcpd)">&nbsp;dhcpd</span>
-                            <div class="list__item-feedback" data-ng-show="services.dhcpd.status_info">{$ services.dhcpd.status_info $}</div>
+                            <span class="color--{$ getServiceClass(services.dhcpd) $}">
+                                <span class="icon {$ getServiceClass(services.dhcpd) $}"></span>
+                                &nbsp;dhcpd
+                                <span data-ng-if="services.dhcpd.status_info"> &mdash; {$ services.dhcpd.status_info $}</span>
+                            </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.dhcpd6)"><span class="icon error"></span>&nbsp;dhcpd6</span>
-                            <span data-ng-show="isServiceOK(services.dhcpd6)">&nbsp;dhcpd6</span>
-                            <div class="list__item-feedback" data-ng-show="services.dhcpd6.status_info">{$ services.dhcpd6.status_info $}</div>
+                            <span class="color--{$ getServiceClass(services.dhcpd6) $}">
+                                <span class="icon {$ getServiceClass(services.dhcpd6) $}"></span>
+                                &nbsp;dhcpd6
+                                <span data-ng-if="services.dhcpd6.status_info"> &mdash; {$ services.dhcpd6.status_info $}</span>
+                            </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--error" data-ng-show="isServiceErrored(services.tgt)"><span class="icon error"></span>&nbsp;tgt</span>
-                            <span data-ng-show="isServiceOK(services.tgt)">&nbsp;tgt</span>
-                            <div class="list__item-feedback" data-ng-show="services.tgt.status_info">{$ services.tgt.status_info $}</div>
+                            <span class="color--{$ getServiceClass(services.tgt) $}">
+                                <span class="icon {$ getServiceClass(services.tgt) $}"></span>
+                                &nbsp;tgt
+                                <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>
+                            </span>
                         </li>
                     </ul>
                 </div>

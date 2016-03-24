@@ -960,15 +960,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return result;
         };
 
-        // Service monitor HTML calls this to decide to show error state.
-        $scope.isServiceOK = function(service) {
-            return angular.isObject(service) && service.status === "running";
-        };
-
-        // Service monitor HTML calls this to decide to show error state.
-        $scope.isServiceErrored = function(service) {
-            // Any service not OK is an error.
-            return !$scope.isServiceOK(service);
+        // Return the class to apply to the service.
+        $scope.getServiceClass = function(service) {
+            if(!angular.isObject(service)) {
+                return "none";
+            } else {
+                if(service.status === "running") {
+                    return "success";
+                } else if(service.status === "dead") {
+                    return "error";
+                } else if(service.status === "degraged") {
+                    return "warning";
+                } else {
+                    return "none";
+                }
+            }
         };
 
         // Load all the required managers.

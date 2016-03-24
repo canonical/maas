@@ -7,10 +7,12 @@
 angular.module('MAAS').controller('NodesListController', [
     '$scope', '$rootScope', '$routeParams', '$location', 'MachinesManager',
     'DevicesManager', 'ControllersManager', 'GeneralManager',
-    'ManagerHelperService', 'SearchService', 'ZonesManager', 'UsersManager',
+    'ManagerHelperService', 'SearchService', 'ZonesManager',
+    'UsersManager', 'ServicesManager',
     function($scope, $rootScope, $routeParams, $location, MachinesManager,
         DevicesManager, ControllersManager, GeneralManager,
-        ManagerHelperService, SearchService, ZonesManager, UsersManager) {
+        ManagerHelperService, SearchService, ZonesManager,
+        UsersManager, ServicesManager) {
 
         // Mapping of device.ip_assignment to viewable text.
         var DEVICE_IP_ASSIGNMENT = {
@@ -567,11 +569,12 @@ angular.module('MAAS').controller('NodesListController', [
             return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
-        // Load MachinesManager, DevicesManager, GeneralManager and
-        // ZonesManager.
+        // Load the required managers for this controller. The ServicesManager
+        // is required by the maasControllerStatus directive that is used
+        // in the partial for this controller.
         ManagerHelperService.loadManagers(
             [MachinesManager, DevicesManager, ControllersManager,
-            GeneralManager, ZonesManager, UsersManager]).then(
+            GeneralManager, ZonesManager, UsersManager, ServicesManager]).then(
             function() {
                 $scope.loading = false;
             });

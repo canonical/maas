@@ -16,7 +16,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateServices
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils.service_monitor import SERVICE_STATE
 from provisioningserver.utils.twisted import (
     pause,
     retries,
@@ -40,12 +39,12 @@ class ServiceMonitorService(TimerService, object):
     ALWAYS_RUNNING_SERVICES = [
         {
             "name": "http",
-            "status": SERVICE_STATE.ON,
+            "status": "running",
             "status_info": "",
         },
         {
             "name": "tftp",
-            "status": SERVICE_STATE.ON,
+            "status": "running",
             "status_info": "",
         },
     ]

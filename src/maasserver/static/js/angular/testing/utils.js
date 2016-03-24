@@ -45,3 +45,7 @@ function makeFakeResponse(data, error) {
 function makeInteger(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
 }
+
+function pickItem(array) {
+    return array[Math.floor(Math.random() * array.length)];
+}

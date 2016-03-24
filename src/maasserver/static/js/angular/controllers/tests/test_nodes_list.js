@@ -35,10 +35,9 @@ describe("NodesListController", function() {
         $routeParams = {};
     }));
 
-    // Load the MachinesManager, DevicesManager, ControllersManager,
-    // GeneralManager, MachinesManager, RegionConnection, SearchService and
-    // mock the websocket connection.
+    // Load the required managers.
     var MachinesManager, DevicesManager, ControllersManager, GeneralManager;
+    var ZonesManager, UsersManager, ServicesManager;
     var ManagerHelperService, SearchService;
     beforeEach(inject(function($injector) {
         MachinesManager = $injector.get("MachinesManager");
@@ -47,7 +46,7 @@ describe("NodesListController", function() {
         GeneralManager = $injector.get("GeneralManager");
         ZonesManager = $injector.get("ZonesManager");
         UsersManager = $injector.get("UsersManager");
-        RegionConnection = $injector.get("RegionConnection");
+        ServicesManager = $injector.get("ServicesManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
     }));
@@ -90,6 +89,10 @@ describe("NodesListController", function() {
             MachinesManager: MachinesManager,
             DevicesManager: DevicesManager,
             ControllersManager: ControllersManager,
+            GeneralManager: GeneralManager,
+            ZonesManager: ZonesManager,
+            UsersManager: UsersManager,
+            ServicesManager: ServicesManager,
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
         });
@@ -190,7 +193,7 @@ describe("NodesListController", function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
                 [MachinesManager, DevicesManager, ControllersManager,
-                GeneralManager, ZonesManager, UsersManager]);
+                GeneralManager, ZonesManager, UsersManager, ServicesManager]);
         });
 
     it("sets loading to false with loadManagers resolves", function() {

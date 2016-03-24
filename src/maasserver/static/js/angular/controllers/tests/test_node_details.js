@@ -1882,4 +1882,40 @@ describe("NodeDetailsController", function() {
             expect($scope.getInstallationData()).toBe("\n" + install_result);
         });
     });
+
+    describe("getServiceClass", function() {
+
+        it("returns 'none' if null", function() {
+            var controller = makeController();
+            expect($scope.getServiceClass(null)).toBe("none");
+        });
+
+        it("returns 'success' when running", function() {
+            var controller = makeController();
+            expect($scope.getServiceClass({
+                status: "running"
+            })).toBe("success");
+        });
+
+        it("returns 'error' when dead", function() {
+            var controller = makeController();
+            expect($scope.getServiceClass({
+                status: "dead"
+            })).toBe("error");
+        });
+
+        it("returns 'warning' when degraged", function() {
+            var controller = makeController();
+            expect($scope.getServiceClass({
+                status: "degraged"
+            })).toBe("warning");
+        });
+
+        it("returns 'none' for anything else", function() {
+            var controller = makeController();
+            expect($scope.getServiceClass({
+                status: makeName("status")
+            })).toBe("none");
+        });
+    });
 });
