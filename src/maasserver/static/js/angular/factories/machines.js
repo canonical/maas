@@ -40,5 +40,28 @@ angular.module('MAAS').factory(
 
         }
         MachinesManager.prototype = new NodesManager();
+
+        MachinesManager.prototype.mountSpecialFilesystem =
+            function(machine, fstype, mount_point, mount_options) {
+                var method = this._handler + ".mount_special";
+                var params = {
+                    system_id: machine.system_id,
+                    fstype: fstype,
+                    mount_point: mount_point,
+                    mount_options: mount_options
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
+        MachinesManager.prototype.unmountSpecialFilesystem =
+            function(machine, mount_point) {
+                var method = this._handler + ".unmount_special";
+                var params = {
+                    system_id: machine.system_id,
+                    mount_point: mount_point
+                };
+                return RegionConnection.callMethod(method, params);
+            };
+
         return new MachinesManager();
     }]);

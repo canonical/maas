@@ -948,7 +948,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="twelve-col padding-bottom">
+                <div class="twelve-col padding-bottom" ng-controller="NodeFilesystemsController">
                     <h3>File systems</h3>
                     <section class="table margin-bottom">
                         <header class="table__head">
@@ -994,8 +994,10 @@
                                     <div class="table__data table-col--22">{$ filesystem.mount_options $}</div>
                                     <div class="table__data table-col--10">
                                         <div class="table__controls">
-                                            <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)" data-ng-show="!isAllStorageDisabled()">Unmount</a>
-                                            <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)" data-ng-show="!isAllStorageDisabled()">Remove</a>
+                                            <a class="icon unmount tooltip" data-tooltip="Unmount" data-ng-click="quickFilesystemUnmount(filesystem)"
+                                               data-ng-show="!isAllStorageDisabled() && usesStorage(filesystem.fstype)">Unmount</a>
+                                            <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)"
+                                               data-ng-show="!isAllStorageDisabled()">Remove</a>
                                         </div>
                                     </div>
                                     <div class="table__dropdown">
@@ -1003,9 +1005,10 @@
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'single'">
                                                 <div class="table__data left">
                                                     <button class="cta-ubuntu secondary margin-right"
+                                                        data-ng-show="usesStorage(filesystem.fstype)"
                                                         data-ng-click="filesystemUnmount()">Unmount</button>
                                                     <a class="link-cta-ubuntu text-button"
-                                                        data-ng-click="filesystemDelete()">Remove {$ getRemoveTypeText(filesystem) $}</a>
+                                                       data-ng-click="filesystemDelete()">Remove {$ getRemoveTypeText(filesystem) $}</a>
                                                 </div>
                                             </div>
                                             <div class="ng-hide" data-ng-show="filesystemMode === 'unmount'">
@@ -1030,71 +1033,62 @@
                                     </div>
                                 </div>
                             </div>
-                            <!--
 
-                            // Adding a new TMPFS or RAMFPS file system
-
-
-                            <div class="table__row active">
-                                <div class="table__data table-col--3">
-                                    <input class="checkbox" type="checkbox" id="virt-create" checked />
-                                    <label class="checkbox-label" for="virt-create"></label>
-                                </div>
-                                <div class="table__data table-col--16">TMPFS</div>
-                                <div class="table__data table-col--4"></div>
-                                <div class="table__data table-col--15"></div>
-                                <div class="table__data table-col--15">TMPFS</div>
-                                <div class="table__data table-col--37">/</div>
-                                <div class="table__data table-col--10">
-                                    <div class="table__controls">
-                                        <a class="icon delete tooltip" data-tooltip="Remove" data-ng-click="quickFilesystemDelete(filesystem)" data-ng-show="!isAllStorageDisabled()">Remove</a>
-                                    </div>
-                                </div>
-                                <div class="table__dropdown">
+                            <div class="table__row active" ng-switch="dropdown">
+                                <!-- Adding a new TMPFS or RAMFPS file system -->
+                                <div class="table__dropdown" ng-controller="NodeAddSpecialFilesystemController" ng-switch-when="special">
                                     <div class="table__row form active padding-top--ten padding-right--ten padding-left--ten box-sizing">
                                         <div class="six-col no-margin-bottom">
                                             <dl>
-                                                <dt class="two-col">Name</dt>
-                                                    <dd class="three-col">TMPFS</dd>
+                                                <dt class="two-col">Description</dt>
+                                                <dd class="three-col" ng-bind="description"></dd>
                                             </dl>
                                             <div class="form__group form__group--inline">
                                                 <label for="file-sys" class="two-col">Filesystem</label>
-                                                <select name="type" id="type" class="table__input three-col no-margin">
+                                                <select name="type" id="type" class="table__input three-col no-margin"
+                                                        ng-model="filesystem.fstype">
                                                     <option value="" disabled="disabled">Select type</option>
-                                                    <option value="1" selected>TMPFS</option>
-                                                    <option value="2">RAMFS</option>
+                                                    <option value="tmpfs">tmpfs</option>
+                                                    <option value="ramfs">ramfs</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="six-col last-col no-margin-bottom">
                                             <div class="form__group form__group--inline">
                                                 <label class="two-col" for="mount-point">Mount point</label>
-                                                <input type="text" id="mount-point" class="table__input three-col" placeholder="/">
+                                                <input type="text" id="mount-point" class="table__input three-col"
+                                                       placeholder="Absolute path" ng-model="filesystem.mountPoint"
+                                                       ng-class="{ invalid: isMountPointInvalid(filesystem.mountPoint) }">
                                             </div>
                                             <div class="form__group form__group--inline">
                                                 <label for="mount-options" class="two-col">Mount options</label>
-                                                <input type="text" id="mount-options" class="table__input three-col" placeholder="Seperate by comma, no spaces">
+                                                <input type="text" id="mount-options" class="table__input three-col"
+                                                       placeholder="Separated by commas, no spaces" ng-model="filesystem.mountOptions">
                                             </div>
                                         </div>
                                     </div>
                                     <div class="table__row active">
                                       <div class="table__data right">
-                                          <a class="link-cta-ubuntu text-button">Cancel</a>
-                                          <button class="cta-ubuntu ng-binding">Mount</button>
+                                          <a
+                                              class="link-cta-ubuntu text-button"
+                                              ng-click="cancel()">Cancel</a>
+                                          <button
+                                              class="cta-ubuntu ng-binding"
+                                              ng-disabled="!canMount()"
+                                              ng-click="mount()">Mount</button>
                                       </div>
                                     </div>
                                 </div>
                             </div>
-                          -->
+
                         </main>
                     </section>
-                    <!--
-
-                    // Add special filesystem button for TMPFS or RAMFS
 
                     <a class="link-cta-ubuntu secondary tooltip"
-                       data-tooltip="Create a TMPFS or RAMFS filesystem">Add special filesystem</a>
-                     -->
+                       data-tooltip="Create a tmpfs or ramfs filesystem"
+                       ng-disabled="dropdown !== null"
+                       ng-click="addSpecialFilesystem()">Add special filesystem</a>
+
                 </div>
                 <div class="twelve-col padding-bottom" data-ng-show="cachesets.length">
                     <h3>Available cache sets</h3>

@@ -143,11 +143,17 @@ angular.module('MAAS').controller('NodeStorageController', [
         // it will call `nodeLoaded` once the node has been fully loaded.
         $scope.$parent.storageController = $scope;
 
-        // Return True if the item has a filesystem and its mounted.
+        // Return True if the filesystem is mounted.
+        function isMountedFilesystem(filesystem) {
+            return angular.isObject(filesystem) &&
+                angular.isString(filesystem.mount_point) &&
+                filesystem.mount_point !== "";
+        }
+
+        // Return True if the item has a filesystem and it's mounted.
         function hasMountedFilesystem(item) {
-            return angular.isObject(item.filesystem) &&
-                angular.isString(item.filesystem.mount_point) &&
-                item.filesystem.mount_point !== "";
+            return angular.isObject(item) &&
+                isMountedFilesystem(item.filesystem);
         }
 
         // Returns the fstype if the item has a filesystem and its unmounted.
@@ -244,6 +250,25 @@ angular.module('MAAS').controller('NodeStorageController', [
                     }
                 });
             });
+
+            // Add special filesystems to the filesystem list. A special
+            // filesystem cannot exist unless mounted, so we don't need
+            // to check.
+            angular.forEach(
+                $scope.node.special_filesystems,
+                function(filesystem) {
+                    filesystems.push({
+                        "type": "filesystem",
+                        "name": "—",
+                        "size_human": "—",
+                        "fstype": filesystem.fstype,
+                        "mount_point": filesystem.mount_point,
+                        "mount_options": filesystem.mount_options,
+                        "block_id": null,
+                        "partition_id": null,
+                        "original_type": "special"
+                    });
+                });
 
             // Update the selected filesystems with the currently selected
             // filesystems.
@@ -703,7 +728,11 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Confirm the delete action for filesystem.
         $scope.filesystemConfirmDelete = function(filesystem) {
-            if(filesystem.original_type === "partition") {
+            if(filesystem.original_type === "special") {
+                // Delete the special filesystem.
+                MachinesManager.unmountSpecialFilesystem(
+                    $scope.node, filesystem.mount_point);
+            } else if(filesystem.original_type === "partition") {
                 // Delete the partition.
                 MachinesManager.deletePartition(
                     $scope.node, filesystem.original.id);
@@ -1028,6 +1057,13 @@ angular.module('MAAS').controller('NodeStorageController', [
             return angular.isString(fstype) && fstype !== "swap";
         };
 
+        // Return true if the filesystem uses storage (partition or
+        // block device).
+        $scope.usesStorage = function(fstype) {
+            return angular.isString(fstype) &&
+                fstype !== "tmpfs" && fstype !== "ramfs";
+        };
+
         // Return true if the mount point is invalid.
         $scope.isMountPointInvalid = function(mountPoint) {
             if(angular.isUndefined(mountPoint) || mountPoint === "") {
@@ -1085,7 +1121,11 @@ angular.module('MAAS').controller('NodeStorageController', [
         // Return the text for remove confirmation message.
         $scope.getRemoveTypeText = function(disk) {
             if(disk.type === "filesystem") {
-                disk = disk.original;
+                if (angular.isObject(disk.original)) {
+                    disk = disk.original;
+                } else {
+                    return "special filesystem";
+                }
             }
 
             if(disk.type === "physical") {

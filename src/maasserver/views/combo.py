@@ -104,6 +104,7 @@ MERGE_VIEWS = {
             "js/angular/controllers/node_details.js",
             "js/angular/controllers/node_details_networking.js",
             "js/angular/controllers/node_details_storage.js",
+            "js/angular/controllers/node_details_storage_filesystems.js",
             "js/angular/controllers/node_result.js",
             "js/angular/controllers/node_events.js",
             "js/angular/controllers/domains_list.js",

@@ -23,9 +23,7 @@ describe("MachinesManager", function() {
 
     // Open the connection to the region before each test.
     beforeEach(function(done) {
-        RegionConnection.registerHandler("open", function() {
-            done();
-        });
+        RegionConnection.registerHandler("open", function() { done(); });
         RegionConnection.connect("");
     });
 
@@ -39,4 +37,39 @@ describe("MachinesManager", function() {
             ["status", "owner", "tags", "zone", "subnets", "fabrics",
             "spaces", "storage_tags"]);
     });
+
+    describe("mountSpecialFilesystem", function() {
+        it("calls mount_special", function() {
+            spyOn(RegionConnection, "callMethod");
+            var machine = {system_id: makeName("system-id")};
+            var fstype = makeName("fstype");
+            var mount_point = makeName("/dir");
+            var mount_options = makeName("options");
+            MachinesManager.mountSpecialFilesystem(
+                machine, fstype, mount_point, mount_options);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "machine.mount_special", {
+                    system_id: machine.system_id, fstype: fstype,
+                    mount_point: mount_point, mount_options: mount_options
+                }
+            );
+        });
+    });
+
+    describe("unmountSpecialFilesystem", function() {
+        it("calls unmount_special", function() {
+            spyOn(RegionConnection, "callMethod");
+            var machine = {system_id: makeName("system-id")};
+            var mount_point = makeName("/dir");
+            MachinesManager.unmountSpecialFilesystem(
+                machine, mount_point);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "machine.unmount_special", {
+                    system_id: machine.system_id,
+                    mount_point: mount_point
+                }
+            );
+        });
+    });
+
 });
