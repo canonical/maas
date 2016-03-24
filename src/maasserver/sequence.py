@@ -177,6 +177,21 @@ class Sequence:
             else:
                 raise
 
+    def set_value(self, next_value):
+        """Restart the sequence at a specific value.
+
+        This will cause the next value for the sequence to be the one
+        specified.
+
+        :param next_value: The value to return next.
+        :return: None
+        """
+        statement = "ALTER SEQUENCE {name} RESTART WITH %s;"
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(statement.format(
+                    name=self.name), [next_value])
+
 
 def is_postgres_error(error, *pgcodes):
     # Unwrap Django's lowest-common-denominator exception.

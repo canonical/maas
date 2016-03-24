@@ -5,12 +5,18 @@
 
 from maasserver.api.support import (
     admin_method,
+    operation,
     OperationsHandler,
+)
+from maasserver.dns.config import (
+    dns_update_all_zones_now,
+    zone_serial,
 )
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_domain import DomainForm
 from maasserver.models import Domain
+from maasserver.sequence import INT_MAX
 from piston3.utils import rc
 
 
@@ -50,6 +56,28 @@ class DomainsHandler(OperationsHandler):
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @admin_method
+    @operation(idempotent=False)
+    def set_serial(self, request):
+        """Set the SOA serial number (for all DNS zones.)
+
+        :param serial: serial number to use next.
+        """
+        try:
+            serial = int(request.data['serial'])
+        except KeyError:
+            raise MAASAPIValidationError(
+                {'serial': 'Missing parameter'})
+        except ValueError:
+            raise MAASAPIValidationError(
+                {'serial': 'Expected a serial number'})
+        if serial == 0 or serial > INT_MAX:
+            raise MAASAPIValidationError(
+                {'serial':
+                    'Expected a serial number between 1 and %d' % INT_MAX})
+        zone_serial.set_value(serial)
+        dns_update_all_zones_now()
 
 
 class DomainHandler(OperationsHandler):

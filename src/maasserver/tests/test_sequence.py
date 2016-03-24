@@ -181,3 +181,11 @@ class TestSequence(MAASServerTestCase):
         expected = next(seq)
         self.assertEqual(expected, seq.current())
         self.assertEqual(expected, seq.current())
+
+    def test_set_value_sets_value(self):
+        name = factory.make_name('seq', sep='')
+        seq = Sequence(name)
+        seq.create()
+        expected = random.randint(2000, 9999)
+        seq.set_value(expected)
+        self.assertEqual(expected, next(seq))

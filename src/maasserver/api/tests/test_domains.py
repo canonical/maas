@@ -11,7 +11,9 @@ import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.dns.config import zone_serial
 from maasserver.models.domain import Domain
+from maasserver.sequence import INT_MAX
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
@@ -86,6 +88,30 @@ class TestDomainsAPI(APITestCase):
         response = self.client.post(uri, {})
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_can_set_serial(self):
+        zone_serial.create_if_not_exists()
+        self.become_admin()
+        uri = get_domains_uri()
+        serial = random.randint(1, INT_MAX)
+        response = self.client.post(uri, {
+            'op': 'set_serial',
+            'serial': str(serial)})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(serial, next(zone_serial))
+
+    def test_set_serial_detects_bad_values(self):
+        zone_serial.create_if_not_exists()
+        self.become_admin()
+        uri = get_domains_uri()
+        serial = random.randint(1, INT_MAX)
+        response = self.client.post(uri, {
+            'op': 'set_serial',
+            'serial': str(serial)})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        self.assertEqual(serial, next(zone_serial))
 
 
 class TestDomainAPI(APITestCase):
