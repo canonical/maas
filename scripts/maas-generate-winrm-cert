@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- mode: python -*-
+# Copyright 2014-2016 Canonical Ltd.
 # Copyright 2014 Cloudbase Solutions SRL.
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+# This software is licensed under the GNU Affero General Public License
+# version 3 (see the file LICENSE).
 
 """Generates a x509 certificate used for WinRM service on Windows nodes."""
 

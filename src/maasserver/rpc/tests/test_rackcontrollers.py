@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd. This software is licnesed under the
+# Copyright 2016 Canonical Ltd. This software is licnesed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :py:module;`maasserver.rpc.rackcontroller`."""
