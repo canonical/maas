@@ -75,6 +75,7 @@ from maasserver.models import (
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
+    Service,
     Space,
     SSHKey,
     SSLKey,
@@ -805,6 +806,13 @@ class Factory(maastesting.factory.Factory):
         fabric = Fabric(name=name, class_type=class_type)
         fabric.save()
         return fabric
+
+    def make_Service(self, node, name=None):
+        if name is None:
+            name = self.make_name('name')
+        service = Service(node=node, name=name)
+        service.save()
+        return service
 
     def _get_available_vid(self, fabric):
         """Return a free vid in the given Fabric."""

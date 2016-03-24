@@ -60,6 +60,7 @@ MERGE_VIEWS = {
             "js/angular/factories/general.js",
             "js/angular/factories/users.js",
             "js/angular/factories/events.js",
+            "js/angular/factories/services.js",
             "js/angular/factories/tags.js",
             "js/angular/factories/ipranges.js",
             "js/angular/factories/subnets.js",

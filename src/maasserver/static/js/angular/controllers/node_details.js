@@ -8,11 +8,11 @@ angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
     'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
     'UsersManager', 'TagsManager', 'DomainsManager', 'ManagerHelperService',
-    'ErrorService', 'ValidationService', function(
+    'ServicesManager', 'ErrorService', 'ValidationService', function(
         $scope, $rootScope, $routeParams, $location,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
-        ErrorService, ValidationService) {
+        ServicesManager, ErrorService, ValidationService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -84,6 +84,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             },
             tags: []
         };
+
+        // Service monitor section (for controllers).
+        $scope.services = {};
 
         // Power section.
         $scope.power = {
@@ -259,6 +262,19 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // be filled in at least once.
             if($scope.canEdit() && hasInvalidArchitecture($scope.node)) {
                 $scope.summary.editing = true;
+            }
+        }
+
+        // Updates the service monitor section.
+        function updateServices() {
+            if($scope.isController) {
+                $scope.services = {};
+                angular.forEach(ControllersManager.getServices(
+                        $scope.node), function(service) {
+                    // Simplify for UI: Anything but 'running' is error state.
+                    service.error = (service.status !== "running");
+                    $scope.services[service.name] = service;
+                });
             }
         }
 
@@ -450,6 +466,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateTitle();
             updateSummary();
             updateMachineOutput();
+            updateServices();
             startWatching();
 
             // Tell the storageController and networkingController that the
@@ -951,7 +968,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             GeneralManager,
             UsersManager,
             TagsManager,
-            DomainsManager
+            DomainsManager,
+            ServicesManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this node set to active. Only call setActiveItem if not already

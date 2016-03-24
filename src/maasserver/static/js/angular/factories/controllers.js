@@ -10,8 +10,9 @@
 
 angular.module('MAAS').factory(
     'ControllersManager',
-    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', function(
-            $q, $rootScope, RegionConnection, NodesManager) {
+    ['$q', '$rootScope', 'RegionConnection', 'NodesManager', 'ServicesManager',
+            function($q, $rootScope, RegionConnection, NodesManager,
+            ServicesManager) {
 
         function ControllersManager() {
             NodesManager.call(this);
@@ -19,7 +20,7 @@ angular.module('MAAS').factory(
             this._pk = "system_id";
             this._handler = "controller";
 
-            // Listen for notify events for the machine object.
+            // Listen for notify events for the controller object.
             var self = this;
             RegionConnection.registerNotifier("controller",
                 function(action, data) {
@@ -27,5 +28,17 @@ angular.module('MAAS').factory(
                 });
         }
         ControllersManager.prototype = new NodesManager();
+
+        ControllersManager.prototype.getServices = function(controller) {
+            var services = [];
+            angular.forEach(controller.service_ids, function(service_id) {
+                var service = ServicesManager.getItemFromList(service_id);
+                if(angular.isObject(service)) {
+                    services.push(service);
+                }
+            });
+            return services;
+        };
+
         return new ControllersManager();
     }]);

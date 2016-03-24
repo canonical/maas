@@ -36,7 +36,7 @@ describe("NodeDetailsController", function() {
 
     // Load the required dependencies for the NodeDetails controller and
     // mock the websocket connection.
-    var MachinesManager, ControllersManager;
+    var MachinesManager, ControllersManager, ServicesManager;
     var DevicesManager, GeneralManager, UsersManager, DomainsManager;
     var TagsManager, RegionConnection, ManagerHelperService, ErrorService;
     var webSocket;
@@ -50,6 +50,7 @@ describe("NodeDetailsController", function() {
         DomainsManager = $injector.get("DomainsManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
+        ServicesManager = $injector.get("ServicesManager");
         ErrorService = $injector.get("ErrorService");
 
         // Mock buildSocket so an actual connection is not made.
@@ -142,6 +143,7 @@ describe("NodeDetailsController", function() {
             TagsManager: TagsManager,
             DomainsManager: DomainsManager,
             ManagerHelperService: ManagerHelperService,
+            ServicesManager: ServicesManager,
             ErrorService: ErrorService
         });
 
@@ -197,6 +199,7 @@ describe("NodeDetailsController", function() {
         });
         expect($scope.checkingPower).toBe(false);
         expect($scope.devices).toEqual([]);
+        expect($scope.services).toEqual({});
     });
 
     it("sets initial values for summary section", function() {
@@ -257,7 +260,7 @@ describe("NodeDetailsController", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
             MachinesManager, ControllersManager, ZonesManager, GeneralManager,
-            UsersManager, TagsManager, DomainsManager]);
+            UsersManager, TagsManager, DomainsManager, ServicesManager]);
     });
 
     it("doesnt call setActiveItem if node is loaded", function() {
@@ -292,6 +295,32 @@ describe("NodeDetailsController", function() {
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
+    });
+
+    it("updateServices sets $scope.services when node is loaded", function() {
+        spyOn(ControllersManager, "getServices").and.returnValue([
+            { "status": "unknown", "name": "tgt" },
+            { "status": "running", "name": "rackd" }
+        ]);
+        spyOn(ControllersManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+
+        var defer = $q.defer();
+        $routeParams.type = 'controller';
+        var controller = makeController(defer);
+        ControllersManager._activeItem = node;
+
+        defer.resolve();
+        $rootScope.$digest();
+
+        expect($scope.node).toBe(node);
+        expect($scope.loaded).toBe(true);
+
+        expect(ControllersManager.getServices).toHaveBeenCalledWith(node);
+        expect($scope.services).not.toBe(null);
+        expect(Object.keys($scope.services).length).toBe(2);
+        expect($scope.services.tgt.error).toBe(true);
+        expect($scope.services.rackd.error).toBe(false);
     });
 
     it("title is updated once setActiveItem resolves", function() {
@@ -538,7 +567,7 @@ describe("NodeDetailsController", function() {
         ]);
     });
 
-    it("calls startPolling onces managers loaded", function() {
+    it("calls startPolling once managers loaded", function() {
         spyOn(MachinesManager, "setActiveItem").and.returnValue(
             $q.defer().promise);
         spyOn(GeneralManager, "startPolling");

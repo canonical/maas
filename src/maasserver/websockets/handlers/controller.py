@@ -81,4 +81,8 @@ class ControllerHandler(MachineHandler):
             interface.vlan_id
             for interface in obj.interface_set.all()
         ]
+        data["service_ids"] = [
+            service.id
+            for service in obj.service_set.all()
+        ]
         return data
