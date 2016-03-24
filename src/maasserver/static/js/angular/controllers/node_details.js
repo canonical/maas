@@ -271,8 +271,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.services = {};
                 angular.forEach(ControllersManager.getServices(
                         $scope.node), function(service) {
-                    // Simplify for UI: Anything but 'running' is error state.
-                    service.error = (service.status !== "running");
                     $scope.services[service.name] = service;
                 });
             }
@@ -437,6 +435,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
 
+            // Update the services when the services list is updated.
+            $scope.$watch("node.service_ids", updateServices);
 
             // Update the machine output view when summary, commissioning, or
             // installation results are updated on the node.
@@ -958,6 +958,17 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 result += packages.length > 1 ? " packages" : " package";
             }
             return result;
+        };
+
+        // Service monitor HTML calls this to decide to show error state.
+        $scope.isServiceOK = function(service) {
+            return angular.isObject(service) && service.status === "running";
+        };
+
+        // Service monitor HTML calls this to decide to show error state.
+        $scope.isServiceErrored = function(service) {
+            // Any service not OK is an error.
+            return !$scope.isServiceOK(service);
         };
 
         // Load all the required managers.

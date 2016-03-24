@@ -1072,6 +1072,23 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_zone", "zone_delete_notify", "delete")
 
+    # Service table
+    register_procedure(
+        render_notification_procedure(
+            'service_create_notify', 'service_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'service_update_notify', 'service_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'service_delete_notify', 'service_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_service", "service_create_notify", "insert")
+    register_trigger(
+        "maasserver_service", "service_update_notify", "update")
+    register_trigger(
+        "maasserver_service", "service_delete_notify", "delete")
+
     # Tag table
     register_procedure(
         render_notification_procedure(

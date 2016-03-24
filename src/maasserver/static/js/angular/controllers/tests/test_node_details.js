@@ -319,8 +319,8 @@ describe("NodeDetailsController", function() {
         expect(ControllersManager.getServices).toHaveBeenCalledWith(node);
         expect($scope.services).not.toBe(null);
         expect(Object.keys($scope.services).length).toBe(2);
-        expect($scope.services.tgt.error).toBe(true);
-        expect($scope.services.rackd.error).toBe(false);
+        expect($scope.services.tgt.status).toBe('unknown');
+        expect($scope.services.rackd.status).toBe('running');
     });
 
     it("title is updated once setActiveItem resolves", function() {
@@ -555,6 +555,7 @@ describe("NodeDetailsController", function() {
             "node.zone.id",
             "node.power_type",
             "node.power_parameters",
+            "node.service_ids",
             "node.summary_xml",
             "node.summary_yaml",
             "node.commissioning_results",

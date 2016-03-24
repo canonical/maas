@@ -22,10 +22,6 @@ angular.module('MAAS').factory(
             var self = this;
             RegionConnection.registerNotifier("service",
                 function(action, data) {
-                    // TODO: trapnine: Remove console.log when 'service'
-                    // triggers are in and tested.
-                    console.log("listener called notifying - action " +
-                        action + ", data " + data);
                     self.onNotify(action, data);
             });
         }
