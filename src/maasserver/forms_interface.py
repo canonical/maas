@@ -24,6 +24,7 @@ from maasserver.forms import (
 )
 from maasserver.models.interface import (
     BondInterface,
+    BridgeInterface,
     build_vlan_interface_name,
     Interface,
     InterfaceRelationship,
@@ -268,7 +269,94 @@ class VLANInterfaceForm(InterfaceForm):
         return cleaned_data
 
 
-class BondInterfaceForm(InterfaceForm):
+class ChildInterfaceForm(InterfaceForm):
+    """Form used to create "child" interfaces (that is, interfaces which
+    require their "parent" interfaces in order to exist, such as bonds and
+    bridges.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Allow VLAN to be blank when creating.
+        instance = kwargs.get("instance", None)
+        if instance is not None and instance.id is not None:
+            self.fields['vlan'].required = True
+        else:
+            self.fields['vlan'].required = False
+
+    def clean_parents(self):
+        """Validate that child interfaces cannot be created unless at least one
+        parent is present.
+        """
+        parents = self.get_clean_parents()
+        if parents is None:
+            return
+        # Ensure support for parthenogenesis.
+        if len(parents) < 1:
+            raise ValidationError(
+                "A %s interface must have one or more parents." %
+                self.Meta.model.get_type())
+        return parents
+
+    def _set_default_child_mac(self, parents):
+        """Sets the value of self.cleaned_data['mac_address'] based on either
+        the first parent (if the child interface is new), or a remaining parent
+        (if a parent with the current MAC was removed).
+        """
+        if self.instance.id is not None:
+            parent_macs = {
+                parent.mac_address.get_raw(): parent
+                for parent in self.instance.parents.all()
+                }
+        else:
+            parent_macs = {}
+        mac_not_changed = (
+            self.instance.id is not None and
+            self.cleaned_data["mac_address"] == self.instance.mac_address
+        )
+        if self.instance.id is None and 'mac_address' not in self.data:
+            # New bond without mac_address set, set it to the first
+            # parent mac_address.
+            self.cleaned_data['mac_address'] = str(
+                parents[0].mac_address)
+        elif (mac_not_changed and
+              self.instance.mac_address in parent_macs and
+              parent_macs[self.instance.mac_address] not in parents):
+            # Updating child where its mac_address comes from its parent
+            # and that parent is no longer part of this child. Update
+            # the mac_address to be one of the new parent MAC
+            # addresses.
+            self.cleaned_data['mac_address'] = str(
+                parents[0].mac_address)
+
+    def _set_default_vlan(self, parents):
+        """When creating the child, set VLAN to the same as the first parent
+        by default.
+        """
+        if self.instance.id is None:
+            vlan = self.cleaned_data.get('vlan')
+            if vlan is None:
+                vlan = parents[0].vlan
+                self.cleaned_data['vlan'] = vlan
+
+    def _validate_parental_fidelity(self, parents):
+        """Check that all of the parent interfaces are not already in a
+        relationship before committing them to this child.
+        """
+        parents_with_other_children = {
+            parent.name
+            for parent in parents
+            for rel in parent.children_relationships.all()
+            if rel.child.id != self.instance.id
+        }
+        if parents_with_other_children:
+            set_form_error(
+                self, 'parents',
+                "Interfaces already in-use: %s." % (
+                    ', '.join(sorted(parents_with_other_children))))
+
+
+class BondInterfaceForm(ChildInterfaceForm):
     """Form used to create/edit a bond interface."""
 
     bond_mode = forms.ChoiceField(
@@ -305,24 +393,6 @@ class BondInterfaceForm(InterfaceForm):
             'name',
         )
 
-    def __init__(self, *args, **kwargs):
-        super(BondInterfaceForm, self).__init__(*args, **kwargs)
-        # Allow VLAN to be blank when creating.
-        instance = kwargs.get("instance", None)
-        if instance is not None and instance.id is not None:
-            self.fields['vlan'].required = True
-        else:
-            self.fields['vlan'].required = False
-
-    def clean_parents(self):
-        parents = self.get_clean_parents()
-        if parents is None:
-            return
-        if len(parents) < 1:
-            raise ValidationError(
-                "A Bond interface must have one or more parents.")
-        return parents
-
     def clean_vlan(self):
         new_vlan = self.cleaned_data.get('vlan')
         if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
@@ -331,70 +401,35 @@ class BondInterfaceForm(InterfaceForm):
         return new_vlan
 
     def clean(self):
-        cleaned_data = super(BondInterfaceForm, self).clean()
+        cleaned_data = super().clean()
         if self.fields_ok(['vlan', 'parents']):
             parents = self.cleaned_data.get('parents')
             # Set the mac_address if its missing and the interface is being
             # created.
             if parents:
-                if self.instance.id is not None:
-                    parent_macs = {
-                        parent.mac_address.get_raw(): parent
-                        for parent in self.instance.parents.all()
-                    }
-                mac_not_changed = (
-                    self.instance.id is not None and
-                    self.cleaned_data["mac_address"] == (
-                        self.instance.mac_address))
-                if self.instance.id is None and 'mac_address' not in self.data:
-                    # New bond without mac_address set, set it to the first
-                    # parent mac_address.
-                    self.cleaned_data['mac_address'] = str(
-                        parents[0].mac_address)
-                elif (mac_not_changed and
-                        self.instance.mac_address in parent_macs and
-                        parent_macs[self.instance.mac_address] not in parents):
-                    # Updating bond where its mac_address comes from its parent
-                    # and that parent is no longer part of this bond. Update
-                    # the mac_address to be one of the new parent MAC
-                    # addresses.
-                    self.cleaned_data['mac_address'] = str(
-                        parents[0].mac_address)
-
-                # Check that all of the parents are not already in use.
-                parents_with_other_children = {
-                    parent.name
-                    for parent in parents
-                    for rel in parent.children_relationships.all()
-                    if rel.child.id != self.instance.id
-                }
-                if parents_with_other_children:
-                    set_form_error(
-                        self, 'parents',
-                        "%s is already in-use by another interface." % (
-                            ', '.join(sorted(parents_with_other_children))))
-
-                # When creating the bond set VLAN to the same as the parents
-                # and check that the parents all belong to the same VLAN.
-                if self.instance.id is None:
-                    vlan = self.cleaned_data.get('vlan')
-                    if vlan is None:
-                        vlan = parents[0].vlan
-                        self.cleaned_data['vlan'] = vlan
-                    parent_vlans = {
-                        parent.vlan
-                        for parent in parents
-                    }
-                    if parent_vlans != set([vlan]):
-                        set_form_error(
-                            self, 'parents',
-                            "All parents must belong to the same VLAN.")
-
+                self._set_default_child_mac(parents)
+                self._validate_parental_fidelity(parents)
+                self._set_default_vlan(parents)
+                self._validate_parent_vlans_match(parents)
         return cleaned_data
+
+    def _validate_parent_vlans_match(self, parents):
+        # When creating the bond set VLAN to the same as the parents
+        # and check that the parents all belong to the same VLAN.
+        if self.instance.id is None:
+            vlan = self.cleaned_data.get('vlan')
+            parent_vlans = {
+                parent.vlan
+                for parent in parents
+                }
+            if parent_vlans != set([vlan]):
+                set_form_error(
+                    self, 'parents',
+                    "All parents must belong to the same VLAN.")
 
     def set_extra_parameters(self, interface, created):
         """Set the bond parameters as well."""
-        super(BondInterfaceForm, self).set_extra_parameters(interface, created)
+        super().set_extra_parameters(interface, created)
         # Set all the bond_* parameters.
         bond_fields = [
             field_name
@@ -414,8 +449,31 @@ class BondInterfaceForm(InterfaceForm):
                 interface.params[bond_field] = self.fields[bond_field].initial
 
 
+class BridgeInterfaceForm(ChildInterfaceForm):
+    """Form used to create/edit a bridge interface."""
+
+    class Meta:
+        model = BridgeInterface
+        fields = InterfaceForm.Meta.fields + (
+            'mac_address',
+            'name',
+        )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.fields_ok(['vlan', 'parents']):
+            parents = self.cleaned_data.get('parents')
+            # Set the mac_address if its missing and the interface is being
+            # created.
+            if parents:
+                self._set_default_child_mac(parents)
+                self._validate_parental_fidelity(parents)
+                self._set_default_vlan(parents)
+        return cleaned_data
+
 INTERFACE_FORM_MAPPING = {
     INTERFACE_TYPE.PHYSICAL: PhysicalInterfaceForm,
     INTERFACE_TYPE.VLAN: VLANInterfaceForm,
     INTERFACE_TYPE.BOND: BondInterfaceForm,
+    INTERFACE_TYPE.BRIDGE: BridgeInterfaceForm,
 }

@@ -77,15 +77,15 @@ describe("filterByUnusedForInterface", function() {
 });
 
 
-describe("removeBondParents", function() {
+describe("removeInterfaceParents", function() {
 
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
-    // Load the removeBondParents.
-    var removeBondParents;
+    // Load the removeInterfaceParents.
+    var removeInterfaceParents;
     beforeEach(inject(function($filter) {
-        removeBondParents = $filter("removeBondParents");
+        removeInterfaceParents = $filter("removeInterfaceParents");
     }));
 
     it("returns empty if undefined bondInterface", function() {
@@ -97,7 +97,7 @@ describe("removeBondParents", function() {
             };
             interfaces.push(nic);
         }
-        expect(removeBondParents(interfaces)).toEqual(interfaces);
+        expect(removeInterfaceParents(interfaces)).toEqual(interfaces);
     });
 
     it("removes parents from interfaces", function() {
@@ -120,7 +120,7 @@ describe("removeBondParents", function() {
         var bondInterface = {
             parents: interfaces
         };
-        expect(removeBondParents(interfaces, bondInterface)).toEqual([]);
+        expect(removeInterfaceParents(interfaces, bondInterface)).toEqual([]);
     });
 });
 
@@ -510,6 +510,49 @@ describe("NodeNetworkingController", function() {
             }]);
         });
 
+        it("removes bridge parents and places them as members", function() {
+            var parent1 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [2],
+                links: []
+            };
+            var parent2 = {
+                id: 1,
+                name: "eth1",
+                type: "physical",
+                parents: [],
+                children: [2],
+                links: []
+            };
+            var bridge = {
+                id: 2,
+                name: "br0",
+                type: "bridge",
+                parents: [0, 1],
+                children: [],
+                links: []
+            };
+            node.interfaces = [parent1, parent2, bridge];
+            updateInterfaces();
+            expect($scope.interfaces).toEqual([{
+                id: 2,
+                name: "br0",
+                type: "bridge",
+                parents: [0, 1],
+                children: [],
+                links: [],
+                members: [parent1, parent2],
+                vlan: null,
+                link_id: -1,
+                subnet: null,
+                mode: "link_up",
+                ip_address: ""
+            }]);
+        });
+
         it("clears focusInterface if parent is now in a bond", function() {
             var parent1 = {
                 id: 0,
@@ -536,6 +579,40 @@ describe("NodeNetworkingController", function() {
                 links: []
             };
             node.interfaces = [parent1, parent2, bond];
+            $scope.focusInterface = {
+                id: 0,
+                link_id: -1
+            };
+            updateInterfaces();
+            expect($scope.focusInterface).toBeNull();
+        });
+
+       it("clears focusInterface if parent is now in a bridge", function() {
+            var parent1 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [2],
+                links: []
+            };
+            var parent2 = {
+                id: 1,
+                name: "eth1",
+                type: "physical",
+                parents: [],
+                children: [2],
+                links: []
+            };
+            var bridge = {
+                id: 2,
+                name: "br0",
+                type: "bridge",
+                parents: [0, 1],
+                children: [],
+                links: []
+            };
+            node.interfaces = [parent1, parent2, bridge];
             $scope.focusInterface = {
                 id: 0,
                 link_id: -1

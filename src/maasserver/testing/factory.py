@@ -850,6 +850,8 @@ class Factory(maastesting.factory.Factory):
                 name = self.make_name('eth', sep=':')
             elif iftype == INTERFACE_TYPE.BOND:
                 name = self.make_name('bond')
+            elif iftype == INTERFACE_TYPE.BRIDGE:
+                name = self.make_name('br')
             elif iftype == INTERFACE_TYPE.UNKNOWN:
                 name = self.make_name('eth')
             elif iftype == INTERFACE_TYPE.VLAN:
@@ -875,6 +877,7 @@ class Factory(maastesting.factory.Factory):
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,
                     INTERFACE_TYPE.BOND,
+                    INTERFACE_TYPE.BRIDGE,
                     INTERFACE_TYPE.UNKNOWN]):
             mac_address = self.make_MAC()
         if node is None and iftype == INTERFACE_TYPE.PHYSICAL:

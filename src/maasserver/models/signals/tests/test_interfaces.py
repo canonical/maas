@@ -126,14 +126,19 @@ class TestMTUParams(MAASServerTestCase):
             }, reload_object(physical3_interface).params)
 
 
-class TestUpdateBondParents(MAASServerTestCase):
+class TestUpdateChildInterfaceParents(MAASServerTestCase):
+
+    scenarios = (
+        ("bond", {"iftype": INTERFACE_TYPE.BOND}),
+        ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
+    )
 
     def test__updates_bond_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         bond = factory.make_Interface(
-            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+            self.iftype, parents=[parent1, parent2])
         self.assertEqual(bond.vlan, reload_object(parent1).vlan)
         self.assertEqual(bond.vlan, reload_object(parent2).vlan)
 
@@ -143,7 +148,7 @@ class TestUpdateBondParents(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=parent1.node)
         static_ip = factory.make_StaticIPAddress(interface=parent1)
         factory.make_Interface(
-            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+            self.iftype, parents=[parent1, parent2])
         self.assertIsNone(reload_object(static_ip))
 
 

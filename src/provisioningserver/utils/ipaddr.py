@@ -342,15 +342,12 @@ def annotate_with_driver_information(
     Annotates the given dictionary to update it with driver information
     (if found) for each interface.
 
-    Deletes bond interfaces if they are not configured.
-
     :param interfaces: interfaces dictionary from `parse_ip_addr()`.
     :param proc_net: path to /proc/net
     :param sys_class_net: path to /sys/class/net
     """
     interfaces = annotate_with_proc_net_bonding_original_macs(
         interfaces, proc_net=proc_net)
-    bogus_interfaces = []
     for name in interfaces:
         iface = interfaces[name]
         iftype = get_interface_type(
@@ -359,20 +356,12 @@ def annotate_with_driver_information(
         if iftype == 'ethernet.bond':
             bond_parents = get_bonded_interfaces(
                 name, sys_class_net=sys_class_net)
-            if len(bond_parents) > 0:
-                iface['bonded_interfaces'] = bond_parents
-            else:
-                # If we found a bond interface with no parents, just pretend
-                # it doesn't exist. The MAAS model assumes bonds must have
-                # backing interfaces.
-                bogus_interfaces.append(name)
+            iface['bonded_interfaces'] = bond_parents
         elif iftype == 'ethernet.vlan':
             iface['vid'] = get_vid_from_ifname(name)
         elif iftype == 'ethernet.bridge':
             iface['bridged_interfaces'] = get_bridged_interfaces(
                 name, sys_class_net=sys_class_net)
-    for name in bogus_interfaces:
-        del interfaces[name]
     return interfaces
 
 

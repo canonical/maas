@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to interface changes."""
@@ -15,6 +15,7 @@ from maasserver.enum import (
 )
 from maasserver.models import (
     BondInterface,
+    BridgeInterface,
     Interface,
     PhysicalInterface,
     VLAN,
@@ -27,6 +28,7 @@ INTERFACE_CLASSES = [
     Interface,
     PhysicalInterface,
     BondInterface,
+    BridgeInterface,
     VLANInterface,
 ]
 
@@ -128,9 +130,9 @@ for klass in INTERFACE_CLASSES:
         klass, ['params'], delete=False)
 
 
-def update_bond_parents(sender, instance, created, **kwargs):
-    """Update bond parents when interface created."""
-    if instance.type == INTERFACE_TYPE.BOND:
+def update_interface_parents(sender, instance, created, **kwargs):
+    """Update parents when an interface is created."""
+    if instance.type in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
         for parent in instance.parents.all():
             # Make sure the parent has not links as well, just to be sure.
             parent.clear_all_links(clearing_config=True)
@@ -141,7 +143,7 @@ def update_bond_parents(sender, instance, created, **kwargs):
 
 for klass in INTERFACE_CLASSES:
     signals.watch(
-        post_save, update_bond_parents,
+        post_save, update_interface_parents,
         sender=klass)
 
 

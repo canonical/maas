@@ -291,7 +291,7 @@ class TestInterfacesAPI(APITestCase):
         self.assertEqual({
             "mac_address": [
                 "This MAC address is already in use by %s." % (
-                    interface_on_other_node.node.hostname)],
+                    interface_on_other_node.get_log_string())],
             }, json_load_bytes(response.content))
 
     def test_create_bond(self):
@@ -416,7 +416,7 @@ class TestInterfacesAPI(APITestCase):
         self.assertEqual({
             "mac_address": ["This field cannot be blank."],
             "name": ["This field is required."],
-            "parents": ["A Bond interface must have one or more parents."],
+            "parents": ["A bond interface must have one or more parents."],
             }, json_load_bytes(response.content))
 
     def test_create_vlan(self):

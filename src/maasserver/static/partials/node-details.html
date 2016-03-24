@@ -543,7 +543,7 @@
                             <main class="table__body" data-selected-rows>
                                 <div class="table__row"
                                     data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), noEdit: cannotEditInterface(interface) }"
-                                    data-ng-repeat="interface in interfaces | removeBondParents:newBondInterface">
+                                    data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface">
                                     <div class="table__data table-col--3">
                                         <span data-ng-hide="isAllNetworkingDisabled()">
                                             <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"

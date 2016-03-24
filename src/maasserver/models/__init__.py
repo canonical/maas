@@ -102,6 +102,7 @@ from maasserver.models.filesystemgroup import (
 )
 from maasserver.models.interface import (
     BondInterface,
+    BridgeInterface,
     Interface,
     PhysicalInterface,
     UnknownInterface,
@@ -149,6 +150,7 @@ ignore_unused(
     BMC,
     Bcache,
     BondInterface,
+    BridgeInterface,
     BootResource,
     BootResourceFile,
     BootResourceSet,

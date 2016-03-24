@@ -512,6 +512,7 @@ class INTERFACE_TYPE:
     # be changed.
     PHYSICAL = 'physical'
     BOND = 'bond'
+    BRIDGE = 'bridge'
     VLAN = 'vlan'
     ALIAS = 'alias'
     # Interface that is created when it is not linked to a node.
@@ -521,6 +522,7 @@ class INTERFACE_TYPE:
 INTERFACE_TYPE_CHOICES = (
     (INTERFACE_TYPE.PHYSICAL, "Physical interface"),
     (INTERFACE_TYPE.BOND, "Bond"),
+    (INTERFACE_TYPE.BRIDGE, "Bridge"),
     (INTERFACE_TYPE.VLAN, "VLAN interface"),
     (INTERFACE_TYPE.ALIAS, "Alias"),
     (INTERFACE_TYPE.UNKNOWN, "Unknown"),

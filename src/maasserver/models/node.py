@@ -91,8 +91,8 @@ from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import (
     BondInterface,
+    BridgeInterface,
     Interface,
-    InterfaceRelationship,
     PhysicalInterface,
     VLANInterface,
 )
@@ -2426,8 +2426,9 @@ class Node(CleanSave, TimestampedModel):
         selecting the best possible default gateway IP. The criteria below
         is used to select the best possible gateway:
             1. Managed subnets over unmanaged subnets.
-            2. Bond interfaces over physical interfaces.
-            3. Node's boot interface over all other interfaces except bonds.
+            2. Bond and bridge interfaces over physical interfaces.
+            3. Node's boot interface over all other interfaces except bonds
+               and bridges.
             4. Physical interfaces over VLAN interfaces.
             5. Sticky IP links over user reserved IP links.
             6. User reserved IP links over auto IP links.
@@ -2470,6 +2471,7 @@ class Node(CleanSave, TimestampedModel):
                 vlan.dhcp_on DESC,
                 CASE
                     WHEN interface.type = 'bond' THEN 1
+                    WHEN interface.type = 'bridge' THEN 1
                     WHEN interface.type = 'physical' AND
                         interface.id = node.boot_interface_id THEN 2
                     WHEN interface.type = 'physical' THEN 3
@@ -2983,10 +2985,10 @@ class RackController(Node):
         }))
         for name in process_order:
             interface = self._update_interface(name, interfaces[name])
-            if interface.id in current_interfaces:
+            if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
 
-        # Remove all the interfaces that no longer exits. We do this in reverse
+        # Remove all the interfaces that no longer exist. We do this in reverse
         # order so the child is deleted before the parent.
         deletion_order = {}
         for nic_id, nic in current_interfaces.items():
@@ -3015,6 +3017,8 @@ class RackController(Node):
             return self._update_vlan_interface(name, config)
         elif config["type"] == "bond":
             return self._update_bond_interface(name, config)
+        elif config["type"] == "bridge":
+            return self._update_bridge_interface(name, config)
         else:
             raise ValueError(
                 "Unkwown interface type '%s' for '%s'." % (
@@ -3156,6 +3160,52 @@ class RackController(Node):
                 interface, config["links"], force_vlan=True)
         return interface
 
+    def _update_child_interface(self, name, config, child_type):
+        """Update a child interface.
+
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        # Get all the parent interfaces for this interface. All the parents
+        # should exists because of the order the links are processed.
+        ifnames = config["parents"]
+        parent_nics = Interface.objects.get_interfaces_on_node_by_name(
+            self, ifnames)
+
+        # If we didn't create the parents yet, we need to know about it,
+        # because that indicates a potentially serious bug.
+        if len(config["parents"]) != len(parent_nics):
+            maaslog.warning(
+                "Could not find all parent interfaces for {ifname} "
+                "on {node_name}. Found: {modeled_interfaces}; "
+                "expected: {expected_interfaces}".format(
+                    ifname=name,
+                    node_name=self.hostname,
+                    modeled_interfaces=[
+                        iface.name for iface in parent_nics
+                    ].join(", "),
+                    expected_interfaces=ifnames.join(", ")))
+
+        # Ignore child interfaces that don't have parents. MAAS won't know what
+        # to do with them since they can't be connected to a fabric.
+        if len(parent_nics) == 0:
+            return None
+
+        mac_address = config["mac_address"]
+        interface = child_type.objects.get_or_create_on_node(
+            self, name, mac_address, parent_nics)
+
+        links = config["links"]
+        self._configure_vlan_from_links(interface, parent_nics, links)
+
+        # Update all the IP address on this interface. Fix the VLAN the
+        # interface belongs to so its the same as the links and all parents to
+        # be on the same VLAN.
+        update_ip_addresses = self._update_links(interface, links)
+        self._update_parent_vlans(interface, parent_nics, update_ip_addresses)
+        return interface
+
     def _update_bond_interface(self, name, config):
         """Update a bond interface.
 
@@ -3163,56 +3213,27 @@ class RackController(Node):
         :param config: Interface dictionary that was parsed from
             /etc/network/interfaces on the rack controller.
         """
-        # Get all the parent interfaces for this bond. All the parents should
-        # exists because of the order the links are processed.
-        parent_nics = [
-            Interface.objects.get(node=self, name=parent_name)
-            for parent_name in config["parents"]
-        ]
+        return self._update_child_interface(name, config, BondInterface)
 
-        # Create the bond interface. get_or_create will not work as the way
-        # parents of a bond can be removed or the MAC address can change. Do
-        # the best possible to update the existing bond, if not a new one will
-        # be created and the old one will be removed in `update_interfaces`.
-        mac_address = config["mac_address"]
-        interface = BondInterface.objects.filter(
-            Q(mac_address=mac_address) | Q(name=name) & Q(node=self)).first()
-        if interface is not None:
-            interface.mac_address = mac_address
-            interface.name = name
-            interface.parents.clear()
-            for parent_nic in parent_nics:
-                InterfaceRelationship(
-                    child=interface, parent=parent_nic).save()
-            if interface.node.id != self.id:
-                # Bond with MAC address was on a different node. We need to
-                # move it to its new owner. In the process we delete all of its
-                # current links because they are completely wrong.
-                interface.ip_addresses.all().delete()
-                interface.node = self
-        else:
-            interface = BondInterface.objects.create(
-                name=name, mac_address=mac_address, node=self)
-            for parent_nic in parent_nics:
-                InterfaceRelationship(
-                    child=interface, parent=parent_nic).save()
+    def _update_bridge_interface(self, name, config):
+        """Update a bridge interface.
 
-        # Make sure that the VLAN on the bond is correct. When
-        # links exists on this bond we place it into the correct
-        # VLAN. If it cannot be determined it is placed on the same fabric
-        # as its first parent interface.
-        connected_to_subnets = self._get_connected_subnets(
-            config["links"])
-        if len(connected_to_subnets) == 0:
-            # Not connected to any known subnets. We add it to the same
-            # VLAN as its first parent.
-            interface.vlan = parent_nics[0].vlan
-        interface.save()
+        :param name: Name of the interface.
+        :param config: Interface dictionary that was parsed from
+            /etc/network/interfaces on the rack controller.
+        """
+        return self._update_child_interface(name, config, BridgeInterface)
 
-        # Update all the IP address on this bond. Fix the VLAN the
-        # bond belongs to so its the same as the links and all parents to
-        # be on the same VLAN.
-        update_ip_addresses = self._update_links(interface, config["links"])
+    def _update_parent_vlans(
+            self, interface, parent_nics, update_ip_addresses):
+        """Given the specified interface model object, the specified list of
+        parent interfaces, and the specified list of static IP addresses,
+        update the parent interfaces to correspond to the VLAN found on the
+        subnet the IP address is allocated from.
+
+        If a static IP address is allocated, give preferential treatment to
+        the VLAN that IP address resides on.
+        """
         linked_vlan = self._get_first_sticky_vlan_from_ip_addresses(
             update_ip_addresses)
         if linked_vlan is not None:
@@ -3222,7 +3243,18 @@ class RackController(Node):
                 if parent_nic.vlan_id != linked_vlan.id:
                     parent_nic.vlan = linked_vlan
                     parent_nic.save()
-        return interface
+
+    def _configure_vlan_from_links(self, interface, parent_nics, links):
+        # Make sure that the VLAN on the interface is correct. When
+        # links exists on this interface we place it into the correct
+        # VLAN. If it cannot be determined it is placed on the same fabric
+        # as its first parent interface.
+        connected_to_subnets = self._get_connected_subnets(links)
+        if len(connected_to_subnets) == 0:
+            # Not connected to any known subnets. We add it to the same
+            # VLAN as its first parent.
+            interface.vlan = parent_nics[0].vlan
+        interface.save()
 
     def _get_connected_subnets(self, links):
         """Return a set of subnets that `links` belongs to."""

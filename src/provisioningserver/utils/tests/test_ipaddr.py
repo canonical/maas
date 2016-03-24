@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test parser for 'ip addr show'."""
@@ -34,7 +34,6 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
-    HasLength,
     Not,
 )
 
@@ -506,27 +505,6 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
                 self.expectThat(iface, Contains('bonded_interfaces'))
             elif iface['type'] == 'ethernet.bridge':
                 self.expectThat(iface, Contains('bridged_interfaces'))
-
-    def test__ignores_bond_interfaces_with_no_parents(self):
-        interfaces = {
-            'eth0': {},
-            'eth1': {},
-            'bond0': {},
-            'bond1': {},
-        }
-        self.createEthernetInterface('eth0', is_physical=True)
-        self.createEthernetInterface('eth1', is_physical=True)
-        self.createEthernetInterface(
-            'bond0', is_bond=True, bonded_interfaces=['eth0, eth1'])
-        self.createEthernetInterface(
-            'bond1', is_bond=True, bonded_interfaces=[])
-        interfaces = annotate_with_driver_information(
-            interfaces, sys_class_net=self.tmp_sys_net,
-            proc_net=self.tmp_proc_net)
-        self.expectThat(interfaces, HasLength(3))
-        self.expectThat(interfaces, Contains('eth0'))
-        self.expectThat(interfaces, Contains('eth1'))
-        self.expectThat(interfaces, Contains('bond0'))
 
     def test__finds_bond_members_original_mac_addresses(self):
         testdata = dedent("""\

@@ -36,17 +36,17 @@ angular.module('MAAS').filter('filterByUnusedForInterface', function() {
 // Filter that is specific to the NodeNetworkingController. Filters the
 // list of interfaces to not include the current parent interfaces being
 // bonded together.
-angular.module('MAAS').filter('removeBondParents', function() {
-    return function(interfaces, bondInterface) {
-        if(!angular.isObject(bondInterface) ||
-            !angular.isArray(bondInterface.parents)) {
+angular.module('MAAS').filter('removeInterfaceParents', function() {
+    return function(interfaces, childInterface) {
+        if(!angular.isObject(childInterface) ||
+            !angular.isArray(childInterface.parents)) {
             return interfaces;
         }
         var filtered = [];
         angular.forEach(interfaces, function(nic) {
             var i, parent, found = false;
-            for(i = 0; i < bondInterface.parents.length; i++) {
-                parent = bondInterface.parents[i];
+            for(i = 0; i < childInterface.parents.length; i++) {
+                parent = childInterface.parents[i];
                 if(parent.id === nic.id && parent.link_id === nic.link_id) {
                     found = true;
                     break;
@@ -130,12 +130,14 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         var INTERFACE_TYPE = {
             PHYSICAL: "physical",
             BOND: "bond",
+            BRIDGE: "bridge",
             VLAN: "vlan",
             ALIAS: "alias"
         };
         var INTERFACE_TYPE_TEXTS = {
             "physical": "Physical",
             "bond": "Bond",
+            "bridge": "Bridge",
             "vlan": "VLAN",
             "alias": "Alias"
         };
@@ -235,11 +237,12 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 // interface with a bond child can only have one child.
                 if(nic.children.length === 1) {
                     var child = $scope.originalInterfaces[nic.children[0]];
-                    if(child.type === INTERFACE_TYPE.BOND) {
-                        // This parent now has a bond for a child, if this was
-                        // the focusInterface then the focus needs to be
-                        // removed. We only need to check the "id" not the
-                        // "link_id", because if this interface did have
+                    if(child.type === INTERFACE_TYPE.BOND ||
+                       child.type === INTERFACE_TYPE.BRIDGE) {
+                        // This parent now has a bond or bridge for a child.
+                        // If this was the focusInterface, then the focus needs
+                        // to be removed. We only need to check the "id" (not
+                        // the "link_id"), because if this interface did have
                         // aliases they have now been removed.
                         if(angular.isObject($scope.focusInterface) &&
                             $scope.focusInterface.id === nic.id) {
@@ -249,9 +252,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                     }
                 }
 
-                // When the interface is a bond, place the children as members
-                // for that interface.
-                if(nic.type === INTERFACE_TYPE.BOND) {
+                // When the interface is a bond or a bridge, place the children
+                // as members for that interface.
+                if(nic.type === INTERFACE_TYPE.BOND ||
+                   nic.type === INTERFACE_TYPE.BRIDGE) {
                     nic.members = [];
                     angular.forEach(nic.parents, function(parent) {
                         nic.members.push(
@@ -528,7 +532,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
 
             if(nic.is_boot && nic.type !== INTERFACE_TYPE.ALIAS) {
                 return true;
-            } else if(nic.type === INTERFACE_TYPE.BOND) {
+            } else if(nic.type === INTERFACE_TYPE.BOND ||
+                      nic.type === INTERFACE_TYPE.BRIDGE) {
                 var i;
                 for(i = 0; i < nic.members.length; i++) {
                     if(nic.members[i].is_boot) {

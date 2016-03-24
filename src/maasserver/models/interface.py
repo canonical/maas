@@ -210,6 +210,12 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         else:
             return qs.filter(type=interface_type)
 
+    def get_interfaces_on_node_by_name(self, node, interface_names):
+        """Returns a list of Inteface objects on the specified node whose
+        names match the specified list of interface names.
+        """
+        return list(self.filter(node=node, name__in=interface_names))
+
     def get_by_ip(self, static_ip_address):
         """Given the specified StaticIPAddress, return the Interface it's on.
         """
@@ -279,6 +285,52 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             # Need to call save again to update the fields on the interface.
             interface.save()
         return interface, created
+
+    def get_or_create_on_node(self, node, name, mac_address, parent_nics):
+        """Create an interface on the specified node, with the specified MAC
+        address and parent NICs.
+
+        This method is necessary because get_or_create() often offers too
+        simplistic an approach to interface matching. For example, if an
+        interface has been moved, its MAC has changed, or its dependencies
+        on other interfaces have changed.
+
+        This method attempts to update an existing interface, if a
+        match can be found. Otherwise, a new interface will be created.
+
+        If the interface being created is a replacement for an interface that
+        already exists, the caller is responsible for deleting it.
+        """
+        interface = self.get_queryset().filter(
+            Q(mac_address=mac_address) | Q(name=name) & Q(node=node)).first()
+        if interface is not None:
+            if interface.type != self.model.get_type():
+                # This means we found the interface on this node, but the type
+                # didn't match what we expected. This should not happen unless
+                # we changed the modeling of this interface type, or the admin
+                # intentionally changed the interface type.
+                interface.delete()
+                return self.get_or_create_on_node(
+                    node, name, mac_address, parent_nics)
+            interface.mac_address = mac_address
+            interface.name = name
+            interface.parents.clear()
+            for parent_nic in parent_nics:
+                InterfaceRelationship(
+                    child=interface, parent=parent_nic).save()
+            if interface.node.id != node.id:
+                # Bond with MAC address was on a different node. We need to
+                # move it to its new owner. In the process we delete all of its
+                # current links because they are completely wrong.
+                interface.ip_addresses.all().delete()
+                interface.node = node
+        else:
+            interface = self.create(
+                name=name, mac_address=mac_address, node=node)
+            for parent_nic in parent_nics:
+                InterfaceRelationship(
+                    child=interface, parent=parent_nic).save()
+        return interface
 
 
 class Interface(CleanSave, TimestampedModel):
@@ -356,7 +408,7 @@ class Interface(CleanSave, TimestampedModel):
         node = self.get_node()
         if node is not None:
             hostname = node.hostname
-        return "%s on %s" % (self.get_name(), hostname)
+        return "%s (%s) on %s" % (self.get_name(), self.type, hostname)
 
     def get_name(self):
         return self.name
@@ -1021,8 +1073,8 @@ class PhysicalInterface(Interface):
             raise ValidationError({
                 "mac_address": [
                     "This MAC address is already in use by %s." % (
-                        other_interfaces[0].node.hostname)]
-                })
+                        other_interfaces[0].get_log_string())]
+            })
 
         # No parents are allow for a physical interface.
         if self.id is not None:
@@ -1030,19 +1082,16 @@ class PhysicalInterface(Interface):
             if len(self.parents.all()) > 0:
                 raise ValidationError({
                     "parents": ["A physical interface cannot have parents."]
-                    })
+                })
 
 
-class BondInterface(Interface):
+class ChildInterface(Interface):
+    """Abstract class to represent interfaces which require parents in order
+    to operate.
+    """
 
     class Meta(Interface.Meta):
         proxy = True
-        verbose_name = "Bond"
-        verbose_name_plural = "Bonds"
-
-    @classmethod
-    def get_type(self):
-        return INTERFACE_TYPE.BOND
 
     def get_node(self):
         if self.id is None:
@@ -1064,14 +1113,14 @@ class BondInterface(Interface):
             }
             return True in is_enabled
 
-    def clean(self):
-        super(BondInterface, self).clean()
-        # Validate that the MAC address is not None.
-        if not self.mac_address:
-            raise ValidationError({
-                "mac_address": ["This field cannot be blank."]
-                })
+    def _validate_acceptable_parent_types(self, parent_types):
+        """Raises a ValidationError if the interface has parents which are not
+        allowed, given this interface type. (for example, only physical
+        interfaces can be bonded, and bridges cannot bridge other bridges.)
+        """
+        raise NotImplementedError()
 
+    def _validate_parent_interfaces(self):
         # Parent interfaces on this bond must be from the same node and can
         # only be physical interfaces.
         if self.id is not None:
@@ -1083,16 +1132,14 @@ class BondInterface(Interface):
                 raise ValidationError({
                     "parents": [
                         "Parent interfaces do not belong to the same node."]
-                    })
+                })
             parent_types = {
                 parent.get_type()
                 for parent in self.parents.all()
             }
-            if parent_types != set([INTERFACE_TYPE.PHYSICAL]):
-                raise ValidationError({
-                    "parents": ["Only physical interfaces can be bonded."]
-                    })
+            self._validate_acceptable_parent_types(parent_types)
 
+    def _validate_unique_or_parent_mac(self):
         # Validate that this bond interface is using either a new MAC address
         # or a MAC address from one of its parents. This validation is only
         # done once the interface has been saved once. That is because if its
@@ -1128,7 +1175,73 @@ class BondInterface(Interface):
                     "mac_address": [
                         "This MAC address is already in use by %s." % (
                             bad_interfaces[0].node.hostname)]
-                    })
+                })
+
+
+class BridgeInterface(ChildInterface):
+
+    class Meta(Interface.Meta):
+        proxy = True
+        verbose_name = "Bridge"
+        verbose_name_plural = "Bridges"
+
+    @classmethod
+    def get_type(self):
+        return INTERFACE_TYPE.BRIDGE
+
+    def _validate_acceptable_parent_types(self, parent_types):
+        """Validates that bridges cannot contain other bridges."""
+        if INTERFACE_TYPE.BRIDGE in parent_types:
+            raise ValidationError({
+                "parents": ["Bridges cannot contain other bridges."]
+            })
+
+    def clean(self):
+        super().clean()
+        # Validate that the MAC address is not None.
+        if not self.mac_address:
+            raise ValidationError({
+                "mac_address": ["This field cannot be blank."]
+            })
+        self._validate_parent_interfaces()
+        self._validate_unique_or_parent_mac()
+
+    def save(self, *args, **kwargs):
+        # Set the node of this bond to the same as its parents.
+        self.node = self.get_node()
+        # Set the enabled status based on its parents.
+        self.enabled = self.is_enabled()
+        super().save(*args, **kwargs)
+
+
+class BondInterface(ChildInterface):
+
+    class Meta(Interface.Meta):
+        proxy = True
+        verbose_name = "Bond"
+        verbose_name_plural = "Bonds"
+
+    @classmethod
+    def get_type(self):
+        return INTERFACE_TYPE.BOND
+
+    def clean(self):
+        super(BondInterface, self).clean()
+        # Validate that the MAC address is not None.
+        if not self.mac_address:
+            raise ValidationError({
+                "mac_address": ["This field cannot be blank."]
+            })
+
+        self._validate_parent_interfaces()
+        self._validate_unique_or_parent_mac()
+
+    def _validate_acceptable_parent_types(self, parent_types):
+        """Validates that bonds only include physical interfaces."""
+        if parent_types != {INTERFACE_TYPE.PHYSICAL}:
+            raise ValidationError({
+                "parents": ["Only physical interfaces can be bonded."]
+            })
 
     def save(self, *args, **kwargs):
         # Set the node of this bond to the same as its parents.
@@ -1195,13 +1308,20 @@ class VLANInterface(Interface):
                     "parents": ["VLAN interface must have exactly one parent."]
                     })
             parent = parents[0]
-            if parent.get_type() not in [
-                    INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.BOND]:
+            allowed_vlan_parent_types = (
+                INTERFACE_TYPE.PHYSICAL,
+                INTERFACE_TYPE.BOND,
+                INTERFACE_TYPE.BRIDGE
+            )
+            if parent.get_type() not in allowed_vlan_parent_types:
+                # XXX mpontillo 2016-06-23: we won't mention bridges in this
+                # error message, since users can't configure bridges on nodes.
                 raise ValidationError({
                     "parents": [
                         "VLAN interface can only be created on a physical "
-                        "or bond interface."]
-                    })
+                        "or bond interface."
+                    ]
+                })
 
     def save(self, *args, **kwargs):
         # Set the node of this VLAN to the same as its parents.
@@ -1242,7 +1362,7 @@ class UnknownInterface(Interface):
         if self.node is not None:
             raise ValidationError({
                 "node": ["This field must be blank."]
-                })
+            })
 
         # No other interfaces can have this MAC address.
         other_interfaces = Interface.objects.filter(
@@ -1254,7 +1374,7 @@ class UnknownInterface(Interface):
             raise ValidationError({
                 "mac_address": [
                     "This MAC address is already in use by %s." % (
-                        other_interfaces[0].node.hostname)]
+                        other_interfaces[0].get_log_string())]
                 })
 
         # Cannot have any parents.
@@ -1264,7 +1384,7 @@ class UnknownInterface(Interface):
             if len(parents) > 0:
                 raise ValidationError({
                     "parents": ["A unknown interface cannot have parents."]
-                    })
+                })
 
 
 INTERFACE_TYPE_MAPPING = {
@@ -1273,6 +1393,7 @@ INTERFACE_TYPE_MAPPING = {
     [
         PhysicalInterface,
         BondInterface,
+        BridgeInterface,
         VLANInterface,
         UnknownInterface,
     ]

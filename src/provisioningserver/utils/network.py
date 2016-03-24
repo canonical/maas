@@ -646,6 +646,12 @@ def get_all_interfaces_definition():
             iface_type = "vlan"
             parents.append(name.split(".", 1)[0])
             vid = ipaddr["vid"]
+        elif ipaddr["type"] == "ethernet.bridge":
+            iface_type = "bridge"
+            mac_address = ipaddr["mac"]
+            for bridge_nic in ipaddr["bridged_interfaces"]:
+                if bridge_nic in interfaces or bridge_nic in ipaddr_info:
+                    parents.append(bridge_nic)
         else:
             mac_address = ipaddr["mac"]
 

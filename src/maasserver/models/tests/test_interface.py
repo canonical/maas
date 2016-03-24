@@ -33,6 +33,7 @@ from maasserver.models import (
 )
 from maasserver.models.interface import (
     BondInterface,
+    BridgeInterface,
     Interface,
     PhysicalInterface,
     UnknownInterface,
@@ -682,7 +683,7 @@ class PhysicalInterfaceTest(MAASServerTestCase):
         self.assertEqual({
             "mac_address": [
                 "This MAC address is already in use by %s." % (
-                    interface.node.hostname)]
+                    interface.get_log_string())]
             }, error.message_dict)
 
     def test_cannot_have_parents(self):
@@ -969,6 +970,125 @@ class BondInterfaceTest(MAASServerTestCase):
         self.assertFalse(reload_object(interface).enabled)
 
 
+class BridgeInterfaceTest(MAASServerTestCase):
+
+    def test_manager_returns_bridge_interfaces(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2])
+        self.assertItemsEqual(
+            [interface], BridgeInterface.objects.all())
+
+    def test_get_node_returns_parent_node(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2])
+        self.assertItemsEqual(
+            [interface], BridgeInterface.objects.all())
+        self.assertEqual(node, interface.get_node())
+
+    def test_removed_if_underlying_interfaces_gets_removed(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2])
+        parent1.delete()
+        parent2.delete()
+        self.assertIsNone(reload_object(interface))
+
+    def test_requires_mac_address(self):
+        interface = BridgeInterface(
+            name=factory.make_name("bridge"), node=factory.make_Node())
+        error = self.assertRaises(ValidationError, interface.save)
+        self.assertEqual({
+            "mac_address": ["This field cannot be blank."]
+            }, error.message_dict)
+
+    def test_parent_interfaces_must_belong_to_same_node(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        error = self.assertRaises(
+            ValidationError, factory.make_Interface,
+            INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2])
+        self.assertEqual({
+            "parents": ["Parent interfaces do not belong to the same node."]
+            }, error.message_dict)
+
+    def test_can_use_parents_mac_address(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        # Test is that no error is raised.
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, mac_address=parent1.mac_address,
+            parents=[parent1, parent2])
+
+    def test_can_use_unique_mac_address(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        # Test is that no error is raised.
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, mac_address=factory.make_mac_address(),
+            parents=[parent1, parent2])
+
+    def test_cannot_use_none_unique_mac_address(self):
+        node = factory.make_Node()
+        other_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        # Test is that no error is raised.
+        error = self.assertRaises(
+            ValidationError, factory.make_Interface,
+            INTERFACE_TYPE.BRIDGE, mac_address=other_nic.mac_address,
+            parents=[parent1, parent2])
+        self.assertEqual({
+            "mac_address": [
+                "This MAC address is already in use by %s." % (
+                    other_nic.node.hostname)]
+            }, error.message_dict)
+
+    def test_node_is_set_to_parents_node(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, mac_address=factory.make_mac_address(),
+            parents=[parent1, parent2])
+        self.assertEqual(interface.node, parent1.node)
+
+    def test_disable_one_parent_doesnt_disable_the_bridge(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, mac_address=factory.make_mac_address(),
+            parents=[parent1, parent2])
+        parent1.enabled = False
+        parent1.save()
+        self.assertTrue(interface.is_enabled())
+        self.assertTrue(reload_object(interface).enabled)
+
+    def test_disable_all_parents_disables_the_bridge(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, mac_address=factory.make_mac_address(),
+            parents=[parent1, parent2])
+        parent1.enabled = False
+        parent1.save()
+        parent2.enabled = False
+        parent2.save()
+        self.assertFalse(interface.is_enabled())
+        self.assertFalse(reload_object(interface).enabled)
+
+
 class UnknownInterfaceTest(MAASServerTestCase):
 
     def test_manager_returns_unknown_interfaces(self):
@@ -998,7 +1118,7 @@ class UnknownInterfaceTest(MAASServerTestCase):
         self.assertEqual({
             "mac_address": [
                 "This MAC address is already in use by %s." % (
-                    interface.node.hostname)]
+                    interface.get_log_string())]
             }, error.message_dict)
 
 

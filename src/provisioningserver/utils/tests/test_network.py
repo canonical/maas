@@ -1058,6 +1058,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "br0": {
                 "type": "ethernet.bridge",
+                "bridged_interfaces": ["eth0"],
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.124.2/24"],
@@ -1145,10 +1146,10 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "source": Equals("ipaddr"),
             }),
             "br0": MatchesDict({
-                "type": Equals("physical"),
+                "type": Equals("bridge"),
                 "mac_address": Equals(ip_addr["br0"]["mac"]),
                 "enabled": Is(True),
-                "parents": Equals([]),
+                "parents": Equals(["eth0"]),
                 "links": Equals([{
                     "mode": "static",
                     "address": "192.168.124.2/24",

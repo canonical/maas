@@ -343,17 +343,14 @@ def sorttop(data):
         making it impossible to resolve their relative ordering.
     """
     empty = frozenset()
-
     # Copy data and discard self-referential dependencies.
     data = {thing: set(deps) for thing, deps in data.items()}
     for thing, deps in data.items():
         deps.discard(thing)
-
     # Find ghost dependencies and add them as "things".
     ghosts = reduce(set.union, data.values(), set()).difference(data)
     for ghost in ghosts:
         data[ghost] = empty
-
     # Skim batches off the top until we're done.
     while len(data) != 0:
         batch = {thing for thing, deps in data.items() if deps == empty}
