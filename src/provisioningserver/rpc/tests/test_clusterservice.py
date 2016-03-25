@@ -1711,14 +1711,15 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(configure, MockCalledOnceWith(
             DHCPServer.return_value,
-            failover_peers, shared_networks, hosts, interfaces))
+            failover_peers, shared_networks, hosts, interfaces, None))
 
     @inlineCallbacks
     def test__limits_concurrency(self):
         self.patch_autospec(*self.dhcp_server)
 
         def check_dhcp_locked(
-                server, failover_peers, shared_networks, hosts, interfaces):
+                server, failover_peers, shared_networks, hosts, interfaces,
+                global_dhcp_snippets):
             self.assertTrue(concurrency.dhcp.locked)
             # While we're here, check this is *not* the IO thread.
             self.expectThat(isInIOThread(), Is(False))

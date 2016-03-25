@@ -302,16 +302,31 @@ class _ConfigureDHCP(amp.Command):
                     (b"ip_range_high", amp.Unicode()),
                     (b"failover_peer", amp.Unicode(optional=True)),
                     ])),
-                ])),
+                (b"dhcp_snippets", AmpList([
+                    (b"name", amp.Unicode()),
+                    (b"description", amp.Unicode(optional=True)),
+                    (b"value", amp.Unicode()),
+                    ], optional=True)),
             ])),
+        ])),
         (b"hosts", CompressedAmpList([
             (b"host", amp.Unicode()),
             (b"mac", amp.Unicode()),
             (b"ip", amp.Unicode()),
+            (b"dhcp_snippets", AmpList([
+                (b"name", amp.Unicode()),
+                (b"description", amp.Unicode(optional=True)),
+                (b"value", amp.Unicode()),
+                ], optional=True)),
             ])),
         (b"interfaces", AmpList([
             (b"name", amp.Unicode()),
             ])),
+        (b"global_dhcp_snippets", CompressedAmpList([
+            (b"name", amp.Unicode()),
+            (b"description", amp.Unicode(optional=True)),
+            (b"value", amp.Unicode()),
+            ], optional=True)),
         ]
     response = []
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}

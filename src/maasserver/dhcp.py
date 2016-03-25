@@ -23,6 +23,7 @@ from maasserver.exceptions import (
 )
 from maasserver.models import (
     Config,
+    DHCPSnippet,
     Domain,
     StaticIPAddress,
 )
@@ -212,10 +213,26 @@ def make_interface_hostname(interface):
         return "%s-%s" % (interface.node.hostname, interface_name)
 
 
-def make_hosts_for_subnets(subnets):
+def make_dhcp_snippet(dhcp_snippet):
+    """Return the DHCPSnippet as a dictionary."""
+    return {
+        "name": dhcp_snippet.name,
+        "description": dhcp_snippet.description,
+        "value": dhcp_snippet.value.data,
+    }
+
+
+def make_hosts_for_subnets(subnets, nodes_dhcp_snippets=[]):
     """Return list of host entries to create in the DHCP configuration for the
     given `subnets`.
     """
+    def get_dhcp_snippets_for_interface(interface):
+        dhcp_snippets = list()
+        for dhcp_snippet in nodes_dhcp_snippets:
+            if dhcp_snippet.node == interface.node:
+                dhcp_snippets.append(make_dhcp_snippet(dhcp_snippet))
+        return dhcp_snippets
+
     sips = StaticIPAddress.objects.filter(
         alloc_type__in=[
             IPADDRESS_TYPE.AUTO,
@@ -250,17 +267,23 @@ def make_hosts_for_subnets(subnets):
                             'host': make_interface_hostname(parent),
                             'mac': str(parent.mac_address),
                             'ip': str(sip.ip),
+                            'dhcp_snippets': get_dhcp_snippets_for_interface(
+                                parent),
                         })
                 hosts.append({
                     'host': make_interface_hostname(interface),
                     'mac': str(interface.mac_address),
                     'ip': str(sip.ip),
+                    'dhcp_snippets': get_dhcp_snippets_for_interface(
+                        interface),
                 })
             else:
                 hosts.append({
                     'host': make_interface_hostname(interface),
                     'mac': str(interface.mac_address),
                     'ip': str(sip.ip),
+                    'dhcp_snippets': get_dhcp_snippets_for_interface(
+                        interface),
                 })
     return hosts
 
@@ -281,7 +304,7 @@ def make_pools_for_subnet(subnet, failover_peer=None):
 
 def make_subnet_config(
         rack_controller, subnet, dns_servers, ntp_server, default_domain,
-        failover_peer=None):
+        failover_peer=None, subnets_dhcp_snippets=[]):
     """Return DHCP subnet configuration dict for a rack interface."""
     ip_network = subnet.get_ipnetwork()
     return {
@@ -296,6 +319,11 @@ def make_subnet_config(
         'ntp_server': ntp_server,
         'domain_name': default_domain.name,
         'pools': make_pools_for_subnet(subnet, failover_peer),
+        'dhcp_snippets': [
+            make_dhcp_snippet(dhcp_snippet)
+            for dhcp_snippet in subnets_dhcp_snippets
+            if dhcp_snippet.subnet == subnet
+            ],
         }
 
 
@@ -320,7 +348,8 @@ def make_failover_peer_config(vlan, rack_controller):
 
 
 def get_dhcp_configure_for(
-        ip_version, rack_controller, vlan, subnets, ntp_server, domain):
+        ip_version, rack_controller, vlan, subnets, ntp_server, domain,
+        dhcp_snippets=[]):
     """Get the DHCP configuration for `ip_version`."""
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
@@ -351,6 +380,13 @@ def get_dhcp_configure_for(
     else:
         peer_name, peer_config = None, None
 
+    subnets_dhcp_snippets = [
+        dhcp_snippet for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.subnet is not None]
+    nodes_dhcp_snippets = [
+        dhcp_snippet for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.node is not None]
+
     # Generate the shared network configurations.
     subnet_configs = []
     hosts = []
@@ -358,10 +394,10 @@ def get_dhcp_configure_for(
         subnet_configs.append(
             make_subnet_config(
                 rack_controller, subnet, dns_servers, ntp_server,
-                domain, peer_name))
+                domain, peer_name, subnets_dhcp_snippets))
 
     # Generate the hosts for all subnets.
-    hosts = make_hosts_for_subnets(subnets)
+    hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
     return (
         peer_config, sorted(subnet_configs, key=itemgetter("subnet")),
         hosts, interface.name)
@@ -381,6 +417,17 @@ def get_dhcp_configuration(rack_controller):
         for vlan in vlans
     }
 
+    # Get the list of all DHCP snippets so we only have to query the database
+    # 1 + (the number of DHCP snippets used in this VLAN) instead of
+    # 1 + (the number of subnets in this VLAN) +
+    #     (the number of nodes in this VLAN)
+    dhcp_snippets = DHCPSnippet.objects.filter(enabled=True)
+    global_dhcp_snippets = [
+        make_dhcp_snippet(dhcp_snippet)
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.node is None and dhcp_snippet.subnet is None
+        ]
+
     # Configure both DHCPv4 and DHCPv6 on the rack controller.
     failover_peers_v4 = []
     shared_networks_v4 = []
@@ -397,7 +444,7 @@ def get_dhcp_configuration(rack_controller):
         if len(subnets_v4) > 0:
             failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
                 4, rack_controller, vlan, subnets_v4,
-                ntp_server, default_domain)
+                ntp_server, default_domain, dhcp_snippets)
             if failover_peer is not None:
                 failover_peers_v4.append(failover_peer)
             shared_networks_v4.append({
@@ -411,7 +458,7 @@ def get_dhcp_configuration(rack_controller):
         if len(subnets_v6) > 0:
             failover_peer, subnets, hosts, interface = get_dhcp_configure_for(
                 6, rack_controller, vlan, subnets_v6,
-                ntp_server, default_domain)
+                ntp_server, default_domain, dhcp_snippets)
             if failover_peer is not None:
                 failover_peers_v6.append(failover_peer)
             shared_networks_v6.append({
@@ -423,7 +470,8 @@ def get_dhcp_configuration(rack_controller):
     return (
         get_omapi_key(),
         failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-        failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6)
+        failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+        global_dhcp_snippets)
 
 
 @asynchronous
@@ -447,9 +495,9 @@ def configure_dhcp(rack_controller):
 
     # Get configuration for both IPv4 and IPv6.
     (omapi_key, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
-     failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6) = (
-        yield deferToDatabase(
-            get_dhcp_configuration, rack_controller))
+     failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+     global_dhcp_snippets) = (
+        yield deferToDatabase(get_dhcp_configuration, rack_controller))
 
     # Fix interfaces to go over the wire.
     interfaces_v4 = [
@@ -465,8 +513,10 @@ def configure_dhcp(rack_controller):
     yield client(
         ConfigureDHCPv4, omapi_key=omapi_key,
         failover_peers=failover_peers_v4, shared_networks=shared_networks_v4,
-        hosts=hosts_v4, interfaces=interfaces_v4)
+        hosts=hosts_v4, interfaces=interfaces_v4,
+        global_dhcp_snippets=global_dhcp_snippets)
     yield client(
         ConfigureDHCPv6, omapi_key=omapi_key,
         failover_peers=failover_peers_v6, shared_networks=shared_networks_v6,
-        hosts=hosts_v6, interfaces=interfaces_v6)
+        hosts=hosts_v6, interfaces=interfaces_v6,
+        global_dhcp_snippets=global_dhcp_snippets)

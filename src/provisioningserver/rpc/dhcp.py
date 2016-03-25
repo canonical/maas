@@ -59,6 +59,7 @@ DHCPStateBase = namedtuple("DHCPStateBase", [
     "shared_networks",
     "hosts",
     "interfaces",
+    "global_dhcp_snippets",
 ])
 
 
@@ -67,7 +68,7 @@ class DHCPState(DHCPStateBase):
 
     def __new__(
             cls, omapi_key, failover_peers,
-            shared_networks, hosts, interfaces):
+            shared_networks, hosts, interfaces, global_dhcp_snippets):
         failover_peers = sorted(failover_peers, key=itemgetter("name"))
         shared_networks = sorted(shared_networks, key=itemgetter("name"))
         hosts = {
@@ -78,21 +79,38 @@ class DHCPState(DHCPStateBase):
             interface["name"]
             for interface in interfaces
         )
+        global_dhcp_snippets = sorted(
+            global_dhcp_snippets, key=itemgetter("name"))
         return DHCPStateBase.__new__(
             cls,
             omapi_key=omapi_key,
             failover_peers=failover_peers,
             shared_networks=shared_networks,
-            hosts=hosts, interfaces=interfaces)
+            hosts=hosts, interfaces=interfaces,
+            global_dhcp_snippets=global_dhcp_snippets)
 
     def requires_restart(self, other_state):
         """Return True when this state differs from `other_state` enough to
         require a restart."""
+        def gather_hosts_dhcp_snippets(hosts):
+            hosts_dhcp_snippets = list()
+            for _, host in hosts.items():
+                for dhcp_snippet in host['dhcp_snippets']:
+                    hosts_dhcp_snippets.append(dhcp_snippet)
+            return sorted(hosts_dhcp_snippets, key=itemgetter('name'))
+
+        # Currently the OMAPI doesn't allow you to add or remove arbitrary
+        # config options. So gather a list of DHCP snippets from
+        hosts_dhcp_snippets = gather_hosts_dhcp_snippets(self.hosts)
+        other_hosts_dhcp_snippets = gather_hosts_dhcp_snippets(
+            other_state.hosts)
         return (
             self.omapi_key != other_state.omapi_key or
             self.failover_peers != other_state.failover_peers or
             self.shared_networks != other_state.shared_networks or
-            self.interfaces != other_state.interfaces)
+            self.interfaces != other_state.interfaces or
+            self.global_dhcp_snippets != other_state.global_dhcp_snippets or
+            hosts_dhcp_snippets != other_hosts_dhcp_snippets)
 
     def host_diff(self, other_state):
         """Return tuple with the hosts that need to be removed, need to be
@@ -114,7 +132,9 @@ class DHCPState(DHCPStateBase):
             server.template_basename, omapi_key=self.omapi_key,
             failover_peers=self.failover_peers,
             shared_networks=self.shared_networks,
-            hosts=sorted(self.hosts.values(), key=itemgetter("host")))
+            hosts=sorted(self.hosts.values(), key=itemgetter("host")),
+            global_dhcp_snippets=sorted(
+                self.global_dhcp_snippets, key=itemgetter("name")))
         return dhcpd_config, " ".join(self.interfaces)
 
 
@@ -213,7 +233,9 @@ def _catch_service_error(server, action, call, *args, **kwargs):
 
 @asynchronous
 @inlineCallbacks
-def configure(server, failover_peers, shared_networks, hosts, interfaces):
+def configure(
+        server, failover_peers, shared_networks, hosts, interfaces,
+        global_dhcp_snippets=[]):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
     This method is not safe to call concurrently. The clusterserver ensures
@@ -228,6 +250,7 @@ def configure(server, failover_peers, shared_networks, hosts, interfaces):
     :param hosts: List of dicts with host parameters that
         contain a list of hosts the DHCP should statically.
     :param interfaces: List of interfaces that DHCP should use.
+    :param global_dhcp_snippets: List of all global DHCP snippets
     """
     stopping = len(shared_networks) == 0
 
@@ -247,7 +270,7 @@ def configure(server, failover_peers, shared_networks, hosts, interfaces):
         # Get the new state for the DHCP server.
         new_state = DHCPState(
             server.omapi_key, failover_peers, shared_networks,
-            hosts, interfaces)
+            hosts, interfaces, global_dhcp_snippets)
 
         # Always write the config, that way its always up-to-date. Even if
         # we are not going to restart the services. This makes sure that even

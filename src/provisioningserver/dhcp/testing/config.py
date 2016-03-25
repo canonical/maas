@@ -27,9 +27,20 @@ def make_subnet_pool(
     }
 
 
+def make_dhcp_snippets(allow_empty=True):
+    # DHCP snippets are optional
+    if allow_empty and factory.pick_bool():
+        return []
+    return [{
+        'name': factory.make_name('name'),
+        'description': factory.make_name('description'),
+        'value': factory.make_name('value'),
+        } for _ in range(3)]
+
+
 def make_host(
         hostname=None, interface_name=None,
-        mac_address=None, ip=None):
+        mac_address=None, ip=None, dhcp_snippets=None):
     """Return a host entry for a subnet from network."""
     if hostname is None:
         hostname = factory.make_name("host")
@@ -39,19 +50,24 @@ def make_host(
         mac_address = factory.make_mac_address()
     if ip is None:
         ip = str(factory.make_ipv4_address())
+    if dhcp_snippets is None:
+        dhcp_snippets = make_dhcp_snippets()
     return {
         "host": "%s-%s" % (hostname, interface_name),
         "mac": mac_address,
         "ip": ip,
+        "dhcp_snippets": dhcp_snippets,
     }
 
 
-def make_subnet_config(network=None, pools=None):
+def make_subnet_config(network=None, pools=None, dhcp_snippets=None):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
         network = factory.make_ipv4_network()
     if pools is None:
         pools = [make_subnet_pool(network)]
+    if dhcp_snippets is None:
+        dhcp_snippets = make_dhcp_snippets()
     return {
         'subnet': str(IPAddress(network.first)),
         'subnet_mask': str(network.netmask),
@@ -62,6 +78,7 @@ def make_subnet_config(network=None, pools=None):
         'domain_name': '%s.example.com' % factory.make_name('domain'),
         'router_ip': str(factory.pick_ip_in_network(network)),
         'pools': pools,
+        'dhcp_snippets': dhcp_snippets,
         }
 
 

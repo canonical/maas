@@ -16,6 +16,7 @@ from maastesting.factory import factory
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import (
+    make_dhcp_snippets,
     make_failover_peer_config,
     make_host,
     make_shared_network,
@@ -81,6 +82,7 @@ def make_sample_params(hosts=None):
         'failover_peers': failover_peers,
         'shared_networks': shared_networks,
         'hosts': hosts,
+        'global_dhcp_snippets': make_dhcp_snippets(),
         }
 
 
@@ -214,6 +216,39 @@ class TestGetConfig(PservTestCase):
                 host['ip']
                 for host in hosts
             ]))
+
+    def test__renders_global_dhcp_snippets(self):
+        params = make_sample_params()
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        self.assertThat(
+            config_output,
+            ContainsAll([
+                dhcp_snippet['value']
+                for dhcp_snippet in params['global_dhcp_snippets']
+            ]))
+
+    def test__renders_subnet_dhcp_snippets(self):
+        params = make_sample_params()
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        for shared_network in params['shared_networks']:
+            for subnet in shared_network['subnets']:
+                self.assertThat(
+                    config_output,
+                    ContainsAll([
+                        dhcp_snippet['value']
+                        for dhcp_snippet in subnet['dhcp_snippets']
+                    ]))
+
+    def test__renders_node_dhcp_snippets(self):
+        params = make_sample_params()
+        config_output = config.get_config('dhcpd.conf.template', **params)
+        for host in params['hosts']:
+            self.assertThat(
+                config_output,
+                ContainsAll([
+                    dhcp_snippet['value']
+                    for dhcp_snippet in host['dhcp_snippets']
+                ]))
 
 
 class TestComposeConditionalBootloader(PservTestCase):

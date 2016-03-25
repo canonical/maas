@@ -26,6 +26,7 @@ from mock import (
     sentinel,
 )
 from provisioningserver.dhcp.testing.config import (
+    make_dhcp_snippets,
     make_failover_peer_config,
     make_host,
     make_interface,
@@ -66,13 +67,15 @@ class TestDHCPState(MAASTestCase):
             make_interface()
             for _ in range(3)
         ]
-        return omapi_key, failover_peers, shared_networks, hosts, interfaces
+        return (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+                make_dhcp_snippets())
 
     def test_new_sorts_properties(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         self.assertThat(state, MatchesStructure.byEquality(
             omapi_key=omapi_key,
             failover_peers=sorted(failover_peers, key=itemgetter("name")),
@@ -84,27 +87,32 @@ class TestDHCPState(MAASTestCase):
             interfaces=sorted([
                 interface["name"]
                 for interface in interfaces
-            ])
+            ]),
+            global_dhcp_snippets=sorted(
+                global_dhcp_snippets, key=itemgetter("name")),
         ))
 
     def test_requires_restart_returns_True_when_omapi_key_different(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         new_state = dhcp.DHCPState(
             factory.make_name("new_omapi_key"),
             copy.deepcopy(failover_peers),
             copy.deepcopy(shared_networks),
             copy.deepcopy(hosts),
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertTrue(new_state.requires_restart(state))
 
     def test_requires_restart_returns_True_when_failover_different(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         changed_failover_peers = copy.deepcopy(failover_peers)
         changed_failover_peers[0]["name"] = factory.make_name("failover")
         new_state = dhcp.DHCPState(
@@ -112,14 +120,16 @@ class TestDHCPState(MAASTestCase):
             changed_failover_peers,
             copy.deepcopy(shared_networks),
             copy.deepcopy(hosts),
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertTrue(new_state.requires_restart(state))
 
     def test_requires_restart_returns_True_when_network_different(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         changed_shared_networks = copy.deepcopy(shared_networks)
         changed_shared_networks[0]["name"] = factory.make_name("network")
         new_state = dhcp.DHCPState(
@@ -127,14 +137,16 @@ class TestDHCPState(MAASTestCase):
             copy.deepcopy(failover_peers),
             changed_shared_networks,
             copy.deepcopy(hosts),
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertTrue(new_state.requires_restart(state))
 
     def test_requires_restart_returns_True_when_interfaces_different(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         changed_interfaces = copy.deepcopy(interfaces)
         changed_interfaces[0]["name"] = factory.make_name("eth")
         new_state = dhcp.DHCPState(
@@ -142,42 +154,101 @@ class TestDHCPState(MAASTestCase):
             copy.deepcopy(failover_peers),
             copy.deepcopy(shared_networks),
             copy.deepcopy(hosts),
-            changed_interfaces)
+            changed_interfaces,
+            copy.deepcopy(global_dhcp_snippets))
         self.assertTrue(new_state.requires_restart(state))
 
     def test_requires_restart_returns_False_when_all_the_same(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         new_state = dhcp.DHCPState(
             omapi_key,
             copy.deepcopy(failover_peers),
             copy.deepcopy(shared_networks),
             copy.deepcopy(hosts),
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertFalse(new_state.requires_restart(state))
 
     def test_requires_restart_returns_False_when_hosts_different(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         changed_hosts = copy.deepcopy(hosts)
-        changed_hosts.append(make_host())
+        changed_hosts.append(make_host(dhcp_snippets=[]))
         new_state = dhcp.DHCPState(
             omapi_key,
             copy.deepcopy(failover_peers),
             copy.deepcopy(shared_networks),
             changed_hosts,
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertFalse(new_state.requires_restart(state))
 
-    def test_host_diff_returns_removal_added_and_modify(self):
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+    def test_requires_restart_True_when_global_dhcp_snippets_diff(self):
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+        changed_global_dhcp_snippets = make_dhcp_snippets(allow_empty=False)
+        new_state = dhcp.DHCPState(
+            omapi_key,
+            copy.deepcopy(failover_peers),
+            copy.deepcopy(shared_networks),
+            copy.deepcopy(hosts),
+            copy.deepcopy(interfaces),
+            changed_global_dhcp_snippets)
+        self.assertTrue(new_state.requires_restart(state))
+
+    def test_requires_restart_True_when_subnet_dhcp_snippets_diff(self):
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
+        state = dhcp.DHCPState(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+        changed_shared_networks = copy.deepcopy(shared_networks)
+        for shared_network in changed_shared_networks:
+            for subnet in shared_network['subnets']:
+                subnet['dhcp_snippets'] = make_dhcp_snippets(allow_empty=False)
+        new_state = dhcp.DHCPState(
+            omapi_key,
+            copy.deepcopy(failover_peers),
+            changed_shared_networks,
+            copy.deepcopy(hosts),
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
+        self.assertTrue(new_state.requires_restart(state))
+
+    def test_requires_restart_True_when_hosts_dhcp_snippets_diff(self):
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
+        state = dhcp.DHCPState(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+        changed_hosts = copy.deepcopy(hosts)
+        for host in changed_hosts:
+            host['dhcp_snippets'] = make_dhcp_snippets(allow_empty=False)
+        new_state = dhcp.DHCPState(
+            omapi_key,
+            copy.deepcopy(failover_peers),
+            copy.deepcopy(shared_networks),
+            changed_hosts,
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
+        self.assertTrue(new_state.requires_restart(state))
+
+    def test_host_diff_returns_removal_added_and_modify(self):
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
+        state = dhcp.DHCPState(
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         changed_hosts = copy.deepcopy(hosts)
         removed_host = changed_hosts.pop()
         modified_host = changed_hosts[0]
@@ -189,7 +260,8 @@ class TestDHCPState(MAASTestCase):
             copy.deepcopy(failover_peers),
             copy.deepcopy(shared_networks),
             changed_hosts,
-            copy.deepcopy(interfaces))
+            copy.deepcopy(interfaces),
+            copy.deepcopy(global_dhcp_snippets))
         self.assertEqual(
             ([removed_host], [added_host], [modified_host]),
             new_state.host_diff(state))
@@ -197,10 +269,11 @@ class TestDHCPState(MAASTestCase):
     def test_get_config_returns_config_and_calls_with_params(self):
         mock_get_config = self.patch_autospec(dhcp, 'get_config')
         mock_get_config.return_value = sentinel.config
-        omapi_key, failover_peers, shared_networks, hosts, interfaces = (
-            self.make_args())
+        (omapi_key, failover_peers, shared_networks, hosts, interfaces,
+         global_dhcp_snippets) = self.make_args()
         state = dhcp.DHCPState(
-            omapi_key, failover_peers, shared_networks, hosts, interfaces)
+            omapi_key, failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         server = Mock()
         self.assertEqual(
             (sentinel.config, " ".join(state.interfaces)),
@@ -212,7 +285,9 @@ class TestDHCPState(MAASTestCase):
                 omapi_key=omapi_key,
                 failover_peers=state.failover_peers,
                 shared_networks=state.shared_networks,
-                hosts=sorted(state.hosts.values(), key=itemgetter("host"))))
+                hosts=sorted(state.hosts.values(), key=itemgetter("host")),
+                global_dhcp_snippets=sorted(
+                    global_dhcp_snippets, key=itemgetter("name"))))
 
 
 class TestRemoveHostMap(MAASTestCase):
@@ -381,10 +456,11 @@ class TestConfigureDHCP(MAASTestCase):
 
     def configure(
             self, omapi_key, failover_peers, shared_networks,
-            hosts, interfaces):
+            hosts, interfaces, dhcp_snippets):
         server = self.server(omapi_key)
         return dhcp.configure(
-            server, failover_peers, shared_networks, hosts, interfaces)
+            server, failover_peers, shared_networks, hosts, interfaces,
+            dhcp_snippets)
 
     def patch_os_exists(self):
         return self.patch_autospec(dhcp.os.path, "exists")
@@ -420,7 +496,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_autospec(dhcp_service, "off")
         self.patch_restartService()
         self.patch_ensureService()
-        yield self.configure(factory.make_name('key'), [], [], [], [])
+        yield self.configure(factory.make_name('key'), [], [], [], [], [])
         self.assertThat(
             mock_sudo_delete, MockCalledOnceWith(self.server.config_filename))
 
@@ -433,7 +509,7 @@ class TestConfigureDHCP(MAASTestCase):
         off = self.patch_autospec(dhcp_service, "off")
         restart_service = self.patch_restartService()
         ensure_service = self.patch_ensureService()
-        yield self.configure(factory.make_name('key'), [], [], [], [])
+        yield self.configure(factory.make_name('key'), [], [], [], [], [])
         self.assertThat(off, MockCalledOnceWith())
         self.assertThat(
             ensure_service, MockCalledOnceWith(self.server.dhcp_service))
@@ -449,7 +525,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_autospec(dhcp_service, "off")
         self.patch_restartService()
         self.patch_ensureService()
-        yield self.configure(factory.make_name('key'), [], [], [], [])
+        yield self.configure(factory.make_name('key'), [], [], [], [], [])
         self.assertIsNone(dhcp._current_server_state[self.server.dhcp_service])
 
     @inlineCallbacks
@@ -461,6 +537,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -471,7 +548,8 @@ class TestConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         yield self.configure(
             omapi_key,
-            [failover_peers], [shared_network], [host], [interface])
+            [failover_peers], [shared_network], [host], [interface],
+            global_dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -490,7 +568,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                [host], [interface]))
+                [host], [interface], global_dhcp_snippets))
 
     @inlineCallbacks
     def test__writes_config_and_calls_restart_when_non_host_state_diff(self):
@@ -501,6 +579,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -510,13 +589,14 @@ class TestConfigureDHCP(MAASTestCase):
 
         old_state = dhcp.DHCPState(
             factory.make_name("omapi_key"), [failover_peers], [shared_network],
-            [host], [interface])
+            [host], [interface], global_dhcp_snippets)
         dhcp._current_server_state[self.server.dhcp_service] = old_state
 
         omapi_key = factory.make_name('omapi_key')
         yield self.configure(
             omapi_key,
-            [failover_peers], [shared_network], [host], [interface])
+            [failover_peers], [shared_network], [host], [interface],
+            global_dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -535,7 +615,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                [host], [interface]))
+                [host], [interface], global_dhcp_snippets))
 
     @inlineCallbacks
     def test__writes_config_and_calls_ensure_when_nothing_changed(self):
@@ -547,6 +627,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_network = make_shared_network()
         host = make_host()
         interface = make_interface()
+        dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -557,12 +638,13 @@ class TestConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         old_state = dhcp.DHCPState(
             omapi_key, [failover_peers], [shared_network],
-            [host], [interface])
+            [host], [interface], dhcp_snippets)
         dhcp._current_server_state[self.server.dhcp_service] = old_state
 
         yield self.configure(
             omapi_key,
-            [failover_peers], [shared_network], [host], [interface])
+            [failover_peers], [shared_network], [host], [interface],
+            dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -583,7 +665,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                [host], [interface]))
+                [host], [interface], dhcp_snippets))
 
     @inlineCallbacks
     def test__writes_config_and_doesnt_use_omapi_when_was_off(self):
@@ -597,8 +679,9 @@ class TestConfigureDHCP(MAASTestCase):
 
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
-        host = make_host()
+        host = make_host(dhcp_snippets=[])
         interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -607,15 +690,16 @@ class TestConfigureDHCP(MAASTestCase):
         on = self.patch_autospec(dhcp_service, "on")
 
         omapi_key = factory.make_name('omapi_key')
-        old_host = make_host()
+        old_host = make_host(dhcp_snippets=[])
         old_state = dhcp.DHCPState(
             omapi_key, [failover_peers], [shared_network],
-            [old_host], [interface])
+            [old_host], [interface], global_dhcp_snippets)
         dhcp._current_server_state[self.server.dhcp_service] = old_state
 
         yield self.configure(
             omapi_key,
-            [failover_peers], [shared_network], [host], [interface])
+            [failover_peers], [shared_network], [host], [interface],
+            global_dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -641,7 +725,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                [host], [interface]))
+                [host], [interface], global_dhcp_snippets))
 
     @inlineCallbacks
     def test__writes_config_and_uses_omapi_to_update_hosts(self):
@@ -656,10 +740,11 @@ class TestConfigureDHCP(MAASTestCase):
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
         old_hosts = [
-            make_host()
+            make_host(dhcp_snippets=[])
             for _ in range(3)
         ]
         interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -670,19 +755,20 @@ class TestConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         old_state = dhcp.DHCPState(
             omapi_key, [failover_peers], [shared_network],
-            old_hosts, [interface])
+            old_hosts, [interface], global_dhcp_snippets)
         dhcp._current_server_state[self.server.dhcp_service] = old_state
 
         new_hosts = copy.deepcopy(old_hosts)
         removed_host = new_hosts.pop()
         modified_host = new_hosts[0]
         modified_host["ip"] = factory.make_ip_address()
-        added_host = make_host()
+        added_host = make_host(dhcp_snippets=[])
         new_hosts.append(added_host)
 
         yield self.configure(
             omapi_key,
-            [failover_peers], [shared_network], new_hosts, [interface])
+            [failover_peers], [shared_network], new_hosts, [interface],
+            global_dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -710,7 +796,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                new_hosts, [interface]))
+                new_hosts, [interface], global_dhcp_snippets))
 
     @inlineCallbacks
     def test__writes_config_and_restarts_when_omapi_fails(self):
@@ -726,10 +812,11 @@ class TestConfigureDHCP(MAASTestCase):
         failover_peers = make_failover_peer_config()
         shared_network = make_shared_network()
         old_hosts = [
-            make_host()
+            make_host(dhcp_snippets=[])
             for _ in range(3)
         ]
         interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
@@ -740,20 +827,21 @@ class TestConfigureDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi_key')
         old_state = dhcp.DHCPState(
             omapi_key, [failover_peers], [shared_network],
-            old_hosts, [interface])
+            old_hosts, [interface], global_dhcp_snippets)
         dhcp._current_server_state[self.server.dhcp_service] = old_state
 
         new_hosts = copy.deepcopy(old_hosts)
         removed_host = new_hosts.pop()
         modified_host = new_hosts[0]
         modified_host["ip"] = factory.make_ip_address()
-        added_host = make_host()
+        added_host = make_host(dhcp_snippets=[])
         new_hosts.append(added_host)
 
         with FakeLogger("maas") as logger:
             yield self.configure(
                 omapi_key,
-                [failover_peers], [shared_network], new_hosts, [interface])
+                [failover_peers], [shared_network], new_hosts, [interface],
+                global_dhcp_snippets)
 
         self.assertThat(
             write_file,
@@ -781,7 +869,7 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key, [failover_peers], [shared_network],
-                new_hosts, [interface]))
+                new_hosts, [interface], global_dhcp_snippets))
         self.assertDocTestMatches(
             "Failed to update all host maps. Restarting DHCPv... "
             "service to ensure host maps are in-sync.",
@@ -796,7 +884,7 @@ class TestConfigureDHCP(MAASTestCase):
             yield self.configure(
                 factory.make_name('key'),
                 [make_failover_peer_config()], [make_shared_network()],
-                [make_host()], [make_interface()])
+                [make_host()], [make_interface()], make_dhcp_snippets())
 
     @inlineCallbacks
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
@@ -806,7 +894,7 @@ class TestConfigureDHCP(MAASTestCase):
             yield self.configure(
                 factory.make_name('key'),
                 [make_failover_peer_config()], [make_shared_network()],
-                [make_host()], [make_interface()])
+                [make_host()], [make_interface()], make_dhcp_snippets())
 
     @inlineCallbacks
     def test__converts_stop_dhcp_server_failure_to_CannotConfigureDHCP(self):
@@ -814,7 +902,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_ensureService().side_effect = ServiceActionError()
         with ExpectedException(exceptions.CannotConfigureDHCP):
             yield self.configure(
-                factory.make_name('key'), [], [], [], [])
+                factory.make_name('key'), [], [], [], [], [])
 
     @inlineCallbacks
     def test__does_not_log_ServiceActionError(self):
@@ -823,7 +911,7 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             with ExpectedException(exceptions.CannotConfigureDHCP):
                 yield self.configure(
-                    factory.make_name('key'), [], [], [], [])
+                    factory.make_name('key'), [], [], [], [], [])
         self.assertDocTestMatches("", logger.output)
 
     @inlineCallbacks
@@ -834,7 +922,7 @@ class TestConfigureDHCP(MAASTestCase):
         with FakeLogger("maas") as logger:
             with ExpectedException(exceptions.CannotConfigureDHCP):
                 yield self.configure(
-                    factory.make_name('key'), [], [], [], [])
+                    factory.make_name('key'), [], [], [], [], [])
         self.assertDocTestMatches(
             "DHCPv... server failed to stop: DHCP is on strike today",
             logger.output)
@@ -848,7 +936,7 @@ class TestConfigureDHCP(MAASTestCase):
                 yield self.configure(
                     factory.make_name('key'),
                     [make_failover_peer_config()], [make_shared_network()],
-                    [make_host()], [make_interface()])
+                    [make_host()], [make_interface()], make_dhcp_snippets())
         self.assertDocTestMatches("", logger.output)
 
     @inlineCallbacks
@@ -861,7 +949,7 @@ class TestConfigureDHCP(MAASTestCase):
                 yield self.configure(
                     factory.make_name('key'),
                     [make_failover_peer_config()], [make_shared_network()],
-                    [make_host()], [make_interface()])
+                    [make_host()], [make_interface()], make_dhcp_snippets())
         self.assertDocTestMatches(
             "DHCPv... server failed to restart: "
             "DHCP is on strike today", logger.output)

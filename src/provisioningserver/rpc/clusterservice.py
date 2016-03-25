@@ -282,22 +282,24 @@ class Cluster(RPCProtocol):
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(
             self, omapi_key, failover_peers, shared_networks,
-            hosts, interfaces):
+            hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv4Server(omapi_key)
         d = concurrency.dhcp.run(
             dhcp.configure, server,
-            failover_peers, shared_networks, hosts, interfaces)
+            failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         d.addCallback(lambda _: {})
         return d
 
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(
             self, omapi_key, failover_peers, shared_networks,
-            hosts, interfaces):
+            hosts, interfaces, global_dhcp_snippets=[]):
         server = dhcp.DHCPv6Server(omapi_key)
         d = concurrency.dhcp.run(
             dhcp.configure, server,
-            failover_peers, shared_networks, hosts, interfaces)
+            failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
         d.addCallback(lambda _: {})
         return d
 
