@@ -1904,10 +1904,10 @@ describe("NodeDetailsController", function() {
             })).toBe("error");
         });
 
-        it("returns 'warning' when degraged", function() {
+        it("returns 'warning' when degraded", function() {
             var controller = makeController();
             expect($scope.getServiceClass({
-                status: "degraged"
+                status: "degraded"
             })).toBe("warning");
         });
 

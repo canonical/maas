@@ -603,8 +603,8 @@ class SERVICE_STATUS:
     UNKNOWN = 'unknown'
     #: Service is running and operational.
     RUNNING = 'running'
-    #: Service is running but is in a degraged state.
-    DEGRADED = 'degraged'
+    #: Service is running but is in a degraded state.
+    DEGRADED = 'degraded'
     #: Service is dead. (Should be on but is off).
     DEAD = 'dead'
     #: Service is off. (Should be off and is off).

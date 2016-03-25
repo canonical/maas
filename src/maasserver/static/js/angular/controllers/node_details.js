@@ -969,7 +969,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     return "success";
                 } else if(service.status === "dead") {
                     return "error";
-                } else if(service.status === "degraged") {
+                } else if(service.status === "degraded") {
                     return "warning";
                 } else {
                     return "none";

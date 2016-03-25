@@ -30,7 +30,7 @@ angular.module('MAAS').directive('maasControllerStatus', [
                 function getClass(service) {
                     if(service.status === "running") {
                         return "success";
-                    } else if (service.status === "degraged") {
+                    } else if (service.status === "degraded") {
                         return "warning";
                     } else if (service.status === "dead") {
                         return "error";

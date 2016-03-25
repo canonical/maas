@@ -14,7 +14,7 @@ describe("maasControllerStatus", function() {
     function makeService(status) {
         var name = makeName("service");
         if(angular.isUndefined(status)) {
-            status = pickItem(["running", "dead", "off", "degraged"]);
+            status = pickItem(["running", "dead", "off", "degraded"]);
         }
         return {
             id: _nextId++,
@@ -106,7 +106,7 @@ describe("maasControllerStatus", function() {
     it("any dead is error", function() {
         var services = [
             makeService("dead"),
-            makeService("degraged"),
+            makeService("degraded"),
             makeService("running"),
             makeService("unknown"),
             makeService("off")
@@ -118,9 +118,9 @@ describe("maasControllerStatus", function() {
         expect(directive.isolateScope().serviceClass).toBe("error");
     });
 
-    it("any degraged without error is warning", function() {
+    it("any degraded without error is warning", function() {
         var services = [
-            makeService("degraged"),
+            makeService("degraded"),
             makeService("running"),
             makeService("unknown"),
             makeService("off")
@@ -132,7 +132,7 @@ describe("maasControllerStatus", function() {
         expect(directive.isolateScope().serviceClass).toBe("warning");
     });
 
-    it("any running without error or degraged is success", function() {
+    it("any running without error or degraded is success", function() {
         var services = [
             makeService("running"),
             makeService("unknown"),
