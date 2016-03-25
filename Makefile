@@ -202,6 +202,7 @@ define test-scripts
 endef
 
 test: $(strip $(test-scripts))
+	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) coverage.data
 	@echo $^ | xargs --verbose -n1 env
 
@@ -397,6 +398,7 @@ define phony_targets
   styles
   syncdb
   test
+  test-migrations
   test+coverage
 endef
 
