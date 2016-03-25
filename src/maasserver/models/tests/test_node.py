@@ -4402,6 +4402,60 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             node_type=NODE_TYPE.RACK_CONTROLLER)
         return typecast_node(node, RackController)
 
+    def test__order_of_calls_to_update_interface_is_always_the_same(self):
+        rack = self.create_empty_rack_controller()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "eth1": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "bond0": {
+                "type": "bond",
+                "mac_address": factory.make_mac_address(),
+                "parents": ["eth1", "eth0"],
+                "links": [],
+                "enabled": True,
+            },
+            "bond0.10": {
+                "type": "vlan",
+                "vid": 10,
+                "parents": ["bond0"],
+                "links": [],
+                "enabled": True,
+            },
+            "eth2": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+        }
+        expected_call_order = [
+            call("eth0", interfaces["eth0"]),
+            call("eth1", interfaces["eth1"]),
+            call("eth2", interfaces["eth2"]),
+            call("bond0", interfaces["bond0"]),
+            call("bond0.10", interfaces["bond0.10"]),
+        ]
+        # Perform multiple times to make sure the call order is always
+        # the same.
+        for _ in range(5):
+            mock_update_interface = self.patch(rack, "_update_interface")
+            rack.update_interfaces(interfaces)
+            self.assertThat(
+                mock_update_interface, MockCallsMatch(*expected_call_order))
+
     def test__all_new_physical_interfaces_no_links(self):
         rack = self.create_empty_rack_controller()
         interfaces = {

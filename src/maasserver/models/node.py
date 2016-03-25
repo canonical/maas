@@ -2974,16 +2974,26 @@ class RackController(Node):
         # Get all of the current interfaces on this rack controller.
         current_interfaces = {
             interface.id: interface
-            for interface in self.interface_set.all()
+            for interface in self.interface_set.all().order_by('id')
         }
 
         # Update the interfaces in dependency order. This make sure that the
-        # parent is created or updated before the child.
-        process_order = flatten(sorttop({
+        # parent is created or updated before the child. The order inside
+        # of the sorttop result is ordered so that the modification locks that
+        # postgres grabs when updating interfaces is always in the same order.
+        # The ensures that multiple threads can call this method at the
+        # exact same time. Without this ordering it will deadlock because
+        # multiple are trying to update the same items in the database in
+        # a different order.
+        process_order = sorttop({
             name: config["parents"]
             for name, config in interfaces.items()
-        }))
-        for name in process_order:
+        })
+        process_order = [
+            sorted(list(items))
+            for items in process_order
+        ]
+        for name in flatten(process_order):
             interface = self._update_interface(name, interfaces[name])
             if interface is not None and interface.id in current_interfaces:
                 del current_interfaces[interface.id]
@@ -2997,7 +3007,12 @@ class RackController(Node):
                 for parent in nic.parents.all()
                 if parent.id in current_interfaces
             ]
-        deletion_order = reversed(list(flatten(sorttop(deletion_order))))
+        deletion_order = sorttop(deletion_order)
+        deletion_order = [
+            sorted(list(items))
+            for items in deletion_order
+        ]
+        deletion_order = reversed(list(flatten(deletion_order)))
         for delete_id in deletion_order:
             if self.boot_interface_id == delete_id:
                 self.boot_interface = None
