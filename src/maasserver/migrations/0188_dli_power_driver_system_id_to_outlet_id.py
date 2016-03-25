@@ -11,6 +11,9 @@ class Migration(DataMigration):
         This corresponds to a change in `provisioningserver.power.schema`.
         """
         for node in orm.Node.objects.filter(power_type="dli"):
+            # XXX newell 2016-03-25, bug=1560693: node.routers needs to be
+            # set to `[]` to get past migration errors on dist-upgrade
+            node.routers = []
             node.power_parameters["outlet_id"] = (
                 node.power_parameters.pop("system_id", ""))
             node.save()
