@@ -52,13 +52,8 @@ setup(
             ['etc/maas/drivers.yaml']),
         ('/etc/maas/templates/uefi',
             glob('etc/maas/templates/uefi/*.template')),
-        ('/etc/maas/templates/dhcp',
-            glob('etc/maas/templates/dhcp/*.template')),
         ('/etc/maas/templates/dns',
             glob('etc/maas/templates/dns/*.template')),
-        ('/etc/maas/templates/power',
-            glob('etc/maas/templates/power/*.template') +
-            glob('etc/maas/templates/power/*.conf')),
         ('/etc/maas/templates/pxe', glob('etc/maas/templates/pxe/*.template')),
         ('/etc/maas/templates/commissioning-user-data',
             glob('etc/maas/templates/commissioning-user-data/*.template')),
