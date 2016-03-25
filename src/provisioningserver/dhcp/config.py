@@ -16,11 +16,8 @@ from itertools import (
 from platform import linux_distribution
 
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import locate_template
 import tempita
-
-# Location of DHCP templates, relative to the configuration directory.
-TEMPLATES_DIR = "templates/dhcp"
 
 # Used to generate the conditional bootloader behaviour
 CONDITIONAL_BOOTLOADER = """
@@ -82,7 +79,7 @@ def get_config(template_name, **params):
     :param **params: Variables to be substituted into the template.
     :return: A full configuration, as unicode text.
     """
-    template_file = locate_config(TEMPLATES_DIR, template_name)
+    template_file = locate_template('dhcp', template_name)
     params['bootloader'] = compose_conditional_bootloader()
     params['platform_codename'] = linux_distribution()[2]
     params.setdefault("ntp_server")

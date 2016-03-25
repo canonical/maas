@@ -31,6 +31,7 @@ from provisioningserver.utils import (
     flatten,
     in_develop_mode,
     locate_config,
+    locate_template,
     maas_custom_config_markers,
     parse_key_value_file,
     Safe,
@@ -91,6 +92,17 @@ class TestLocateConfig(MAASTestCase):
         self.assertEqual(
             get_branch_dir('etc/maas/bar/szot'),
             locate_config('foo/.././bar///szot'))
+
+
+class TestLocateTemplate(MAASTestCase):
+    """Tests for `locate_template`."""
+
+    def test_returns_test_path(self):
+        self.assertEquals(
+            os.path.abspath(
+                os.path.join(
+                    os.path.dirname(__file__), '..', '..', 'templates')),
+            locate_template(''))
 
 
 class TestFilterDict(MAASTestCase):

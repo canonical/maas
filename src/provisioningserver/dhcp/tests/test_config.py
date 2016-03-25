@@ -12,7 +12,6 @@ from os import (
 from textwrap import dedent
 import traceback
 
-from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
@@ -98,12 +97,11 @@ class TestGetConfig(PservTestCase):
         if name is None:
             name = 'dhcpd.conf.template'
         fake_root = self.make_dir()
-        fake_etc_maas = path.join(fake_root, "etc", "maas")
-        self.useFixture(EnvironmentVariableFixture('MAAS_ROOT', fake_root))
-        template_dir = path.join(fake_etc_maas, 'templates', 'dhcp')
+        template_dir = path.join(fake_root, 'templates', 'dhcp')
         makedirs(template_dir)
         template = factory.make_file(
             template_dir, name, contents=template_content)
+        self.patch(config, 'locate_template').return_value = template
         return tempita.Template(template_content, name=template)
 
     def test__uses_branch_template_by_default(self):

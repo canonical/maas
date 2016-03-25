@@ -10,6 +10,7 @@ __all__ = [
     "import_settings",
     "in_develop_mode",
     "locate_config",
+    "locate_template",
     "parse_key_value_file",
     "ShellTemplate",
     "sorttop",
@@ -52,6 +53,18 @@ def locate_config(*path: Tuple[str]):
         # Avoid circular imports.
         from provisioningserver.path import get_tentative_path
         return get_tentative_path("etc", "maas", path)
+
+
+def locate_template(*path: Tuple[str]):
+    """Return the absolute path of a template.
+
+    :param path: Path elemets to resolve relative to the location the
+                 Python library provisioning server is located in.
+    """
+    return os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            '..', 'templates', *path))
 
 
 setting_expression = r"""
