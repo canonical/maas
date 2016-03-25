@@ -32,6 +32,7 @@ from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
+    RSYSLOG_PORT,
 )
 from maasserver.enum import (
     FILESYSTEM_TYPE,
@@ -602,6 +603,7 @@ def get_preseed_context(osystem='', release='', rack_controller=None):
         'release': release,
         'server_host': server_host,
         'server_url': absolute_reverse('machines_handler', base_url=base_url),
+        'syslog_host_port': '%s:%d' % (server_host, RSYSLOG_PORT),
         'metadata_enlist_url': absolute_reverse('enlist', base_url=base_url),
         'enable_http_proxy': Config.objects.get_config('enable_http_proxy'),
         'http_proxy': Config.objects.get_config('http_proxy'),

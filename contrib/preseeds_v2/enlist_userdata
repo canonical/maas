@@ -25,6 +25,10 @@ system_info:
          primary:  "http://ports.ubuntu.com/ubuntu-ports"
          security: "http://ports.ubuntu.com/ubuntu-ports"
 
+rsyslog:
+   remotes:
+     maas: "{{syslog_host_port}}"
+
 power_state:
    delay: now
    mode: poweroff

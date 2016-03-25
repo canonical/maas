@@ -24,6 +24,9 @@ from provisioningserver.rpc.exceptions import (
 )
 import yaml
 
+# Default port for RSYSLOG
+RSYSLOG_PORT = 514
+
 
 def get_apt_proxy_for_node(node):
     """Return the APT proxy for the `node`."""
@@ -36,6 +39,13 @@ def get_apt_proxy_for_node(node):
                 node.get_boot_rack_controller())
     else:
         return None
+
+
+def get_rsyslog_host_port(node):
+    """Return the rsyslog host and port to use."""
+    # TODO: In the future, we can make this configurable
+    return "%s:%d" % (get_maas_facing_server_host(
+        node.get_boot_rack_controller()), RSYSLOG_PORT)
 
 
 def get_system_info():
@@ -183,6 +193,12 @@ def _compose_cloud_init_preseed(
                 'token_key': token.key,
                 'token_secret': token.secret,
             },
+        },
+        # This configure rsyslog for the ephemeral environment
+        'rsyslog': {
+            'remotes': {
+                'maas': get_rsyslog_host_port(node),
+            }
         },
     }
     # Add the system configuration information.

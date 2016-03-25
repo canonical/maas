@@ -114,6 +114,9 @@ class TestComposePreseed(MAASServerTestCase):
             KeysEqual(
                 'consumer_key', 'endpoint', 'token_key', 'token_secret',
                 'type'))
+        self.assertThat(
+            preseed['rsyslog']['remotes'],
+            KeysEqual('maas'))
         self.assertSystemInfo(preseed)
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
