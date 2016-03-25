@@ -67,12 +67,21 @@ angular.module('MAAS').factory(
 
         // Configure DHCP on the VLAN
         VLANsManager.prototype.configureDHCP = function(
-            vlan, controllers, extra) {
-            return RegionConnection.callMethod(
+           vlan, controllers, extra) {
+           return RegionConnection.callMethod(
                 "vlan.configure_dhcp", {
                     "id": vlan.id,
                     "controllers": controllers,
                     "extra": extra
+                }, true);
+        };
+
+        // Disable DHCP on the VLAN
+        VLANsManager.prototype.disableDHCP = function(vlan) {
+            return RegionConnection.callMethod(
+                "vlan.configure_dhcp", {
+                    "id": vlan.id,
+                    "controllers": []
                 }, true);
         };
 

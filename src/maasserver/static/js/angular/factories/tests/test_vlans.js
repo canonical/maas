@@ -56,6 +56,40 @@ describe("VLANsManager", function() {
         });
     });
 
+    describe("configureDHCP", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {id: makeInteger(1,1000)};
+            var result = {};
+            var controllers = ["a", "b"];
+            var extra = {"c": "d"};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(VLANsManager.configureDHCP(
+                obj, controllers, extra)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "vlan.configure_dhcp", {
+                    id: obj.id,
+                    controllers: controllers,
+                    extra: extra
+                }, true);
+        });
+    });
+
+    describe("disableDHCP", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {id: makeInteger(1,1000)};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(VLANsManager.disableDHCP(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "vlan.configure_dhcp", {
+                    id: obj.id,
+                    controllers: []
+                }, true);
+        });
+    });
+
     describe("create", function() {
 
         it("calls the region with expected parameters", function() {
