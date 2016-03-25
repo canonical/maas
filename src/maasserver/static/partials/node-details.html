@@ -478,9 +478,9 @@
                     <div class="table margin-bottom">
                         <header class="table__head">
                             <div class="table__row">
-                                <div class="table__header table-col--15">VLAN</div>
                                 <div class="table__header table-col--15">Fabric</div>
-                                <div class="table__header table-col--30">Subnet</div>
+                                <div class="table__header table-col--15">VLAN</div>
+                                <div class="table__header table-col--30">Subnets</div>
                                 <div class="table__header table-col--20">Primary rack</div>
                                 <div class="table__header table-col--20">Secondary rack</div>
                             </div>
@@ -488,13 +488,17 @@
                         <main class="table__body">
                             <div class="table__row" data-ng-repeat="vlanRow in vlanTable">
                                 <div class="table__data table-col--15">
-                                    <a href="#/vlan/{$ vlanRow['vlan'].id $}">{$ getVLANText(vlanRow['vlan']) $}</a>
-                                </div>
-                                <div class="table__data table-col--15">
                                     <a href="#/fabric/{$ vlanRow['fabric'].id $}">{$ vlanRow['fabric'].name $}</a>
                                 </div>
+                                <div class="table__data table-col--15">
+                                    <a href="#/vlan/{$ vlanRow['vlan'].id $}">{$ getVLANText(vlanRow['vlan']) $}</a>
+                                </div>
                                 <div class="table__data table-col--30">
-                                    <a href="#/subnet/{$ vlanRow['subnet'].id $}">{$ getSubnetText(vlanRow['subnet']) $}</a>
+                                    <span data-ng-repeat="subnet in vlanRow['subnets']">
+                                        <div class="margin-bottom--ten"> 
+                                            <a href="#/subnet/{$ subnet.id $}">{$ getSubnetText(subnet) $}</a>
+                                        </div>
+                                    </span>
                                 </div>
                                 <div class="table__data table-col--20">
                                     <a href="#/node/controller/{$ vlanRow['primary_rack'].system_id $}">{$ vlanRow['primary_rack'].fqdn $}</a>

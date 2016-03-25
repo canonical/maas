@@ -230,6 +230,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             // vlanTable contains data packaged for the 'Served VLANs' section,
             // which is essentially Interface LEFT JOIN VLAN LEFT JOIN Subnet.
             var vlanTable = [];
+            // Keep track of VLAN IDs we've processed.
+            var addedVlans = {};
 
             angular.forEach($scope.node.interfaces, function(nic) {
                 // When a interface has a child that is a bond. Then that
@@ -267,31 +269,37 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                 if(angular.isObject(nic.vlan)) {
                     nic.fabric = FabricsManager.getItemFromList(
                             nic.vlan.fabric);
-                    // Only build the vlanTable for controllers.
+
+                    // Build the vlanTable for controller detail page.
                     if ($scope.$parent.isController) {
-                        var vlanRecord = {
-                            "vlan": nic.vlan,
-                            "subnet": null,
-                            "fabric": nic.fabric,
-                            "primary_rack": null,
-                            "secondary_rack": null
-                        };
-                        if(nic.vlan.primary_rack_sid) {
-                            vlanRecord.primary_rack =
-                                ControllersManager.getItemFromList(
-                                    nic.vlan.primary_rack_sid);
+                        // Skip duplicate VLANs (by id, they can share names).
+                        if(!(Object.prototype.hasOwnProperty.call(
+                                addedVlans, nic.vlan.id))) {
+                            addedVlans[nic.vlan.id] = true;
+                            var vlanRecord = {
+                                "fabric": nic.fabric,
+                                "vlan": nic.vlan,
+                                "subnets": VLANsManager.getSubnets(nic.vlan),
+                                "primary_rack": null,
+                                "secondary_rack": null,
+                                "sort_key": nic.fabric.name + "|" +
+                                    $scope.getVLANText(nic.vlan)
+                            };
+                            if(nic.vlan.primary_rack_sid) {
+                                vlanRecord.primary_rack =
+                                    ControllersManager.getItemFromList(
+                                        nic.vlan.primary_rack_sid);
+                            }
+                            if(nic.vlan.secondary_rack_sid) {
+                                vlanRecord.secondary_rack =
+                                    ControllersManager.getItemFromList(
+                                        nic.vlan.secondary_rack_sid);
+                            }
+                            vlanTable.push(vlanRecord);
                         }
-                        if(nic.vlan.secondary_rack_sid) {
-                            vlanRecord.secondary_rack =
-                                ControllersManager.getItemFromList(
-                                    nic.vlan.secondary_rack_sid);
-                        }
-                        angular.forEach(VLANsManager.getSubnets(nic.vlan),
-                                function(subnet) {
-                            // Reuse same base record for each different subnet.
-                            var vlanRow = angular.copy(vlanRecord);
-                            vlanRow.subnet = subnet;
-                            vlanTable.push(vlanRow);
+                        // Sort the table by (VLANText, fabric.name).
+                        vlanTable.sort(function(a, b) {
+                            return a.sort_key.localeCompare(b.sort_key);
                         });
                     }
                 }

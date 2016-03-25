@@ -184,6 +184,10 @@
 %margin-bottom,
 .margin-bottom {
     margin-bottom: 20px;
+
+    &--ten {
+        margin-bottom: 10px;
+    }
 }
 
 %margin-left,

@@ -779,13 +779,15 @@ describe("NodeNetworkingController", function() {
             expect($scope.vlanTable).toEqual([]);
         });
 
-        it("renders blank vlanTable when no subnets", function() {
+        it("renders vlanTable OK when no subnets", function() {
             var fabric0 = {
-                id: 0
+                id: 0,
+                name: 'fabric0'
             };
             var vlan0 = {
                 id: 0,
-                fabric: 0
+                fabric: 0,
+                name: 'vlan0'
             };
             var nic0 = {
                 id: 0,
@@ -804,7 +806,16 @@ describe("NodeNetworkingController", function() {
 
             $parentScope.isController = true;
             updateInterfaces();
-            expect($scope.vlanTable).toEqual([]);
+            expect($scope.vlanTable).toEqual([
+                {
+                    fabric: fabric0,
+                    vlan: vlan0,
+                    subnets: [],
+                    primary_rack: null,
+                    secondary_rack: null,
+                    sort_key: fabric0.name + "|" + $scope.getVLANText(vlan0)
+                }
+            ]);
         });
 
         it("renders single entry vlanTable", function() {
@@ -836,11 +847,12 @@ describe("NodeNetworkingController", function() {
             updateInterfaces();
             expect($scope.vlanTable).toEqual([
                 {
-                    vlan: vlan0,
                     fabric: fabric0,
-                    subnet: subnet0,
+                    vlan: vlan0,
+                    subnets: [subnet0],
                     primary_rack: null,
-                    secondary_rack: null
+                    secondary_rack: null,
+                    sort_key: fabric0.name + "|" + $scope.getVLANText(vlan0)
                 }
             ]);
         });
@@ -893,25 +905,70 @@ describe("NodeNetworkingController", function() {
             updateInterfaces();
             expect($scope.vlanTable).toEqual([
                 {
-                    vlan: vlan0,
                     fabric: fabric0,
-                    subnet: subnet0,
+                    vlan: vlan0,
+                    subnets: [subnet0, subnet1],
                     primary_rack: null,
-                    secondary_rack: null
+                    secondary_rack: null,
+                    sort_key: fabric0.name + "|" + $scope.getVLANText(vlan0)
                 },
                 {
-                    vlan: vlan0,
-                    fabric: fabric0,
-                    subnet: subnet1,
-                    primary_rack: null,
-                    secondary_rack: null
-                },
-                {
-                    vlan: vlan1,
                     fabric: fabric1,
-                    subnet: subnet2,
+                    vlan: vlan1,
+                    subnets: [subnet2],
                     primary_rack: null,
-                    secondary_rack: null
+                    secondary_rack: null,
+                    sort_key: fabric0.name + "|" + $scope.getVLANText(vlan1)
+                }
+            ]);
+        });
+
+        it("no duplicate vlans", function() {
+            // Regression for https://bugs.launchpad.net/maas/+bug/1559332.
+            // Same vlan on two nics shouldn't result in two vlans in table.
+            var subnet0 = { id: 0 };
+            var fabric0 = {
+                id: 0
+            };
+            var vlan0 = {
+                id: 0,
+                fabric: 0,
+                subnet_ids: [0, 1]
+            };
+            var nic0 = {
+                id: 0,
+                name: "eth0",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            var nic1 = {
+                id: 1,
+                name: "eth1",
+                type: "physical",
+                parents: [],
+                children: [],
+                links: [],
+                vlan_id: 0
+            };
+            SubnetsManager._items = [subnet0];
+            FabricsManager._items = [fabric0];
+            VLANsManager._items = [vlan0];
+            node.interfaces = [nic0, nic1];
+
+            // Should not blank for a controller.
+            $parentScope.isController = true;
+            updateInterfaces();
+            expect($scope.vlanTable).toEqual([
+                {
+                    vlan: vlan0,
+                    fabric: fabric0,
+                    subnets: [subnet0],
+                    primary_rack: null,
+                    secondary_rack: null,
+                    sort_key: fabric0.name + "|" + $scope.getVLANText(vlan0)
                 }
             ]);
         });
