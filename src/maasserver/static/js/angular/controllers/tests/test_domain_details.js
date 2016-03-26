@@ -14,6 +14,7 @@ describe("DomainDetailsController", function() {
         var domain = {
             id: makeInteger(1, 10000),
             name: 'example.com',
+            displayname: 'example.com',
             authoritative: true
         };
         DomainsManager._items.push(domain);
@@ -156,13 +157,7 @@ describe("DomainDetailsController", function() {
 
     it("title is updated once setActiveItem resolves", function() {
         var controller = makeControllerResolveSetActiveItem();
-        expect($rootScope.title).toBe(domain.name);
-    });
-
-    it("default domain title is special", function() {
-        domain.id = 0;
-        var controller = makeControllerResolveSetActiveItem();
-        expect($rootScope.title).toBe("Default domain " + domain.name);
+        expect($rootScope.title).toBe(domain.displayname);
     });
 
     describe("canBeDeleted", function() {

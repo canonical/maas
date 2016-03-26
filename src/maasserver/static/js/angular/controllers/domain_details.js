@@ -26,21 +26,12 @@ angular.module('MAAS').controller('DomainDetailsController', [
 
         // Updates the page title.
         function updateTitle() {
-            if ($scope.isDefaultDomain()) {
-                $rootScope.title = "Default domain " + $scope.domain.name;
-            } else {
-                $rootScope.title = $scope.domain.name;
-            }
+            $rootScope.title = $scope.domain.displayname;
         }
 
         // Called when the domain has been loaded.
         function domainLoaded(domain) {
             $scope.domain = domain;
-            if ($scope.isDefaultDomain()) {
-                $scope.domain.displayname = $scope.domain.name + " (default)";
-            } else {
-                $scope.domain.displayname = $scope.domain.name;
-            }
             $scope.loaded = true;
 
             updateTitle();

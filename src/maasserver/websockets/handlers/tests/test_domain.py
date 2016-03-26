@@ -24,9 +24,14 @@ from testtools.matchers import Equals
 class TestDomainHandler(MAASServerTestCase):
 
     def dehydrate_domain(self, domain, for_list=False):
+        if domain.id == 0:
+            displayname = "%s (default)" % domain.name
+        else:
+            displayname = domain.name
         data = {
             "id": domain.id,
             "name": domain.name,
+            "displayname": displayname,
             "authoritative": domain.authoritative,
             "ttl": None,
             "updated": dehydrate_datetime(domain.updated),

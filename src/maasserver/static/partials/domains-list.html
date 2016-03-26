@@ -70,7 +70,7 @@
                     <main class="table-body">
                         <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                            <div class="table__data table-col--55"><a href="#/domain/{$ row.id $}">{$ row.name $}</a></div>
+                            <div class="table__data table-col--55"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></div>
                             <div class="table__data table-col--15">{$ row.hosts $}</div>
                             <div class="table__data table-col--15">{$ row.resource_count $}</div>
                             <div class="table__data table-col--15">{$ row.authoritative ? "Yes" : "No" $}</div>

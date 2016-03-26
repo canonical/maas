@@ -31,6 +31,10 @@ class DomainHandler(TimestampedModelHandler):
         data["hosts"] = len({
             rr['system_id'] for rr in rrsets if rr['system_id'] is not None})
         data["resource_count"] = len(rrsets)
+        if domain.is_default():
+            data["displayname"] = "%s (default)" % data["name"]
+        else:
+            data["displayname"] = data["name"]
         return data
 
     def delete(self, parameters):
