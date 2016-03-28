@@ -11,7 +11,7 @@ def fix_spelling(apps, schema_editor):
     Service = apps.get_model("maasserver", "Service")
     for service in Service.objects.filter(status="degraged"):
         service.status = "degraded";
-        service.save(update_fields="status")
+        service.save(update_fields=["status"])
 
 
 class Migration(migrations.Migration):
