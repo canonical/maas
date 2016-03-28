@@ -486,7 +486,8 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
             "One rack controller is not yet connected to the region. Visit "
-            "the <a href=\"%s\">rack controllers page</a> for more "
+            "the <a href=\"%s#/nodes?tab=controllers\">"
+            "rack controllers page</a> for more "
             "information." % (
                 reverse('index')),
             error)
@@ -509,7 +510,8 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
         self.assertEqual(
             "2 rack controllers are not yet connected to the region. Visit "
-            "the <a href=\"%s\">rack controllers page</a> for more "
+            "the <a href=\"%s#/nodes?tab=controllers\">"
+            "rack controllers page</a> for more "
             "information." %
             reverse('index'),
             error)
