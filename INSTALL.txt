@@ -43,8 +43,7 @@ There are two suggested additional packages 'maas-dhcp' and
 greatly simplify deployment if you are running a typical setup where
 the MAAS controller can run the network (Note: These **must** be
 installed if you later set the options in the web interface to have
-MAAS manage DHCP/DNS). If you need to integrate your MAAS setup under
-an existing DHCP setup, see :ref:`manual-dhcp`
+MAAS manage DHCP/DNS).
 
 MAAS Package Repositories
 ^^^^^^^^^^^^^^^^^^^^^^^^^

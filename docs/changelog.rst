@@ -3,6 +3,85 @@ Changelog
 =========
 
 
+2.0.0 (alpha4)
+==============
+
+Important annoucements
+----------------------
+
+**maas-region-controller-min has been renamed to maas-region-api**
+  The `maas-region-controller-min` package has now been renamed to
+  `maas-region-api`. This package provides the API services for MAAS
+  (maas-regiond) and can be used to scale out the API front-end of
+  your MAAS region controller.
+
+Major new features
+------------------
+
+**DHCP Snippets Backend & API**
+  MAAS 2.0 alpha 4 introduces the ability to define DHCP snippets. This
+  feature allows administrators to manage DHCP directly from MAAS’, removing
+  the need to manually modify template files. Snippets can be defined as:
+
+   * `Host snippets`, allowing to define configuration for a particular node in MAAS.
+   * `Subnet snippets`, allowing to define configuration for a specific subnet in MAAS.
+   * `Global snippets`, allowing to define configuration that will affect DHCP (isc-dhcp) as a whole.
+
+  For more information, see :ref:`DHCP Snippets <dhcpsnippets>`.
+
+Minor new features
+------------------
+
+**Rack Controller Web UI Improvements**
+  MAAS 2.0 alpha 4 adds the UI for Served VLANs and Service Tracking, allowing users
+  to see what VLANs are being currently served by a rack controller, and the status
+  of the services in those Rack Controllers.
+
+**Rsyslog during enlistment and commissioning**
+  MAAS 2.0 alpha 4 now enables rsyslog for the enlistment and commissioning
+  environment when using Xenial as the Commissioning image. This allows users
+  to see all cloud-init’s syslog information in /var/log/maas/rsyslog/.
+
+Known issues and work arounds
+-----------------------------
+
+**DHCP snippets are not validated before committed**
+  When DHCP snippets are created, MAAS is not validating the DHCP snippet against
+  isc-dhcp config. This means that if users input invalid isc-dhcp configuration,
+  this will cause the DHCP config to be generated anyway, yielding maas-dhcp to
+  not be working properly or started at all.
+
+  See bug `1562888`_ for more information.
+
+.. _1562888:
+  http://launchpad.net/bugs/1562888
+
+Issues fixed in this release
+----------------------------
+
+LP: #1561816    Rack controller 'None' disconnected.
+
+LP: #1557616    [2.0a2] UI provides no way to disable DHCP
+
+LP: #1559332    [2.0a3] Server VLAN's UI is showing too many vlans
+
+LP: #1555679    [2.0a1] bridges with same mac as physical interfaces prevent rack interface discovery
+
+LP: #1560233    [2.0a3] maas-regiond not available right after install.
+
+LP: #1559330    [2.0a3] maas-rackd attemps to connect to regiond, constantely, without stop
+
+LP: #1559361    [2.0a3] maas-dhcpd is being restarted constantly while enlisting/commissioning multiple machines
+
+LP: #1559327    [2.0a3] dhcpd is configured incorrectly when two subnets are incorrectly placed in the same VLAN
+
+LP: #1549843    [2.0a1] Failed to update this region's process and endpoints; unleashed:pid=28940 record's may be out of date
+
+LP: #1559398    [2.0a3] Can't commission too many machines at a time
+
+LP: #1556366    [2.0a1] PXE interface incorrectly displayed on the UI
+
+
 2.0.0 (alpha3)
 ==============
 
