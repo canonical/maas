@@ -26,7 +26,10 @@ from maasserver.models import (
 )
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
-from maasserver.testing.api import APITestCase
+from maasserver.testing.api import (
+    APITestCase,
+    log_in_as_normal_user,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
@@ -310,6 +313,32 @@ class MAASAPIAnonTest(MAASServerTestCase):
             {'op': 'set_config'})
 
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+
+class MAASAPIVersioningTest(MAASServerTestCase):
+
+    def test_api_version_handler_path(self):
+        self.assertEqual('/api/version/', reverse('api_version'))
+
+    def test_v1_error_handler_path(self):
+        self.assertEqual('/api/1.0/', reverse('api_v1_error'))
+
+    def test_get_api_version(self):
+        log_in_as_normal_user(self.client)
+        response = self.client.get(reverse('api_version'))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual(b'2.0', response.content)
+
+    def test_old_api_request(self):
+        log_in_as_normal_user(self.client)
+        old_api_url = reverse('api_v1_error') + "maas/" + factory.make_string()
+        response = self.client.get(old_api_url)
+        self.assertEqual(http.client.GONE, response.status_code)
+        self.assertIn('text/plain', response['Content-Type'])
+        self.assertEqual(
+            b'The 1.0 API is no longer available. Please use API version 2.0.',
+            response.content)
 
 
 class MAASAPITest(APITestCase):

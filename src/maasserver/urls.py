@@ -12,6 +12,7 @@ from django.conf.urls import (
     url,
 )
 from django.contrib.auth.decorators import user_passes_test
+from django.http import HttpResponse
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
@@ -185,11 +186,18 @@ urlpatterns += patterns(
     adminurl(r'^zones/add/$', ZoneAdd.as_view(), name='zone-add'),
 )
 
-# API URLs.
+# API URLs. If old API requested, provide error message directing to new API.
 urlpatterns += patterns(
     '',
-    (r'^api/2\.0/', include('maasserver.urls_api'))
-    )
+    (r'^api/2\.0/', include('maasserver.urls_api')),
+    url(r'^api/version/', lambda request: HttpResponse(
+        content='2.0', content_type="text/plain"), name='api_version'),
+    url(r'^api/1.0/', lambda request: HttpResponse(
+        content_type="text/plain", status=410,
+        content='The 1.0 API is no longer available. '
+        'Please use API version 2.0.'), name='api_v1_error'),
+)
+
 
 # RPC URLs.
 urlpatterns += patterns(
