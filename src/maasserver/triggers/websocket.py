@@ -600,7 +600,9 @@ STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent("""\
     DECLARE
       dom RECORD;
     BEGIN
-      IF OLD.ip != NEW.ip THEN
+      IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
+            (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+            OLD.ip != NEW.ip) THEN
         FOR dom IN (
           SELECT DISTINCT ON (domain.id)
             domain.id
@@ -610,7 +612,7 @@ STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent("""\
             JOIN maasserver_interface AS interface ON
               iia.interface_id = interface.id
             JOIN maasserver_node AS node ON
-              node.boot_interface_id = interface.id) ON
+              node.id = interface.node_id) ON
             iia.staticipaddress_id = staticipaddress.id
           LEFT JOIN (
             maasserver_dnsresource_ip_addresses AS dia
@@ -621,7 +623,7 @@ STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent("""\
             domain.id = node.domain_id OR domain.id = dnsresource.domain_id
           WHERE staticipaddress.id = OLD.id OR staticipaddress.id = NEW.id)
         LOOP
-          PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+          PERFORM pg_notify('domain_update',CAST(dom.id AS text));
         END LOOP;
       END IF;
       RETURN NEW;
@@ -645,7 +647,7 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
           JOIN maasserver_interface AS interface ON
             iia.interface_id = interface.id
           JOIN maasserver_node AS node ON
-            node.boot_interface_id = interface.id) ON
+            node.id = interface.node_id) ON
           iia.staticipaddress_id = staticipaddress.id
         LEFT JOIN (
           maasserver_dnsresource_ip_addresses AS dia
@@ -656,7 +658,7 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
           domain.id = node.domain_id OR domain.id = dnsresource.domain_id
         WHERE staticipaddress.id = %s)
       LOOP
-        PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+        PERFORM pg_notify('domain_update',CAST(dom.id AS text));
       END LOOP;
       RETURN NEW;
     END;
@@ -667,14 +669,12 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
 DNSDATA_DOMAIN_NOTIFY = dedent("""\
     CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
     DECLARE
-        domain RECORD;
+        dom RECORD;
     BEGIN
-      SELECT DISTINCT ON (domain_id) domain_id INTO domain
-      FROM maasserver_dnsdata AS dnsdata
-      JOIN maasserver_dnsresource AS dnsresource ON
-        dnsresource.id = dnsdata.dnsresource_id
-      WHERE dnsdata.dnsresource_id = %s;
-      PERFORM pg_notify('domain_update',CAST(domain.domain_id AS text));
+      SELECT DISTINCT ON (domain_id) domain_id INTO dom
+      FROM maasserver_dnsresource AS dnsresource
+      WHERE dnsresource.id = %s;
+      PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -1004,8 +1004,7 @@ def register_websocket_triggers():
     register_procedure(
         DNSDATA_DOMAIN_NOTIFY % (
             'dnsdata_domain_update_notify',
-            'NEW.dnsresource_id OR '
-            'dnsdata.dnsresource_id = OLD.dnsresource_id'))
+            'OLD.dnsresource_id OR dnsresource.id = NEW.dnsresource_id'))
     register_procedure(
         DNSDATA_DOMAIN_NOTIFY % (
             'dnsdata_domain_delete_notify', 'OLD.dnsresource_id'))

@@ -16,6 +16,9 @@ from maasserver.listener import PostgresListenerService
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.dhcpsnippet import DHCPSnippet
+from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnsresource import DNSResource
+from maasserver.models.domain import Domain
 from maasserver.models.event import Event
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
@@ -132,6 +135,51 @@ class TransactionalHelpersMixin:
     def get_node_boot_interface(self, system_id):
         node = Node.objects.get(system_id=system_id)
         return node.get_boot_interface()
+
+    @transactional
+    def create_domain(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Domain(**params)
+
+    @transactional
+    def update_domain(self, id, params):
+        return apply_update_to_model(Domain, id, params)
+
+    @transactional
+    def delete_domain(self, id):
+        domain = Domain.objects.get(id=id)
+        domain.delete()
+
+    @transactional
+    def create_dnsresource(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_DNSResource(**params)
+
+    @transactional
+    def update_dnsresource(self, id, params):
+        return apply_update_to_model(DNSResource, id, params)
+
+    @transactional
+    def delete_dnsresource(self, id):
+        dnsresource = DNSResource.objects.get(id=id)
+        dnsresource.delete()
+
+    @transactional
+    def create_dnsdata(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_DNSData(**params)
+
+    @transactional
+    def update_dnsdata(self, id, params):
+        return apply_update_to_model(DNSData, id, params)
+
+    @transactional
+    def delete_dnsdata(self, id):
+        dnsdata = DNSData.objects.get(id=id)
+        dnsdata.delete()
 
     @transactional
     def create_fabric(self, params=None):

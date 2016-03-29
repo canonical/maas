@@ -1281,6 +1281,215 @@ class TestIPRangeListener(
             yield listener.stopService()
 
 
+class TestDomainListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            domain = yield deferToDatabase(self.create_domain)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        domain = yield deferToDatabase(self.create_domain)
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_domain,
+                domain.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        domain = yield deferToDatabase(self.create_domain)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_domain, domain.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_ip_address_update(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        params = {
+            'node_type': NODE_TYPE.MACHINE,
+            'domain': domain,
+        }
+        node = yield deferToDatabase(self.create_node, params)
+        interface = yield deferToDatabase(
+            self.create_interface, {
+                "node": node})
+        subnet = yield deferToDatabase(self.create_subnet)
+        ipaddress = yield deferToDatabase(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.AUTO,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": "",
+                })
+
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_staticipaddress, ipaddress.id, {
+                    "alloc_type": IPADDRESS_TYPE.STICKY,
+                    "ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsresource_create_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_dnsresource, {"domain": domain})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsresource_update_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        dnsrr = yield deferToDatabase(
+            self.create_dnsresource, {"domain": domain})
+        listener.register("domain", lambda *args: dv.set(args))
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_dnsresource,
+                dnsrr.id,
+                {'name': factory.make_name('name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    #@wait_for_reactor
+    @wait_for(360000)
+    @inlineCallbacks
+    def test__calls_handler_on_dnsresource_delete_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        dnsrr = yield deferToDatabase(self.create_dnsresource, {
+            'domain': domain})
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dnsresource, dnsrr.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsdata_create_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_dnsdata, {"domain": domain})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsdata_update_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        dnsdata = yield deferToDatabase(
+            self.create_dnsdata, {"domain": domain})
+        listener.register("domain", lambda *args: dv.set(args))
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_dnsdata,
+                dnsdata.id, {
+                    'ttl': random.randint(100, 199)})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsdata_delete_notification(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        dnsdata = yield deferToDatabase(self.create_dnsdata, {
+            "domain": domain})
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dnsdata, dnsdata.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
 class TestSubnetListener(
         MAASTransactionServerTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
