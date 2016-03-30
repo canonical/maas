@@ -17,7 +17,7 @@ from provisioningserver.utils import shell
 apt_pkg.init()
 
 # Name of maas package to get version from.
-REGION_PACKAGE_NAME = "maas-region-controller-min"
+REGION_PACKAGE_NAME = "maas-region-api"
 
 
 def get_version_from_apt(package):
@@ -61,9 +61,12 @@ def get_maas_branch_version():
     try:
         revno = shell.call_and_check(("bzr", "revno", __file__))
     except shell.ExternalProcessError:
-        # We may not be in a Bazaar working tree, or Bazaar is not installed,
-        # or any manner of other errors. For the purposes of this function we
-        # don't care; simply say we don't know.
+        # We may not be in a Bazaar working tree, or any manner of other
+        # errors. For the purposes of this function we don't care; simply say
+        # we don't know.
+        return None
+    except FileNotFoundError:
+        # Bazaar is not installed. We don't care and simply say we don't know.
         return None
     else:
         # `bzr revno` can return '???' when it can't find the working tree's

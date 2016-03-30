@@ -72,6 +72,11 @@ class TestGetMAASBranchVersion(MAASTestCase):
         call_and_check.side_effect = shell.ExternalProcessError(2, "cmd")
         self.assertIsNone(version.get_maas_branch_version())
 
+    def test__returns_None_if_bzr_not_found(self):
+        call_and_check = self.patch(shell, "call_and_check")
+        call_and_check.side_effect = FileNotFoundError()
+        self.assertIsNone(version.get_maas_branch_version())
+
     def test__returns_None_if_bzr_emits_something_thats_not_a_number(self):
         call_and_check = self.patch(shell, "call_and_check")
         call_and_check.return_value = b"???"

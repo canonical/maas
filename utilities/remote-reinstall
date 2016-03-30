@@ -28,7 +28,7 @@ rsync_options=rlptvz
 ssh_run="ssh -oBatchMode=yes -l root $hostname"
 
 echo "Checking $hostname..."
-maas_version=$($ssh_run "dpkg -s maas-region-controller-min | grep ^Version") \
+maas_version=$($ssh_run "dpkg -s maas-region-api | grep ^Version") \
     || die "Cannot SSH to root@$hostname."
 ip_address=$(get_ip $hostname)
 maas_version=$(echo $maas_version | cut -d':' -f 2)
