@@ -2502,7 +2502,7 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         dump = yield deferToDatabase(service.dump)
         self.assertItemsEqual([], dump)
 
-    def test__get_addresses(self):
+    def test__get_addresses_excluding_loopback(self):
         service = RegionAdvertisingService()
 
         example_port = factory.pick_port()
@@ -2520,14 +2520,48 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
             factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
             factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
         }
+        example_loopback_addrs = {
+            factory.pick_ip_in_network(netaddr.ip.IPV4_LOOPBACK),
+            str(netaddr.ip.IPV6_LOOPBACK),
+        }
         self.patch_addresses(
             example_ipv4_addrs | example_ipv6_addrs |
-            example_link_local_addrs)
+            example_link_local_addrs | example_loopback_addrs)
 
-        # IPv6 addresses and link-local addresses are excluded, and thus
-        # not advertised.
+        # IPv6 addresses, link-local addresses and loopback are excluded, and
+        # thus not advertised.
         self.assertItemsEqual(
             [(addr, example_port) for addr in example_ipv4_addrs],
+            service._get_addresses())
+
+        self.assertThat(
+            eventloop.services.getServiceNamed,
+            MockCalledOnceWith("rpc"))
+        self.assertThat(
+            regionservice.get_all_interface_addresses,
+            MockCalledOnceWith())
+
+    def test__get_addresses_including_loopback(self):
+        service = RegionAdvertisingService()
+
+        example_port = factory.pick_port()
+        self.patch_port(example_port)
+
+        example_link_local_addrs = {
+            factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
+            factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
+        }
+        ipv4_loopback = factory.pick_ip_in_network(netaddr.ip.IPV4_LOOPBACK)
+        example_loopback_addrs = {
+            ipv4_loopback,
+            str(netaddr.ip.IPV6_LOOPBACK),
+        }
+        self.patch_addresses(
+            example_link_local_addrs | example_loopback_addrs)
+
+        # Only IPv4 loopback is exposed.
+        self.assertItemsEqual(
+            [(ipv4_loopback, example_port)],
             service._get_addresses())
 
         self.assertThat(

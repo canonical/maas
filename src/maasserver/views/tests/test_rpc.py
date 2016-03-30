@@ -100,6 +100,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
                 MatchesListwise((Equals(addr), is_valid_port))
                 for addr in get_all_interface_addresses()
                 if not IPAddress(addr).is_link_local() and
+                not IPAddress(addr).is_loopback() and
                 IPAddress(addr).version == 4
             )),
         }))

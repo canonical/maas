@@ -1175,7 +1175,8 @@ class RegionAdvertisingService(TimerService, object):
 
         This excludes link-local addresses. We may want to revisit this at a
         later time, but right now it causes issues because multiple network
-        interfaces may have the same link-local address.
+        interfaces may have the same link-local address. Loopback addresses
+        are also excluded unless no other addresses are available.
 
         This also excludes IPv6 addresses because `RegionServer` only supports
         IPv4. However, this will probably change in the near future.
@@ -1187,13 +1188,26 @@ class RegionAdvertisingService(TimerService, object):
         else:
             port = service.getPort()
             if port is not None:
+                addresses = set()
+                loopback_addresses = set()
                 for addr in get_all_interface_addresses():
                     ipaddr = IPAddress(addr)
                     if ipaddr.is_link_local():
                         continue  # Don't advertise link-local addresses.
                     if ipaddr.version != 4:
                         continue  # Only advertise IPv4 for now.
-                    yield addr, port
+                    if ipaddr.is_loopback():
+                        loopback_addresses.add((addr, port))
+                    else:
+                        addresses.add((addr, port))
+                if len(addresses) > 0:
+                    return addresses
+                else:
+                    # No non-loopback addresses return loopback address as a
+                    # fallback.
+                    return loopback_addresses
+        # No port or hit KeyError.
+        return []
 
     def _fix_node_for_region(self, region_obj):
         """Fix the `node_type` and `hostname` on `region_obj`.
