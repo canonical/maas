@@ -15,6 +15,7 @@ __all__ = [
 
 from textwrap import dedent
 
+from maasserver.dns.config import zone_serial
 from maasserver.triggers import (
     register_procedure,
     register_trigger,
@@ -781,6 +782,122 @@ DHCP_SNIPPET_DELETE = dedent("""\
     $$ LANGUAGE plpgsql;
     """)
 
+# Triggered when a subnet is updated. Increments the zone serial and notifies
+# that DNS needs to be updated. Only watches changes on the cidr and rdns_mode.
+DNS_SUBNET_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.cidr != NEW.cidr OR OLD.rdns_mode != NEW.rdns_mode THEN
+        -- Increment the zone serial.
+        PERFORM nextval('maasserver_zone_serial_seq');
+        PERFORM pg_notify('sys_dns', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Triggered when a node is updated. Increments the zone serial and notifies
+# that DNS needs to be updated. Only watches changes on the hostname and
+# linked domain for the node.
+DNS_NODE_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_node_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.hostname != NEW.hostname OR OLD.domain_id != NEW.domain_id THEN
+        -- Increment the zone serial.
+        PERFORM nextval('maasserver_zone_serial_seq');
+        PERFORM pg_notify('sys_dns', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a interface is updated. Increments the zone serial and
+# notifies that DNS needs to be updated. Only watches changes on the name and
+# the node that the interface belongs to.
+DNS_INTERFACE_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_interface_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF (OLD.name != NEW.name OR
+        (OLD.node_id IS NULL AND NEW.node_id IS NOT NULL) OR
+        (OLD.node_id IS NOT NULL AND NEW.node_id IS NULL) OR
+        (OLD.node_id != NEW.node_id)) THEN
+        -- Increment the zone serial.
+        PERFORM nextval('maasserver_zone_serial_seq');
+        PERFORM pg_notify('sys_dns', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Triggered when a config is inserted. Increments the zone serial and notifies
+# that DNS needs to be updated. Only watches for inserts on config
+# upstream_dns, default_dns_ttl, and windows_kms_host.
+DNS_CONFIG_INSERT = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_config_insert()
+    RETURNS trigger as $$
+    BEGIN
+      -- Only care about the
+      IF (NEW.name = 'upstream_dns' OR
+          NEW.name = 'default_dns_ttl' OR
+          NEW.name = 'windows_kms_host') THEN
+        -- Increment the zone serial.
+        PERFORM nextval('maasserver_zone_serial_seq');
+        PERFORM pg_notify('sys_dns', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Triggered when a config is updated. Increments the zone serial and notifies
+# that DNS needs to be updated. Only watches for updates on config
+# upstream_dns, default_dns_ttl, and windows_kms_host.
+DNS_CONFIG_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_config_update()
+    RETURNS trigger as $$
+    BEGIN
+      -- Only care about the upstream_dns, default_dns_ttl, and
+      -- windows_kms_host.
+      IF (OLD.value != NEW.value AND (
+          NEW.name = 'upstream_dns' OR
+          NEW.name = 'default_dns_ttl' OR
+          NEW.name = 'windows_kms_host')) THEN
+        -- Increment the zone serial.
+        PERFORM nextval('maasserver_zone_serial_seq');
+        PERFORM pg_notify('sys_dns', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+def render_sys_dns_procedure(proc_name, on_delete=False):
+    """Render a database procedure with name `proc_name` that increments
+    the zone serial and notifies that a DNS update is needed.
+
+    :param proc_name: Name of the procedure.
+    :param on_delete: True when procedure will be used as a delete trigger.
+    """
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        BEGIN
+          -- Increment the zone serial.
+          PERFORM nextval('maasserver_zone_serial_seq');
+          PERFORM pg_notify('sys_dns', '');
+          RETURN %s;
+        END;
+        $$ LANGUAGE plpgsql;
+        """ % (proc_name, 'NEW' if not on_delete else 'OLD'))
+
 
 @transactional
 def register_system_triggers():
@@ -871,3 +988,130 @@ def register_system_triggers():
     register_procedure(DHCP_SNIPPET_DELETE)
     register_trigger(
         "maasserver_dhcpsnippet", "sys_dhcp_snippet_delete", "delete")
+
+    # DNS
+    # The zone serial is used in the 'sys_dns' triggers. Ensure that it exists
+    # before creating the triggers.
+    zone_serial.create_if_not_exists()
+
+    ## Domain
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_domain_insert"))
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_insert", "insert")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_domain_update"))
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_update", "update")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_domain_delete", on_delete=True))
+    register_trigger(
+        "maasserver_domain", "sys_dns_domain_delete", "delete")
+
+    ## StaticIPAddress
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_staticipaddress_update"))
+    register_trigger(
+        "maasserver_staticipaddress",
+        "sys_dns_staticipaddress_update", "update")
+
+    ## Interface -> StaticIPAddress
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_nic_ip_link"))
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "sys_dns_nic_ip_link", "insert")
+    register_procedure(
+        render_sys_dns_procedure(
+            "sys_dns_nic_ip_unlink", on_delete=True))
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "sys_dns_nic_ip_unlink", "delete")
+
+    ## DNSResource
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsresource_insert"))
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_insert", "insert")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsresource_update"))
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_update", "update")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsresource_delete", on_delete=True))
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_dnsresource_delete", "delete")
+
+    ## DNSResource -> StaticIPAddress
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsresource_ip_link"))
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_dnsresource_ip_link", "insert")
+    register_procedure(
+        render_sys_dns_procedure(
+            "sys_dns_dnsresource_ip_unlink", on_delete=True))
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_dnsresource_ip_unlink", "delete")
+
+    ## DNSData
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsdata_insert"))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_insert", "insert")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsdata_update"))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_update", "update")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_dnsdata_delete", on_delete=True))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_dnsdata_delete", "delete")
+
+    ## Subnet
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_subnet_insert"))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_subnet_insert", "insert")
+    register_procedure(DNS_SUBNET_UPDATE)
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_subnet_update", "update")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_subnet_delete", on_delete=True))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_subnet_delete", "delete")
+
+    ## Node
+    register_procedure(DNS_NODE_UPDATE)
+    register_trigger(
+        "maasserver_node",
+        "sys_dns_node_update", "update")
+    register_procedure(
+        render_sys_dns_procedure("sys_dns_node_delete", on_delete=True))
+    register_trigger(
+        "maasserver_node",
+        "sys_dns_node_delete", "delete")
+
+    ## Interface
+    register_procedure(DNS_INTERFACE_UPDATE)
+    register_trigger(
+        "maasserver_interface",
+        "sys_dns_interface_update", "update")
+
+    ## Config
+    register_procedure(DNS_CONFIG_INSERT)
+    register_procedure(DNS_CONFIG_UPDATE)
+    register_trigger(
+        "maasserver_config", "sys_dns_config_insert", "insert")
+    register_trigger(
+        "maasserver_config", "sys_dns_config_update", "update")

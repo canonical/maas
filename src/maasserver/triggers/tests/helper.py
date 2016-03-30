@@ -8,6 +8,7 @@ __all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User
+from maasserver.dns.config import zone_serial
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_TYPE,
@@ -52,7 +53,9 @@ from maasserver.utils.orm import (
     reload_object,
     transactional,
 )
+from maasserver.utils.threads import deferToDatabase
 from metadataserver.models import NodeResult
+from twisted.internet.defer import inlineCallbacks
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -365,6 +368,12 @@ class TransactionalHelpersMixin:
         return factory.make_Interface(INTERFACE_TYPE.PHYSICAL, **params)
 
     @transactional
+    def create_unknown_interface(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Interface(INTERFACE_TYPE.UNKNOWN, **params)
+
+    @transactional
     def delete_interface(self, id):
         interface = Interface.objects.get(id=id)
         interface.delete()
@@ -624,3 +633,17 @@ class TransactionalHelpersMixin:
     @transactional
     def reload_object(self, obj):
         return reload_object(obj)
+
+
+class DNSHelpersMixin:
+    """Helper to get the zone serial and to assert it was incremented."""
+
+    def get_zone_serial_current(self):
+        return deferToDatabase(transactional(zone_serial.current))
+
+    @inlineCallbacks
+    def assertZoneSerialIncrement(self, previous):
+        current = yield deferToDatabase(transactional(zone_serial.current))
+        self.assertTrue(
+            current > previous,
+            "Zone serial was not incremented.")

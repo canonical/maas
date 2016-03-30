@@ -8,9 +8,11 @@ __all__ = []
 from contextlib import closing
 
 from django.db import connection
+from maasserver.dns.config import zone_serial
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers.system import register_system_triggers
 from maasserver.utils.orm import psql_array
+from maastesting.matchers import MockCalledOnceWith
 
 
 class TestTriggers(MAASServerTestCase):
@@ -31,6 +33,28 @@ class TestTriggers(MAASServerTestCase):
             "staticipaddress_sys_dhcp_staticipaddress_delete",
             "interface_sys_dhcp_interface_update",
             "node_sys_dhcp_node_update",
+            "dhcpsnippet_sys_dhcp_snippet_insert",
+            "dhcpsnippet_sys_dhcp_snippet_update",
+            "dhcpsnippet_sys_dhcp_snippet_delete",
+            "domain_sys_dns_domain_insert",
+            "domain_sys_dns_domain_update",
+            "domain_sys_dns_domain_delete",
+            "staticipaddress_sys_dns_staticipaddress_update",
+            "interface_ip_addresses_sys_dns_nic_ip_link",
+            "interface_ip_addresses_sys_dns_nic_ip_unlink",
+            "dnsresource_sys_dns_dnsresource_insert",
+            "dnsresource_sys_dns_dnsresource_update",
+            "dnsresource_sys_dns_dnsresource_delete",
+            "dnsresource_ip_addresses_sys_dns_dnsresource_ip_link",
+            "dnsresource_ip_addresses_sys_dns_dnsresource_ip_unlink",
+            "dnsdata_sys_dns_dnsdata_insert",
+            "dnsdata_sys_dns_dnsdata_update",
+            "dnsdata_sys_dns_dnsdata_delete",
+            "node_sys_dns_node_update",
+            "node_sys_dns_node_delete",
+            "interface_sys_dns_interface_update",
+            "config_sys_dns_config_insert",
+            "config_sys_dns_config_update",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
@@ -42,12 +66,18 @@ class TestTriggers(MAASServerTestCase):
         # Note: if this test fails, a trigger may have been added, but not
         # added to the list of expected triggers.
         triggers_found = [trigger[0] for trigger in db_triggers]
+        missing_triggers = [
+            trigger
+            for trigger in triggers
+            if trigger not in triggers_found
+        ]
         self.assertEqual(
             len(triggers), len(db_triggers),
-            "Missing %s triggers in the database. Triggers found: %s" % (
-                len(triggers) - len(db_triggers), triggers_found))
+            "Missing %s triggers in the database. Triggers missing: %s" % (
+                len(triggers) - len(db_triggers), missing_triggers))
 
-        self.assertItemsEqual(
-            triggers, triggers_found,
-            "Missing triggers in the database. Triggers found: %s" % (
-                triggers_found))
+    def test_register_system_triggers_ensures_zone_serial(self):
+        mock_create = self.patch(
+            zone_serial, "create_if_not_exists")
+        register_system_triggers()
+        self.assertThat(mock_create, MockCalledOnceWith())

@@ -10,17 +10,29 @@ from datetime import (
     datetime,
     timedelta,
 )
+import random
 
 from crochet import wait_for
 from django.db import connection as db_connection
 from maasserver.enum import (
+    INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    RDNS_MODE,
+)
+from maasserver.models.config import Config
+from maasserver.models.interface import (
+    Interface,
+    PhysicalInterface,
+    UnknownInterface,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.system import register_system_triggers
-from maasserver.triggers.tests.helper import TransactionalHelpersMixin
+from maasserver.triggers.tests.helper import (
+    DNSHelpersMixin,
+    TransactionalHelpersMixin,
+)
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
@@ -2268,5 +2280,689 @@ class TestDHCPSnippetListener(
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, dhcp_snippet.id)
             yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSDomainListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_domain_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_domain)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_domain_update(self):
+        yield deferToDatabase(register_system_triggers)
+        domain = yield deferToDatabase(self.create_domain)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_domain, domain.id, {
+                "name": factory.make_name("domain"),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_domain_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        domain = yield deferToDatabase(self.create_domain)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_domain, domain.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSStaticIPAddressListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_staticipaddress_update(self):
+        yield deferToDatabase(register_system_triggers)
+        sip = yield deferToDatabase(self.create_staticipaddress)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_staticipaddress, sip.id, {
+                "alloc_type": IPADDRESS_TYPE.STICKY,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSInterfaceStaticIPAddressListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_interface_staticipaddress_link(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_interface)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_staticipaddress, {
+                "interface": interface,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_interface_staticipaddress_unlink(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_interface)
+        sip = yield deferToDatabase(self.create_staticipaddress, {
+            "interface": interface,
+        })
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_staticipaddress, sip.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSDNSResourceListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsresource_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dnsresource)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsresource_update(self):
+        yield deferToDatabase(register_system_triggers)
+        resource = yield deferToDatabase(self.create_dnsresource)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dnsresource, resource.id, {
+                "name": factory.make_name("resource"),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsresource_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        resource = yield deferToDatabase(self.create_dnsresource)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dnsresource, resource.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSDNSResourceStaticIPAddressListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsresource_staticipaddress_link(self):
+        yield deferToDatabase(register_system_triggers)
+        resource = yield deferToDatabase(self.create_dnsresource)
+        sip = yield deferToDatabase(self.create_staticipaddress)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(resource.ip_addresses.add, sip)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsresource_staticipaddress_unlink(self):
+        yield deferToDatabase(register_system_triggers)
+        resource = yield deferToDatabase(self.create_dnsresource)
+        sip = yield deferToDatabase(self.create_staticipaddress)
+        yield deferToDatabase(resource.ip_addresses.add, sip)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(resource.ip_addresses.remove, sip)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSDNSDataListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsdata_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_dnsdata)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsdata_update(self):
+        yield deferToDatabase(register_system_triggers)
+        data = yield deferToDatabase(self.create_dnsdata, {
+            "rrtype": "TXT",
+            "rrdata": factory.make_name("txt"),
+        })
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_dnsdata, data.id, {
+                "rrdata": factory.make_name("txt"),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_dnsdata_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        data = yield deferToDatabase(self.create_dnsdata)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_dnsdata, data.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSSubnetListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_subnet)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_cidr_update(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            network = factory.make_ip4_or_6_network()
+            yield deferToDatabase(self.update_subnet, subnet.id, {
+                "cidr": str(network.cidr),
+                "gateway_ip": factory.pick_ip_in_network(network),
+                "dns_servers": [],
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_rdns_mode_update(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_subnet, subnet.id, {
+                "rdns_mode": factory.pick_enum(
+                    RDNS_MODE, but_not=[subnet.rdns_mode]),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_subnet, subnet.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSNodeListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_node_update_hostname(self):
+        yield deferToDatabase(register_system_triggers)
+        node = yield deferToDatabase(self.create_node)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_node, node.system_id, {
+                "hostname": factory.make_name("hostname"),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_node_update_domain(self):
+        yield deferToDatabase(register_system_triggers)
+        node = yield deferToDatabase(self.create_node)
+        domain = yield deferToDatabase(self.create_domain)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_node, node.system_id, {
+                "domain": domain,
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_node_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        node = yield deferToDatabase(self.create_node)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node, node.system_id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSInterfaceListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @transactional
+    def migrate_unknown_to_physical(self, id, node):
+        nic = Interface.objects.get(id=id)
+        nic.type = INTERFACE_TYPE.PHYSICAL
+        nic.node = node
+        nic.__class__ = PhysicalInterface
+        nic.save()
+
+    @transactional
+    def migrate_physical_to_unknown(self, id):
+        nic = Interface.objects.get(id=id)
+        nic.type = INTERFACE_TYPE.UNKNOWN
+        nic.node = None
+        nic.__class__ = UnknownInterface
+        nic.save()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_interface_update_name(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_interface)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_interface, interface.id, {
+                "name": factory.make_name("name"),
+            })
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_unknown_to_physical(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_unknown_interface)
+        node = yield deferToDatabase(self.create_node)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.migrate_unknown_to_physical, interface.id, node)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_physical_to_unknown(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_interface)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.migrate_physical_to_unknown, interface.id)
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_interface_changing_to_new_node(self):
+        yield deferToDatabase(register_system_triggers)
+        interface = yield deferToDatabase(self.create_interface)
+        node = yield deferToDatabase(self.create_node)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_interface, interface.id, {"node": node})
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+
+class TestDNSConfigListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin,
+        DNSHelpersMixin):
+    """End-to-end test for the DNS triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_upstream_dns_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "upstream_dns", factory.make_ip_address())
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_default_dns_ttl_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "default_dns_ttl", random.randint(10, 1000))
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_windows_kms_host_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "windows_kms_host", factory.make_name("kms"))
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_upstream_dns_update(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "upstream_dns", factory.make_ip_address())
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "upstream_dns", factory.make_ip_address())
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_default_dns_ttl_update(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "default_dns_ttl", random.randint(10, 1000))
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "default_dns_ttl", random.randint(10, 1000))
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_config_windows_kms_host_update(self):
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(
+            Config.objects.set_config,
+            "windows_kms_host", factory.make_name("kms"))
+        zone_serial = yield self.get_zone_serial_current()
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dns", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                Config.objects.set_config,
+                "windows_kms_host", factory.make_name("kms"))
+            yield dv.get(timeout=2)
+            yield self.assertZoneSerialIncrement(zone_serial)
         finally:
             yield listener.stopService()

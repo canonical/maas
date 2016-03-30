@@ -157,11 +157,11 @@ class TestSequence(MAASServerTestCase):
         seq = Sequence(name)
         self.assertEqual(None, seq.current())
 
-    def test_current_returns_none_when_no_current_value(self):
+    def test_current_returns_minimum_value_when_no_current_value(self):
         name = factory.make_name('seq', sep='')
         seq = Sequence(name)
         seq.create()
-        self.assertEqual(None, seq.current())
+        self.assertEqual(1, seq.current())
 
     def test_current_returns_current_value(self):
         name = factory.make_name('seq', sep='')

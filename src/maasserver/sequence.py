@@ -20,6 +20,7 @@ from maasserver.utils.orm import get_psycopg2_exception
 from provisioningserver.utils import typed
 from psycopg2.errorcodes import (
     DUPLICATE_TABLE,
+    NUMERIC_VALUE_OUT_OF_RANGE,
     OBJECT_NOT_IN_PREREQUISITE_STATE,
     UNDEFINED_TABLE,
 )
@@ -169,8 +170,26 @@ class Sequence:
                     return cursor.fetchone()[0]
         except (utils.OperationalError, utils.ProgrammingError) as error:
             if is_postgres_error(error, OBJECT_NOT_IN_PREREQUISITE_STATE):
-                # There is no current value for the sequence.
-                return None
+                # There is no current value for the sequence in this session.
+                # Perform nextval with setval to follow so we can get the
+                # current value of the sequence.
+                try:
+                    with transaction.atomic():
+                        with connection.cursor() as cursor:
+                            cursor.execute(
+                                "SELECT setval(%s, nextval(%s) - %s);",
+                                [self.name, self.name, self.increment])
+                            cursor.execute("SELECT currval(%s)", [self.name])
+                            return cursor.fetchone()[0]
+                except utils.DataError as error:
+                    if is_postgres_error(error, NUMERIC_VALUE_OUT_OF_RANGE):
+                        # The sequence was just created so calling nextval,
+                        # minusing the interval is placing it below the
+                        # minimum. The current value is the minimum.
+                        return (
+                            self.minvalue if self.minvalue is not None else 1)
+                    else:
+                        raise
             elif is_postgres_error(error, UNDEFINED_TABLE):
                 # The sequence does not exist, hence has no current value.
                 return None
