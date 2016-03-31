@@ -9,7 +9,7 @@ from maasserver.api.support import (
     OperationsHandler,
 )
 from maasserver.dns.config import (
-    dns_update_all_zones_now,
+    dns_force_reload,
     zone_serial,
 )
 from maasserver.enum import NODE_PERMISSION
@@ -77,7 +77,7 @@ class DomainsHandler(OperationsHandler):
                 {'serial':
                     'Expected a serial number between 1 and %d' % INT_MAX})
         zone_serial.set_value(serial)
-        dns_update_all_zones_now()
+        dns_force_reload()
 
 
 class DomainHandler(OperationsHandler):

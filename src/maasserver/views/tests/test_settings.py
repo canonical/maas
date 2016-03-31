@@ -7,7 +7,6 @@ __all__ = []
 
 import http.client
 
-from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -84,9 +83,6 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_maas_and_network_POST(self):
         self.client_log_in(as_admin=True)
-        # Disable the DNS machinery so that we can skip the required
-        # setup.
-        self.patch(settings, "DNS_CONNECT", False)
         new_name = factory.make_string()
         new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(

@@ -69,6 +69,7 @@ class RegionEventLoopFixture(Fixture):
         fakeFactoryInfo = {
             "factory": Service,
             "requires": [],
+            "only_on_master": False,
         }
         loop.factories = {
             name: (factoryInfo if name in self.services else fakeFactoryInfo)

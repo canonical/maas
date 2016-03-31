@@ -25,8 +25,8 @@ import_settings(settings)
 # cluster is running in the branch.
 TEST_RUNNER = 'maastesting.djangoloader.MAASDjangoTestRunner'
 
-# Don't connect to the DNS server in tests, this will be enabled on a case per
-# case basis. TODO: Use the signals manager instead.
+# Don't connect to the DNS server in development because bind is not running
+# and no access to write into the required directories.
 DNS_CONNECT = False
 
 # Don't setup DHCP servers in tests, this will be enabled on a case per case

@@ -5,7 +5,7 @@
 
 __all__ = [
     "bmc",
-    "dns",
+    "config",
     "events",
     "interfaces",
     "nodes",
@@ -16,7 +16,7 @@ __all__ = [
 
 from maasserver.models.signals import (
     bmc,
-    dns,
+    config,
     events,
     interfaces,
     nodes,

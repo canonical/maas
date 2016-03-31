@@ -5,10 +5,12 @@
 
 __all__ = [
     'DefaultMeta',
+    'is_master_process',
     'logger',
     ]
 
 import logging
+from os import environ
 
 
 logger = logging.getLogger("maasserver")
@@ -22,6 +24,21 @@ class DefaultMeta:
     the model and will fail to generate schema migrations for it.
     """
     app_label = 'maasserver'
+
+
+def is_master_process():
+    """Return True if this is the master process for the region controller.
+
+    The region controller starts 4 regiond processes the first regiond
+    process is started as the master. The master runs more services
+    than the other regiond processes, services that only require to be ran
+    on one regiond per region controller.
+    """
+    worker_id = environ.get("MAAS_REGIOND_WORKER_ID")
+    if worker_id is None:
+        return False
+    else:
+        return int(worker_id) == 1
 
 
 def execute_from_command_line():

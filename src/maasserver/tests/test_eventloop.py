@@ -13,6 +13,7 @@ from maasserver import (
     bootresources,
     eventloop,
     nonces_cleanup,
+    region_controller,
     service_monitor,
     status_monitor,
     system_controller,
@@ -49,11 +50,12 @@ class TestRegionEventLoop(MAASTestCase):
 
     def test_name(self):
         self.patch(eventloop, "gethostname").return_value = "foo"
-        self.patch(eventloop, "getpid").return_value = 12345
+        self.patch(eventloop.os, "getpid").return_value = 12345
         self.assertEqual("foo:pid=12345", eventloop.loop.name)
 
-    def test_populate(self):
+    def test_populate_on_master(self):
         self.patch(eventloop.services, "getServiceNamed")
+        self.patch(eventloop, "is_master_process").return_value = True
         an_eventloop = eventloop.RegionEventLoop()
         # At first there are no services.
         self.assertEqual(
@@ -66,6 +68,31 @@ class TestRegionEventLoop(MAASTestCase):
         # The services are not started.
         self.assertEqual(
             {name: False for name in an_eventloop.factories.keys()},
+            {svc.name: svc.running for svc in an_eventloop.services})
+
+    def test_populate_not_on_master(self):
+        self.patch(eventloop.services, "getServiceNamed")
+        self.patch(eventloop, "is_master_process").return_value = False
+        an_eventloop = eventloop.RegionEventLoop()
+        # At first there are no services.
+        self.assertEqual(
+            set(), {service.name for service in an_eventloop.services})
+        # populate() creates a service with each factory.
+        an_eventloop.populate().wait(30)
+        self.assertEqual(
+            {
+                name
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is False
+            },
+            {svc.name for svc in an_eventloop.services})
+        # The services are not started.
+        self.assertEqual(
+            {
+                name: False
+                for name, item in an_eventloop.factories.items()
+                if item["only_on_master"] is False
+            },
             {svc.name: svc.running for svc in an_eventloop.services})
 
     def test_start_and_stop(self):
@@ -155,6 +182,20 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_DatabaseTaskService,
             eventloop.loop.factories["database-tasks"]["factory"])
+        self.assertFalse(
+            eventloop.loop.factories["database-tasks"]["only_on_master"])
+
+    def test_make_RegionControllerService(self):
+        service = eventloop.make_RegionControllerService(
+            sentinel.postgresListener)
+        self.assertThat(
+            service, IsInstance(region_controller.RegionControllerService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_RegionControllerService,
+            eventloop.loop.factories["region-controller"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["region-controller"]["only_on_master"])
 
     def test_make_RegionService(self):
         service = eventloop.make_RegionService()
@@ -163,6 +204,8 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_RegionService,
             eventloop.loop.factories["rpc"]["factory"])
+        self.assertFalse(
+            eventloop.loop.factories["rpc"]["only_on_master"])
 
     def test_make_RegionAdvertisingService(self):
         service = eventloop.make_RegionAdvertisingService()
@@ -172,6 +215,8 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_RegionAdvertisingService,
             eventloop.loop.factories["rpc-advertise"]["factory"])
+        self.assertFalse(
+            eventloop.loop.factories["rpc-advertise"]["only_on_master"])
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()
@@ -181,6 +226,8 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_NonceCleanupService,
             eventloop.loop.factories["nonce-cleanup"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["nonce-cleanup"]["only_on_master"])
 
     def test_make_StatusMonitorService(self):
         service = eventloop.make_StatusMonitorService()
@@ -190,6 +237,8 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_StatusMonitorService,
             eventloop.loop.factories["status-monitor"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["status-monitor"]["only_on_master"])
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()
@@ -199,6 +248,8 @@ class TestFactories(MAASTestCase):
         self.assertIs(
             eventloop.make_ImportResourcesService,
             eventloop.loop.factories["import-resources"]["factory"])
+        self.assertTrue(
+            eventloop.loop.factories["import-resources"]["only_on_master"])
 
     def test_make_WebApplicationService(self):
         service = eventloop.make_WebApplicationService(
@@ -220,6 +271,8 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["postgres-listener"],
             eventloop.loop.factories["web"]["requires"])
+        self.assertFalse(
+            eventloop.loop.factories["web"]["only_on_master"])
 
     def test_make_SystemControllerService(self):
         service = eventloop.make_SystemControllerService(
@@ -234,6 +287,8 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["postgres-listener", "rpc-advertise"],
             eventloop.loop.factories["system-controller"]["requires"])
+        self.assertFalse(
+            eventloop.loop.factories["system-controller"]["only_on_master"])
 
     def test_make_ServiceMonitorService(self):
         service = eventloop.make_ServiceMonitorService(
@@ -248,6 +303,8 @@ class TestFactories(MAASTestCase):
         self.assertEquals(
             ["rpc-advertise"],
             eventloop.loop.factories["service-monitor"]["requires"])
+        self.assertTrue(
+            eventloop.loop.factories["service-monitor"]["only_on_master"])
 
 
 class TestDisablingDatabaseConnections(MAASTestCase):

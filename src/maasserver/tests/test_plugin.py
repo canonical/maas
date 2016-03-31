@@ -80,6 +80,8 @@ class TestRegionServiceMaker(MAASTestCase):
     def test_makeService(self):
         options = Options()
         service_maker = RegionServiceMaker("Harry", "Hill")
+        # Look like the master process.
+        self.patch(eventloop, "is_master_process").return_value = True
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         # Disable _preformStartUp() as it performs operations we don't want
@@ -92,6 +94,7 @@ class TestRegionServiceMaker(MAASTestCase):
             "import-resources",
             "import-resources-progress",
             "nonce-cleanup",
+            "region-controller",
             "rpc",
             "rpc-advertise",
             "postgres-listener",

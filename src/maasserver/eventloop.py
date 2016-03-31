@@ -43,13 +43,14 @@ __all__ = [
 
 from errno import ENOPROTOOPT
 from logging import getLogger
-from os import getpid
+import os
 import socket
 from socket import (
     error as socket_error,
     gethostname,
 )
 
+from maasserver import is_master_process
 from maasserver.utils.orm import disable_all_database_connections
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import MultiService
@@ -69,6 +70,11 @@ reactor.addSystemEventTrigger(
 def make_DatabaseTaskService():
     from maasserver.utils import dbtasks
     return dbtasks.DatabaseTasksService()
+
+
+def make_RegionControllerService(postgresListener):
+    from maasserver.region_controller import RegionControllerService
+    return RegionControllerService(postgresListener)
 
 
 def make_RegionService():
@@ -153,9 +159,7 @@ class RegionEventLoop:
 
     Typically several processes will be running the web application --
     chiefly Django -- across several machines, with multiple threads of
-    execution in each process.
-
-    This class represents a single event loop for each *process*,
+    execution in each processingle event loop for each *process*,
     allowing convenient control of the event loop -- a Twisted reactor
     running in a thread -- and to which to attach and query services.
 
@@ -170,46 +174,62 @@ class RegionEventLoop:
 
     factories = {
         "database-tasks": {
+            "only_on_master": False,
             "factory": make_DatabaseTaskService,
             "requires": [],
         },
+        "region-controller": {
+            "only_on_master": True,
+            "factory": make_RegionControllerService,
+            "requires": ["postgres-listener"],
+        },
         "rpc": {
+            "only_on_master": False,
             "factory": make_RegionService,
             "requires": [],
         },
         "rpc-advertise": {
+            "only_on_master": False,
             "factory": make_RegionAdvertisingService,
             "requires": [],
         },
         "nonce-cleanup": {
+            "only_on_master": True,
             "factory": make_NonceCleanupService,
             "requires": [],
         },
         "status-monitor": {
+            "only_on_master": True,
             "factory": make_StatusMonitorService,
             "requires": [],
         },
         "import-resources": {
+            "only_on_master": True,
             "factory": make_ImportResourcesService,
             "requires": [],
         },
         "import-resources-progress": {
+            "only_on_master": True,
             "factory": make_ImportResourcesProgressService,
             "requires": [],
         },
         "postgres-listener": {
+            "only_on_master": False,
             "factory": make_PostgresListenerService,
             "requires": [],
         },
         "web": {
+            "only_on_master": False,
             "factory": make_WebApplicationService,
             "requires": ["postgres-listener"],
         },
         "service-monitor": {
+            "only_on_master": True,
             "factory": make_ServiceMonitorService,
             "requires": ["rpc-advertise"],
         },
         "system-controller": {
+            "only_on_master": False,
             "factory": make_SystemControllerService,
             "requires": ["postgres-listener", "rpc-advertise"],
         },
@@ -240,9 +260,14 @@ class RegionEventLoop:
 
     @asynchronous
     def populate(self):
-        """Prepare all services."""
-        for name in self.factories.keys():
-            self.populateService(name)
+        """Prepare services."""
+        if is_master_process():
+            for name in self.factories.keys():
+                self.populateService(name)
+        else:
+            for name, item in self.factories.items():
+                if not item["only_on_master"]:
+                    self.populateService(name)
 
     @asynchronous
     def prepare(self):
@@ -304,7 +329,7 @@ class RegionEventLoop:
     @property
     def name(self):
         """A name for identifying this service in a distributed system."""
-        return "%s:pid=%d" % (gethostname(), getpid())
+        return "%s:pid=%d" % (gethostname(), os.getpid())
 
     @property
     def running(self):

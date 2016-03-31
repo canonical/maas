@@ -71,7 +71,7 @@ class TestStartUp(MAASServerTestCase):
     def test_inner_start_up_runs_in_exclusion(self):
         self.useFixture(UpdateBootSourceCacheDisconnected())
         lock_checker = LockChecker()
-        self.patch(start_up, 'dns_update_all_zones', lock_checker)
+        self.patch(start_up, 'register_mac_type', lock_checker)
         start_up.inner_start_up()
         self.assertEqual(1, lock_checker.call_count)
         self.assertEqual(True, lock_checker.lock_was_held)
@@ -144,27 +144,51 @@ class TestInnerStartUp(MAASServerTestCase):
         self.useFixture(UpdateBootSourceCacheDisconnected())
         self.patch_autospec(start_up, 'create_gnupg_home')
         self.patch_autospec(start_up, 'post_commit_do')
+        self.patch_autospec(start_up, 'dns_kms_setting_changed')
 
-    def test__calls_write_full_dns_config(self):
-        self.patch_autospec(start_up, 'dns_update_all_zones')
-        start_up.inner_start_up()
-        self.assertThat(
-            start_up.dns_update_all_zones,
-            MockCalledOnceWith(reload_retry=True))
-
-    def test__calls_create_gnupg_home(self):
+    def test__calls_create_gnupg_home_if_master(self):
+        self.patch(start_up, "is_master_process").return_value = True
         start_up.inner_start_up()
         self.assertThat(start_up.create_gnupg_home, MockCalledOnceWith())
 
-    def test__initialises_boot_source_config(self):
+    def test__doesnt_call_create_gnupg_home_if_not_master(self):
+        self.patch(start_up, "is_master_process").return_value = False
+        start_up.inner_start_up()
+        self.assertThat(start_up.create_gnupg_home, MockNotCalled())
+
+    def test__initialises_boot_source_config_if_master(self):
+        self.patch(start_up, "is_master_process").return_value = True
         self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
         self.assertThat(BootSource.objects.all(), HasLength(1))
 
-    def test__calls_start_import_on_upgrade(self):
+    def test__doesnt_initialises_boot_source_config_if_not_master(self):
+        self.patch(start_up, "is_master_process").return_value = False
+        self.assertItemsEqual([], BootSource.objects.all())
+        start_up.inner_start_up()
+        self.assertThat(BootSource.objects.all(), HasLength(0))
+
+    def test__calls_start_import_on_upgrade_if_master(self):
+        self.patch(start_up, "is_master_process").return_value = True
         start_up.inner_start_up()
         self.assertThat(
             start_up.post_commit_do, MockCalledOnceWith(
                 reactor.callLater, ANY,
                 reactor.threadpoolForDatabase.callInThread,
                 start_up.start_import_on_upgrade))
+
+    def test__doesnt_call_start_import_on_upgrade_if_bot_master(self):
+        self.patch(start_up, "is_master_process").return_value = False
+        start_up.inner_start_up()
+        self.assertThat(
+            start_up.post_commit_do, MockNotCalled())
+
+    def test__calls_dns_kms_setting_changed_if_master(self):
+        self.patch(start_up, "is_master_process").return_value = True
+        start_up.inner_start_up()
+        self.assertThat(start_up.dns_kms_setting_changed, MockCalledOnceWith())
+
+    def test__doesnt_call_dns_kms_setting_changed_if_not_master(self):
+        self.patch(start_up, "is_master_process").return_value = False
+        start_up.inner_start_up()
+        self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())

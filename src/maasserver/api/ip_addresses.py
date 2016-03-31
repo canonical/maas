@@ -84,13 +84,10 @@ class IPAddressesHandler(OperationsHandler):
                 requested_address=ip_address,
                 subnet=subnet,
                 user=user)
-            from maasserver.dns import config as dns_config
             if hostname is not None and hostname != '':
                 dnsrr, _ = DNSResource.objects.get_or_create(
                     name=hostname, domain=domain)
                 dnsrr.ip_addresses.add(sip)
-                dns_config.dns_update_domains([domain])
-            dns_config.dns_update_subnets([subnet])
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
             # The user has requested a static IP linked to a MAC address, so we
@@ -118,13 +115,10 @@ class IPAddressesHandler(OperationsHandler):
                 ip_address=ip_address,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 user=user)
-            from maasserver.dns import config as dns_config
             if hostname is not None and hostname != '':
                 dnsrr = DNSResource.objects.get_or_create(
                     name=hostname, domain=domain)
                 dnsrr.ip_addresses.add(sip)
-                dns_config.dns_update_domains([domain])
-            dns_config.dns_update_subnets([subnet])
             maaslog.info(
                 "User %s was allocated IP %s for MAC address %s",
                 user.username, sip.ip, nic.mac_address)

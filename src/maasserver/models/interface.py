@@ -587,21 +587,6 @@ class Interface(CleanSave, TimestampedModel):
             new_address.save()
             self.ip_addresses.add(new_address)
 
-    def _update_dns_zones(self, subnets=[], ipaddresses=[]):
-        """Updates DNS for the list of `subnets` and `ipaddresses`
-        for the node attached to this interface."""
-        from maasserver.dns import config
-        subnets = set(subnets)
-        node = self.get_node()
-        if node is not None:
-            config.dns_update_by_node(node)
-        config.dns_update_subnets(subnets)
-        domains = set()
-        for ip in ipaddresses:
-            for domain in [rr.domain for rr in ip.dnsresource_set.all()]:
-                domains.add(domain)
-        config.dns_update_domains(domains)
-
     def _remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
         subnet is in the same `subnet_family`."""
@@ -698,9 +683,6 @@ class Interface(CleanSave, TimestampedModel):
         # LINK_UP link if it exists.
         self._remove_link_dhcp(get_subnet_family(subnet))
         self._remove_link_up()
-
-        # Update the DNS zones.
-        self._update_dns_zones()
         return static_ip
 
     def _link_subnet_link_up(self, subnet):
@@ -782,16 +764,12 @@ class Interface(CleanSave, TimestampedModel):
         """Unlink the STATIC IP address from the interface."""
         # If the allocation type is only changing then we don't need to delete
         # the IP address it needs to be updated.
-        subnet = static_ip.subnet
         if swap_alloc_type is not None:
             static_ip.alloc_type = swap_alloc_type
             static_ip.ip = None
             static_ip.save()
         else:
             static_ip.delete()
-
-        # Update the DNS zones.
-        self._update_dns_zones(subnets=[subnet])
         return static_ip
 
     def unlink_ip_address(
@@ -898,7 +876,6 @@ class Interface(CleanSave, TimestampedModel):
                 if assigned_ip is not None:
                     assigned_addresses.append(assigned_ip)
                     exclude_addresses.add(str(assigned_ip.ip))
-        self._update_dns_zones()
         return assigned_addresses
 
     def _claim_auto_ip(self, auto_ip, exclude_addresses=[]):
@@ -937,7 +914,6 @@ class Interface(CleanSave, TimestampedModel):
                 if subnet is not None:
                     affected_subnets.add(subnet)
                 released_addresses.append(released_ip)
-        self._update_dns_zones(subnets=affected_subnets)
         return released_addresses
 
     def _release_auto_ip(self, auto_ip):

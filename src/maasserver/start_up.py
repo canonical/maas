@@ -13,6 +13,7 @@ from random import randrange
 from django.db import connection
 from django.db.utils import DatabaseError
 from maasserver import (
+    is_master_process,
     locks,
     security,
 )
@@ -21,7 +22,6 @@ from maasserver.bootresources import (
     import_resources,
 )
 from maasserver.clusterrpc.boot_images import get_all_available_boot_images
-from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import (
     BootResource,
@@ -167,22 +167,22 @@ def inner_start_up():
     # Register our MAC data type with psycopg.
     register_mac_type(connection.cursor())
 
-    # Make sure that maas user's GNUPG home directory exists. This is needed
-    # for importing of boot resources, which occurs on the region as well as
-    # the clusters.
-    create_gnupg_home()
+    # Only perform the following if the master process for the
+    # region controller.
+    if is_master_process():
+        # Make sure that maas user's GNUPG home directory exists. This is
+        # needed for importing of boot resources, which occurs on the region
+        # as well as the clusters.
+        create_gnupg_home()
 
-    # If there are no boot-source definitions yet, create defaults.
-    ensure_boot_source_definition()
+        # If there are no boot-source definitions yet, create defaults.
+        ensure_boot_source_definition()
 
-    # Start import on upgrade if needed, but not until there's a good chance
-    # than one or more clusters are connected.
-    post_commit_do(
-        reactor.callLater, randrange(45, 90), reactor.callInDatabase,
-        start_import_on_upgrade)
+        # Start import on upgrade if needed, but not until there's a good
+        # chance than one or more clusters are connected.
+        post_commit_do(
+            reactor.callLater, randrange(45, 90), reactor.callInDatabase,
+            start_import_on_upgrade)
 
-    # Freshen the kms SRV records
-    dns_kms_setting_changed()
-
-    # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
-    dns_update_all_zones(reload_retry=True)
+        # Freshen the kms SRV records.
+        dns_kms_setting_changed()

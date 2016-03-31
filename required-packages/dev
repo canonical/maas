@@ -1,4 +1,5 @@
 archdetect-deb
+bash
 build-essential
 chromium-browser
 chromium-chromedriver
