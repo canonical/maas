@@ -53,6 +53,7 @@ from maasserver.clusterrpc.power import (
     power_driver_check,
     power_off_node,
     power_on_node,
+    power_query,
     power_query_all,
 )
 from maasserver.enum import (
@@ -175,6 +176,7 @@ from provisioningserver.utils.twisted import (
 from twisted.internet.defer import (
     Deferred,
     inlineCallbacks,
+    succeed,
 )
 
 
@@ -2800,7 +2802,8 @@ class Node(CleanSave, TimestampedModel):
             return None
 
         # Request that the node be powered on post-commit.
-        d = self._pc_power_control_node(power_on_node, power_info)
+        d = post_commit()
+        d = self._power_control_node(d, power_on_node, power_info)
 
         # Set the deployment timeout so the node is marked failed after
         # a period of time.
@@ -2859,38 +2862,83 @@ class Node(CleanSave, TimestampedModel):
         power_info.power_parameters['power_off_mode'] = stop_mode
 
         # Request that the node be powered off post-commit.
-        return self._pc_power_control_node(power_off_node, power_info)
-
-    def _pc_power_control_node(self, power_method, power_info):
         d = post_commit()
+        return self._power_control_node(d, power_off_node, power_info)
 
+    @asynchronous
+    def power_query(self):
+        """Query the power state of the BMC for this node.
+
+        This make sure either a layer-2 or a routable connection can be
+        determined for the BMC before performing the query.
+
+        This method can be called from within the reactor or will return an
+        `EventualResult`. Wait should be called on the result for the desired
+        waiting time. Recommend timeout is 45 seconds. 30 seconds for the
+        power_query_all and 15 seconds for the power_query.
+        """
+        d = deferToDatabase(transactional(self.get_effective_power_info))
+
+        def cb_query(power_info):
+            d = self._power_control_node(
+                succeed(None), power_query, power_info)
+            d.addCallback(lambda result: (result, power_info))
+            return d
+
+        def cb_update_power(result):
+            response, power_info = result
+            power_state = response["state"]
+            if power_info.can_be_queried and self.power_state != power_state:
+
+                @transactional
+                def cb_update_node():
+                    self.update_power_state(power_state)
+                    return power_state
+                return deferToDatabase(cb_update_node)
+            else:
+                return power_state
+
+        d.addCallback(cb_query)
+        d.addCallback(cb_update_power)
+        return d
+
+    def _power_control_node(self, defer, power_method, power_info):
         # Check if the BMC is accessible. If not we need to do some work to
         # make sure we can determine which rack controller can power
         # control this node.
-        if not self.bmc.is_accessible():
-            # Perform power query on all of the rack controllers to determine
-            # which has access to this node's BMC.
-            d.addCallback(
-                lambda _: power_query_all(
-                    self.system_id, self.hostname, power_info))
+        defer.addCallback(
+            lambda _: deferToDatabase(transactional(self.bmc.is_accessible)))
 
-            def cb_update_routable(result):
-                power_state, routable_racks, non_routable_racks = result
-                if (power_info.can_be_queried and
-                        self.power_state != power_state):
-                    # MAAS will query power types that even say they don't
-                    # support query. But we only update the power_state on
-                    # those we are saying MAAS reports on.
-                    self.power_state = power_state
-                    self.save(update_fields=["power_state"])
-                self.bmc.update_routable_racks(
-                    routable_racks, non_routable_racks)
+        def cb_update_routable_racks(accessible):
+            if not accessible:
+                # Perform power query on all of the rack controllers to
+                # determine which has access to this node's BMC.
+                d = power_query_all(
+                    self.system_id, self.hostname, power_info)
 
-            # Update the routable information for the BMC.
-            d.addCallback(partial(deferToDatabase, cb_update_routable))
+                @transactional
+                def cb_update_routable(result):
+                    power_state, routable_racks, non_routable_racks = result
+                    if (power_info.can_be_queried and
+                            self.power_state != power_state):
+                        # MAAS will query power types that even say they don't
+                        # support query. But we only update the power_state on
+                        # those we are saying MAAS reports on.
+                        self.update_power_state(power_state)
+                    self.bmc.update_routable_racks(
+                        routable_racks, non_routable_racks)
+
+                # Update the routable information for the BMC.
+                d.addCallback(partial(
+                    deferToDatabase,
+                    transactional(cb_update_routable)))
+                return d
+
+        # Update routable racks only if the BMC is not accessible.
+        defer.addCallback(cb_update_routable_racks)
 
         # Get the client connection information for the node.
-        d.addCallback(
+        defer.addCallback(
             partial(deferToDatabase, self._get_bmc_client_connection_info))
 
         def cb_power_control(result):
@@ -2922,8 +2970,8 @@ class Node(CleanSave, TimestampedModel):
             return d
 
         # Power control the node.
-        d.addCallback(cb_power_control)
-        return d
+        defer.addCallback(cb_power_control)
+        return defer
 
     @classmethod
     @transactional

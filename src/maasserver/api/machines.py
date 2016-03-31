@@ -11,7 +11,6 @@ __all__ = [
 from base64 import b64decode
 import re
 
-import crochet
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
@@ -23,10 +22,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from formencode import validators
 from formencode.validators import StringBool
-from maasserver import (
-    eventloop,
-    locks,
-)
+from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     AnonNodesHandler,
@@ -47,14 +43,12 @@ from maasserver.api.utils import (
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
-    POWER_STATE,
 )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
-    PowerProblem,
     StaticIPAddressExhaustion,
     Unauthorized,
 )
@@ -77,20 +71,12 @@ from maasserver.models import (
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.preseed import get_curtin_merged_config
-from maasserver.rpc import getClientFor
 from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
 from maasserver.utils.orm import get_first
-from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
-from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionFail,
-    UnknownPowerType,
-)
 import yaml
 
 # Machine's fields exposed on the API.
@@ -689,60 +675,12 @@ class MachineHandler(NodeHandler):
             'on' or 'off'.
 
         Returns 404 if the machine is not found.
-        Returns 503 (with explanatory text) if the power state could not
-        be queried.
+        Returns machine's power state.
         """
-        # addTask() is used here even though this function runs within a
-        # transaction. It is sane and correct to do so for a couple of
-        # reasons. First, the thing we want to do in the database is a *fact*
-        # and we want to record it whether or not this method raises an
-        # exception. Second, if the write to the database were to fail it does
-        # not matter that we won't be able to tell the caller. Ideally,
-        # however, we would not be making RPC calls from within transactions.
-        addTask = eventloop.services.getServiceNamed("database-tasks").addTask
-
         machine = get_object_or_404(self.model, system_id=system_id)
-        rack = machine.get_boot_primary_rack_controller()
-
-        try:
-            client = getClientFor(rack.system_id)
-        except NoConnectionsAvailable:
-            maaslog.error(
-                "Unable to get RPC connection for cluster '%s' (%s)",
-                rack.hostname, rack.system_id)
-            raise PowerProblem("Unable to connect to cluster controller")
-
-        try:
-            power_info = machine.get_effective_power_info()
-        except UnknownPowerType as e:
-            raise PowerProblem(e)
-
-        if not power_info.can_be_started:
-            addTask(machine.update_power_state, POWER_STATE.UNKNOWN)
-            raise PowerProblem("Power state is not queryable")
-
-        call = client(
-            PowerQuery, system_id=system_id, hostname=machine.hostname,
-            power_type=power_info.power_type,
-            context=power_info.power_parameters)
-        try:
-            state = call.wait(POWER_QUERY_TIMEOUT)
-        except crochet.TimeoutError:
-            maaslog.error(
-                "%s: Timed out waiting for power response in "
-                "Machine.power_state", machine.hostname)
-            raise PowerProblem("Timed out waiting for power response")
-        except PowerActionFail as e:
-            addTask(machine.update_power_state, POWER_STATE.ERROR)
-            raise PowerProblem(e)
-        except NotImplementedError as e:
-            addTask(machine.update_power_state, POWER_STATE.UNKNOWN)
-            raise PowerProblem(e)
-
-        # Record the new state.
-        addTask(machine.update_power_state, state["state"])
-
-        return state
+        return {
+            "state": machine.power_query().wait(45),
+        }
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):

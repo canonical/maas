@@ -65,7 +65,10 @@ from metadataserver.models import (
     NodeUserData,
 )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import ANY
+from mock import (
+    ANY,
+    Mock,
+)
 from netaddr import IPNetwork
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
@@ -622,6 +625,7 @@ class TestMachineAPI(APITestCase):
         self.patch(
             node_module.RackControllerManager, "filter_by_url_accessible"
             ).return_value = [rack_controller]
+        self.patch(node_module.Node, "_power_control_node")
         machine = factory.make_Node(
             owner=self.logged_in_user, interface=True,
             power_type='virsh', architecture=make_usable_architecture(self),
@@ -1513,6 +1517,25 @@ class TestPowerParameters(APITestCase):
             self.get_machine_uri(machine), {'op': 'power_parameters'})
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+
+class TestQueryPowerState(APITestCase):
+    """Tests for /api/2.0/machines/<machine>/?op=query_power_state"""
+
+    def get_machine_uri(self, machine):
+        """Get the API URI for `machine`."""
+        return reverse('machine_handler', args=[machine.system_id])
+
+    def test_query_power_state(self):
+        machine = factory.make_Node()
+        mock__power_control_node = self.patch(
+            node_module.Node, "power_query").return_value
+        mock__power_control_node.wait = Mock(return_value=POWER_STATE.ON)
+        response = self.client.get(
+            self.get_machine_uri(machine), {'op': 'query_power_state'})
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(POWER_STATE.ON, parsed_result['state'])
 
 
 class TestAbort(APITransactionTestCase):

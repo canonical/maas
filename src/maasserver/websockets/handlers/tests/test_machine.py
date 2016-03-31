@@ -11,6 +11,7 @@ from operator import itemgetter
 import random
 import re
 
+from crochet import wait_for
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from lxml import etree
@@ -27,6 +28,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_TYPE,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     NodeActionError,
@@ -50,12 +52,7 @@ from maasserver.models.partition import (
     PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.node_action import compile_node_actions
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
-from maasserver.testing.eventloop import (
-    RegionEventLoopFixture,
-    RunningEventLoopFixture,
-)
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
@@ -90,26 +87,14 @@ from maasserver.websockets.handlers.machine import (
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.twisted import (
-    always_fail_with,
-    always_succeed_with,
-)
 from metadataserver.enum import RESULT_TYPE
-from mock import (
-    ANY,
-    sentinel,
-)
+from mock import ANY
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
-from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionFail,
-)
+from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
-from provisioningserver.utils.twisted import asynchronous
 from testtools import ExpectedException
 from testtools.matchers import (
     ContainsDict,
@@ -122,7 +107,10 @@ from testtools.matchers import (
     Raises,
     StartsWith,
 )
-from twisted.internet.defer import CancelledError
+from twisted.internet.defer import inlineCallbacks
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestMachineHandler(MAASServerTestCase):
@@ -2244,104 +2232,58 @@ class TestMachineHandler(MAASServerTestCase):
 
 class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
 
-    @asynchronous
-    def make_rack_controller(self):
-        """Makes a rack controller that is committed in the database."""
-        return deferToDatabase(
-            transactional(factory.make_RackController))
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__retrieves_and_updates_power_state(self):
+        user = yield deferToDatabase(transactional(factory.make_User))
+        machine_handler = MachineHandler(user, {})
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_state=POWER_STATE.OFF)
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.return_value = POWER_STATE.ON
+        power_state = yield machine_handler.check_power(
+            {"system_id": node.system_id})
+        self.assertEqual(power_state, POWER_STATE.ON)
 
-    @asynchronous
-    def make_node(
-            self, power_type="virsh", bmc_connected_to=None,
-            primary_rack=None):
-        """Makes a node that is committed in the database."""
-        return deferToDatabase(
-            transactional(factory.make_Node_with_Interface_on_Subnet),
-            power_type=power_type, bmc_connected_to=bmc_connected_to,
-            primary_rack=primary_rack)
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__raises_failure_for_UnknownPowerType(self):
+        user = yield deferToDatabase(transactional(factory.make_User))
+        machine_handler = MachineHandler(user, {})
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = UnknownPowerType()
+        power_state = yield machine_handler.check_power(
+            {"system_id": node.system_id})
+        self.assertEquals(power_state, POWER_STATE.UNKNOWN)
 
-    def make_handler_with_user(self):
-        user = factory.make_User()
-        return MachineHandler(user, {})
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__raises_failure_for_NotImplementedError(self):
+        user = yield deferToDatabase(transactional(factory.make_User))
+        machine_handler = MachineHandler(user, {})
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = NotImplementedError()
+        power_state = yield machine_handler.check_power(
+            {"system_id": node.system_id})
+        self.assertEquals(power_state, POWER_STATE.UNKNOWN)
 
-    def call_check_power(self, node):
-        params = {"system_id": node.system_id}
-        handler = self.make_handler_with_user()
-        return handler.check_power(params).wait(30)
-
-    def prepare_rpc(self, rack_controller, side_effect=None):
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = self.rpc_fixture.makeCluster(rack_controller, PowerQuery)
-        if side_effect is None:
-            protocol.PowerQuery.side_effect = always_succeed_with({})
-        else:
-            protocol.PowerQuery.side_effect = side_effect
-
-    def assertCheckPower(self, node, state):
-        result_state = self.call_check_power(node)
-        self.expectThat(result_state, Equals(state))
-        self.expectThat(reload_object(node).power_state, Equals(state))
-
-    def test__raises_HandlerError_when_NoConnectionsAvailable(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(bmc_connected_to=rack).wait(30)
-        user = factory.make_User()
-        handler = MachineHandler(user, {})
-        getClientFromIdentifiers = self.patch(
-            machine_module, "getClientFromIdentifiers")
-        getClientFromIdentifiers.side_effect = NoConnectionsAvailable()
-        with ExpectedException(HandlerError):
-            handler.check_power({"system_id": node.system_id}).wait(30)
-
-    def test__sets_power_state_to_unknown_when_no_power_type(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(power_type="", primary_rack=rack).wait(30)
-        self.prepare_rpc(
-            rack,
-            side_effect=always_succeed_with({"state": "on"}))
-        self.assertCheckPower(node, "unknown")
-
-    def test__sets_power_state_to_unknown_when_power_cannot_be_started(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(
-            power_type="manual", primary_rack=rack).wait(30)
-        self.prepare_rpc(
-            rack,
-            side_effect=always_succeed_with({"state": "on"}))
-        self.assertCheckPower(node, "unknown")
-
-    def test__sets_power_state_to_PowerQuery_result(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(bmc_connected_to=rack).wait(30)
-        power_state = random.choice(["on", "off"])
-        self.prepare_rpc(
-            rack,
-            side_effect=always_succeed_with({"state": power_state}))
-        self.assertCheckPower(node, power_state)
-
-    def test__sets_power_state_to_error_on_time_out(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(bmc_connected_to=rack).wait(30)
-        getClientFromIdentifiers = self.patch(
-            machine_module, 'getClientFromIdentifiers')
-        getClientFromIdentifiers.return_value = sentinel.client
-        deferWithTimeout = self.patch(machine_module, 'deferWithTimeout')
-        deferWithTimeout.side_effect = always_fail_with(CancelledError())
-        self.assertCheckPower(node, "error")
-
-    def test__sets_power_state_to_unknown_on_NotImplementedError(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(bmc_connected_to=rack).wait(30)
-        self.prepare_rpc(rack, side_effect=NotImplementedError())
-        self.assertCheckPower(node, "unknown")
-
-    def test__sets_power_state_to_error_on_PowerActionFail(self):
-        rack = self.make_rack_controller().wait(30)
-        node = self.make_node(bmc_connected_to=rack).wait(30)
-        self.prepare_rpc(rack, side_effect=PowerActionFail())
-        self.assertCheckPower(node, "error")
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__logs_other_errors(self):
+        user = yield deferToDatabase(transactional(factory.make_User))
+        machine_handler = MachineHandler(user, {})
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = factory.make_exception('Error')
+        mock_log_err = self.patch(machine_module.log, "err")
+        power_state = yield machine_handler.check_power(
+            {"system_id": node.system_id})
+        self.assertEquals(power_state, POWER_STATE.ERROR)
+        self.assertThat(
+            mock_log_err, MockCalledOnceWith(
+                ANY, "Failed to update power state of machine."))
 
 
 class TestMachineHandlerMountSpecial(MAASServerTestCase):

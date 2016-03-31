@@ -72,6 +72,40 @@ power_off_node = partial(power_node, PowerOff)
 power_on_node = partial(power_node, PowerOn)
 
 
+@asynchronous(timeout=15)
+def power_query(client, system_id, hostname, power_info):
+    """Power query the node.
+
+    The power call will be directed to the provided `client`.
+
+    :param client: The `rpc.common.Client` of the rack controller to perform
+        the power action.
+    :param system_id: The Node's system_id
+    :param hostname: The Node's hostname
+    :param power-info: A dict containing the power information for the
+        node.
+    :return: A :py:class:`twisted.internet.defer.Deferred` that will
+        fire when the `PowerQuery` call completes.
+
+    """
+    maaslog.debug(
+        "%s: Asking rack controller(s) to power query node.", hostname)
+    # We don't strictly care about the result _here_; the outcome of the
+    # deferred gets reported elsewhere. However, PowerOn can return
+    # UnknownPowerType and NotImplementedError which are worth knowing
+    # about and returning to the caller of this API method, so it's
+    # probably worth changing PowerOn (or adding another call) to return
+    # after initial validation but then continue with the powering-on
+    # process. For now we simply return the deferred to the caller so
+    # they can choose to chain onto it, or to "cap it off", so that
+    # result gets consumed (Twisted will complain if an error is not
+    # consumed).
+    return client(
+        PowerQuery, system_id=system_id, hostname=hostname,
+        power_type=power_info.power_type,
+        context=power_info.power_parameters)
+
+
 @asynchronous(timeout=30)
 def power_driver_check(client, power_type):
     """Call PowerDriverCheck on a `client` and wait for response.
@@ -150,8 +184,14 @@ def power_query_all(system_id, hostname, power_info, timeout=30):
         failed_rack_ids = set()
         for rack_system_id, (success, response) in zip(call_order, result):
             if success:
-                power_states.add(response["state"])
-                responded_rack_ids.add(rack_system_id)
+                power_state = response["state"]
+                if power_state == POWER_STATE.ERROR:
+                    # Rack controller cannot access this BMC.
+                    failed_rack_ids.add(rack_system_id)
+                else:
+                    # Rack controller can access this BMC.
+                    power_states.add(response["state"])
+                    responded_rack_ids.add(rack_system_id)
             else:
                 failed_rack_ids.add(rack_system_id)
         return (

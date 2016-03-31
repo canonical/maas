@@ -5,6 +5,8 @@
 
 __all__ = []
 
+import random
+
 from crochet import wait_for
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power import (
@@ -12,6 +14,7 @@ from maasserver.clusterrpc.power import (
     power_driver_check,
     power_off_node,
     power_on_node,
+    power_query,
     power_query_all,
 )
 from maasserver.enum import POWER_STATE
@@ -28,6 +31,7 @@ from provisioningserver.rpc.cluster import (
     PowerDriverCheck,
     PowerOff,
     PowerOn,
+    PowerQuery,
 )
 from provisioningserver.utils.twisted import reactor_sync
 from twisted.internet import reactor
@@ -66,6 +70,30 @@ class TestPowerNode(MAASServerTestCase):
             client,
             MockCalledOnceWith(
                 self.command, system_id=node.system_id, hostname=node.hostname,
+                power_type=power_info.power_type,
+                context=power_info.power_parameters,
+            ))
+
+
+class TestPowerQuery(MAASServerTestCase):
+    """Tests for `power_query`."""
+
+    def test__power_querys_single_node(self):
+        node = factory.make_Node()
+        client = Mock()
+
+        # We're not doing any IO via the reactor so we sync with it only so
+        # that this becomes the IO thread, making @asynchronous transparent.
+        with reactor_sync():
+            power_query(
+                client, node.system_id, node.hostname,
+                node.get_effective_power_info())
+
+        power_info = node.get_effective_power_info()
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                PowerQuery, system_id=node.system_id, hostname=node.hostname,
                 power_type=power_info.power_type,
                 context=power_info.power_parameters,
             ))
@@ -111,6 +139,10 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
             factory.make_name("system_id")
             for _ in range(3)
         ]
+        error_rack_ids = [
+            factory.make_name("system_id")
+            for _ in range(3)
+        ]
         failed_rack_ids = [
             factory.make_name("system_id")
             for _ in range(3)
@@ -118,12 +150,19 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
         clients = []
         power_states = []
         for rack_id in successful_rack_ids:
-            power_state = factory.pick_enum(POWER_STATE)
+            power_state = random.choice([POWER_STATE.ON, POWER_STATE.OFF])
             power_states.append(power_state)
             client = Mock()
             client.ident = rack_id
             client.return_value = succeed({
                 "state": power_state,
+            })
+            clients.append(client)
+        for rack_id in error_rack_ids:
+            client = Mock()
+            client.ident = rack_id
+            client.return_value = succeed({
+                "state": POWER_STATE.ERROR,
             })
             clients.append(client)
         for rack_id in failed_rack_ids:
@@ -138,7 +177,7 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
 
         self.assertEqual(pick_best_power_state(power_states), power_state)
         self.assertItemsEqual(successful_rack_ids, success_racks)
-        self.assertItemsEqual(failed_rack_ids, failed_racks)
+        self.assertItemsEqual(error_rack_ids + failed_rack_ids, failed_racks)
 
     @wait_for_reactor
     @inlineCallbacks

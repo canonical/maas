@@ -16,7 +16,10 @@ from django.core.exceptions import (
 from django.db import transaction
 from fixtures import LoggerFixture
 from maasserver import preseed as preseed_module
-from maasserver.clusterrpc.power import power_off_node
+from maasserver.clusterrpc.power import (
+    power_off_node,
+    power_query,
+)
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
@@ -1325,6 +1328,8 @@ class TestNode(MAASServerTestCase):
                 node.hostname, exception))
 
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         rack = factory.make_RackController()
@@ -1333,7 +1338,7 @@ class TestNode(MAASServerTestCase):
             power_type="virsh", primary_rack=rack)
         self.patch(Node, '_set_status_expires')
         self.patch(node_module, "post_commit_do")
-        self.patch(node, '_pc_power_control_node')
+        self.patch(node, '_power_control_node')
         node.power_state = POWER_STATE.ON
         with post_commit_hooks:
             node.release()
@@ -1352,8 +1357,8 @@ class TestNode(MAASServerTestCase):
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = "hard"
         self.expectThat(
-            node._pc_power_control_node, MockCalledOnceWith(
-                power_off_node, expected_power_info))
+            node._power_control_node, MockCalledOnceWith(
+                d, power_off_node, expected_power_info))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
         agent_name = factory.make_name('agent-name')
@@ -3934,6 +3939,10 @@ class TestGetDefaultGateways(MAASServerTestCase):
 class TestNode_Start(MAASServerTestCase):
     """Tests for Node.start()."""
 
+    def setUp(self):
+        super(TestNode_Start, self).setUp()
+        self.patch_autospec(node_module, 'power_driver_check')
+
     def make_acquired_node_with_interface(
             self, user, bmc_connected_to=None, power_type="virsh"):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -3941,6 +3950,11 @@ class TestNode_Start(MAASServerTestCase):
             bmc_connected_to=bmc_connected_to, power_type=power_type)
         node.acquire(user)
         return node
+
+    def patch_post_commit(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        return d
 
     def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
         user = factory.make_User()
@@ -4017,12 +4031,12 @@ class TestNode_Start(MAASServerTestCase):
         # isn't ALLOCATED.
         self.assertThat(claim_auto_ips, MockNotCalled())
 
-    def test__manual_power_type_doesnt_call__pc_power_control_node(self):
+    def test__manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
             user, power_type="manual")
         node.save()
-        mock_power_control = self.patch(node, "_pc_power_control_node")
+        mock_power_control = self.patch(node, "_power_control_node")
         node.start(user)
 
         self.assertThat(mock_power_control, MockNotCalled())
@@ -4031,8 +4045,8 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(user)
 
-        post_commit_defer = Mock()
-        mock_power_control = self.patch(Node, "_pc_power_control_node")
+        post_commit_defer = self.patch(node_module, "post_commit")
+        mock_power_control = self.patch(Node, "_power_control_node")
         mock_power_control.return_value = post_commit_defer
 
         node.start(user)
@@ -4064,50 +4078,112 @@ class TestNode_Stop(MAASServerTestCase):
         super(TestNode_Stop, self).setUp()
         self.patch_autospec(node_module, 'power_driver_check')
 
-    def make_node_with_interface(
-            self, user, power_type="virsh", bmc_connected_to=None):
+    def make_acquired_node_with_interface(
+            self, user, bmc_connected_to=None, power_type="virsh"):
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY,
-            power_type=power_type, with_boot_disk=True,
-            bmc_connected_to=bmc_connected_to)
+            status=NODE_STATUS.READY, with_boot_disk=True,
+            bmc_connected_to=bmc_connected_to, power_type=power_type)
         node.acquire(user)
         return node
 
+    def patch_post_commit(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        return d
+
     def test__raises_PermissionDenied_if_user_doesnt_have_edit(self):
         user = factory.make_User()
-        node = self.make_node_with_interface(user)
+        node = self.make_acquired_node_with_interface(user)
         other_user = factory.make_User()
         self.assertRaises(PermissionDenied, node.stop, other_user)
 
     def test__logs_user_request(self):
+        self.patch_post_commit()
         admin = factory.make_admin()
-        node = self.make_node_with_interface(admin)
-        self.patch_autospec(node, "_pc_power_control_node")
+        node = self.make_acquired_node_with_interface(admin)
+        self.patch_autospec(node, "_power_control_node")
         register_event = self.patch(node, '_register_request_event')
         node.stop(admin)
         self.assertThat(register_event, MockCalledOnceWith(
             admin, EVENT_TYPES.REQUEST_NODE_STOP, action='stop', comment=None))
 
-    def test__doesnt_call__pc_power_control_node_if_cant_be_stopped(self):
+    def test__doesnt_call__power_control_node_if_cant_be_stopped(self):
         admin = factory.make_admin()
-        node = self.make_node_with_interface(admin, power_type="manual")
+        node = self.make_acquired_node_with_interface(
+            admin, power_type="manual")
         mock_power_control = self.patch_autospec(
-            node, "_pc_power_control_node")
+            node, "_power_control_node")
         node.stop(admin)
         self.assertThat(mock_power_control, MockNotCalled())
 
-    def test__calls__pc_power_control_node_with_stop_mode(self):
+    def test__calls__power_control_node_with_stop_mode(self):
+        d = self.patch_post_commit()
         admin = factory.make_admin()
         stop_mode = factory.make_name("stop")
-        node = self.make_node_with_interface(admin)
+        node = self.make_acquired_node_with_interface(admin)
         mock_power_control = self.patch_autospec(
-            node, "_pc_power_control_node")
+            node, "_power_control_node")
         node.stop(admin, stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters['power_off_mode'] = stop_mode
         self.assertThat(
             mock_power_control,
-            MockCalledOnceWith(power_off_node, expected_power_info))
+            MockCalledOnceWith(d, power_off_node, expected_power_info))
+
+
+class TestNode_PowerQuery(MAASTransactionServerTestCase):
+    """Tests for Node.power_query()."""
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__updates_power_state(self):
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_state=POWER_STATE.ON)
+        mock_power_control = self.patch(node, "_power_control_node")
+        mock_power_control.return_value = defer.succeed({
+            "state": POWER_STATE.OFF,
+        })
+        observed_state = yield node.power_query()
+        self.assertEqual(POWER_STATE.OFF, observed_state)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(ANY, power_query, ANY))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__does_not_update_power_state_when_same(self):
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_state=POWER_STATE.ON)
+        mock_power_control = self.patch(node, "_power_control_node")
+        mock_power_control.return_value = defer.succeed({
+            "state": POWER_STATE.ON,
+        })
+        mock_update_power_state = self.patch(node, "update_power_state")
+        observed_state = yield node.power_query()
+        self.assertEqual(POWER_STATE.ON, observed_state)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(ANY, power_query, ANY))
+        self.assertThat(mock_update_power_state, MockNotCalled())
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__does_not_update_power_state_for_non_queryable_power_type(self):
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_type='apc',
+            power_state=POWER_STATE.ON)
+        mock_power_control = self.patch(node, "_power_control_node")
+        mock_power_control.return_value = defer.succeed({
+            "state": POWER_STATE.OFF,
+        })
+        mock_update_power_state = self.patch(node, "update_power_state")
+        observed_state = yield node.power_query()
+
+        self.assertEqual(POWER_STATE.OFF, observed_state)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(ANY, power_query, ANY))
+        self.assertThat(mock_update_power_state, MockNotCalled())
 
 
 class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
@@ -4153,7 +4229,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_bmc_is_accessible_uses_directly_connected_client(self):
-        self.patch_post_commit()
+        d = self.patch_post_commit()
         rack_controller = yield deferToDatabase(self.make_rack_controller)
         node, power_info = yield deferToDatabase(
             self.make_node, layer2_rack=rack_controller)
@@ -4181,7 +4257,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         power_method = Mock()
-        yield node._pc_power_control_node(power_method, power_info)
+        yield node._power_control_node(d, power_method, power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -4197,7 +4273,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_bmc_is_accessible_uses_fallback_client_first(self):
-        self.patch_post_commit()
+        d = self.patch_post_commit()
         rack_controller = yield deferToDatabase(self.make_rack_controller)
         node, power_info = yield deferToDatabase(
             self.make_node, primary_rack=rack_controller)
@@ -4221,7 +4297,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         power_method = Mock()
-        yield node._pc_power_control_node(power_method, power_info)
+        yield node._power_control_node(d, power_method, power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -4237,7 +4313,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_bmc_is_accessible_falls_back_to_fallback_clients(self):
-        self.patch_post_commit()
+        d = self.patch_post_commit()
         layer2_rack_controller = yield deferToDatabase(
             self.make_rack_controller)
         primary_rack = yield deferToDatabase(
@@ -4274,7 +4350,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         power_method = Mock()
-        yield node._pc_power_control_node(power_method, power_info)
+        yield node._power_control_node(d, power_method, power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -4292,7 +4368,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_bmc_is_not_accessible_updates_routable_racks_and_powers(self):
-        self.patch_post_commit()
         node, power_info = yield deferToDatabase(
             self.make_node, with_dhcp_rack_primary=False)
 
@@ -4317,10 +4392,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         new_power_state = factory.pick_enum(
             POWER_STATE, but_not=[node.power_state])
         mock_power_query_all = self.patch(node_module, "power_query_all")
-        mock_power_query_all.return_value = (
+        mock_power_query_all.return_value = defer.succeed((
             new_power_state,
             routable_racks_system_ids,
-            none_routable_racks_system_ids)
+            none_routable_racks_system_ids))
 
         # Holds the selected client.
         selected_client = []
@@ -4348,14 +4423,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             Node, "confirm_power_driver_operable")
         mock_confirm_power_driver.return_value = defer.succeed(None)
 
-        # Testing only allows one thread at a time, but the way we are testing
-        # this would actually require multiple to be started at once. To
-        # by-pass this issue we mock `is_accessible` on the BMC model to return
-        # the value we are expecting.
-        self.patch(node.bmc, "is_accessible").return_value = False
-
+        d = defer.succeed(None)
         power_method = Mock()
-        yield node._pc_power_control_node(power_method, power_info)
+        yield node._power_control_node(d, power_method, power_info)
 
         # Makes the correct calls.
         client = selected_client[0]

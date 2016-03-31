@@ -9,7 +9,6 @@ import http.client
 import json
 import random
 
-import crochet
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
@@ -58,12 +57,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.twisted import always_succeed_with
-from mock import Mock
 from provisioningserver.rpc import cluster as cluster_module
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionFail,
-)
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Contains,
@@ -2070,89 +2064,6 @@ class TestPowerState(APITransactionTestCase):
         dbtasks.syncTask().wait(
             timeout=5)  # Wait for all pending tasks to run.
         self.assertThat(reload_object(machine).power_state, Equals(state))
-
-    def test__catches_no_connection_error(self):
-        getClientFor = self.patch(machines_module, 'getClientFor')
-        getClientFor.side_effect = NoConnectionsAvailable()
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            power_state=POWER_STATE.ON, power_type=None)
-
-        response = self.client.get(
-            self.get_machine_uri(machine), {"op": "query_power_state"})
-
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
-        self.assertIn(
-            "Unable to connect to cluster controller",
-            response.content.decode(settings.DEFAULT_CHARSET))
-        # The machine's power state is unchanged.
-        self.assertPowerState(machine, POWER_STATE.ON)
-
-    def test__catches_timeout_error(self):
-        mock_client = Mock()
-        mock_client().wait.side_effect = crochet.TimeoutError("error")
-        getClientFor = self.patch(machines_module, 'getClientFor')
-        getClientFor.return_value = mock_client
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            power_state=POWER_STATE.ON, power_type="ipmi")
-
-        response = self.client.get(
-            self.get_machine_uri(machine), {"op": "query_power_state"})
-
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
-        self.assertIn(
-            "Timed out waiting for power response",
-            response.content.decode(settings.DEFAULT_CHARSET))
-        # The machine's power state is unchanged.
-        self.assertPowerState(machine, POWER_STATE.ON)
-
-    def test__catches_unknown_power_type(self):
-        self.patch(machines_module, 'getClientFor')
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            power_state=POWER_STATE.OFF, power_type="")
-
-        response = self.client.get(
-            self.get_machine_uri(machine), {"op": "query_power_state"})
-
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
-        self.assertIn(
-            "Power state is not queryable",
-            response.content.decode(settings.DEFAULT_CHARSET))
-        # The machine's power state is now "unknown".
-        self.assertPowerState(machine, POWER_STATE.UNKNOWN)
-
-    def test__catches_poweraction_fail(self):
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            power_state=POWER_STATE.ON, power_type="ipmi")
-        error_message = factory.make_name("error")
-        self.prepare_rpc(
-            machine.get_boot_primary_rack_controller(),
-            side_effect=PowerActionFail(error_message))
-
-        response = self.client.get(
-            self.get_machine_uri(machine), {"op": "query_power_state"})
-
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
-        self.assertIn(
-            error_message.encode(settings.DEFAULT_CHARSET), response.content)
-        # The machine's power state is now "error".
-        self.assertPowerState(machine, POWER_STATE.ERROR)
-
-    def test__catches_operation_not_implemented(self):
-        machine = factory.make_Node_with_Interface_on_Subnet(
-            power_state=POWER_STATE.ON, power_type="ipmi")
-        error_message = factory.make_name("error")
-        self.prepare_rpc(
-            machine.get_boot_primary_rack_controller(),
-            side_effect=NotImplementedError(error_message))
-
-        response = self.client.get(
-            self.get_machine_uri(machine), {"op": "query_power_state"})
-
-        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
-        self.assertIn(error_message.encode(
-            settings.DEFAULT_CHARSET), response.content)
-        # The machine's power state is now "unknown".
-        self.assertPowerState(machine, POWER_STATE.UNKNOWN)
 
     def test__returns_actual_state(self):
         machine = factory.make_Node_with_Interface_on_Subnet(

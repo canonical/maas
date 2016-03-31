@@ -7,6 +7,7 @@ __all__ = [
     "MachineHandler",
 ]
 
+from functools import partial
 from operator import itemgetter
 
 from django.core.exceptions import ValidationError
@@ -16,6 +17,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
+    POWER_STATE,
 )
 from maasserver.exceptions import (
     NodeActionError,
@@ -58,7 +60,6 @@ from maasserver.models.partition import Partition
 from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.node_action import compile_node_actions
-from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -70,23 +71,10 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
-from provisioningserver.drivers.power import POWER_QUERY_TIMEOUT
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionFail,
-    UnknownPowerType,
-)
-from provisioningserver.utils.twisted import (
-    asynchronous,
-    deferWithTimeout,
-)
-from twisted.internet.defer import (
-    CancelledError,
-    inlineCallbacks,
-    returnValue,
-)
+from provisioningserver.rpc.exceptions import UnknownPowerType
+from provisioningserver.utils.twisted import asynchronous
+from twisted.python import log
 
 
 maaslog = get_maas_logger("websockets.machine")
@@ -804,84 +792,30 @@ class MachineHandler(NodeHandler):
         interface = Interface.objects.get(node=node, id=params["interface_id"])
         interface.unlink_subnet_by_id(params["link_id"])
 
-    @asynchronous
-    @inlineCallbacks
+    @asynchronous(timeout=45)
     def check_power(self, params):
         """Check the power state of the node."""
 
-        # XXX: This is largely the same function as
-        # update_power_state_of_node.
+        def eb_unknown(failure):
+            failure.trap(UnknownPowerType, NotImplementedError)
+            return POWER_STATE.UNKNOWN
+
+        def eb_error(failure):
+            log.err(failure, "Failed to update power state of machine.")
+            return POWER_STATE.ERROR
 
         @transactional
-        def get_node_rack_and_power_info():
-            obj = self.get_object(params)
-            if obj.power_type is not None:
-                node_info = obj.system_id, obj.hostname
-                conn_info = obj._get_bmc_client_connection_info()
-                try:
-                    power_info = obj.get_effective_power_info()
-                except UnknownPowerType:
-                    return node_info, conn_info, None
-                else:
-                    return node_info, conn_info, power_info
-            else:
-                raise HandlerError(
-                    "%s: Unable to query power state; no power state defined"
-                    % obj.hostname)
+        def update_state(state):
+            if state in [POWER_STATE.ERROR, POWER_STATE.UNKNOWN]:
+                # Update the power state only if it was an error or unknown as
+                # that could have come from the previous errbacks.
+                obj = self.get_object(params)
+                obj.update_power_state(state)
+            return state
 
-        @transactional
-        def update_power_state(state):
-            obj = self.get_object(params)
-            obj.update_power_state(state)
-
-        # Grab info about the node, its connections to its BMC, and its power
-        # parameters from the database. If it can't be queried we can return
-        # early, but first update the node's power state with what we know we
-        # don't know.
-        node_info, conn_info, power_info = (
-            yield deferToDatabase(get_node_rack_and_power_info))
-        if power_info is None or not power_info.can_be_queried:
-            yield deferToDatabase(update_power_state, "unknown")
-            returnValue("unknown")
-
-        # Get a client to any of the rack controllers that has access to
-        # that BMC.
-        node_id, node_hostname = node_info
-        client_idents, fallback_idents = conn_info
-        try:
-            client = yield getClientFromIdentifiers(client_idents)
-        except NoConnectionsAvailable:
-            try:
-                client = yield getClientFromIdentifiers(fallback_idents)
-            except NoConnectionsAvailable:
-                maaslog.error(
-                    "Unable to get any RPC connection to the BMC for '%s'.",
-                    node_hostname)
-                raise HandlerError(
-                    "Unable to connect to any rack controller that has access "
-                    "to this node's BMC.") from None
-
-        # Query the power state via the node's cluster.
-        try:
-            response = yield deferWithTimeout(
-                POWER_QUERY_TIMEOUT, client, PowerQuery, system_id=node_id,
-                hostname=node_hostname, power_type=power_info.power_type,
-                context=power_info.power_parameters)
-        except CancelledError:
-            # We got fed up waiting. The query may later discover the node's
-            # power state but by then we won't be paying attention.
-            maaslog.error("%s: Timed-out querying power.", node_hostname)
-            state = "error"
-        except PowerActionFail:
-            # We discard the reason. That will have bee`n logged elsewhere.
-            # Here we're signalling something very simple back to the user.
-            state = "error"
-        except NotImplementedError:
-            # The power driver has declared that it doesn't after all know how
-            # to query the power for this node, so "unknown" seems appropriate.
-            state = "unknown"
-        else:
-            state = response["state"]
-
-        yield deferToDatabase(update_power_state, state)
-        returnValue(state)
+        d = deferToDatabase(transactional(self.get_object), params)
+        d.addCallback(lambda node: node.power_query())
+        d.addErrback(eb_unknown)
+        d.addErrback(eb_error)
+        d.addCallback(partial(deferToDatabase, update_state))
+        return d

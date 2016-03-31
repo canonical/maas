@@ -5,17 +5,13 @@
 
 __all__ = []
 
-import random
-
+from crochet import wait_for
+from maasserver.enum import POWER_STATE
+from maasserver.models.node import Node
 from maasserver.models.signals import power
 from maasserver.node_status import (
     get_failed_status,
     NODE_STATUS,
-)
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
-from maasserver.testing.eventloop import (
-    RegionEventLoopFixture,
-    RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -24,7 +20,6 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import (
     post_commit_hooks,
-    reload_object,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
@@ -32,19 +27,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.twisted import always_succeed_with
-from provisioningserver.rpc import cluster as cluster_module
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionAlreadyInProgress,
-    PowerActionFail,
-    UnknownPowerType,
-)
-from testtools.matchers import (
-    Equals,
-    Is,
-)
+from mock import ANY
+from provisioningserver.rpc.exceptions import UnknownPowerType
+from twisted.internet import defer
 from twisted.internet.task import Clock
+
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestStatusQueryEvent(MAASServerTestCase):
@@ -95,133 +84,37 @@ class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
 
 class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
 
-    def prepare_rpc(self, rack_controller, side_effect):
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = self.rpc_fixture.makeCluster(
-            rack_controller, cluster_module.PowerQuery)
-        protocol.PowerQuery.side_effect = side_effect
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__retrieves_power_state(self):
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.return_value = POWER_STATE.ON
+        power_state = yield power.update_power_state_of_node(node.system_id)
+        self.assertEqual(power_state, POWER_STATE.ON)
 
-    def test__updates_node_power_state(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", bmc_connected_to=rack_controller)
-        random_state = random.choice(["on", "off"])
-        self.prepare_rpc(
-            rack_controller,
-            side_effect=always_succeed_with({"state": random_state}))
+    def test__raises_failure_for_Node_DoesNotExist(self):
+        self.assertIsNone(power.update_power_state_of_node(
+            factory.make_name('system_id')))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__raises_failure_for_UnknownPowerType(self):
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_node_objects_get = self.patch(Node.objects, "get")
+        mock_node_objects_get.side_effect = UnknownPowerType()
+        power_state = yield power.update_power_state_of_node(node.system_id)
+        self.assertIsNone(power_state)
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__logs_other_errors(self):
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_node_objects_get = self.patch(Node.objects, "get")
+        mock_node_objects_get.side_effect = factory.make_exception('Error')
+        mock_log_err = self.patch(power.log, "err")
+        yield power.update_power_state_of_node(node.system_id)
         self.assertThat(
-            power.update_power_state_of_node(node.system_id),
-            Equals(random_state))
-        self.assertThat(
-            reload_object(node).power_state,
-            Equals(random_state))
-
-    def test__handles_already_deleted_node(self):
-        node = factory.make_Node(power_type="virsh")
-        node.delete()
-        self.assertThat(
-            power.update_power_state_of_node(node.system_id),
-            Is(None))  # Denotes that nothing happened.
-
-    def test__handles_node_being_deleted_in_the_middle(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", power_state="off",
-            bmc_connected_to=rack_controller)
-        self.prepare_rpc(
-            rack_controller,
-            side_effect=always_succeed_with({"state": "on"}))
-
-        def delete_node_then_get_client(uuid):
-            from maasserver.rpc import getClientFromIdentifiers
-            d = deferToDatabase(transactional(node.delete))
-            d.addCallback(lambda _: getClientFromIdentifiers(uuid))
-            return d
-
-        getClientFromIdentifiers = self.patch_autospec(
-            power, "getClientFromIdentifiers")
-        getClientFromIdentifiers.side_effect = delete_node_then_get_client
-
-        self.assertThat(
-            power.update_power_state_of_node(node.system_id),
-            Is(None))  # Denotes that nothing happened.
-
-    def test__updates_power_state_to_unknown_on_UnknownPowerType(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", bmc_connected_to=rack_controller)
-        self.prepare_rpc(rack_controller, side_effect=UnknownPowerType())
-        self.expectThat(
-            power.update_power_state_of_node(node.system_id),
-            Equals("unknown"))
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("unknown"))
-
-    def test__updates_power_state_to_unknown_on_NotImplementedError(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", bmc_connected_to=rack_controller)
-        self.prepare_rpc(rack_controller, side_effect=NotImplementedError())
-        self.expectThat(
-            power.update_power_state_of_node(node.system_id),
-            Equals("unknown"))
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("unknown"))
-
-    def test__does_nothing_on_PowerActionAlreadyInProgress(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", power_state="off",
-            bmc_connected_to=rack_controller)
-        self.prepare_rpc(
-            rack_controller, side_effect=PowerActionAlreadyInProgress())
-        self.expectThat(
-            power.update_power_state_of_node(node.system_id),
-            Is(None))  # Denotes that nothing happened.
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("off"))
-
-    def test__does_nothing_on_NoConnectionsAvailable(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", power_state="off",
-            bmc_connected_to=rack_controller)
-        self.prepare_rpc(rack_controller, side_effect=None)
-        getClientFromIdentifiers = self.patch_autospec(
-            power, "getClientFromIdentifiers")
-        getClientFromIdentifiers.side_effect = NoConnectionsAvailable()
-        self.expectThat(
-            power.update_power_state_of_node(node.system_id),
-            Is(None))  # Denotes that nothing happened.
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("off"))
-
-    def test__updates_power_state_to_error_on_PowerActionFail(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", bmc_connected_to=rack_controller)
-        self.prepare_rpc(rack_controller, side_effect=PowerActionFail())
-        self.expectThat(
-            power.update_power_state_of_node(node.system_id),
-            Equals("error"))
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("error"))
-
-    def test__updates_power_state_to_error_on_other_error(self):
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            power_type="virsh", bmc_connected_to=rack_controller)
-        self.prepare_rpc(rack_controller, side_effect=factory.make_exception())
-        self.assertThat(
-            power.update_power_state_of_node(node.system_id),
-            Equals("error"))
-        self.expectThat(
-            reload_object(node).power_state,
-            Equals("error"))
+            mock_log_err, MockCalledOnceWith(
+                ANY, "Failed to update power state of machine after state "
+                "transition."))
