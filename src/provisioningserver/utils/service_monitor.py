@@ -276,6 +276,35 @@ class ServiceMonitor:
                     state.process_state))
             returnValue(state)
 
+    @asynchronous
+    @inlineCallbacks
+    def reloadService(self, name, if_on=False):
+        """Reload service.
+
+        Service will only be reloaded if its expected state is ON.
+        `ServiceNotOnError` will be raised if reload is called and the
+        services expected state is not ON.
+        """
+        service = self.getServiceByName(name)
+        expected_state, _ = yield maybeDeferred(service.get_expected_state)
+        if expected_state != SERVICE_STATE.ON:
+            if if_on is True:
+                return
+            raise ServiceNotOnError(
+                "Service '%s' is not expected to be on, unable to reload." % (
+                    service.service_name))
+        state = yield self.ensureService(name)
+        if state.active_state != SERVICE_STATE.ON:
+            error_msg = (
+                "Service '%s' is not running and could not be started to "
+                "perfom the reload. Its current state is '%s' and '%s'." % (
+                    service.service_name,
+                    state.active_state,
+                    state.process_state))
+            maaslog.error(error_msg)
+            raise ServiceActionError(error_msg)
+        yield self._performServiceAction(service, "reload")
+
     @synchronous
     def _execServiceAction(self, service_name, action):
         """Perform the action with the service command.

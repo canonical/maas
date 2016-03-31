@@ -336,6 +336,76 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor.restartService(fake_service.name)
 
     @inlineCallbacks
+    def test__reloadService_raises_ServiceNotOnError(self):
+        fake_service = make_fake_service(SERVICE_STATE.OFF)
+        service_monitor = self.make_service_monitor([fake_service])
+        with ExpectedException(ServiceNotOnError):
+            yield service_monitor.reloadService(fake_service.name)
+
+    @inlineCallbacks
+    def test__reloadService_calls_ensureService_then_reloads(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_performServiceAction = self.patch(
+            service_monitor, "_performServiceAction")
+        mock_performServiceAction.return_value = succeed(None)
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.ON, "running"))
+        yield service_monitor.reloadService(fake_service.name)
+        self.assertThat(
+            mock_ensureService,
+            MockCalledOnceWith(fake_service.name))
+        self.assertThat(
+            mock_performServiceAction,
+            MockCalledOnceWith(fake_service, "reload"))
+
+    @inlineCallbacks
+    def test__reloadService_raises_error_if_fails_to_start(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.OFF, "dead"))
+        with ExpectedException(ServiceActionError):
+            yield service_monitor.reloadService(fake_service.name)
+
+    @inlineCallbacks
+    def test__reloadService_returns_when_if_on_equals_false(self):
+        fake_service = make_fake_service(SERVICE_STATE.OFF)
+        service_monitor = self.make_service_monitor([fake_service])
+        yield service_monitor.reloadService(fake_service.name, if_on=True)
+        # No exception expected.
+
+    @inlineCallbacks
+    def test__reloadService_always_calls_ensureService_then_reloads(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_performServiceAction = self.patch(
+            service_monitor, "_performServiceAction")
+        mock_performServiceAction.return_value = succeed(None)
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.ON, "running"))
+        yield service_monitor.reloadService(fake_service.name, if_on=True)
+        self.assertThat(
+            mock_ensureService,
+            MockCalledOnceWith(fake_service.name))
+        self.assertThat(
+            mock_performServiceAction,
+            MockCalledOnceWith(fake_service, "reload"))
+
+    @inlineCallbacks
+    def test__reloadService_always_raises_error_if_fails_to_start(self):
+        fake_service = make_fake_service(SERVICE_STATE.ON)
+        service_monitor = self.make_service_monitor([fake_service])
+        mock_ensureService = self.patch(service_monitor, "ensureService")
+        mock_ensureService.return_value = succeed(
+            ServiceState(SERVICE_STATE.OFF, "dead"))
+        with ExpectedException(ServiceActionError):
+            yield service_monitor.reloadService(fake_service.name, if_on=True)
+
+    @inlineCallbacks
     def test___execServiceAction_calls_systemctl_with_action_and_name(self):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")

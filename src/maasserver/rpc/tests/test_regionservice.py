@@ -2508,14 +2508,16 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         example_port = factory.pick_port()
         self.patch_port(example_port)
 
-        example_ipv4_addrs = {
-            factory.make_ipv4_address(),
-            factory.make_ipv4_address(),
-        }
-        example_ipv6_addrs = {
-            factory.make_ipv6_address(),
-            factory.make_ipv6_address(),
-        }
+        example_ipv4_addrs = set()
+        for _ in range(5):
+            ip = factory.make_ipv4_address()
+            if not netaddr.IPAddress(ip).is_loopback():
+                example_ipv4_addrs.add(ip)
+        example_ipv6_addrs = set()
+        for _ in range(5):
+            ip = factory.make_ipv6_address()
+            if not netaddr.IPAddress(ip).is_loopback():
+                example_ipv6_addrs.add(ip)
         example_link_local_addrs = {
             factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
             factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
