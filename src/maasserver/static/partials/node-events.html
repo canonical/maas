@@ -39,13 +39,13 @@
                 <tbody>
                     <tr class="table-listing__row"
                         data-ng-repeat="event in events | filter:search | orderBy:'-id' track by event.id">
-                        <td class="t1 no-padding-right no-padding-left">
+                        <td class="table-col--1 no-padding-right no-padding-left">
                             <span class="icon {$ event.type.level $}"></span>
                         </td>
-                        <td class="t79">
+                        <td class="table-col--79">
                             {$ getEventText(event) $}
                         </td>
-                        <td class="t20">
+                        <td class="table-col--20">
                             {$ event.created $}
                         </td>
                     </tr>
