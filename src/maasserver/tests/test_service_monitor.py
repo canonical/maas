@@ -10,8 +10,10 @@ import random
 from crochet import wait_for
 from maasserver import service_monitor as service_monitor_module
 from maasserver.enum import SERVICE_STATUS
+from maasserver.models.config import Config
 from maasserver.models.service import Service
 from maasserver.service_monitor import (
+    ProxyService,
     service_monitor,
     ServiceMonitorService,
 )
@@ -38,6 +40,7 @@ from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
+    maybeDeferred,
     succeed,
 )
 from twisted.internet.task import Clock
@@ -157,4 +160,48 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
             "status": "running",
             "status_info": "",
         }]
-        self.assertEquals(expected_services, observed_services)
+        self.assertEqual(expected_services, observed_services)
+
+
+class TestProxyService(MAASTransactionServerTestCase):
+
+    def make_proxy_service(self):
+        class FakeProxyService(ProxyService):
+            name = factory.make_name("name")
+            service_name = factory.make_name("service")
+        return FakeProxyService()
+
+    @inlineCallbacks
+    def test_get_expected_state_returns_on_for_proxy_off_and_unset(self):
+        service = self.make_proxy_service()
+        Config.objects.set_config("enable_http_proxy", False)
+        Config.objects.set_config("http_proxy", "")
+        expected_state = yield maybeDeferred(service.get_expected_state)
+        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+
+    @inlineCallbacks
+    def test_get_expected_state_returns_on_for_proxy_off_and_set(self):
+        service = self.make_proxy_service()
+        Config.objects.set_config("enable_http_proxy", False)
+        Config.objects.set_config("http_proxy", factory.make_url())
+        expected_state = yield maybeDeferred(service.get_expected_state)
+        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+
+    @inlineCallbacks
+    def test_get_expected_state_returns_on_for_proxy_on_but_unset(self):
+        service = self.make_proxy_service()
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("http_proxy", "")
+        expected_state = yield maybeDeferred(service.get_expected_state)
+        self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
+
+    @inlineCallbacks
+    def test_get_expected_state_returns_off_for_proxy_on_and_set(self):
+        service = self.make_proxy_service()
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("http_proxy", factory.make_url())
+        expected_state = yield maybeDeferred(service.get_expected_state)
+        self.assertEqual(
+            (SERVICE_STATUS.OFF,
+             'disabled, alternate proxy is configured in settings.'),
+            expected_state)

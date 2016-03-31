@@ -71,28 +71,26 @@ class ServiceState(ServiceStateBase):
     @inlineCallbacks
     def get_status_and_status_info_for(self, service):
         """Return the status and status_info for the state of `service`."""
+        status = "off"
+        status_info = ""
+        expected_state, service_status_info = yield maybeDeferred(
+            service.get_expected_state)
         if self.active_state == SERVICE_STATE.UNKNOWN:
             status = "unknown"
-            status_info = ""
         elif self.active_state == SERVICE_STATE.ON:
             status = "running"
-            status_info = ""
-        else:
-            expected_state = yield maybeDeferred(
-                service.get_expected_state)
-            if expected_state == SERVICE_STATE.ON:
-                status = "dead"
-                if self.active_state == SERVICE_STATE.OFF:
-                    status_info = "%s is currently stopped." % (
-                        service.service_name)
-                else:
-                    status_info = (
-                        "%s failed to start, process result: (%s)" % (
-                            service.service_name, self.process_state))
+        elif expected_state == SERVICE_STATE.ON:
+            status = "dead"
+            if self.active_state == SERVICE_STATE.OFF:
+                status_info = "%s is currently stopped." % (
+                    service.service_name)
             else:
-                status = "off"
-                status_info = ""
-        returnValue((status, status_info))
+                status_info = (
+                    "%s failed to start, process result: (%s)" % (
+                        service.service_name, self.process_state))
+        returnValue((
+            status,
+            service_status_info if service_status_info else status_info))
 
 
 class Service(metaclass=ABCMeta):
@@ -108,15 +106,15 @@ class Service(metaclass=ABCMeta):
 
     @abstractmethod
     def get_expected_state(self):
-        """Return a the expected state for the service."""
+        """Returns (expected state, status_info) for the service."""
 
 
 class AlwaysOnService(Service):
     """Service that should always be on."""
 
     def get_expected_state(self):
-        """Service is should always on."""
-        return SERVICE_STATE.ON
+        """AlwaysOnService should always be on."""
+        return (SERVICE_STATE.ON, None)
 
 
 class ServiceUnknownError(Exception):
@@ -252,7 +250,7 @@ class ServiceMonitor:
         services expected state is not ON.
         """
         service = self.getServiceByName(name)
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state, _ = yield maybeDeferred(service.get_expected_state)
         if expected_state != SERVICE_STATE.ON:
             raise ServiceNotOnError(
                 "Service '%s' is not expected to be on, unable to restart." % (
@@ -374,7 +372,7 @@ class ServiceMonitor:
         reach its expected process state based on the service's current
         active state.
         """
-        expected_state = yield maybeDeferred(service.get_expected_state)
+        expected_state, _ = yield maybeDeferred(service.get_expected_state)
         state = yield self.getServiceState(service.name, now=True)
         if state.active_state == expected_state:
             expected_process_state = (

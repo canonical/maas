@@ -8,14 +8,17 @@ __all__ = [
 
 from datetime import timedelta
 
+from maasserver.enum import SERVICE_STATUS
+from maasserver.models.config import Config
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
-from maasserver.models.service import Service
+from maasserver.models.service import Service as ServiceModel
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
+    Service,
     ServiceMonitor,
 )
 from twisted.application.internet import TimerService
@@ -34,11 +37,24 @@ class BIND9Service(AlwaysOnService):
     service_name = "bind9"
 
 
-class ProxyService(AlwaysOnService):
+class ProxyService(Service):
     """Monitored proxy service."""
 
     name = "proxy"
     service_name = "maas-proxy"
+
+    def get_expected_state(self):
+
+        @transactional
+        def db_get_expected_state():
+            if (Config.objects.get_config("enable_http_proxy") and
+                    Config.objects.get_config("http_proxy")):
+                return (SERVICE_STATUS.OFF,
+                        "disabled, alternate proxy is configured in settings.")
+            else:
+                return (SERVICE_STATUS.ON, None)
+
+        return deferToDatabase(db_get_expected_state)
 
 
 # Global service monitor for regiond.
@@ -88,7 +104,7 @@ class ServiceMonitorService(TimerService, object):
         """
         process = RegionControllerProcess.objects.get(id=processId)
         for service in services:
-            Service.objects.update_service_for(
+            ServiceModel.objects.update_service_for(
                 process.region, service["name"],
                 service["status"], service["status_info"])
 

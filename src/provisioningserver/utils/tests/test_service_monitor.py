@@ -46,7 +46,7 @@ from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 
 
-def make_fake_service(expected_state=None):
+def make_fake_service(expected_state=None, status_info=None):
     fake_name = factory.make_name("name")
     fake_service_name = factory.make_name("service")
     if expected_state is None:
@@ -60,7 +60,7 @@ def make_fake_service(expected_state=None):
         service_name = fake_service_name
 
         def get_expected_state(self):
-            return succeed(expected_state)
+            return succeed((expected_state, status_info))
 
     return FakeService()
 
@@ -116,6 +116,18 @@ class TestServiceState(MAASTestCase):
             service)
         self.assertEquals(
             ("off", ""), observed_status)
+
+    @inlineCallbacks
+    def test_get_status_and_status_info_for_returns_service_service_info(self):
+        # Make sure any service_info given by a service gets passed through.
+        status_info = factory.make_string(60, True)
+        active_state = factory.pick_enum(SERVICE_STATE)
+        service = make_fake_service(active_state, status_info)
+        state = ServiceState(active_state, None)
+        observed_status = yield state.get_status_and_status_info_for(
+            service)
+        # Only check status_info - tests above have tested state.
+        self.assertEquals(status_info, observed_status[1])
 
 
 class TestServiceMonitor(MAASTestCase):

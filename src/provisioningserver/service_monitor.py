@@ -27,7 +27,7 @@ class DHCPService(Service):
         The dhcp service always starts as off. Once the rackd starts dhcp
         `expected_state` will be set to ON.
         """
-        return self.expected_state
+        return (self.expected_state, None)
 
     def is_on(self):
         """Return true if the service should be on."""

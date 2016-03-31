@@ -36,7 +36,7 @@ class TestDHCPService(MAASTestCase):
     def test_get_expected_state_returns_from_expected_state(self):
         service = self.make_dhcp_service()
         service.expected_state = sentinel.state
-        self.assertEqual(sentinel.state, service.get_expected_state())
+        self.assertEqual((sentinel.state, None), service.get_expected_state())
 
     def test_is_on_returns_True_when_expected_state_on(self):
         service = self.make_dhcp_service()
@@ -95,7 +95,7 @@ class TestTGTService(MAASTestCase):
 
     def test_get_expected_state(self):
         tgt = TGTService()
-        self.assertEqual(SERVICE_STATE.ON, tgt.get_expected_state())
+        self.assertEqual((SERVICE_STATE.ON, None), tgt.get_expected_state())
 
 
 class TestGlobalServiceMonitor(MAASTestCase):

@@ -609,6 +609,8 @@ class SERVICE_STATUS:
     DEAD = 'dead'
     #: Service is off. (Should be off and is off).
     OFF = 'off'
+    #: Service is on.
+    ON = 'on'
 
 
 SERVICE_STATUS_CHOICES = (
