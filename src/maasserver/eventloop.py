@@ -114,9 +114,9 @@ def make_PostgresListenerService():
     return PostgresListenerService()
 
 
-def make_SystemControllerService(postgresListener, advertisingService):
-    from maasserver.system_controller import SystemControllerService
-    return SystemControllerService(postgresListener, advertisingService)
+def make_RackControllerService(postgresListener, advertisingService):
+    from maasserver.rack_controller import RackControllerService
+    return RackControllerService(postgresListener, advertisingService)
 
 
 def make_ServiceMonitorService(advertisingService):
@@ -228,9 +228,9 @@ class RegionEventLoop:
             "factory": make_ServiceMonitorService,
             "requires": ["rpc-advertise"],
         },
-        "system-controller": {
+        "rack-controller": {
             "only_on_master": False,
-            "factory": make_SystemControllerService,
+            "factory": make_RackControllerService,
             "requires": ["postgres-listener", "rpc-advertise"],
         },
     }

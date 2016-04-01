@@ -1,11 +1,11 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""System controller service.
+"""Rack controller service.
 
-A service that controllers the external services that MAAS runs. Using the
-Postgres listening service, it takes messages from the notifier and performs
-the required actions.
+A service that controllers the external services on a rack controller. Using
+the Postgres listening service, it takes messages from the notifier and
+performs the required actions.
 
 How it works:
     Each regiond process listens for messages from Postgres on channel
@@ -33,7 +33,7 @@ DHCP:
 """
 
 __all__ = [
-    "SystemControllerService",
+    "RackControllerService",
 ]
 
 from functools import partial
@@ -52,14 +52,13 @@ from twisted.application.service import Service
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
-    inlineCallbacks,
     maybeDeferred,
 )
 from twisted.internet.task import LoopingCall
 from twisted.python import log
 
 
-class SystemControllerService(Service):
+class RackControllerService(Service):
     """
     A service that controllers the external services that MAAS runs. Using the
     Postgres listening service, it takes messages from the notifier and
@@ -69,14 +68,14 @@ class SystemControllerService(Service):
     """
 
     def __init__(self, postgresListener, advertisingService, clock=reactor):
-        """Initialise a new `SystemControllerService`.
+        """Initialise a new `RackControllerService`.
 
         :param postgresListener: The `PostgresListenerService` that is running
             in this regiond process.
         :param advertisingService: The `RegionAdvertisingService` that is
             updating the database about this regiond process.
         """
-        super(SystemControllerService, self).__init__()
+        super(RackControllerService, self).__init__()
         self.clock = clock
         self.starting = None
         self.processing = LoopingCall(self.process)
@@ -89,7 +88,7 @@ class SystemControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def startService(self):
         """Start listening for messages."""
-        super(SystemControllerService, self).startService()
+        super(RackControllerService, self).startService()
 
         def cb_registerWithPostgres(processId):
             # Register the coreHandler with postgres.
@@ -136,7 +135,7 @@ class SystemControllerService(Service):
     @asynchronous(timeout=FOREVER)
     def stopService(self):
         """Close the controller."""
-        super(SystemControllerService, self).stopService()
+        super(RackControllerService, self).stopService()
 
         def cleanUp():
             # Unregister the core handler.
@@ -218,19 +217,9 @@ class SystemControllerService(Service):
                     rack_id))
             return d
 
-    @inlineCallbacks
     def processDHCP(self, rack_id):
         """Process DHCP for the rack controller."""
-        rack_controller = yield deferToDatabase(
+        d = deferToDatabase(
             transactional(RackController.objects.get), id=rack_id)
-
-        try:
-            yield dhcp.configure_dhcp(rack_controller)
-        except Exception as exc:
-            log.err(
-                "Error configuring DHCP on rack controller '%s': %s" % (
-                    rack_controller.system_id, exc))
-        else:
-            log.msg(
-                "Successfully configured DHCP on rack controller '%s'." % (
-                    rack_controller.system_id))
+        d.addCallback(dhcp.configure_dhcp)
+        return d

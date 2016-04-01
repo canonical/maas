@@ -13,10 +13,10 @@ from maasserver import (
     bootresources,
     eventloop,
     nonces_cleanup,
+    rack_controller,
     region_controller,
     service_monitor,
     status_monitor,
-    system_controller,
     webapp,
 )
 from maasserver.eventloop import DEFAULT_PORT
@@ -274,21 +274,21 @@ class TestFactories(MAASTestCase):
         self.assertFalse(
             eventloop.loop.factories["web"]["only_on_master"])
 
-    def test_make_SystemControllerService(self):
-        service = eventloop.make_SystemControllerService(
+    def test_make_RackControllerService(self):
+        service = eventloop.make_RackControllerService(
             FakePostgresListenerService(), sentinel.rpc_advertise)
         self.assertThat(service, IsInstance(
-            system_controller.SystemControllerService))
+            rack_controller.RackControllerService))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
-            eventloop.make_SystemControllerService,
-            eventloop.loop.factories["system-controller"]["factory"])
+            eventloop.make_RackControllerService,
+            eventloop.loop.factories["rack-controller"]["factory"])
         # Has a dependency of postgres-listener and rpc-advertise.
         self.assertEquals(
             ["postgres-listener", "rpc-advertise"],
-            eventloop.loop.factories["system-controller"]["requires"])
+            eventloop.loop.factories["rack-controller"]["requires"])
         self.assertFalse(
-            eventloop.loop.factories["system-controller"]["only_on_master"])
+            eventloop.loop.factories["rack-controller"]["only_on_master"])
 
     def test_make_ServiceMonitorService(self):
         service = eventloop.make_ServiceMonitorService(

@@ -13,12 +13,14 @@ from maasserver import dhcp
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    SERVICE_STATUS,
 )
 from maasserver.exceptions import DHCPConfigurationError
 from maasserver.models import (
     Config,
     DHCPSnippet,
     Domain,
+    Service,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
@@ -37,7 +39,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from maastesting.twisted import always_succeed_with
+from maastesting.twisted import (
+    always_fail_with,
+    always_succeed_with,
+)
 from mock import ANY
 from netaddr import (
     IPAddress,
@@ -47,10 +52,12 @@ from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
 )
+from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from testtools.matchers import (
     ContainsAll,
     Equals,
     IsInstance,
+    MatchesStructure,
 )
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -1346,21 +1353,22 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         return cluster, cluster.ConfigureDHCPv4, cluster.ConfigureDHCPv6
 
     @transactional
-    def create_rack_controller(self):
+    def create_rack_controller(self, dhcp_on=True):
         """Create a `rack_controller` in a state that will call both
         `ConfigureDHCPv4` and `ConfigureDHCPv6` with data."""
         primary_rack = factory.make_RackController(interface=False)
         secondary_rack = factory.make_RackController(interface=False)
 
         vlan = factory.make_VLAN(
-            dhcp_on=True, primary_rack=primary_rack,
+            dhcp_on=dhcp_on, primary_rack=primary_rack,
             secondary_rack=secondary_rack)
         primary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
         secondary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
 
-        subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(
+            vlan=vlan, unmanaged=(not dhcp_on))
         subnet_v6 = factory.make_Subnet(
             vlan=vlan, cidr="fd38:c341:27da:c831::/64")
         factory.make_IPRange(
@@ -1456,3 +1464,92 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
         self.assertThat(ipv4_stub, MockNotCalled())
         self.assertThat(ipv6_stub, MockNotCalled())
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__updates_service_status_running_both_ipv4_and_ipv6(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        rack_controller, _ = yield deferToDatabase(
+            self.create_rack_controller)
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller)
+        ipv4_stub.side_effect = always_succeed_with({})
+        ipv6_stub.side_effect = always_succeed_with({})
+
+        yield dhcp.configure_dhcp(rack_controller)
+
+        @transactional
+        def service_status_updated():
+            dhcpv4_service = Service.objects.get(
+                node=rack_controller, name="dhcpd")
+            self.assertThat(
+                dhcpv4_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.RUNNING, status_info=""))
+            dhcpv6_service = Service.objects.get(
+                node=rack_controller, name="dhcpd6")
+            self.assertThat(
+                dhcpv6_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.RUNNING, status_info=""))
+        yield deferToDatabase(service_status_updated)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__updates_service_status_off_both_ipv4_and_ipv6(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        rack_controller, _ = yield deferToDatabase(
+            self.create_rack_controller, dhcp_on=False)
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller)
+        ipv4_stub.side_effect = always_succeed_with({})
+        ipv6_stub.side_effect = always_succeed_with({})
+
+        yield dhcp.configure_dhcp(rack_controller)
+
+        @transactional
+        def service_status_updated():
+            dhcpv4_service = Service.objects.get(
+                node=rack_controller, name="dhcpd")
+            self.assertThat(
+                dhcpv4_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.OFF, status_info=""))
+            dhcpv6_service = Service.objects.get(
+                node=rack_controller, name="dhcpd6")
+            self.assertThat(
+                dhcpv6_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.OFF, status_info=""))
+        yield deferToDatabase(service_status_updated)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__updates_service_status_dead_both_ipv4_and_ipv6(self):
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        rack_controller, _ = yield deferToDatabase(
+            self.create_rack_controller, dhcp_on=False)
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller)
+        ipv4_exc = factory.make_name("ipv4_failure")
+        ipv4_stub.side_effect = always_fail_with(CannotConfigureDHCP(ipv4_exc))
+        ipv6_exc = factory.make_name("ipv6_failure")
+        ipv6_stub.side_effect = always_fail_with(CannotConfigureDHCP(ipv6_exc))
+
+        yield dhcp.configure_dhcp(rack_controller)
+
+        @transactional
+        def service_status_updated():
+            dhcpv4_service = Service.objects.get(
+                node=rack_controller, name="dhcpd")
+            self.assertThat(
+                dhcpv4_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.DEAD, status_info=ipv4_exc))
+            dhcpv6_service = Service.objects.get(
+                node=rack_controller, name="dhcpd6")
+            self.assertThat(
+                dhcpv6_service,
+                MatchesStructure.byEquality(
+                    status=SERVICE_STATUS.DEAD, status_info=ipv6_exc))
+        yield deferToDatabase(service_status_updated)

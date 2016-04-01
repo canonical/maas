@@ -16,6 +16,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    SERVICE_STATUS,
 )
 from maasserver.exceptions import (
     DHCPConfigurationError,
@@ -25,6 +26,7 @@ from maasserver.models import (
     Config,
     DHCPSnippet,
     Domain,
+    Service,
     StaticIPAddress,
 )
 from maasserver.rpc import getClientFor
@@ -41,6 +43,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.internet.defer import inlineCallbacks
+from twisted.python import log
 
 
 def get_omapi_key():
@@ -510,13 +513,65 @@ def configure_dhcp(rack_controller):
     ]
 
     # Configure both IPv4 and IPv6.
-    yield client(
-        ConfigureDHCPv4, omapi_key=omapi_key,
-        failover_peers=failover_peers_v4, shared_networks=shared_networks_v4,
-        hosts=hosts_v4, interfaces=interfaces_v4,
-        global_dhcp_snippets=global_dhcp_snippets)
-    yield client(
-        ConfigureDHCPv6, omapi_key=omapi_key,
-        failover_peers=failover_peers_v6, shared_networks=shared_networks_v6,
-        hosts=hosts_v6, interfaces=interfaces_v6,
-        global_dhcp_snippets=global_dhcp_snippets)
+    ipv4_exc, ipv6_exc = None, None
+    ipv4_status, ipv6_status = SERVICE_STATUS.UNKNOWN, SERVICE_STATUS.UNKNOWN
+    try:
+        yield client(
+            ConfigureDHCPv4, omapi_key=omapi_key,
+            failover_peers=failover_peers_v4,
+            shared_networks=shared_networks_v4,
+            hosts=hosts_v4, interfaces=interfaces_v4,
+            global_dhcp_snippets=global_dhcp_snippets)
+    except Exception as exc:
+        ipv4_exc = exc
+        ipv4_status = SERVICE_STATUS.DEAD
+        log.err(
+            "Error configuring DHCPv4 on rack controller '%s': %s" % (
+                rack_controller.system_id, exc))
+    else:
+        if len(shared_networks_v4) > 0:
+            ipv4_status = SERVICE_STATUS.RUNNING
+        else:
+            ipv4_status = SERVICE_STATUS.OFF
+        log.msg(
+            "Successfully configured DHCPv4 on rack controller '%s'." % (
+                rack_controller.system_id))
+    try:
+        yield client(
+            ConfigureDHCPv6, omapi_key=omapi_key,
+            failover_peers=failover_peers_v6,
+            shared_networks=shared_networks_v6,
+            hosts=hosts_v6, interfaces=interfaces_v6,
+            global_dhcp_snippets=global_dhcp_snippets)
+    except Exception as exc:
+        ipv6_exc = exc
+        ipv6_status = SERVICE_STATUS.DEAD
+        log.err(
+            "Error configuring DHCPv4 on rack controller '%s': %s" % (
+                rack_controller.system_id, exc))
+    else:
+        if len(shared_networks_v6) > 0:
+            ipv6_status = SERVICE_STATUS.RUNNING
+        else:
+            ipv6_status = SERVICE_STATUS.OFF
+        log.msg(
+            "Successfully configured DHCPv4 on rack controller '%s'." % (
+                rack_controller.system_id))
+
+    # Update the status for both services so the user is always seeing the
+    # most up to date status.
+    @transactional
+    def update_services():
+        if ipv4_exc is None:
+            ipv4_status_info = ""
+        else:
+            ipv4_status_info = str(ipv4_exc)
+        if ipv6_exc is None:
+            ipv6_status_info = ""
+        else:
+            ipv6_status_info = str(ipv6_exc)
+        Service.objects.update_service_for(
+            rack_controller, "dhcpd", ipv4_status, ipv4_status_info)
+        Service.objects.update_service_for(
+            rack_controller, "dhcpd6", ipv6_status, ipv6_status_info)
+    yield deferToDatabase(update_services)
