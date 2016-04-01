@@ -31,6 +31,7 @@ from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import MAASTestCase
+from mock import ANY
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -54,6 +55,17 @@ class TestMAASDispatcher(MAASTestCase):
         url = "file://%s" % self.make_file(contents=contents)
         self.assertEqual(
             contents, MAASDispatcher().dispatch_query(url, {}).read())
+
+    def test_dispatch_query_encodes_string_data(self):
+        # urllib, used by MAASDispatcher, requires data encoded into bytes. We
+        # encode into utf-8 in dispatch_query if necessary.
+        request = self.patch(urllib.request.Request, '__init__')
+        urlopen = self.patch(urllib.request, 'urlopen')
+        url = factory.make_url()
+        data = factory.make_string(300, spaces=True)
+        MAASDispatcher().dispatch_query(url, {}, method="POST", data=data)
+        request.assert_called_once_with(ANY, url, bytes(data, "utf-8"), ANY)
+        urlopen.assert_called_once_with(ANY)
 
     def test_request_from_http(self):
         # We can't just call self.make_file because HTTPServerFixture will only

@@ -62,7 +62,7 @@ class NoAuth:
 
 
 class RequestWithMethod(urllib.request.Request):
-    """Enhances urllib2.Request so an http method can be supplied."""
+    """Enhances urllib.Request so an http method can be supplied."""
     def __init__(self, *args, **kwargs):
         self._method = kwargs.pop('method', None)
         urllib.request.Request.__init__(self, *args, **kwargs)
@@ -105,6 +105,9 @@ class MAASDispatcher:
         else:
             set_accept_encoding = True
             headers['Accept-encoding'] = 'gzip'
+        # Encode 'non-bytes' data into utf-8 bytes as required by urllib.
+        if data is not None and not isinstance(data, bytes):
+            data = bytes(data, 'utf-8')
         req = RequestWithMethod(request_url, data, headers, method=method)
         res = urllib.request.urlopen(req)
         # If we set the Accept-encoding header, then we decode the header for
