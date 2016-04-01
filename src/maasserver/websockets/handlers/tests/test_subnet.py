@@ -27,6 +27,7 @@ class TestSubnetHandler(MAASServerTestCase):
             "vlan": subnet.vlan_id,
             "space": subnet.space_id,
             "rdns_mode": subnet.rdns_mode,
+            "allow_proxy": subnet.allow_proxy,
             "cidr": subnet.cidr,
             "gateway_ip": subnet.gateway_ip,
         }

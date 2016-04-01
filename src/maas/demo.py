@@ -27,6 +27,9 @@ DNS_CONNECT = True
 # Connect to the DHCP server. TODO: Use the signals manager instead.
 DHCP_CONNECT = True
 
+# Connect to the PROXY server. TODO: Use the signals manager instead.
+PROXY_CONNECT = True
+
 MAAS_CLI = abspath("bin/maas-region")
 
 # For demo purposes, give nodes unauthenticated access to their metadata

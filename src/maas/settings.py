@@ -78,6 +78,11 @@ DNS_CONNECT = True
 # machinery. TODO: Use the signals manager instead.
 DHCP_CONNECT = True
 
+# Should the PROXY features be enabled?  Having this config option is a
+# debugging/testing feature to be able to quickly disconnect the PROXY
+# machinery. TODO: Use the signals manager instead.
+PROXY_CONNECT = True
+
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas-region'
 

@@ -880,6 +880,21 @@ DNS_CONFIG_UPDATE = dedent("""\
     """)
 
 
+# Triggered when a subnet is updated. Increments notifies that proxy needs to
+# be updated. Only watches changes on the cidr and allow_proxy.
+PROXY_SUBNET_UPDATE = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_proxy_subnet_update()
+    RETURNS trigger as $$
+    BEGIN
+      IF OLD.cidr != NEW.cidr OR OLD.allow_proxy != NEW.allow_proxy THEN
+        PERFORM pg_notify('sys_proxy', '');
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_sys_dns_procedure(proc_name, on_delete=False):
     """Render a database procedure with name `proc_name` that increments
     the zone serial and notifies that a DNS update is needed.
@@ -893,6 +908,23 @@ def render_sys_dns_procedure(proc_name, on_delete=False):
           -- Increment the zone serial.
           PERFORM nextval('maasserver_zone_serial_seq');
           PERFORM pg_notify('sys_dns', '');
+          RETURN %s;
+        END;
+        $$ LANGUAGE plpgsql;
+        """ % (proc_name, 'NEW' if not on_delete else 'OLD'))
+
+
+def render_sys_proxy_procedure(proc_name, on_delete=False):
+    """Render a database procedure with name `proc_name` that notifies that a
+    proxy update is needed.
+
+    :param proc_name: Name of the procedure.
+    :param on_delete: True when procedure will be used as a delete trigger.
+    """
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_notify('sys_proxy', '');
           RETURN %s;
         END;
         $$ LANGUAGE plpgsql;
@@ -1115,3 +1147,21 @@ def register_system_triggers():
         "maasserver_config", "sys_dns_config_insert", "insert")
     register_trigger(
         "maasserver_config", "sys_dns_config_update", "update")
+
+    # Proxy
+
+    ## Subnet
+    register_procedure(
+        render_sys_proxy_procedure("sys_proxy_subnet_insert"))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_proxy_subnet_insert", "insert")
+    register_procedure(PROXY_SUBNET_UPDATE)
+    register_trigger(
+        "maasserver_subnet",
+        "sys_proxy_subnet_update", "update")
+    register_procedure(
+        render_sys_proxy_procedure("sys_proxy_subnet_delete", on_delete=True))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_proxy_subnet_delete", "delete")

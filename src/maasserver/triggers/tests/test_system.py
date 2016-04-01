@@ -50,11 +50,17 @@ class TestTriggers(MAASServerTestCase):
             "dnsdata_sys_dns_dnsdata_insert",
             "dnsdata_sys_dns_dnsdata_update",
             "dnsdata_sys_dns_dnsdata_delete",
+            "subnet_sys_dns_subnet_insert",
+            "subnet_sys_dns_subnet_update",
+            "subnet_sys_dns_subnet_delete",
             "node_sys_dns_node_update",
             "node_sys_dns_node_delete",
             "interface_sys_dns_interface_update",
             "config_sys_dns_config_insert",
             "config_sys_dns_config_update",
+            "subnet_sys_proxy_subnet_insert",
+            "subnet_sys_proxy_subnet_update",
+            "subnet_sys_proxy_subnet_delete",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:

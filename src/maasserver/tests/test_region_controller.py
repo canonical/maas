@@ -12,16 +12,22 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from mock import (
     ANY,
+    call,
     MagicMock,
     sentinel,
 )
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+    succeed,
+)
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -45,14 +51,24 @@ class TestRegionControllerService(MAASServerTestCase):
         service.startService()
         self.assertThat(
             listener.register,
-            MockCalledOnceWith("sys_dns", service.markDNSForUpdate))
+            MockCallsMatch(
+                call("sys_dns", service.markDNSForUpdate),
+                call("sys_proxy", service.markProxyForUpdate)))
 
-    def test_startService_sets_needsDNSUpdate_calls_startProcessing(self):
+    def test_startService_calls_markDNSForUpdate(self):
         listener = MagicMock()
         service = RegionControllerService(listener)
         mock_markDNSForUpdate = self.patch(service, "markDNSForUpdate")
         service.startService()
         self.assertThat(mock_markDNSForUpdate, MockCalledOnceWith(None, None))
+
+    def test_startService_calls_markProxyForUpdate(self):
+        listener = MagicMock()
+        service = RegionControllerService(listener)
+        mock_markProxyForUpdate = self.patch(service, "markProxyForUpdate")
+        service.startService()
+        self.assertThat(
+            mock_markProxyForUpdate, MockCalledOnceWith(None, None))
 
     def test_stopService_calls_unregister_on_the_listener(self):
         listener = MagicMock()
@@ -60,7 +76,9 @@ class TestRegionControllerService(MAASServerTestCase):
         service.stopService()
         self.assertThat(
             listener.unregister,
-            MockCalledOnceWith("sys_dns", service.markDNSForUpdate))
+            MockCallsMatch(
+                call("sys_dns", service.markDNSForUpdate),
+                call("sys_proxy", service.markProxyForUpdate)))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -71,12 +89,20 @@ class TestRegionControllerService(MAASServerTestCase):
         yield service.stopService()
         self.assertIsNone(service.processingDefer)
 
-    def test_markDNSForUpdate_sets_needsDNSUpdate_and_starts_processing(self):
+    def test_markDNSForUpdate_sets_needsDNSUpdate_and_starts_process(self):
         listener = MagicMock()
         service = RegionControllerService(listener)
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markDNSForUpdate(None, None)
         self.assertTrue(service.needsDNSUpdate)
+        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+
+    def test_markProxyForUpdate_sets_needsProxyUpdate_and_starts_process(self):
+        listener = MagicMock()
+        service = RegionControllerService(listener)
+        mock_startProcessing = self.patch(service, "startProcessing")
+        service.markProxyForUpdate(None, None)
+        self.assertTrue(service.needsProxyUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_startProcessing_doesnt_call_start_when_looping_call_running(self):
@@ -107,6 +133,17 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_process_doesnt_proxy_update_config_when_nothing_to_process(self):
+        service = RegionControllerService(sentinel.listener)
+        service.needsProxyUpdate = False
+        mock_proxy_update_config = self.patch(
+            region_controller, "proxy_update_config")
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(mock_proxy_update_config, MockNotCalled())
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_process_stops_processing(self):
         service = RegionControllerService(sentinel.listener)
         service.needsDNSUpdate = False
@@ -132,6 +169,24 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_process_updates_proxy(self):
+        service = RegionControllerService(sentinel.listener)
+        service.needsProxyUpdate = True
+        mock_proxy_update_config = self.patch(
+            region_controller, "proxy_update_config")
+        mock_proxy_update_config.return_value = succeed(None)
+        mock_msg = self.patch(
+            region_controller.log, "msg")
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(
+            mock_proxy_update_config, MockCalledOnceWith(reload_proxy=True))
+        self.assertThat(
+            mock_msg,
+            MockCalledOnceWith("Successfully configured proxy."))
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_process_updates_zones_logs_failure(self):
         service = RegionControllerService(sentinel.listener)
         service.needsDNSUpdate = True
@@ -146,3 +201,39 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertThat(
             mock_err,
             MockCalledOnceWith(ANY, "Failed configuring DNS."))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_updates_proxy_logs_failure(self):
+        service = RegionControllerService(sentinel.listener)
+        service.needsProxyUpdate = True
+        mock_proxy_update_config = self.patch(
+            region_controller, "proxy_update_config")
+        mock_proxy_update_config.return_value = fail(factory.make_exception())
+        mock_err = self.patch(
+            region_controller.log, "err")
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(
+            mock_proxy_update_config, MockCalledOnceWith(reload_proxy=True))
+        self.assertThat(
+            mock_err,
+            MockCalledOnceWith(ANY, "Failed configuring proxy."))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_process_updates_bind_and_proxy(self):
+        service = RegionControllerService(sentinel.listener)
+        service.needsDNSUpdate = True
+        service.needsProxyUpdate = True
+        mock_dns_update_all_zones = self.patch(
+            region_controller, "dns_update_all_zones")
+        mock_proxy_update_config = self.patch(
+            region_controller, "proxy_update_config")
+        mock_proxy_update_config.return_value = succeed(None)
+        service.startProcessing()
+        yield service.processingDefer
+        self.assertThat(
+            mock_dns_update_all_zones, MockCalledOnceWith())
+        self.assertThat(
+            mock_proxy_update_config, MockCalledOnceWith(reload_proxy=True))

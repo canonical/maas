@@ -33,6 +33,10 @@ DNS_CONNECT = False
 # basis. TODO: Use the signals manager instead.
 DHCP_CONNECT = False
 
+# Don't setup PROXY servers in tests, this will be enabled on a case per case
+# basis. TODO: Use the signals manager instead.
+PROXY_CONNECT = False
+
 # Invalid strings should be visible.
 TEMPLATE_STRING_IF_INVALID = '#### INVALID STRING ####'
 

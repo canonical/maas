@@ -1,7 +1,4 @@
 ; Zone file modified: {{modified}}.
-; Note that the modification time of this file doesn't reflect
-; the actual modification time.  MAAS controls the modification time
-; of this file to be able to force the zone to be reloaded by BIND.
 $TTL {{ttl}}
 @   IN    SOA {{domain}}. nobody.example.com. (
               {{serial}} ; serial

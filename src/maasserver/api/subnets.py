@@ -27,6 +27,7 @@ DISPLAYED_SUBNET_FIELDS = (
     'gateway_ip',
     'dns_servers',
     'rdns_mode',
+    'allow_proxy',
 )
 
 
@@ -68,6 +69,8 @@ class SubnetsHandler(OperationsHandler):
             with the appropriate CNAME resource records for the network, if the
             network is small enough to require the support described in
             RFC2317.
+        :param allow_proxy: Configure maas-proxy to allow requests from this
+            subnet.
         :param dns_servers: Comma-seperated list of DNS servers for this
             subnet.
         """
@@ -120,6 +123,8 @@ class SubnetHandler(OperationsHandler):
         :param cidr: The network CIDR for this subnet.
         :param gateway_ip: The gateway IP address for this subnet.
         :param rdns_mode: How reverse DNS is handled for this subnet.
+        :param allow_proxy: Configure maas-proxy to allow requests from this \
+            subnet.
         :param dns_servers: Comma-seperated list of DNS servers for this \
             subnet.
 

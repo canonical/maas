@@ -2966,3 +2966,79 @@ class TestDNSConfigListener(
             yield self.assertZoneSerialIncrement(zone_serial)
         finally:
             yield listener.stopService()
+
+
+class TestProxySubnetListener(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test for the proxy triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_insert(self):
+        yield deferToDatabase(register_system_triggers)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.create_subnet)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_cidr_update(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            network = factory.make_ip4_or_6_network()
+            yield deferToDatabase(self.update_subnet, subnet.id, {
+                "cidr": str(network.cidr),
+                "gateway_ip": factory.pick_ip_in_network(network),
+                "dns_servers": [],
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_allow_proxy_update(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(
+            self.create_subnet, {"allow_proxy": False})
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.update_subnet, subnet.id, {
+                "allow_proxy": True,
+            })
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_subnet_delete(self):
+        yield deferToDatabase(register_system_triggers)
+        subnet = yield deferToDatabase(self.create_subnet)
+        dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_subnet, subnet.id)
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()

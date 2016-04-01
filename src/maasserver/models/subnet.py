@@ -16,6 +16,7 @@ from django.core.exceptions import (
 )
 from django.core.validators import RegexValidator
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
     IntegerField,
@@ -349,6 +350,9 @@ class Subnet(CleanSave, TimestampedModel):
 
     dns_servers = ArrayField(
         TextField(), blank=True, editable=True, null=True, default=list)
+
+    allow_proxy = BooleanField(
+        editable=True, blank=False, null=False, default=True)
 
     def get_ipnetwork(self):
         return IPNetwork(self.cidr)
