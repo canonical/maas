@@ -17,10 +17,10 @@ from maasserver.service_monitor import (
     service_monitor,
     ServiceMonitorService,
 )
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -112,6 +112,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
             Traceback (most recent call last):
             ...""", logger.output)
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_updates_services_in_database(self):
         # Pretend we're in a production environment.
@@ -146,6 +147,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
                 name=service.name, status=SERVICE_STATUS.RUNNING,
                 status_info=""))
 
+    @wait_for_reactor
     @inlineCallbacks
     def test__buildServices_builds_services_list(self):
         monitor_service = ServiceMonitorService(
@@ -171,35 +173,55 @@ class TestProxyService(MAASTransactionServerTestCase):
             service_name = factory.make_name("service")
         return FakeProxyService()
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_off_and_unset(self):
         service = self.make_proxy_service()
-        Config.objects.set_config("enable_http_proxy", False)
-        Config.objects.set_config("http_proxy", "")
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", False)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", "")
         expected_state = yield maybeDeferred(service.get_expected_state)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_off_and_set(self):
         service = self.make_proxy_service()
-        Config.objects.set_config("enable_http_proxy", False)
-        Config.objects.set_config("http_proxy", factory.make_url())
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", False)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", factory.make_url())
         expected_state = yield maybeDeferred(service.get_expected_state)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_on_but_unset(self):
         service = self.make_proxy_service()
-        Config.objects.set_config("enable_http_proxy", True)
-        Config.objects.set_config("http_proxy", "")
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", "")
         expected_state = yield maybeDeferred(service.get_expected_state)
         self.assertEqual((SERVICE_STATUS.ON, None), expected_state)
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_off_for_proxy_on_and_set(self):
         service = self.make_proxy_service()
-        Config.objects.set_config("enable_http_proxy", True)
-        Config.objects.set_config("http_proxy", factory.make_url())
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy", True)
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "http_proxy", factory.make_url())
         expected_state = yield maybeDeferred(service.get_expected_state)
         self.assertEqual(
             (SERVICE_STATUS.OFF,
