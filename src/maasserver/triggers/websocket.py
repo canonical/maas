@@ -1397,3 +1397,20 @@ def register_websocket_triggers():
         "maasserver_sslkey", "user_sslkey_link_notify", "insert")
     register_trigger(
         "maasserver_sslkey", "user_sslkey_unlink_notify", "delete")
+
+    # DHCPSnippet table
+    register_procedure(
+        render_notification_procedure(
+            'dhcpsnippet_create_notify', 'dhcpsnippet_create', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'dhcpsnippet_update_notify', 'dhcpsnippet_update', 'NEW.id'))
+    register_procedure(
+        render_notification_procedure(
+            'dhcpsnippet_delete_notify', 'dhcpsnippet_delete', 'OLD.id'))
+    register_trigger(
+        "maasserver_dhcpsnippet", "dhcpsnippet_create_notify", "insert")
+    register_trigger(
+        "maasserver_dhcpsnippet", "dhcpsnippet_update_notify", "update")
+    register_trigger(
+        "maasserver_dhcpsnippet", "dhcpsnippet_delete_notify", "delete")

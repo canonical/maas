@@ -85,6 +85,9 @@ class TestTriggers(MAASServerTestCase):
             "vlan_vlan_machine_update_notify",
             "staticipaddress_ipaddress_machine_update_notify",
             "staticipaddress_ipaddress_subnet_update_notify",
+            "dhcpsnippet_dhcpsnippet_create_notify",
+            "dhcpsnippet_dhcpsnippet_update_notify",
+            "dhcpsnippet_dhcpsnippet_delete_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
