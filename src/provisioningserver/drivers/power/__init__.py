@@ -177,7 +177,7 @@ def get_error_message(err):
     elif isinstance(err, PowerActionError):
         return "Failed to complete power action: %s" % err
     else:
-        return "Failed talking to node's BMC for an unknown reason."
+        return "Failed talking to node's BMC: %s" % err
 
 
 class PowerDriver(PowerDriverBase):

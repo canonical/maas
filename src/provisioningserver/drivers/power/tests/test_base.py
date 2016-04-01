@@ -220,8 +220,8 @@ class TestGetErrorMessage(MAASTestCase):
             message="Failed to complete power action: action",
             )),
         ('unknown', dict(
-            exception=PowerError(),
-            message="Failed talking to node's BMC for an unknown reason.",
+            exception=PowerError('unknown error'),
+            message="Failed talking to node's BMC: unknown error",
             )),
     ]
 
