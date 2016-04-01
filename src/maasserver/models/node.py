@@ -2906,8 +2906,15 @@ class Node(CleanSave, TimestampedModel):
         # Check if the BMC is accessible. If not we need to do some work to
         # make sure we can determine which rack controller can power
         # control this node.
+        def is_bmc_accessible():
+            if self.bmc is None:
+                raise PowerProblem(
+                    "No BMC is defined.  Cannot power control node.")
+            else:
+                return self.bmc.is_accessible()
+
         defer.addCallback(
-            lambda _: deferToDatabase(transactional(self.bmc.is_accessible)))
+            lambda _: deferToDatabase(transactional(is_bmc_accessible)))
 
         def cb_update_routable_racks(accessible):
             if not accessible:

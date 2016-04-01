@@ -7,6 +7,7 @@ __all__ = []
 
 from crochet import wait_for
 from maasserver.enum import POWER_STATE
+from maasserver.exceptions import PowerProblem
 from maasserver.models.node import Node
 from maasserver.models.signals import power
 from maasserver.node_status import (
@@ -93,16 +94,25 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         power_state = yield power.update_power_state_of_node(node.system_id)
         self.assertEqual(power_state, POWER_STATE.ON)
 
-    def test__raises_failure_for_Node_DoesNotExist(self):
+    def test__traps_failure_for_Node_DoesNotExist(self):
         self.assertIsNone(power.update_power_state_of_node(
             factory.make_name('system_id')))
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__raises_failure_for_UnknownPowerType(self):
+    def test__traps_failure_for_UnknownPowerType(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
         mock_node_objects_get = self.patch(Node.objects, "get")
         mock_node_objects_get.side_effect = UnknownPowerType()
+        power_state = yield power.update_power_state_of_node(node.system_id)
+        self.assertIsNone(power_state)
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__traps_failure_for_PowerProblem(self):
+        node = yield deferToDatabase(transactional(factory.make_Node))
+        mock_node_objects_get = self.patch(Node.objects, "get")
+        mock_node_objects_get.side_effect = PowerProblem()
         power_state = yield power.update_power_state_of_node(node.system_id)
         self.assertIsNone(power_state)
 
