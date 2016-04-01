@@ -45,7 +45,7 @@ failover peer "{{failover_peer["name"]}}" {
 {{for shared_network in shared_networks}}
 shared-network {{shared_network["name"]}} {
     {{for dhcp_subnet in shared_network["subnets"]}}
-    subnet6 {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
+    subnet6 {{dhcp_subnet['subnet_cidr']}} {
            ignore-client-uids true;
            {{if dhcp_subnet.get('dns_servers')}}
            option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};

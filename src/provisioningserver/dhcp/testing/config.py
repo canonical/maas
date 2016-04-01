@@ -40,7 +40,7 @@ def make_dhcp_snippets(allow_empty=True):
 
 def make_host(
         hostname=None, interface_name=None,
-        mac_address=None, ip=None, dhcp_snippets=None):
+        mac_address=None, ip=None, ipv6=False, dhcp_snippets=None):
     """Return a host entry for a subnet from network."""
     if hostname is None:
         hostname = factory.make_name("host")
@@ -49,7 +49,10 @@ def make_host(
     if mac_address is None:
         mac_address = factory.make_mac_address()
     if ip is None:
-        ip = str(factory.make_ipv4_address())
+        if ipv6 is True:
+            ip = str(factory.make_ipv6_address())
+        else:
+            ip = str(factory.make_ipv4_address())
     if dhcp_snippets is None:
         dhcp_snippets = make_dhcp_snippets()
     return {
@@ -60,10 +63,14 @@ def make_host(
     }
 
 
-def make_subnet_config(network=None, pools=None, dhcp_snippets=None):
+def make_subnet_config(network=None, pools=None, ipv6=False,
+                       dhcp_snippets=None):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
-        network = factory.make_ipv4_network()
+        if ipv6 is True:
+            network = factory.make_ipv6_network()
+        else:
+            network = factory.make_ipv4_network()
     if pools is None:
         pools = [make_subnet_pool(network)]
     if dhcp_snippets is None:
@@ -82,13 +89,13 @@ def make_subnet_config(network=None, pools=None, dhcp_snippets=None):
         }
 
 
-def make_shared_network(name=None, subnets=None):
+def make_shared_network(name=None, subnets=None, ipv6=False):
     """Return complete DHCP configuration dict for a shared network."""
     if name is None:
         name = factory.make_name("vlan")
     if subnets is None:
         subnets = [
-            make_subnet_config()
+            make_subnet_config(ipv6=ipv6)
             for _ in range(3)
         ]
     return {

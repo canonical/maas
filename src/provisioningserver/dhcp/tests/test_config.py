@@ -62,19 +62,19 @@ sample_template = dedent("""\
 """)
 
 
-def make_sample_params(hosts=None):
+def make_sample_params(hosts=None, ipv6=False):
     """Return a dict of arbitrary DHCP configuration parameters."""
     failover_peers = [
         make_failover_peer_config()
         for _ in range(3)
     ]
     shared_networks = [
-        make_shared_network()
+        make_shared_network(ipv6=ipv6)
         for _ in range(3)
     ]
     if hosts is None:
         hosts = [
-            make_host()
+            make_host(ipv6=ipv6)
             for _ in range(3)
         ]
     return {
@@ -89,6 +89,11 @@ def make_sample_params(hosts=None):
 class TestGetConfig(PservTestCase):
     """Tests for `get_config`."""
 
+    scenarios = [
+        ("v4", dict(template='dhcpd.conf.template', ipv6=False)),
+        ("v6", dict(template='dhcpd6.conf.template', ipv6=True)),
+    ]
+
     def patch_template(self, name=None, template_content=sample_template):
         """Patch the DHCP config template with the given contents.
 
@@ -97,7 +102,7 @@ class TestGetConfig(PservTestCase):
         code being tested.
         """
         if name is None:
-            name = 'dhcpd.conf.template'
+            name = self.template
         fake_root = self.make_dir()
         template_dir = path.join(fake_root, 'templates', 'dhcp')
         makedirs(template_dir)
@@ -106,30 +111,29 @@ class TestGetConfig(PservTestCase):
         self.patch(config, 'locate_template').return_value = template
         return tempita.Template(template_content, name=template)
 
-    def test__uses_branch_template_by_default(self):
-        # Since the branch comes with dhcp templates in etc/maas, we can
-        # instantiate those templates without any hackery.
-        self.assertIsNotNone(
-            config.get_config('dhcpd.conf.template', **make_sample_params()))
-        self.assertIsNotNone(
-            config.get_config('dhcpd6.conf.template', **make_sample_params()))
-
     def test__substitutes_parameters(self):
         template_name = factory.make_name('template')
         template = self.patch_template(name=template_name)
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         self.assertEqual(
             template.substitute(params),
             config.get_config(template_name, **params))
 
+    def test__uses_branch_template_by_default(self):
+        # Since the branch comes with dhcp templates in etc/maas, we can
+        # instantiate those templates without any hackery.
+        self.assertIsNotNone(
+            config.get_config(
+                self.template, **make_sample_params(ipv6=self.ipv6)))
+
     def test__complains_if_too_few_parameters(self):
         template = self.patch_template()
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         del params['shared_networks'][0]['subnets'][0]['subnet']
 
         e = self.assertRaises(
             config.DHCPConfigError,
-            config.get_config, 'dhcpd.conf.template', **params)
+            config.get_config, self.template, **params)
 
         tbe = traceback.TracebackException.from_exception(e)
         self.assertDocTestMatches(
@@ -152,14 +156,14 @@ class TestGetConfig(PservTestCase):
         )
 
     def test__includes_compose_conditional_bootloader(self):
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         bootloader = config.compose_conditional_bootloader()
         self.assertThat(
-            config.get_config('dhcpd.conf.template', **params),
+            config.get_config(self.template, **params),
             Contains(bootloader))
 
     def test__renders_without_ntp_servers_set(self):
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
                 del subnet['ntp_server']
@@ -167,19 +171,19 @@ class TestGetConfig(PservTestCase):
         rendered = template.substitute(params)
         self.assertEqual(
             rendered,
-            config.get_config('dhcpd.conf.template', **params))
+            config.get_config(self.template, **params))
         self.assertNotIn("ntp-servers", rendered)
 
     def test__renders_router_ip_if_present(self):
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         router_ip = factory.make_ipv4_address()
         params['shared_networks'][0]['subnets'][0]['router_ip'] = router_ip
         self.assertThat(
-            config.get_config('dhcpd.conf.template', **params),
+            config.get_config(self.template, **params),
             Contains(router_ip))
 
     def test__renders_with_empty_string_router_ip(self):
-        params = make_sample_params()
+        params = make_sample_params(ipv6=self.ipv6)
         for network in params['shared_networks']:
             for subnet in network['subnets']:
                 subnet['router_ip'] = ''
@@ -187,7 +191,7 @@ class TestGetConfig(PservTestCase):
         rendered = template.substitute(params)
         self.assertEqual(
             rendered,
-            config.get_config('dhcpd.conf.template', **params))
+            config.get_config(self.template, **params))
         self.assertNotIn("routers", rendered)
 
     def test__renders_with_hosts(self):
@@ -196,8 +200,8 @@ class TestGetConfig(PservTestCase):
             make_host(network)
             for _ in range(3)
         ]
-        params = make_sample_params(hosts)
-        config_output = config.get_config('dhcpd.conf.template', **params)
+        params = make_sample_params(hosts, ipv6=self.ipv6)
+        config_output = config.get_config(self.template, **params)
         self.assertThat(
             config_output,
             ContainsAll([
@@ -218,8 +222,8 @@ class TestGetConfig(PservTestCase):
             ]))
 
     def test__renders_global_dhcp_snippets(self):
-        params = make_sample_params()
-        config_output = config.get_config('dhcpd.conf.template', **params)
+        params = make_sample_params(ipv6=self.ipv6)
+        config_output = config.get_config(self.template, **params)
         self.assertThat(
             config_output,
             ContainsAll([
@@ -228,8 +232,8 @@ class TestGetConfig(PservTestCase):
             ]))
 
     def test__renders_subnet_dhcp_snippets(self):
-        params = make_sample_params()
-        config_output = config.get_config('dhcpd.conf.template', **params)
+        params = make_sample_params(ipv6=self.ipv6)
+        config_output = config.get_config(self.template, **params)
         for shared_network in params['shared_networks']:
             for subnet in shared_network['subnets']:
                 self.assertThat(
@@ -240,8 +244,8 @@ class TestGetConfig(PservTestCase):
                     ]))
 
     def test__renders_node_dhcp_snippets(self):
-        params = make_sample_params()
-        config_output = config.get_config('dhcpd.conf.template', **params)
+        params = make_sample_params(ipv6=self.ipv6)
+        config_output = config.get_config(self.template, **params)
         for host in params['hosts']:
             self.assertThat(
                 config_output,
@@ -249,6 +253,20 @@ class TestGetConfig(PservTestCase):
                     dhcp_snippet['value']
                     for dhcp_snippet in host['dhcp_snippets']
                 ]))
+
+    def test__renders_subnet_cidr(self):
+        params = make_sample_params(ipv6=self.ipv6)
+        config_output = config.get_config(self.template, **params)
+        for shared_network in params['shared_networks']:
+            for subnet in shared_network['subnets']:
+                if self.ipv6 is True:
+                    expected = "subnet6 %s" % subnet['subnet_cidr']
+                else:
+                    expected = "subnet %s netmask %s" % (
+                        subnet['subnet'], subnet['subnet_mask'])
+                self.assertThat(
+                    config_output,
+                    Contains(expected))
 
 
 class TestComposeConditionalBootloader(PservTestCase):
