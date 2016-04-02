@@ -11,6 +11,7 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver import forms_dhcpsnippet
 from maasserver.models import (
     DHCPSnippet,
     VersionedTextFile,
@@ -94,6 +95,7 @@ class TestDHCPSnippetAPI(APITestCase):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_update(self):
+        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = {}
         self.become_admin()
         dhcp_snippet = factory.make_DHCPSnippet()
         new_value = factory.make_string()
@@ -267,6 +269,7 @@ class TestDHCPSnippetsAPI(APITestCase):
         self.assertItemsEqual(expected_ids, result_ids)
 
     def test_create(self):
+        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = {}
         self.become_admin()
         name = factory.make_name('name')
         value = factory.make_string()

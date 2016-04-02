@@ -291,6 +291,19 @@ class Cluster(RPCProtocol):
         d.addCallback(lambda _: {})
         return d
 
+    @cluster.ValidateDHCPv4Config.responder
+    def validate_dhcpv4_config(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
+        server = dhcp.DHCPv4Server(omapi_key)
+
+        d = deferToThread(
+            dhcp.validate, server,
+            failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+        d.addCallback(lambda ret: {'errors': ret} if ret is not None else {})
+        return d
+
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(
             self, omapi_key, failover_peers, shared_networks,
@@ -301,6 +314,19 @@ class Cluster(RPCProtocol):
             failover_peers, shared_networks, hosts, interfaces,
             global_dhcp_snippets)
         d.addCallback(lambda _: {})
+        return d
+
+    @cluster.ValidateDHCPv6Config.responder
+    def validate_dhcpv6_config(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, global_dhcp_snippets=[]):
+        server = dhcp.DHCPv6Server(omapi_key)
+
+        d = deferToThread(
+            dhcp.validate, server,
+            failover_peers, shared_networks, hosts, interfaces,
+            global_dhcp_snippets)
+        d.addCallback(lambda ret: {'errors': ret} if ret is not None else {})
         return d
 
     @amp.StartTLS.responder

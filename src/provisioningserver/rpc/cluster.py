@@ -332,6 +332,21 @@ class _ConfigureDHCP(amp.Command):
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
 
 
+class _ValidateDHCPConfig(_ConfigureDHCP):
+    """Validate the configure the DHCPv4 server.
+
+    :since: 2.0
+    """
+    response = [
+        (b"errors", CompressedAmpList([
+            (b"error", amp.Unicode()),
+            (b"line_num", amp.Integer()),
+            (b"line", amp.Unicode()),
+            (b"position", amp.Unicode()),
+            ], optional=True)),
+    ]
+
+
 class ConfigureDHCPv4(_ConfigureDHCP):
     """Configure the DHCPv4 server.
 
@@ -339,7 +354,21 @@ class ConfigureDHCPv4(_ConfigureDHCP):
     """
 
 
+class ValidateDHCPv4Config(_ValidateDHCPConfig):
+    """Validate the configure the DHCPv4 server.
+
+    :since: 2.0
+    """
+
+
 class ConfigureDHCPv6(_ConfigureDHCP):
+    """Configure the DHCPv6 server.
+
+    :since: 2.0
+    """
+
+
+class ValidateDHCPv6Config(_ValidateDHCPConfig):
     """Configure the DHCPv6 server.
 
     :since: 2.0

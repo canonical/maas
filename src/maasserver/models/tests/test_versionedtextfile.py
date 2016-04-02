@@ -12,6 +12,8 @@ from django.core.exceptions import ValidationError
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from mock import Mock
 from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
@@ -193,3 +195,30 @@ class VersionedTextFileTest(MAASServerTestCase):
         other_textfile = VersionedTextFile(data=SAMPLE_TEXT)
         other_textfile.save()
         self.assertRaises(ValueError, textfile.revert, other_textfile.id)
+
+    def test_revert_call_gc_hook(self):
+        textfile = VersionedTextFile(data=SAMPLE_TEXT)
+        textfile.save()
+        textfile_ids = [textfile.id]
+        for _ in range(10):
+            textfile = textfile.update(factory.make_string())
+            textfile_ids.append(textfile.id)
+        # gc_hook only runs when there is something to revert to so
+        # make sure we're actually reverting
+        revert_to = random.choice(textfile_ids[:-1])
+        reverted_ids = []
+        remaining_ids = []
+        reverted_or_remaining = remaining_ids
+        for i in textfile_ids:
+            reverted_or_remaining.append(i)
+            if i == revert_to:
+                reverted_or_remaining = reverted_ids
+        gc_hook = Mock()
+        textfile = textfile.revert(revert_to, gc_hook=gc_hook)
+        for i in reverted_ids:
+            self.assertRaises(
+                VersionedTextFile.DoesNotExist,
+                VersionedTextFile.objects.get, id=i)
+        for i in remaining_ids:
+            self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
+        self.assertThat(gc_hook, MockCalledOnceWith(textfile))

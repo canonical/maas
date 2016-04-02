@@ -5,6 +5,7 @@
 
 __all__ = [
     "bmc",
+    "dhcpsnippet",
     "config",
     "events",
     "interfaces",
@@ -17,6 +18,7 @@ __all__ = [
 from maasserver.models.signals import (
     bmc,
     config,
+    dhcpsnippet,
     events,
     interfaces,
     nodes,

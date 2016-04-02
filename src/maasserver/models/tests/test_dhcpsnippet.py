@@ -84,3 +84,31 @@ class TestDHCPSnippet(MAASServerTestCase):
         dhcp_snippet = factory.make_DHCPSnippet()
         self.assertEqual(
             dhcp_snippet, DHCPSnippet.objects.get(name=dhcp_snippet.name))
+
+    def test_delete_cleans_values(self):
+        dhcp_snippet = factory.make_DHCPSnippet()
+        value_ids = [dhcp_snippet.value.id]
+        for _ in range(3):
+            dhcp_snippet.value = dhcp_snippet.value.update(
+                factory.make_string())
+            value_ids.append(dhcp_snippet.value.id)
+        dhcp_snippet.delete()
+        for i in value_ids:
+            self.assertRaises(
+                VersionedTextFile.DoesNotExist,
+                VersionedTextFile.objects.get,
+                id=i)
+
+    def test_delete_cleans_values_on_queryset(self):
+        dhcp_snippet = factory.make_DHCPSnippet()
+        value_ids = [dhcp_snippet.value.id]
+        for _ in range(3):
+            dhcp_snippet.value = dhcp_snippet.value.update(
+                factory.make_string())
+            value_ids.append(dhcp_snippet.value.id)
+        DHCPSnippet.objects.filter(id=dhcp_snippet.id).delete()
+        for i in value_ids:
+            self.assertRaises(
+                VersionedTextFile.DoesNotExist,
+                VersionedTextFile.objects.get,
+                id=i)

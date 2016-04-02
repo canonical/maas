@@ -640,12 +640,8 @@ class NodeChoiceField(forms.ModelChoiceField):
 
 class VersionedTextFileField(forms.ModelChoiceField):
 
-    def __init__(self, initial, *args, **kwargs):
-        # Set the queryset to none since clean() always creates a new
-        # VersionedTextFile. Explictly require initial as without it we
-        # always create a new VersionedTextFile instead of linking against
-        # the previous version.
-        super().__init__(initial=initial, queryset=None, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(queryset=None, *args, **kwargs)
 
     def clean(self, value):
         if self.initial is None:

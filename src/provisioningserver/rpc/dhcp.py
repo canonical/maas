@@ -12,6 +12,8 @@ __all__ = [
 from collections import namedtuple
 from operator import itemgetter
 import os
+import re
+from tempfile import NamedTemporaryFile
 
 from provisioningserver.dhcp import (
     DHCPv4Server,
@@ -34,7 +36,10 @@ from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceActionError,
 )
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
@@ -235,7 +240,7 @@ def _catch_service_error(server, action, call, *args, **kwargs):
 @inlineCallbacks
 def configure(
         server, failover_peers, shared_networks, hosts, interfaces,
-        global_dhcp_snippets=[]):
+        global_dhcp_snippets=None):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
     This method is not safe to call concurrently. The clusterserver ensures
@@ -253,6 +258,9 @@ def configure(
     :param global_dhcp_snippets: List of all global DHCP snippets
     """
     stopping = len(shared_networks) == 0
+
+    if global_dhcp_snippets is None:
+        global_dhcp_snippets = []
 
     if stopping:
         # Remove the config so that the even an administrator cannot turn it on
@@ -328,3 +336,74 @@ def configure(
 
         # Update the current state to the new state.
         _current_server_state[server.dhcp_service] = new_state
+
+
+def _parse_dhcpd_errors(error_str):
+    """Parse the output of dhcpd -t -cf <file> into a list of dictionaries
+
+    dhcpd-4.3.3-5ubuntu11 -t -cf outputs each syntax error on three lines.
+    First contains the filename, line number, and what the error is. Second
+    outputs the line which has the syntax error and third is a pointer to the
+    where on the previous line the error was detected. """
+    processing_config = False
+    errors = []
+    error = {}
+    error_regex = re.compile('line (?P<line_num>[0-9]+): (?P<error>.+)')
+    for line in error_str.splitlines():
+        m = error_regex.search(line)
+        # Don't start processing till we get past header and end processing
+        # once we get to the footer.
+        if not processing_config and m is None:
+            continue
+        elif not processing_config and m is not None:
+            processing_config = True
+        elif line.startswith('Configuration file errors encountered'):
+            break
+        if m is not None:
+            # New error, append previous error to the list of errors
+            if error.get('error') is not None:
+                errors.append(error)
+                error = {}
+            error['error'] = m.group('error')
+            error['line_num'] = int(m.group('line_num'))
+        elif m is None and line.strip() == '^':
+            error['position'] = line
+        else:
+            error['line'] = line
+
+    if error != {}:
+        errors.append(error)
+
+    return errors
+
+
+def validate(
+        server, failover_peers, shared_networks, hosts, interfaces,
+        global_dhcp_snippets=None):
+    """Validate the DHCPv6/DHCPv4 configuration.
+
+    :param server: A `DHCPServer` instance.
+    :param failover_peers: List of dicts with failover parameters for each
+        subnet where HA is enabled.
+    :param shared_networks: List of dicts with shared network parameters that
+        contain a list of subnets when the DHCP should server shared.
+        If no shared network are defined, the DHCP server will be stopped.
+    :param hosts: List of dicts with host parameters that
+        contain a list of hosts the DHCP should statically.
+    :param interfaces: List of interfaces that DHCP should use.
+    :param global_dhcp_snippets: List of all global DHCP snippets
+    """
+    if global_dhcp_snippets is None:
+        global_dhcp_snippets = []
+    state = DHCPState(
+        server.omapi_key, failover_peers, shared_networks,
+        hosts, interfaces, global_dhcp_snippets)
+    dhcpd_config, _ = state.get_config(server)
+    with NamedTemporaryFile(prefix='maas-dhcpd-') as tmp_dhcpd:
+        tmp_dhcpd.file.write(dhcpd_config.encode('utf-8'))
+        tmp_dhcpd.file.flush()
+        try:
+            call_and_check(['dhcpd', '-t', '-cf', tmp_dhcpd.name])
+        except ExternalProcessError as e:
+            return _parse_dhcpd_errors(e.output_as_unicode)
+    return None

@@ -67,12 +67,15 @@ class VersionedTextFile(CleanSave, TimestampedModel):
             oldest_known = oldest_known.previous_version
         return oldest_known
 
-    def revert(self, to, gc=True):
+    def revert(self, to, gc=True, gc_hook=None):
         """Return a VersionTextFile object in this objects history.
 
         The returned object is specified by the VersionTextFile id or a
         negative number with how far back to go. By default newer objects
-        then the one returned will be removed.
+        then the one returned will be removed. You can optionally provide a
+        garbage collection hook which accepts a single parameter being the
+        value being reverted to. This allows you to revert a value and do
+        garbage collection when the foreign key is set to cascade.
         """
         if to == 0:
             return self
@@ -82,6 +85,8 @@ class VersionedTextFile(CleanSave, TimestampedModel):
             if to >= len(history):
                 raise ValueError("Goes too far back.")
             if gc:
+                if gc_hook is not None:
+                    gc_hook(history[to])
                 history[to - 1].delete()
             return history[to]
         else:
@@ -89,6 +94,8 @@ class VersionedTextFile(CleanSave, TimestampedModel):
             for textfile in self.previous_versions():
                 if textfile.id == to:
                     if next_textfile is not None and gc:
+                        if gc_hook is not None:
+                            gc_hook(textfile)
                         next_textfile.delete()
                     return textfile
                 next_textfile = textfile

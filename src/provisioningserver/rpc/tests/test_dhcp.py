@@ -953,3 +953,74 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertDocTestMatches(
             "DHCPv... server failed to restart: "
             "DHCP is on strike today", logger.output)
+
+
+class TestValidateDHCP(MAASTestCase):
+
+    scenarios = (
+        ("DHCPv4", {"server": dhcp.DHCPv4Server}),
+        ("DHCPv6", {"server": dhcp.DHCPv6Server}),
+    )
+
+    def validate(
+            self, omapi_key, failover_peers, shared_networks,
+            hosts, interfaces, dhcp_snippets):
+        server = self.server(omapi_key)
+        return dhcp.validate(
+            server, failover_peers, shared_networks, hosts, interfaces,
+            dhcp_snippets)
+
+    def test__good_config(self):
+        omapi_key = factory.make_name('omapi_key')
+        failover_peers = make_failover_peer_config()
+        shared_network = make_shared_network()
+        host = make_host()
+        interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
+        self.patch(dhcp, 'call_and_check')
+
+        self.assertEqual(
+            None,
+            self.validate(
+                omapi_key, [failover_peers], [shared_network], [host],
+                [interface], global_dhcp_snippets))
+
+    def test__bad_config(self):
+        omapi_key = factory.make_name('omapi_key')
+        failover_peers = make_failover_peer_config()
+        shared_network = make_shared_network()
+        host = make_host()
+        interface = make_interface()
+        global_dhcp_snippets = make_dhcp_snippets()
+        dhcpd_error = (
+            'Internet Systems Consortium DHCP Server 4.3.3\n'
+            'Copyright 2004-2015 Internet Systems Consortium.\n'
+            'All rights reserved.\n'
+            'For info, please visit https://www.isc.org/software/dhcp/\n'
+            '/tmp/maas-dhcpd-z5c7hfzt line 14: semicolon expected.\n'
+            'ignore \n'
+            '^\n'
+            'Configuration file errors encountered -- exiting\n'
+            '\n'
+            'If you think you have received this message due to a bug rather\n'
+            'than a configuration issue please read the section on submitting'
+            '\n'
+            'bugs on either our web page at www.isc.org or in the README file'
+            '\n'
+            'before submitting a bug.  These pages explain the proper\n'
+            'process and the information we find helpful for debugging..\n'
+            '\n'
+            'exiting.'
+        )
+        self.patch(dhcp, 'call_and_check').side_effect = ExternalProcessError(
+            returncode=1, cmd=("dhcpd",), output=dhcpd_error)
+
+        self.assertEqual([{
+            'error': 'semicolon expected.',
+            'line_num': 14,
+            'line': 'ignore ',
+            'position': '^',
+            }],
+            self.validate(
+                omapi_key, [failover_peers], [shared_network], [host],
+                [interface], global_dhcp_snippets))

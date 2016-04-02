@@ -152,8 +152,10 @@ class DHCPSnippetHandler(OperationsHandler):
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(
             dhcp_snippet_id)
         try:
-            dhcp_snippet.value = dhcp_snippet.value.revert(revert_to)
-            dhcp_snippet.save()
+            def gc_hook(value):
+                dhcp_snippet.value = value
+                dhcp_snippet.save()
+            dhcp_snippet.value.revert(revert_to, gc_hook=gc_hook)
             return dhcp_snippet
         except ValueError as e:
             raise MAASAPIValidationError(e.args[0])

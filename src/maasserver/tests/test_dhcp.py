@@ -9,6 +9,7 @@ from operator import itemgetter
 import random
 
 from crochet import wait_for
+from django.core.exceptions import ValidationError
 from maasserver import dhcp
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -21,6 +22,7 @@ from maasserver.models import (
     DHCPSnippet,
     Domain,
     Service,
+    VersionedTextFile,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
@@ -51,6 +53,8 @@ from netaddr import (
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
+    ValidateDHCPv4Config,
+    ValidateDHCPv6Config,
 )
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from testtools.matchers import (
@@ -59,6 +63,7 @@ from testtools.matchers import (
     IsInstance,
     MatchesStructure,
 )
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
@@ -1553,3 +1558,398 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
                 MatchesStructure.byEquality(
                     status=SERVICE_STATUS.DEAD, status_info=ipv6_exc))
         yield deferToDatabase(service_status_updated)
+
+
+class TestValidateDHCPConfig(MAASServerTestCase):
+    """Tests for `validate_dhcp_config`."""
+
+    def prepare_rpc(self, rack_controller, return_value=None):
+        """"Set up test case for speaking RPC to `rack_controller`."""
+        self.useFixture(RegionEventLoopFixture('rpc'))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        cluster = fixture.makeCluster(
+            rack_controller, ValidateDHCPv4Config, ValidateDHCPv6Config)
+        cluster.ValidateDHCPv4Config.return_value = defer.succeed({
+            'errors': return_value,
+        })
+        cluster.ValidateDHCPv6Config.return_value = defer.succeed({
+            'errors': return_value,
+        })
+        return cluster.ValidateDHCPv4Config, cluster.ValidateDHCPv6Config
+
+    def create_rack_controller(self):
+        """Create a `rack_controller` in a state that will call both
+        `ValidateDHCPv4Config` and `ValidateDHCPv6Config` with data."""
+        primary_rack = factory.make_RackController(interface=False)
+        secondary_rack = factory.make_RackController(interface=False)
+
+        vlan = factory.make_VLAN(
+            dhcp_on=True, primary_rack=primary_rack,
+            secondary_rack=secondary_rack)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan)
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan)
+
+        subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        subnet_v6 = factory.make_Subnet(
+            vlan=vlan, cidr="fd38:c341:27da:c831::/64")
+        factory.make_IPRange(
+            subnet_v6, "fd38:c341:27da:c831::0001:0000",
+            "fd38:c341:27da:c831::FFFF:0000")
+
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
+            interface=secondary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+            interface=primary_interface)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v6,
+            interface=secondary_interface)
+
+        for _ in range(3):
+            factory.make_DHCPSnippet(subnet=subnet_v4, enabled=True)
+            factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
+            factory.make_DHCPSnippet(enabled=True)
+
+        args = dhcp.get_dhcp_configuration(primary_rack)
+        return primary_rack, args
+
+    def test__calls_validate_for_both_ipv4_and_ipv6(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        dhcp.validate_dhcp_config()
+
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__calls_connected_rack_when_subnet_primary_rack_is_disconn(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        disconnected_rack = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN(primary_rack=disconnected_rack)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=interface)
+        dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
+        dhcp.validate_dhcp_config(dhcp_snippet)
+
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__calls_connected_rack_when_node_primary_rack_is_disconn(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        disconnected_rack = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN(
+            primary_rack=disconnected_rack, secondary_rack=rack_controller)
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=disconnected_rack.get_boot_interface())
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet,
+            interface=node.get_boot_interface())
+        dhcp_snippet = factory.make_DHCPSnippet(node=node)
+        dhcp.validate_dhcp_config(dhcp_snippet)
+
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__calls_validate_with_new_dhcp_snippet(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        # DHCPSnippetForm generates a new DHCPSnippet in memory and validates
+        # it with validate_dhcp_config before committing it.
+        value = VersionedTextFile.objects.create(data=factory.make_string())
+        new_dhcp_snippet = DHCPSnippet(
+            name=factory.make_name('name'), value=value)
+        dhcp.validate_dhcp_config(new_dhcp_snippet)
+        global_dhcp_snippets.append({
+            'name': new_dhcp_snippet.name,
+            'description': new_dhcp_snippet.description,
+            'value': new_dhcp_snippet.value.data,
+        })
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__calls_validate_with_disabled_dhcp_snippet(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        new_dhcp_snippet = factory.make_DHCPSnippet(enabled=False)
+        dhcp.validate_dhcp_config(new_dhcp_snippet)
+        global_dhcp_snippets.append({
+            'name': new_dhcp_snippet.name,
+            'description': new_dhcp_snippet.description,
+            'value': new_dhcp_snippet.value.data,
+        })
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__calls_validate_with_updated_dhcp_snippet(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        ipv4_stub, ipv6_stub = self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        updated_dhcp_snippet = DHCPSnippet.objects.get(
+            name=random.choice([
+                dhcp_snippet['name']
+                for dhcp_snippet in global_dhcp_snippets]
+            ))
+        updated_dhcp_snippet.value = updated_dhcp_snippet.value.update(
+            factory.make_string())
+        dhcp.validate_dhcp_config(updated_dhcp_snippet)
+        for i, dhcp_snippet in enumerate(global_dhcp_snippets):
+            if dhcp_snippet['name'] == updated_dhcp_snippet.name:
+                global_dhcp_snippets[i] = {
+                    'name': updated_dhcp_snippet.name,
+                    'description': updated_dhcp_snippet.description,
+                    'value': updated_dhcp_snippet.value.data,
+                }
+                break
+        self.assertThat(
+            ipv4_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v4,
+                shared_networks=shared_networks_v4,
+                hosts=hosts_v4,
+                interfaces=interfaces_v4,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+        self.assertThat(
+            ipv6_stub, MockCalledOnceWith(
+                ANY, omapi_key=omapi,
+                failover_peers=failover_peers_v6,
+                shared_networks=shared_networks_v6,
+                hosts=hosts_v6,
+                interfaces=interfaces_v6,
+                global_dhcp_snippets=global_dhcp_snippets,
+                ))
+
+    def test__returns_no_errors_when_valid(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        self.prepare_rpc(rack_controller)
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        self.assertEquals([], dhcp.validate_dhcp_config())
+
+    def test__returns_errors_when_invalid(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        dhcpd_error = {
+            'error': factory.make_name('error'),
+            'line_num': 14,
+            'line': factory.make_name('line'),
+            'position': factory.make_name('position'),
+        }
+        self.prepare_rpc(rack_controller, [dhcpd_error])
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
+
+    def test__dedups_errors(self):
+        rack_controller, args = self.create_rack_controller()
+        (omapi, failover_peers_v4, shared_networks_v4, hosts_v4, interfaces_v4,
+         failover_peers_v6, shared_networks_v6, hosts_v6, interfaces_v6,
+         global_dhcp_snippets) = args
+        dhcpd_error = {
+            'error': factory.make_name('error'),
+            'line_num': 14,
+            'line': factory.make_name('line'),
+            'position': factory.make_name('position'),
+        }
+        self.prepare_rpc(rack_controller, [dhcpd_error, dhcpd_error])
+        interfaces_v4 = [
+            {"name": name}
+            for name in interfaces_v4
+        ]
+        interfaces_v6 = [
+            {"name": name}
+            for name in interfaces_v6
+        ]
+
+        self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
+
+    def test__rack_not_found_raises_validation_error(self):
+        subnet = factory.make_Subnet()
+        dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
+        self.assertRaises(
+            ValidationError, dhcp.validate_dhcp_config, dhcp_snippet)
