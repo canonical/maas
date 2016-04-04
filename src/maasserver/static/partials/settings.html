@@ -1,0 +1,287 @@
+<header class="page-header margin-bottom" data-maas-sticky-header>
+    <div class="inner-wrapper">
+        <h1 class="page-header__title eight-col">
+            Settings
+            <span class="page-header__title--identicator">
+                <a href="settings/">General</a>
+                <span class="divide"></span>
+                <a href="" class="active"
+                    data-ng-class="{ active: currentpage === 'dhcp' }"
+                    data-ng-click="toggleTab('dhcp')">DHCP Snippets</a>
+                <span class="power-status--power" data-ng-show="loading">
+                    <span class="loader"></span>
+                    Loading...
+                </span>
+            </span>
+        </h1>
+    </div>
+</header>
+<div data-ng-show="!loading">
+    <section class="row no-padding-top">
+        <div class="inner-wrapper">
+            <div>
+                <div class="tweleve-col">
+                    <div class="equal-height">
+                        <div class="eight-col">
+                            <h2 class="no-margin">DHCP Snippets</h2>
+                        </div>
+                        <!--
+                        XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
+                        <div class="four-col last-col align-right">
+                            <a href="" class="margin-top right">View compiled configuration</a>
+                        </div>
+                        -->
+                    </div>
+                </div>
+                <div class="tweleve-col">
+                    <div class="table margin-bottom">
+                        <div class="table__head">
+                            <div class="table__row">
+                                <div class="table__header table-col--20">Name</div>
+                                <div class="table__header table-col--15">Type</div>
+                                <div class="table__header table-col--35">Applies to</div>
+                                <div class="table__header table-col--30">Active</div>
+                            </div>
+                        </div>
+                        <div class="table__body">
+                            <div class="table__row"
+                                data-ng-repeat="snippet in snippets track by snippet.id"
+                                data-ng-class="{ active: getSnippetOptions(snippet).editing || getSnippetOptions(snippet).removing }">
+                                <div class="table__data table-col--20">
+                                    <span data-ng-if="!getSnippetOptions(snippet).editing">{$ snippet.name $}</span>
+                                    <input type="text" class="table__input no-margin"
+                                        data-ng-if="getSnippetOptions(snippet).editing"
+                                        data-ng-disabled="getSnippetOptions(snippet).saving"
+                                        data-ng-model="getSnippetOptions(snippet).data.name"
+                                        data-ng-class="{ invalid: isFieldEmpty(getSnippetOptions(snippet).data, 'name') }">
+                                </div>
+                                <div class="table__data table-col--15">
+                                    <span data-ng-if="!getSnippetOptions(snippet).editing">{$ getSnippetTypeText(snippet) $}</span>
+                                    <select class="table__input no-margin" name="type"
+                                        data-ng-if="getSnippetOptions(snippet).editing"
+                                        data-ng-disabled="getSnippetOptions(snippet).saving"
+                                        data-ng-model="getSnippetOptions(snippet).type">
+                                        <option value="" disabled="disabled">Select type</option>
+                                        <option value="Global">Global</option>
+                                        <option value="Subnet">Subnet</option>
+                                        <option value="Node">Node</option>
+                                    </select>
+                                </div>
+                                <div class="table__data table-col--35">
+                                    <span data-ng-if="!getSnippetOptions(snippet).editing">{$ getSnippetAppliesToText(snippet) $}</span>
+                                    <select class="table__input no-margin" name="type"
+                                        data-ng-if="getSnippetOptions(snippet).editing && getSnippetOptions(snippet).type === 'Subnet'"
+                                        data-ng-disabled="getSnippetOptions(snippet).saving"
+                                        data-ng-model="getSnippetOptions(snippet).subnet"
+                                        data-ng-options="subnet as getSubnetName(subnet) for subnet in subnets">
+                                        <option value="" disabled>Choose subnet</option>
+                                    </select>
+                                    <select class="table__input no-margin" name="type"
+                                        data-ng-if="getSnippetOptions(snippet).editing && getSnippetOptions(snippet).type === 'Node'"
+                                        data-ng-disabled="getSnippetOptions(snippet).saving"
+                                        data-ng-model="getSnippetOptions(snippet).data.node">
+                                        <option value="" disabled>Choose node</option>
+                                        <optgroup label="Machines">
+                                            <option data-ng-repeat="machine in machines track by machine.system_id"
+                                                value="{$ machine.system_id $}"
+                                                data-ng-selected="getSnippetOptions(snippet).data.node === machine.system_id">{$ machine.fqdn $}</option>
+                                        </optgroup>
+                                        <optgroup label="Devices">
+                                            <option data-ng-repeat="device in devices track by device.system_id"
+                                                value="{$ device.system_id $}"
+                                                data-ng-selected="getSnippetOptions(snippet).data.node === device.system_id">{$ device.fqdn $}</option>
+                                        </optgroup>
+                                        <optgroup label="Controllers">
+                                            <option data-ng-repeat="controller in controllers track by controller.system_id"
+                                                value="{$ controller.system_id $}"
+                                                data-ng-selected="getSnippetOptions(snippet).data.node === controller.system_id">{$ controller.fqdn $}</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div class="table__data table-col--10">
+                                    <div class="onoffswitch">
+                                        <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="enabled-{$ snippet.id $}"
+                                            data-ng-model="snippet.enabled"
+                                            data-ng-change="snippetToggle(snippet)"
+                                            data-ng-disabled="getSnippetOptions(snippet).toggling">
+                                        <label class="onoffswitch-label" for="enabled-{$ snippet.id $}">
+                                            <span class="onoffswitch-inner"></span>
+                                            <span class="onoffswitch-switch"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="table__data table-col--20">
+                                    <div class="table__controls">
+                                        <a class="icon delete tooltip margin-right" data-tooltip="Remove"
+                                            data-ng-click="snippetEnterRemove(snippet)">Remove</a>
+                                        <a class="icon open tooltip" data-tooltip="Edit row"
+                                            data-ng-click="snippetEnterEdit(snippet)"
+                                            data-ng-if="!getSnippetOptions(snippet).editing">Edit</a>
+                                        <a class="icon close tooltip" data-tooltip="Close"
+                                            data-ng-click="snippetExitEdit(snippet)"
+                                            data-ng-if="getSnippetOptions(snippet).editing">Close</a>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="getSnippetOptions(snippet).editing">
+                                    <div class="table__row form active">
+                                        <div class="table__data table-col--100 no-padding-top">
+                                            <textarea name="value" rows="8" class="tweleve-col"
+                                                data-ng-class="{ invalid: isFieldEmpty(getSnippetOptions(snippet).data, 'value') }"
+                                                data-ng-disabled="getSnippetOptions(snippet).saving"
+                                                data-ng-model="getSnippetOptions(snippet).data.value"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="table__row active">
+                                      <div class="table__data left">
+                                          <p class="margin-top--five" data-ng-if="getSnippetOptions(snippet).error"><i class="icon error margin-right--ten"></i> {$ getSnippetOptions(snippet).error $}</p>
+                                      </div>
+                                      <div class="table__data right">
+                                          <a class="link-cta-ubuntu text-button"
+                                              data-ng-click="snippetExitEdit(snippet)"
+                                              data-ng-disabled="getSnippetOptions(snippet).saving">Cancel</a>
+                                          <button class="cta-ubuntu ng-binding"
+                                              data-ng-click="snippetSave(snippet)"
+                                              data-ng-disabled="!snippetCanBeSaved(snippet) || getSnippetOptions(snippet).saving">Save snippet</button>
+                                      </div>
+                                    </div>
+                                </div>
+                                <div class="table__dropdown" data-ng-if="getSnippetOptions(snippet).removing">
+                                    <div class="table__row active">
+                                        <div class="table__data left margin-top--five">
+                                              <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this snippet?</p>
+                                        </div>
+                                        <div class="table__data right">
+                                              <a class="link-cta-ubuntu text-button" data-ng-click="snippetExitRemove(snippet)">Cancel</a>
+                                              <button class="cta-ubuntu" data-ng-click="snippetConfirmRemove(snippet)">Remove</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="table__row active" data-ng-if="newSnippet">
+                                <div class="table__dropdown">
+                                    <div class="table__row form active">
+                                        <div class="table__data table-col--20">
+                                            <input type="text" class="table__input no-margin" placeholder="Name"
+                                                data-ng-disabled="newSnippet.saving"
+                                                data-ng-model="newSnippet.data.name"
+                                                data-ng-class="{ invalid: isFieldEmpty(newSnippet.data, 'name') }">
+                                        </div>
+                                        <div class="table__data table-col--15">
+                                            <select class="table__input no-margin" name="type"
+                                                data-ng-disabled="newSnippet.saving"
+                                                data-ng-model="newSnippet.type">
+                                                <option value="" disabled="disabled">Select type</option>
+                                                <option value="Global">Global</option>
+                                                <option value="Subnet">Subnet</option>
+                                                <option value="Node">Node</option>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table-col--35">
+                                            <select class="table__input no-margin" name="type"
+                                                data-ng-if="newSnippet.type === 'Subnet'"
+                                                data-ng-disabled="newSnippet.saving"
+                                                data-ng-model="newSnippet.subnet"
+                                                data-ng-options="subnet as getSubnetName(subnet) for subnet in subnets">
+                                                <option value="" disabled>Choose subnet</option>
+                                            </select>
+                                            <select class="table__input no-margin" name="type"
+                                                data-ng-if="newSnippet.type === 'Node'"
+                                                data-ng-disabled="newSnippet.saving"
+                                                data-ng-model="newSnippet.data.node">
+                                                <option value="" disabled>Choose node</option>
+                                                <optgroup label="Machines">
+                                                    <option data-ng-repeat="machine in machines track by machine.system_id"
+                                                        value="{$ machine.system_id $}">{$ machine.fqdn $}</option>
+                                                </optgroup>
+                                                <optgroup label="Devices">
+                                                    <option data-ng-repeat="device in devices track by device.system_id"
+                                                        value="{$ device.system_id $}">{$ device.fqdn $}</option>
+                                                </optgroup>
+                                                <optgroup label="Controllers">
+                                                    <option data-ng-repeat="controller in controllers track by controller.system_id"
+                                                        value="{$ controller.system_id $}">{$ controller.fqdn $}</option>
+                                                </optgroup>
+                                            </select>
+                                        </div>
+                                        <div class="table__data table-col--10">
+                                            <div class="onoffswitch">
+                                                <input type="checkbox" name="enabled" class="onoffswitch-checkbox" id="newEnabled"
+                                                    data-ng-model="newSnippet.data.enabled"
+                                                    data-ng-disabled="newSnippet.saving" checked>
+                                                <label class="onoffswitch-label" for="newEnabled">
+                                                    <span class="onoffswitch-inner"></span>
+                                                    <span class="onoffswitch-switch"></span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="table__data table-col--100 no-padding-top">
+                                            <textarea name="value" rows="8" class="tweleve-col"
+                                                data-ng-class="{ invalid: isFieldEmpty(newSnippet.data, 'value') }"
+                                                data-ng-disabled="newSnippet.saving"
+                                                data-ng-model="newSnippet.data.value"></textarea>
+                                        </div>
+                                    </div>
+                                    <div class="table__row active">
+                                      <div class="table__data left">
+                                          <p class="margin-top--five" data-ng-if="newSnippet.error"><i class="icon error margin-right--ten"></i> {$ newSnippet.error $}</p>
+                                      </div>
+                                      <div class="table__data right">
+                                          <a class="link-cta-ubuntu text-button"
+                                              data-ng-click="snippetAddCancel()">Cancel</a>
+                                          <button class="cta-ubuntu ng-binding"
+                                              data-ng-disabled="!snippetAddCanBeSaved()"
+                                              data-ng-click="snippetAddSave()">Add snippet</button>
+                                      </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <a href="" class="link-cta-ubuntu secondary"
+                    data-ng-if="!newSnippet"
+                    data-ng-click="snippetAdd()">Add custom snippet</a>
+            </div>
+            <!--
+            XXX 04-01-2016 blake_r: Need to add the ability to show the compiled DHCP configuration.
+            <div class="ng-hide">
+                <div class="tweleve-col">
+                    <div class="equal-height">
+                        <div class="eight-col">
+                            <h2 class="no-margin">Compiled configuration</h2>
+                        </div>
+                        <div class="four-col last-col align-right">
+                            <a href="" class="right margin-top">Download as text</a>
+                        </div>
+                    </div>
+                    <div class="twelve-col">
+                        <form class="form form--inline">
+                            <div class="form__group margin-right--ten">
+                                <label for="" class="margin-right--ten">Compiled DHCP configuration for</label>
+                                <select name="rack" id="rack">
+                                    <option value="">rack-controller-1</option>
+                                    <option value="">rack-controller-2</option>
+                                    <option value="" selected="selected">rack-controller-3</option>
+                                </select>
+                            </div>
+                            <div class="form__group">
+                                <label for="" class="margin-right--ten">For</label>
+                                <select name="dhcp" id="dhcp">
+                                    <option value="" selected="selected">DHCP v4</option>
+                                    <option value="">DHCP v4</option>
+                                    <option value="">DHCP v4</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="twelve-col">
+                        <pre>
+                            <code data-maas-code-lines="getConfigurationData()"></code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+            -->
+        </div>
+    </section>
+</div>

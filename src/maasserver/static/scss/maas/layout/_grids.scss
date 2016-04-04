@@ -51,3 +51,19 @@
 .row:last-child {
     border-bottom: none;
 }
+
+.equal-height {
+  @media only screen and (min-width : 768px) {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    width: 100%;
+
+    & > .equal-height__item {
+      box-sizing: border-box;
+      display: flex;
+      flex: auto;
+      flex-direction: column;
+    }
+  }
+}

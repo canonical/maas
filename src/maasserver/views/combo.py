@@ -51,6 +51,7 @@ MERGE_VIEWS = {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
             "js/angular/maas.js",
+            "js/angular/factories/dhcpsnippets.js",
             "js/angular/factories/region.js",
             "js/angular/factories/nodes.js",
             "js/angular/factories/devices.js",
@@ -112,6 +113,7 @@ MERGE_VIEWS = {
             "js/angular/controllers/domain_details.js",
             "js/angular/controllers/fabric_details.js",
             "js/angular/controllers/networks_list.js",
+            "js/angular/controllers/settings.js",
             "js/angular/controllers/subnet_details.js",
             "js/angular/controllers/vlan_details.js",
             "js/angular/controllers/space_details.js",

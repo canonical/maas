@@ -108,6 +108,14 @@
       background-size: 12px 11px;
       background-position: top 1px center;
     }
+
+    &.open {
+      background-image: url('../img/icons/accordion-open.svg');
+    }
+
+    &.close {
+      background-image: url('../img/icons/accordion-close.svg');
+    }
 }
 
 .clear {
@@ -186,7 +194,7 @@
     margin-bottom: 20px;
 
     &--ten {
-        margin-bottom: 10px;
+      margin-bottom: 10px !important;
     }
 }
 
@@ -274,8 +282,12 @@
     border-bottom: 1px dotted #888;
 }
 
+.border--light {
+  border-color: #d2d2d2;
+}
+
 .no-margin {
-  margin: 0;
+  margin: 0 !important;
 }
 
 .no-margin-top {

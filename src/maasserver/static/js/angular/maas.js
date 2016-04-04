@@ -76,6 +76,10 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
                     controller: 'VLANDetailsController',
                     controllerAs: 'vlanDetails'
                 }).
+                when('/settings/:section', {
+                    templateUrl: 'static/partials/settings.html',
+                    controller: 'SettingsController'
+                }).
                 otherwise({
                     redirectTo: '/nodes'
                 });

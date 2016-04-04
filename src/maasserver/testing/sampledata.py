@@ -9,6 +9,7 @@ __all__ = [
 
 import random
 from socket import gethostname
+from textwrap import dedent
 
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -19,6 +20,7 @@ from maasserver.enum import (
 from maasserver.models import (
     Fabric,
     Node,
+    VersionedTextFile,
 )
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import (
@@ -216,3 +218,44 @@ def populate(seed="sampledata"):
             hostname=petname.Generate(2, '-')
         ),
     ]
+
+    # Device
+    device = factory.make_Device()
+    device.set_random_hostname()
+
+    # Add some DHCP snippets.
+    ## Global
+    factory.make_DHCPSnippet(
+        name="foo class", description="adds class for vender 'foo'",
+        value=VersionedTextFile.objects.create(data=dedent("""\
+            class "foo" {
+                match if substring (
+                    option vendor-class-identifier, 0, 3) = "foo";
+            }
+        """)))
+    factory.make_DHCPSnippet(
+        name="bar class", description="adds class for vender 'bar'",
+        value=VersionedTextFile.objects.create(data=dedent("""\
+            class "bar" {
+                match if substring (
+                    option vendor-class-identifier, 0, 3) = "bar";
+            }
+        """)), enabled=False)
+    ## Subnet
+    factory.make_DHCPSnippet(
+        name="600 lease time", description="changes lease time to 600 secs.",
+        value=VersionedTextFile.objects.create(data="default-lease-time 600;"),
+        subnet=subnet_1)
+    factory.make_DHCPSnippet(
+        name="7200 max lease time",
+        description="changes max lease time to 7200 secs.",
+        value=VersionedTextFile.objects.create(data="max-lease-time 7200;"),
+        subnet=subnet_2, enabled=False)
+    ## Node
+    factory.make_DHCPSnippet(
+        name="boot from other server",
+        description="instructs device to boot from other server",
+        value=VersionedTextFile.objects.create(data=dedent("""\
+            filename "test-boot";
+            server-name "boot.from.me";
+        """)), node=device)

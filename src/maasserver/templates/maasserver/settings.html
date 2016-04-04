@@ -2,8 +2,15 @@
 
 {% block nav-active-settings %}active{% endblock %}
 
-{% block title %}Settings{% endblock %}
-{% block page-title %}Settings{% endblock %}
+{% block title %}General settings{% endblock %}
+{% block page-title %}Settings
+<span class="page-header__title--identicator">
+    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+    <a href="{% url 'settings' %}" class="active">General</a>
+    <span class="divide"></span>
+    <a href="{% url 'index' %}#/settings/dhcp">DHCP Snippets</a>
+</span>
+{% endblock %}
 
 {% block head %}
   <script type="text/javascript">
