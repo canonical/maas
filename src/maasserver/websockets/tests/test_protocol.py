@@ -689,6 +689,7 @@ class MakeProtocolFactoryMixin:
 ALL_NOTIFIERS = (
     "controller",
     "device",
+    "dhcpsnippet",
     "domain",
     "event",
     "fabric",
@@ -706,6 +707,7 @@ ALL_NOTIFIERS = (
 ALL_HANDLERS = (
     "controller",
     "device",
+    "dhcpsnippet",
     "domain",
     "event",
     "fabric",

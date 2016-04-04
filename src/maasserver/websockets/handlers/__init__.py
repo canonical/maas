@@ -7,6 +7,7 @@
 # so that it's easy to sanity-check.
 __all__ = [
     "ControllerHandler",
+    "DHCPSnippetHandler",
     "DeviceHandler",
     "DomainHandler",
     "EventHandler",
@@ -26,6 +27,7 @@ __all__ = [
 from maasserver.utils import ignore_unused
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maasserver.websockets.handlers.device import DeviceHandler
+from maasserver.websockets.handlers.dhcpsnippet import DHCPSnippetHandler
 from maasserver.websockets.handlers.domain import DomainHandler
 from maasserver.websockets.handlers.event import EventHandler
 from maasserver.websockets.handlers.fabric import FabricHandler
@@ -42,6 +44,7 @@ from maasserver.websockets.handlers.zone import ZoneHandler
 
 
 ignore_unused(ControllerHandler)
+ignore_unused(DHCPSnippetHandler)
 ignore_unused(DeviceHandler)
 ignore_unused(DomainHandler)
 ignore_unused(EventHandler)

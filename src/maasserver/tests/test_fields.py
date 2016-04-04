@@ -592,15 +592,20 @@ class TestVersionedTextFileField(MAASServerTestCase):
 
     def test_creates_new(self):
         data = factory.make_string()
-        versioned_text_file_field = VersionedTextFileField(initial=None)
+        versioned_text_file_field = VersionedTextFileField()
         versioned_text_file = versioned_text_file_field.clean(data)
         self.assertEquals(data, versioned_text_file.data)
         self.assertIsNone(versioned_text_file.previous_version)
 
-    def test_ignores_self(self):
+    def test_ignores_self_instance(self):
         data = VersionedTextFile.objects.create(data=factory.make_string())
         versioned_text_file_field = VersionedTextFileField(initial=data)
         self.assertEquals(data, versioned_text_file_field.clean(data))
+
+    def test_ignores_self_id(self):
+        data = VersionedTextFile.objects.create(data=factory.make_string())
+        versioned_text_file_field = VersionedTextFileField(initial=data)
+        self.assertEquals(data, versioned_text_file_field.clean(data.id))
 
     def test_creates_new_link(self):
         old_ver = VersionedTextFile.objects.create(data=factory.make_string())

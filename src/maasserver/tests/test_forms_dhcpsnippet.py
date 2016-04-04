@@ -51,6 +51,24 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(description, dhcp_snippet.description)
         self.assertEqual(enabled, dhcp_snippet.enabled)
 
+    def test__create_dhcp_snippet_defaults_to_enabled(self):
+        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
+            {})
+        name = factory.make_name('name')
+        value = factory.make_string()
+        description = factory.make_string()
+        form = DHCPSnippetForm(data={
+            'name': name,
+            'value': value,
+            'description': description,
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        dhcp_snippet = form.save()
+        self.assertEqual(name, dhcp_snippet.name)
+        self.assertEqual(value, dhcp_snippet.value.data)
+        self.assertEqual(description, dhcp_snippet.description)
+        self.assertTrue(dhcp_snippet.enabled)
+
     def test__creates_dhcp_snippet_with_node(self):
         self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
             {})

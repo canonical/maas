@@ -647,7 +647,8 @@ class VersionedTextFileField(forms.ModelChoiceField):
         if self.initial is None:
             # Create a new VersionedTextFile if one doesn't exist
             return VersionedTextFile.objects.create(data=value)
-        elif self.initial == value:
+        elif ((isinstance(value, VersionedTextFile) and self.initial == value)
+              or self.initial.id == value):
             # DHCPSnippetForm has to create a VersionedTextFile object before
             # it creates a new DHCPSnippet as a requirement. The value is set
             # to the newly created VersionedTextFile so we can safely ignore

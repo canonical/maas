@@ -172,7 +172,8 @@ class DHCPSnippetsHandler(OperationsHandler):
 
     def read(self, request):
         """List all DHCP snippets."""
-        return DHCPSnippet.objects.all()
+        return DHCPSnippet.objects.all().select_related(
+            'value', 'subnet', 'node')
 
     @admin_method
     def create(Self, request):

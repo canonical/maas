@@ -75,6 +75,7 @@ class DHCPSnippetForm(MAASModelForm):
                 raise ValidationError("DHCP snippet requires a name.")
             elif data.get('value') is None:
                 raise ValidationError("DHCP snippet requires a value.")
+            self.initial['enabled'] = True
         else:
             self.fields['value'].initial = self.instance.value
         if self.instance.node is not None:
@@ -107,6 +108,7 @@ class DHCPSnippetForm(MAASModelForm):
                 set_form_error(self, 'value', first_error['error'])
 
         # If the DHCPSnippet isn't valid cleanup the value
-        if not valid:
+        if (not valid and
+                self.initial.get('value') != self.cleaned_data['value'].id):
             self.instance.value.delete()
         return valid
