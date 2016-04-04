@@ -80,6 +80,7 @@ class RackControllerService(Service):
         self.starting = None
         self.processing = LoopingCall(self.process)
         self.processing.clock = self.clock
+        self.processingDone = None
         self.watching = set()
         self.needsDHCPUpdate = set()
         self.postgresListener = postgresListener
@@ -159,9 +160,8 @@ class RackControllerService(Service):
             self.needsDHCPUpdate = set()
             self.starting = None
             if self.processing.running:
-                d = self.processing.deferred
                 self.processing.stop()
-                return d
+                return self.processingDone
 
         if self.starting is None:
             return maybeDeferred(cleanUp)
@@ -201,7 +201,7 @@ class RackControllerService(Service):
     def startProcessing(self):
         """Start the process looping call."""
         if not self.processing.running:
-            self.processing.start(0.1, now=False)
+            self.processingDone = self.processing.start(0.1, now=False)
 
     def process(self):
         """Process the next rack controller that needs an update."""

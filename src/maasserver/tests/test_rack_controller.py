@@ -313,7 +313,7 @@ class TestRackControllerService(MAASServerTestCase):
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
-        yield service.processing.deferred
+        yield service.processingDone
         self.assertThat(mock_processDHCP, MockNotCalled())
 
     @wait_for_reactor
@@ -327,7 +327,7 @@ class TestRackControllerService(MAASServerTestCase):
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
-        yield service.processing.deferred
+        yield service.processingDone
         self.assertThat(mock_processDHCP, MockCalledOnceWith(rack_id))
 
     @wait_for_reactor
@@ -345,7 +345,7 @@ class TestRackControllerService(MAASServerTestCase):
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
         for _ in range(len(rack_ids)):
-            yield service.processing.deferred
+            yield service.processingDone
         for rack_id in rack_ids:
             self.assertThat(mock_processDHCP, MockAnyCall(rack_id))
 
