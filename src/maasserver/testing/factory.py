@@ -335,7 +335,6 @@ class Factory(maastesting.factory.Factory):
             acquired = node.status in ALLOCATED_NODE_STATUSES
             self.make_Filesystem(
                 partition=root_partition, mount_point='/', acquired=acquired)
-
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:
@@ -591,7 +590,9 @@ class Factory(maastesting.factory.Factory):
         node = self.make_Node(
             nodegroup=nodegroup, fabric=fabric, **kwargs)
         if vlan is None:
-            vlan = self.make_VLAN(fabric=fabric)
+            if fabric is None:
+                fabric = factory.make_Fabric()
+            vlan = fabric.get_default_vlan()
         if subnet is None:
             subnet = self.make_Subnet(vlan=vlan, cidr=cidr)
         # Check if the subnet already has a managed interface.
@@ -630,7 +631,7 @@ class Factory(maastesting.factory.Factory):
                 self.make_StaticIPAddress(
                     alloc_type=IPADDRESS_TYPE.STICKY, ip="",
                     subnet=subnet, interface=interface)
-        return node
+        return reload_object(node)
 
     UNDEFINED = float('NaN')
 
@@ -786,7 +787,19 @@ class Factory(maastesting.factory.Factory):
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
         if vlan is None:
-            vlan = self.make_VLAN(fabric=fabric)
+            if fabric is not None:
+                if iftype == INTERFACE_TYPE.VLAN:
+                    vlan = self.make_VLAN(fabric=fabric)
+                else:
+                    vlan = fabric.get_default_vlan()
+            else:
+                if iftype == INTERFACE_TYPE.VLAN and parents:
+                    vlan = self.make_VLAN(fabric=parents[0].vlan.fabric)
+                elif iftype == INTERFACE_TYPE.BOND and parents:
+                    vlan = parents[0].vlan
+                else:
+                    fabric = self.make_Fabric()
+                    vlan = fabric.get_default_vlan()
         if (mac_address is None and
                 iftype in [
                     INTERFACE_TYPE.PHYSICAL,

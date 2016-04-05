@@ -805,6 +805,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
 
     def test_get_hostname_ip_mapping_prefers_bond_with_no_boot_interface(self):
         self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(interface_module, "remove_host_maps")
         subnet = factory.make_Subnet(
             cidr=unicode(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -835,6 +836,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
 
     def test_get_hostname_ip_mapping_prefers_bond_with_boot_interface(self):
         self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(interface_module, "remove_host_maps")
         subnet = factory.make_Subnet(
             cidr=unicode(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -859,6 +861,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
 
     def test_get_hostname_ip_mapping_ignores_bond_without_boot_interface(self):
         self.patch_autospec(interface_module, "update_host_maps")
+        self.patch_autospec(interface_module, "remove_host_maps")
         subnet = factory.make_Subnet(
             cidr=unicode(factory.make_ipv4_network().cidr))
         node = factory.make_Node_with_Interface_on_Subnet(

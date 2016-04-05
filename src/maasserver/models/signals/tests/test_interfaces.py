@@ -132,3 +132,49 @@ class TestMTUParams(MAASServerTestCase):
         self.assertEquals({
             'mtu': bond_mtu,
             }, reload_object(physical3_interface).params)
+
+
+class TestUpdateBondParents(MAASServerTestCase):
+
+    def test__updates_bond_parents(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        self.assertEqual(bond.vlan, reload_object(parent1).vlan)
+        self.assertEqual(bond.vlan, reload_object(parent2).vlan)
+
+    def test__update_bond_clears_parent_links(self):
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=parent1.node)
+        static_ip = factory.make_StaticIPAddress(interface=parent1)
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND, parents=[parent1, parent2])
+        self.assertIsNone(reload_object(static_ip))
+
+
+class TestInterfaceVLANUpdate(MAASServerTestCase):
+
+    scenarios = (
+        ("node", {
+            "maker": factory.make_Node,
+        }),
+        ("device", {
+            "maker": factory.make_Device,
+        }),
+    )
+
+    def test__removes_links(self):
+        node = self.maker()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        static_ip = factory.make_StaticIPAddress(interface=interface)
+        discovered_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface)
+        new_fabric = factory.make_Fabric()
+        new_vlan = new_fabric.get_default_vlan()
+        interface.vlan = new_vlan
+        interface.save()
+        self.assertIsNone(reload_object(static_ip))
+        self.assertIsNotNone(reload_object(discovered_ip))

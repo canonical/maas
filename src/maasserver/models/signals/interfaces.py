@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.db.models.signals import post_save
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -25,6 +26,14 @@ from maasserver.models import (
     VLANInterface,
 )
 from maasserver.utils.signals import connect_to_field_change
+
+
+INTERFACE_CLASSES = [
+    Interface,
+    PhysicalInterface,
+    BondInterface,
+    VLANInterface,
+]
 
 
 def interface_enabled_or_disabled(instance, old_values, **kwargs):
@@ -52,12 +61,10 @@ def interface_enabled_or_disabled(instance, old_values, **kwargs):
                         ip_address, clearing_config=True)
 
 
-connect_to_field_change(
-    interface_enabled_or_disabled,
-    Interface, ['enabled'], delete=False)
-connect_to_field_change(
-    interface_enabled_or_disabled,
-    PhysicalInterface, ['enabled'], delete=False)
+for klass in INTERFACE_CLASSES:
+    connect_to_field_change(
+        interface_enabled_or_disabled,
+        klass, ['enabled'], delete=False)
 
 
 def interface_mtu_params_update(instance, old_values, **kwargs):
@@ -118,15 +125,48 @@ def interface_mtu_params_update(instance, old_values, **kwargs):
             parent.save()
 
 
-connect_to_field_change(
-    interface_mtu_params_update,
-    Interface, ['params'], delete=False)
-connect_to_field_change(
-    interface_mtu_params_update,
-    PhysicalInterface, ['params'], delete=False)
-connect_to_field_change(
-    interface_mtu_params_update,
-    BondInterface, ['params'], delete=False)
-connect_to_field_change(
-    interface_mtu_params_update,
-    VLANInterface, ['params'], delete=False)
+for klass in INTERFACE_CLASSES:
+    connect_to_field_change(
+        interface_mtu_params_update,
+        klass, ['params'], delete=False)
+
+
+def update_bond_parents(sender, instance, created, **kwargs):
+    """Update bond parents when interface created."""
+    if instance.type == INTERFACE_TYPE.BOND:
+        for parent in instance.parents.all():
+            # Make sure the parent has not links as well, just to be sure.
+            parent.clear_all_links(clearing_config=True)
+            if parent.vlan != instance.vlan:
+                parent.vlan = instance.vlan
+                parent.save()
+
+
+for klass in INTERFACE_CLASSES:
+    post_save.connect(
+        update_bond_parents, sender=klass)
+
+
+def interface_vlan_update(instance, old_values, **kwargs):
+    """When an interfaces VLAN is changed we need to remove all
+    links if the VLAN is different.
+    """
+    new_vlan_id = instance.vlan_id
+    [old_vlan_id] = old_values
+    if new_vlan_id == old_vlan_id:
+        # Nothing changed do nothing.
+        return
+    if instance.node is None:
+        # Not assigned to a node. Nothing to do.
+        return
+
+    # Interface VLAN was changed on a machine or device. Remove all its
+    # links except the DISCOVERED ones.
+    instance.ip_addresses.exclude(
+        alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
+
+
+for klass in INTERFACE_CLASSES:
+    connect_to_field_change(
+        interface_vlan_update,
+        klass, ['vlan_id'], delete=False)

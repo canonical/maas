@@ -922,11 +922,12 @@ class Interface(CleanSave, TimestampedModel):
             # Nothing to do, already has links.
             return
         else:
-            # Use an associated subnet if it exists, else it will just be a
+            # Use an associated subnet if it exists and its on the same VLAN
+            # the interface is currently connected, else it will just be a
             # LINK_UP without a subnet.
             discovered_address = self.ip_addresses.filter(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                subnet__isnull=False).first()
+                subnet__vlan=self.vlan).first()
             if discovered_address is not None:
                 subnet = discovered_address.subnet
             else:

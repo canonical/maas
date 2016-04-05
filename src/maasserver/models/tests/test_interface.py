@@ -230,31 +230,51 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
                 ["id:%s" % iface1.id, "id:%s" % iface2.id]), [iface1, iface2])
 
     def test__filter_by_specifiers_matches_vid(self):
-        iface1 = factory.make_Interface()
-        iface2 = factory.make_Interface()
+        fabric1 = factory.make_Fabric()
+        parent1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan())
+        vlan1 = factory.make_VLAN(fabric=fabric1)
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan1, parents=[parent1])
+        fabric2 = factory.make_Fabric()
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric2.get_default_vlan())
+        vlan2 = factory.make_VLAN(fabric=fabric2)
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "vid:%s" % iface1.vlan.vid), [iface1])
+                "vid:%s" % vlan1.vid), [iface1])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "vid:%s" % iface2.vlan.vid), [iface2])
+                "vid:%s" % vlan2.vid), [iface2])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                ["vid:%s" % iface1.vlan.vid, "vid:%s" % iface2.vlan.vid]),
+                ["vid:%s" % vlan1.vid, "vid:%s" % vlan2.vid]),
             [iface1, iface2])
 
     def test__filter_by_specifiers_matches_vlan(self):
-        iface1 = factory.make_Interface()
-        iface2 = factory.make_Interface()
+        fabric1 = factory.make_Fabric()
+        parent1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan())
+        vlan1 = factory.make_VLAN(fabric=fabric1)
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan1, parents=[parent1])
+        fabric2 = factory.make_Fabric()
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric2.get_default_vlan())
+        vlan2 = factory.make_VLAN(fabric=fabric2)
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "vlan:%s" % iface1.vlan.vid), [iface1])
+                "vlan:%s" % vlan1.vid), [iface1])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                "vlan:%s" % iface2.vlan.vid), [iface2])
+                "vlan:%s" % vlan2.vid), [iface2])
         self.assertItemsEqual(
             Interface.objects.filter_by_specifiers(
-                ["vlan:%s" % iface1.vlan.vid, "vlan:%s" % iface2.vlan.vid]),
+                ["vlan:%s" % vlan1.vid, "vlan:%s" % vlan2.vid]),
             [iface1, iface2])
 
     def test__filter_by_specifiers_matches_subnet_specifier(self):
@@ -1515,7 +1535,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
             1, interface.ip_addresses.count(),
             "Should only have one IP address assigned.")
 
-    def test__creates_link_up_to_discovered_subnet(self):
+    def test__creates_link_up_to_discovered_subnet_on_same_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnet = factory.make_Subnet(vlan=interface.vlan)
         factory.make_StaticIPAddress(
@@ -1526,6 +1546,18 @@ class TestEnsureLinkUp(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY).first()
         self.assertIsNone(link_ip.ip)
         self.assertEquals(subnet, link_ip.subnet)
+
+    def test__creates_link_up_to_no_subnet_when_on_different_vlan(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED, ip="",
+            subnet=subnet, interface=interface)
+        interface.ensure_link_up()
+        link_ip = interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.STICKY).first()
+        self.assertIsNone(link_ip.ip)
+        self.assertIsNone(link_ip.subnet)
 
     def test__creates_link_up_to_no_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
