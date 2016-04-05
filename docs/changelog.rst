@@ -3,6 +3,61 @@ Changelog
 =========
 
 
+2.0.0 (beta1)
+=============
+
+Major new features
+------------------
+
+**Region Controller Redundancy**
+  Starting from MAAS 2.0 beta 1, MAAS now provides the ability to scale out or
+  provide redundancy for the MAAS Region Controller API server and DNS. This
+  will allow administrators to set up multiple MAAS Region Controllers
+  (maas-region-api) against a common database, providing redundancy of services.
+  With further manual configuration, users will be able to setup MAAS Region
+  Controller in High Availability.
+
+Minor new features
+------------------
+
+**MAAS Proxy is now managed**
+  Starting from MAAS 2.0 beta 1, MAAS now manages the configuration for
+  maas-proxy. This allows MAAS to lock down maas-proxy, and only allow traffic
+  from networks MAAS know about. For more information see :ref:`MAAS Proxy <proxy>`
+
+**DHCP Snippets WebUI**
+  MAAS 2.0 beta 1 introduces the ability to add and remove DHCP snippets via
+  the Web UI. This can be found under the ‘Settings’ page. This feature is
+  available for administrative only.
+
+Issues fixed in this release
+----------------------------
+
+LP: #1557451    [2.0] MAAS api 1.0 version returns null
+
+LP: #1563094    builtins.FileNotFoundError: [Errno 2] No such file or directory: 'bzr'
+
+LP: #1557526    [2.0a2] Link "go to rack controllers page" does not link to controllers page.
+
+LP: #1562106    [2.0a4] Can't assign a 'Static IP' Address
+
+LP: #1562888    [2.0] DHCP Snippets are not validated before committed
+
+LP: #1553841    [2.0a1] MAAS should ensure that BMC password is correct before saving
+
+LP: #1379567    maas-proxy is an open proxy with no ACLs. it should add networks automatically
+
+LP: #1562214    [2.0a4] If external proxy is being used, status from maas-proxy shouldn't be surfaced
+
+LP: #1555392    [2.0a1] python3-maas-client needs to send data as bytes()
+
+LP: #1563807    Systemd units need to reflect updated MAAS names
+
+LP: #1563799    [2.0a4] Permission error for boot-resources/cache
+
+LP: #1563779    [2.0a4] maas-rackd missing presumed lost
+
+
 2.0.0 (alpha4)
 ==============
 
