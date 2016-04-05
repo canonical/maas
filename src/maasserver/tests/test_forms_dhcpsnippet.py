@@ -21,6 +21,11 @@ from maasserver.utils.orm import reload_object
 
 class TestDHCPSnippetForm(MAASServerTestCase):
 
+    def setUp(self):
+        super().setUp()
+        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
+            {})
+
     def test__create_dhcp_snippet_requies_name(self):
         self.assertRaises(
             ValidationError,
@@ -32,8 +37,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             DHCPSnippetForm, data={'name': factory.make_name('name')})
 
     def test__creates_dhcp_snippet(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         name = factory.make_name('name')
         value = factory.make_string()
         description = factory.make_string()
@@ -52,8 +55,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(enabled, dhcp_snippet.enabled)
 
     def test__create_dhcp_snippet_defaults_to_enabled(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         name = factory.make_name('name')
         value = factory.make_string()
         description = factory.make_string()
@@ -70,8 +71,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertTrue(dhcp_snippet.enabled)
 
     def test__creates_dhcp_snippet_with_node(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         node = factory.make_Node()
         name = factory.make_name('name')
         value = factory.make_string()
@@ -92,8 +91,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(node, dhcp_snippet.node)
 
     def test__creates_dhcp_snippet_with_subnet(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         subnet = factory.make_Subnet()
         name = factory.make_name('name')
         value = factory.make_string()
@@ -115,8 +112,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
     def test__cannt_create_dhcp_snippet_with_node_and_subnet(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         node = factory.make_Node()
         subnet = factory.make_Subnet()
         name = factory.make_name('name')
@@ -134,8 +129,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test__fail_validation_on_create_cleans_value(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         node = factory.make_Node()
         subnet = factory.make_Subnet()
         name = factory.make_name('name')
@@ -155,8 +148,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertItemsEqual([], VersionedTextFile.objects.all())
 
     def test__updates_name(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         name = factory.make_name('name')
         form = DHCPSnippetForm(
@@ -166,8 +157,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(name, dhcp_snippet.name)
 
     def test__updates_value(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         old_value = dhcp_snippet.value.data
         new_value = factory.make_string()
@@ -179,8 +168,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(old_value, dhcp_snippet.value.previous_version.data)
 
     def test__updates_description(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         description = factory.make_string()
         form = DHCPSnippetForm(
@@ -190,8 +177,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(description, dhcp_snippet.description)
 
     def test__updates_enabled(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         enabled = not dhcp_snippet.enabled
         form = DHCPSnippetForm(
@@ -201,8 +186,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(enabled, dhcp_snippet.enabled)
 
     def test__updates_node(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         node = factory.make_Node()
         form = DHCPSnippetForm(
@@ -211,16 +194,17 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         dhcp_snippet = form.save()
         self.assertEqual(node, dhcp_snippet.node)
 
-    def test__cannt_update_node_when_subnet_set(self):
+    def test__updates_node_when_subnet_set(self):
         dhcp_snippet = factory.make_DHCPSnippet(subnet=factory.make_Subnet())
         node = factory.make_Node()
         form = DHCPSnippetForm(
             instance=dhcp_snippet, data={'node': node.system_id})
-        self.assertFalse(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
+        dhcp_snippet = form.save()
+        self.assertIsNone(dhcp_snippet.subnet)
+        self.assertEquals(node, dhcp_snippet.node)
 
     def test__updates_subnet(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         dhcp_snippet = factory.make_DHCPSnippet()
         subnet = factory.make_Subnet()
         form = DHCPSnippetForm(
@@ -229,14 +213,17 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         dhcp_snippet = form.save()
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
-    def test__cannt_update_subnet_when_node_set(self):
+    def test__updates_subnet_when_node_set(self):
         dhcp_snippet = factory.make_DHCPSnippet(node=factory.make_Node())
         subnet = factory.make_Subnet()
         form = DHCPSnippetForm(
             instance=dhcp_snippet, data={'subnet': subnet.id})
-        self.assertFalse(form.is_valid())
+        self.assertTrue(form.is_valid(), form.errors)
+        dhcp_snippet = form.save()
+        self.assertIsNone(dhcp_snippet.node)
+        self.assertEquals(subnet, dhcp_snippet.subnet)
 
-    def test__cannt_update_both_node_and_subnet(self):
+    def test__cannot_update_both_node_and_subnet(self):
         dhcp_snippet = factory.make_DHCPSnippet()
         form = DHCPSnippetForm(
             instance=dhcp_snippet,
@@ -259,8 +246,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEquals(value, reload_object(dhcp_snippet).value.data)
 
     def test__update_global_snippet_resets_node(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         node = factory.make_Node()
         dhcp_snippet = factory.make_DHCPSnippet(node=node)
         form = DHCPSnippetForm(
@@ -270,8 +255,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertIsNone(dhcp_snippet.node)
 
     def test__update_global_snippet_resets_subnet(self):
-        self.patch(forms_dhcpsnippet, 'validate_dhcp_config').return_value = (
-            {})
         subnet = factory.make_Subnet()
         dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
         form = DHCPSnippetForm(
