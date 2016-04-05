@@ -224,7 +224,6 @@ class TagsHandler(OperationsHandler):
     api_doc_section_name = "Tags"
     update = delete = None
 
-    @operation(idempotent=False)
     def create(self, request):
         """Create a new Tag.
 
@@ -250,7 +249,6 @@ class TagsHandler(OperationsHandler):
         else:
             raise MAASAPIValidationError(form.errors)
 
-    @operation(idempotent=True)
     def read(self, request):
         """List Tags.
 

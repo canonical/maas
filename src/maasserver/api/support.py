@@ -165,15 +165,31 @@ class OperationsHandlerType(HandlerMetaClass):
 
         # Create the exports mapping.
         exports = {}
-        # Add parent classes exports to our exports in our namespace
+
+        # Add parent classes' exports if they still correspond to a valid
+        # method on the class we're considering. This allows subclasses to
+        # remove methods by defining an attribute of the same name as None.
         if cls.exports is not None:
             for key in cls.exports.keys():
                 if key[1] is not None:
                     new_func = getattr(cls, key[1], None)
                     if new_func is not None:
                         exports[key] = new_func
-        exports.update(crud)
+
+        # Export custom operations.
         exports.update(operations)
+
+        # Check that no CRUD methods have been marked as operations (i.e.
+        # those that are used via op=name). This causes weird behaviour within
+        # Piston3 and/or Django so avoid it.
+        for signature in OperationsResource.crudmap.items():
+            if signature in exports:
+                raise AssertionError(
+                    "A CRUD operation (%s) has been registered as an "
+                    "operation on %s." % ("%s/%s" % signature, name))
+
+        # Export CRUD methods.
+        exports.update(crud)
 
         # Update the class.
         cls.exports = exports

@@ -167,7 +167,6 @@ class FilesHandler(OperationsHandler):
     get_by_key = operation(
         idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
-    @operation(idempotent=False)
     def create(self, request):
         """Add a new file to the file storage.
 
@@ -197,7 +196,6 @@ class FilesHandler(OperationsHandler):
         FileStorage.objects.save_file(filename, uploaded_file, request.user)
         return HttpResponse('', status=int(http.client.CREATED))
 
-    @operation(idempotent=True)
     def read(self, request):
         """List the files from the file storage.
 

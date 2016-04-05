@@ -795,7 +795,6 @@ class AnonMachinesHandler(AnonNodesHandler):
     model = Machine
     fields = DISPLAYED_MACHINE_FIELDS
 
-    @operation(idempotent=False)
     def create(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.
         """Create a new Machine.
@@ -863,7 +862,6 @@ class MachinesHandler(NodesHandler):
     base_model = Machine
     fields = DISPLAYED_MACHINE_FIELDS
 
-    @operation(idempotent=False)
     def create(self, request):
         # Note: this docstring is duplicated above. Be sure to update both.
         """Create a new Machine.

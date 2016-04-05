@@ -493,8 +493,7 @@ class APIErrorsTest(MAASTransactionServerTestCase):
         def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
         self.patch(machines_module, 'create_machine', raise_exception)
-        response = self.client.post(
-            reverse('machines_handler'), {'op': 'create'})
+        response = self.client.post(reverse('machines_handler'), {})
 
         self.assertEqual(
             (

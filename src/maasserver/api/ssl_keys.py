@@ -16,10 +16,7 @@ from django.http import (
     HttpResponseForbidden,
 )
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSLKeyForm
 from maasserver.models import SSLKey
@@ -37,12 +34,10 @@ class SSLKeysHandler(OperationsHandler):
 
     update = delete = None
 
-    @operation(idempotent=True)
     def read(self, request):
         """List all keys belonging to the requesting user."""
         return SSLKey.objects.filter(user=request.user).order_by('id')
 
-    @operation(idempotent=False)
     def create(self, request):
         """Add a new SSL key to the requesting user's account.
 
@@ -89,7 +84,6 @@ class SSLKeyHandler(OperationsHandler):
                 "Can't get a key you don't own.")
         return key
 
-    @operation(idempotent=True)
     def delete(self, request, keyid):
         """DELETE an SSL key.
 

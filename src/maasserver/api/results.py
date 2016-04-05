@@ -7,10 +7,7 @@ __all__ = [
     'NodeResultsHandler',
     ]
 
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import (
     get_optional_list,
     get_optional_param,
@@ -31,7 +28,6 @@ class NodeResultsHandler(OperationsHandler):
         'name', 'script_result', 'result_type', 'updated', 'created',
         'node', 'data')
 
-    @operation(idempotent=True)
     def read(self, request):
         """List NodeResult visible to the user, optionally filtered.
 

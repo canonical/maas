@@ -16,10 +16,7 @@ from django.http import (
     HttpResponseForbidden,
 )
 from django.shortcuts import get_object_or_404
-from maasserver.api.support import (
-    operation,
-    OperationsHandler,
-)
+from maasserver.api.support import OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
 from maasserver.models import SSHKey
@@ -37,12 +34,10 @@ class SSHKeysHandler(OperationsHandler):
 
     update = delete = None
 
-    @operation(idempotent=True)
     def read(self, request):
         """List all keys belonging to the requesting user."""
         return SSHKey.objects.filter(user=request.user)
 
-    @operation(idempotent=False)
     def create(self, request):
         """Add a new SSH key to the requesting user's account.
 
@@ -85,7 +80,6 @@ class SSHKeyHandler(OperationsHandler):
         key = get_object_or_404(SSHKey, id=keyid)
         return key
 
-    @operation(idempotent=False)
     def delete(self, request, keyid):
         """DELETE an SSH key.
 

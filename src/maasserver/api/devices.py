@@ -11,7 +11,6 @@ from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
 )
-from maasserver.api.support import operation
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
@@ -119,7 +118,6 @@ class DevicesHandler(NodesHandler):
     update = delete = None
     base_model = Device
 
-    @operation(idempotent=False)
     def create(self, request):
         """Create a new device.
 
