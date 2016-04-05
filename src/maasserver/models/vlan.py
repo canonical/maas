@@ -162,6 +162,8 @@ class VLAN(CleanSave, TimestampedModel):
 
     dhcp_on = BooleanField(default=False, editable=True)
 
+    external_dhcp_present = BooleanField(default=False, editable=False)
+
     primary_rack = ForeignKey(
         'RackController', null=True, blank=True, editable=True,
         related_name='+')
