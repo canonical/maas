@@ -136,6 +136,9 @@ class VlanHandler(OperationsHandler):
 
         :param name: Name of the VLAN.
         :param vid: VLAN ID of the VLAN.
+        :type vid: integer
+        :param mtu: The MTU to use on the VLAN.
+        :type mtu: integer
 
         Returns 404 if the fabric or VLAN is not found.
         """

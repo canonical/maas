@@ -73,15 +73,14 @@ class TestVLANForm(MAASServerTestCase):
         form = VLANForm(instance=vlan, data={})
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test__cannot_edit_default_vlan(self):
+    def test__can_edit_default_vlan_mtu(self):
         fabric = factory.make_Fabric()
-        form = VLANForm(instance=fabric.get_default_vlan(), data={})
-        self.assertFalse(form.is_valid(), form.errors)
-        self.assertEquals({
-            "__all__": [
-                "Cannot modify the default VLAN for a fabric.",
-                ],
-            }, form.errors)
+        vlan = fabric.get_default_vlan()
+        new_mtu = random.randint(200, 9000)
+        form = VLANForm(instance=vlan, data={'mtu': new_mtu})
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        self.assertEquals(new_mtu, reload_object(vlan).mtu)
 
     def test__updates_vlan(self):
         vlan = factory.make_VLAN()

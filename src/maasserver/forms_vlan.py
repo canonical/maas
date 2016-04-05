@@ -17,7 +17,6 @@ __all__ = [
 ]
 
 from django import forms
-from django.core.exceptions import ValidationError
 from maasserver.forms import MAASModelForm
 from maasserver.models.vlan import VLAN
 
@@ -45,9 +44,6 @@ class VLANForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super(VLANForm, self).clean()
-        if self.instance.id is not None and self.instance.is_fabric_default():
-            raise ValidationError(
-                "Cannot modify the default VLAN for a fabric.")
         return cleaned_data
 
     def save(self):
