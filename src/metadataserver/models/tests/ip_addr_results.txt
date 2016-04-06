@@ -20,9 +20,3 @@
     link/ether 00:00:00:00:00:03 brd ff:ff:ff:ff:ff:ff
     inet 172.17.12.1/16 scope global eth2
        valid_lft forever preferred_lft forever
-5: lxcbr0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
-    link/ether 00:00:00:00:00:04 brd ff:ff:ff:ff:ff:ff
-    inet 10.0.3.1/24 scope global lxcbr0
-       valid_lft forever preferred_lft forever
-    inet6 fe80::e477:64ff:fec5:25a3/64 scope link
-       valid_lft forever preferred_lft forever
