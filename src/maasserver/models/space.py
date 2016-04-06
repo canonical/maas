@@ -30,7 +30,7 @@ def validate_space_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile('^[ \w-]+$')
+    namespec = re.compile('^[\w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid space name: %s." % value)
 
@@ -125,8 +125,10 @@ class Space(CleanSave, TimestampedModel):
 
     objects = SpaceManager()
 
+    # We don't actually allow blank or null name, but that is enforced in
+    # clean() and save().
     name = CharField(
-        max_length=256, editable=True, null=True, blank=True, unique=False,
+        max_length=256, editable=True, null=True, blank=True, unique=True,
         validators=[validate_space_name])
 
     def __str__(self):
@@ -144,11 +146,27 @@ class Space(CleanSave, TimestampedModel):
             return "space-%s" % self.id
 
     def clean_name(self):
-        reserved = re.compile('space-\d+$')
-        if self.name is not None and reserved.search(self.name):
-            if (self.id is None or self.name != 'space-%d' % self.id):
-                raise ValidationError(
-                    {'name': ["Reserved space name."]})
+        reserved = re.compile('^space-\d+$')
+        if self.name is not None and self.name != '':
+            if reserved.search(self.name):
+                if (self.id is None or self.name != 'space-%d' % self.id):
+                    raise ValidationError(
+                        {'name': ["Reserved space name."]})
+        elif self.id is not None:
+            # Since we are not creating the space, force the (null or empty)
+            # name to be the default name.
+            self.name = "space-%d" % self.id
+
+    def save(self, *args, **kwargs):
+        # Name will get set by clean_name() if None or empty, and there is an
+        # id. We just need to handle names here for creation.
+        super().save(*args, **kwargs)
+        if self.name is None or self.name == '':
+            # If we got here, then we have a newly created space that needs a
+            # default name.
+            self.name = "space-%d" % self.id
+            space = Space.objects.get(id=self.id)
+            space.save()
 
     def clean(self, *args, **kwargs):
         super(Space, self).clean(*args, **kwargs)

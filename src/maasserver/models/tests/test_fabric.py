@@ -164,6 +164,27 @@ class TestFabric(MAASServerTestCase):
         default_fabric = Fabric.objects.get_default_fabric()
         self.assertEqual(0, default_fabric.id)
         self.assertEqual(DEFAULT_FABRIC_NAME, default_fabric.get_name())
+        self.assertEqual(DEFAULT_FABRIC_NAME, default_fabric.name)
+
+    def test_create_sets_name(self):
+        fabric = Fabric.objects.create(name=None)
+        self.assertEqual("fabric-%d" % fabric.id, fabric.name)
+
+    def test_create_does_not_override_name(self):
+        name = factory.make_name()
+        fabric = factory.make_Fabric(name=name)
+        self.assertEqual(name, fabric.name)
+
+    def test_nonreserved_name_does_not_raise_exception(self):
+        fabric = factory.make_Fabric(name='myfabric-33')
+        self.assertEqual("myfabric-33", fabric.name)
+
+    def test_rejects_duplicate_names(self):
+        fabric1 = factory.make_Fabric()
+        self.assertRaises(
+            ValidationError,
+            factory.make_Fabric,
+            name=fabric1.name)
 
     def test_get_default_fabric_is_idempotent(self):
         default_fabric = Fabric.objects.get_default_fabric()

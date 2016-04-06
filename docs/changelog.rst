@@ -13,6 +13,10 @@ LP: #1556185    TypeError: 'Machine' object is not iterable
 
 LP: #1561733    [2.0a3] MAAS no longer detects external DHCP servers
 
+LP: #1543707    MAAS 1.9+ should not allow whitespace characters in space names
+
+LP: #1543968    MAAS 1.9.0 allows non-unique space names
+
 
 2.0.0 (beta1)
 =============

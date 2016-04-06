@@ -139,6 +139,7 @@ class SpaceTest(MAASServerTestCase):
         default_space = Space.objects.get_default_space()
         self.assertEqual(0, default_space.id)
         self.assertEqual(DEFAULT_SPACE_NAME, default_space.get_name())
+        self.assertEqual(DEFAULT_SPACE_NAME, default_space.name)
 
     def test_invalid_name_raises_exception(self):
         self.assertRaises(
@@ -151,6 +152,26 @@ class SpaceTest(MAASServerTestCase):
             ValidationError,
             factory.make_Space,
             name='space-1999')
+
+    def test_create_sets_name(self):
+        space = Space.objects.create(name=None)
+        self.assertEqual("space-%d" % space.id, space.name)
+
+    def test_create_does_not_override_name(self):
+        name = factory.make_name()
+        space = factory.make_Space(name=name)
+        self.assertEqual(name, space.name)
+
+    def test_nonreserved_name_does_not_raise_exception(self):
+        space = factory.make_Space(name='myspace-1999')
+        self.assertEqual("myspace-1999", space.name)
+
+    def test_rejects_duplicate_names(self):
+        space1 = factory.make_Space()
+        self.assertRaises(
+            ValidationError,
+            factory.make_Space,
+            name=space1.name)
 
     def test_get_default_space_is_idempotent(self):
         default_space = Space.objects.get_default_space()
