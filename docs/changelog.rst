@@ -3,6 +3,17 @@ Changelog
 =========
 
 
+2.0.0 (beta2)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1556185    TypeError: 'Machine' object is not iterable
+
+LP: #1561733    [2.0a3] MAAS no longer detects external DHCP servers
+
+
 2.0.0 (beta1)
 =============
 
