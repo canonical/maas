@@ -216,9 +216,13 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """
         return list(self.filter(node=node, name__in=interface_names))
 
-    def get_by_ip(self, static_ip_address):
-        """Given the specified StaticIPAddress, return the Interface it's on.
+    def filter_by_ip(self, static_ip_address):
+        """Given the specified StaticIPAddress, (or string containing an IP
+        address) return the Interface it is on.
         """
+        if isinstance(static_ip_address, str):
+            static_ip_address = StaticIPAddress.objects.get(
+                ip=static_ip_address)
         return self.filter(ip_addresses=static_ip_address)
 
     def get_interface_or_404(self, system_id, specifiers, user, perm):

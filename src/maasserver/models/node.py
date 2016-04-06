@@ -3172,7 +3172,7 @@ class RackController(Node):
             vlan, _ = VLAN.objects.get_or_create(
                 fabric=parent_nic.vlan.fabric, vid=config["vid"])
             interface, _ = VLANInterface.objects.get_or_create(
-                vlan=vlan, parents=[parent_nic])
+                node=self, vlan=vlan, parents=[parent_nic])
         else:
             # Parent has no links we do not assume that parent is on the
             # correct fabric.
@@ -3192,7 +3192,7 @@ class RackController(Node):
                     vlan, _ = VLAN.objects.get_or_create(
                         fabric=parent_nic.vlan.fabric, vid=config["vid"])
                     interface, created = VLANInterface.objects.get_or_create(
-                        vlan=vlan, parents=[parent_nic])
+                        node=self, vlan=vlan, parents=[parent_nic])
                     if not created:
                         # Interface already existed so remove all assigned IP
                         # addresses.
@@ -3210,7 +3210,7 @@ class RackController(Node):
                     # on this VLAN and update the parent interface fabric if
                     # needed.
                     interface, _ = VLANInterface.objects.get_or_create(
-                        vlan=subnet.vlan, parents=[parent_nic])
+                        node=self, vlan=subnet.vlan, parents=[parent_nic])
                     if parent_nic.vlan.fabric_id != subnet.vlan.fabric_id:
                         parent_nic.vlan = subnet.vlan.fabric.get_default_vlan()
                         parent_nic.save()
@@ -3221,7 +3221,7 @@ class RackController(Node):
                 vlan, _ = VLAN.objects.get_or_create(
                     fabric=parent_nic.vlan.fabric, vid=config["vid"])
                 interface, _ = VLANInterface.objects.get_or_create(
-                    vlan=vlan, parents=[parent_nic])
+                    node=self, vlan=vlan, parents=[parent_nic])
 
         # Update all assigned IP address to the interface. This is not
         # performed when the subnet and VID for that subnet do not match.

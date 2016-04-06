@@ -151,6 +151,18 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertFalse(created)
         self.assertEquals(interface, retrieved_interface)
 
+    def test_filter_by_ip(self):
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        ip = factory.make_StaticIPAddress(
+            ip='10.0.0.1', interface=iface, subnet=subnet)
+        fetched_iface = get_one(Interface.objects.filter_by_ip(ip))
+        self.assertEqual(iface, fetched_iface)
+        fetched_iface = get_one(Interface.objects.filter_by_ip("10.0.0.1"))
+        self.assertEqual(iface, fetched_iface)
+
 
 class TestInterfaceQueriesMixin(MAASServerTestCase):
 

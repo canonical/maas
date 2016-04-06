@@ -92,6 +92,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import (
+    get_one,
     post_commit,
     post_commit_hooks,
     reload_object,
@@ -6174,6 +6175,185 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 ip=br0_vlan_ip,
                 subnet=br0_vlan_subnet,
             ))
+
+    def test__two_controllers_with_similar_configurations_bug_1563701(self):
+        interfaces1 = {
+            'ens3': {
+                'enabled': True,
+                'links': [{'address': '10.2.0.2/20', 'mode': 'static'}],
+                'mac_address': '52:54:00:ff:0a:cf',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'ens4': {
+                'enabled': True,
+                'links': [{
+                    'address': '192.168.35.43/22',
+                    'gateway': '192.168.32.2',
+                    'mode': 'dhcp'
+                }],
+                'mac_address': '52:54:00:ab:da:de',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'ens5': {
+                'enabled': True,
+                'links': [],
+                'mac_address': '52:54:00:70:8f:5b',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'ens5.10': {
+                'enabled': True,
+                'links': [{'address': '10.10.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 10},
+            'ens5.11': {
+                'enabled': True,
+                'links': [{'address': '10.11.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 11
+            },
+            'ens5.12': {
+                'enabled': True,
+                'links': [{'address': '10.12.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 12
+            },
+            'ens5.13': {
+                'enabled': True,
+                'links': [{'address': '10.13.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 13
+            },
+            'ens5.14': {
+                'enabled': True,
+                'links': [{'address': '10.14.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 14
+            },
+            'ens5.15': {
+                'enabled': True,
+                'links': [{'address': '10.15.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 15
+            },
+            'ens5.16': {
+                'enabled': True,
+                'links': [{'address': '10.16.0.2/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 16
+            }}
+
+        interfaces2 = {
+            'ens3': {
+                'enabled': True,
+                'links': [{'address': '10.2.0.3/20', 'mode': 'static'}],
+                'mac_address': '52:54:00:02:eb:bc',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'ens4': {
+                'enabled': True,
+                'links': [{
+                    'address': '192.168.33.246/22',
+                    'gateway': '192.168.32.2',
+                    'mode': 'dhcp'
+                }],
+                'mac_address': '52:54:00:bc:b0:85',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+            'ens5': {
+                'enabled': True,
+                'links': [],
+                'mac_address': '52:54:00:cf:f3:7f',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'},
+            'ens5.10': {
+                'enabled': True,
+                'links': [{'address': '10.10.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 10
+            },
+            'ens5.11': {
+                'enabled': True,
+                'links': [{'address': '10.11.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 11
+            },
+            'ens5.12': {
+                'enabled': True,
+                'links': [{'address': '10.12.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 12
+            },
+            'ens5.13': {
+                'enabled': True,
+                'links': [{'address': '10.13.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 13
+            },
+            'ens5.14': {
+                'enabled': True,
+                'links': [{'address': '10.14.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 14
+            },
+            'ens5.15': {
+                'enabled': True,
+                'links': [{'address': '10.15.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 15
+            },
+            'ens5.16': {
+                'enabled': True,
+                'links': [{'address': '10.16.0.3/20', 'mode': 'static'}],
+                'parents': ['ens5'],
+                'source': 'ipaddr',
+                'type': 'vlan',
+                'vid': 16
+            }}
+        rack1 = self.create_empty_rack_controller()
+        rack2 = self.create_empty_rack_controller()
+        rack1.update_interfaces(interfaces1)
+        rack2.update_interfaces(interfaces2)
+        r1_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.2"))
+        self.assertIsNotNone(r1_ens5_16)
+        r2_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.3"))
+        self.assertIsNotNone(r2_ens5_16)
 
 
 class TestRackController(MAASServerTestCase):
