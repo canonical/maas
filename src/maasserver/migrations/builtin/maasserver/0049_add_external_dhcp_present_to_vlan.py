@@ -6,8 +6,6 @@ from django.db import (
     models,
 )
 import django.db.models.deletion
-import maasserver.models.interface
-import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
@@ -25,11 +23,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='interface',
             name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.interface.get_default_vlan),
+            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=0),
         ),
         migrations.AlterField(
             model_name='subnet',
             name='vlan',
-            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=maasserver.models.subnet.get_default_vlan),
+            field=models.ForeignKey(to='maasserver.VLAN', on_delete=django.db.models.deletion.PROTECT, default=0),
         ),
     ]

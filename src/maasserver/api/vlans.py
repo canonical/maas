@@ -25,6 +25,7 @@ DISPLAYED_VLAN_FIELDS = (
     'primary_rack',
     'secondary_rack',
     'dhcp_on',
+    'external_dhcp',
 )
 
 

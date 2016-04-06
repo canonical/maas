@@ -32,7 +32,7 @@ class TestVLANHandler(MAASServerTestCase):
             "updated": dehydrate_datetime(vlan.updated),
             "created": dehydrate_datetime(vlan.created),
             "dhcp_on": vlan.dhcp_on,
-            "external_dhcp_present": vlan.external_dhcp_present,
+            "external_dhcp": vlan.external_dhcp,
             "primary_rack": vlan.primary_rack,
             "secondary_rack": vlan.secondary_rack,
             "subnet_ids": sorted([

@@ -22,6 +22,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import VLANInterface
@@ -162,7 +163,8 @@ class VLAN(CleanSave, TimestampedModel):
 
     dhcp_on = BooleanField(default=False, editable=True)
 
-    external_dhcp_present = BooleanField(default=False, editable=False)
+    external_dhcp = MAASIPAddressField(
+        null=True, editable=False, blank=True, default=None)
 
     primary_rack = ForeignKey(
         'RackController', null=True, blank=True, editable=True,

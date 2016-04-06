@@ -175,6 +175,12 @@
            </dl>
             <dl class="six-col last-col">
                 <dt class="two-col">DHCP</dt><dd class="four-col last-col">{$ vlanDetails.vlan.dhcp_on ? "Enabled" : "Disabled" $}</dd>
+                <div data-ng-if="vlanDetails.vlan.external_dhcp">
+                    <dt class="two-col">External DHCP</dt>
+                    <dd class="four-col last-col">{$ vlanDetails.vlan.external_dhcp $}
+                        <i class="icon warning tooltip" data-tooltip="Another DHCP server has been discovered on this VLAN. Enabling DHCP is not recommended."></i>
+                    </dd>
+                </div>
                 <div class="ng-hide" data-ng-show="vlanDetails.primaryRack">
                     <dt class="two-col">Primary controller</dt><dd class="four-col last-col">{$ vlanDetails.primaryRack.hostname $}</dd>
                 </div>
