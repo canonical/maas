@@ -21,18 +21,20 @@ $pale-grey:             #bcbcbc;
   // div created tables.
   %table {
     border-color: $table-border-color;
-    border-collapse: collapse;
     border-spacing: 0;
     overflow-x: scroll;
     margin-bottom: 20px;
     margin: 0 0 2.5em;
     width: 100%;
-    table-layout: fixed;
+    text-align: left;
+    border-collapse: separate;
 
     // Table row styles
     %table-row {
       width: 100%;
-      border-bottom: 1px dotted $table-border-color;
+      border-color: rgb(178, 178, 178);
+      border-bottom-style: dotted;
+      border-bottom-width: 1px;
     }
 
     // Table cell styles
@@ -44,8 +46,10 @@ $pale-grey:             #bcbcbc;
       background: none;
       border: 0;
       text-align: left;
-      border-collapse: collapse;
+      border-collapse: separate;
       vertical-align: top;
+      backface-visibility: hidden;
+      position: relative;
     }
 
     // Table header row styles
@@ -169,7 +173,15 @@ $pale-grey:             #bcbcbc;
       @extend %table-cell;
     }
 
+    th {
+      color: $table-header-color;
+      border-bottom: 1px solid;
+    }
+
     td {
+      border-color: rgb(178, 178, 178);
+      border-bottom-style: dotted;
+      border-bottom-width: 1px;
 
       a:link,
       a:visited {
