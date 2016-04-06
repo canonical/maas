@@ -25,6 +25,7 @@ from provisioningserver.drivers.power import (
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     has_command_available,
+    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -43,7 +44,7 @@ window.open('http://www.digital-loggers.com/register.html?SN=LPC751740');
 <body alink="#0000FF" vlink="#0000FF">
 <FONT FACE="Arial, Helvetica, Sans-Serif">
 ...
-"""
+""".encode('utf-8')
 
 
 class TestDLIPowerDriver(MAASTestCase):
@@ -64,6 +65,7 @@ class TestDLIPowerDriver(MAASTestCase):
 
     def test__set_outlet_state_calls_wget(self):
         driver = dli_module.DLIPowerDriver()
+        env = select_c_utf8_locale()
         power_change = factory.make_name('power_change')
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
@@ -78,7 +80,8 @@ class TestDLIPowerDriver(MAASTestCase):
 
         self.assertThat(
             call_and_check_mock, MockCalledOnceWith(
-                ['wget', '--auth-no-challenge', '-O', '/dev/null', url]))
+                ['wget', '--auth-no-challenge', '-O', '/dev/null', url],
+                env=env))
 
     def test__set_outlet_state_crashes_when_wget_exits_nonzero(self):
         driver = dli_module.DLIPowerDriver()
@@ -92,6 +95,7 @@ class TestDLIPowerDriver(MAASTestCase):
 
     def test__query_outlet_state_queries_on(self):
         driver = dli_module.DLIPowerDriver()
+        env = select_c_utf8_locale()
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
         power_pass = factory.make_name('power_pass')
@@ -99,18 +103,20 @@ class TestDLIPowerDriver(MAASTestCase):
         url = 'http://%s:%s@%s/index.htm' % (
             power_user, power_pass, power_address)
         call_and_check_mock = self.patch(dli_module, 'call_and_check')
-        call_and_check_mock.return_value = DLI_QUERY_OUTPUT % 'ff'
+        call_and_check_mock.return_value = DLI_QUERY_OUTPUT % b'ff'
 
         result = driver._query_outlet_state(
             outlet_id, power_user, power_pass, power_address)
 
         self.expectThat(
             call_and_check_mock, MockCalledOnceWith(
-                ['wget', '--auth-no-challenge', '-qO-', url]))
+                ['wget', '--auth-no-challenge', '-qO-', url],
+                env=env))
         self.expectThat(result, Equals('on'))
 
     def test__query_outlet_state_queries_off(self):
         driver = dli_module.DLIPowerDriver()
+        env = select_c_utf8_locale()
         outlet_id = choice(['1', '2', '3', '4', '5', '6', '7', '8'])
         power_user = factory.make_name('power_user')
         power_pass = factory.make_name('power_pass')
@@ -118,20 +124,21 @@ class TestDLIPowerDriver(MAASTestCase):
         url = 'http://%s:%s@%s/index.htm' % (
             power_user, power_pass, power_address)
         call_and_check_mock = self.patch(dli_module, 'call_and_check')
-        call_and_check_mock.return_value = DLI_QUERY_OUTPUT % '00'
+        call_and_check_mock.return_value = DLI_QUERY_OUTPUT % b'00'
 
         result = driver._query_outlet_state(
             outlet_id, power_user, power_pass, power_address)
 
         self.expectThat(
             call_and_check_mock, MockCalledOnceWith(
-                ['wget', '--auth-no-challenge', '-qO-', url]))
+                ['wget', '--auth-no-challenge', '-qO-', url],
+                env=env))
         self.expectThat(result, Equals('off'))
 
     def test__query_outlet_state_crashes_when_state_not_found(self):
         driver = dli_module.DLIPowerDriver()
         call_and_check_mock = self.patch(dli_module, 'call_and_check')
-        call_and_check_mock.return_value = "Rubbish"
+        call_and_check_mock.return_value = b'Rubbish'
         self.assertRaises(
             PowerError, driver._query_outlet_state, sentinel.outlet_id,
             sentinel.power_user, sentinel.power_pass, sentinel.power_address)

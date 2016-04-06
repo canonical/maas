@@ -16,7 +16,10 @@ from provisioningserver.drivers.power import (
     PowerActionError,
     PowerFatalError,
 )
-from provisioningserver.utils.shell import has_command_available
+from provisioningserver.utils.shell import (
+    has_command_available,
+    select_c_utf8_locale,
+)
 from testtools.matchers import Equals
 
 
@@ -57,26 +60,29 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_run_process_calls_command_and_returns_output(self):
         driver = apc_module.APCPowerDriver()
         context = self.make_context()
+        env = select_c_utf8_locale()
         command = 'snmpget ' + COMMON_ARGS % (
             context['power_address'], context['node_outlet'])
-        return_value = (
-            (COMMON_OUTPUT % context['node_outlet']), 'error_output')
-        self.patch_popen(return_value)
+        self.patch_popen(
+            return_value=(
+                (COMMON_OUTPUT % context['node_outlet']).encode('utf-8'),
+                b'error_output'))
         output = driver.run_process(command)
 
         self.expectThat(
-            apc_module.Popen, MockCalledOnceWith(command.split(), stdout=PIPE))
+            apc_module.Popen,
+            MockCalledOnceWith(command.split(), stdout=PIPE, env=env))
         self.expectThat(output, Equals(apc_module.APCState.ON))
 
     def test_run_process_crashes_on_external_process_error(self):
         driver = apc_module.APCPowerDriver()
-        self.patch_popen(returncode=1)
+        self.patch_popen(return_value=(b'', b''), returncode=1)
         self.assertRaises(
             PowerFatalError, driver.run_process, factory.make_name('command'))
 
     def test_run_process_crashes_on_no_power_state_match_found(self):
         driver = apc_module.APCPowerDriver()
-        self.patch_popen(return_value=('Error', None))
+        self.patch_popen(return_value=(b'Error', b''))
         self.assertRaises(
             PowerFatalError, driver.run_process, factory.make_name('command'))
 

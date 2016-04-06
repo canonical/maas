@@ -65,7 +65,6 @@ def make_parameters():
 def make_ipmi_chassis_config_command(
         ipmi_chassis_config, power_address, power_pass,
         power_driver, power_user, tmp_config_name):
-    print(tmp_config_name)
     return (
         ipmi_chassis_config, '-W', 'opensesspriv', "--driver-type",
         power_driver, '-h', power_address, '-u', power_user, '-p', power_pass,

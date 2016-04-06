@@ -74,7 +74,7 @@ class MSCMPowerDriver(PowerDriver):
             ssh_client.connect(
                 power_address, username=power_user, password=power_pass)
             _, stdout, _ = ssh_client.exec_command(command)
-            output = stdout.read()
+            output = stdout.read().decode('utf-8')
         except (SSHException, EOFError, SOCKETError) as e:
             raise PowerConnError(
                 "Could not make SSH connection to MSCM for "

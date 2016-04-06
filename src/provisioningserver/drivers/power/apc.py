@@ -21,6 +21,7 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
 )
 from provisioningserver.utils import shell
+from provisioningserver.utils.shell import select_c_utf8_locale
 
 
 COMMON_ARGS = '-c private -v1 %s .1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s'
@@ -45,9 +46,11 @@ class APCPowerDriver(PowerDriver):
 
     def run_process(self, command):
         """Run SNMP command in subprocess."""
-        proc = Popen(command.split(), stdout=PIPE)
+        proc = Popen(
+            command.split(), stdout=PIPE, env=select_c_utf8_locale())
         stdout, stderr = proc.communicate()
-
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
         if proc.returncode != 0:
             raise PowerFatalError(
                 "APC Power Driver external process error for command %s: %s"

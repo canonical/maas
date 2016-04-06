@@ -151,18 +151,19 @@ class TestAMTPowerDriver(MAASTestCase):
         command = factory.make_name('command')
         power_pass = factory.make_name('power_pass')
         stdin = factory.make_name('stdin').encode('utf-8')
-        popen_mock = self.patch_popen(return_value=(b'stdout', b'stderr'))
+        popen_mock = self.patch_popen(return_value=(b'stdout', b''))
 
         result = amt_power_driver._run(
             command, power_pass, stdin)
 
         self.expectThat(popen_mock.communicate, MockCalledOnceWith(
             stdin))
-        self.expectThat(result, Equals(b'stdout'))
+        self.expectThat(result, Equals('stdout'))
 
     def test__run_raises_power_fatal_error(self):
         amt_power_driver = AMTPowerDriver()
-        self.patch_popen(returncode=1)
+        self.patch_popen(
+            return_value=(b'', b''), returncode=1)
 
         self.assertRaises(
             PowerFatalError, amt_power_driver._run, None, None, None)

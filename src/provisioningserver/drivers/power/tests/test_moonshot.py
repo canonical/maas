@@ -17,6 +17,7 @@ from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.utils.shell import (
     ExternalProcessError,
     has_command_available,
+    select_c_utf8_locale,
 )
 from testtools.matchers import Equals
 
@@ -58,47 +59,45 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
 
     def test__issue_ipmitool_command_issues_power_on(self):
         context = make_parameters()
-        power_change = 'on'
-        ipmitool_command = make_ipmitool_command(power_change, **context)
+        env = select_c_utf8_locale()
+        ipmitool_command = make_ipmitool_command('on', **context)
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')
-        call_and_check_mock.return_value = power_change
+        call_and_check_mock.return_value = b'on'
 
-        result = moonshot_driver._issue_ipmitool_command(
-            power_change, **context)
+        result = moonshot_driver._issue_ipmitool_command('on', **context)
 
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmitool_command))
-        self.expectThat(result, Equals(power_change))
+            call_and_check_mock, MockCalledOnceWith(ipmitool_command, env=env))
+        self.expectThat(result, Equals('on'))
 
     def test__issue_ipmitool_command_issues_power_off(self):
         context = make_parameters()
-        power_change = 'off'
-        ipmitool_command = make_ipmitool_command(power_change, **context)
+        env = select_c_utf8_locale()
+        ipmitool_command = make_ipmitool_command('off', **context)
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')
-        call_and_check_mock.return_value = power_change
+        call_and_check_mock.return_value = b'off'
 
-        result = moonshot_driver._issue_ipmitool_command(
-            power_change, **context)
+        result = moonshot_driver._issue_ipmitool_command('off', **context)
 
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmitool_command))
-        self.expectThat(result, Equals(power_change))
+            call_and_check_mock, MockCalledOnceWith(ipmitool_command, env=env))
+        self.expectThat(result, Equals('off'))
 
     def test__issue_ipmitool_command_raises_power_action_error(self):
         context = make_parameters()
-        power_change = 'other'
-        ipmitool_command = make_ipmitool_command(power_change, **context)
+        env = select_c_utf8_locale()
+        ipmitool_command = make_ipmitool_command('other', **context)
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')
-        call_and_check_mock.return_value = power_change
+        call_and_check_mock.return_value = b'other'
 
         self.assertRaises(
             PowerActionError, moonshot_driver._issue_ipmitool_command,
-            power_change, **context)
+            'other', **context)
         self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmitool_command))
+            call_and_check_mock, MockCalledOnceWith(ipmitool_command, env=env))
 
     def test__issue_ipmitool_raises_power_fatal_error(self):
         context = make_parameters()

@@ -100,6 +100,8 @@ class AMTPowerDriver(PowerDriver):
         process = Popen(
             command, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate(stdin)
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
         if process.returncode != 0:
             raise PowerFatalError(
                 "Failed to run command: %s with error: %s" % (command, stderr))

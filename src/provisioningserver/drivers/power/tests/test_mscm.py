@@ -5,7 +5,7 @@
 
 __all__ = []
 
-from io import StringIO
+from io import BytesIO
 from random import randint
 import re
 from socket import error as SOCKETError
@@ -100,13 +100,13 @@ class TestMSCMPowerDriver(MAASTestCase):
         SSHClient = self.patch(mscm_module, "SSHClient")
         AutoAddPolicy = self.patch(mscm_module, "AutoAddPolicy")
         ssh_client = SSHClient.return_value
-        expected = factory.make_name('output')
-        stdout = StringIO(expected)
+        expected = factory.make_name('output').encode('utf-8')
+        stdout = BytesIO(expected)
         streams = factory.make_streams(stdout=stdout)
         ssh_client.exec_command = Mock(return_value=streams)
         output = driver.run_mscm_command(command, **context)
 
-        self.expectThat(expected, Equals(output))
+        self.expectThat(expected.decode('utf-8'), Equals(output))
         self.expectThat(SSHClient, MockCalledOnceWith())
         self.expectThat(
             ssh_client.set_missing_host_key_policy, MockCalledOnceWith(

@@ -17,6 +17,7 @@ from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    select_c_utf8_locale,
 )
 
 
@@ -39,8 +40,9 @@ class DLIPowerDriver(PowerDriver):
                 power_user, power_pass, power_address, outlet_id, power_change)
             # --auth-no-challenge: send Basic HTTP authentication
             # information without first waiting for the server's challenge.
-            call_and_check([
-                'wget', '--auth-no-challenge', '-O', '/dev/null', url])
+            call_and_check(
+                ['wget', '--auth-no-challenge', '-O', '/dev/null', url],
+                env=select_c_utf8_locale())
         except ExternalProcessError as e:
             raise PowerFatalError(
                 "Failed to power %s outlet %s: %s" % (
@@ -71,8 +73,10 @@ class DLIPowerDriver(PowerDriver):
                 power_user, power_pass, power_address)
             # --auth-no-challenge: send Basic HTTP authentication
             # information without first waiting for the server's challenge.
-            wget_output = call_and_check([
-                'wget', '--auth-no-challenge', '-qO-', url])
+            wget_output = call_and_check(
+                ['wget', '--auth-no-challenge', '-qO-', url],
+                env=select_c_utf8_locale())
+            wget_output = wget_output.decode('utf-8')
             match = re.search("<!-- state=([0-9a-fA-F]+)", wget_output)
             if match is None:
                 raise PowerError(
