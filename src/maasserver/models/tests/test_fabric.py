@@ -10,6 +10,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db.utils import IntegrityError
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_PERMISSION,
@@ -25,6 +26,7 @@ from maasserver.models.vlan import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnce
 from testtools.matchers import MatchesStructure
 
 
@@ -191,6 +193,16 @@ class TestFabric(MAASServerTestCase):
             ValidationError,
             factory.make_Fabric,
             name=fabric1.name)
+
+    def test_get_default_fabric_handles_exception(self):
+        default_fabric = Fabric.objects.get_default_fabric()
+        func = self.patch(Fabric.objects, "get_or_create")
+        func.side_effect = IntegrityError(
+            'duplicate key value violates unique constraint '
+            '"maasserver_fabric_pkey"')
+        fabric = Fabric.objects.get_default_fabric()
+        self.assertThat(func, MockCalledOnce())
+        self.assertEqual(default_fabric.id, fabric.id)
 
     def test_get_default_fabric_is_idempotent(self):
         default_fabric = Fabric.objects.get_default_fabric()

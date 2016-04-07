@@ -20,6 +20,7 @@ from django.db.models import (
     Manager,
 )
 from django.db.models.query import QuerySet
+from django.db.utils import IntegrityError
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -75,15 +76,23 @@ class SpaceManager(Manager, SpaceQueriesMixin):
     def get_default_space(self):
         """Return the default space."""
         now = datetime.datetime.now()
-        space, _ = self.get_or_create(
-            id=0,
-            defaults={
-                'id': 0,
-                'name': None,
-                'created': now,
-                'updated': now,
-            }
-        )
+        try:
+            space, _ = self.get_or_create(
+                id=0,
+                defaults={
+                    'id': 0,
+                    'name': None,
+                    'created': now,
+                    'updated': now,
+                }
+            )
+        except IntegrityError as err:
+            if (err.args[0].startswith(
+                    'duplicate key value violates unique'
+                    ' constraint "maasserver_space_pkey"')):
+                space = self.get(id=0)
+            else:
+                raise(err)
         return space
 
     def get_space_or_404(self, specifiers, user, perm):

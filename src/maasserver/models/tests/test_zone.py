@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from django.db.utils import IntegrityError
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import (
     DEFAULT_ZONE_NAME,
@@ -13,6 +14,7 @@ from maasserver.models.zone import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnce
 
 
 class TestZoneManager(MAASServerTestCase):
@@ -26,6 +28,16 @@ class TestZoneManager(MAASServerTestCase):
         factory.make_Zone()
         self.assertEqual(
             DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
+
+    def test_get_default_zone_handles_exception(self):
+        default_zone = Zone.objects.get_default_zone()
+        func = self.patch(Zone.objects, "get_or_create")
+        func.side_effect = IntegrityError(
+            'duplicate key value violates unique constraint '
+            '"maasserver_zone_name_key"')
+        zone = Zone.objects.get_default_zone()
+        self.assertThat(func, MockCalledOnce())
+        self.assertEqual(default_zone.id, zone.id)
 
 
 class TestZone(MAASServerTestCase):

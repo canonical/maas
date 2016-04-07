@@ -36,6 +36,7 @@ from django.db.models import (
     Q,
 )
 from django.db.models.query import QuerySet
+from django.db.utils import IntegrityError
 from maasserver import DefaultMeta
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
@@ -106,17 +107,25 @@ class DomainManager(Manager, DomainQueriesMixin):
     def get_default_domain(self):
         """Return the default domain."""
         now = datetime.datetime.now()
-        domain, created = self.get_or_create(
-            id=0,
-            defaults={
-                'id': 0,
-                'name': DEFAULT_DOMAIN_NAME,
-                'authoritative': True,
-                'ttl': None,
-                'created': now,
-                'updated': now,
-            }
-        )
+        try:
+            domain, created = self.get_or_create(
+                id=0,
+                defaults={
+                    'id': 0,
+                    'name': DEFAULT_DOMAIN_NAME,
+                    'authoritative': True,
+                    'ttl': None,
+                    'created': now,
+                    'updated': now,
+                }
+            )
+        except IntegrityError as err:
+            if (err.args[0].startswith(
+                    'duplicate key value violates unique'
+                    ' constraint "maasserver_domain_pkey"')):
+                domain = self.get(id=0)
+            else:
+                raise(err)
         return domain
 
     def get_domain_or_404(self, specifiers, user, perm):
