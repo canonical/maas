@@ -166,6 +166,31 @@ class TestBootResourcesCreateAction(MAASTestCase):
             {'name': filename},
             action.get_resource_file(json.dumps(content)))
 
+    def test_get_resource_file_accepts_bytes(self):
+        filename = factory.make_name('file')
+        content = {
+            'sets': {
+                '20140910': {
+                    'files': {
+                        filename: {
+                            'name': filename,
+                            },
+                        },
+                    },
+                '20140909': {
+                    'files': {
+                        'other': {
+                            'name': 'other',
+                            },
+                        },
+                    },
+                },
+            }
+        action = self.make_boot_resources_create_action()
+        self.assertEqual(
+            {'name': filename},
+            action.get_resource_file(json.dumps(content).encode('utf-8')))
+
     def test_put_upload_raise_CommandError_if_status_not_200(self):
         self.configure_http_request(500, b'')
         action = self.make_boot_resources_create_action()

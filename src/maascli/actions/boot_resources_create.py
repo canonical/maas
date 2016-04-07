@@ -131,6 +131,8 @@ class BootResourcesCreateAction(Action):
 
     def get_resource_file(self, content):
         """Return the boot resource file for the created file."""
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
         data = json.loads(content)
         if len(data['sets']) == 0:
             # No sets returned, no way to get the resource file.
