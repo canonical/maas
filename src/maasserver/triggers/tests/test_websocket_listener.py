@@ -31,6 +31,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.internet.defer import (
+    DeferredList,
     DeferredQueue,
     inlineCallbacks,
 )
@@ -1112,14 +1113,35 @@ class TestFabricListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test__calls_handler_on_create_notification_with_blank_name(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dvs = [DeferredValue(), DeferredValue()]
+        save_dvs = dvs[:]
+        listener.register("fabric", lambda *args: dvs.pop().set(args))
+        yield listener.startService()
+        try:
+            fabric = yield deferToDatabase(self.create_fabric)
+            results = yield DeferredList(
+                (dv.get(timeout=2) for dv in save_dvs))
+            self.assertItemsEqual(
+                [('create', '%s' % fabric.id), ('update', '%s' % fabric.id)],
+                [res for (suc, res) in results])
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification_with_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            fabric = yield deferToDatabase(self.create_fabric)
+            fabric = yield deferToDatabase(
+                self.create_fabric,
+                {'name': factory.make_name('name')})
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % fabric.id), dv.value)
         finally:
@@ -1554,14 +1576,35 @@ class TestSpaceListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test__calls_handler_on_create_notification(self):
+    def test__calls_handler_on_create_notification_with_blank_name(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dvs = [DeferredValue(), DeferredValue()]
+        save_dvs = dvs[:]
+        listener.register("space", lambda *args: dvs.pop().set(args))
+        yield listener.startService()
+        try:
+            space = yield deferToDatabase(self.create_space)
+            results = yield DeferredList(
+                (dv.get(timeout=2) for dv in save_dvs))
+            self.assertItemsEqual(
+                [('create', '%s' % space.id), ('update', '%s' % space.id)],
+                [res for (suc, res) in results])
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification_with_name(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            space = yield deferToDatabase(self.create_space)
+            space = yield deferToDatabase(
+                self.create_space,
+                {'name': factory.make_name('name')})
             yield dv.get(timeout=2)
             self.assertEqual(('create', '%s' % space.id), dv.value)
         finally:
