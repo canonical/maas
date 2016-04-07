@@ -16,6 +16,11 @@ number is included in the API's URL, e.g. /api/2.0/
 
 For now, 2.0 is the only supported version.
 
+The current API version number can be retrieved by issuing a GET to
+"/api/version/". Accessing an old or unknown API version URL will result in a
+"410 GONE" being returned, along with a descriptive error message. Both the
+error message and the api version are returned as plaintext.
+
 
 HTTP methods and parameter-passing
 ----------------------------------
