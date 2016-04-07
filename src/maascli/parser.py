@@ -66,7 +66,7 @@ def prepare_parser(argv):
     help_title, help_body = parse_docstring(api)
     parser = ArgumentParser(
         description=help_body, prog=argv[0],
-        epilog="http://maas.ubuntu.com/")
+        epilog="http://maas.io/")
     register_cli_commands(parser)
     api.register_api_commands(parser)
     parser.add_argument(

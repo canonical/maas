@@ -25,7 +25,7 @@ your Hadoop cluster for a few hours? Simply tear down one of your Nova
 compute nodes and redeploy it to Hadoop. When you're done, it's just
 as easy to give the node back to Nova.
 
-.. _MAAS project: http://maas.ubuntu.com
+.. _MAAS project: http://maas.io/
 .. _Juju: https://juju.ubuntu.com/
 
 MAAS is ideal where you want the flexibility of the cloud, and the

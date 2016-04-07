@@ -2,7 +2,7 @@
 
 This is mostly done, but not limited to support creating links
 between the different versions of the MAAS documentation on
-maas.ubuntu.com.
+maas.io.
 
 */
 

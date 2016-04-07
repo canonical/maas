@@ -459,7 +459,7 @@ class BootResourceStore(ObjectStore):
         architecture = '%s/%s' % (arch, subarch)
 
         # Allow a generated resource to be replaced by a sycned resource. This
-        # gives the ability for maas.ubuntu.com to start providing images that
+        # gives the ability for maas.io to start providing images that
         # MAAS used to generate itself.
         supported_rtypes = [
             BOOT_RESOURCE_TYPE.SYNCED,
@@ -484,7 +484,7 @@ class BootResourceStore(ObjectStore):
                 # replaced with this synced image.
                 resource.rtype = BOOT_RESOURCE_TYPE.SYNCED
 
-        # Simplestreams content from maas.ubuntu.com includes the following
+        # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
         # object store contains additional data that should not be stored into
@@ -517,7 +517,7 @@ class BootResourceStore(ObjectStore):
         """Get existing `BootResourceFile` for the given resource set and
         product or create a new one if one does not exist."""
         # For synced resources the filename is the same as the filetype. This
-        # is the way the data is from maas.ubuntu.com so we emulate that here.
+        # is the way the data is from maas.io so we emulate that here.
         filetype = product['ftype']
         filename = filetype
         rfile = get_one(resource_set.files.filter(filename=filename))
@@ -529,7 +529,7 @@ class BootResourceStore(ObjectStore):
         rfile.filetype = filetype
         rfile.extra = {}
 
-        # Simplestreams content from maas.ubuntu.com includes the following
+        # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
         # object store contains additional data that should not be stored into

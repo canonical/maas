@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Sources."""
@@ -26,6 +26,7 @@ from maasserver.models import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
 )
@@ -48,13 +49,15 @@ def ensure_boot_source_definition():
     """Set default boot source if none is currently defined."""
     if not BootSource.objects.exists():
         source = BootSource.objects.create(
-            url='http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+            url='https://images.maas.io/ephemeral-v2/releases/',
             keyring_filename=(
                 '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
         # Default is to import newest Ubuntu LTS releases, for only amd64
         # release versions only.
+        ubuntu = UbuntuOS()
         BootSourceSelection.objects.create(
-            boot_source=source, os='ubuntu', release='trusty',
+            boot_source=source, os=ubuntu.name,
+            release=ubuntu.get_default_commissioning_release(),
             arches=['amd64'], subarches=['*'], labels=['release'])
 
 

@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UbuntuOS module."""
@@ -18,7 +18,12 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 class TestUbuntuOS(MAASTestCase):
 
     def get_lts_release(self):
-        return UbuntuDistroInfo().lts()
+        # XXX ltrager 2016-04-06 - python3-distro-info won't set the latest lts
+        # to Xenial until its been released. So we can start testing MAAS 2.0
+        # with Xenial by default override it here. Once Xenial is released this
+        # can be removed
+        # return UbuntuDistroInfo().lts()
+        return "xenial"
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()

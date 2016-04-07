@@ -181,7 +181,7 @@ class BootSource(Schema):
     if_key_missing = None
 
     url = UnicodeString(
-        if_missing="http://maas.ubuntu.com/images/ephemeral-v2/releases/")
+        if_missing="https://images.maas.io/ephemeral-v2/releases/")
     keyring = UnicodeString(
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
     keyring_data = UnicodeString(if_missing="")

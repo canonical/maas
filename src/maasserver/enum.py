@@ -310,7 +310,7 @@ class BOOT_RESOURCE_FILE_TYPE:
     ROOT_DD = 'root-dd'
 
     # Following are not allowed on user upload. Only used for syncing
-    # from another simplestreams source. (Most likely maas.ubuntu.com)
+    # from another simplestreams source. (Most likely maas.io)
 
     #: Root Image (gets converted to root-image root-tgz, on Cluster)
     ROOT_IMAGE = 'root-image.gz'

@@ -479,7 +479,7 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
             filetype = factory.pick_enum(BOOT_RESOURCE_FILE_TYPE)
             # We set the filename to the same value as filetype, as in most
             # cases this will always be true. The simplestreams content from
-            # maas.ubuntu.com, is formatted this way.
+            # maas.io, is formatted this way.
             filename = filetype
             size = randint(1024, 2048)
             content = factory.make_bytes(size=size)

@@ -23,10 +23,10 @@ latest and most appropriate version for the software you are running.
 However, it is also possible that there have been additional sections,
 or more helpful and clearer bits added since the package you are using
 was made. For this reason you can always find the latest documentation
-online here: `http://maas.ubuntu.com`_.
+online here: `http://maas.io/`_.
 
-.. _http://maas.ubuntu.com:
-  http://maas.ubuntu.com
+.. _http://maas.io/:
+  http://maas.io
 
 
 Contributing

@@ -73,7 +73,7 @@ class TestDownloadBootResources(MAASTestCase):
         snapshot_path = self.make_dir()
         cache_path = os.path.join(storage_path, 'cache')
         file_store = FileStore(cache_path)
-        source_url = "http://maas.ubuntu.com/images/ephemeral-v2/releases/"
+        source_url = "https://images.maas.io/ephemeral-v2/releases/"
 
         download_resources.download_boot_resources(
             source_url, file_store, snapshot_path, None, None)

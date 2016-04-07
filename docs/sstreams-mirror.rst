@@ -15,7 +15,7 @@ Now you can pull the images over using the mirroring tools for simplestreams.
 This example gets the daily trusty (14.04) and precise (12.04) images for the
 amd64/generic and amd64/hwe-t architectures::
 
-  $ sudo sstream-mirror --keyring=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg http://maas.ubuntu.com/images/ephemeral-v2/daily/ /var/www/html/maas/images/ephemeral-v2/daily 'arch=amd64' 'subarch~(generic|hwe-t)' 'release~(trusty|precise)' --max=1
+  $ sudo sstream-mirror --keyring=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg https://images.maas.io/ephemeral-v2/daily/ /var/www/html/maas/images/ephemeral-v2/daily 'arch=amd64' 'subarch~(generic|hwe-t)' 'release~(trusty|precise)' --max=1
 
 This may take a while as hundreds of megabytes will be downloaded.
 

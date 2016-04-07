@@ -102,7 +102,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertAttributes(
             source,
             {
-                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+                'url': 'https://images.maas.io/ephemeral-v2/releases/',
                 'keyring_filename': (
                     '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
             })
@@ -111,11 +111,11 @@ class TestHelpers(MAASServerTestCase):
             selection.release: selection
             for selection in selections
             }
-        self.assertItemsEqual(['trusty'], by_release.keys())
+        self.assertItemsEqual(['xenial'], by_release.keys())
         self.assertAttributes(
-            by_release['trusty'],
+            by_release['xenial'],
             {
-                'release': 'trusty',
+                'release': 'xenial',
                 'arches': ['amd64'],
                 'subarches': ['*'],
                 'labels': ['release'],

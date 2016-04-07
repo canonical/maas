@@ -1348,7 +1348,7 @@ class BootSourceSettingsForm(ConfigForm):
         label="Sync URL", required=True,
         help_text=(
             "URL to sync boot image from. E.g. "
-            "http://maas.ubuntu.com/images/ephemeral-v2/releases/"))
+            "https://images.maas.io/ephemeral-v2/releases/"))
 
     def __init__(self, *args, **kwargs):
         super(BootSourceSettingsForm, self).__init__(*args, **kwargs)

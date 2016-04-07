@@ -1316,7 +1316,7 @@ class Factory(maastesting.factory.Factory):
         for filetype in filetypes:
             # We set the filename to the same value as filetype, as in most
             # cases this will always be true. The simplestreams content from
-            # maas.ubuntu.com, is formatted this way.
+            # maas.io, is formatted this way.
             self.make_boot_resource_file_with_content(
                 resource_set, filename=filetype, filetype=filetype)
         return resource
