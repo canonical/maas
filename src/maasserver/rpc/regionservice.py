@@ -345,30 +345,17 @@ class Region(RPCProtocol):
         return succeed({})
 
     @region.ReportForeignDHCPServer.responder
-    def report_foreign_dhcp_server(self, cluster_uuid, interface_name,
-                                   foreign_dhcp_ip):
+    def report_foreign_dhcp_server(
+            self, system_id, interface_name, dhcp_ip=None):
         """report_foreign_dhcp_server()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.SendEvent`.
+        :py:class:`~provisioningserver.rpc.region.ReportForeignDHCPServer`.
         """
         d = deferToDatabase(
-            rackcontrollers.update_foreign_dhcp_ip,
-            cluster_uuid, interface_name, foreign_dhcp_ip)
+            rackcontrollers.update_foreign_dhcp,
+            system_id, interface_name, dhcp_ip)
         d.addCallback(lambda _: {})
-        return d
-
-    @region.GetClusterInterfaces.responder
-    def get_cluster_interfaces(self, cluster_uuid):
-        """get_cluster_interfaces()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.GetClusterInterfaces`.
-        """
-        d = deferToDatabase(
-            rackcontrollers.get_rack_controllers_interfaces_as_dicts,
-            cluster_uuid)
-        d.addCallback(lambda interfaces: {'interfaces': interfaces})
         return d
 
     @region.CreateNode.responder

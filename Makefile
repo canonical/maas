@@ -54,7 +54,6 @@ build: \
     bin/buildout \
     bin/database \
     bin/maas \
-    bin/maas-probe-dhcp \
     bin/maas-rack \
     bin/maas-region \
     bin/twistd.rack \
@@ -135,7 +134,7 @@ bin/test.testing: \
 	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-probe-dhcp bin/maas-rack bin/twistd.rack: \
+bin/maas-rack bin/twistd.rack: \
     bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install rack
 	@touch --no-create $@

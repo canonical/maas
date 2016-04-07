@@ -14,7 +14,6 @@ __all__ = [
     "GetBootConfig",
     "GetBootSources",
     "GetBootSourcesV2",
-    "GetClusterInterfaces",
     "GetProxies",
     "Identify",
     "ListNodePowerParameters",
@@ -337,35 +336,17 @@ class SendEventMACAddress(amp.Command):
 
 
 class ReportForeignDHCPServer(amp.Command):
-    """Report a foreign DHCP server on the cluster's network.
+    """Report a foreign DHCP server on a rack controller's interface.
 
-    :since: 1.7
+    :since: 2.0
     """
 
     arguments = [
-        (b"cluster_uuid", amp.Unicode()),
+        (b"system_id", amp.Unicode()),
         (b"interface_name", amp.Unicode()),
-        (b"foreign_dhcp_ip", amp.Unicode(optional=True)),
+        (b"dhcp_ip", amp.Unicode(optional=True)),
     ]
     response = []
-    errors = []
-
-
-class GetClusterInterfaces(amp.Command):
-    """Fetch the known interfaces for a cluster from the region.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"cluster_uuid", amp.Unicode()),
-    ]
-    response = [
-        (b"interfaces", AmpList(
-            [(b"name", amp.Unicode()),
-             (b"interface", amp.Unicode()),
-             (b"ip", amp.Unicode())]))
-    ]
     errors = []
 
 

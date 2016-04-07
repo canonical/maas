@@ -121,7 +121,6 @@ from provisioningserver.rpc.region import (
     GetBootConfig,
     GetBootSources,
     GetBootSourcesV2,
-    GetClusterInterfaces,
     GetProxies,
     Identify,
     ListNodePowerParameters,
@@ -129,6 +128,7 @@ from provisioningserver.rpc.region import (
     RegisterEventType,
     RegisterRackController,
     ReportBootImages,
+    ReportForeignDHCPServer,
     RequestNodeInfoByMACAddress,
     SendEvent,
     SendEventMACAddress,
@@ -2590,101 +2590,47 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         # If the RPC service is down, _get_addresses() returns nothing.
         self.assertItemsEqual([], service._get_addresses())
 
-# NODE_GROUP_REMOVAL - blake_r - Fix.
-#class TestRegionProtocol_ReportForeignDHCPServer(
-#        MAASTransactionServerTestCase):
-#
-#    def test_create_node_is_registered(self):
-#        protocol = Region()
-#        responder = protocol.locateResponder(
-#            ReportForeignDHCPServer.commandName)
-#        self.assertIsNotNone(responder)
-#
-#    @transactional
-#    def create_cluster_interface(self):
-#        cluster = factory.make_NodeGroup()
-#        return factory.make_NodeGroupInterface(cluster)
-#
-#    @wait_for_reactor
-#    @inlineCallbacks
-#    def test_sets_foreign_dhcp_value(self):
-#        foreign_dhcp_ip = factory.make_ipv4_address()
-#        cluster_interface = yield deferToDatabase(
-#            self.create_cluster_interface)
-#        cluster = cluster_interface.nodegroup
-#
-#        response = yield call_responder(
-#            Region(), ReportForeignDHCPServer,
-#            {
-#                'cluster_uuid': cluster.uuid,
-#                'interface_name': cluster_interface.name,
-#                'foreign_dhcp_ip': foreign_dhcp_ip,
-#            })
-#
-#        self.assertEqual({}, response)
-#        cluster_interface = yield deferToDatabase(
-#            transactional_reload_object, cluster_interface)
-#
-#        self.assertEqual(
-#            foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
-#
-#    @wait_for_reactor
-#    @inlineCallbacks
-#    def test_does_not_trigger_update_signal(self):
-#        configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
-#
-#        foreign_dhcp_ip = factory.make_ipv4_address()
-#        cluster_interface = yield deferToDatabase(
-#            self.create_cluster_interface)
-#        cluster = cluster_interface.nodegroup
-#
-#        response = yield call_responder(
-#            Region(), ReportForeignDHCPServer,
-#            {
-#                'cluster_uuid': cluster.uuid,
-#                'interface_name': cluster_interface.name,
-#                'foreign_dhcp_ip': foreign_dhcp_ip,
-#            })
-#
-#        self.assertEqual({}, response)
-#        self.assertThat(configure_dhcp, MockNotCalled())
 
+class TestRegionProtocol_ReportForeignDHCPServer(
+        MAASTransactionServerTestCase):
 
-class TestRegionProtocol_GetClusterInterfaces(MAASTransactionServerTestCase):
-
-    def test_create_node_is_registered(self):
+    def test_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(
-            GetClusterInterfaces.commandName)
+            ReportForeignDHCPServer.commandName)
         self.assertIsNotNone(responder)
 
     @transactional
-    def create_controller_and_interfaces(self):
-        controller = factory.make_RackController()
-        for _ in range(3):
-            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=controller)
-        interfaces = [
-            {
-                'name': interface.name,
-                'interface': interface.name,
-                'ip': '',
-            }
-            for interface in controller.interface_set.all()]
-        return controller, interfaces
+    def create_rack_interface(self):
+        rack_controller = factory.make_RackController(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        return rack_controller, interface
+
+    @transactional
+    def get_vlan_for_interface(self, interface):
+        return reload_object(interface.vlan)
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_returns_all_cluster_interfaces(self):
-        controller, expected_interfaces = yield deferToDatabase(
-            self.create_controller_and_interfaces)
+    def test_sets_external_dhcp_value(self):
+        dhcp_ip = factory.make_ipv4_address()
+        rack, interface = yield deferToDatabase(
+            self.create_rack_interface)
 
         response = yield call_responder(
-            Region(), GetClusterInterfaces,
-            {'cluster_uuid': controller.system_id})
+            Region(), ReportForeignDHCPServer,
+            {
+                'system_id': rack.system_id,
+                'interface_name': interface.name,
+                'dhcp_ip': dhcp_ip,
+            })
 
-        self.assertIsNot(None, response)
-        self.assertItemsEqual(
-            expected_interfaces, response["interfaces"])
+        self.assertEqual({}, response)
+        vlan = yield deferToDatabase(
+            self.get_vlan_for_interface, interface)
+        self.assertEqual(
+            dhcp_ip, vlan.external_dhcp)
 
 
 class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):

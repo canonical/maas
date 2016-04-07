@@ -10,7 +10,11 @@ import random
 from django.db import IntegrityError
 from fixtures import FakeLogger
 from maasserver import worker_user
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_TYPE,
+)
 from maasserver.models import (
     Node,
     NodeGroupToRackController,
@@ -20,6 +24,7 @@ from maasserver.rpc.rackcontrollers import (
     handle_upgrade,
     register_new_rackcontroller,
     register_rackcontroller,
+    update_foreign_dhcp,
     update_interfaces,
 )
 from maasserver.testing.factory import factory
@@ -246,6 +251,54 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertEqual(
             "Rack controller(%s) currently being registered, retrying..." %
             hostname, logger.output.strip())
+
+
+class TestUpdateForeignDHCP(MAASServerTestCase):
+
+    def test__doesnt_fail_if_interface_missing(self):
+        rack_controller = factory.make_RackController()
+        # No error should be raised.
+        update_foreign_dhcp(
+            rack_controller.system_id, factory.make_name("eth"), None)
+
+    def test__clears_external_dhcp_on_vlan(self):
+        rack_controller = factory.make_RackController(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        interface.vlan.external_dhcp = factory.make_ip_address()
+        interface.vlan.save()
+        update_foreign_dhcp(
+            rack_controller.system_id, interface.name, None)
+        self.assertIsNone(reload_object(interface.vlan).external_dhcp)
+
+    def test__sets_external_dhcp_when_not_managed_vlan(self):
+        rack_controller = factory.make_RackController(interface=False)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller)
+        dhcp_ip = factory.make_ip_address()
+        update_foreign_dhcp(
+            rack_controller.system_id, interface.name, dhcp_ip)
+        self.assertEquals(
+            dhcp_ip, reload_object(interface.vlan).external_dhcp)
+
+    def test__clears_external_dhcp_when_managed_vlan(self):
+        rack_controller = factory.make_RackController(interface=False)
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack_controller, vlan=vlan)
+        subnet = factory.make_Subnet()
+        dhcp_ip = factory.pick_ip_in_Subnet(subnet)
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack_controller
+        vlan.external_dhcp = dhcp_ip
+        vlan.save()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=dhcp_ip,
+            subnet=subnet, interface=interface)
+        update_foreign_dhcp(
+            rack_controller.system_id, interface.name, dhcp_ip)
+        self.assertIsNone(reload_object(interface.vlan).external_dhcp)
 
 
 class TestUpdateInterfaces(MAASServerTestCase):

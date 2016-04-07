@@ -11,10 +11,12 @@ from maastesting.matchers import (
     get_mock_calls,
     HasLength,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
 from mock import (
+    call,
     Mock,
     sentinel,
 )
@@ -39,18 +41,8 @@ class TestDHCPProbeService(PservTestCase):
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(
-            region.GetClusterInterfaces, region.ReportForeignDHCPServer)
+            region.ReportForeignDHCPServer)
         return protocol, connecting
-
-    def make_cluster_interface_values(self, ip=None):
-        """Return a dict describing a cluster interface."""
-        if ip is None:
-            ip = factory.make_ipv4_address()
-        return {
-            'name': factory.make_name('interface'),
-            'interface': factory.make_name('eth'),
-            'ip': ip,
-            }
 
     def test_is_called_every_interval(self):
         clock = Clock()
@@ -82,67 +74,47 @@ class TestDHCPProbeService(PservTestCase):
 
     def test_probe_is_initiated_in_new_thread(self):
         clock = Clock()
-        interface = self.make_cluster_interface_values()
-        rpc_service = Mock()
-        rpc_client = rpc_service.getClient.return_value
-        rpc_client.side_effect = [
-            defer.succeed(dict(interfaces=[interface])),
-        ]
+        interface_name = factory.make_name("eth")
+        interfaces = {
+            interface_name: {
+                "enabled": True,
+            }
+        }
 
-        # We could patch out 'periodic_probe_task' instead here but this
-        # is better because:
-        # 1. The former requires spinning the reactor again before being
-        #    able to test the result.
-        # 2. This way there's no thread to clean up after the test.
         deferToThread = self.patch(dhcp_probe_service, 'deferToThread')
-        deferToThread.return_value = defer.succeed(None)
-        service = DHCPProbeService(
-            rpc_service, clock)
+        deferToThread.side_effect = [
+            defer.succeed(interfaces),
+            defer.succeed(None),
+        ]
+        service = DHCPProbeService(Mock(), clock)
         service.startService()
         self.assertThat(
-            deferToThread, MockCalledOnceWith(
-                dhcp_probe_service.probe_interface,
-                interface['interface'], interface['ip']))
-
-    @defer.inlineCallbacks
-    def test_exits_gracefully_if_cant_get_interfaces(self):
-        clock = Clock()
-        maaslog = self.patch(dhcp_probe_service, 'maaslog')
-
-        protocol, connecting = self.patch_rpc_methods()
-        self.addCleanup((yield connecting))
-
-        del protocol._commandDispatch[
-            region.GetClusterInterfaces.commandName]
-        rpc_service = Mock()
-        rpc_service.getClient.return_value = getRegionClient()
-        service = DHCPProbeService(
-            rpc_service, clock)
-        yield service.startService()
-        yield service.stopService()
-
-        self.assertThat(
-            maaslog.error, MockCalledOnceWith(
-                "Unable to query region for interfaces: Region does not "
-                "support the GetClusterInterfaces RPC method."))
+            deferToThread, MockCallsMatch(
+                call(dhcp_probe_service.get_all_interfaces_definition),
+                call(dhcp_probe_service.probe_interface, interface_name)))
 
     @defer.inlineCallbacks
     def test_exits_gracefully_if_cant_report_foreign_dhcp_server(self):
         clock = Clock()
+        interface_name = factory.make_name("eth")
+        interfaces = {
+            interface_name: {
+                "enabled": True,
+            }
+        }
+
         maaslog = self.patch(dhcp_probe_service, 'maaslog')
         deferToThread = self.patch(
             dhcp_probe_service, 'deferToThread')
-        deferToThread.return_value = defer.succeed(['192.168.0.100'])
+        deferToThread.side_effect = [
+            defer.succeed(interfaces),
+            defer.succeed(['192.168.0.100']),
+        ]
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
         del protocol._commandDispatch[
             region.ReportForeignDHCPServer.commandName]
-        protocol.GetClusterInterfaces.return_value = {
-            'interfaces': [
-                self.make_cluster_interface_values(ip='192.168.0.1'),
-                ],
-            }
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
@@ -153,13 +125,23 @@ class TestDHCPProbeService(PservTestCase):
 
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "Unable to inform region of rogue DHCP server: the region "
+                "Unable to inform region of DHCP server: the region "
                 "does not yet support the ReportForeignDHCPServer RPC "
                 "method."))
 
     def test_logs_errors(self):
         clock = Clock()
+        interface_name = factory.make_name("eth")
+        interfaces = {
+            interface_name: {
+                "enabled": True,
+            }
+        }
+
         maaslog = self.patch(dhcp_probe_service, 'maaslog')
+        mock_interfaces = self.patch(
+            dhcp_probe_service, 'get_all_interfaces_definition')
+        mock_interfaces.return_value = interfaces
         service = DHCPProbeService(
             sentinel.service, clock)
         error_message = factory.make_string()
@@ -168,25 +150,29 @@ class TestDHCPProbeService(PservTestCase):
         service.startService()
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "Unable to probe for rogue DHCP servers: %s",
+                "Unable to probe for DHCP servers: %s",
                 error_message))
 
     @defer.inlineCallbacks
     def test_reports_foreign_dhcp_servers_to_region(self):
         clock = Clock()
+        interface_name = factory.make_name("eth")
+        interfaces = {
+            interface_name: {
+                "enabled": True,
+            }
+        }
+
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
         deferToThread = self.patch(
             dhcp_probe_service, 'deferToThread')
         foreign_dhcp_ip = factory.make_ipv4_address()
-        deferToThread.return_value = defer.succeed(
-            [foreign_dhcp_ip])
-
-        interface = self.make_cluster_interface_values()
-        protocol.GetClusterInterfaces.return_value = {
-            'interfaces': [interface],
-            }
+        deferToThread.side_effect = [
+            defer.succeed(interfaces),
+            defer.succeed([foreign_dhcp_ip]),
+        ]
 
         client = getRegionClient()
         rpc_service = Mock()
@@ -201,24 +187,29 @@ class TestDHCPProbeService(PservTestCase):
             protocol.ReportForeignDHCPServer,
             MockCalledOnceWith(
                 protocol,
-                cluster_uuid=client.localIdent,
-                interface_name=interface['name'],
-                foreign_dhcp_ip=foreign_dhcp_ip))
+                system_id=client.localIdent,
+                interface_name=interface_name,
+                dhcp_ip=foreign_dhcp_ip))
 
     @defer.inlineCallbacks
     def test_reports_lack_of_foreign_dhcp_servers_to_region(self):
         clock = Clock()
+        interface_name = factory.make_name("eth")
+        interfaces = {
+            interface_name: {
+                "enabled": True,
+            }
+        }
+
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
         deferToThread = self.patch(
             dhcp_probe_service, 'deferToThread')
-        deferToThread.return_value = defer.succeed([])
-
-        interface = self.make_cluster_interface_values()
-        protocol.GetClusterInterfaces.return_value = {
-            'interfaces': [interface],
-            }
+        deferToThread.side_effect = [
+            defer.succeed(interfaces),
+            defer.succeed([]),
+        ]
 
         client = getRegionClient()
         rpc_service = Mock()
@@ -232,6 +223,6 @@ class TestDHCPProbeService(PservTestCase):
             protocol.ReportForeignDHCPServer,
             MockCalledOnceWith(
                 protocol,
-                cluster_uuid=client.localIdent,
-                interface_name=interface['name'],
-                foreign_dhcp_ip=None))
+                system_id=client.localIdent,
+                interface_name=interface_name,
+                dhcp_ip=None))

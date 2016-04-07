@@ -14,19 +14,14 @@ import socket
 from provisioningserver.dhcp.detect import probe_interface
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import (
-    GetClusterInterfaces,
-    ReportForeignDHCPServer,
-)
+from provisioningserver.rpc.region import ReportForeignDHCPServer
+from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.twisted import (
     pause,
     retries,
 )
 from twisted.application.internet import TimerService
-from twisted.internet.defer import (
-    inlineCallbacks,
-    returnValue,
-)
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 from twisted.protocols.amp import UnhandledCommand
 
@@ -35,12 +30,11 @@ maaslog = get_maas_logger("dhcp.probe")
 
 
 class DHCPProbeService(TimerService, object):
-    """Service to probe for DHCP servers on this cluster's network.
+    """Service to probe for DHCP servers on the rack controller interface's.
 
     Built on top of Twisted's `TimerService`.
 
     :param reactor: An `IReactor` instance.
-    :param cluster_uuid: This cluster's UUID.
     """
 
     check_interval = timedelta(minutes=10).total_seconds()
@@ -52,48 +46,44 @@ class DHCPProbeService(TimerService, object):
         self.clock = reactor
         self.client_service = client_service
 
-    @inlineCallbacks
-    def _get_cluster_interfaces(self, client):
-        """Return the interfaces for this cluster."""
-        try:
-            response = yield client(
-                GetClusterInterfaces, cluster_uuid=client.localIdent)
-        except UnhandledCommand:
-            # The region hasn't been upgraded to support this method
-            # yet, so give up. Returning an empty dict means that this
-            # run will end, since there are no interfaces to check.
-            maaslog.error(
-                "Unable to query region for interfaces: Region does not "
-                "support the GetClusterInterfaces RPC method.")
-            returnValue({})
-        else:
-            returnValue(response['interfaces'])
+    def _get_interfaces(self):
+        """Return the interfaces for this rack controller."""
+        d = deferToThread(get_all_interfaces_definition)
+        d.addCallback(lambda interfaces: [
+            name
+            for name, info in interfaces.items()
+            if info["enabled"]
+        ])
+        return d
 
-    @inlineCallbacks
-    def _inform_region_of_foreign_dhcp(self, client, name,
-                                       foreign_dhcp_ip):
-        """Tell the region that there's a rogue DHCP server.
+    def _inform_region_of_dhcp(self, client, name, dhcp_ip):
+        """Tell the region about the DHCP server.
 
         :param client: The RPC client to use.
         :param name: The name of the network interface where the rogue
             DHCP server was found.
-        :param foreign_dhcp_ip: The IP address of the rogue server.
+        :param dhcp_ip: The IP address of the DHCP server.
         """
-        try:
-            yield client(
-                ReportForeignDHCPServer, cluster_uuid=client.localIdent,
-                interface_name=name, foreign_dhcp_ip=foreign_dhcp_ip)
-        except UnhandledCommand:
+
+        def eb_unhandled(failure):
+            failure.trap(UnhandledCommand)
             # Not a lot we can do here... The region doesn't support
             # this method yet.
             maaslog.error(
-                "Unable to inform region of rogue DHCP server: the region "
+                "Unable to inform region of DHCP server: the region "
                 "does not yet support the ReportForeignDHCPServer RPC "
                 "method.")
 
+        d = client(
+            ReportForeignDHCPServer, system_id=client.localIdent,
+            interface_name=name, dhcp_ip=dhcp_ip)
+        d.addErrback(eb_unhandled)
+        return d
+
     @inlineCallbacks
     def probe_dhcp(self):
-        """Find all the interfaces on this cluster and probe for DHCP servers.
+        """Find all the interfaces on this rack controller and probe for
+        DHCP servers.
         """
         client = None
         for elapsed, remaining, wait in retries(15, 5, self.clock):
@@ -107,12 +97,11 @@ class DHCPProbeService(TimerService, object):
                 "Can't initiate DHCP probe, no RPC connection to region.")
             return
 
-        cluster_interfaces = yield self._get_cluster_interfaces(client)
         # Iterate over interfaces and probe each one.
-        for interface in cluster_interfaces:
+        interfaces = yield self._get_interfaces()
+        for interface in interfaces:
             try:
-                servers = yield deferToThread(
-                    probe_interface, interface['interface'], interface['ip'])
+                servers = yield deferToThread(probe_interface, interface)
             except socket.error:
                 maaslog.error(
                     "Failed to probe sockets; did you configure authbind as "
@@ -123,11 +112,11 @@ class DHCPProbeService(TimerService, object):
                     # Only send one, if it gets cleared out then the
                     # next detection pass will send a different one, if it
                     # still exists.
-                    yield self._inform_region_of_foreign_dhcp(
-                        client, interface['name'], servers.pop())
+                    yield self._inform_region_of_dhcp(
+                        client, interface, servers.pop())
                 else:
-                    yield self._inform_region_of_foreign_dhcp(
-                        client, interface['name'], None)
+                    yield self._inform_region_of_dhcp(
+                        client, interface, None)
 
     @inlineCallbacks
     def try_probe_dhcp(self):
@@ -136,7 +125,7 @@ class DHCPProbeService(TimerService, object):
             yield self.probe_dhcp()
         except Exception as error:
             maaslog.error(
-                "Unable to probe for rogue DHCP servers: %s",
+                "Unable to probe for DHCP servers: %s",
                 str(error))
         else:
             maaslog.debug("Finished periodic DHCP probe.")

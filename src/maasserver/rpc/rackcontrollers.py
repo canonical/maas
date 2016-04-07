@@ -16,10 +16,10 @@ from django.db.models import Q
 from maasserver import worker_user
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
-    Interface,
     Node,
     NodeGroupToRackController,
     RackController,
+    StaticIPAddress,
 )
 from maasserver.models.node import typecast_node
 from maasserver.utils.orm import transactional
@@ -163,52 +163,33 @@ def register_new_rackcontroller(system_id, hostname):
 
 
 @transactional
-def update_foreign_dhcp_ip(cluster_uuid, interface_name, foreign_dhcp_ip):
-    """Update the foreign_dhcp_ip field of a given interface on a cluster.
+def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
+    """Update the external_dhcp field of the VLAN for the interface.
 
-    Note: We do this through an update, not a read/modify/write.
-    Updating NodeGroupInterface client-side may inadvertently trigger
-    Django signals that cause a rewrite of the DHCP config, plus restart
-    of the DHCP server.  The inadvertent triggering has been known to
-    happen because of race conditions between read/modify/write
-    transactions that were enabled by Django defaulting to, and being
-    designed for, the READ COMMITTED isolation level; the ORM writing
-    back even unmodified fields; and GenericIPAddressField's default
-    value being prone to problems where NULL is sometimes represented as
-    None, sometimes as an empty string, and the difference being enough
-    to convince the signal machinery that these fields have changed when
-    in fact they have not.
-
-    :param cluster_uuid: Cluster's UUID.
-    :param interface_name: The name of the cluster interface on which the
-        foreign DHCP server was (or wasn't) discovered.
-    :param foreign_dhcp_ip: IP address of foreign DCHP server, if any.
+    :param system_id: Rack controller system_id.
+    :param interface_name: The name of the interface.
+    :param dhcp_ip: The IP address of the responding DHCP server.
     """
-    # XXX 2016-01-20 blake_r - Currently no where to place this information.
-    # Need to add to the model to store this information.
-    pass
-
-
-@transactional
-def get_rack_controllers_interfaces_as_dicts(system_id):
-    """Return all the interfaces on a given rack controller as a list of dicts.
-
-    :return: A list of dicts in the form {'name': interface.name,
-        'interface': interface.interface, 'ip': interface.ip}, one dict per
-        interface on the cluster.
-    """
-    interfaces = Interface.objects.filter(node__system_id=system_id)
-    # XXX 2016-01-20 blake_r - Currently not passing any IP address as it now
-    # should take a list of IP addresses and not just one IP address. To make
-    # it work for now nothing its filtered out.
-    return [
-        {
-            'name': interface.name,
-            'interface': interface.name,
-            'ip': '',
-        }
-        for interface in interfaces
-        ]
+    rack_controller = RackController.objects.get(system_id=system_id)
+    interface = rack_controller.interface_set.filter(
+        name=interface_name).select_related("vlan").first()
+    if interface is not None:
+        if dhcp_ip is not None:
+            sip = StaticIPAddress.objects.filter(ip=dhcp_ip).first()
+            if sip is not None:
+                # Check that its not an IP address of a rack controller
+                # providing that DHCP service.
+                rack_interfaces_serving_dhcp = sip.interface_set.filter(
+                    node__node_type__in=[
+                        NODE_TYPE.RACK_CONTROLLER,
+                        NODE_TYPE.REGION_AND_RACK_CONTROLLER],
+                    vlan__dhcp_on=True)
+                if rack_interfaces_serving_dhcp.exists():
+                    # Not external. It's a MAAS DHCP server.
+                    dhcp_ip = None
+        if interface.vlan.external_dhcp != dhcp_ip:
+            interface.vlan.external_dhcp = dhcp_ip
+            interface.vlan.save()
 
 
 @synchronous
