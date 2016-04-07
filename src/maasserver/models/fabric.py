@@ -33,7 +33,7 @@ def validate_fabric_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile(r'^[ \w-]+$')
+    namespec = re.compile(r'^[\w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid fabric name: %s." % value)
 

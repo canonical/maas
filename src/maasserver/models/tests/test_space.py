@@ -166,6 +166,12 @@ class SpaceTest(MAASServerTestCase):
         space = factory.make_Space(name='myspace-1999')
         self.assertEqual("myspace-1999", space.name)
 
+    def test_rejects_names_with_blanks(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Space,
+            name=factory.make_name("Space "))
+
     def test_rejects_duplicate_names(self):
         space1 = factory.make_Space()
         self.assertRaises(

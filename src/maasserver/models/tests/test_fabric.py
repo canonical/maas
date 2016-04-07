@@ -179,6 +179,12 @@ class TestFabric(MAASServerTestCase):
         fabric = factory.make_Fabric(name='myfabric-33')
         self.assertEqual("myfabric-33", fabric.name)
 
+    def test_rejects_names_with_blanks(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Fabric,
+            name=factory.make_name("Fabric "))
+
     def test_rejects_duplicate_names(self):
         fabric1 = factory.make_Fabric()
         self.assertRaises(
