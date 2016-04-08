@@ -698,8 +698,6 @@ class Factory(maastesting.factory.Factory):
         return key
 
     def make_Space(self, name=None):
-        if name is None:
-            name = self.make_name('space--')
         space = Space(name=name)
         space.save()
         return space

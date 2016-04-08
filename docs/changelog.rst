@@ -13,6 +13,10 @@ Bug Fix Update
 
 #1499934    Power state could not be queried (vmware)
 
+#1543707    MAAS 1.9+ should not allow whitespace characters in space names
+
+#1543968    MAAS 1.9.0 allows non-unique space names
+
 
 1.9.1
 =====

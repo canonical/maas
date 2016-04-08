@@ -42,7 +42,7 @@ def validate_fabric_name(value):
     """Django validator: `value` must be either `None`, or valid."""
     if value is None:
         return
-    namespec = re.compile(r'^[ \w-]+$')
+    namespec = re.compile(r'^[\w-]+$')
     if not namespec.search(value):
         raise ValidationError("Invalid fabric name: %s." % value)
 
@@ -161,6 +161,8 @@ class Fabric(CleanSave, TimestampedModel):
 
     objects = FabricManager()
 
+    # We don't actually allow blank or null name, but that is enforced in
+    # clean() and save().  Ditto for unique.
     name = CharField(
         max_length=256, editable=True, null=True, blank=True, unique=False,
         validators=[validate_fabric_name])
@@ -211,18 +213,34 @@ class Fabric(CleanSave, TimestampedModel):
             name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self)
 
     def save(self, *args, **kwargs):
+        # Name will get set by clean_name() if None or empty, and there is an
+        # id. We just need to handle names here for creation.
         created = self.id is None
         super(Fabric, self).save(*args, **kwargs)
+        if self.name is None or self.name == '':
+            # If we got here, then we have a newly created fabric that needs a
+            # default name.
+            self.name = "fabric-%d" % self.id
+            fabric = Fabric.objects.get(id=self.id)
+            fabric.save()
         # Create default VLAN if this is a fabric creation.
         if created:
             self._create_default_vlan()
 
     def clean_name(self):
-        reserved = re.compile('fabric-\d+$')
-        if self.name is not None and reserved.search(self.name):
-            if (self.id is None or self.name != 'fabric-%d' % self.id):
-                raise ValidationError(
-                    {'name': ["Reserved fabric name."]})
+        reserved = re.compile('^fabric-\d+$')
+        if self.name is not None and self.name != '':
+            if reserved.search(self.name):
+                if (self.id is None or self.name != 'fabric-%d' % self.id):
+                    raise ValidationError(
+                        {'name': ["Reserved fabric name."]})
+        elif self.id is not None:
+            # Since we are not creating the fabric, force the (null or empty)
+            # name to be the default name.
+            self.name = "fabric-%d" % self.id
+        name_count = Fabric.objects.filter(name=self.name).count()
+        if name_count > 0 + (self.id is not None):
+            raise ValidationError("Duplicate name: %s" % self.name)
 
     def clean(self, *args, **kwargs):
         super(Fabric, self).clean(*args, **kwargs)
