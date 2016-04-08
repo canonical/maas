@@ -1065,8 +1065,20 @@ class RegionAdvertisingService(TimerService, object):
 
         # Update the updated time for this process. This prevents other
         # region process from removing this process.
-        process = RegionControllerProcess.objects.get(id=self.processId.value)
-        process.save(update_fields=["updated"])
+        try:
+            process = RegionControllerProcess.objects.get(
+                id=self.processId.value)
+        except RegionControllerProcess.DoesNotExist:
+            # Possible that another regiond process deleted this process
+            # because the updated field was not updated in time. Re-create the
+            # process with the same ID so its the same across the running of
+            # this regiond process.
+            process = RegionControllerProcess(
+                region=region_obj, pid=os.getpid(), created=now())
+            process.id = self.processId.value
+            process.save()
+        else:
+            process.save(update_fields=["updated"])
 
         # Remove any old processes that are older than 90 seconds.
         remove_before_time = now() - timedelta(seconds=90)

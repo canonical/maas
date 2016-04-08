@@ -86,6 +86,7 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnce,
     MockCalledOnceWith,
+    MockCalledWith,
     MockCallsMatch,
     Provides,
 )
@@ -1098,7 +1099,7 @@ class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
 
         self.assertThat(
             mock_deferToDatabase,
-            MockCalledOnceWith(update_services, system_id, services))
+            MockCalledWith(update_services, system_id, services))
 
 
 class TestRegisterAndUnregisterConnection(MAASServerTestCase):
@@ -2267,15 +2268,22 @@ class TestRegionAdvertisingService(MAASTransactionServerTestCase):
         region = reload_object(region)
         self.assertEquals(gethostname(), region.hostname)
 
-    def test_update_creates_process(self):
+    def test_update_creates_process_when_removed(self):
         service = RegionAdvertisingService()
         service._get_addresses = lambda: []
         service.prepared(
             service.prepare((self.maas_id, gethostname(), [])))
-        service.update()
 
         region = RegionController.objects.get(system_id=self.maas_id)
         [process] = region.processes.all()
+        process_id = process.id
+        process.delete()
+
+        # Will re-create the process with the same ID.
+        service.update()
+
+        process.id = process_id
+        process = reload_object(process)
         self.assertEquals(process.pid, os.getpid())
 
     def test_update_removes_old_processes(self):
