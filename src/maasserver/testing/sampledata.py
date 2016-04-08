@@ -224,7 +224,7 @@ def populate(seed="sampledata"):
     device.set_random_hostname()
 
     # Add some DHCP snippets.
-    ## Global
+    # - Global
     factory.make_DHCPSnippet(
         name="foo class", description="adds class for vender 'foo'",
         value=VersionedTextFile.objects.create(data=dedent("""\
@@ -241,7 +241,7 @@ def populate(seed="sampledata"):
                     option vendor-class-identifier, 0, 3) = "bar";
             }
         """)), enabled=False)
-    ## Subnet
+    # - Subnet
     factory.make_DHCPSnippet(
         name="600 lease time", description="changes lease time to 600 secs.",
         value=VersionedTextFile.objects.create(data="default-lease-time 600;"),
@@ -251,7 +251,7 @@ def populate(seed="sampledata"):
         description="changes max lease time to 7200 secs.",
         value=VersionedTextFile.objects.create(data="max-lease-time 7200;"),
         subnet=subnet_2, enabled=False)
-    ## Node
+    # - Node
     factory.make_DHCPSnippet(
         name="boot from other server",
         description="instructs device to boot from other server",

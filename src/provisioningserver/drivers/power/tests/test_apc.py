@@ -104,8 +104,8 @@ class TestAPCPowerDriver(MAASTestCase):
         self.expectThat(
             mock_run_process, MockCalledOnceWith(
                 'snmpset ' + COMMON_ARGS % (
-                    context['power_address'], context['node_outlet'])
-                + ' i 1'))
+                    context['power_address'],
+                    context['node_outlet']) + ' i 1'))
 
     def test_power_off_calls_run_process(self):
         driver = apc_module.APCPowerDriver()

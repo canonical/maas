@@ -1435,7 +1435,6 @@ class TestDomainListener(
         finally:
             yield listener.stopService()
 
-    #@wait_for_reactor
     @wait_for(360000)
     @inlineCallbacks
     def test__calls_handler_on_dnsresource_delete_notification(self):

@@ -956,17 +956,17 @@ def register_system_triggers():
     # DHCP
     register_procedure(DHCP_ALERT)
 
-    ## VLAN
+    # - VLAN
     register_procedure(DHCP_VLAN_UPDATE)
     register_trigger("maasserver_vlan", "sys_dhcp_vlan_update", "update")
 
-    ## Subnet
+    # - Subnet
     register_procedure(DHCP_SUBNET_UPDATE)
     register_trigger("maasserver_subnet", "sys_dhcp_subnet_update", "update")
     register_procedure(DHCP_SUBNET_DELETE)
     register_trigger("maasserver_subnet", "sys_dhcp_subnet_delete", "delete")
 
-    ## IPRange
+    # - IPRange
     register_procedure(DHCP_IPRANGE_INSERT)
     register_trigger("maasserver_iprange", "sys_dhcp_iprange_insert", "insert")
     register_procedure(DHCP_IPRANGE_UPDATE)
@@ -974,7 +974,7 @@ def register_system_triggers():
     register_procedure(DHCP_IPRANGE_DELETE)
     register_trigger("maasserver_iprange", "sys_dhcp_iprange_delete", "delete")
 
-    ## StaticIPAddress
+    # - StaticIPAddress
     register_procedure(DHCP_STATICIPADDRESS_INSERT)
     register_trigger(
         "maasserver_staticipaddress",
@@ -991,21 +991,21 @@ def register_system_triggers():
         "sys_dhcp_staticipaddress_delete",
         "delete")
 
-    ## Interface
+    # - Interface
     register_procedure(DHCP_INTERFACE_UPDATE)
     register_trigger(
         "maasserver_interface",
         "sys_dhcp_interface_update",
         "update")
 
-    ## Node
+    # - Node
     register_procedure(DHCP_NODE_UPDATE)
     register_trigger(
         "maasserver_node",
         "sys_dhcp_node_update",
         "update")
 
-    ## DHCPSnippet
+    # - DHCPSnippet
     register_procedure(DHCP_UPDATE_ALL_VLANS)
     register_procedure(DHCP_SNIPPET_UPDATE_SUBNET)
     register_procedure(DHCP_SNIPPET_UPDATE_NODE)
@@ -1026,7 +1026,7 @@ def register_system_triggers():
     # before creating the triggers.
     zone_serial.create_if_not_exists()
 
-    ## Domain
+    # - Domain
     register_procedure(
         render_sys_dns_procedure("sys_dns_domain_insert"))
     register_trigger(
@@ -1040,14 +1040,14 @@ def register_system_triggers():
     register_trigger(
         "maasserver_domain", "sys_dns_domain_delete", "delete")
 
-    ## StaticIPAddress
+    # - StaticIPAddress
     register_procedure(
         render_sys_dns_procedure("sys_dns_staticipaddress_update"))
     register_trigger(
         "maasserver_staticipaddress",
         "sys_dns_staticipaddress_update", "update")
 
-    ## Interface -> StaticIPAddress
+    # - Interface -> StaticIPAddress
     register_procedure(
         render_sys_dns_procedure("sys_dns_nic_ip_link"))
     register_trigger(
@@ -1060,7 +1060,7 @@ def register_system_triggers():
         "maasserver_interface_ip_addresses",
         "sys_dns_nic_ip_unlink", "delete")
 
-    ## DNSResource
+    # - DNSResource
     register_procedure(
         render_sys_dns_procedure("sys_dns_dnsresource_insert"))
     register_trigger(
@@ -1077,7 +1077,7 @@ def register_system_triggers():
         "maasserver_dnsresource",
         "sys_dns_dnsresource_delete", "delete")
 
-    ## DNSResource -> StaticIPAddress
+    # - DNSResource -> StaticIPAddress
     register_procedure(
         render_sys_dns_procedure("sys_dns_dnsresource_ip_link"))
     register_trigger(
@@ -1090,7 +1090,7 @@ def register_system_triggers():
         "maasserver_dnsresource_ip_addresses",
         "sys_dns_dnsresource_ip_unlink", "delete")
 
-    ## DNSData
+    # - DNSData
     register_procedure(
         render_sys_dns_procedure("sys_dns_dnsdata_insert"))
     register_trigger(
@@ -1107,7 +1107,7 @@ def register_system_triggers():
         "maasserver_dnsdata",
         "sys_dns_dnsdata_delete", "delete")
 
-    ## Subnet
+    # - Subnet
     register_procedure(
         render_sys_dns_procedure("sys_dns_subnet_insert"))
     register_trigger(
@@ -1123,7 +1123,7 @@ def register_system_triggers():
         "maasserver_subnet",
         "sys_dns_subnet_delete", "delete")
 
-    ## Node
+    # - Node
     register_procedure(DNS_NODE_UPDATE)
     register_trigger(
         "maasserver_node",
@@ -1134,13 +1134,13 @@ def register_system_triggers():
         "maasserver_node",
         "sys_dns_node_delete", "delete")
 
-    ## Interface
+    # - Interface
     register_procedure(DNS_INTERFACE_UPDATE)
     register_trigger(
         "maasserver_interface",
         "sys_dns_interface_update", "update")
 
-    ## Config
+    # - Config
     register_procedure(DNS_CONFIG_INSERT)
     register_procedure(DNS_CONFIG_UPDATE)
     register_trigger(
@@ -1150,7 +1150,7 @@ def register_system_triggers():
 
     # Proxy
 
-    ## Subnet
+    # - Subnet
     register_procedure(
         render_sys_proxy_procedure("sys_proxy_subnet_insert"))
     register_trigger(
