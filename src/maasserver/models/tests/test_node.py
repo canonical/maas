@@ -6846,3 +6846,16 @@ class TestRackController(MAASServerTestCase):
                     "Missing connections to %d region controller(s)." % (
                         len(regions_with_processes) +
                         len(regions_without_processes)))))
+
+
+class TestRegionController(MAASServerTestCase):
+
+    def test_delete(self):
+        region = factory.make_RegionController()
+        region.delete()
+        self.assertIsNone(reload_object(region))
+
+    def test_delete_prevented_when_running(self):
+        region = factory.make_RegionController()
+        factory.make_RegionControllerProcess(region=region)
+        self.assertRaises(ValidationError, region.delete)

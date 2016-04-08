@@ -562,3 +562,17 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         node = reload_object(node)
         self.assertEqual(original_zone, node.zone)
+
+    def test_CREATE_disabled(self):
+        response = self.client.post(reverse('nodes_handler'), {})
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+
+    def test_UPDATE_disabled(self):
+        response = self.client.put(reverse('nodes_handler'), {})
+        self.assertEqual(
+            http.client.METHOD_NOT_ALLOWED, response.status_code)
+
+    def test_DELETE_disabled(self):
+        response = self.client.put(reverse('nodes_handler'), {})
+        self.assertEqual(
+            http.client.METHOD_NOT_ALLOWED, response.status_code)

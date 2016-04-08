@@ -119,6 +119,10 @@ from maasserver.api.rackcontrollers import (
     RackControllerHandler,
     RackControllersHandler,
 )
+from maasserver.api.regioncontrollers import (
+    RegionControllerHandler,
+    RegionControllersHandler,
+)
 from maasserver.api.raid import (
     RaidHandler,
     RaidsHandler,
@@ -190,6 +194,10 @@ rackcontroller_handler = RestrictedResource(
     RackControllerHandler, authentication=api_auth)
 rackcontrollers_handler = RestrictedResource(
     RackControllersHandler, authentication=api_auth)
+regioncontroller_handler = RestrictedResource(
+    RegionControllerHandler, authentication=api_auth)
+regioncontrollers_handler = RestrictedResource(
+    RegionControllersHandler, authentication=api_auth)
 device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 dhcp_snippet_handler = RestrictedResource(
@@ -358,6 +366,12 @@ urlpatterns += patterns(
     url(
         r'^rackcontrollers/$', rackcontrollers_handler,
         name='rackcontrollers_handler'),
+    url(
+        r'^regioncontrollers/(?P<system_id>[^/]+)/$', regioncontroller_handler,
+        name='regioncontroller_handler'),
+    url(
+        r'^regioncontrollers/$', regioncontrollers_handler,
+        name='regioncontrollers_handler'),
     url(
         r'^devices/(?P<system_id>[^/]+)/$', device_handler,
         name='device_handler'),

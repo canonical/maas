@@ -179,6 +179,20 @@ class TestNodeAPI(APITestCase):
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
+    def test_CREATE_disabled(self):
+        response = self.client.post(
+            reverse('node_handler', args=['invalid-uuid']), {})
+        self.assertEqual(http.client.METHOD_NOT_ALLOWED, response.status_code)
+
+    def test_UPDATE_disabled(self):
+        machine = factory.make_Node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self))
+        response = self.client.put(
+            self.get_node_uri(machine), {'hostname': 'francis'})
+        self.assertEqual(
+            http.client.METHOD_NOT_ALLOWED, response.status_code)
+
 
 class TestGetDetails(APITestCase):
     """Tests for /api/2.0/nodes/<node>/?op=details."""

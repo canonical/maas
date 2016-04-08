@@ -3555,7 +3555,7 @@ class RackController(Node):
 
         if len(connections) != 0:
             raise ValidationError(
-                "Unable to delete %s as its currently connected to one or "
+                "Unable to delete %s as it's currently connected to one or "
                 "more regions." % self.hostname)
         if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
             self.node_type = NODE_TYPE.REGION_CONTROLLER
@@ -3615,6 +3615,19 @@ class RegionController(Node):
     def __init__(self, *args, **kwargs):
         super(RegionController, self).__init__(
             node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs)
+
+    def delete(self):
+        """Delete this region controller."""
+        # Avoid circular dependency
+        from maasserver.models import RegionControllerProcess
+        connections = RegionControllerProcess.objects.filter(
+            region=self)
+
+        if len(connections) != 0:
+            raise ValidationError(
+                "Unable to delete %s as it's currently running."
+                % self.hostname)
+        super().delete()
 
 
 class Device(Node):
