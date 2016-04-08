@@ -6,15 +6,21 @@
 __all__ = []
 
 import random
+import threading
 
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_TYPE,
 )
+from maasserver.models.signals.interfaces import update_parents_thread_local
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from testtools.matchers import (
+    Contains,
+    Not,
+)
 
 
 class TestEnableAndDisableInterface(MAASServerTestCase):
@@ -133,16 +139,16 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
         ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
     )
 
-    def test__updates_bond_parents(self):
+    def test__updates_interface_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node)
-        bond = factory.make_Interface(
+        child = factory.make_Interface(
             self.iftype, parents=[parent1, parent2])
-        self.assertEqual(bond.vlan, reload_object(parent1).vlan)
-        self.assertEqual(bond.vlan, reload_object(parent2).vlan)
+        self.assertEqual(child.vlan, reload_object(parent1).vlan)
+        self.assertEqual(child.vlan, reload_object(parent2).vlan)
 
-    def test__update_bond_clears_parent_links(self):
+    def test__update_interface_clears_parent_links(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=parent1.node)
@@ -150,6 +156,18 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
         factory.make_Interface(
             self.iftype, parents=[parent1, parent2])
         self.assertIsNone(reload_object(static_ip))
+
+    def test__visited_set_is_thread_local(self):
+        thread_local = update_parents_thread_local
+        thread_local.visiting.add("a")
+
+        def check_a_does_not_exist():
+            self.assertThat(thread_local.visiting, Not(Contains("a")))
+        thread = threading.Thread(target=check_a_does_not_exist)
+        thread.start()
+        thread.join()
+        self.assertThat(thread_local.visiting, Contains("a"))
+        thread_local.visiting.discard("a")
 
 
 class TestInterfaceVLANUpdateNotController(MAASServerTestCase):

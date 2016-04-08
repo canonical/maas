@@ -13,6 +13,7 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from django.http import Http404
+from fixtures import FakeLogger
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -64,6 +65,7 @@ from provisioningserver.utils.ipaddr import (
 )
 from testtools import ExpectedException
 from testtools.matchers import (
+    Contains,
     Equals,
     MatchesDict,
     MatchesListwise,
@@ -648,6 +650,39 @@ class InterfaceTest(MAASServerTestCase):
         node = reload_object(node)
         self.assertIsNone(node.gateway_link_ipv6)
 
+    def test_get_ancestors_includes_grandparents(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth0_100 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100])
+        self.assertThat(
+            br0.get_ancestors(), Equals({eth0, eth0_100}))
+
+    def test_get_successors_includes_grandchildren(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth0_100 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100])
+        self.assertThat(
+            eth0.get_successors(), Equals({eth0_100, br0}))
+
+    def test_get_all_related_interafces_includes_all_related(self):
+        node = factory.make_Node()
+        eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth0_100 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
+        eth0_101 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
+        br0 = factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100])
+        self.assertThat(
+            eth0_100.get_all_related_interfaces(), Equals(
+                {eth0, eth0_100, eth0_101, br0}))
+
 
 class PhysicalInterfaceTest(MAASServerTestCase):
 
@@ -930,21 +965,19 @@ class BondInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.BOND, mac_address=factory.make_mac_address(),
             parents=[parent1, parent2])
 
-    def test_cannot_use_none_unique_mac_address(self):
+    def test_warns_for_non_unique_mac_address(self):
+        logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node()
         other_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        # Test is that no error is raised.
-        error = self.assertRaises(
-            ValidationError, factory.make_Interface,
+        iface = factory.make_Interface(
             INTERFACE_TYPE.BOND, mac_address=other_nic.mac_address,
             parents=[parent1, parent2])
-        self.assertEqual({
-            "mac_address": [
-                "This MAC address is already in use by %s." % (
-                    other_nic.node.hostname)]
-            }, error.message_dict)
+        self.assertThat(logger.output, Contains(
+            "While adding %s: "
+            "found a MAC address already in use by %s." % (
+                iface.get_log_string(), other_nic.get_log_string())))
 
     def test_node_is_set_to_parents_node(self):
         node = factory.make_Node()
@@ -1049,21 +1082,20 @@ class BridgeInterfaceTest(MAASServerTestCase):
             INTERFACE_TYPE.BRIDGE, mac_address=factory.make_mac_address(),
             parents=[parent1, parent2])
 
-    def test_cannot_use_none_unique_mac_address(self):
+    def test_warns_for_non_unique_mac_address(self):
+        logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node()
         other_nic = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         # Test is that no error is raised.
-        error = self.assertRaises(
-            ValidationError, factory.make_Interface,
+        iface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, mac_address=other_nic.mac_address,
             parents=[parent1, parent2])
-        self.assertEqual({
-            "mac_address": [
-                "This MAC address is already in use by %s." % (
-                    other_nic.node.hostname)]
-            }, error.message_dict)
+        self.assertThat(logger.output, Contains(
+            "While adding %s: "
+            "found a MAC address already in use by %s." % (
+                iface.get_log_string(), other_nic.get_log_string())))
 
     def test_node_is_set_to_parents_node(self):
         node = factory.make_Node()
@@ -1122,16 +1154,16 @@ class UnknownInterfaceTest(MAASServerTestCase):
             "node": ["This field must be blank."]
             }, error.message_dict)
 
-    def test_mac_address_must_be_unique(self):
+    def test_warns_for_non_unique_unknown_mac(self):
+        logger = self.useFixture(FakeLogger("maas"))
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         unknown = UnknownInterface(
             name="eth0", mac_address=interface.mac_address)
-        error = self.assertRaises(ValidationError, unknown.save)
-        self.assertEqual({
-            "mac_address": [
-                "This MAC address is already in use by %s." % (
-                    interface.get_log_string())]
-            }, error.message_dict)
+        unknown.save()
+        self.assertThat(logger.output, Contains(
+            "While adding %s: "
+            "found a MAC address already in use by %s." % (
+                unknown.get_log_string(), interface.get_log_string())))
 
 
 class UpdateIpAddressesTest(MAASServerTestCase):

@@ -305,10 +305,18 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         If the interface being created is a replacement for an interface that
         already exists, the caller is responsible for deleting it.
         """
-        interface = self.get_queryset().filter(
-            Q(mac_address=mac_address) | Q(name=name) & Q(node=node)).first()
+        if self.model.get_type() == INTERFACE_TYPE.PHYSICAL:
+            # Physical interfaces have a MAC uniqueness restriction.
+            interfaces = self.get_queryset().filter(
+                Q(mac_address=mac_address) | Q(name=name) & Q(node=node))
+            interface = interfaces.first()
+        else:
+            interfaces = self.get_queryset().filter(
+                Q(name=name) & Q(node=node) & Q(type=self.model.get_type()))
+            interface = interfaces.first()
         if interface is not None:
-            if interface.type != self.model.get_type():
+            if (interface.type != self.model.get_type() and
+                    interface.node.id == node.id):
                 # This means we found the interface on this node, but the type
                 # didn't match what we expected. This should not happen unless
                 # we changed the modeling of this interface type, or the admin
@@ -927,6 +935,36 @@ class Interface(CleanSave, TimestampedModel):
         auto_ip.save()
         return subnet, auto_ip
 
+    def get_ancestors(self):
+        """Returns all the ancestors of the interface (that is, including each
+        parent's parents, and so on.)
+        """
+        parents = set(rel.parent for rel in self.parent_relationships.all())
+        parent_relationships = set(self.parent_relationships.all())
+        for parent_rel in parent_relationships:
+            parents |= parent_rel.parent.get_ancestors()
+        return parents
+
+    def get_successors(self):
+        """Returns all the ancestors of the interface (that is, including each
+        child's children, and so on.)
+        """
+        children = set(rel.child for rel in self.children_relationships.all())
+        children_relationships = set(self.children_relationships.all())
+        for child_rel in children_relationships:
+            children |= child_rel.child.get_successors()
+        return children
+
+    def get_all_related_interfaces(self):
+        """Returns all of the related interfaces (including any ancestors,
+        successors, and ancestors' successors)."""
+        ancestors = self.get_ancestors()
+        all_related = set()
+        all_related |= ancestors
+        for ancestor in ancestors:
+            all_related |= ancestor.get_successors()
+        return all_related
+
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to
         # skip removing the IP addresses. This is normally only done by the
@@ -1043,7 +1081,7 @@ class PhysicalInterface(Interface):
         if len(validation_errors) > 0:
             raise ValidationError(validation_errors)
 
-        # MAC address must be unique for all other PhysicalInterface's.
+        # MAC address must be unique amongst every PhysicalInterface.
         other_interfaces = PhysicalInterface.objects.filter(
             mac_address=self.mac_address)
         if self.id is not None:
@@ -1127,35 +1165,29 @@ class ChildInterface(Interface):
         # its soon to be parents MAC address is already in use.
         if self.id is not None:
             interfaces = Interface.objects.filter(mac_address=self.mac_address)
-            parent_ids = [
+            related_ids = [
                 parent.id
-                for parent in self.parents.all()
-            ]
-            children_ids = [
-                rel.child.id
-                for rel in self.children_relationships.all()
+                for parent in self.get_all_related_interfaces()
             ]
             bad_interfaces = []
             for interface in interfaces:
                 if self.id == interface.id:
                     # Self in database so ignore.
                     continue
-                elif interface.id in parent_ids:
-                    # One of the parent MAC addresses.
-                    continue
-                elif interface.id in children_ids:
-                    # One of the children MAC addresses.
+                elif interface.id in related_ids:
+                    # Found the same MAC on either a parent, a child, or
+                    # another of the parents' children.
                     continue
                 else:
                     # Its not unique and its not a parent interface if we
                     # made it this far.
                     bad_interfaces.append(interface)
             if len(bad_interfaces) > 0:
-                raise ValidationError({
-                    "mac_address": [
-                        "This MAC address is already in use by %s." % (
-                            bad_interfaces[0].node.hostname)]
-                })
+                maaslog.warning(
+                    "While adding %s: "
+                    "found a MAC address already in use by %s." % (
+                        self.get_log_string(),
+                        bad_interfaces[0].get_log_string()))
 
 
 class BridgeInterface(ChildInterface):
@@ -1351,11 +1383,11 @@ class UnknownInterface(Interface):
             other_interfaces = other_interfaces.exclude(id=self.id)
         other_interfaces = other_interfaces.all()
         if len(other_interfaces) > 0:
-            raise ValidationError({
-                "mac_address": [
-                    "This MAC address is already in use by %s." % (
-                        other_interfaces[0].get_log_string())]
-                })
+            maaslog.warning(
+                "While adding %s: "
+                "found a MAC address already in use by %s." % (
+                    self.get_log_string(),
+                    other_interfaces[0].get_log_string()))
 
         # Cannot have any parents.
         if self.id is not None:

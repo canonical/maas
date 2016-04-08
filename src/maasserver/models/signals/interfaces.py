@@ -7,6 +7,8 @@ __all__ = [
     "signals",
 ]
 
+import threading
+
 from django.db.models.signals import post_save
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -129,16 +131,34 @@ for klass in INTERFACE_CLASSES:
         interface_mtu_params_update,
         klass, ['params'], delete=False)
 
+thread_local = threading.local()
+
+
+class InterfaceUpdateParentsThreadLocal(threading.local):
+    """Since infinite recursion could occur in an arbitrary interface
+    hierarchy, use thread-local stroage to ensure that each interface is only
+    visited once.
+    """
+    def __init__(self):
+        super().__init__()
+        self.visiting = set()
+
+update_parents_thread_local = InterfaceUpdateParentsThreadLocal()
+
 
 def update_interface_parents(sender, instance, created, **kwargs):
     """Update parents when an interface is created."""
     if instance.type in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
+        visiting = update_parents_thread_local.visiting
         for parent in instance.parents.all():
-            # Make sure the parent has not links as well, just to be sure.
             parent.clear_all_links(clearing_config=True)
-            if parent.vlan != instance.vlan:
-                parent.vlan = instance.vlan
-                parent.save()
+            if parent.vlan != instance.vlan and parent.id not in visiting:
+                try:
+                    visiting.add(parent.id)
+                    parent.vlan = instance.vlan
+                    parent.save()
+                finally:
+                    visiting.discard(parent.id)
 
 
 for klass in INTERFACE_CLASSES:

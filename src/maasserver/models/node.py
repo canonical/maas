@@ -3243,20 +3243,6 @@ class RackController(Node):
         parent_nics = Interface.objects.get_interfaces_on_node_by_name(
             self, ifnames)
 
-        # If we didn't create the parents yet, we need to know about it,
-        # because that indicates a potentially serious bug.
-        if len(config["parents"]) != len(parent_nics):
-            maaslog.warning(
-                "Could not find all parent interfaces for {ifname} "
-                "on {node_name}. Found: {modeled_interfaces}; "
-                "expected: {expected_interfaces}".format(
-                    ifname=name,
-                    node_name=self.hostname,
-                    modeled_interfaces=[
-                        iface.name for iface in parent_nics
-                    ].join(", "),
-                    expected_interfaces=ifnames.join(", ")))
-
         # Ignore child interfaces that don't have parents. MAAS won't know what
         # to do with them since they can't be connected to a fabric.
         if len(parent_nics) == 0:
