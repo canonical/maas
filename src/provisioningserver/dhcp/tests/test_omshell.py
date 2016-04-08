@@ -173,6 +173,62 @@ class TestOmshell(MAASTestCase):
         # The test is that we get here without error.
         pass
 
+    def test_modify_calls_omshell_correctly(self):
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        mac_address = factory.make_mac_address()
+        shell = Omshell(server_address, shared_key)
+
+        # Instead of calling a real omshell, we'll just record the
+        # parameters passed to Popen.
+        recorder = FakeMethod(result=(0, b"hardware-type"))
+        shell._run = recorder
+
+        shell.modify(ip_address, mac_address)
+
+        expected_script = dedent("""\
+            server {server}
+            key omapi_key {key}
+            connect
+            new host
+            set name = "{name}"
+            open
+            set ip-address = {ip}
+            set hardware-address = {mac}
+            set hardware-type = 1
+            update
+            """)
+        expected_script = expected_script.format(
+            server=server_address, key=shared_key, ip=ip_address,
+            mac=mac_address, name=mac_address.replace(':', '-'))
+
+        # Check that the 'stdin' arg contains the correct set of
+        # commands.
+        self.assertEqual(
+            [1, (expected_script.encode("utf-8"),)],
+            [recorder.call_count, recorder.extract_args()[0]])
+
+    def test_modify_raises_when_omshell_fails(self):
+        # If the call to omshell doesn't result in output containing the
+        # magic string 'hardware-type' it means the set of commands
+        # failed.
+
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        mac_address = factory.make_mac_address()
+        shell = Omshell(server_address, shared_key)
+
+        # Fake a call that results in a failure with random output.
+        random_output = factory.make_bytes()
+        recorder = FakeMethod(result=(0, random_output))
+        shell._run = recorder
+
+        exc = self.assertRaises(
+            ExternalProcessError, shell.modify, ip_address, mac_address)
+        self.assertEqual(random_output, exc.output)
+
     def test_remove_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()

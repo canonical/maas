@@ -7,6 +7,7 @@ __all__ = [
     "AuthenticationFailed",
     "CannotConfigureDHCP",
     "CannotCreateHostMap",
+    "CannotModifyHostMap",
     "CannotRegisterCluster",
     "CannotRemoveHostMap",
     "CommissionNodeFailed",
@@ -88,6 +89,10 @@ class CannotConfigureDHCP(Exception):
 
 class CannotCreateHostMap(Exception):
     """The host map could not be created."""
+
+
+class CannotModifyHostMap(Exception):
+    """The host map could not be modified."""
 
 
 class CannotRemoveHostMap(Exception):

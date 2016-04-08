@@ -25,6 +25,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
+    CannotModifyHostMap,
     CannotRemoveHostMap,
 )
 from provisioningserver.service_monitor import service_monitor
@@ -205,6 +206,21 @@ def _create_host_map(omshell, mac, ip_address):
         raise CannotCreateHostMap(err)
 
 
+def _modify_host_map(omshell, mac, ip_address):
+    """Modify host with `mac` -> `ip_address`."""
+    try:
+        omshell.modify(ip_address, mac)
+    except ExternalProcessError as e:
+        if 'not connected.' in e.output_as_unicode:
+            msg = "The DHCP server could not be reached."
+        else:
+            msg = str(e)
+        err = "Could not modify host map for %s -> %s: %s" % (
+            mac, ip_address, msg)
+        maaslog.error(err)
+        raise CannotModifyHostMap(err)
+
+
 @synchronous
 def _update_hosts(server, remove, add, modify):
     """Update the hosts using the OMAPI."""
@@ -214,8 +230,7 @@ def _update_hosts(server, remove, add, modify):
     for host in add:
         _create_host_map(omshell, host["mac"], host["ip"])
     for host in modify:
-        _remove_host_map(omshell, host["mac"])
-        _create_host_map(omshell, host["mac"], host["ip"])
+        _modify_host_map(omshell, host["mac"], host["ip"])
 
 
 @asynchronous

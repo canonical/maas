@@ -196,6 +196,46 @@ class Omshell:
             raise ExternalProcessError(returncode, self.command, output)
 
     @typed
+    def modify(self, ip_address: str, mac_address: str):
+        # The "name" is not a host name; it's an identifier used within
+        # the DHCP server. We use the MAC address. Prior to 1.9, MAAS used
+        # the IPs as the key but changing to using MAC addresses allows the
+        # DHCP service to give all the NICs of a bond the same IP address.
+        # The only caveat of this change is that the remove() method in this
+        # class has to be able to deal with legacy host mappings (using IP as
+        # the key) and new host mappings (using the MAC as the key).
+        maaslog.debug(
+            "Modifing host mapping %s->%s" % (mac_address, ip_address))
+        name = mac_address.replace(':', '-')
+        stdin = dedent("""\
+            server {self.server_address}
+            key omapi_key {self.shared_key}
+            connect
+            new host
+            set name = "{name}"
+            open
+            set ip-address = {ip_address}
+            set hardware-address = {mac_address}
+            set hardware-type = 1
+            update
+            """)
+        stdin = stdin.format(
+            self=self, ip_address=ip_address, mac_address=mac_address,
+            name=name)
+
+        returncode, output = self._run(stdin.encode("utf-8"))
+        # If the call to omshell doesn't result in output containing the
+        # magic string 'hardware-type' then we can be reasonably sure
+        # that the 'update' command failed.  Unfortunately there's no
+        # other output like "successful" to check so this is the best we
+        # can do.
+        if b"hardware-type" in output:
+            # Success.
+            pass
+        else:
+            raise ExternalProcessError(returncode, self.command, output)
+
+    @typed
     def remove(self, mac_address: str):
         # The "name" is not a host name; it's an identifier used within
         # the DHCP server. We use the MAC address. Prior to 1.9, MAAS using

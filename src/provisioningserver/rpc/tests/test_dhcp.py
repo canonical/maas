@@ -411,7 +411,7 @@ class TestUpdateHost(MAASTestCase):
             call(server_address="127.0.0.1", shared_key=server.omapi_key),
         ))
 
-    def test__calls_operations_in_correct_order(self):
+    def test__performs_operations(self):
         omshell = Mock()
         self.patch(dhcp, "Omshell").return_value = omshell
         remove_host = make_host()
@@ -422,12 +422,15 @@ class TestUpdateHost(MAASTestCase):
             omshell.remove,
             MockCallsMatch(
                 call(remove_host["mac"]),
-                call(modify_host["mac"]),
             ))
         self.assertThat(
             omshell.create,
             MockCallsMatch(
                 call(add_host["ip"], add_host["mac"]),
+            ))
+        self.assertThat(
+            omshell.modify,
+            MockCallsMatch(
                 call(modify_host["ip"], modify_host["mac"]),
             ))
 
