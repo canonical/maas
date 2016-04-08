@@ -273,11 +273,10 @@ def find_seamicro15k_servers(ip, username, password, power_control):
 def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
     power_control = power_control or 'ipmi'
 
-    maaslog.info(
-        "Probing for seamicro15k nodes with arguments "
-        "ip=%s, username=%s, password=%s, power_control=%s",
-        ip, username, password, power_control)
+    maaslog.info("Probing for seamicro15k servers as %s@%s", username, ip)
+
     servers = find_seamicro15k_servers(ip, username, password, power_control)
+
     for system_id, macs in servers:
         params = {
             'power_address': ip,
@@ -286,9 +285,7 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
             'power_control': power_control,
             'system_id': system_id
         }
-        maaslog.info(
-            "Found seamicro15k node with macs %s; adding to MAAS with "
-            "params : %s", macs, params)
+        maaslog.info("Creating seamicro15k node with MACs: %s", macs)
         create_node(macs, 'amd64', 'sm15k', params)
 
 
