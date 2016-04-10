@@ -138,6 +138,7 @@ Developing MAAS
    development/metadata
    development/rpc
    development/transactions
+   development/notes/index
 
 
 ******************
