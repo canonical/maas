@@ -9,7 +9,6 @@ MAAS Objects
    maasserver.models.config
    maasserver.models.filestorage
    maasserver.models.node
-   maasserver.models.nodegroup
    maasserver.models.sshkey
    maasserver.models.timestampedmodel
    maasserver.models.user

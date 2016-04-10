@@ -2427,15 +2427,16 @@ class Node(CleanSave, TimestampedModel):
         This is determined by looking at all interfaces on the node and
         selecting the best possible default gateway IP. The criteria below
         is used to select the best possible gateway:
-            1. Managed subnets over unmanaged subnets.
-            2. Bond and bridge interfaces over physical interfaces.
-            3. Node's boot interface over all other interfaces except bonds
-               and bridges.
-            4. Physical interfaces over VLAN interfaces.
-            5. Sticky IP links over user reserved IP links.
-            6. User reserved IP links over auto IP links.
 
-        :return: List of tuples with (interface ID, subnet ID, and gateway IP)
+          1. Managed subnets over unmanaged subnets.
+          2. Bond and bridge interfaces over physical interfaces.
+          3. Node's boot interface over all other interfaces except bonds and
+             bridges.
+          4. Physical interfaces over VLAN interfaces.
+          5. Sticky IP links over user reserved IP links.
+          6. User reserved IP links over auto IP links.
+
+        :return: List of (interface ID, subnet ID, gateway IP) tuples.
         :rtype: list
         """
         cursor = connection.cursor()
@@ -3000,7 +3001,7 @@ class Machine(Node):
 
     objects = MachineManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -3013,7 +3014,7 @@ class RackController(Node):
 
     objects = RackControllerManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -3609,7 +3610,7 @@ class RegionController(Node):
 
     objects = RegionControllerManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -3635,7 +3636,7 @@ class Device(Node):
 
     objects = DeviceManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -3651,6 +3652,9 @@ class NodeGroupToRackController(CleanSave, Model):
     """Store some of the old NodeGroup data so we can migrate it when a rack
     controller is registered.
     """
+
+    class Meta(DefaultMeta):
+        """Inexplicably required."""
 
     # The uuid of the nodegroup from < 2.0
     uuid = CharField(max_length=36, null=False, blank=False, editable=True)

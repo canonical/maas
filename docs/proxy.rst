@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-.. _maas-proxy:
+.. _proxy:
 
 Proxy Configuration
 ===================

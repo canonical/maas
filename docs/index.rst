@@ -67,7 +67,9 @@ Setting up a MAAS server
    os-support
    storage
    networking
+   proxy
    devices
+   dhcpsnippets
 
 
 ******************

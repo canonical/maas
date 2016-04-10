@@ -563,12 +563,13 @@ class Subnet(CleanSave, TimestampedModel):
         return None
 
     def get_smallest_enclosing_sane_subnet(self):
-        """Return the subnet that includes this subnet and is:
-        1) Larger than this subnet,
-        2) at least big enough to be a parent in the RFC2317 world
-            (/24 in IPv4, /124 in IPv6).
-        If no such subnet exists, return None."""
+        """Return the subnet that includes this subnet.
 
+        It must also be at least big enough to be a parent in the RFC2317
+        world (/24 in IPv4, /124 in IPv6).
+
+        If no such subnet exists, return None.
+        """
         find_rfc2137_parent_query = """
             SELECT * FROM maasserver_subnet
             WHERE

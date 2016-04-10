@@ -440,15 +440,16 @@ class Interface(CleanSave, TimestampedModel):
     def get_links(self):
         """Return the definition of links connected to this interface.
 
-        Example definition:
-        {
-            "id": 1,
-            "mode": "dhcp",
-            "ip_address": "192.168.1.2",
-            "subnet": <Subnet object>
-        }
+        Example definition::
 
-        'ip' and 'subnet' are optional and are only present if the
+          {
+              "id": 1,
+              "mode": "dhcp",
+              "ip_address": "192.168.1.2",
+              "subnet": <Subnet object>
+          }
+
+        ``ip`` and ``subnet`` are optional and are only present if the
         `StaticIPAddress` has an IP address and/or subnet.
         """
         links = []
@@ -468,14 +469,15 @@ class Interface(CleanSave, TimestampedModel):
         return links
 
     def get_discovered(self):
-        """Return the definition of discovered IP addresses belonging to this
-        interface.
+        """Return the definition of discovered IPs belonging to this interface.
 
-        Example definition:
-        {
-            "ip_address": "192.168.1.2",
-            "subnet": <Subnet object>
-        }
+        Example definition::
+
+          {
+              "ip_address": "192.168.1.2",
+              "subnet": <Subnet object>
+          }
+
         """
         discovered_ips = self.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED)
@@ -508,8 +510,8 @@ class Interface(CleanSave, TimestampedModel):
         interface. All other IPADDRESS_TYPE's are left alone.
 
         :param cidr_list: A list of IP/network addresses using the CIDR format
-        e.g. ['192.168.12.1/24', 'fe80::9e4e:36ff:fe3b:1c94/64'] to which the
-        interface is connected.
+            e.g. ``['192.168.12.1/24', 'fe80::9e4e:36ff:fe3b:1c94/64']`` to
+            which the interface is connected.
         """
         # Circular imports.
         from maasserver.models import StaticIPAddress, Subnet

@@ -156,7 +156,7 @@ class DNSResource(CleanSave, TimestampedModel):
 
     :ivar name: The leftmost label for the resource. (No dots.)
     :ivar domain: Which (forward) DNS zone does this resource go in.
-    :ivar ip_addresses: many-to-many linkage to StaticIPAddress
+    :ivar ip_addresses: many-to-many linkage to `StaticIPAddress`.
     :ivar objects: An instance of the class :class:`DNSResourceManager`.
     """
 

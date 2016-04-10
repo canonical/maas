@@ -382,7 +382,8 @@ Major new features
   * Ability to create multiple DNS domains.
   * Ability to add multiple records (CNAME, TXT, MX, SRV ) per
     domain. (API only)
-  * Ability to select Domain for Machines and Devices. (API only, WebUI in progress)
+  * Ability to select Domain for Machines and Devices. (API only, WebUI
+    in progress)
   * Ability to assign (additional) names to IP addresses (API only)
   * For deployed machines, A records continue to be create specifying
     the IP of the PXE interface.
@@ -434,40 +435,56 @@ Major new features
 
   * RackControllers - This endpoint/command has the following operations
     in addition to the base operations provided by nodes:
-     * import-boot-images - Import the boot images on all rack controllers
-     * describe-power-types - Query all of the rack controllers for power information
+
+      * import-boot-images - Import the boot images on all rack
+        controllers
+      * describe-power-types - Query all of the rack controllers for
+        power information
+
   * RackController - This endpoint/command has the following operations
     in addition to the base operations provided by nodes
-     * import-boot-images - Import boot images on the given rack controller
-     * refresh - refresh the hardware information for the given rack controller
+
+    * import-boot-images - Import boot images on the given rack
+      controller
+    * refresh - refresh the hardware information for the given rack
+      controller
+
   * Machines - This endpoint/command replaces many of the operations
     previously found in the nodes endpoint/command. The machines
     endpoint/command has the following operations in addition to the
     base operations provided by nodes.
-     * power-parameters - Retrieve power parameters for multiple machines
-     * list-allocated - Fetch machines that were allocated to the user/oauth token.
-     * allocate - Allocate an available machine for deployment.
-     * accept - Accept declared machine into MAAS.
-     * accept-all - Accept all declared machines into MAAS.
-     * create - Create a new machine.
-     * add-chassis - Add special hardware types.
-     * release - Release multiple machines.
+
+    * power-parameters - Retrieve power parameters for multiple
+      machines
+    * list-allocated - Fetch machines that were allocated to the
+      user/oauth token.
+    * allocate - Allocate an available machine for deployment.
+    * accept - Accept declared machine into MAAS.
+    * accept-all - Accept all declared machines into MAAS.
+    * create - Create a new machine.
+    * add-chassis - Add special hardware types.
+    * release - Release multiple machines.
+
   * Machine - This endpoint/command replaces many of the operations
     previously found in the node endpoint/command. The machine
     endpoint/command has the following operations in addition to the
     base operations provided by node.
-     * power-parameters - Obtain power parameters for the given machine.
-     * deploy - Deploy an operating system to a given machine.
-     * abort - Abort the machines current operation.
-     * get-curtin-config - Return the rendered curtin configuration for the machine.
-     * power-off - Power off the given machine.
-     * set-storage-layout - Change the storage layout of the given machine.
-     * power-on -Turn on the given machine.
-     * release - Release a given machine.
-     * clear-default-gateways - Clear any set default gateways on the machine.
-     * update - Change machine configuration.
-     * query-power-state - Query the power state of a machine.
-     * commission - Begin commissioning process for a machine
+
+    * power-parameters - Obtain power parameters for the given machine.
+    * deploy - Deploy an operating system to a given machine.
+    * abort - Abort the machines current operation.
+    * get-curtin-config - Return the rendered curtin configuration for
+      the machine.
+    * power-off - Power off the given machine.
+    * set-storage-layout - Change the storage layout of the given
+      machine.
+    * power-on -Turn on the given machine.
+    * release - Release a given machine.
+    * clear-default-gateways - Clear any set default gateways on the
+      machine.
+    * update - Change machine configuration.
+    * query-power-state - Query the power state of a machine.
+    * commission - Begin commissioning process for a machine
 
   Other endpoints/commands have changed:
 
@@ -478,33 +495,41 @@ Major new features
     As such most operations have been moved to the machines
     endpoint/command.The following operations remain as they can be
     used on all node types.
-     * is-registered - Returns whether or not the given MAC address is
-       registered with this MAAS.
-     * set-zone - Assign multiple nodes to a physical zone at once.
-     * read - List nodes visible to the user, optionally filtered by criteria.
+
+    * is-registered - Returns whether or not the given MAC address is
+      registered with this MAAS.
+    * set-zone - Assign multiple nodes to a physical zone at once.
+    * read - List nodes visible to the user, optionally filtered by
+      criteria.
+
   * Node - The node endpoint/command is now a base endpoint/command for
     all other node types(devices, machines, and rack-controllers). As
     such most operations have been moved to the machine endpoint/command.
     The following operations remain as they can be used on all node types.
-     * read - Read information about a specific node
-     * details - Obtain various system details.
-     * delete  - Delete a specific node.
+
+    * read - Read information about a specific node
+    * details - Obtain various system details.
+    * delete  - Delete a specific node.
+
   * With the migration of nodes to machines the following items previously
     outputted with the list command have been changed or removed from the
     machines read command:
-     * status - Will now show all status types
-     * substatus, substatus_action, substatus_message, substatus_name - Replaced
-       by status, status_action, status_message, status_name.
-     * boot_type - Removed, MAAS 2.0 only supports fastpath.
-     * pxe_mac - Replaced by boot_interface.
-     * hostname - Now only displays the hostname, without the domain, of the
-       machine. To get the fully qualified domain name the fqdn and domain
-       are now also outputted.
+
+    * status - Will now show all status types
+    * substatus, substatus_action, substatus_message, substatus_name -
+      Replaced by status, status_action, status_message, status_name.
+    * boot_type - Removed, MAAS 2.0 only supports fastpath.
+    * pxe_mac - Replaced by boot_interface.
+    * hostname - Now only displays the hostname, without the domain, of
+      the machine. To get the fully qualified domain name the fqdn and
+      domain are now also outputted.
+
   * And other endpoints/commands have been deprecated:
-     * NodeGroups - Replacement operations are found in the RackControllers,
-       Machines, and BootResources endpoints/commands.
-     * NodeGroupInterfaces - replacement operations are found in the
-       RackController, IPRanges, Subnets, and VLANS endpoints/commands.
+
+    * NodeGroups - Replacement operations are found in the
+      RackControllers, Machines, and BootResources endpoints/commands.
+    * NodeGroupInterfaces - replacement operations are found in the
+      RackController, IPRanges, Subnets, and VLANS endpoints/commands.
 
 **Extended Storage Support**
   MAAS 2.0 Storage Model has been extended to support:
@@ -1275,7 +1300,7 @@ Major New Features
  These new concepts replaces the old `Network` concepts from MAAS'
  earlier versions. For more information, see :ref:`networking`.
 
- For more information about the API, see :ref:`api`.
+ For more information about the API, see :ref:`region-controller-api`.
 
 **Curtin & cloud-init status updates**
  Starting from MAAS 1.9.0 (alpha2), curtin and cloud-init will now send

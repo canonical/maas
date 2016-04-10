@@ -61,7 +61,7 @@ def get_html_display_for_key(key, size):
 
     A key typically looks like this: 'key_type key_string comment'.
     What we want here is display the key_type and, if possible (i.e. if it
-    fits in the boundary that `size` gives us), the comment.  If possible we
+    fits in the boundary that ``size`` gives us), the comment.  If possible we
     also want to display a truncated key_string.  If the comment is too big
     to fit in, we simply display a cropped version of the whole string.
 

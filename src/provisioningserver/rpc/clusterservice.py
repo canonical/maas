@@ -367,8 +367,7 @@ class Cluster(RPCProtocol):
         """RefreshRackControllerInfo()
 
         Implementation of
-        :py:class:
-          `~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
+        :py:class:`~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
         """
         d = deferToThread(
             refresh, system_id, consumer_key, token_key, token_secret)
@@ -416,8 +415,7 @@ class Cluster(RPCProtocol):
         """AddChassis()
 
         Implementation of
-        :py:class:
-          `~provisioningserver.rpc.cluster.AddChassis`.
+        :py:class:`~provisioningserver.rpc.cluster.AddChassis`.
         """
         if chassis_type in ('virsh', 'powerkvm'):
             d = deferToThread(

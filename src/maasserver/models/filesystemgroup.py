@@ -733,7 +733,7 @@ class VolumeGroup(FilesystemGroup):
 
     objects = VolumeGroupManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -799,7 +799,7 @@ class RAID(FilesystemGroup):
 
     objects = RAIDManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -898,7 +898,7 @@ class Bcache(FilesystemGroup):
 
     objects = BcacheManager()
 
-    class Meta:
+    class Meta(DefaultMeta):
         proxy = True
 
     def __init__(self, *args, **kwargs):

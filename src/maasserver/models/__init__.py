@@ -21,7 +21,6 @@ __all__ = [
     'DNSResource',
     'Device',
     'Domain',
-    'DownloadProgress',
     'Event',
     'Fabric',
     'FanNetwork',

@@ -104,7 +104,7 @@ Inside that newly created source ('2') you can add selections::
     }
 
 Deleting a source
----------------
+-----------------
 
 Let's say you need to delete the newly added source.
 
