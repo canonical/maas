@@ -109,6 +109,7 @@ enlist_node() {
 
 	curl \
 	    --fail \
+	    --header "Accept: application/json" \
 	    --data-urlencode "hostname=${hostname}" \
 	    --data-urlencode "architecture=${arch}" \
 	    --data-urlencode "subarchitecture=${subarch}" \

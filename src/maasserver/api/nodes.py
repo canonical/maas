@@ -219,10 +219,15 @@ class NodeHandler(OperationsHandler):
             content_type='application/bson')
 
 
+class AnonNodeHandler(AnonymousOperationsHandler):
+    """Anonymous access to Node."""
+    read = create = update = delete = None
+    model = Node
+
+
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
     create = update = delete = None
-    model = Node
 
     @operation(idempotent=True)
     def is_registered(self, request):

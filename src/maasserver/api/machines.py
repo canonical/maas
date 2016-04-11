@@ -25,6 +25,7 @@ from formencode.validators import StringBool
 from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
+    AnonNodeHandler,
     AnonNodesHandler,
     NodeHandler,
     NodesHandler,
@@ -131,6 +132,23 @@ DISPLAYED_MACHINE_FIELDS = (
     'node_type',
     'node_type_name',
     'special_filesystems',
+)
+
+# Limited set of machine fields exposed on the anonymous API.
+DISPLAYED_ANON_MACHINE_FIELDS = (
+    'system_id',
+    'hostname',
+    'domain',
+    'fqdn',
+    'architecture',
+    'status',
+    'power_type',
+    'power_state',
+    'zone',
+    'status_action',
+    'status_message',
+    'status_name',
+    'node_type',
 )
 
 
@@ -788,10 +806,24 @@ def create_machine(request):
         raise MAASAPIValidationError(form.errors)
 
 
+class AnonMachineHandler(AnonNodeHandler):
+    """Anonymous machine handler.
+
+    Only outputs machine model for anonymous results.
+    """
+    read = create = update = delete = None
+    model = Machine
+    fields = DISPLAYED_ANON_MACHINE_FIELDS
+
+    @classmethod
+    def resource_uri(cls, machine):
+        return ('machine_handler', (machine.system_id, ))
+
+
 class AnonMachinesHandler(AnonNodesHandler):
     """Anonymous access to Machines."""
-    model = Machine
-    fields = DISPLAYED_MACHINE_FIELDS
+    read = update = delete = None
+    base_model = Machine
 
     def create(self, request):
         # Note: this docstring is duplicated below. Be sure to update both.

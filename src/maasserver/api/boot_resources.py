@@ -265,7 +265,6 @@ class BootResourceHandler(OperationsHandler):
 class BootResourceFileUploadHandler(OperationsHandler):
     """Upload a boot resource file."""
     api_doc_section_name = "Boot resource file upload"
-    model = BootResource
 
     read = create = delete = None
 

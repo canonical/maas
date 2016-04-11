@@ -34,15 +34,11 @@ from maasserver.api.boot_resources import (
     BootResourcesHandler,
 )
 from maasserver.api.boot_source_selections import (
-    BootSourceSelectionBackwardHandler,
     BootSourceSelectionHandler,
-    BootSourceSelectionsBackwardHandler,
     BootSourceSelectionsHandler,
 )
 from maasserver.api.boot_sources import (
-    BootSourceBackwardHandler,
     BootSourceHandler,
-    BootSourcesBackwardHandler,
     BootSourcesHandler,
 )
 from maasserver.api.commissioning_scripts import (
@@ -283,14 +279,6 @@ boot_source_selection_handler = AdminRestrictedResource(
     BootSourceSelectionHandler, authentication=api_auth)
 boot_source_selections_handler = AdminRestrictedResource(
     BootSourceSelectionsHandler, authentication=api_auth)
-boot_source_backward_handler = AdminRestrictedResource(
-    BootSourceBackwardHandler, authentication=api_auth)
-boot_sources_backward_handler = AdminRestrictedResource(
-    BootSourcesBackwardHandler, authentication=api_auth)
-boot_source_selection_backward_handler = AdminRestrictedResource(
-    BootSourceSelectionBackwardHandler, authentication=api_auth)
-boot_source_selections_backward_handler = AdminRestrictedResource(
-    BootSourceSelectionsBackwardHandler, authentication=api_auth)
 license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
