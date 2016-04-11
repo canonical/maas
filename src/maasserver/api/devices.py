@@ -55,6 +55,21 @@ DISPLAYED_DEVICE_FIELDS = (
     'parent',
     'tag_names',
     'ip_addresses',
+    ('interface_set', (
+        'id',
+        'name',
+        'type',
+        'vlan',
+        'mac_address',
+        'parents',
+        'children',
+        'tags',
+        'enabled',
+        'links',
+        'params',
+        'discovered',
+        'effective_mtu',
+        )),
     'zone',
     )
 

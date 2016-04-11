@@ -17,6 +17,8 @@ Bug Fix Update
 
 #1543968    MAAS 1.9.0 allows non-unique space names
 
+#1567213    devices results missing interface_set
+
 
 1.9.1
 =====
