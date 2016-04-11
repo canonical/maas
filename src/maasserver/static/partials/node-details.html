@@ -137,19 +137,24 @@
             </div>
         </div>
     </header>
-    <div class="inner-wrapper">
-        <ul class="flash-messages">
-            <li class="flash-messages__item error ng-hide"
-                data-ng-repeat="(error_type, error) in errors"
-                data-ng-show="error.viewable">{$ error.message $}</li>
-        </ul>
-    </div>
     <div class="row">
         <div class="inner-wrapper">
             <form>
                 <div class="twelve-col">
                     <h2 class="title" data-ng-hide="isController">Machine summary</h2>
                     <h2 class="title" data-ng-show="isController">Controller summary</h2>
+                    <ul class="flash-messages" data-ng-if="isSuperUser()">
+                        <li class="flash-messages__item error"
+                            data-ng-if="!isController && !isRackControllerConnected()">Editing is currently disabled because no rack controller is currently connected to the region.</li>
+                        <li class="flash-messages__item error"
+                            data-ng-if="!isController && hasInvalidArchitecture() && isRackControllerConnected() && hasUsableArchitectures()">
+                                This machine currently has an invalid architecture. Update the architecture of this machine to make it deployable.
+                        </li>
+                        <li class="flash-messages__item error"
+                            data-ng-if="!isController && hasInvalidArchitecture() && isRackControllerConnected() && !hasUsableArchitectures()">
+                                No boot images have been imported for a valid architecture to be selected. Visit the <a href="images">images page</a> to start the import process.
+                        </li>
+                    </ul>
                 </div>
                 <fieldset class="six-col">
                     <div class="ng-hide" data-ng-show="isSuperUser() && !isController">
@@ -167,12 +172,12 @@
                         <div class="inline">
                             <label for="architecture" class="two-col">Architecture</label>
                             <div class="three-col">
-                                <select name="architecture" id="architecture" placeholder="Choose an architecture"
+                                <select name="architecture" id="architecture"
                                     data-ng-disabled="!summary.editing"
                                     data-ng-model="summary.architecture.selected"
                                     data-ng-options="arch for arch in summary.architecture.options"
                                     data-ng-class="{ invalid: invalidArchitecture() }">
-                                    <option value="" disabled="disabled">Choose an architecture</option>
+                                    <option value="" disabled="disabled">{$ getArchitecturePlaceholder() $}</option>
                                 </select>
                             </div>
                         </div>
@@ -332,32 +337,41 @@
         <div class="inner-wrapper">
             <form class="disabled">
                 <div class="twelve-col">
-                    <h2 class="title">Power</h2>
+                    <h2 class="title left">Power</h2>
                 </div>
-                <div class="twelve-col ng-hide info" data-ng-show="power.type.name == 'manual'">
+                <div class="twelve-col">
                     <ul class="flash-messages">
-                        <li class="flash-messages__item info">
-                            Power control for this power type will need to be handled manually.
+                        <li class="flash-messages__item error" data-ng-if="!isRackControllerConnected()">
+                            Editing is currently disabled because no rack controller is current connected to the region.
                         </li>
-                    </ul>
-                </div>
-                <div class="twelve-col ng-hide error" data-ng-show="hasPowerError()">
-                    <ul class="flash-messages">
-                        <li class="flash-messages__item error">
+                        <li class="flash-messages__item error" data-ng-if="isRackControllerConnected() && node.power_type == ''">
+                            This node does not have a power type set and MAAS will be unable to control it. Update the power
+                            information below.
+                        </li>
+                        <li class="flash-messages__item error" data-ng-if="hasPowerError()">
                             Power control software for this power type is missing from the
                             rack controller.  To proceed, install the {$ getPowerErrors() $}
                             on the rack controller.
                         </li>
+                        <li class="flash-messages__item info" data-ng-if="power.type.name == 'manual'">
+                            Power control for this power type will need to be handled manually.
+                        </li>
+                        <li class="flash-messages__item info" data-ng-if="power.editing && node.power_bmc_node_count > 1">
+                            This power controller manages {$ node.power_bmc_node_count - 1 $} other
+                            {$ node.power_bmc_node_count > 3 ? "nodes" : "node" $}.
+                            Changing power parameters will affect these nodes.
+                        </li>
                     </ul>
                 </div>
-                <fieldset class="six-col"
+                <fieldset class="six-col ng-hide"
+                    data-ng-show="power_types.length"
                     data-ng-disabled="!power.editing"
                     data-maas-power-parameters="power_types"
                     data-ng-model="power">
                 </fieldset>
                 <div class="controls" data-ng-hide="power.editing">
                     <a href="" class="link-cta-ubuntu secondary"
-                        data-ng-show="canEdit()"
+                        data-ng-show="canEdit() && power_types.length"
                         data-ng-click="editPower()">Edit</a>
                 </div>
                 <div class="controls ng-hide" data-ng-show="power.editing">
@@ -367,16 +381,7 @@
                         data-ng-class="{ secondary: invalidPowerType() }"
                         data-ng-click="saveEditPower()">Save changes</button>
                 </div>
-                <div class="twelve-col ng-hide info" data-ng-show="power.editing && node.power_bmc_node_count > 1">
-                    <ul class="flash-messages">
-                        <li class="flash-messages__item info">
-                            This power controller manages {$ node.power_bmc_node_count - 1 $} other
-                            {$ node.power_bmc_node_count > 3 ? "nodes" : "node" $}.
-                            Changing power parameters will affect these nodes. If this is not what you want,
-                            create a new power controller unique to this node by changing the power type.
-                        </li>
-                    </ul>
-                </div>
+
             </form>
         </div>
     </div>
@@ -495,7 +500,7 @@
                                 </div>
                                 <div class="table__data table-col--30">
                                     <span data-ng-repeat="subnet in vlanRow['subnets']">
-                                        <div class="margin-bottom--ten"> 
+                                        <div class="margin-bottom--ten">
                                             <a href="#/subnet/{$ subnet.id $}">{$ getSubnetText(subnet) $}</a>
                                         </div>
                                     </span>
@@ -515,25 +520,23 @@
         <div class="row">
             <div class="inner-wrapper">
                 <div class="twelve-col" data-ng-hide="loaded">
-                    <h2 class="title">Network</h2>
+                    <h2 class="title">Interfaces</h2>
                     <div class="twelve-col">Loading...</div>
                 </div>
                 <form class="ng-hide" data-ng-show="loaded">
                     <div class="twelve-col">
-                        <h2 class="title">Network</h2>
+                        <h2 class="title">Interfaces</h2>
                         <div class="twelve-col error">
-                            <ul class="flash-messages ng-hide" data-ng-show="!isController && isAllNetworkingDisabled() && isSuperUser()">
-                                <li class="flash-messages__item info">
-                                    Network configuration cannot be modified unless the node is Ready or Broken.
-                                </li>
-                            </ul>
-                            <ul class="flash-messages ng-hide" data-ng-show="!node.on_network">
-                                <li class="flash-messages__item error">
+                            <ul class="flash-messages" data-ng-if="
+                                (!isController && isAllNetworkingDisabled() && isSuperUser()) ||
+                                !node.on_network || (!isController && !isUbuntuOS())">
+                                <li class="flash-messages__item error" data-ng-if="!node.on_network">
                                     Node must be connected to a network.
                                 </li>
-                            </ul>
-                            <ul class="flash-messages ng-hide" data-ng-show="!isController && !isUbuntuOS()">
-                                <li class="flash-messages__item info">
+                                <li class="flash-messages__item info" data-ng-if="!isController && isAllNetworkingDisabled() && isSuperUser()">
+                                    Interface configuration cannot be modified unless the node is Ready or Broken.
+                                </li>
+                                <li class="flash-messages__item info" data-ng-if="!isController && !isUbuntuOS()">
                                     Custom network configuration only supported on Ubuntu. Using OS default configuration.
                                 </li>
                             </ul>
@@ -1105,12 +1108,10 @@
 
                         </main>
                     </section>
-
                     <a class="link-cta-ubuntu secondary tooltip"
                        data-tooltip="Create a tmpfs or ramfs filesystem"
                        ng-disabled="dropdown !== null"
                        ng-click="addSpecialFilesystem()">Add special filesystem</a>
-
                 </div>
                 <div class="twelve-col padding-bottom" data-ng-show="cachesets.length">
                     <h3>Available cache sets</h3>
@@ -1869,9 +1870,7 @@
         <div class="inner-wrapper">
             <div class="twelve-col">
                 <h2 class="title">Latest machine events</h2>
-                <h2 data-ng-hide="node.events.length">
-                    No events.
-                </h2>
+                <p data-ng-hide="node.events.length">No events.</p>
                 <table class="table-listing no-hover" data-ng-show="node.events.length">
                     <thead>
                         <tr class="table-listing__row">

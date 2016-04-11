@@ -40,21 +40,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.checkingPower = false;
         $scope.devices = [];
 
-        // Holds errors that are displayed on the details page.
-        $scope.errors = {
-            invalid_arch: {
-                viewable: false,
-                message: "This node has an invalid architecture. Update the " +
-                    "architecture for this node in the summary section below."
-            },
-            missing_power: {
-                viewable: false,
-                message: "This node does not have a power type set and " +
-                    "MAAS will be unable to control it. Update the power " +
-                    "information in the power section below."
-            }
-        };
-
         // Node header section.
         $scope.header = {
             editing: false,
@@ -110,51 +95,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             summaryType: 'yaml'
         };
 
-        // Show given error.
-        function showError(name) {
-            $scope.errors[name].viewable = true;
-        }
-
-        // Hide given error.
-        function hideError(name) {
-            $scope.errors[name].viewable = false;
-        }
-
-        // Return true if the error is viewable.
-        function isErrorViewable(name) {
-            return $scope.errors[name].viewable;
-        }
-
-        // Return true if the architecture for the given node is invalid.
-        function hasInvalidArchitecture(node) {
-            return (
-                node.architecture === "" ||
-                $scope.summary.architecture.options.indexOf(
-                    node.architecture) === -1);
-        }
-
-        // Update the shown errors based on the status of the node.
-        function updateErrors() {
-            if('controller' !== $routeParams.type) {
-                // Check if the nodes power type is null, if so then show the
-                // missing_power error.
-                if($scope.node.power_type === "") {
-                    showError("missing_power");
-                } else {
-                    hideError("missing_power");
-                }
-
-                // Show architecture error if the node has no architecture
-                // or if the current architecture is not in the available
-                // architectures.
-                if(hasInvalidArchitecture($scope.node)) {
-                    showError("invalid_arch");
-                } else {
-                    hideError("invalid_arch");
-                }
-            }
-        }
-
         // Updates the page title.
         function updateTitle() {
             if($scope.node && $scope.node.fqdn) {
@@ -206,9 +146,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Updates the currently selected items in the power section.
         function updatePower() {
-            // Update the viewable errors.
-            updateErrors();
-
             // Do not update the selected items, when editing this would
             // cause the users selection to change.
             if($scope.power.editing) {
@@ -242,9 +179,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Updates the currently selected items in the summary section.
         function updateSummary() {
-            // Update the viewable errors.
-            updateErrors();
-
             // Do not update the selected items, when editing this would
             // cause the users selection to change.
             if($scope.summary.editing) {
@@ -260,7 +194,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Force editing mode on, if the architecture is invalid. This is
             // placed at the bottom because we wanted the selected items to
             // be filled in at least once.
-            if($scope.canEdit() && hasInvalidArchitecture($scope.node)) {
+            if($scope.canEdit() &&
+                $scope.hasUsableArchitectures() &&
+                $scope.hasInvalidArchitecture()) {
                 $scope.summary.editing = true;
             }
         }
@@ -434,6 +370,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // are updated.
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
+            $scope.$watchCollection("power_types", updatePower);
 
             // Update the services when the services list is updated.
             $scope.$watch("node.service_ids", updateServices);
@@ -445,18 +382,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.commissioning_results", updateMachineOutput);
             $scope.$watch("node.installation_results", updateMachineOutput);
         }
-
-        // Update the node with new data on the region.
-        $scope.updateNode = function(node) {
-            return $scope.nodesManager.updateItem(node).then(function(node) {
-                updateHeader();
-                updateSummary();
-            }, function(error) {
-                console.log(error);
-                updateHeader();
-                updateSummary();
-            });
-        };
 
         // Called when the node has been loaded.
         function nodeLoaded(node) {
@@ -478,6 +403,18 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.networkingController.nodeLoaded();
             }
         }
+
+        // Update the node with new data on the region.
+        $scope.updateNode = function(node) {
+            return $scope.nodesManager.updateItem(node).then(function(node) {
+                updateHeader();
+                updateSummary();
+            }, function(error) {
+                console.log(error);
+                updateHeader();
+                updateSummary();
+            });
+        };
 
         // Called for autocomplete when the user is typing a tag name.
         $scope.tagsAutocomplete = function(query) {
@@ -681,6 +618,32 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return UsersManager.isSuperUser();
         };
 
+        // Return true if their are usable architectures.
+        $scope.hasUsableArchitectures = function() {
+            return $scope.summary.architecture.options.length > 0;
+        };
+
+        // Return the placeholder text for the architecture dropdown.
+        $scope.getArchitecturePlaceholder = function() {
+            if($scope.hasUsableArchitectures()) {
+                return "Choose an architecture";
+            } else {
+                return "-- No usable architectures --";
+            }
+        };
+
+        // Return true if the saved architecture is invalid.
+        $scope.hasInvalidArchitecture = function() {
+            if(angular.isObject($scope.node)) {
+                return (
+                    $scope.node.architecture === "" ||
+                    $scope.summary.architecture.options.indexOf(
+                        $scope.node.architecture) === -1);
+            } else {
+                return false;
+            }
+        };
+
         // Return true if the current architecture selection is invalid.
         $scope.invalidArchitecture = function() {
             return (
@@ -689,9 +652,19 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     $scope.summary.architecture.selected) === -1);
         };
 
+        // Return true if at least a rack controller is connected to the
+        // region controller.
+        $scope.isRackControllerConnected = function() {
+            // If power_types exist then a rack controller is connected.
+            return $scope.power_types.length > 0;
+        };
+
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            return $scope.isSuperUser() && !$scope.isController;
+            return (
+                $scope.isRackControllerConnected() &&
+                $scope.isSuperUser() &&
+                !$scope.isController);
         };
 
         // Called to edit the node name.
@@ -761,7 +734,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Called to cancel editing in the summary section.
         $scope.cancelEditSummary = function() {
             // Leave edit mode only if node has valid architecture.
-            if(!hasInvalidArchitecture($scope.node)) {
+            if(!$scope.hasInvalidArchitecture()) {
                 $scope.summary.editing = false;
             }
 

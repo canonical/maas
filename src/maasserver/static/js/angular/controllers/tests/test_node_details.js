@@ -328,35 +328,23 @@ describe("NodeDetailsController", function() {
         expect($rootScope.title).toBe(node.fqdn);
     });
 
-    it("invalid_arch error visible if node architecture empty", function() {
-        node.architecture = "";
-
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.errors.invalid_arch.viewable).toBe(true);
-    });
-
-    it("invalid_arch error visible if node architecture not present",
-        function() {
-            GeneralManager._data.architectures.data = [makeName("arch")];
-
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.errors.invalid_arch.viewable).toBe(true);
-        });
-
-    it("invalid_arch error not visible if node architecture present",
-        function() {
-            GeneralManager._data.architectures.data = [node.architecture];
-
-            var controller = makeControllerResolveSetActiveItem();
-            expect($scope.errors.invalid_arch.viewable).toBe(false);
-        });
-
     it("summary section placed in edit mode if architecture blank",
         function() {
             node.architecture = "";
+            GeneralManager._data.power_types.data = [{}];
+            GeneralManager._data.architectures.data = ["amd64/generic"];
 
             var controller = makeControllerResolveSetActiveItem();
             expect($scope.summary.editing).toBe(true);
+        });
+
+    it("summary section not placed in edit mode if no usable architectures",
+        function() {
+            node.architecture = "";
+            GeneralManager._data.power_types.data = [{}];
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.summary.editing).toBe(false);
         });
 
     it("summary section not placed in edit mode if architecture present",
@@ -375,25 +363,21 @@ describe("NodeDetailsController", function() {
         expect($scope.summary.tags).toEqual(node.tags);
     });
 
-    it("missing_power error visible if node power_type empty", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.errors.missing_power.viewable).toBe(true);
-    });
-
-    it("missing_power error not visible if node power_type empty", function() {
-        node.power_type = makeName("power");
-
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.errors.missing_power.viewable).toBe(false);
-    });
-
     it("power section placed in edit mode if power_type blank", function() {
+        GeneralManager._data.power_types.data = [{}];
+
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(true);
     });
 
+    it("power section not placed in edit mode if no power_types", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.power.editing).toBe(false);
+    });
+
     it("power section not placed in edit mode if power_type", function() {
         node.power_type = makeName("power");
+        GeneralManager._data.power_types.data = [{}];
 
         var controller = makeControllerResolveSetActiveItem();
         expect($scope.power.editing).toBe(false);
@@ -564,7 +548,8 @@ describe("NodeDetailsController", function() {
         expect(watchCollections).toEqual([
             $scope.summary.architecture.options,
             $scope.summary.min_hwe_kernel.options,
-            $scope.summary.zone.options
+            $scope.summary.zone.options,
+            "power_types"
         ]);
     });
 
@@ -1190,6 +1175,75 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("hasUsableArchitectures", function() {
+
+        it("returns true if architecture available", function() {
+            var controller = makeController();
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.hasUsableArchitectures()).toBe(true);
+        });
+
+        it("returns false if no architecture available", function() {
+            var controller = makeController();
+            $scope.summary.architecture.options = [];
+            expect($scope.hasUsableArchitectures()).toBe(false);
+        });
+    });
+
+    describe("getArchitecturePlaceholder", function() {
+
+        it("returns choose if architecture available", function() {
+            var controller = makeController();
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.getArchitecturePlaceholder()).toBe(
+                "Choose an architecture");
+        });
+
+        it("returns error if no architecture available", function() {
+            var controller = makeController();
+            $scope.summary.architecture.options = [];
+            expect($scope.getArchitecturePlaceholder()).toBe(
+                "-- No usable architectures --");
+        });
+    });
+
+    describe("hasInvalidArchitecture", function() {
+
+        it("returns false if node is null", function() {
+            var controller = makeController();
+            $scope.node = null;
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.hasInvalidArchitecture()).toBe(false);
+        });
+
+        it("returns true if node.architecture is blank", function() {
+            var controller = makeController();
+            $scope.node = {
+                architecture: ""
+            };
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.hasInvalidArchitecture()).toBe(true);
+        });
+
+        it("returns true if node.architecture not in options", function() {
+            var controller = makeController();
+            $scope.node = {
+                architecture: "i386/generic"
+            };
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.hasInvalidArchitecture()).toBe(true);
+        });
+
+        it("returns false if node.architecture in options", function() {
+            var controller = makeController();
+            $scope.node = {
+                architecture: "amd64/generic"
+            };
+            $scope.summary.architecture.options = ["amd64/generic"];
+            expect($scope.hasInvalidArchitecture()).toBe(false);
+        });
+    });
+
     describe("invalidArchitecture", function() {
 
         it("returns true if selected architecture empty", function() {
@@ -1214,25 +1268,58 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isRackControllerConnected", function() {
+
+        it("returns false no power_types", function() {
+            var controller = makeController();
+            $scope.power_types = [];
+            expect($scope.isRackControllerConnected()).toBe(false);
+        });
+
+        it("returns true if power_types", function() {
+            var controller = makeController();
+            $scope.power_types = [{}];
+            expect($scope.isRackControllerConnected()).toBe(true);
+        });
+    });
+
     describe("canEdit", function() {
 
-        it("returns false if not super user and not controller", function() {
+        it("returns false if not super user", function() {
             var controller = makeController();
             $scope.isController = false;
             spyOn($scope, "isSuperUser").and.returnValue(false);
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns false if super user and controller", function() {
+        it("returns false if controller", function() {
             var controller = makeController();
             $scope.isController = true;
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(true);
             expect($scope.canEdit()).toBe(false);
         });
 
-        it("returns true if super user and not controller",
+        it("returns false if rack disconnected", function() {
+            var controller = makeController();
+            $scope.isController = false;
+            spyOn(
+                $scope,
+                "isRackControllerConnected").and.returnValue(false);
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns true if super user, rack connected, not controller",
             function() {
                 var controller = makeController();
                 $scope.isController = false;
+                spyOn(
+                    $scope,
+                    "isRackControllerConnected").and.returnValue(true);
                 expect($scope.canEdit()).toBe(true);
             });
     });

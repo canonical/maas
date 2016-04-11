@@ -169,7 +169,7 @@ describe("GeneralManager", function() {
             expect(data).toEqual([newPowerType]);
         });
 
-        it("updates power_type in array to be same object", function() {
+        it("doesnt update power_type in array to be same object", function() {
             var oldPowerType = {
                 name: makeName("power"),
                 fields: [
@@ -188,7 +188,8 @@ describe("GeneralManager", function() {
                 ]
             };
             replaceData(data, [newPowerType]);
-            expect(data).toEqual([newPowerType]);
+            expect(data).not.toEqual([newPowerType]);
+            expect(data[0]).toEqual(oldPowerType);
             expect(data[0]).toBe(oldPowerType);
         });
 

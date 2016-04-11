@@ -108,7 +108,7 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null,
                     replaceData: function(oldData, newData) {
-                        // Update or add new power types.
+                        // Add new power types.
                         var i, j, newPowerType, oldPowerType;
                         for(i = 0; i < newData.length; i++) {
                             newPowerType = newData[i];
@@ -116,7 +116,6 @@ angular.module('MAAS').factory(
                             for(j = 0; j < oldData.length; j++) {
                                 oldPowerType = oldData[j];
                                 if(newPowerType.name === oldPowerType.name) {
-                                    angular.copy(newPowerType, oldPowerType);
                                     newItem = false;
                                     break;
                                 }
