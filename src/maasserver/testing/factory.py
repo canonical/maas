@@ -1139,7 +1139,9 @@ class Factory(maastesting.factory.Factory):
         return boot_source
 
     def make_BootSourceCache(self, boot_source=None, os=None, arch=None,
-                             subarch=None, release=None, label=None):
+                             subarch=None, release=None, label=None,
+                             release_codename=None, release_title=None,
+                             support_eol=None):
         """Create a new `BootSourceCache`."""
         if boot_source is None:
             boot_source = self.make_BootSource()
@@ -1155,7 +1157,9 @@ class Factory(maastesting.factory.Factory):
             label = factory.make_name('label')
         return BootSourceCache.objects.create(
             boot_source=boot_source, os=os, arch=arch,
-            subarch=subarch, release=release, label=label)
+            subarch=subarch, release=release, label=label,
+            release_codename=release_codename, release_title=release_title,
+            support_eol=support_eol)
 
     def make_many_BootSourceCaches(self, number, **kwargs):
         caches = list()

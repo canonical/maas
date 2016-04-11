@@ -894,6 +894,36 @@ def download_all_boot_resources(sources, product_mapping, store=None):
     store.finalize()
 
 
+def set_global_default_releases():
+    """Sets the global configuration options for the deployment and
+    commissioning images."""
+    # Set the commissioning option to the longest LTS available.
+    commissioning_resources = None
+    try:
+        Config.objects.get(name="commissioning_distro_series")
+    except Config.DoesNotExist:
+        commissioning_resources = (
+            BootResource.objects.get_available_commissioning_resources())
+        if len(commissioning_resources) > 0:
+            default_resource = commissioning_resources[0]
+            osystem, release = default_resource.name.split("/")
+            Config.objects.set_config("commissioning_osystem", osystem)
+            Config.objects.set_config("commissioning_distro_series", release)
+
+    # Set the default deploy option to the same as the commissioning option.
+    try:
+        Config.objects.get(name="default_distro_series")
+    except Config.DoesNotExist:
+        if commissioning_resources is None:
+            commissioning_resources = (
+                BootResource.objects.get_available_commissioning_resources())
+        if len(commissioning_resources) > 0:
+            default_resource = commissioning_resources[0]
+            osystem, release = default_resource.name.split("/")
+            Config.objects.set_config("default_osystem", osystem)
+            Config.objects.set_config("default_distro_series", release)
+
+
 @transactional
 def has_synced_resources():
     """Return true if SYNCED `BootResource` exist."""
@@ -979,6 +1009,7 @@ def _import_resources_with_lock(force=False):
         product_mapping = map_products(image_descriptions)
 
         download_all_boot_resources(sources, product_mapping)
+        set_global_default_releases()
         maaslog.info(
             "Finished importing of boot images from %d source(s).",
             len(sources))

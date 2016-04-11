@@ -21,6 +21,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
 from maasserver.fields import JSONObjectField
+from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import (
     now,
@@ -259,6 +260,37 @@ class BootResourceManager(Manager):
                 if kernel and 'kpackage' in kernel.extra:
                     return kernel.extra['kpackage']
         return None
+
+    def get_available_commissioning_resources(self):
+        """Return list of Ubuntu boot resources that can be used for
+        commissioning.
+
+        Only return's LTS releases that have been fully imported.
+        """
+        # Get the LTS releases placing the release with the longest support
+        # window first.
+        lts_releases = BootSourceCache.objects.filter(
+            os="ubuntu", release_title__endswith="LTS")
+        lts_releases = lts_releases.exclude(support_eol__isnull=True)
+        lts_releases = lts_releases.order_by('-support_eol')
+        lts_releases = lts_releases.values("release").distinct()
+        lts_releases = [
+            "ubuntu/%s" % release["release"]
+            for release in lts_releases
+        ]
+
+        # Filter the completed and commissionable resources. The operation
+        # loses the ordering of the releases.
+        resources = []
+        for resource in self.filter(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name__in=lts_releases):
+            resource_set = resource.get_latest_set()
+            if resource_set is not None and resource_set.commissionable:
+                resources.append(resource)
+
+        # Re-order placing the resource with the longest support window first.
+        return sorted(
+            resources, key=lambda resource: lts_releases.index(resource.name))
 
 
 def validate_architecture(value):

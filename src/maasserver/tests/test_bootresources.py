@@ -33,6 +33,7 @@ from maasserver.bootresources import (
     download_all_boot_resources,
     download_boot_resources,
     get_simplestream_endpoint,
+    set_global_default_releases,
     SimpleStreamsHandler,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
@@ -1096,6 +1097,65 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 self.assertEqual(content, written_data)
 
 
+class TestSetGlobalDefaultReleases(MAASServerTestCase):
+
+    def test__doesnt_change_anything(self):
+        commissioning_release = factory.make_name("release")
+        deploy_release = factory.make_name("release")
+        Config.objects.set_config(
+            "commissioning_distro_series", commissioning_release)
+        Config.objects.set_config(
+            "default_distro_series", deploy_release)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        mock_available = self.patch(
+            BootResource.objects, "get_available_commissioning_resources")
+        mock_available.return_value = [resource]
+        set_global_default_releases()
+        self.assertEqual(
+            commissioning_release,
+            Config.objects.get(name="commissioning_distro_series").value)
+        self.assertEqual(
+            deploy_release,
+            Config.objects.get(name="default_distro_series").value)
+
+    def test__sets_commissioning_release(self):
+        os, release = factory.make_name("os"), factory.make_name("release")
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release))
+        mock_available = self.patch(
+            BootResource.objects, "get_available_commissioning_resources")
+        mock_available.return_value = [resource]
+        set_global_default_releases()
+        self.assertEqual(
+            os,
+            Config.objects.get(name="commissioning_osystem").value)
+        self.assertEqual(
+            release,
+            Config.objects.get(name="commissioning_distro_series").value)
+
+    def test__sets_both_commissioning_deploy_release(self):
+        os, release = factory.make_name("os"), factory.make_name("release")
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release))
+        mock_available = self.patch(
+            BootResource.objects, "get_available_commissioning_resources")
+        mock_available.return_value = [resource]
+        set_global_default_releases()
+        self.assertEqual(
+            os,
+            Config.objects.get(name="commissioning_osystem").value)
+        self.assertEqual(
+            release,
+            Config.objects.get(name="commissioning_distro_series").value)
+        self.assertEqual(
+            os,
+            Config.objects.get(name="default_osystem").value)
+        self.assertEqual(
+            release,
+            Config.objects.get(name="default_distro_series").value)
+
+
 class TestImportImages(MAASTransactionServerTestCase):
 
     def setUp(self):
@@ -1210,6 +1270,8 @@ class TestImportImages(MAASTransactionServerTestCase):
         map_products.return_value = sentinel.mapping
         download_all_boot_resources = self.patch(
             bootresources, 'download_all_boot_resources')
+        set_global_default_releases = self.patch(
+            bootresources, 'set_global_default_releases')
 
         bootresources._import_resources(force=True)
 
@@ -1228,6 +1290,9 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.expectThat(
             download_all_boot_resources,
             MockCalledOnceWith([sentinel.source], sentinel.mapping))
+        self.expectThat(
+            set_global_default_releases,
+            MockCalledOnceWith())
 
     def test__import_resources_has_env_GNUPGHOME_set(self):
         fake_image_descriptions = self.patch(

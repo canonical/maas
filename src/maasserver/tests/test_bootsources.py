@@ -243,6 +243,30 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             ]
         self.assertItemsEqual(releases, cached_releases)
 
+    def test__adds_release_codename_title_and_support_eol(self):
+        source = factory.make_BootSource(keyring_data=b'1234')
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        release_codename = factory.make_name('codename')
+        release_title = factory.make_name('title')
+        support_eol = factory.make_date().strftime("%Y-%m-%d")
+        image_spec = make_image_spec(os=os, release=release)
+        image_mapping = BootImageMapping()
+        image_mapping.setdefault(image_spec, {
+            "release_codename": release_codename,
+            "release_title": release_title,
+            "support_eol": support_eol,
+        })
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        mock_download.return_value = image_mapping
+
+        cache_boot_sources()
+        cached = BootSourceCache.objects.filter(boot_source=source).first()
+        self.assertEqual(release_codename, cached.release_codename)
+        self.assertEqual(release_title, cached.release_title)
+        self.assertEqual(support_eol, cached.support_eol.strftime("%Y-%m-%d"))
+
 
 class TestBadConnectionHandling(MAASTransactionServerTestCase):
 

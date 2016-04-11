@@ -21,6 +21,7 @@ from maasserver.models.bootresource import (
     BootResource,
     RTYPE_REQUIRING_OS_SERIES_NAME,
 )
+from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -282,6 +283,70 @@ class TestBootResourceManager(MAASServerTestCase):
             resource,
             BootResource.objects.get_resource_for(
                 osystem, arch, subarch, series))
+
+
+class TestGetAvailableCommissioningResources(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetAvailableCommissioningResources, self).setUp()
+        self.useFixture(UpdateBootSourceCacheDisconnected())
+
+    def test__returns_empty_if_no_cache(self):
+        release = factory.make_name("release")
+        name = "ubuntu/%s" % release
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        self.assertEqual(
+            [], BootResource.objects.get_available_commissioning_resources())
+
+    def test__returns_empty_if_no_lts(self):
+        release = factory.make_name("release")
+        name = "ubuntu/%s" % release
+        support_eol = factory.make_date().strftime("%Y-%m-%d")
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        factory.make_BootSourceCache(
+            os="ubuntu", release=release,
+            release_title=release, support_eol=support_eol)
+        self.assertEqual(
+            [], BootResource.objects.get_available_commissioning_resources())
+
+    def test__returns_only_lts(self):
+        release = factory.make_name("release")
+        name = "ubuntu/%s" % release
+        support_eol = factory.make_date().strftime("%Y-%m-%d")
+        release_title = "%s LTS" % release
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        factory.make_BootSourceCache(
+            os="ubuntu", release=release,
+            release_title=release_title, support_eol=support_eol)
+        other_release = factory.make_name("release")
+        other_name = "ubuntu/%s" % other_release
+        other_support_eol = factory.make_date().strftime("%Y-%m-%d")
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=other_name)
+        factory.make_BootSourceCache(
+            os="ubuntu", release=other_release,
+            release_title=other_release, support_eol=other_support_eol)
+        self.assertEqual(
+            [resource],
+            BootResource.objects.get_available_commissioning_resources())
+
+    def test__returns_longest_remaining_supported_lts_first(self):
+        trusty_resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="ubuntu/trusty")
+        factory.make_BootSourceCache(
+            os="ubuntu", release="trusty",
+            release_title="14.04 LTS", support_eol="2019-04-17")
+        xenial_resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="ubuntu/xenial")
+        factory.make_BootSourceCache(
+            os="ubuntu", release="xenial",
+            release_title="16.04 LTS", support_eol="2021-04-17")
+        self.assertEqual(
+            [xenial_resource, trusty_resource],
+            BootResource.objects.get_available_commissioning_resources())
 
 
 class TestGetResourcesMatchingBootImages(MAASServerTestCase):

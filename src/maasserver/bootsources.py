@@ -159,11 +159,15 @@ def cache_boot_sources():
                 # Only delete from the cache once we have the descriptions.
                 BootSourceCache.objects.filter(boot_source=bootsource).delete()
                 if not descriptions.is_empty():
-                    for spec in descriptions.mapping:
+                    for spec, item in descriptions.mapping.items():
                         BootSourceCache.objects.create(
                             boot_source=bootsource, os=spec.os,
                             arch=spec.arch, subarch=spec.subarch,
-                            release=spec.release, label=spec.label)
+                            release=spec.release, label=spec.label,
+                            release_codename=item.get('release_codename'),
+                            release_title=item.get('release_title'),
+                            support_eol=item.get('support_eol'),
+                            )
                 maaslog.debug(
                     "Image descriptions for %s have been updated.",
                     source["url"])

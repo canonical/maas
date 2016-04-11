@@ -35,8 +35,13 @@ from simplestreams.util import (
 def clean_up_repo_item(item):
     """Return a subset of dict `item` for storing in a boot images dict."""
     keys_to_keep = [
-        'content_id', 'product_name', 'version_name', 'path', 'subarches']
-    compact_item = {key: item[key] for key in keys_to_keep}
+        'content_id', 'product_name', 'version_name', 'path', 'subarches',
+        'release_codename', 'release_title', 'support_eol']
+    compact_item = {
+        key: item[key]
+        for key in keys_to_keep
+        if key in item
+    }
     return compact_item
 
 
