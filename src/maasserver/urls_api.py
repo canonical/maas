@@ -89,8 +89,6 @@ from maasserver.api.files import (
 from maasserver.api.interfaces import (
     InterfaceHandler,
     InterfacesHandler,
-    NodeInterfaceHandler,
-    NodeInterfacesHandler,
 )
 from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.api.license_keys import (
@@ -242,10 +240,6 @@ interface_handler = RestrictedResource(
     InterfaceHandler, authentication=api_auth)
 interfaces_handler = RestrictedResource(
     InterfacesHandler, authentication=api_auth)
-node_interface_handler = RestrictedResource(
-    NodeInterfaceHandler, authentication=api_auth)
-node_interfaces_handler = RestrictedResource(
-    NodeInterfacesHandler, authentication=api_auth)
 tag_handler = OperationsResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 version_handler = RestrictedResource(VersionHandler)
@@ -344,14 +338,8 @@ urlpatterns += patterns(
         bcache_cache_set_handler, name='bcache_cache_set_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/(?P<interface_id>[^/]+)/$',
         interface_handler, name='interface_handler'),
-    url(
-        r'^nodes/(?P<system_id>[^/]+)/node-interfaces/'
-        '(?P<interface_id>[^/]+)/$',
-        node_interface_handler, name='node_interface_handler'),
     url(r'^nodes/(?P<system_id>[^/]+)/interfaces/$',
         interfaces_handler, name='interfaces_handler'),
-    url(r'^nodes/(?P<system_id>[^/]+)/node-interfaces/$',
-        node_interfaces_handler, name='node_interfaces_handler'),
     url(
         r'^nodes/(?P<system_id>[^/]+)/$', node_handler,
         name='node_handler'),

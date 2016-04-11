@@ -17,6 +17,7 @@ LP: #1543707    MAAS 1.9+ should not allow whitespace characters in space names
 
 LP: #1543968    MAAS 1.9.0 allows non-unique space names
 
+LP: #1568207    The node-interface(s) API endpoints has been deprecated in favor of the interface(s) API endpoints
 
 2.0.0 (beta1)
 =============

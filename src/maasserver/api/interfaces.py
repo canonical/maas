@@ -542,22 +542,12 @@ class InterfaceHandler(OperationsHandler):
             raise MAASAPIValidationError(form.errors)
 
 
-class NodeInterfacesHandler(InterfacesHandler):
-    """Manage interfaces on a node. (Deprecated)"""
-    api_doc_section_name = "Node Interfaces"
-
-
-class NodeInterfaceHandler(InterfaceHandler):
-    """Manage a node's interface. (Deprecated)"""
-    api_doc_section_name = "Node Interface"
-
-
 class PhysicaInterfaceHandler(InterfaceHandler):
     """
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
     object that is of type `PhysicalInterface` when it is emitted from the
-    `NodeInterfaceHandler`.
+    `InterfaceHandler`.
 
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
@@ -571,7 +561,7 @@ class BondInterfaceHandler(InterfaceHandler):
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
     object that is of type `BondInterface` when it is emitted from the
-    `NodeInterfaceHandler`.
+    `InterfaceHandler`.
 
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
@@ -585,7 +575,7 @@ class VLANInterfaceHandler(InterfaceHandler):
     This handler only exists because piston requires a unique handler per
     class type. Without this class the resource_uri will not be added to any
     object that is of type `VLANInterface` when it is emitted from the
-    `NodeInterfaceHandler`.
+    `InterfaceHandler`.
 
     Important: This should not be used in the urls_api.py. This is only here
         to support piston.
