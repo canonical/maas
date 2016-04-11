@@ -40,7 +40,7 @@ class TestIPRangesAPI(APITestCase):
 
     def test_read(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        factory.make_IPRange(subnet, '10.0.0.1', '10.0.0.10')
+        factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         factory.make_IPRange(subnet, '10.0.0.11', '10.0.0.20')
         factory.make_IPRange(subnet, '10.0.0.21', '10.0.0.30')
         uri = get_ipranges_uri()
@@ -97,14 +97,14 @@ class TestIPRangeAPI(APITestCase):
 
     def test_handler_path(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.1', '10.0.0.10')
+        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         self.assertEqual(
             '/api/2.0/ipranges/%s/' % iprange.id,
             get_iprange_uri(iprange))
 
     def test_read(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.1', '10.0.0.10')
+        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         factory.make_IPRange(subnet, '10.0.0.11', '10.0.0.20')
         factory.make_IPRange(subnet, '10.0.0.21', '10.0.0.30')
         uri = get_iprange_uri(iprange)
@@ -131,7 +131,7 @@ class TestIPRangeAPI(APITestCase):
 
     def test_update(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.1', '10.0.0.10')
+        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         uri = get_iprange_uri(iprange)
         comment = factory.make_name("comment")
         response = self.client.put(uri, {
@@ -147,7 +147,7 @@ class TestIPRangeAPI(APITestCase):
 
     def test_delete_deletes_iprange(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.1', '10.0.0.10')
+        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
         uri = get_iprange_uri(iprange)
         response = self.client.delete(uri)
         self.assertEqual(

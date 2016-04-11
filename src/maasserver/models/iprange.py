@@ -19,11 +19,17 @@ from django.db.models import (
     PROTECT,
     QuerySet,
 )
-from maasserver.enum import IPRANGE_TYPE_CHOICES
+from maasserver.enum import (
+    IPRANGE_TYPE,
+    IPRANGE_TYPE_CHOICES,
+)
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import MAASQueriesMixin
+from maasserver.utils.orm import (
+    MAASQueriesMixin,
+    transactional,
+)
 import netaddr
 from netaddr import (
     AddrFormatError,
@@ -155,6 +161,7 @@ class IPRange(CleanSave, TimestampedModel):
             if end_ip not in cidr:
                 raise ValidationError(
                     "End IP address must be within subnet: %s." % cidr)
+        self.clean_prevent_dupes_and_overlaps()
 
     @property
     def netaddr_iprange(self):
@@ -166,3 +173,65 @@ class IPRange(CleanSave, TimestampedModel):
         # APIs in previous MAAS releases used '-' in range types.
         purpose = purpose.replace('_', '-')
         return make_iprange(self.start_ip, self.end_ip, purpose=purpose)
+
+    @transactional
+    def clean_prevent_dupes_and_overlaps(self):
+
+        # A range overlap/conflict could be due to any of these fields.
+        def fail(message, fields=['start_ip', 'end_ip', 'type']):
+            for field in fields:
+                validation_errors[field] = [message]
+            raise ValidationError(validation_errors)
+
+        """Make sure the new or updated range isn't going to cause a conflict.
+        If it will, raise ValidationError.
+        """
+        # If model is incomplete, save() will fail, so don't bother checking.
+        if self.subnet_id is None or self.start_ip is None or (
+                self.end_ip is None) or self.type is None:
+            return
+
+        # The _state.adding flag is False if this instance exists in the DB.
+        # See https://docs.djangoproject.com/en/1.9/ref/models/instances/.
+        if not self._state.adding:
+            orig = IPRange.objects.get(pk=self.pk)
+            if orig.type == self.type and (
+                    orig.start_ip == self.start_ip) and (
+                    orig.end_ip == self.end_ip):
+                # Range not materially modified, no range dupe check required.
+                return
+            # Pre-existing range moved: remove existing, check, then re-create.
+            if IPRange.objects.filter(pk=self.id).exists():
+                self_id = self.id
+                # Delete will be rolled back if imminent range checks raise.
+                self.delete()
+                # Simulate update by setting the ID back to what it was.
+                self.id = self_id
+
+        # Reserved ranges can overlap allocated IPs but not other ranges.
+        # Dynamic ranges cannot overlap anything (no ranges or IPs).
+        if self.type == IPRANGE_TYPE.RESERVED:
+            unused = self.subnet.get_ipranges_available_for_reserved_range()
+        else:
+            unused = self.subnet.get_ipranges_available_for_dynamic_range()
+
+        validation_errors = {}
+        if len(unused) == 0:
+            fail("There is no room for any %s ranges on this subnet." % (
+                self.type))
+
+        # Find unused range for start_ip
+        for range in unused:
+            if IPAddress(self.start_ip) in range:
+                if IPAddress(self.end_ip) in range:
+                    # Success, start and end IP are in an unused range.
+                    return
+                else:
+                    message = ("Requested %s range conflicts with "
+                               "an existing ") % (self.type)
+                    if self.type == IPRANGE_TYPE.RESERVED:
+                        fail(message + "range.")
+                    else:
+                        fail(message + "IP address or range.")
+        fail("No %s range can be created at requested start IP." % self.type,
+             ['start_ip', 'type'])

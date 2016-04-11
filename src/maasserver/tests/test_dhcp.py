@@ -1220,8 +1220,8 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         ha_subnet = factory.make_Subnet(
             vlan=ha_vlan, cidr="fd38:c341:27da:c831::/64")
         factory.make_IPRange(
-            ha_subnet, "fd38:c341:27da:c831::0001:0000",
-            "fd38:c341:27da:c831::FFFF:0000")
+            ha_subnet, "fd38:c341:27da:c831:0:1::",
+            "fd38:c341:27da:c831:0:1:ffff:0")
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=ha_vlan)
         secondary_interface = factory.make_Interface(
@@ -1251,8 +1251,8 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             vlan=ha_vlan, cidr="fd38:c341:27da:c831::/64")
         ha_network = ha_subnet.get_ipnetwork()
         factory.make_IPRange(
-            ha_subnet, "fd38:c341:27da:c831::0001:0000",
-            "fd38:c341:27da:c831::FFFF:0000")
+            ha_subnet, "fd38:c341:27da:c831:0:1::",
+            "fd38:c341:27da:c831:0:1:ffff:0")
         ha_dhcp_snippets = [
             factory.make_DHCPSnippet(subnet=ha_subnet, enabled=True)
             for _ in range(3)]
@@ -1375,10 +1375,12 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(
             vlan=vlan, unmanaged=(not dhcp_on))
         subnet_v6 = factory.make_Subnet(
-            vlan=vlan, cidr="fd38:c341:27da:c831::/64")
+            vlan=vlan, cidr="fd38:c341:27da:c831::/64",
+            gateway_ip="fd38:c341:27da:c831::1",
+            dns_servers=[])
         factory.make_IPRange(
-            subnet_v6, "fd38:c341:27da:c831::0001:0000",
-            "fd38:c341:27da:c831::FFFF:0000")
+            subnet_v6, "fd38:c341:27da:c831:0:1::",
+            "fd38:c341:27da:c831:0:1:ffff:0")
 
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,
@@ -1596,8 +1598,8 @@ class TestValidateDHCPConfig(MAASServerTestCase):
         subnet_v6 = factory.make_Subnet(
             vlan=vlan, cidr="fd38:c341:27da:c831::/64")
         factory.make_IPRange(
-            subnet_v6, "fd38:c341:27da:c831::0001:0000",
-            "fd38:c341:27da:c831::FFFF:0000")
+            subnet_v6, "fd38:c341:27da:c831:0:1::",
+            "fd38:c341:27da:c831:0:1:ffff:0")
 
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet_v4,

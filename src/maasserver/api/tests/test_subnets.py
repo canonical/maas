@@ -385,14 +385,11 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
                 "num_addresses": expected_addresses,
             }]))
 
-    def test__returns_empty_list_for_full_subnet(self):
-        subnet = factory.make_Subnet()
-        network = subnet.get_ipnetwork()
-        first_address = inet_ntop(network.first + 1)
-        if network.version == 6:
-            last_address = inet_ntop(network.last)
-        else:
-            last_address = inet_ntop(network.last - 1)
+    def _unreserved_ip_ranges_empty(self, subnet, first_address, last_address):
+        """ Used by the succeeding three tests to prevent duplicating the
+        boilerplate that creates the requested range, then makes sure the
+        unreserved_ip_ranges API call successfully returns an empty list.
+        """
         factory.make_IPRange(
             subnet, first_address, last_address,
             type=IPRANGE_TYPE.DYNAMIC)
@@ -405,6 +402,33 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             explain_unexpected_response(http.client.OK, response))
         self.assertThat(
             result, Equals([]), str(subnet.get_ipranges_in_use()))
+
+    def test__returns_empty_list_for_full_ipv4_subnet(self):
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
+        network = subnet.get_ipnetwork()
+        first_address = inet_ntop(network.first + 2)  # Skip gateway, network.
+        last_address = inet_ntop(network.last - 1)  # Skip broadcast.
+        self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
+
+    def test__returns_empty_list_for_full_ipv6_subnet(self):
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
+        network = subnet.get_ipnetwork()
+        first_address = inet_ntop(network.first + 2)  # Skip gateway, network.
+        last_address = inet_ntop(network.last)
+        self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
+
+    # Slash-64 ipv6 subnets get a special range put in them - test separately.
+    def test__returns_empty_list_for_full_ipv6_slash_64_subnet(self):
+        network = factory.make_ipv6_network(slash=64)
+        subnet = factory.make_Subnet(cidr=str(network.cidr), dns_servers=[])
+        network = subnet.get_ipnetwork()
+        strip64 = (network.first >> 8) << 8
+        # Skip the automatically reserved range on /64's.
+        first_address = inet_ntop(strip64 + 0x100000000)
+        last_address = inet_ntop(network.last)
+        self._unreserved_ip_ranges_empty(subnet, first_address, last_address)
 
     def test__accounts_for_reserved_ip_address(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(

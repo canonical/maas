@@ -8,7 +8,6 @@ __all__ = [
     'Subnet',
 ]
 
-
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import (
     PermissionDenied,
@@ -407,7 +406,7 @@ class Subnet(CleanSave, TimestampedModel):
             for ip in self.staticipaddress_set.all()
             if ip.ip)
 
-    def get_ipranges_in_use(self, exclude_addresses=[]):
+    def get_ipranges_in_use(self, exclude_addresses=[], ranges_only=False):
         """Returns a `MAASIPSet` of `MAASIPRange` objects which are currently
         in use on this `Subnet`.
 
@@ -429,37 +428,46 @@ class Subnet(CleanSave, TimestampedModel):
             second = str(IPAddress(network.first + 0xFFFFFFFF))
             ranges |= {make_iprange(first, second, purpose="reserved")}
         ipnetwork = self.get_ipnetwork()
-        assigned_ip_addresses = self.get_staticipaddresses_in_use()
-        if (self.gateway_ip is not None and self.gateway_ip != '' and
-                self.gateway_ip in ipnetwork):
-            ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
-        if self.dns_servers is not None:
+        if not ranges_only:
+            assigned_ip_addresses = self.get_staticipaddresses_in_use()
+            if (self.gateway_ip is not None and self.gateway_ip != '' and
+                    self.gateway_ip in ipnetwork):
+                ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
+            if self.dns_servers is not None:
+                ranges |= set(
+                    make_iprange(server, purpose="dns-server")
+                    for server in self.dns_servers
+                    if server in ipnetwork
+                )
             ranges |= set(
-                make_iprange(server, purpose="dns-server")
-                for server in self.dns_servers
-                if server in ipnetwork
+                make_iprange(ip, purpose="assigned-ip")
+                for ip in assigned_ip_addresses
+                if ip in ipnetwork
             )
-        ranges |= set(
-            make_iprange(ip, purpose="assigned-ip")
-            for ip in assigned_ip_addresses
-            if ip in ipnetwork
-        )
-        ranges |= set(
-            make_iprange(address, purpose="excluded")
-            for address in exclude_addresses
-            if address in network
-        )
+            ranges |= set(
+                make_iprange(address, purpose="excluded")
+                for address in exclude_addresses
+                if address in network
+            )
         ranges |= self.get_reserved_maasipset()
         ranges |= self.get_dynamic_maasipset()
         return MAASIPSet(ranges)
 
-    def get_ipranges_not_in_use(self, exclude_addresses=[]):
+    def get_ipranges_available_for_reserved_range(self):
+        return self.get_ipranges_not_in_use(ranges_only=True)
+
+    def get_ipranges_available_for_dynamic_range(self):
+        return self.get_ipranges_not_in_use()
+
+    def get_ipranges_not_in_use(self, exclude_addresses=[], ranges_only=False):
         """Returns a `MAASIPSet` of ranges which are currently free on this
         `Subnet`.
 
         :param exclude_addresses: An iterable of addresses not to use.
         """
-        ranges = self.get_ipranges_in_use(exclude_addresses=exclude_addresses)
+        ranges = self.get_ipranges_in_use(
+            exclude_addresses=exclude_addresses,
+            ranges_only=ranges_only)
         unused = ranges.get_unused_ranges(self.get_ipnetwork())
         return unused
 

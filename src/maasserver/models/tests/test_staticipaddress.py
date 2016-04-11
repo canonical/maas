@@ -322,7 +322,7 @@ class TestStaticIPAddressManagerTrasactional(MAASTransactionServerTestCase):
         with transaction.atomic():
             subnet = factory.make_Subnet(cidr=network)
             factory.make_IPRange(
-                subnet, '192.168.230.0', '192.168.230.255',
+                subnet, '192.168.230.1', '192.168.230.254',
                 type=IPRANGE_TYPE.RESERVED)
         with transaction.atomic():
             e = self.assertRaises(

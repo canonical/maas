@@ -118,6 +118,7 @@ from netaddr import (
     IPNetwork,
 )
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.network import inet_ntop
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -750,11 +751,13 @@ class Factory(maastesting.factory.Factory):
             vlan = factory.make_VLAN(fabric=fabric, vid=vid, dhcp_on=dhcp_on)
         if space is None:
             space = factory.make_Space()
+        network = None
         if cidr is None:
             network = factory.make_ip4_or_6_network(host_bits=host_bits)
             cidr = str(network.cidr)
         if gateway_ip is None:
-            gateway_ip = factory.pick_ip_in_network(IPNetwork(cidr))
+            network = IPNetwork(cidr) if network is None else network
+            gateway_ip = inet_ntop(network.first + 1)
         if dns_servers is None:
             dns_servers = [
                 self.make_ip_address() for _ in range(random.randint(1, 3))]
