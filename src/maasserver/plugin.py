@@ -7,13 +7,18 @@ __all__ = [
     "RegionServiceMaker",
 ]
 
+import time
+
 from provisioningserver.utils.debug import (
     register_sigusr2_thread_dump_handler,
 )
 from twisted.application.service import IServiceMaker
 from twisted.internet import reactor
 from twisted.plugin import IPlugin
-from twisted.python import usage
+from twisted.python import (
+    log,
+    usage,
+)
 from twisted.python.threadable import isInIOThread
 from zope.interface import implementer
 
@@ -68,6 +73,26 @@ class RegionServiceMaker:
         import crochet
         crochet.no_setup()
 
+    def _ensureConnection(self):
+        # If connection is already made close it.
+        from django.db import connection
+        if connection.connection is not None:
+            connection.close()
+
+        # Loop forever until a connection can be made.
+        while True:
+            try:
+                connection.ensure_connection()
+            except Exception:
+                log.err(_why=(
+                    "Error starting: "
+                    "Connection to database cannot be established."))
+                time.sleep(1)
+            else:
+                # Connection made, now close it.
+                connection.close()
+                break
+
     def _performStartUp(self):
         from maasserver.start_up import start_up
         start_up()
@@ -81,6 +106,7 @@ class RegionServiceMaker:
         self._configureDjango()
         self._configureReactor()
         self._configureCrochet()
+        self._ensureConnection()
         self._performStartUp()
 
         # Populate the region's event-loop with services.

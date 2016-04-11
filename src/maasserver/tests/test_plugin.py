@@ -82,6 +82,8 @@ class TestRegionServiceMaker(MAASTestCase):
         service_maker = RegionServiceMaker("Harry", "Hill")
         # Look like the master process.
         self.patch(eventloop, "is_master_process").return_value = True
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         # Disable _preformStartUp() as it performs operations we don't want
@@ -120,6 +122,8 @@ class TestRegionServiceMaker(MAASTestCase):
         patcher.patch()
         try:
             service_maker = RegionServiceMaker("Harry", "Hill")
+            # Disable _ensureConnection() its not allowed in the reactor.
+            self.patch_autospec(service_maker, "_ensureConnection")
             # Disable _preformStartUp() as it performs operations we don't want
             # in the testing environment.
             self.patch_autospec(service_maker, "_performStartUp")
@@ -145,6 +149,8 @@ class TestRegionServiceMaker(MAASTestCase):
     def test_disables_database_connections_in_reactor(self):
         self.assertConnectionsEnabled()
         service_maker = RegionServiceMaker("Harry", "Hill")
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         # Disable _preformStartUp() as it performs operations we don't want
@@ -156,6 +162,8 @@ class TestRegionServiceMaker(MAASTestCase):
     @asynchronous(timeout=5)
     def test_runs_start_up(self):
         service_maker = RegionServiceMaker("Harry", "Hill")
+        # Disable _ensureConnection() its not allowed in the reactor.
+        self.patch_autospec(service_maker, "_ensureConnection")
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         # Disable _preformStartUp() as it performs operations we don't want
