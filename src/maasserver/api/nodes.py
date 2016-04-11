@@ -150,14 +150,6 @@ class NodeHandler(OperationsHandler):
         return node.owner.username
 
     @classmethod
-    def macaddress_set(handler, node):
-        return [
-            {"mac_address": "%s" % interface.mac_address}
-            for interface in node.interface_set.all()
-            if interface.mac_address
-        ]
-
-    @classmethod
     def node_type_name(handler, node):
         return NODE_TYPE_CHOICES[node.node_type][1]
 

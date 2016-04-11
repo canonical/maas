@@ -886,9 +886,6 @@ class TestMachinesAPI(APITestCase):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
-        constraint_map = response_json.get('constraint_map')
-        constraint_name = constraint_map[str(device_id)]
-        self.assertItemsEqual(constraint_name, 'needed')
         constraints = response_json['constraints_by_type']
         self.expectThat(constraints, Contains('storage'))
         self.expectThat(constraints['storage'], Contains('needed'))
@@ -913,17 +910,12 @@ class TestMachinesAPI(APITestCase):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         device_id = response_json['physicalblockdevice_set'][0]['id']
-        constraint_map = response_json.get('constraint_map')
-        constraint_name = constraint_map[str(device_id)]
-        self.assertItemsEqual(constraint_name, 'needed')
         constraints = response_json['constraints_by_type']
         self.expectThat(constraints, Contains('storage'))
         self.expectThat(constraints['storage'], Contains('needed'))
         self.expectThat(constraints['storage']['needed'], Contains(device_id))
         verbose_storage = constraints.get('verbose_storage')
         self.expectThat(verbose_storage, Contains(str(machine.id)))
-        self.expectThat(
-            verbose_storage[str(machine.id)], Equals(constraint_map))
 
     def test_POST_allocate_allocates_machine_by_interfaces(self):
         """Interface label is returned alongside machine data"""

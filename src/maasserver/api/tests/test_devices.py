@@ -127,17 +127,18 @@ class TestDevicesAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
+                'address_ttl',
                 'hostname',
                 'domain',
                 'fqdn',
                 'owner',
                 'system_id',
-                'macaddress_set',
                 'node_type',
                 'node_type_name',
                 'parent',
                 'tag_names',
                 'ip_addresses',
+                'interface_set',
                 'resource_uri',
                 'zone',
             ],
@@ -208,17 +209,18 @@ class TestDevicesAPI(APITestCase):
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
             [
+                'address_ttl',
                 'hostname',
                 'domain',
                 'fqdn',
                 'owner',
                 'system_id',
-                'macaddress_set',
                 'node_type',
                 'node_type_name',
                 'parent',
                 'tag_names',
                 'ip_addresses',
+                'interface_set',
                 'resource_uri',
                 'zone',
             ],
