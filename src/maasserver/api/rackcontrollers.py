@@ -6,6 +6,7 @@ __all__ = [
     'RackControllersHandler',
     ]
 
+
 from django.conf import settings
 from django.http import HttpResponse
 from maasserver.api.nodes import (
@@ -103,6 +104,19 @@ class RackControllerHandler(NodeHandler):
         return HttpResponse(
             "Import of boot images started on %s" % rack.hostname,
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
+
+    @operation(idempotent=True)
+    def list_boot_images(self, request, system_id):
+        """List all available boot images.
+
+        Shows all available boot images and lists whether they are in sync with
+        the region.
+
+        Returns 404 if the rack controller is not found.
+        """
+        rack = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
+        return rack.list_boot_images()
 
     @classmethod
     def resource_uri(cls, rackcontroller=None):

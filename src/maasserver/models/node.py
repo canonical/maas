@@ -12,7 +12,10 @@ __all__ = [
     ]
 
 
-from collections import namedtuple
+from collections import (
+    defaultdict,
+    namedtuple,
+)
 from datetime import timedelta
 from functools import partial
 from operator import attrgetter
@@ -3603,6 +3606,34 @@ class RackController(Node):
                     self, "rackd", SERVICE_STATUS.DEGRADED,
                     "Missing connections to %d region controller(s)." % (
                         dead_regions + len(missing_regions)))
+
+    def list_boot_images(self):
+        """Return a list of boot images available on the rack controller."""
+        # Avoid circular imports
+        from maasserver.clusterrpc.boot_images import get_boot_images
+        try:
+            # Combine all boot images one per name and arch
+            downloaded_boot_images = defaultdict(set)
+            for image in get_boot_images(self):
+                if image['osystem'] == 'custom':
+                    name = image['release']
+                else:
+                    name = "%s/%s" % (image['osystem'], image['release'])
+                arch = image['architecture']
+                subarch = image['subarchitecture']
+                downloaded_boot_images[name, arch].add(subarch)
+            # Prevent lint error 'list comprehension redefines'
+            del name, arch
+            # Return a list of dictionaries each containing one entry per
+            # name, architecture like boot-resources does
+            images = [{
+                'name': name,
+                'architecture': arch,
+                'subarches': sorted(subarches),
+            } for (name, arch), subarches in downloaded_boot_images.items()]
+            return {'images': images, 'connected': True}
+        except NoConnectionsAvailable:
+            return {'images': [], 'connected': False}
 
 
 class RegionController(Node):

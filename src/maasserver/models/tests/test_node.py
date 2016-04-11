@@ -16,6 +16,7 @@ from django.core.exceptions import (
 from django.db import transaction
 from fixtures import LoggerFixture
 from maasserver import preseed as preseed_module
+from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.power import (
     power_off_node,
     power_query,
@@ -6846,6 +6847,57 @@ class TestRackController(MAASServerTestCase):
                     "Missing connections to %d region controller(s)." % (
                         len(regions_with_processes) +
                         len(regions_without_processes)))))
+
+    def test_list_boot_images(self):
+        rack_controller = factory.make_RackController()
+        self.patch(boot_images, 'get_boot_images').return_value = [
+            {
+                'release': 'custom_os',
+                'osystem': 'custom',
+                'architecture': 'amd64',
+                'subarchitecture': 'generic',
+            },
+            {
+                'release': 'trusty',
+                'osystem': 'ubuntu',
+                'architecture': 'amd64',
+                'subarchitecture': 'generic',
+            },
+            {
+                'release': 'trusty',
+                'osystem': 'ubuntu',
+                'architecture': 'amd64',
+                'subarchitecture': 'hwe-t',
+            },
+            {
+                'release': 'trusty',
+                'osystem': 'ubuntu',
+                'architecture': 'amd64',
+                'subarchitecture': 'hwe-x',
+            },
+        ]
+        self.assertItemsEqual(
+            {
+                'connected': True,
+                'images': [
+                    {
+                        'name': 'ubuntu/trusty',
+                        'architecture': 'amd64',
+                        'subarches': ['generic', 'hwe-t', 'hwe-x'],
+                    },
+                    {
+                        'name': 'custom_os',
+                        'architecture': 'amd64',
+                        'subarches': ['generic'],
+                    }
+                ]
+            }, rack_controller.list_boot_images())
+
+    def test_list_boot_images_when_disconnected(self):
+        rack_controller = factory.make_RackController()
+        self.assertItemsEqual(
+            {'connected': False, 'images': []},
+            rack_controller.list_boot_images())
 
 
 class TestRegionController(MAASServerTestCase):

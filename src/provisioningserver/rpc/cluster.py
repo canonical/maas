@@ -39,7 +39,7 @@ from twisted.protocols import amp
 
 
 class ListBootImages(amp.Command):
-    """List the boot images available on this cluster controller.
+    """List the boot images available on this rack controller.
 
     :since: 1.5
     """
@@ -60,7 +60,7 @@ class ListBootImages(amp.Command):
 
 
 class ListBootImagesV2(amp.Command):
-    """List the boot images available on this cluster controller.
+    """List the boot images available on this rack controller.
 
     This command compresses the images list to allow more images in the
     response and to remove the amp.TooLong error.

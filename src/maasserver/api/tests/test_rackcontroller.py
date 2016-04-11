@@ -70,6 +70,16 @@ class TestRackControllerAPI(APITestCase):
             http.client.FORBIDDEN, response.status_code,
             explain_unexpected_response(http.client.FORBIDDEN, response))
 
+    def test_GET_list_boot_images(self):
+        rack = factory.make_RackController(owner=factory.make_User())
+        response = self.client.get(
+            self.get_rack_uri(rack), {'op': 'list_boot_images'})
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        self.assertItemsEqual(
+            ['connected', 'images'], json_load_bytes(response.content))
+
 
 class TestRackControllersAPI(APITestCase):
     """Tests for /api/2.0/rackcontrollers/."""
