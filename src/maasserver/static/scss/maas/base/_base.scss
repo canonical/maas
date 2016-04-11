@@ -54,12 +54,10 @@ ol {
     margin-left: 0;
 }
 
-a {
-  cursor: pointer;
-}
-
-a.link--alt {
-  color: #333;
+a:link,
+a:visited {
+  color: $cool-grey;
+  text-decoration: none;
   border-bottom: 1px solid #CDCDCD;
 
   &:hover {

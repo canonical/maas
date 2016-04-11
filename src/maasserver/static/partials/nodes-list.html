@@ -628,7 +628,7 @@
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <a href="" data-ng-click="sortTable('status', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'status', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Status</a>
                         </th>
-                        <th>
+                        <th class="table-col--10">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <a href="" data-ng-click="sortTable('owner', 'nodes')" data-ng-class="{sort: tabs.nodes.predicate === 'owner', 'sort-asc': tabs.nodes.reverse === false, 'sort-desc': tabs.nodes.reverse === true}">Owner</a>
                         </th>
@@ -673,7 +673,7 @@
                             <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
                         </td>
                         <td class="status">{$ node.status $}</td>
-                        <td>{$ node.owner $}</td>
+                        <td class="table-col--10">{$ node.owner $}</td>
                         <td class="align-right">{$ node.cpu_count $}</td>
                         <td class="align-right">{$ node.memory $}</td>
                         <td class="align-right">{$ node.physical_disk_count $}</td>
@@ -772,7 +772,7 @@
                             <span title="Fully Qualified Domain Name">Name</span>
                         </a>
                     </th>
-                    <th class="table-listing__header table-col--4">
+                    <th class="table-listing__header table-col--4 align-center">
                         <span title="Status">Status</span>
                     </th>
                     <th class="table-listing__header table-col--25">
@@ -797,7 +797,7 @@
                     <td class="table-col--20 table-listing__cell">
                         <a href="#/node/controller/{$ controller.system_id $}">{$ controller.fqdn $}</a>
                     </td>
-                    <td class="table-col--4 table-listing__cell" data-maas-controller-status="controller" data-maas-services="services"></td>
+                    <td class="table-col--4 table-listing__cell align-center" data-maas-controller-status="controller" data-maas-services="services"></td>
                     <td class="table-col--25 table-listing__cell">{$ controller.node_type_display $}</td>
                     <td class="table-col--15 table-listing__cell">{$ controller.last_image_sync || 'Never' $}</td>
                 </tr>

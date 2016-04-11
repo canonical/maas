@@ -10,7 +10,7 @@
         <div class="inner-wrapper">
             <h1 class="page-header__title">
                 <span contenteditable="true"
-                    data-ng-class="{ editable: canEdit(), invalid: editHeaderInvalid() }"
+                    data-ng-class="{ editable: canEdit(), invalid: editHeaderInvalid(), editmode: header.editing }"
                     data-ng-model="header.hostname.value"
                     data-ng-disabled="!canEdit()"
                     data-maas-editing="editHeader()"></span>
@@ -31,12 +31,12 @@
                         </span>
                     </span>
                 </span>
-                <a href="" class="alt ng-hide"
+                <a href="" class="link-cta-ubuntu text-button ng-hide"
                     data-ng-show="header.editing"
                     data-ng-click="cancelEditHeader()">Cancel</a>
                 <a href="" class="link-cta-ubuntu ng-hide"
                     data-ng-show="header.editing"
-                    data-ng-class="{ secondary: editHeaderInvalid() }"
+                    data-ng-disabled="editHeaderInvalid()"
                     data-ng-click="saveEditHeader()">Save</a>
             </h1>
             <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
@@ -395,21 +395,21 @@
                     <h3>Region Controller</h3>
                     <ul class="list__tree no-bullets">
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.regiond) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.regiond) $}"></span>
                                 &nbsp;regiond
                                 <span data-ng-if="services.regiond.status_info"> &mdash; {$ services.regiond.status_info $}</span>
                             </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.bind9) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.bind9) $}"></span>
                                 &nbsp;bind9
                                 <span data-ng-if="services.bind9.status_info"> &mdash; {$ services.bind9.status_info $}</span>
                             </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.proxy) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.proxy) $}"></span>
                                 &nbsp;proxy
                                 <span data-ng-if="services.proxy.status_info"> &mdash; {$ services.proxy.status_info $}</span>
@@ -421,21 +421,21 @@
                     <h3>Rack Controller</h3>
                     <ul class="list__tree no-bullets">
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.rackd) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.rackd) $}"></span>
                                 &nbsp;rackd
                                 <span data-ng-if="services.rackd.status_info"> &mdash; {$ services.rackd.status_info $}</span>
                             </span>
                             <ul class="list__tree list__tree--sub-level">
                                 <li class="list__item">
-                                    <span class="color--{$ getServiceClass(services.http) $}">
+                                    <span>
                                         <span class="icon {$ getServiceClass(services.http) $}"></span>
                                         &nbsp;http
                                         <span data-ng-if="services.http.status_info"> &mdash; {$ services.http.status_info $}</span>
                                     </span>
                                 </li>
                                 <li class="list__item">
-                                    <span class="color--{$ getServiceClass(services.tftp) $}">
+                                    <span>
                                         <span class="icon {$ getServiceClass(services.tftp) $}"></span>
                                         &nbsp;tftp
                                         <span data-ng-if="services.tftp.status_info"> &mdash; {$ services.tftp.status_info $}</span>
@@ -444,21 +444,21 @@
                             </ul>
                         </li>
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.dhcpd) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.dhcpd) $}"></span>
                                 &nbsp;dhcpd
                                 <span data-ng-if="services.dhcpd.status_info"> &mdash; {$ services.dhcpd.status_info $}</span>
                             </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.dhcpd6) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.dhcpd6) $}"></span>
                                 &nbsp;dhcpd6
                                 <span data-ng-if="services.dhcpd6.status_info"> &mdash; {$ services.dhcpd6.status_info $}</span>
                             </span>
                         </li>
                         <li class="list__item">
-                            <span class="color--{$ getServiceClass(services.tgt) $}">
+                            <span>
                                 <span class="icon {$ getServiceClass(services.tgt) $}"></span>
                                 &nbsp;tgt
                                 <span data-ng-if="services.tgt.status_info"> &mdash; {$ services.tgt.status_info $}</span>

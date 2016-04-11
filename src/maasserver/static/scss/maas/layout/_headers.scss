@@ -252,11 +252,13 @@ header.banner {
             font-size: 32px;
             display: inline-block;
 
+            &.editmode,
             &.editable:hover {
                 border: 1px solid #D2D2D2;
                 cursor: text;
             }
 
+            &.editmode:hover,
             &:active,
             &:focus {
                 outline: none;
