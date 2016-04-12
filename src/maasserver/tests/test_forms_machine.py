@@ -361,7 +361,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         form = AdminMachineForm(instance=node)
         self.assertEqual(node.power_type, form.fields['power_type'].initial)
 
-    def test_AdminMachineForm_changes_node_with_skip_check(self):
+    def test_AdminMachineForm_changes_power_parameters_with_skip_check(self):
         node = factory.make_Node()
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
@@ -381,3 +381,48 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertEqual(
             (hostname, power_type, {'field': power_parameters_field}),
             (node.hostname, node.power_type, node.power_parameters))
+
+    def test_AdminMachineForm_doesnt_changes_power_parameters(self):
+        power_parameters = {
+            "test": factory.make_name("test")
+        }
+        node = factory.make_Node(power_parameters=power_parameters)
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                'hostname': hostname,
+                'architecture': arch,
+                },
+            instance=node)
+        node = form.save()
+        self.assertEqual(power_parameters, node.power_parameters)
+
+    def test_AdminMachineForm_doesnt_change_power_type(self):
+        power_type = factory.pick_power_type()
+        node = factory.make_Node(power_type=power_type)
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                'hostname': hostname,
+                'architecture': arch,
+                },
+            instance=node)
+        node = form.save()
+        self.assertEqual(power_type, node.power_type)
+
+    def test_AdminMachineForm_changes_power_type(self):
+        node = factory.make_Node()
+        hostname = factory.make_string()
+        power_type = factory.pick_power_type()
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                'hostname': hostname,
+                'architecture': arch,
+                'power_type': power_type,
+                },
+            instance=node)
+        node = form.save()
+        self.assertEqual(power_type, node.power_type)

@@ -832,12 +832,27 @@ class AdminMachineForm(MachineForm, AdminNodeForm):
     @staticmethod
     def set_power_type(form, machine):
         """Persist the machine into the database."""
-        power_type = form.cleaned_data.get('power_type')
-        if power_type is not None:
-            machine.power_type = power_type
-        power_parameters = form.cleaned_data.get('power_parameters')
-        if power_parameters is not None:
-            machine.power_parameters = power_parameters
+        # Only change power_type if the power_type was passed in the initial
+        # data. clean_data will always have power_type, so we cannot use that
+        # as a reference.
+        power_type_changed = False
+        if form.data.get('power_type') is not None:
+            new_power_type = form.cleaned_data.get('power_type')
+            if machine.power_type != new_power_type:
+                machine.power_type = new_power_type
+                power_type_changed = True
+        # Only change power_parameters if the power_parameters was passed in
+        # the initial data. clean_data will always have power_parameters, so we
+        # cannot use that as a reference.
+        initial_parameters = {
+            param
+            for param in form.data.keys()
+            if (param.startswith("power_parameters") and
+                not param == 'power_parameters_%s' % SKIP_CHECK_NAME)
+        }
+        if power_type_changed or len(initial_parameters) > 0:
+            machine.power_parameters = form.cleaned_data.get(
+                'power_parameters')
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""

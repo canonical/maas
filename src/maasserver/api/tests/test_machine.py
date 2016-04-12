@@ -686,6 +686,29 @@ class TestMachineAPI(APITestCase):
         self.assertThat(machine_start, MockCalledOnceWith(
             self.logged_in_user, user_data=ANY, comment=None))
 
+    def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
+        self.become_admin()
+        self.patch(node_module.Node, "_start")
+        rack_controller = factory.make_RackController()
+        machine = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='virsh',
+            architecture=make_usable_architecture(self),
+            bmc_connected_to=rack_controller)
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        machine_start = self.patch(node_module.Machine, 'start')
+        machine_start.return_value = False
+        response = self.client.post(
+            self.get_machine_uri(machine), {
+                'op': 'deploy',
+                'distro_series': distro_series,
+            })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        response_content = json_load_bytes(response.content)
+        self.assertEquals('virsh', response_content['power_type'])
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Node, '_stop')
         owned_statuses = [
