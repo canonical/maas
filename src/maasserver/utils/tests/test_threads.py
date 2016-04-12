@@ -40,7 +40,9 @@ class TestMakeFunctions(MAASTestCase):
     def test__make_default_pool_creates_disconnected_pool(self):
         pool = threads.make_default_pool()
         self.assertThat(pool, IsInstance(ThreadPool))
-        self.assertThat(pool.context, Is(orm.TotallyDisconnected))
+        self.assertThat(
+            pool.context.contextFactory,
+            Is(orm.TotallyDisconnected))
         self.assertThat(pool.max, Equals(
             threads.max_threads_for_default_pool))
         self.assertThat(pool.min, Equals(0))
@@ -54,7 +56,7 @@ class TestMakeFunctions(MAASTestCase):
     def test__make_database_pool_creates_connected_pool(self):
         pool = threads.make_database_pool()
         self.assertThat(pool, IsInstance(ThreadPool))
-        self.assertThat(pool.context, Is(orm.FullyConnected))
+        self.assertThat(pool.context.contextFactory, Is(orm.FullyConnected))
         self.assertThat(pool.max, Equals(
             threads.max_threads_for_database_pool))
         self.assertThat(pool.min, Equals(0))
@@ -68,7 +70,7 @@ class TestMakeFunctions(MAASTestCase):
     def test__make_database_unpool_creates_unpool(self):
         pool = threads.make_database_unpool()
         self.assertThat(pool, IsInstance(ThreadUnpool))
-        self.assertThat(pool.context, Is(orm.ExclusivelyConnected))
+        self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
         self.assertThat(pool.lock, IsInstance(DeferredSemaphore))
         self.assertThat(pool.lock.limit, Equals(
             threads.max_threads_for_database_pool))
@@ -90,7 +92,9 @@ class TestInstallFunctions(MAASTestCase):
     def test__default_pool_is_disconnected_pool(self):
         pool = reactor.threadpool
         self.assertThat(pool, IsInstance(ThreadPool))
-        self.assertThat(pool.context, Is(orm.TotallyDisconnected))
+        self.assertThat(
+            pool.context.contextFactory,
+            Is(orm.TotallyDisconnected))
         self.assertThat(pool.min, Equals(0))
 
     def test__install_database_pool_will_not_work_now(self):
@@ -101,7 +105,7 @@ class TestInstallFunctions(MAASTestCase):
     def test__database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase
         self.assertThat(pool, IsInstance(ThreadUnpool))
-        self.assertThat(pool.context, Is(orm.ExclusivelyConnected))
+        self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
 
 
 class TestDeferToDatabase(MAASTestCase):

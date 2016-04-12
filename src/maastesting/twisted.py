@@ -14,6 +14,10 @@ import operator
 
 from fixtures import Fixture
 from twisted.internet import defer
+from twisted.logger import (
+    globalLogPublisher,
+    LegacyLogObserverWrapper,
+)
 from twisted.python import log
 
 
@@ -26,8 +30,6 @@ class TwistedLoggerFixture(Fixture):
     def __init__(self):
         super(TwistedLoggerFixture, self).__init__()
         self.logs = []
-        # Check if new logger from Twisted 15+ is being used.
-        self.isNewLogger = hasattr(log.theLogPublisher, "_publishPublisher")
 
     def dump(self):
         """Return all logs as a string."""
@@ -40,25 +42,13 @@ class TwistedLoggerFixture(Fixture):
     def containsError(self):
         return any(log["isError"] for log in self.logs)
 
-    def newSetUp(self):
-        """Twisted 15+ uses a new logger."""
-        self._publishPublisher = log.theLogPublisher._publishPublisher
-        log.theLogPublisher._publishPublisher = self.logs.append
-
-    def newCleanUp(self):
-        """Twisted 15+ uses a new logger."""
-        log.theLogPublisher._publishPublisher = self._publishPublisher
-
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
-        if self.isNewLogger:
-            self.addCleanup(self.newCleanUp)
-            self.newSetUp()
-        else:
-            self.addCleanup(
-                operator.setitem, log.theLogPublisher.observers,
-                slice(None), log.theLogPublisher.observers[:])
-            log.theLogPublisher.observers[:] = [self.logs.append]
+        observer = LegacyLogObserverWrapper(self.logs.append)
+        self.addCleanup(
+            operator.setitem, globalLogPublisher._observers,
+            slice(None), globalLogPublisher._observers[:])
+        globalLogPublisher._observers[:] = [observer]
 
 
 def always_succeed_with(result):

@@ -21,6 +21,9 @@ LP: #1568207    The node-interface(s) API endpoints has been deprecated in favor
 
 LP: #1564657    [2.0a4] Bridges no longer discovered by the rack controller
 
+LP: #1568051    ThreadPool context entry failure causes thread pool to break
+
+
 2.0.0 (beta1)
 =============
 
