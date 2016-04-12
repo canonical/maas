@@ -131,8 +131,6 @@ for klass in INTERFACE_CLASSES:
         interface_mtu_params_update,
         klass, ['params'], delete=False)
 
-thread_local = threading.local()
-
 
 class InterfaceUpdateParentsThreadLocal(threading.local):
     """Since infinite recursion could occur in an arbitrary interface
@@ -153,8 +151,8 @@ def update_interface_parents(sender, instance, created, **kwargs):
         for parent in instance.parents.all():
             parent.clear_all_links(clearing_config=True)
             if parent.vlan != instance.vlan and parent.id not in visiting:
+                visiting.add(parent.id)
                 try:
-                    visiting.add(parent.id)
                     parent.vlan = instance.vlan
                     parent.save()
                 finally:

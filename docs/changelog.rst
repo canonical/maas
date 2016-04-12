@@ -19,6 +19,8 @@ LP: #1543968    MAAS 1.9.0 allows non-unique space names
 
 LP: #1568207    The node-interface(s) API endpoints has been deprecated in favor of the interface(s) API endpoints
 
+LP: #1564657    [2.0a4] Bridges no longer discovered by the rack controller
+
 2.0.0 (beta1)
 =============
 
