@@ -203,4 +203,4 @@ class EventsHandler(OperationsHandler):
             "prev_uri": prev_uri,
         }
 
-    query.__doc__ %= {"log_levels": ", ".join(LOGGING_LEVELS_BY_NAME)}
+    query.__doc__ %= {"log_levels": ", ".join(sorted(LOGGING_LEVELS_BY_NAME))}

@@ -405,7 +405,7 @@ def describe_canonical(description):
     elif isinstance(description, Mapping):
         return tuple(sorted(
             ((describe_canonical(key), describe_canonical(value))
-             for (key, value) in description.items()),
+             for (key, value) in sorted(description.items())),
             key=key_canonical))
     else:
         raise TypeError(

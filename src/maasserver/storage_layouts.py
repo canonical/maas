@@ -552,7 +552,7 @@ def get_storage_layout_choices():
     """
     return [
         (name, title)
-        for name, (title, klass) in STORAGE_LAYOUTS.items()
+        for name, (title, klass) in sorted(STORAGE_LAYOUTS.items())
     ]
 
 

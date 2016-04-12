@@ -446,7 +446,7 @@ def describe_choices(choices):
 def get_config_doc(indentation=0):
     """Return the documentation about the available configuration settings."""
     doc = ["Available configuration items:\n\n"]
-    for config_name, config_details in CONFIG_ITEMS.items():
+    for config_name, config_details in sorted(CONFIG_ITEMS.items()):
         form_details = config_details['form_kwargs']
         doc.append("- " + config_name + ": " + form_details['label'] + ". ")
         # Append help text if present.
