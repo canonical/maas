@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest import skip
 
 from django.core.exceptions import (
     PermissionDenied,
@@ -104,6 +105,7 @@ class TestInterfaceManager(MAASServerTestCase):
             Interface.objects.get_interface_or_404(
                 node.system_id, interface.id, user, NODE_PERMISSION.ADMIN))
 
+    @skip("XXX: GavinPanella 2016-04-12 bug=1569259: Fails spuriously.")
     def test_get_interface_or_404_raises_Http404_when_invalid_id(self):
         node = factory.make_Node()
         factory.make_Interface(

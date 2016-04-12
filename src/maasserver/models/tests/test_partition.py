@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest import skip
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
@@ -305,6 +306,7 @@ class TestPartition(MAASServerTestCase):
             self.expectThat(idx, Equals(partition.get_partition_number()))
             idx += 1
 
+    @skip("XXX: GavinPanella 2016-04-12 bug=1569365: Fails spuriously.")
     def test_get_partition_number_returns_starting_at_2_for_ppc64el(self):
         node = factory.make_Node(
             architecture="ppc64el/generic", bios_boot_method="uefi")
