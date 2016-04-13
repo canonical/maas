@@ -12,7 +12,7 @@ Y.log('loading maas.prefs');
 var module = Y.namespace('maas.prefs');
 
 // Only used to mockup io in tests.
-module._io = new Y.IO();
+module._io = new Y.maas.io.getIO();
 
 var TokenWidget;
 
@@ -209,5 +209,5 @@ Y.extend(TokenWidget, Y.Widget, {
 
 module.TokenWidget = TokenWidget;
 
-}, '0.1', {'requires': ['widget', 'io']}
+}, '0.1', {'requires': ['widget', 'maas.io']}
 );

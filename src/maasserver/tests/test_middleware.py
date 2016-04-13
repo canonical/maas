@@ -34,6 +34,7 @@ from maasserver.exceptions import (
 from maasserver.middleware import (
     APIErrorsMiddleware,
     APIRPCErrorsMiddleware,
+    CSRFHelperMiddleware,
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
     ExternalComponentsMiddleware,
@@ -546,3 +547,25 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         self.assertRaises(error_type, middleware.process_request, None)
         self.assertThat(
             check_rack_controller_connectivity, MockCalledOnceWith())
+
+
+class CSRFHelperMiddlewareTest(MAASServerTestCase):
+    """Tests for the CSRFHelperMiddleware."""
+
+    def test_sets_csrf_exception_if_no_session_cookie(self):
+        middleware = CSRFHelperMiddleware()
+        cookies = {}
+        request = factory.make_fake_request(
+            factory.make_string(), 'GET', cookies=cookies)
+        self.assertIsNone(middleware.process_request(request))
+        self.assertTrue(getattr(request, 'csrf_processing_done', None))
+
+    def test_doesnt_set_csrf_exception_if_session_cookie(self):
+        middleware = CSRFHelperMiddleware()
+        cookies = {
+            settings.SESSION_COOKIE_NAME: factory.make_name('session')
+        }
+        request = factory.make_fake_request(
+            factory.make_string(), 'GET', cookies=cookies)
+        self.assertIsNone(middleware.process_request(request))
+        self.assertIsNone(getattr(request, 'csrf_processing_done', None))

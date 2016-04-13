@@ -12,7 +12,7 @@ Y.log('loading maas.os_distro_select');
 var module = Y.namespace('maas.os_distro_select');
 
 // Only used to mockup io in tests.
-module._io = new Y.IO();
+module._io = new Y.maas.io.getIO();
 
 var OSReleaseWidget;
 
@@ -151,5 +151,5 @@ Y.extend(OSReleaseWidget, Y.Widget, {
 
 module.OSReleaseWidget = OSReleaseWidget;
 
-}, '0.1', {'requires': ['widget', 'io']}
+}, '0.1', {'requires': ['widget', 'maas.io']}
 );

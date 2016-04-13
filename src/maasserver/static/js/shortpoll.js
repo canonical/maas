@@ -29,7 +29,7 @@ namespace.LONG_DELAY = 3 * 60 * 1000;  // 3 minutes.
 namespace._repoll = true;
 
 // Overridden by tests.
-namespace._io = new Y.IO();
+namespace._io = new Y.maas.io.getIO();
 
 /**
  *
@@ -200,4 +200,4 @@ Y.extend(ShortPollManager, Y.Base, {
 
 namespace.ShortPollManager = ShortPollManager;
 
-}, "0.1", {"requires":["base", "event", "json", "io"]});
+}, "0.1", {"requires":["base", "event", "json", "maas.io"]});

@@ -5,12 +5,12 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', 'ZonesManager', 'MachinesManager', 'GeneralManager',
-    'DomainsManager', 'RegionConnection', 'ManagerHelperService',
-    'ValidationService', function(
-        $scope, $http, ZonesManager, MachinesManager, GeneralManager,
-        DomainsManager, RegionConnection, ManagerHelperService,
-        ValidationService) {
+    '$scope', '$http', '$cookies', 'ZonesManager', 'MachinesManager',
+    'GeneralManager', 'DomainsManager', 'RegionConnection',
+    'ManagerHelperService', 'ValidationService', function(
+        $scope, $http, $cookies, ZonesManager, MachinesManager,
+        GeneralManager, DomainsManager, RegionConnection,
+        ManagerHelperService, ValidationService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
         // in this controller.
@@ -552,7 +552,10 @@ angular.module('MAAS').controller('AddHardwareController', [
                 method: 'POST',
                 url: 'api/2.0/machines/?op=add_chassis',
                 data: $.param(params),
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFTOKEN': $cookies.csrftoken
+                }
             }).then(function() {
                 if(addAnother) {
                     $scope.chassis = newChassis($scope.chassis);
