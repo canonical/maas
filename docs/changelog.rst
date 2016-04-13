@@ -9,21 +9,65 @@ Changelog
 Issues fixed in this release
 ----------------------------
 
-LP: #1556185    TypeError: 'Machine' object is not iterable
+LP: #1563409    [2.0a4] 2.0 api is confused about its hash
 
-LP: #1561733    [2.0a3] MAAS no longer detects external DHCP servers
+LP: #1555251    [2.0] Missing region-controller API
 
-LP: #1543707    MAAS 1.9+ should not allow whitespace characters in space names
-
-LP: #1543968    MAAS 1.9.0 allows non-unique space names
-
-LP: #1568207    The node-interface(s) API endpoints has been deprecated in favor of the interface(s) API endpoints
+LP: #1569102    API 2.0 deploy makes machine lose power information
 
 LP: #1564657    [2.0a4] Bridges no longer discovered by the rack controller
 
-LP: #1568051    ThreadPool context entry failure causes thread pool to break
+LP: #1557144    [2.0a1] When Xenial is the only one image imported, nodes fail to boot after saving the commissioning image
+
+LP: #1556185    TypeError: 'Machine' object is not iterable
 
 LP: #1562198    [2.0a4] When providng DHCP a smarter default dynamic range is needed
+
+LP: #1568051    ThreadPool context entry failure causes thread pool to break
+
+LP: #1567178    [2.0 beta 1] After CD install, maas-region RPC endpoints is not available
+
+LP: #1566419    Rack controllers should output whether boot resources are synced
+
+LP: #1566920    Cannot change power settings for machine
+
+LP: #1568041    "[2.0beta1] macaddress_set should be removed from the machines and devices API"
+
+LP: #1568045    [2.0beta1] constraint_map should be removed from the machines acquire output
+
+LP: #1567213    Devices results missing interface_set
+
+LP: #1568847    "[2.0 beta1 ] Service 'maas-proxy' failed to start
+
+LP: #1543195    Unable to set mtu on default VLAN
+
+LP: #1566336    MAAS keeps IPs assigned to eth0, even after eth0 is enslaved into a bond
+
+LP: #1546274    Importing custom boot images is broken in MAAS 1.10.
+
+LP: #1566503    "Failed talking to node's BMC: cannot use a string pattern on a bytes-like object"
+
+LP: #1543968    MAAS 1.9+ allows non-unique space names and shows no space id in a subnet
+
+LP: #1543707    MAAS 1.9+ should not allow whitespace characters in space names
+
+LP: #1560495    [UI 2.0a3] Bad table spacing between columns
+
+LP: #1561733    [2.0a3] MAAS no longer detects external DHCP servers
+
+LP: #1566848    [2.0 beta1] Xenial is not the default image
+
+LP: #1563701    [2.0] VLAN interfaces of secondary rack-controller are not reported
+
+LP: #1561991    [2.0a4] Doesn't use modify over the OMAPI
+
+LP: #1566829    DoesNotExist: RegionControllerProcess matching query does not exist.
+
+LP: #1561954    Ubuntu Server install menu needs a 16.04 refresh
+
+LP: #1564971    [2.0a4] duplicate ipranges cuase dhcpd Configuration file errors
+
+LP: #1568207    Remove deprecated node-interface
 
 
 2.0.0 (beta1)
