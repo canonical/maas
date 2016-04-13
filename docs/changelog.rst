@@ -21,6 +21,8 @@ Bug Fix Update
 
 #1568051    ThreadPool context entry failure causes thread pool to break
 
+#1212205    get_file_by_name does not check owner
+
 
 1.9.1
 =====

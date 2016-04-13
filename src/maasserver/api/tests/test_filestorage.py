@@ -81,22 +81,10 @@ class FileStorageAPITestMixin:
 
 class AnonymousFileStorageAPITest(FileStorageAPITestMixin, MAASServerTestCase):
 
-    def test_get_works_anonymously(self):
+    def test_get_does_not_work_anonymously(self):
         storage = factory.make_FileStorage()
         response = self.make_API_GET_request("get", storage.filename)
-
-        self.assertEqual(storage.content, response.content)
-        self.assertEqual(httplib.OK, response.status_code)
-
-    def test_get_fetches_the_most_recent_file(self):
-        filename = factory.make_name('file')
-        factory.make_FileStorage(filename=filename, owner=factory.make_User())
-        storage = factory.make_FileStorage(
-            filename=filename, owner=factory.make_User())
-        response = self.make_API_GET_request("get", filename)
-
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(storage.content, response.content)
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_get_by_key_works_anonymously(self):
         storage = factory.make_FileStorage()
@@ -215,12 +203,34 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual(b"file two", response.content)
 
     def test_get_file_succeeds(self):
+        filename = factory.make_name('file')
         factory.make_FileStorage(
-            filename="foofilers", content=b"give me rope")
-        response = self.make_API_GET_request("get", "foofilers")
+            filename=filename, content=b"give me rope",
+            owner=self.logged_in_user)
+        response = self.make_API_GET_request("get", filename)
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(b"give me rope", response.content)
+
+    def test_get_file_checks_owner(self):
+        filename = factory.make_name('file')
+        factory.make_FileStorage(
+            filename=filename, content=b"give me rope",
+            owner=factory.make_User())
+        response = self.make_API_GET_request("get", filename)
+
+        self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+    def test_get_fetches_the_most_recent_file(self):
+        filename = factory.make_name('file')
+        factory.make_FileStorage(
+            filename=filename, owner=self.logged_in_user)
+        storage = factory.make_FileStorage(
+            filename=filename, owner=self.logged_in_user)
+        response = self.make_API_GET_request("get", filename)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(storage.content, response.content)
 
     def test_get_file_fails_with_no_filename(self):
         response = self.make_API_GET_request("get")

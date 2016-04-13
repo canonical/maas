@@ -51,7 +51,8 @@ def get_file_by_name(handler, request):
     """
     filename = get_mandatory_param(request.GET, 'filename')
     try:
-        db_file = FileStorage.objects.filter(filename=filename).latest('id')
+        db_file = FileStorage.objects.filter(
+            owner=request.user, filename=filename).latest('id')
     except FileStorage.DoesNotExist:
         raise MAASAPINotFound("File not found")
     return HttpResponse(db_file.content, status=httplib.OK)
@@ -83,8 +84,6 @@ class AnonFilesHandler(AnonymousOperationsHandler):
     """
     create = read = update = delete = None
 
-    get_by_name = operation(
-        idempotent=True, exported_as='get')(get_file_by_name)
     get_by_key = operation(
         idempotent=True, exported_as='get_by_key')(get_file_by_key)
 
