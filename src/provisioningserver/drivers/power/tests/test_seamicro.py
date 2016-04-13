@@ -11,7 +11,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
-    PowerFatalError,
+    PowerActionError,
     seamicro as seamicro_module,
 )
 from provisioningserver.drivers.power.seamicro import (
@@ -88,7 +88,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             ExternalProcessError(1, "ipmitool something"))
 
         self.assertRaises(
-            PowerFatalError,
+            PowerActionError,
             seamicro_power_driver._power_control_seamicro15k_ipmi,
             ip, username, password, server_id, power_change)
 

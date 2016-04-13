@@ -20,8 +20,8 @@ from mock import (
 )
 from provisioningserver.drivers.power import (
     ipmi as ipmi_module,
+    PowerActionError,
     PowerAuthError,
-    PowerFatalError,
 )
 from provisioningserver.drivers.power.ipmi import (
     IPMI_CONFIG,
@@ -300,7 +300,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             ExternalProcessError(1, "ipmipower something"))
 
         self.assertRaises(
-            PowerFatalError, ipmi_power_driver._issue_ipmi_command,
+            PowerActionError, ipmi_power_driver._issue_ipmi_command,
             'on', **context)
 
     def test_power_on_calls__issue_ipmi_command(self):

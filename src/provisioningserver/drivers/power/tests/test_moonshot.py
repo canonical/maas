@@ -11,7 +11,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
     moonshot as moonshot_module,
     PowerActionError,
-    PowerFatalError,
 )
 from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.utils.shell import (
@@ -99,7 +98,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         self.expectThat(
             call_and_check_mock, MockCalledOnceWith(ipmitool_command, env=env))
 
-    def test__issue_ipmitool_raises_power_fatal_error(self):
+    def test__issue_ipmitool_raises_power_action_error(self):
         context = make_parameters()
         moonshot_driver = MoonshotIPMIPowerDriver()
         call_and_check_mock = self.patch(moonshot_module, 'call_and_check')
@@ -107,7 +106,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
             ExternalProcessError(1, "ipmitool something"))
 
         self.assertRaises(
-            PowerFatalError, moonshot_driver._issue_ipmitool_command,
+            PowerActionError, moonshot_driver._issue_ipmitool_command,
             'status', **context)
 
     def test_power_on_calls__issue_ipmitool_command(self):

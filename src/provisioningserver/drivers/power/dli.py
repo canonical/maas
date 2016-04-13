@@ -9,9 +9,9 @@ import re
 from time import sleep
 
 from provisioningserver.drivers.power import (
+    PowerActionError,
     PowerDriver,
     PowerError,
-    PowerFatalError,
 )
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
@@ -44,7 +44,7 @@ class DLIPowerDriver(PowerDriver):
                 ['wget', '--auth-no-challenge', '-O', '/dev/null', url],
                 env=select_c_utf8_locale())
         except ExternalProcessError as e:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "Failed to power %s outlet %s: %s" % (
                     power_change, outlet_id, e.output_as_unicode))
 
@@ -92,7 +92,7 @@ class DLIPowerDriver(PowerDriver):
                 else:
                     return 'off'
         except ExternalProcessError as e:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "Failed to power query outlet %s: %s" % (
                     outlet_id, e.output_as_unicode))
 

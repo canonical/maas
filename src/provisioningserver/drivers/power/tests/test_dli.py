@@ -19,8 +19,8 @@ from mock import (
 )
 from provisioningserver.drivers.power import (
     dli as dli_module,
+    PowerActionError,
     PowerError,
-    PowerFatalError,
 )
 from provisioningserver.utils.shell import (
     ExternalProcessError,
@@ -89,7 +89,7 @@ class TestDLIPowerDriver(MAASTestCase):
         call_and_check_mock.side_effect = (
             ExternalProcessError(1, "dli something"))
         self.assertRaises(
-            PowerFatalError, driver._set_outlet_state, sentinel.power_change,
+            PowerActionError, driver._set_outlet_state, sentinel.power_change,
             sentinel.outlet_id, sentinel.power_use, sentinel.power_pass,
             sentinel.power_address)
 
@@ -149,7 +149,7 @@ class TestDLIPowerDriver(MAASTestCase):
         call_and_check_mock.side_effect = (
             ExternalProcessError(1, "dli something"))
         self.assertRaises(
-            PowerFatalError, driver._query_outlet_state, sentinel.outlet_id,
+            PowerActionError, driver._query_outlet_state, sentinel.outlet_id,
             sentinel.power_user, sentinel.power_pass, sentinel.power_address)
 
     def test_power_on(self):

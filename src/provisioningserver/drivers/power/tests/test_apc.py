@@ -14,7 +14,6 @@ from mock import Mock
 from provisioningserver.drivers.power import (
     apc as apc_module,
     PowerActionError,
-    PowerFatalError,
 )
 from provisioningserver.utils.shell import (
     has_command_available,
@@ -78,13 +77,13 @@ class TestAPCPowerDriver(MAASTestCase):
         driver = apc_module.APCPowerDriver()
         self.patch_popen(return_value=(b'', b''), returncode=1)
         self.assertRaises(
-            PowerFatalError, driver.run_process, factory.make_name('command'))
+            PowerActionError, driver.run_process, factory.make_name('command'))
 
     def test_run_process_crashes_on_no_power_state_match_found(self):
         driver = apc_module.APCPowerDriver()
         self.patch_popen(return_value=(b'Error', b''))
         self.assertRaises(
-            PowerFatalError, driver.run_process, factory.make_name('command'))
+            PowerActionError, driver.run_process, factory.make_name('command'))
 
     def test_power_on_calls_run_process(self):
         driver = apc_module.APCPowerDriver()

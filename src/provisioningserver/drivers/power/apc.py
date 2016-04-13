@@ -18,7 +18,6 @@ from time import sleep
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
-    PowerFatalError,
 )
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import select_c_utf8_locale
@@ -52,12 +51,12 @@ class APCPowerDriver(PowerDriver):
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
         if proc.returncode != 0:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "APC Power Driver external process error for command %s: %s"
                 % (command, stderr))
         match = re.search("INTEGER:\s*([1-2])", stdout)
         if match is None:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "APC Power Driver unable to extract outlet power state"
                 " from: %s" % stdout)
         else:

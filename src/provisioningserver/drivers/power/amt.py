@@ -21,6 +21,7 @@ from lxml import etree
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
     PowerActionError,
+    PowerConnError,
     PowerDriver,
     PowerFatalError,
 )
@@ -103,7 +104,7 @@ class AMTPowerDriver(PowerDriver):
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
         if process.returncode != 0:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "Failed to run command: %s with error: %s" % (command, stderr))
         return stdout
 
@@ -164,11 +165,13 @@ class AMTPowerDriver(PowerDriver):
 
         if output is None:
             raise PowerFatalError("amttool power querying FAILED.")
+        # Ensure that from this point forward that output is a str.
+        assert isinstance(output, str)
         # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
         # will lead to a fresh boot.
-        if b'S5' in output:
+        if 'S5' in output:
             return 'off'
-        for state in (b'S0', b'S1', b'S2', b'S3', b'S4'):
+        for state in ('S0', 'S1', 'S2', 'S3', 'S4'):
             if state in output:
                 return 'on'
         raise PowerActionError(
@@ -289,7 +292,7 @@ class AMTPowerDriver(PowerDriver):
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
         if stdout == "" or stdout.isspace():
-            raise PowerFatalError(
+            raise PowerConnError(
                 "Unable to retrieve AMT version: %s" % stderr)
         else:
             match = re.search("AMT version:\s*([0-9]+)", stdout)

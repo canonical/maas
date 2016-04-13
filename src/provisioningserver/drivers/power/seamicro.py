@@ -11,8 +11,8 @@ from provisioningserver.drivers.hardware.seamicro import (
     power_query_seamicro15k_v2,
 )
 from provisioningserver.drivers.power import (
+    PowerActionError,
     PowerDriver,
-    PowerFatalError,
 )
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
@@ -52,7 +52,7 @@ class SeaMicroPowerDriver(PowerDriver):
                 '0xab', power_mode, '0', server_id,
                 ])
         except ExternalProcessError as e:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "Failed to power %s %s at %s: %s" % (
                     power_change, server_id, ip, e.output_as_unicode))
 

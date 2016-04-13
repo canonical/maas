@@ -13,9 +13,9 @@ from tempfile import NamedTemporaryFile
 
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
+    PowerActionError,
     PowerAuthError,
     PowerDriver,
-    PowerFatalError,
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
@@ -78,7 +78,7 @@ class IPMIPowerDriver(PowerDriver):
         try:
             output = call_and_check(command, env=env).decode("utf-8")
         except ExternalProcessError as e:
-            raise PowerFatalError(
+            raise PowerActionError(
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, e.output_as_unicode))
         else:

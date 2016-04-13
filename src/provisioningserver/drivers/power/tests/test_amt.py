@@ -23,6 +23,7 @@ from mock import (
 from provisioningserver.drivers.power import (
     amt as amt_module,
     PowerActionError,
+    PowerConnError,
     PowerFatalError,
 )
 from provisioningserver.drivers.power.amt import AMTPowerDriver
@@ -160,13 +161,13 @@ class TestAMTPowerDriver(MAASTestCase):
             stdin))
         self.expectThat(result, Equals('stdout'))
 
-    def test__run_raises_power_fatal_error(self):
+    def test__run_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
         self.patch_popen(
             return_value=(b'', b''), returncode=1)
 
         self.assertRaises(
-            PowerFatalError, amt_power_driver._run, None, None, None)
+            PowerActionError, amt_power_driver._run, None, None, None)
 
     def test__issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
@@ -252,8 +253,8 @@ class TestAMTPowerDriver(MAASTestCase):
         power_pass = factory.make_name('power_pass')
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
-        _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
-            b'', b'S0')
+        _issue_amttool_command_mock.return_value = (
+            AMTTOOL_OUTPUT % (b'', b'S0')).decode("utf-8")
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
@@ -268,8 +269,8 @@ class TestAMTPowerDriver(MAASTestCase):
         power_pass = factory.make_name('power_pass')
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
-        _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
-            b'', b'S5 (soft-off)')
+        _issue_amttool_command_mock.return_value = (
+            AMTTOOL_OUTPUT % (b'', b'S5 (soft-off)')).decode("utf-8")
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
@@ -285,8 +286,8 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.ip_address = factory.make_name('ip_address')
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, '_issue_amttool_command')
-        _issue_amttool_command_mock.return_value = AMTTOOL_OUTPUT % (
-            b'', b'error')
+        _issue_amttool_command_mock.return_value = (
+            AMTTOOL_OUTPUT % (b'', b'error')).decode("utf-8")
 
         self.assertRaises(
             PowerActionError, amt_power_driver.amttool_query_state,
@@ -564,7 +565,7 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         self.patch_popen(return_value=(b'', b''))
         self.assertRaises(
-            PowerFatalError, amt_power_driver._get_amt_command,
+            PowerConnError, amt_power_driver._get_amt_command,
             sentinel.ip_address, sentinel.power_pass)
 
     def test__get_amt_command_crashes_when_no_version_found(self):
