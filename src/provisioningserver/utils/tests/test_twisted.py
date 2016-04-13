@@ -14,8 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from functools import partial
 from itertools import cycle
 import operator
+from operator import attrgetter
 from random import (
     randint,
     random,
@@ -27,6 +29,7 @@ import time
 from crochet import EventualResult
 from maastesting.factory import factory
 from maastesting.matchers import (
+    DocTestMatches,
     IsCallable,
     IsFiredDeferred,
     IsUnfiredDeferred,
@@ -63,7 +66,10 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
     ThreadUnpool,
 )
-from testtools.deferredruntest import extract_result
+from testtools.deferredruntest import (
+    assert_fails_with,
+    extract_result,
+)
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
@@ -1318,6 +1324,32 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         self.assertThat(threads, Not(Contains(currentThread.ident)))
 
 
+class ContextBrokenOnEntry:
+
+    def __init__(self, exception):
+        super(ContextBrokenOnEntry, self).__init__()
+        self.exception = exception
+
+    def __enter__(self):
+        raise self.exception
+
+    def __exit__(self, *exc_info):
+        pass
+
+
+class ContextBrokenOnExit:
+
+    def __init__(self, exception):
+        super(ContextBrokenOnExit, self).__init__()
+        self.exception = exception
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *exc_info):
+        raise self.exception
+
+
 class TestThreadPool(MAASTestCase):
     """Tests for `ThreadPool`."""
 
@@ -1326,17 +1358,72 @@ class TestThreadPool(MAASTestCase):
     def test__init(self):
         pool = ThreadPool()
         self.assertThat(pool, MatchesStructure(
-            min=Equals(5), max=Equals(20), name=Is(None), context=Is(None)))
+            min=Equals(5), max=Equals(20), name=Is(None),
+            context=MatchesAll(
+                IsInstance(twisted_module.ThreadWorkerContext),
+                AfterPreprocessing(
+                    attrgetter("contextFactory"),
+                    Is(twisted_module.NullContext)),
+                first_only=True,
+            )))
 
     def test__init_with_parameters(self):
         minthreads = randint(0, 100)
         maxthreads = randint(100, 200)
         pool = ThreadPool(
-            minthreads=minthreads, maxthreads=maxthreads,
-            name=sentinel.name, context=sentinel.context)
+            minthreads=minthreads, maxthreads=maxthreads, name=sentinel.name,
+            contextFactory=sentinel.contextFactory)
         self.assertThat(pool, MatchesStructure(
             min=Equals(minthreads), max=Equals(maxthreads),
-            name=Is(sentinel.name), context=Is(sentinel.context)))
+            name=Is(sentinel.name), context=MatchesAll(
+                IsInstance(twisted_module.ThreadWorkerContext),
+                AfterPreprocessing(
+                    attrgetter("contextFactory"),
+                    Is(sentinel.contextFactory)),
+                first_only=True,
+            )))
+
+    def test__context_entry_failures_are_propagated_to_tasks(self):
+        exception = factory.make_exception()
+
+        pool = ThreadPool(
+            contextFactory=partial(ContextBrokenOnEntry, exception),
+            minthreads=1, maxthreads=1)
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        d = deferToThreadPool(reactor, pool, lambda: None)
+        return assert_fails_with(d, type(exception))
+
+    @inlineCallbacks
+    def test__context_exit_failures_are_logged(self):
+        exception = factory.make_exception()
+
+        pool = ThreadPool(
+            contextFactory=partial(ContextBrokenOnExit, exception),
+            minthreads=1, maxthreads=1)
+        self.addCleanup(stop_pool_if_running, pool)
+        pool.start()
+
+        result = yield deferToThreadPool(reactor, pool, lambda: sentinel.foo)
+        self.assertThat(result, Is(sentinel.foo))
+
+        with TwistedLoggerFixture() as logger:
+            pool.stop()
+
+        self.assertThat(
+            logger.output, DocTestMatches("""\
+            Failure exiting worker context.
+            Traceback (most recent call last):
+            ...
+            maastesting.factory.TestException#...
+            """))
+
+
+def stop_pool_if_running(pool):
+    """Stop the given thread-pool if it's running."""
+    if pool.started:
+        pool.stop()
 
 
 class TestThreadPoolCommonBehaviour(MAASTestCase):
@@ -1376,7 +1463,7 @@ class TestThreadPoolCommonBehaviour(MAASTestCase):
             ct = threading.currentThread()
             threads.append(ct.ident)
 
-        pool = ThreadPool(minthreads=1, maxthreads=1, context=Context)
+        pool = ThreadPool(minthreads=1, maxthreads=1, contextFactory=Context)
 
         pool.start()
         try:

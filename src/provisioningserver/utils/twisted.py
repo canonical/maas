@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities related to the Twisted/Crochet execution environment."""
@@ -694,9 +694,9 @@ class ThreadUnpool:
 
     started = None
 
-    def __init__(self, lock, context=None):
+    def __init__(self, lock, contextFactory=None):
         super(ThreadUnpool, self).__init__()
-        self.context = context
+        self.contextFactory = contextFactory
         self.lock = lock
 
     def start(self):
@@ -755,17 +755,12 @@ class ThreadUnpool:
     def wrapFuncInContext(self, func):
         """Return a new function that will call `func` in context."""
         # If there's no context defined, return `func` unaltered.
-        if self.context is None:
+        if self.contextFactory is None:
             return func
-
-        # The context is prepared by calling it. Some context managers can be
-        # reused, but many -- like those defined using `contextmanager` -- can
-        # be used only once, so we expect `self.context` to actually be a
-        # context factory.
 
         @wraps(func)
         def ctxfunc(*args, **kwargs):
-            with self.context():
+            with self.contextFactory():
                 return func(*args, **kwargs)
 
         # For convenience, when introspecting for example, expose the original
@@ -778,21 +773,102 @@ class ThreadUnpool:
 class ThreadPool(threadpool.ThreadPool, object):
     """Thread-pool that wraps a context around each worker."""
 
-    def __init__(self, minthreads=5, maxthreads=20, name=None, context=None):
+    def __init__(
+            self, minthreads=5, maxthreads=20, name=None,
+            contextFactory=None):
         super(ThreadPool, self).__init__(minthreads, maxthreads, name)
-        self.context = context
+        self.context = ThreadWorkerContext(
+            NullContext if contextFactory is None else contextFactory)
 
-    def _worker(self):
-        ct = self.currentThread()
-        try:
-            # Make the context active throughout the worker's lifetime.
-            # XXX: What if self.context is None?
-            with self.context():
-                return super(ThreadPool, self)._worker()
-        finally:
-            # Belt-n-braces, in case the context blows up.
-            if ct in self.threads:
-                self.threads.remove(ct)
+    def threadFactory(self, target, name):
+        """Spawn a thread for use as a worker.
+
+        :param target: A no-argument callable; the worker function.
+        :param name: The name of the thread.
+        """
+        def worker(log, context, target):
+            ct = self.currentThread()
+            try:
+                try:
+                    return target()
+                finally:
+                    try:
+                        # The worker context is entered by the first task that
+                        # this worker runs (or a subsequent task if it fails);
+                        # callInThreadWithCallback > callInContext is where
+                        # that happens. This thread is not going to execute
+                        # any more tasks so we exit the context.
+                        context.exit()
+                    except:
+                        # There is no application code for this exception to
+                        # bubble up to, so just log it and move on.
+                        log.err(None, "Failure exiting worker context.")
+            finally:
+                # Belt-n-braces, in case the context blows up. This works
+                # around https://twistedmatrix.com/trac/ticket/8114 too.
+                if ct in self.threads:
+                    self.threads.remove(ct)
+
+        return super(ThreadPool, self).threadFactory(
+            name=name, target=worker, args=(log, self.context, target))
+
+    def callInThreadWithCallback(self, onResult, func, *args, **kwargs):
+        """See :class:`twisted.python.threadpool.ThreadPool`.
+
+        In addition, this will attempt to enter the context passed to this
+        pool's constructor before calling `func`. This is so that any
+        exceptions arising from entering the context will be passed back into
+        application code, rather than being logged (and ignored) and breaking
+        the pool (which assumes that creating a thread will always succeed).
+        """
+        def callInContext(context, func, *args, **kwargs):
+            context.enter()  # Delayed until now.
+            return func(*args, **kwargs)
+
+        return super(ThreadPool, self).callInThreadWithCallback(
+            onResult, callInContext, self.context, func, *args, **kwargs)
+
+
+class ThreadWorkerContext(threading.local):
+    """Helper to manage context in workers.
+
+    This is used by `ThreadPool` to enter and exit its configured context in
+    each worker. The context cannot be entered during worker start-up because
+    the super-class assumes that thread creation cannot fail. Instead, the
+    context, if not already entered, is entered before executing each task.
+
+    In this way, failures arising from entering the worker context are passed
+    up to application code where they can be handled, and transient failures
+    can be recovered from when the next task is executed.
+    """
+
+    def __init__(self, contextFactory):
+        super(ThreadWorkerContext, self).__init__()
+        self.contextFactory = contextFactory
+        self.context = None
+
+    def enter(self):
+        """Enter the context if we've not already done so."""
+        if self.context is None:
+            context = self.contextFactory()
+            context.__enter__()
+            self.context = context
+
+    def exit(self):
+        """Exit the context if we've successfully entered it."""
+        if self.context is not None:
+            context, self.context = self.context, None
+            context.__exit__(None, None, None)
+
+
+class NullContext:
+    """A context manager that does nothing."""
+
+    def __enter__(self):
+        """Do nothing."""
+
+    def __exit__(self, *exc_info):
+        """Do nothing."""
 
 
 class ThreadPoolLimiter:

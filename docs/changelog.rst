@@ -19,6 +19,8 @@ Bug Fix Update
 
 #1567213    devices results missing interface_set
 
+#1568051    ThreadPool context entry failure causes thread pool to break
+
 
 1.9.1
 =====
