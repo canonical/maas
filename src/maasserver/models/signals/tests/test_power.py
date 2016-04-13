@@ -102,8 +102,8 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test__traps_failure_for_UnknownPowerType(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
-        mock_node_objects_get = self.patch(Node.objects, "get")
-        mock_node_objects_get.side_effect = UnknownPowerType()
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = UnknownPowerType()
         power_state = yield power.update_power_state_of_node(node.system_id)
         self.assertIsNone(power_state)
 
@@ -111,8 +111,8 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test__traps_failure_for_PowerProblem(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
-        mock_node_objects_get = self.patch(Node.objects, "get")
-        mock_node_objects_get.side_effect = PowerProblem()
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = PowerProblem()
         power_state = yield power.update_power_state_of_node(node.system_id)
         self.assertIsNone(power_state)
 
@@ -120,8 +120,8 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test__logs_other_errors(self):
         node = yield deferToDatabase(transactional(factory.make_Node))
-        mock_node_objects_get = self.patch(Node.objects, "get")
-        mock_node_objects_get.side_effect = factory.make_exception('Error')
+        mock_power_query = self.patch(Node, "power_query")
+        mock_power_query.side_effect = factory.make_exception('Error')
         mock_log_err = self.patch(power.log, "err")
         yield power.update_power_state_of_node(node.system_id)
         self.assertThat(

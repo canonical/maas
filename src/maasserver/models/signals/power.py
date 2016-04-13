@@ -44,11 +44,13 @@ def update_power_state_of_node(system_id):
         enum, or `None` which denotes that the status could not be queried or
         updated for any of a number of reasons; check the log.
     """
+    def eb_error(failure):
+        failure.trap(
+            Node.DoesNotExist, UnknownPowerType, PowerProblem)
+
     d = deferToDatabase(transactional(Node.objects.get), system_id=system_id)
     d.addCallback(lambda node: node.power_query())
-    d.addErrback(
-        lambda failure: failure.trap(
-            (Node.DoesNotExist, UnknownPowerType, PowerProblem)))
+    d.addErrback(eb_error)
     d.addErrback(
         log.err,
         "Failed to update power state of machine after state transition.")

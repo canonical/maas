@@ -1844,7 +1844,9 @@ class Node(CleanSave, TimestampedModel):
             maaslog.warning("%s: Unrecognised power type.", self.hostname)
             return PowerInfo(False, False, False, None, None)
         else:
-            if power_type == 'manual':
+            if power_type == 'manual' or self.node_type in (
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER):
                 can_be_started = False
                 can_be_stopped = False
             else:

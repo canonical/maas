@@ -856,6 +856,17 @@ class TestNode(MAASServerTestCase):
             (False, False, False, "manual", {}),
             node.get_effective_power_info())
 
+    def test_get_effective_power_info_can_be_False_for_rack_controller(self):
+        for node_type in (NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                          NODE_TYPE.RACK_CONTROLLER):
+            node = factory.make_Node(node_type=node_type)
+            gepp = self.patch(node, "get_effective_power_parameters")
+            # For manual the power can never be turned off or on.
+            gepp.return_value = sentinel.power_parameters
+            self.assertEqual(
+                (False, False, True, node.power_type,
+                 sentinel.power_parameters), node.get_effective_power_info())
+
     def test_get_effective_power_info_cant_be_queried(self):
         all_power_types = {
             power_type_details['name']
