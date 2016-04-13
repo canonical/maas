@@ -293,9 +293,12 @@ class IPRangeStatistics(object):
             data["ranges"] = self.ranges.render_json()
         if include_suggestions:
             data["suggested_gateway"] = self.suggested_gateway
-            data["suggested_dynamic_range"] = (
-                self.suggested_dynamic_range.render_json()
-            )
+            suggested_dynamic_range = None
+            if self.suggested_dynamic_range is not None:
+                suggested_dynamic_range = (
+                    self.suggested_dynamic_range.render_json()
+                )
+            data["suggested_dynamic_range"] = suggested_dynamic_range
         return data
 
 

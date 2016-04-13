@@ -819,6 +819,15 @@ class TestIPRangeStatistics(MAASTestCase):
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Is(None))
 
+    def test__suggests_no_dynamic_range_if_dynamic_range_exists(self):
+        s = MAASIPSet([
+            MAASIPRange(start="10.0.0.2", end="10.0.0.99", purpose="dynamic")])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json(include_suggestions=True)
+        self.assertThat(stats.suggested_dynamic_range, Is(None))
+        self.assertThat(json["suggested_dynamic_range"], Is(None))
+
     def test__suggests_upper_one_fourth_range_for_dynamic_by_default(self):
         s = MAASIPSet([])
         u = s.get_full_range('10.0.0.0/24')
