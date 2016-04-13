@@ -190,6 +190,10 @@ MIDDLEWARE_CLASSES = (
     # Used for session and cookies.
     'django.contrib.sessions.middleware.SessionMiddleware',
 
+    # Used for to determine if a request requires protection against
+    # CSRF attacks.
+    'maasserver.middleware.CSRFHelperMiddleware',
+
     # Used for rendering API exceptions for maasserver Web API.
     'maasserver.middleware.APIErrorsMiddleware',
 

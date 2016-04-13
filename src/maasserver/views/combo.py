@@ -122,6 +122,7 @@ MERGE_VIEWS = {
     "maas-yui.js": {
         "content_type": "text/javascript; charset=UTF-8",
         "files": [
+            "js/io.js",
             "js/image.js",
             "js/image_views.js",
             "js/user_panel.js",

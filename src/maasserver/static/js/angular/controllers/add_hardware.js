@@ -5,10 +5,10 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$http', 'ClustersManager', 'ZonesManager',
+    '$scope', '$http', '$cookies', 'ClustersManager', 'ZonesManager',
     'NodesManager', 'GeneralManager', 'RegionConnection',
     'ManagerHelperService', 'ValidationService', function(
-        $scope, $http, ClustersManager, ZonesManager, NodesManager,
+        $scope, $http, $cookies, ClustersManager, ZonesManager, NodesManager,
         GeneralManager, RegionConnection, ManagerHelperService,
         ValidationService) {
 
@@ -538,7 +538,10 @@ angular.module('MAAS').controller('AddHardwareController', [
                     $scope.chassis.cluster.uuid +
                     '/?op=probe_and_enlist_hardware',
                 data: $.param(params),
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFTOKEN': $cookies.csrftoken
+                }
             }).then(function() {
                 $scope.chassis = newChassis();
                 if(!addAnother) {

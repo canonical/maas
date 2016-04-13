@@ -356,3 +356,24 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             response['Retry-After'] = (
                 RETRY_AFTER_SERVICE_UNAVAILABLE)
         return response
+
+
+class CSRFHelperMiddleware:
+    """A Middleware to decide whether a request needs to be protected against
+    CSRF attacks.
+
+    Requests with a session cookie (i.e. requests for which the basic
+    session-based Django authentification is used) will be CSRF protected.
+    Requests without this cookie are pure 0-legged API requests and thus don't
+    need to use the CSRF protection machinery because each request is signed.
+    """
+
+    def process_request(self, request):
+        session_cookie = request.COOKIES.get(
+            settings.SESSION_COOKIE_NAME, None)
+        if session_cookie is None:
+            # csrf_processing_done is a field used by Django.  We use it here
+            # to bypass the CSRF protection when it's not needed (i.e. when the
+            # request is OAuth-authenticated).
+            request.csrf_processing_done = True
+        return None

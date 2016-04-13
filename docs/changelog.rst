@@ -23,6 +23,8 @@ Bug Fix Update
 
 #1212205    get_file_by_name does not check owner
 
+#1298772    MAAS API vulnerable to CSRF attack
+
 
 1.9.1
 =====

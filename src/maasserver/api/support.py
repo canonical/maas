@@ -184,6 +184,12 @@ class OperationsHandlerMixin:
     This must be used in cooperation with :class:`OperationsResource` and
     :class:`OperationsHandlerType`.
     """
+    # CSRF protection is on by default.  Only pure 0-legged oauth API requests
+    # don't go through the CSRF machinery (see
+    # middleware.CSRFHelperMiddleware).
+    # This is a field used by piston to decide whether or not CSRF protection
+    # should be performed.
+    csrf_exempt = False
 
     # Populated by OperationsHandlerType.
     exports = None

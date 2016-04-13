@@ -150,17 +150,19 @@ class Messages:
 
 class Factory(maastesting.factory.Factory):
 
-    def make_fake_request(self, path, method="GET"):
+    def make_fake_request(self, path, method="GET", cookies={}):
         """Create a fake request.
 
         :param path: The path to which to make the request.
         :param method: The method to use for the request
             ('GET' or 'POST').
+        :param cookies: A `dict` with the cookies for the request.
         """
         rf = RequestFactory()
         request = rf.get(path)
         request.method = method
         request._messages = Messages()
+        request.COOKIES = cookies.copy()
         return request
 
     def make_file_upload(self, name=None, content=None):

@@ -10,12 +10,13 @@ describe("AddHardwareController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $timeout, $http, $q;
+    var $controller, $rootScope, $timeout, $http, $cookies, $q;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
         $timeout = $injector.get("$timeout");
         $http = $injector.get("$http");
+        $cookies = $injector.get("$cookies");
         $q = $injector.get("$q");
     }));
 
@@ -68,7 +69,7 @@ describe("AddHardwareController", function() {
             $scope: $scope,
             $timeout: $timeout,
             $http: $http,
-            ClustersManager: ClustersManager,
+            $cookies: $cookies,
             ZonesManager: ZonesManager,
             NodesManager: NodesManager,
             GeneralManager: GeneralManager,
@@ -758,6 +759,7 @@ describe("AddHardwareController", function() {
         });
 
         it("calls $http with correct parameters", function() {
+            $cookies.csrftoken = makeName("csrf");
             $scope.saveChassis(false);
 
             var parameters = $scope.chassis.power.parameters;
@@ -767,7 +769,10 @@ describe("AddHardwareController", function() {
                 url: 'api/1.0/nodegroups/' + $scope.chassis.cluster.uuid +
                     '/?op=probe_and_enlist_hardware',
                 data: $.param(parameters),
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFTOKEN': $cookies.csrftoken
+                }
             });
         });
 
