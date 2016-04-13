@@ -23,6 +23,8 @@ LP: #1564657    [2.0a4] Bridges no longer discovered by the rack controller
 
 LP: #1568051    ThreadPool context entry failure causes thread pool to break
 
+LP: #1562198    [2.0a4] When providng DHCP a smarter default dynamic range is needed
+
 
 2.0.0 (beta1)
 =============
