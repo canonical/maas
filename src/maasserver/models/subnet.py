@@ -414,10 +414,10 @@ class Subnet(CleanSave, TimestampedModel):
         """
         ranges = set()
         network = self.get_ipnetwork()
-        if network.version == 6 and network.prefixlen == 64:
+        if network.version == 6:
             # For most IPv6 networks, automatically reserve the range:
-            #     ::0 - ::ffff:ffff
-            # We expect the administrator will be using ::0 through ::ffff.
+            #     ::1 - ::ffff:ffff
+            # We expect the administrator will be using ::1 through ::ffff.
             # We plan to reserve ::1:0 through ::ffff:ffff for use by MAAS,
             # so that we can allocate addresses in the form:
             #     ::<node>:<child>
@@ -425,8 +425,16 @@ class Subnet(CleanSave, TimestampedModel):
             # *outside* both ranges, so that they won't conflict with addresses
             # reserved from this scheme in the future.
             first = str(IPAddress(network.first))
+            first_plus_one = str(IPAddress(network.first + 1))
             second = str(IPAddress(network.first + 0xFFFFFFFF))
-            ranges |= {make_iprange(first, second, purpose="reserved")}
+            if network.prefixlen == 64:
+                ranges |= {make_iprange(
+                    first_plus_one, second, purpose="reserved")}
+            # Reserve the subnet router anycast address, except for /127 and
+            # /128 networks. (See RFC 6164, and RFC 4291 section 2.6.1.)
+            if network.prefixlen < 127:
+                ranges |= {make_iprange(
+                    first, first, purpose="rfc-4291-2.6.1")}
         ipnetwork = self.get_ipnetwork()
         if not ranges_only:
             assigned_ip_addresses = self.get_staticipaddresses_in_use()

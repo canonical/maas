@@ -185,6 +185,8 @@ class SubnetHandler(OperationsHandler):
         Optional arguments:
         include_ranges: if True, includes detailed information
         about the usage of this range.
+        include_suggestions: if True, includes the suggested gateway and
+        dynamic range for this subnet, if it were to be configured.
 
         Returns 404 if the subnet is not found.
         """
@@ -192,9 +194,14 @@ class SubnetHandler(OperationsHandler):
             subnet_id, request.user, NODE_PERMISSION.VIEW)
         include_ranges = get_optional_param(
             request.GET, 'include_ranges', default=False, validator=StringBool)
+        include_suggestions = get_optional_param(
+            request.GET, 'include_suggestions', default=False,
+            validator=StringBool)
         full_iprange = subnet.get_iprange_usage()
         statistics = IPRangeStatistics(full_iprange)
-        return statistics.render_json(include_ranges=include_ranges)
+        return statistics.render_json(
+            include_ranges=include_ranges,
+            include_suggestions=include_suggestions)
 
     @operation(idempotent=True)
     def ip_addresses(self, request, subnet_id):

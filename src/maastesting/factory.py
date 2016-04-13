@@ -273,10 +273,12 @@ class Factory:
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv6_address)
 
-    def make_ip4_or_6_network(self, host_bits=None):
+    def make_ip4_or_6_network(self, version=None, host_bits=None):
         """Generate a random IPv4 or IPv6 network."""
         slash = None
-        if random.randint(0, 1) == 0:
+        if version is None:
+            version = random.choice([4, 6])
+        if version == 4:
             if host_bits is not None:
                 slash = 32 - host_bits
             return self.make_ipv4_network(slash=slash)

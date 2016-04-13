@@ -51,6 +51,7 @@ from provisioningserver.utils.shell import call_and_check
 from testtools.matchers import (
     Contains,
     Equals,
+    HasLength,
     Is,
     MatchesDict,
     MatchesSetwise,
@@ -787,6 +788,130 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['usage_string'], Equals("0%"))
         self.assertThat(json['available_string'], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
+
+    def test__suggests_subnet_anycast_address_for_ipv6(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/64')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+
+    def test__suggests_first_ip_as_default_gateway_if_available(self):
+        s = MAASIPSet(['10.0.0.2', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
+
+    def test__suggests_last_ip_as_default_gateway_if_needed(self):
+        s = MAASIPSet(['10.0.0.1', '10.0.0.4', '10.0.0.6', '10.0.0.8'])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.254"))
+
+    def test__suggests_first_available_ip_as_default_gateway_if_needed(self):
+        s = MAASIPSet(['10.0.0.1', '10.0.0.4', '10.0.0.6', '10.0.0.254'])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.2"))
+
+    def test__suggests_no_gateway_if_range_full(self):
+        s = MAASIPSet(['10.0.0.1'])
+        u = s.get_full_range('10.0.0.1/32')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Is(None))
+
+    def test__suggests_upper_one_fourth_range_for_dynamic_by_default(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
+        self.assertThat(stats.suggested_dynamic_range, HasLength(64))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.191"))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.254"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.255")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.190")))
+
+    def test__suggests_half_available_if_available_less_than_one_fourth(self):
+        s = MAASIPSet([MAASIPRange("10.0.0.2", "10.0.0.205")])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
+        self.assertThat(stats.num_available, Equals(50))
+        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.230"))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.254"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.255")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.229")))
+
+    def test__suggested_range_excludes_suggested_gateway(self):
+        s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.204")])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.254"))
+        self.assertThat(stats.num_available, Equals(50))
+        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.229"))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.253"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.255")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.228")))
+
+    def test__suggested_range_excludes_suggested_gateway_when_gw_first(self):
+        s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.203"), "10.0.0.254"])
+        u = s.get_full_range('10.0.0.0/24')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("10.0.0.204"))
+        self.assertThat(stats.num_available, Equals(50))
+        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.229"))
+        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.253"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.255")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("10.0.0.228")))
+
+    def test__suggests_upper_one_fourth_range_for_ipv6(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::/64')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+        self.assertThat(
+            stats.suggested_dynamic_range, HasLength((2 ** 64) >> 2))
+        self.assertThat(
+            stats.suggested_dynamic_range, Contains(
+                "2001:db8:0:0:c000::"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Contains(
+                "2001:db8::ffff:ffff:ffff:ffff"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("2001:db8::1")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains(
+                "2001:db8::bfff:ffff:ffff:ffff")))
+
+    def test__suggests_half_available_for_ipv6(self):
+        s = MAASIPSet([MAASIPRange(
+            "2001:db8::1", "2001:db8::ffff:ffff:ffff:ff00")])
+        u = s.get_full_range('2001:db8::/64')
+        stats = IPRangeStatistics(u)
+        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+        self.assertThat(stats.num_available, Equals(255))
+        self.assertThat(stats.suggested_dynamic_range, HasLength(127))
+        self.assertThat(
+            stats.suggested_dynamic_range, Contains(
+                "2001:db8::ffff:ffff:ffff:ff81"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Contains(
+                "2001:db8::ffff:ffff:ffff:ffff"))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains("2001:db8::1")))
+        self.assertThat(
+            stats.suggested_dynamic_range, Not(Contains(
+                "2001:db8::ffff:ffff:ffff:ff80")))
 
 
 class TestParseInteger(MAASTestCase):

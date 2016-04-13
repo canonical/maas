@@ -33,7 +33,8 @@ class TestSubnetHandler(MAASServerTestCase):
         }
         full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)
-        data['statistics'] = metadata.render_json(include_ranges=True)
+        data['statistics'] = metadata.render_json(
+            include_ranges=True, include_suggestions=True)
         data['version'] = IPNetwork(subnet.cidr).version
         if not for_list:
             data["ip_addresses"] = subnet.render_json_for_related_ips(

@@ -743,7 +743,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_Subnet(self, name=None, vlan=None, space=None, cidr=None,
                     gateway_ip=None, dns_servers=None, host_bits=None,
-                    fabric=None, vid=None, dhcp_on=False,
+                    fabric=None, vid=None, dhcp_on=False, version=None,
                     rdns_mode=RDNS_MODE.DEFAULT, allow_proxy=True):
         if name is None:
             name = factory.make_name('name')
@@ -753,7 +753,8 @@ class Factory(maastesting.factory.Factory):
             space = factory.make_Space()
         network = None
         if cidr is None:
-            network = factory.make_ip4_or_6_network(host_bits=host_bits)
+            network = factory.make_ip4_or_6_network(
+                version=version, host_bits=host_bits)
             cidr = str(network.cidr)
         if gateway_ip is None:
             network = IPNetwork(cidr) if network is None else network

@@ -78,7 +78,7 @@
                                                name="start-ip"
                                                size="39"
                                                class="three-col"
-                                               placeholder="192.168.0.1"
+                                               data-ng-placeholder="vlanDetails.provideDHCPAction.startPlaceholder"
                                                data-ng-model="vlanDetails.provideDHCPAction.startIP"
                                                data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
                                                data-ng-change="vlanDetails.updateStartIP()">
@@ -89,7 +89,7 @@
                                                name="end-ip"
                                                size="39"
                                                class="three-col"
-                                               placeholder="192.168.0.10"
+                                               data-ng-placeholder="vlanDetails.provideDHCPAction.endPlaceholder"
                                                data-ng-model="vlanDetails.provideDHCPAction.endIP"
                                                data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
                                                data-ng-change="vlanDetails.updateEndIP()">
@@ -101,7 +101,7 @@
                                                name="gateway-ip"
                                                size="39"
                                                class="three-col"
-                                               placeholder="0.0.0.0"
+                                               data-ng-placeholder="vlanDetails.provideDHCPAction.gatewayPlaceholder"
                                                data-ng-model="vlanDetails.provideDHCPAction.gatewayIP"
                                                data-ng-disabled="!vlanDetails.provideDHCPAction.subnet"
                                                data-ng-change="vlanDetails.updatendIP()">

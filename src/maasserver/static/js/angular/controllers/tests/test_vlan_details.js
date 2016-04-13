@@ -451,8 +451,14 @@ describe("VLANDetailsController", function() {
     });
 
 
-    it("prepares provideDHCPAction on actionOptionChanged", function() {
+    it("prepares provideDHCPAction on actionOptionChanged " +
+        "and populates suggested gateway", function() {
         var controller = makeControllerResolveSetActiveItem();
+        controller.subnets[0].gateway_ip = null;
+        controller.subnets[0].statistics = {
+            suggested_gateway: "192.168.0.1"
+        };
+        controller.updateSubnet();
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
@@ -460,31 +466,46 @@ describe("VLANDetailsController", function() {
             primaryRack: "p1",
             secondaryRack: "p2",
             maxIPs: 0,
-            startIP: '',
-            endIP: '',
-            gatewayIP: '',
-            needsGatewayIP: false,
+            startIP: "",
+            startPlaceholder: "(no available IPs)",
+            endIP: "",
+            endPlaceholder: "(no available IPs)",
+            gatewayIP: '192.168.0.1',
+            gatewayPlaceholder: '192.168.0.1',
+            needsGatewayIP: true,
             subnetMissingGatewayIP: true,
-            needsDynamicRange: true
+            needsDynamicRange: false
         });
     });
 
-    it("provideDHCPAction skips dynamic range if already present", function() {
+    it("provideDHCPAction uses suggested dynamic range", function() {
         var controller = makeControllerResolveSetActiveItem();
-        controller.subnets[0].statistics.ranges = [{purpose: ["dynamic"]}];
+        controller.subnets[0].statistics = {
+            num_addresses: 26,
+            suggested_dynamic_range: {
+                num_addresses: 26,
+                start: "192.168.0.200",
+                end: "192.168.0.225"
+            },
+            first_address: "192.168.0.1"
+        };
+        controller.updateSubnet();
         controller.actionOption = controller.PROVIDE_DHCP_ACTION;
         controller.actionOptionChanged();
         expect(controller.provideDHCPAction).toEqual({
             subnet: subnet.id,
             primaryRack: "p1",
             secondaryRack: "p2",
-            maxIPs: 0,
-            startIP: null,
-            endIP: null,
+            maxIPs: 26,
+            startIP: "192.168.0.200",
+            endIP: "192.168.0.225",
+            startPlaceholder: "192.168.0.200",
+            endPlaceholder: "192.168.0.225",
             gatewayIP: '',
+            gatewayPlaceholder: '',
             needsGatewayIP: false,
             subnetMissingGatewayIP: true,
-            needsDynamicRange: false
+            needsDynamicRange: true
         });
     });
 
@@ -494,32 +515,12 @@ describe("VLANDetailsController", function() {
         controller.actionOptionChanged();
         controller.provideDHCPAction.primaryRack = "p2";
         controller.updatePrimaryRack();
-        expect(controller.provideDHCPAction).toEqual({
-            subnet: subnet.id,
-            primaryRack: "p2",
-            secondaryRack: null,
-            maxIPs: 0,
-            startIP: '',
-            endIP: '',
-            gatewayIP: '',
-            needsGatewayIP: false,
-            subnetMissingGatewayIP: true,
-            needsDynamicRange: true
-        });
+        expect(controller.provideDHCPAction.primaryRack).toEqual("p2");
+        expect(controller.provideDHCPAction.secondaryRack).toBe(null);
         controller.provideDHCPAction.secondaryRack = "p2";
         controller.updateSecondaryRack();
-        expect(controller.provideDHCPAction).toEqual({
-            subnet: subnet.id,
-            primaryRack: null,
-            secondaryRack: null,
-            maxIPs: 0,
-            startIP: '',
-            endIP: '',
-            gatewayIP: '',
-            needsGatewayIP: false,
-            subnetMissingGatewayIP: true,
-            needsDynamicRange: true
-        });
+        expect(controller.provideDHCPAction.primaryRack).toBe(null);
+        expect(controller.provideDHCPAction.secondaryRack).toBe(null);
     });
 
     describe("filterPrimaryRack", function() {

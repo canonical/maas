@@ -102,8 +102,11 @@ angular.module('MAAS').controller('VLANDetailsController', [
                 for (i = 0; i < vm.relatedSubnets.length; i++) {
                     subnet = vm.relatedSubnets[i].subnet;
                     // If any related subnet already has a dynamic range, we
-                    // cannot prompt the user to enter one here.
-                    if (SubnetsManager.hasDynamicRange(subnet)) {
+                    // cannot prompt the user to enter one here. If a
+                    // suggestion does not exist, a range does not exist
+                    // already.
+                    var iprange = subnet.statistics.suggested_dynamic_range;
+                    if (!angular.isObject(iprange)) {
                         // If there is already a dynamic range on one of the
                         // subnets, it's the "subnet of least surprise" if
                         // the user is choosing to reconfigure their rack
@@ -186,20 +189,36 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.updateSubnet = function() {
             var dhcp = vm.provideDHCPAction;
             var subnet = SubnetsManager.getItemFromList(dhcp.subnet);
-            if(angular.isObject(subnet) && dhcp.needsDynamicRange === true) {
-                var iprange = SubnetsManager.getLargestRange(subnet);
-                if(iprange.num_addresses > 0) {
+            if(angular.isObject(subnet)) {
+                var suggested_gateway = null;
+                var iprange = null;
+                if(angular.isObject(subnet.statistics)) {
+                    suggested_gateway = subnet.statistics.suggested_gateway;
+                    iprange = subnet.statistics.suggested_dynamic_range;
+                }
+                if(angular.isObject(iprange) && iprange.num_addresses > 0) {
                     dhcp.maxIPs = iprange.num_addresses;
                     dhcp.startIP = iprange.start;
                     dhcp.endIP = iprange.end;
-                    dhcp.gatewayIP = iprange.start;
+                    dhcp.startPlaceholder = iprange.start;
+                    dhcp.endPlaceholder = iprange.end;
                 } else {
                     // Need to add a dynamic range, but according to our data,
                     // there is no room on the subnet for a dynamic range.
                     dhcp.maxIPs = 0;
                     dhcp.startIP = "";
                     dhcp.endIP = "";
+                    dhcp.startPlaceholder = "(no available IPs)";
+                    dhcp.endPlaceholder = "(no available IPs)";
+                }
+                if(angular.isString(suggested_gateway)) {
+                    dhcp.gatewayIP = suggested_gateway;
+                    dhcp.gatewayPlaceholder = suggested_gateway;
+                } else {
+                    // This means the subnet already has a gateway, so don't
+                    // bother populating it.
                     dhcp.gatewayIP = "";
+                    dhcp.gatewayPlaceholder = "";
                 }
             } else {
                 // Don't need to add a dynamic range, so ensure these fields

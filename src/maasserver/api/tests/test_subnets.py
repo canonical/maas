@@ -29,8 +29,10 @@ from provisioningserver.utils.network import (
     IPRangeStatistics,
 )
 from testtools.matchers import (
+    Contains,
     ContainsDict,
     Equals,
+    HasLength,
 )
 
 
@@ -323,8 +325,8 @@ class TestSubnetAPIAuth(MAASServerTestCase):
 
 class TestSubnetReservedIPRangesAPI(APITestCase):
 
-    def test__returns_empty_list_for_empty_subnet(self):
-        subnet = factory.make_Subnet(dns_servers=[], gateway_ip='')
+    def test__returns_empty_list_for_empty_ipv4_subnet(self):
+        subnet = factory.make_Subnet(version=4, dns_servers=[], gateway_ip='')
         response = self.client.get(
             get_subnet_uri(subnet),
             {'op': 'reserved_ip_ranges'})
@@ -333,6 +335,19 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
             explain_unexpected_response(http.client.OK, response))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(result, Equals([]))
+
+    def test__returns_reserved_anycast_for_empty_ipv6_subnet(self):
+        subnet = factory.make_Subnet(version=6, dns_servers=[], gateway_ip='')
+        response = self.client.get(
+            get_subnet_uri(subnet),
+            {'op': 'reserved_ip_ranges'})
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(result, HasLength(1))
+        self.assertThat(result[0]["num_addresses"], Equals(1))
+        self.assertThat(result[0]["purpose"], Contains("rfc-4291-2.6.1"))
 
     def test__accounts_for_reserved_ip_address(self):
         subnet = factory.make_Subnet(dns_servers=[], gateway_ip='')
@@ -346,13 +361,13 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
             http.client.OK, response.status_code,
             explain_unexpected_response(http.client.OK, response))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(result, Equals([
+        self.assertThat(result, Contains(
             {
                 "start": ip,
                 "end": ip,
                 "purpose": ["assigned-ip"],
                 "num_addresses": 1,
-            }]))
+            }))
 
 
 class TestSubnetUnreservedIPRangesAPI(APITestCase):
