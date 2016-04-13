@@ -25,6 +25,8 @@ Bug Fix Update
 
 #1298772    MAAS API vulnerable to CSRF attack
 
+#1379826    uuid.uuid1() is not suitable as an unguessable identifier/token
+
 
 1.9.1
 =====

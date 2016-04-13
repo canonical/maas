@@ -17,7 +17,7 @@ __all__ = [
     ]
 
 
-from uuid import uuid1
+from uuid import uuid4
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
@@ -70,7 +70,8 @@ class FileStorageManager(Manager):
 
 
 def generate_filestorage_key():
-    return '%s' % uuid1()
+    # Use true random UUID as this is used as an unguessable key.
+    return '%s' % uuid4()
 
 
 class FileStorage(CleanSave, Model):
