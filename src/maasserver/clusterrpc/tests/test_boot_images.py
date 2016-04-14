@@ -17,7 +17,6 @@ from maasserver.clusterrpc.boot_images import (
     get_boot_images_for,
     get_common_available_boot_images,
     is_import_boot_images_running,
-    is_import_boot_images_running_for,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import BOOT_RESOURCE_TYPE
@@ -52,10 +51,7 @@ from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
 )
-from provisioningserver.rpc import (
-    boot_images,
-    clusterservice,
-)
+from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.cluster import (
     ImportBootImages,
     ListBootImages,
@@ -149,26 +145,6 @@ class TestIsImportBootImagesRunning(MAASServerTestCase):
                 callRemote.side_effect = ZeroDivisionError()
 
         self.assertTrue(is_import_boot_images_running())
-
-
-class TestIsImportBootImagesRunningFor(MAASServerTestCase):
-    """Tests for `is_import_boot_images_running_for`."""
-
-    def test_returns_True(self):
-        mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running")
-        mock_is_running.return_value = True
-        rack_controller = factory.make_RackController()
-        self.useFixture(RunningClusterRPCFixture())
-        self.assertTrue(is_import_boot_images_running_for(rack_controller))
-
-    def test_returns_False(self):
-        mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running")
-        mock_is_running.return_value = False
-        rack_controller = factory.make_RackController()
-        self.useFixture(RunningClusterRPCFixture())
-        self.assertFalse(is_import_boot_images_running_for(rack_controller))
 
 
 def prepare_tftp_root(test):

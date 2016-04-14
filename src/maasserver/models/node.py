@@ -24,6 +24,7 @@ import re
 import socket
 from urllib.parse import urlparse
 
+from crochet import TimeoutError
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -87,6 +88,7 @@ from maasserver.fields import (
     MAC,
 )
 from maasserver.models.bmc import BMC
+from maasserver.models.bootresource import BootResource
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.domain import Domain
@@ -159,6 +161,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.cluster import (
     AddChassis,
+    IsImportBootImagesRunning,
     RefreshRackControllerInfo,
 )
 from provisioningserver.rpc.exceptions import (
@@ -3620,7 +3623,17 @@ class RackController(Node):
         try:
             # Combine all boot images one per name and arch
             downloaded_boot_images = defaultdict(set)
-            for image in get_boot_images(self):
+            boot_images = get_boot_images(self)
+            # Determine the status of the boot images
+            if not BootResource.objects.boot_images_are_in_sync(boot_images):
+                if self.is_import_boot_images_running():
+                    status = "Syncing"
+                else:
+                    status = "Out of sync"
+            else:
+                status = "Synced"
+
+            for image in boot_images:
                 if image['osystem'] == 'custom':
                     name = image['release']
                 else:
@@ -3637,9 +3650,23 @@ class RackController(Node):
                 'architecture': arch,
                 'subarches': sorted(subarches),
             } for (name, arch), subarches in downloaded_boot_images.items()]
-            return {'images': images, 'connected': True}
-        except NoConnectionsAvailable:
-            return {'images': [], 'connected': False}
+
+            return {'images': images, 'connected': True, 'status': status}
+        except (NoConnectionsAvailable, TimeoutError):
+            return {'images': [], 'connected': False, 'status': 'Unknown'}
+
+    def is_import_boot_images_running(self):
+        """Return whether the boot images are running
+
+        :raises NoConnectionsAvailable: When no connections to the rack
+            controller are available for use.
+        :raises crochet.TimeoutError: If a response has not been received
+            within 30 seconds.
+        """
+        client = getClientFor(self.system_id, timeout=1)
+        call = client(IsImportBootImagesRunning)
+        response = call.wait(30)
+        return response['running']
 
 
 class RegionController(Node):

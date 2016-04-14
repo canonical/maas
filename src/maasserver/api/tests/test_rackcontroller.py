@@ -78,7 +78,8 @@ class TestRackControllerAPI(APITestCase):
             http.client.OK, response.status_code,
             explain_unexpected_response(http.client.OK, response))
         self.assertItemsEqual(
-            ['connected', 'images'], json_load_bytes(response.content))
+            ['connected', 'images', 'status'],
+            json_load_bytes(response.content))
 
 
 class TestRackControllersAPI(APITestCase):

@@ -10,7 +10,6 @@ __all__ = [
     "get_boot_images_for",
     "get_common_available_boot_images",
     "is_import_boot_images_running",
-    "is_import_boot_images_running_for",
 ]
 
 from collections import Sequence
@@ -78,22 +77,6 @@ def is_import_boot_images_running():
     for response in suppress_failures(responses):
         running = running or response["running"]
     return running
-
-
-@synchronous
-def is_import_boot_images_running_for(rack_controller):
-    """Return True if the rack_controller is currently import boot images.
-
-    :param rack_controller: The RackController.
-
-    :raises NoConnectionsAvailable: When no connections to the rack controller
-        are available for use.
-    :raises crochet.TimeoutError: If a response has not been received within
-        30 seconds.
-    """
-    client = getClientFor(rack_controller.system_id, timeout=1)
-    call = client(IsImportBootImagesRunning)
-    return call.wait(30).get("running")
 
 
 @synchronous
