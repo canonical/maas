@@ -12,23 +12,123 @@ from socket import gethostname
 from textwrap import dedent
 
 from maasserver.enum import (
+    ALLOCATED_NODE_STATUSES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_TYPE,
 )
 from maasserver.models import (
+    Domain,
     Fabric,
     Node,
     VersionedTextFile,
 )
+from maasserver.storage_layouts import STORAGE_LAYOUTS
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import (
     get_one,
     transactional,
 )
-import petname
+from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.ipaddr import get_mac_addresses
+
+
+class RandomInterfaceFactory:
+
+    @classmethod
+    def create_random(cls, node):
+        """Create a random interface configuration for `node`."""
+        creator = random.choice([
+            cls._create_basic,
+            cls._create_bond,
+            cls._create_vlan,
+            cls._create_bond_vlan,
+        ])
+        creator(node)
+
+    @classmethod
+    def _create_basic(cls, node, fabric=None, assign_ips=True):
+        """Create 3 physical interfaces on `node`."""
+        interfaces = []
+        for _ in range(3):
+            if fabric is None:
+                fabric = random.choice(list(Fabric.objects.all()))
+            vlan = fabric.get_default_vlan()
+            interface = factory.make_Interface(
+                INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan)
+            interfaces.append(interface)
+            if assign_ips:
+                cls.assign_ip(interface)
+        return interfaces
+
+    @classmethod
+    def _create_bond(cls, node):
+        """Create a bond interface from the 3 created physical interfaces."""
+        fabric = random.choice(list(Fabric.objects.all()))
+        vlan = fabric.get_default_vlan()
+        parents = cls._create_basic(node, fabric=fabric, assign_ips=False)
+        bond = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, vlan=vlan, parents=parents)
+        cls.assign_ip(bond)
+        return bond
+
+    @classmethod
+    def _create_vlan(cls, node, parents=None):
+        """Create a VLAN interface one for each of the 3 created physical
+        interfaces."""
+        interfaces = []
+        if parents is None:
+            parents = cls._create_basic(node)
+        for parent in parents:
+            tagged_vlans = list(
+                parent.vlan.fabric.vlan_set.exclude(id=parent.vlan.id))
+            if len(tagged_vlans) > 0:
+                vlan = random.choice(tagged_vlans)
+            else:
+                vlan = factory.make_VLAN(fabric=parent.vlan.fabric)
+            vlan_interface = factory.make_Interface(
+                INTERFACE_TYPE.VLAN, node=node, vlan=vlan, parents=[parent])
+            interfaces.append(vlan_interface)
+            cls.assign_ip(vlan_interface)
+        return interfaces
+
+    @classmethod
+    def _create_bond_vlan(cls, node):
+        """Create a bond interface with a VLAN interface on that bond."""
+        bond = cls._create_bond(node)
+        cls._create_vlan(node, parents=[bond])
+
+    @classmethod
+    def assign_ip(cls, interface, alloc_type=None):
+        """Assign an IP address to the interface.
+        """
+        subnets = list(interface.vlan.subnet_set.all())
+        if len(subnets) > 0:
+            subnet = random.choice(subnets)
+            if alloc_type is None:
+                alloc_type = random.choice(
+                    [IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.AUTO])
+            if (alloc_type == IPADDRESS_TYPE.AUTO and
+                    interface.node.status not in [
+                        NODE_STATUS.DEPLOYING,
+                        NODE_STATUS.DEPLOYED,
+                        NODE_STATUS.FAILED_DEPLOYMENT,
+                        NODE_STATUS.RELEASING]):
+                assign_ip = ""
+            else:
+                # IPv6 use pick_ip_in_network as pick_ip_in_Subnet takes
+                # forever with the IPv6 network.
+                network = subnet.get_ipnetwork()
+                if network.version == 6:
+                    assign_ip = factory.pick_ip_in_network(network)
+                else:
+                    assign_ip = factory.pick_ip_in_Subnet(subnet)
+            factory.make_StaticIPAddress(
+                alloc_type=alloc_type,
+                subnet=subnet,
+                ip=assign_ip,
+                interface=interface)
 
 
 @transactional
@@ -69,6 +169,13 @@ def populate(seed="sampledata"):
         factory.make_Zone(name="zone-south"),
     ]
 
+    # DNS domains.
+    domains = [
+        Domain.objects.get_default_domain(),
+        factory.make_Domain("sample"),
+        factory.make_Domain("ubnt"),
+    ]
+
     # Create the fabrics that will be used by the regions, racks,
     # machines, and devices.
     fabric0 = Fabric.objects.get_default_fabric()
@@ -77,9 +184,9 @@ def populate(seed="sampledata"):
     fabric1 = factory.make_Fabric()
     fabric1_untagged = fabric1.get_default_vlan()
     fabric1_vlan42 = factory.make_VLAN(fabric=fabric1, vid=42)
-    fabrics = [fabric0, fabric1]
     empty_fabric = factory.make_Fabric()  # noqa
 
+    # Create some spaces.
     space_mgmt = factory.make_Space("management")
     space_storage = factory.make_Space("storage")
     space_internal = factory.make_Space("internal")
@@ -87,23 +194,22 @@ def populate(seed="sampledata"):
 
     # Subnets used by regions, racks, machines, and devices.
     subnet_1 = factory.make_Subnet(
-        cidr="192.168.1.0/24", gateway_ip="192.168.1.1",
+        cidr="172.16.1.0/24", gateway_ip="172.16.1.1",
         vlan=fabric0_untagged, space=space_mgmt)
     subnet_2 = factory.make_Subnet(
-        cidr="192.168.2.0/24", gateway_ip="192.168.2.1",
+        cidr="172.16.2.0/24", gateway_ip="172.16.2.1",
         vlan=fabric1_untagged, space=space_mgmt)
     subnet_3 = factory.make_Subnet(
-        cidr="192.168.3.0/24", gateway_ip="192.168.3.1",
+        cidr="172.16.3.0/24", gateway_ip="172.16.3.1",
         vlan=fabric0_vlan10, space=space_storage)
     subnet_4 = factory.make_Subnet(  # noqa
-        cidr="192.168.4.0/24", gateway_ip="192.168.4.1",
+        cidr="172.16.4.0/24", gateway_ip="172.16.4.1",
         vlan=fabric0_vlan10, space=space_internal)
     subnet_2001_db8_42 = factory.make_Subnet(  # noqa
         cidr="2001:db8:42::/64", gateway_ip="",
         vlan=fabric1_vlan42, space=space_ipv6_testbed)
 
     hostname = gethostname()
-
     region_rack = get_one(Node.objects.filter(
         node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER, hostname=hostname))
     # If "make run" executes before "make sampledata", the rack may have
@@ -127,10 +233,9 @@ def populate(seed="sampledata"):
         # Region and rack controller (hostname of dev machine)
         #   eth0     - fabric 0 - untagged
         #   eth1     - fabric 0 - untagged
-        #   eth2     - fabric 1 - untagged - 192.168.2.2/24 - static
-        #   bond0    - fabric 0 - untagged - 192.168.1.2/24 - static
-        #   bond0.10 - fabric 0 - 10       - 192.168.3.2/24 - static
-
+        #   eth2     - fabric 1 - untagged - 172.16.2.2/24 - static
+        #   bond0    - fabric 0 - untagged - 172.16.1.2/24 - static
+        #   bond0.10 - fabric 0 - 10       - 172.16.3.2/24 - static
         eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0",
             node=region_rack, vlan=fabric0_untagged,
@@ -151,21 +256,21 @@ def populate(seed="sampledata"):
             INTERFACE_TYPE.VLAN, node=region_rack,
             vlan=fabric0_vlan10, parents=[bond0])
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.1.2",
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.1.2",
             subnet=subnet_1, interface=bond0)
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.2.2",
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.2.2",
             subnet=subnet_2, interface=eth2)
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.3.2",
+            alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.2",
             subnet=subnet_3, interface=bond0_10)
 
     # Rack controller (happy-rack)
     #   eth0     - fabric 0 - untagged
     #   eth1     - fabric 0 - untagged
-    #   eth2     - fabric 1 - untagged - 192.168.2.3/24 - static
-    #   bond0    - fabric 0 - untagged - 192.168.1.3/24 - static
-    #   bond0.10 - fabric 0 - 10       - 192.168.3.3/24 - static
+    #   eth2     - fabric 1 - untagged - 172.16.2.3/24 - static
+    #   bond0    - fabric 0 - untagged - 172.16.1.3/24 - static
+    #   bond0.10 - fabric 0 - 10       - 172.16.3.3/24 - static
     rack = factory.make_Node(
         node_type=NODE_TYPE.RACK_CONTROLLER,
         hostname="happy-rack", interface=False)
@@ -185,43 +290,90 @@ def populate(seed="sampledata"):
         INTERFACE_TYPE.VLAN, node=rack,
         vlan=fabric0_vlan10, parents=[bond0])
     factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.1.3",
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.1.3",
         subnet=subnet_1, interface=bond0)
     factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.2.3",
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.2.3",
         subnet=subnet_2, interface=eth2)
     factory.make_StaticIPAddress(
-        alloc_type=IPADDRESS_TYPE.STICKY, ip="192.168.3.3",
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.3",
         subnet=subnet_3, interface=bond0_10)
 
-    user1_machines = [  # noqa
-        factory.make_Node(
-            owner=user1, status=NODE_STATUS.ALLOCATED,
-            zone=random.choice(zones), fabric=random.choice(fabrics),
-            hostname=petname.Generate(2, '-')
-        ),
-        factory.make_Node(
-            owner=user1, status=NODE_STATUS.DEPLOYED,
-            zone=random.choice(zones), fabric=random.choice(fabrics),
-            hostname=petname.Generate(2, '-')
-        ),
+    # Create one machine for every status. Each machine has a random interface
+    # and storage configration.
+    node_statuses = [
+        status
+        for status in map_enum(NODE_STATUS).items()
+        if status not in [
+            NODE_STATUS.MISSING,
+            NODE_STATUS.RESERVED,
+            NODE_STATUS.RETIRED]
     ]
-    user2_machines = [  # noqa
-        factory.make_Node(
-            owner=user2, status=NODE_STATUS.DEPLOYING,
-            zone=random.choice(zones), fabric=random.choice(fabrics),
-            hostname=petname.Generate(2, '-')
-        ),
-        factory.make_Node(
-            owner=user2, status=NODE_STATUS.RELEASING,
-            zone=random.choice(zones), fabric=random.choice(fabrics),
-            hostname=petname.Generate(2, '-')
-        ),
-    ]
+    for _, status in node_statuses:
+        owner = None
+        if status in ALLOCATED_NODE_STATUSES:
+            owner = random.choice([admin, user1, user2])
+        elif status in [
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.FAILED_RELEASING]:
+            owner = admin
+        machine = factory.make_Node(
+            status=status, owner=owner, zone=random.choice(zones),
+            interface=False, with_boot_disk=False, power_type='manual',
+            domain=random.choice(domains))
+        machine.set_random_hostname()
 
-    # Device
-    device = factory.make_Device()
-    device.set_random_hostname()
+        # Create random network configuration.
+        RandomInterfaceFactory.create_random(machine)
+
+        # Add random storage devices and set a random layout.
+        for _ in range(3):
+            factory.make_PhysicalBlockDevice(node=machine)
+        if status in [
+                NODE_STATUS.READY,
+                NODE_STATUS.ALLOCATED,
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.FAILED_DEPLOYMENT,
+                NODE_STATUS.RELEASING,
+                NODE_STATUS.FAILED_RELEASING]:
+            machine.set_storage_layout(
+                random.choice(list(STORAGE_LAYOUTS.keys())))
+            if status != NODE_STATUS.READY:
+                machine._create_acquired_filesystems()
+
+        # Add a random amount of events.
+        for _ in range(random.randint(25, 100)):
+            factory.make_Event(node=machine)
+
+        # Add installation results.
+        if status in [
+                NODE_STATUS.DEPLOYING,
+                NODE_STATUS.DEPLOYED,
+                NODE_STATUS.FAILED_DEPLOYMENT]:
+            script_result = 0
+            if status == NODE_STATUS.FAILED_DEPLOYMENT:
+                script_result = 1
+            factory.make_NodeResult_for_installation(
+                node=machine, script_result=script_result,
+                name="curtin.log", data=factory.make_string().encode("ascii"))
+
+        # Add children devices to the deployed machine.
+        if status == NODE_STATUS.DEPLOYED:
+            boot_interface = machine.get_boot_interface()
+            for _ in range(5):
+                device = factory.make_Device(
+                    interface=True, domain=machine.domain, parent=machine,
+                    vlan=boot_interface.vlan)
+                device.set_random_hostname()
+                RandomInterfaceFactory.assign_ip(
+                    device.get_boot_interface(),
+                    alloc_type=IPADDRESS_TYPE.STICKY)
+
+    # Create a few devices.
+    for _ in range(10):
+        device = factory.make_Device(interface=True)
+        device.set_random_hostname()
 
     # Add some DHCP snippets.
     # - Global
