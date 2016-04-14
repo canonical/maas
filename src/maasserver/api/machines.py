@@ -29,6 +29,7 @@ from maasserver.api.nodes import (
     AnonNodesHandler,
     NodeHandler,
     NodesHandler,
+    OwnerDataMixin,
     store_node_power_parameters,
 )
 from maasserver.api.support import (
@@ -87,6 +88,7 @@ DISPLAYED_MACHINE_FIELDS = (
     'domain',
     'fqdn',
     'owner',
+    'owner_data',
     'boot_interface',
     'architecture',
     'min_hwe_kernel',
@@ -177,7 +179,7 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     return storage_layout, params
 
 
-class MachineHandler(NodeHandler):
+class MachineHandler(NodeHandler, OwnerDataMixin):
     """Manage an individual Machine.
 
     The Machine is identified by its system_id.
@@ -700,16 +702,16 @@ class MachineHandler(NodeHandler):
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):
-        """Mark a node as 'broken'.
+        """Mark a machine as 'broken'.
 
-        If the node is allocated, release it first.
+        If the machine is allocated, release it first.
 
         :param comment: Optional comment for the event log. Will be
             displayed on the Node as an error description until marked fixed.
         :type comment: unicode
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to mark the node
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to mark the machine
         broken.
         """
         node = self.model.objects.get_node_or_404(
@@ -723,13 +725,13 @@ class MachineHandler(NodeHandler):
 
     @operation(idempotent=False)
     def mark_fixed(self, request, system_id):
-        """Mark a broken node as fixed and set its status as 'ready'.
+        """Mark a broken machine as fixed and set its status as 'ready'.
 
         :param comment: Optional comment for the event log.
         :type comment: unicode
 
-        Returns 404 if the node is not found.
-        Returns 403 if the user does not have permission to mark the node
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to mark the machine
         fixed.
         """
         comment = get_optional_param(request.POST, 'comment')
@@ -737,9 +739,25 @@ class MachineHandler(NodeHandler):
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed(request.user, comment)
         maaslog.info(
-            "%s: User %s marked node as fixed", node.hostname,
+            "%s: User %s marked machine as fixed", node.hostname,
             request.user.username)
         return node
+
+    @operation(idempotent=False)
+    def set_owner_data(self, request, system_id):
+        """Set key/value data for the current owner.
+
+        Pass any key/value data to this method to add, modify, or remove. A key
+        is removed when the value for that key is set to an empty string.
+
+        This operation will not remove any previous keys unless explicitly
+        passed with an empty string. All owner data is removed when the machine
+        is no longer allocated to a user.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission.
+        """
+        return super().set_owner_data(request, system_id)
 
 
 def create_machine(request):

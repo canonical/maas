@@ -33,6 +33,7 @@ __all__ = [
     'LicenseKey',
     'Machine',
     'Node',
+    'OwnerData',
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
@@ -118,6 +119,7 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -168,6 +170,7 @@ ignore_unused(
     LargeFile,
     LicenseKey,
     NodeGroupToRackController,
+    OwnerData,
     Partition,
     PartitionTable,
     RAID,

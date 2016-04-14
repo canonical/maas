@@ -108,6 +108,23 @@ class MachineHostnameTest(
             [machine.get('fqdn') for machine in parsed_result])
 
 
+class MachineOwnerDataTest(APITestCase):
+
+    def test_GET_returns_owner_data(self):
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value"),
+        }
+        factory.make_Node(owner_data=owner_data)
+        response = self.client.get(reverse('machines_handler'))
+        self.assertEqual(
+            http.client.OK.value, response.status_code, response.content)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual(
+            [owner_data],
+            [machine.get('owner_data') for machine in parsed_result])
+
+
 def extract_system_ids(parsed_result):
     """List the system_ids of the machines in `parsed_result`."""
     return [machine.get('system_id') for machine in parsed_result]

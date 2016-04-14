@@ -240,3 +240,81 @@ class TestGetDetails(APITestCase):
         url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+
+
+class TestSetOwnerData(APITestCase):
+    """Tests for op=set_owner_data for both machines and devices."""
+
+    scenarios = (
+        ("machine", {
+            "handler": "machine_handler",
+            "maker": factory.make_Node,
+        }),
+        ("device", {
+            "handler": "device_handler",
+            "maker": factory.make_Device,
+        }),
+    )
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse(self.handler, args=[node.system_id])
+
+    def test_must_be_able_to_edit(self):
+        node = self.maker(status=NODE_STATUS.READY)
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        params = dict(owner_data)
+        params["op"] = "set_owner_data"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_adds_data(self):
+        node = self.maker(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        params = dict(owner_data)
+        params["op"] = "set_owner_data"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            owner_data, json_load_bytes(response.content)['owner_data'])
+
+    def test_updates_data(self):
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        node = self.maker(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            owner_data=owner_data)
+        for key in owner_data.keys():
+            owner_data[key] = factory.make_name("value")
+        params = dict(owner_data)
+        params["op"] = "set_owner_data"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            owner_data, json_load_bytes(response.content)['owner_data'])
+
+    def test_removes_data(self):
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        node = self.maker(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            owner_data=owner_data)
+        for key in owner_data.keys():
+            owner_data[key] = ''
+        params = dict(owner_data)
+        params["op"] = "set_owner_data"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            {}, json_load_bytes(response.content)['owner_data'])

@@ -40,6 +40,7 @@ from maasserver.forms import BulkNodeActionForm
 from maasserver.models import (
     Interface,
     Node,
+    OwnerData,
 )
 from maasserver.models.node import typecast_to_node_type
 from maasserver.models.nodeprobeddetails import get_single_probed_details
@@ -336,3 +337,40 @@ class NodesHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('nodes_handler', [])
+
+
+class OwnerDataMixin:
+    """Mixin that adds the owner_data classmethod and proves set_owner_data
+    to the handler."""
+
+    @classmethod
+    def owner_data(handler, machine):
+        """Owner data placed on machine."""
+        return {
+            data.key: data.value
+            for data in OwnerData.objects.filter(node=machine)
+        }
+
+    @operation(idempotent=False)
+    def set_owner_data(self, request, system_id):
+        """Set key/value data for the current owner.
+
+        Pass any key/value data to this method to add, modify, or remove. A key
+        is removed when the value for that key is set to an empty string.
+
+        This operation will not remove any previous keys unless explicitly
+        passed with an empty string. All owner data is removed when the machine
+        is no longer allocated to a user.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission.
+        """
+        node = self.model.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
+        owner_data = {
+            key: None if value == "" else value
+            for key, value in request.POST.items()
+            if key != "op"
+        }
+        OwnerData.objects.set_owner_data(node, owner_data)
+        return node

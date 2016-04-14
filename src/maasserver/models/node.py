@@ -101,6 +101,7 @@ from maasserver.models.interface import (
     VLANInterface,
 )
 from maasserver.models.licensekey import LicenseKey
+from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.service import Service
@@ -2160,6 +2161,9 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.READY
         self.owner = None
         self.save()
+
+        # Remove all set owner data.
+        OwnerData.objects.filter(node=self).delete()
 
     def release_or_erase(self, user, comment=None):
         """Either release the node or erase the node then release it, depending

@@ -50,6 +50,7 @@ from maasserver.models import (
     Machine,
     Node,
     node as node_module,
+    OwnerData,
     PhysicalInterface,
     RackController,
     RegionController,
@@ -1345,10 +1346,13 @@ class TestNode(MAASServerTestCase):
         self.patch(node_module, "post_commit").return_value = d
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+        }
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.DEPLOYING, owner=owner, agent_name=agent_name,
-            power_type="virsh", primary_rack=rack)
+            status=NODE_STATUS.DEPLOYING, owner=owner, owner_data=owner_data,
+            agent_name=agent_name, power_type="virsh", primary_rack=rack)
         self.patch(Node, '_set_status_expires')
         self.patch(node_module, "post_commit_do")
         self.patch(node, '_power_control_node')
@@ -1376,6 +1380,9 @@ class TestNode(MAASServerTestCase):
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+        }
         # Use an "uncontrolled" power type (i.e. a power type for which we
         # cannot query the status of the node).
         all_power_types = {
@@ -1390,8 +1397,8 @@ class TestNode(MAASServerTestCase):
         self.assertNotEqual("manual", power_type)
         rack = factory.make_RackController()
         node = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
-            power_type=power_type, primary_rack=rack)
+            status=NODE_STATUS.ALLOCATED, owner=owner, owner_data=owner_data,
+            agent_name=agent_name, power_type=power_type, primary_rack=rack)
         self.patch(Node, '_set_status_expires')
         mock_stop = self.patch(node, "_stop")
         mock_release_to_ready = self.patch(node, "_release_to_ready")
@@ -1412,8 +1419,12 @@ class TestNode(MAASServerTestCase):
     def test_release_node_that_has_power_off(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+        }
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+            status=NODE_STATUS.ALLOCATED, owner=owner, owner_data=owner_data,
+            agent_name=agent_name)
         self.patch(node, '_stop')
         self.patch(Node, '_set_status_expires')
         node.power_state = POWER_STATE.OFF
@@ -1429,6 +1440,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(''))
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
+        self.expectThat(OwnerData.objects.filter(node=node), HasLength(0))
 
     def test_release_clears_installation_results(self):
         agent_name = factory.make_name('agent-name')

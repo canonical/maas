@@ -67,6 +67,7 @@ from maasserver.models import (
     LargeFile,
     LicenseKey,
     Node,
+    OwnerData,
     Partition,
     PartitionTable,
     PhysicalBlockDevice,
@@ -252,7 +253,8 @@ class Factory(maastesting.factory.Factory):
             NODE_TRANSITIONS[None] = valid_initial_states
 
     def make_Device(self, hostname=None, interface=False, domain=None,
-                    disable_ipv4=None, vlan=None, fabric=None, **kwargs):
+                    disable_ipv4=None, vlan=None, fabric=None, owner_data={},
+                    **kwargs):
         if hostname is None:
             hostname = self.make_string(20)
         if disable_ipv4 is None:
@@ -263,6 +265,8 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, disable_ipv4=disable_ipv4, domain=domain,
             **kwargs)
         device.save()
+        # Add owner data.
+        OwnerData.objects.set_owner_data(device, owner_data)
         if interface:
             self.make_Interface(
                 INTERFACE_TYPE.PHYSICAL, node=device, vlan=vlan, fabric=fabric)
@@ -318,7 +322,7 @@ class Factory(maastesting.factory.Factory):
             power_type=None, power_parameters=None, power_state=None,
             power_state_updated=undefined, disable_ipv4=None,
             with_boot_disk=True, vlan=None, fabric=None,
-            bmc_connected_to=None, **kwargs):
+            bmc_connected_to=None, owner_data={}, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -409,6 +413,9 @@ class Factory(maastesting.factory.Factory):
                 "power_address": "qemu+ssh://user@%s/system" % bmc_ip_address
             }
             node.save()
+
+        # Add owner data.
+        OwnerData.objects.set_owner_data(node, owner_data)
 
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
