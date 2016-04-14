@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
+    POWER_STATE,
 )
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
@@ -25,6 +26,7 @@ from maasserver.rpc.nodes import (
     list_cluster_nodes_power_parameters,
     mark_node_failed,
     request_node_info_by_mac_address,
+    update_node_power_state,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -45,6 +47,7 @@ from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
+    NoSuchCluster,
     NoSuchNode,
 )
 from testtools import ExpectedException
@@ -276,6 +279,11 @@ class TestCommissionNode(MAASServerTestCase):
         protocol = fixture.makeCluster(rack_controller)
         return protocol
 
+    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchNode, commission_node,
+            factory.make_name('system_id'), factory.make_name('user'))
+
     def test__commissions_node(self):
         self.prepare_rack_rpc()
 
@@ -356,6 +364,11 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
             power_type=power_type,
             power_state_queried=power_state_queried, **kwargs)
         return node
+
+    def test__raises_NoSuchCluster_if_rack_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchCluster, list_cluster_nodes_power_parameters,
+            factory.make_name('system_id'))
 
     def test__returns_only_accessible_nodes(self):
         rack = factory.make_RackController(power_type='')
@@ -491,3 +504,16 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))
         expected_minimum = 50 * (2 ** 10)  # 50kiB
         self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))
+
+
+class TestUpdateNodePowerState(MAASServerTestCase):
+
+    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchNode, update_node_power_state,
+            factory.make_name('system_id'), factory.make_name('power_state'))
+
+    def test__updates_node_power_state(self):
+        node = factory.make_Node(power_state=POWER_STATE.OFF)
+        update_node_power_state(node.system_id, POWER_STATE.ON)
+        self.assertEqual(reload_object(node).power_state, POWER_STATE.ON)
