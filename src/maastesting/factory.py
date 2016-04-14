@@ -185,8 +185,18 @@ class Factory:
         random_address_index = random.randint(0, network.size - 1)
         return str(IPAddress(network[random_address_index]))
 
-    def make_ip_address(self):
-        if random.randint(0, 1):
+    def make_ip_address(self, ipv6=None):
+        """Create a random ip address.
+
+        :param ipv6: True for ipv6, False for ipv4, None for random.
+
+        :return: an IP Address
+        :rtype: string
+        """
+        if ipv6 is None:
+            ipv6 = random.randint(0, 1)
+        # intentionally allowing all "true" values, including "1".
+        if ipv6:
             return self.make_ipv6_address()
         else:
             return self.make_ipv4_address()

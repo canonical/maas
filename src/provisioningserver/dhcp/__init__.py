@@ -50,6 +50,7 @@ class DHCPServer(metaclass=ABCMeta):
     interfaces_filename = abstractproperty()
     config_filename = abstractproperty()
     dhcp_service = abstractproperty()
+    ipv6 = abstractproperty()
 
     def __init__(self, omapi_key):
         super(DHCPServer, self).__init__()
@@ -67,6 +68,7 @@ class DHCPv4Server(DHCPServer):
     interfaces_filename = get_path(DHCPv4_INTERFACES_FILE)
     config_filename = get_path(DHCPv4_CONFIG_FILE)
     dhcp_service = "dhcpd"
+    ipv6 = False
 
 
 class DHCPv6Server(DHCPServer):
@@ -80,3 +82,4 @@ class DHCPv6Server(DHCPServer):
     interfaces_filename = get_path(DHCPv6_INTERFACES_FILE)
     config_filename = get_path(DHCPv6_CONFIG_FILE)
     dhcp_service = "dhcpd6"
+    ipv6 = True

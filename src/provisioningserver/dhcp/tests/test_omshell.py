@@ -35,6 +35,17 @@ from testtools.matchers import (
 
 class TestOmshell(MAASTestCase):
 
+    scenarios = (
+        ("IPv4", {
+            "ipv6": False,
+            "port": 7911,
+        }),
+        ("IPv6", {
+            "ipv6": True,
+            "port": 7912,
+        }),
+    )
+
     def test_initialisation(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
@@ -46,7 +57,7 @@ class TestOmshell(MAASTestCase):
 
     def test_try_connection_calls_omshell_correctly(self):
         server_address = factory.make_string()
-        shell = Omshell(server_address, "")
+        shell = Omshell(server_address, "", ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -57,9 +68,11 @@ class TestOmshell(MAASTestCase):
 
         expected_script = dedent("""\
             server {server}
+            port {port}
             connect
             """)
-        expected_script = expected_script.format(server=server_address)
+        expected_script = expected_script.format(
+            server=server_address, port=self.port)
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
@@ -69,7 +82,7 @@ class TestOmshell(MAASTestCase):
 
     def test_try_connection_returns_True(self):
         server_address = factory.make_string()
-        shell = Omshell(server_address, "")
+        shell = Omshell(server_address, "", ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -80,7 +93,7 @@ class TestOmshell(MAASTestCase):
 
     def test_try_connection_returns_False(self):
         server_address = factory.make_string()
-        shell = Omshell(server_address, "")
+        shell = Omshell(server_address, "", ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -92,9 +105,9 @@ class TestOmshell(MAASTestCase):
     def test_create_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
         mac_address = factory.make_mac_address()
-        shell = Omshell(server_address, shared_key)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -105,6 +118,7 @@ class TestOmshell(MAASTestCase):
 
         expected_script = dedent("""\
             server {server}
+            port {port}
             key omapi_key {key}
             connect
             new host
@@ -115,7 +129,8 @@ class TestOmshell(MAASTestCase):
             create
             """)
         expected_script = expected_script.format(
-            server=server_address, key=shared_key, ip=ip_address,
+            server=server_address, port=self.port, key=shared_key,
+            ip=ip_address,
             mac=mac_address, name=mac_address.replace(':', '-'))
 
         # Check that the 'stdin' arg contains the correct set of
@@ -131,9 +146,9 @@ class TestOmshell(MAASTestCase):
 
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
         mac_address = factory.make_mac_address()
-        shell = Omshell(server_address, shared_key)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Fake a call that results in a failure with random output.
         random_output = factory.make_bytes()
@@ -149,11 +164,13 @@ class TestOmshell(MAASTestCase):
         # Omshell.create swallows the error and makes it look like
         # success.
         params = {
-            'ip': factory.make_ipv4_address(),
+            'ip': factory.make_ip_address(ipv6=self.ipv6),
             'mac': factory.make_mac_address(),
             'hostname': factory.make_name('hostname')
         }
-        shell = Omshell(factory.make_name('server'), factory.make_name('key'))
+        shell = Omshell(
+            factory.make_name('server'), factory.make_name('key'),
+            ipv6=self.ipv6)
         # This is the kind of error output we get if a host map has
         # already been created.
         error_output = dedent("""\
@@ -176,9 +193,9 @@ class TestOmshell(MAASTestCase):
     def test_modify_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
         mac_address = factory.make_mac_address()
-        shell = Omshell(server_address, shared_key)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -216,9 +233,9 @@ class TestOmshell(MAASTestCase):
 
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
         mac_address = factory.make_mac_address()
-        shell = Omshell(server_address, shared_key)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Fake a call that results in a failure with random output.
         random_output = factory.make_bytes()
@@ -232,32 +249,34 @@ class TestOmshell(MAASTestCase):
     def test_remove_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        mac_address = factory.make_mac_address()
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
         recorder = FakeMethod(result=(0, b"thing1\nthing2\nobj: <null>"))
         shell._run = recorder
 
-        shell.remove(ip_address)
+        shell.remove(mac_address)
 
         expected_script = dedent("""\
             server {server}
+            port {port}
             key omapi_key {key}
             connect
             new host
-            set name = "{ip}"
+            set name = "{mac}"
             open
             remove
-            """)
-        expected_script = expected_script.format(
-            server=server_address, key=shared_key, ip=ip_address)
+            """).format(
+            server=server_address, port=self.port, key=shared_key,
+            mac=mac_address.replace(':', '-'))
+        expected_results = (expected_script.encode("utf-8"),)
 
         # Check that the 'stdin' arg contains the correct set of
         # commands.
         self.assertEqual(
-            [(expected_script.encode("utf-8"),)], recorder.extract_args())
+            [expected_results], recorder.extract_args())
 
     def test_remove_raises_when_omshell_fails(self):
         # If the call to omshell doesn't result in output ending in the
@@ -265,8 +284,8 @@ class TestOmshell(MAASTestCase):
         # failed.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Fake a call that results in a failure with random output.
         random_output = factory.make_bytes()
@@ -282,8 +301,8 @@ class TestOmshell(MAASTestCase):
         # we need to test that the code still works if that's the case.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Fake a call that results in a something with our special output.
         output = b"\n> obj: <null>\n\n"
@@ -295,8 +314,8 @@ class TestOmshell(MAASTestCase):
         # We need to test that the code still works if that's the case.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Fake a call that results in a something with our special output.
         output = b"\n>obj: <null>\n>\n"
@@ -306,8 +325,8 @@ class TestOmshell(MAASTestCase):
     def test_remove_works_when_object_already_removed(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         output = b"obj: <null>\nobj: host\ncan't open object: not found\n"
         self.patch(shell, '_run').return_value = (0, output)
@@ -317,11 +336,22 @@ class TestOmshell(MAASTestCase):
 class Test_Omshell_nullify_lease(MAASTestCase):
     """Tests for Omshell.nullify_lease"""
 
+    scenarios = (
+        ("IPv4", {
+            "ipv6": False,
+            "port": 7911,
+        }),
+        ("IPv6", {
+            "ipv6": True,
+            "port": 7912,
+        }),
+    )
+
     def test__calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # Instead of calling a real omshell, we'll just record the
         # parameters passed to Popen.
@@ -329,6 +359,7 @@ class Test_Omshell_nullify_lease(MAASTestCase):
         run.return_value = (0, b'\nends = 00:00:00:00')
         expected_script = dedent("""\
             server {server}
+            port {port}
             key omapi_key {key}
             connect
             new lease
@@ -338,7 +369,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
             update
             """)
         expected_script = expected_script.format(
-            server=server_address, key=shared_key, ip=ip_address)
+            server=server_address, port=self.port, key=shared_key,
+            ip=ip_address)
         shell.nullify_lease(ip_address)
         self.assertThat(
             run, MockCalledOnceWith(expected_script.encode("utf-8")))
@@ -346,8 +378,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
     def test__considers_nonexistent_lease_a_success(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         output = (
             b"obj: <null>\nobj: lease\nobj: lease\n"
@@ -359,8 +391,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
     def test__catches_invalid_error(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         output = b"obj: <null>\nobj: lease\ninvalid value."
         self.patch(shell, '_run').return_value = (0, output)
@@ -370,8 +402,8 @@ class Test_Omshell_nullify_lease(MAASTestCase):
     def test__catches_failed_update(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.make_ipv4_address()
-        shell = Omshell(server_address, shared_key)
+        ip_address = factory.make_ip_address(ipv6=self.ipv6)
+        shell = Omshell(server_address, shared_key, ipv6=self.ipv6)
 
         # make "ends" different to what we asked, so the post-run check
         # should fail.

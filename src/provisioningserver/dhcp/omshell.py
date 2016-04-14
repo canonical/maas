@@ -118,10 +118,15 @@ class Omshell:
         omapi-key omapi_key;
     """
 
-    def __init__(self, server_address, shared_key):
+    def __init__(self, server_address, shared_key, ipv6=False):
         self.server_address = server_address
         self.shared_key = shared_key
+        self.ipv6 = ipv6
         self.command = ["omshell"]
+        if ipv6 is True:
+            self.server_port = 7912
+        else:
+            self.server_port = 7911
 
     def _run(self, stdin):
         proc = Popen(self.command, stdin=PIPE, stdout=PIPE)
@@ -134,6 +139,7 @@ class Omshell:
         # Don't pass the omapi_key as its not needed to just try to connect.
         stdin = dedent("""\
             server {self.server_address}
+            port {self.server_port}
             connect
             """)
         stdin = stdin.format(self=self)
@@ -167,6 +173,7 @@ class Omshell:
         name = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
+            port {self.server_port}
             key omapi_key {self.shared_key}
             connect
             new host
@@ -251,6 +258,7 @@ class Omshell:
         mac_address = mac_address.replace(':', '-')
         stdin = dedent("""\
             server {self.server_address}
+            port {self.server_port}
             key omapi_key {self.shared_key}
             connect
             new host
@@ -289,6 +297,7 @@ class Omshell:
         """
         stdin = dedent("""\
             server {self.server_address}
+            port {self.server_port}
             key omapi_key {self.shared_key}
             connect
             new lease

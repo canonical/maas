@@ -406,9 +406,12 @@ class TestUpdateHost(MAASTestCase):
     def test__creates_omshell_with_correct_arguments(self):
         omshell = self.patch(dhcp, "Omshell")
         server = Mock()
+        server.ipv6 = factory.pick_bool()
         dhcp._update_hosts(server, [], [], [])
         self.assertThat(omshell, MockCallsMatch(
-            call(server_address="127.0.0.1", shared_key=server.omapi_key),
+            call(
+                ipv6=server.ipv6, server_address="127.0.0.1",
+                shared_key=server.omapi_key),
         ))
 
     def test__performs_operations(self):
@@ -417,7 +420,9 @@ class TestUpdateHost(MAASTestCase):
         remove_host = make_host()
         add_host = make_host()
         modify_host = make_host()
-        dhcp._update_hosts(Mock(), [remove_host], [add_host], [modify_host])
+        server = Mock()
+        server.ipv6 = factory.pick_bool()
+        dhcp._update_hosts(server, [remove_host], [add_host], [modify_host])
         self.assertThat(
             omshell.remove,
             MockCallsMatch(

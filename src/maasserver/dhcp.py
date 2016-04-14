@@ -572,7 +572,7 @@ def configure_dhcp(rack_controller):
         ipv6_exc = exc
         ipv6_status = SERVICE_STATUS.DEAD
         log.err(
-            "Error configuring DHCPv4 on rack controller '%s': %s" % (
+            "Error configuring DHCPv6 on rack controller '%s': %s" % (
                 rack_controller.system_id, exc))
     else:
         if len(shared_networks_v6) > 0:
@@ -580,7 +580,7 @@ def configure_dhcp(rack_controller):
         else:
             ipv6_status = SERVICE_STATUS.OFF
         log.msg(
-            "Successfully configured DHCPv4 on rack controller '%s'." % (
+            "Successfully configured DHCPv6 on rack controller '%s'." % (
                 rack_controller.system_id))
 
     # Update the status for both services so the user is always seeing the

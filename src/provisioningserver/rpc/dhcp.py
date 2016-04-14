@@ -224,7 +224,9 @@ def _modify_host_map(omshell, mac, ip_address):
 @synchronous
 def _update_hosts(server, remove, add, modify):
     """Update the hosts using the OMAPI."""
-    omshell = Omshell(server_address='127.0.0.1', shared_key=server.omapi_key)
+    omshell = Omshell(
+        server_address='127.0.0.1', shared_key=server.omapi_key,
+        ipv6=server.ipv6)
     for host in remove:
         _remove_host_map(omshell, host["mac"])
     for host in add:

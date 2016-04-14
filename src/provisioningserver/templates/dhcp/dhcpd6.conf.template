@@ -28,7 +28,9 @@ option path-prefix code 210 = text; #RFC5071
 failover peer "{{failover_peer["name"]}}" {
    {{failover_peer["mode"]}};
    address {{failover_peer["address"]}};
+   port 847;
    peer address {{failover_peer["peer_address"]}};
+   peer port 847;
    max-response-delay 60;
    max-unacked-updates 10;
    load balance max seconds 3;
@@ -61,6 +63,8 @@ shared-network {{shared_network["name"]}} {
            {{if dhcp_subnet.get('ntp_server')}}
            option ntp-servers {{dhcp_subnet['ntp_server']}};
            {{endif}}
+           default-lease-time 600;
+           max-lease-time 600;
            #
            # Subnet DHCP snippets
            #
@@ -107,7 +111,7 @@ host {{host['mac'].replace(":", "-")}} {
 }
 {{endfor}}
 
-omapi-port 7911;
+omapi-port 7912;
 key omapi_key {
     algorithm HMAC-MD5;
     secret "{{omapi_key}}";

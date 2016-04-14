@@ -59,6 +59,8 @@ shared-network {{shared_network["name"]}} {
            {{if dhcp_subnet.get('ntp_server')}}
            option ntp-servers {{dhcp_subnet['ntp_server']}};
            {{endif}}
+           default-lease-time 600;
+           max-lease-time 600;
            #
            # Subnet DHCP snippets
            #
