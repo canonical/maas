@@ -25,7 +25,10 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerFatalError,
 )
-from provisioningserver.utils import shell
+from provisioningserver.utils import (
+    shell,
+    typed,
+)
 
 
 REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
@@ -44,7 +47,8 @@ class AMTPowerDriver(PowerDriver):
                 missing_packages.append(package)
         return missing_packages
 
-    def _render_wsman_state_xml(self, power_change):
+    @typed
+    def _render_wsman_state_xml(self, power_change) -> bytes:
         """Render wsman state XML."""
         wsman_state_filename = join(dirname(__file__), "amt.wsman-state.xml")
         wsman_state_ns = {
@@ -59,7 +63,8 @@ class AMTPowerDriver(PowerDriver):
         ps.text = power_states[power_change]
         return etree.tostring(tree)
 
-    def _parse_multiple_xml_docs(self, xml):
+    @typed
+    def _parse_multiple_xml_docs(self, xml: bytes):
         """Parse multiple XML documents.
 
         Each document must commence with an XML document declaration, i.e.
@@ -75,7 +80,8 @@ class AMTPowerDriver(PowerDriver):
         frags = (xml[start:end] for start, end in zip(starts, ends))
         return (etree.fromstring(frag) for frag in frags)
 
-    def get_power_state(self, xml):
+    @typed
+    def get_power_state(self, xml: bytes) -> str:
         """Get PowerState text from XML."""
         namespaces = {
             "h": (
@@ -95,29 +101,35 @@ class AMTPowerDriver(PowerDriver):
         env['AMT_PASSWORD'] = power_pass
         return env
 
-    def _run(self, command, power_pass, stdin=None):
+    @typed
+    def _run(
+            self, command: tuple, power_pass: str,
+            stdin: bytes=None) -> bytes:
         """Run a subprocess with stdin."""
         env = self._get_amt_environment(power_pass)
         process = Popen(
             command, stdin=PIPE, stdout=PIPE, stderr=PIPE, env=env)
         stdout, stderr = process.communicate(stdin)
-        stdout = stdout.decode("utf-8")
-        stderr = stderr.decode("utf-8")
         if process.returncode != 0:
             raise PowerActionError(
-                "Failed to run command: %s with error: %s" % (command, stderr))
+                "Failed to run command: %s with error: %s" % (
+                    command, stderr.decode("utf-8", "replace")))
         return stdout
 
+    @typed
     def _issue_amttool_command(
-            self, cmd, ip_address, power_pass,
-            amttool_boot_mode=None, stdin=None):
+            self, cmd: str, ip_address: str, power_pass: str,
+            amttool_boot_mode=None, stdin=None) -> bytes:
         """Perform a command using amttool."""
         command = ('amttool', ip_address, cmd)
         if cmd in ('power-cycle', 'powerup'):
             command += (amttool_boot_mode,)
         return self._run(command, power_pass, stdin=stdin)
 
-    def _issue_wsman_command(self, power_change, ip_address, power_pass):
+    @typed
+    def _issue_wsman_command(
+            self, power_change: str, ip_address: str,
+            power_pass: str) -> bytes:
         """Perform a command using wsman."""
         wsman_power_schema_uri = (
             'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
@@ -156,7 +168,7 @@ class AMTPowerDriver(PowerDriver):
         for _ in range(10):
             output = self._issue_amttool_command(
                 'info', ip_address, power_pass)
-            if output is not None and output != '':
+            if output is not None and len(output) > 0:
                 break
             # Wait 1 second between retries.  AMT controllers are generally
             # very light and may not be comfortable with more frequent
@@ -165,8 +177,10 @@ class AMTPowerDriver(PowerDriver):
 
         if output is None:
             raise PowerFatalError("amttool power querying FAILED.")
+
         # Ensure that from this point forward that output is a str.
-        assert isinstance(output, str)
+        output = output.decode("utf-8")
+
         # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
         # will lead to a fresh boot.
         if 'S5' in output:
@@ -183,7 +197,7 @@ class AMTPowerDriver(PowerDriver):
         output = None
         for _ in range(10):
             output = self._issue_wsman_command('query', ip_address, power_pass)
-            if output is not None and output != '':
+            if output is not None and len(output) > 0:
                 break
             # Wait 1 second between retries.  AMT controllers are generally
             # very light and may not be comfortable with more frequent
