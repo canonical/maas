@@ -34,17 +34,20 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestGetConfigDir(MAASServerTestCase):
-    """Tests for `maasserver.proxyconfig.get_proxy_config_dir`."""
+    """Tests for `maasserver.proxyconfig.get_proxy_config_path`."""
 
     def test_returns_default(self):
         self.assertEquals(
-            "/var/lib/maas", proxyconfig.get_proxy_config_dir())
+            "/var/lib/maas/maas-proxy.conf",
+            proxyconfig.get_proxy_config_path())
 
     def test_env_overrides_default(self):
         os.environ['MAAS_PROXY_CONFIG_DIR'] = factory.make_name('env')
         self.assertEquals(
-            os.environ['MAAS_PROXY_CONFIG_DIR'],
-            proxyconfig.get_proxy_config_dir())
+            os.sep.join([
+                os.environ['MAAS_PROXY_CONFIG_DIR'],
+                proxyconfig.MAAS_PROXY_CONF_NAME]),
+            proxyconfig.get_proxy_config_path())
         del(os.environ['MAAS_PROXY_CONFIG_DIR'])
 
 

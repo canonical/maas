@@ -5,6 +5,8 @@
 
 __all__ = [
     'proxy_update_config',
+    'get_proxy_config_path',
+    'is_config_present',
     ]
 
 import datetime
@@ -39,14 +41,19 @@ class ProxyConfigFail(Exception):
     """Raised if there is a problem with the proxy configuration."""
 
 
-def get_proxy_config_dir():
+def get_proxy_config_path():
     """Location of bind configuration files."""
     setting = os.getenv("MAAS_PROXY_CONFIG_DIR", "/var/lib/maas")
     if isinstance(setting, bytes):
         fsenc = sys.getfilesystemencoding()
-        return setting.decode(fsenc)
-    else:
-        return setting
+        setting = setting.decode(fsenc)
+    setting = os.sep.join([setting, MAAS_PROXY_CONF_NAME])
+    return setting
+
+
+def is_config_present():
+    """Check if there is a configuration file for the proxy."""
+    return os.access(get_proxy_config_path(), os.R_OK)
 
 
 @asynchronous
@@ -72,8 +79,7 @@ def proxy_update_config(reload_proxy=True):
             raise ProxyConfigFail(*error.args)
         # Squid prefers ascii.
         content = content.encode("ascii")
-        target_path = os.sep.join(
-            [get_proxy_config_dir(), MAAS_PROXY_CONF_NAME])
+        target_path = get_proxy_config_path()
         atomic_write(content, target_path, overwrite=True, mode=0o644)
 
     if is_proxy_enabled():

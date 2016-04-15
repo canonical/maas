@@ -47,10 +47,14 @@ class ProxyService(Service):
 
         @transactional
         def db_get_expected_state():
+            # Avoid recursive import.
+            from maasserver import proxyconfig
             if (Config.objects.get_config("enable_http_proxy") and
                     Config.objects.get_config("http_proxy")):
                 return (SERVICE_STATUS.OFF,
                         "disabled, alternate proxy is configured in settings.")
+            elif proxyconfig.is_config_present() is False:
+                return (SERVICE_STATUS.OFF, "No configuration file present.")
             else:
                 return (SERVICE_STATUS.ON, None)
 
