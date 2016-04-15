@@ -415,9 +415,10 @@ class MAASIPSet(set):
         unused_ranges = []
         if type(outer_range) == IPNetwork:
             # Skip the network address, if this is a network
-            if outer_range.version == 4 and outer_range.prefixlen == 32:
+            prefixlen = outer_range.prefixlen
+            if outer_range.version == 4 and prefixlen in (31, 32):
                 start = outer_range.first
-            elif outer_range.version == 6 and outer_range.prefixlen == 128:
+            elif outer_range.version == 6 and prefixlen in (127, 128):
                 start = outer_range.first
             else:
                 start = outer_range.first + 1
@@ -438,7 +439,8 @@ class MAASIPSet(set):
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
         if type(outer_range) == IPNetwork:
-            if outer_range.version == 4 and outer_range.prefixlen != 32:
+            prefixlen = outer_range.prefixlen
+            if outer_range.version == 4 and prefixlen not in (31, 32):
                 candidate_end = outer_range.last - 1
             else:
                 candidate_end = outer_range.last
@@ -453,7 +455,16 @@ class MAASIPSet(set):
 
     def get_full_range(self, outer_range):
         unused_ranges = self.get_unused_ranges(outer_range)
-        return MAASIPSet(self | unused_ranges, cidr=outer_range)
+        full_range = MAASIPSet(self | unused_ranges, cidr=outer_range)
+        # The full_range should always contain at least one IP address.
+        # However, in bug #1570606 we observed a situation where there were
+        # no resulting ranges. This assert is just in case the fix didn't cover
+        # all cases where this could happen.
+        assert len(full_range.ranges) > 0, (
+            "get_full_range(): No ranges for CIDR: %s; "
+            "self=%r, unused_ranges=%r" % (
+                outer_range, self, unused_ranges))
+        return full_range
 
     def __repr__(self):
         item_repr = []

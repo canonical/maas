@@ -789,6 +789,32 @@ class TestIPRangeStatistics(MAASTestCase):
         self.assertThat(json['available_string'], Equals("100%"))
         self.assertThat(json, Not(Contains("ranges")))
 
+    def test__statistics_are_accurate_for_empty_slash_127(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('2001:db8::1/127')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(2))
+        self.assertThat(json['largest_available'], Equals(2))
+        self.assertThat(json['num_unavailable'], Equals(0))
+        self.assertThat(json['usage'], Equals(float(0) / float(2)))
+        self.assertThat(json['usage_string'], Equals("0%"))
+        self.assertThat(json['available_string'], Equals("100%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
+    def test__statistics_are_accurate_for_empty_slash_31(self):
+        s = MAASIPSet([])
+        u = s.get_full_range('10.0.0.0/31')
+        stats = IPRangeStatistics(u)
+        json = stats.render_json()
+        self.assertThat(json['num_available'], Equals(2))
+        self.assertThat(json['largest_available'], Equals(2))
+        self.assertThat(json['num_unavailable'], Equals(0))
+        self.assertThat(json['usage'], Equals(float(0) / float(2)))
+        self.assertThat(json['usage_string'], Equals("0%"))
+        self.assertThat(json['available_string'], Equals("100%"))
+        self.assertThat(json, Not(Contains("ranges")))
+
     def test__suggests_subnet_anycast_address_for_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range('2001:db8::/64')
