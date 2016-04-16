@@ -684,6 +684,46 @@ class TestServiceMonitor(MAASTestCase):
             maaslog.output)
 
     @inlineCallbacks
+    def test___ensureService_allows_dead_for_off_service(self):
+        service = make_fake_service(SERVICE_STATE.OFF)
+        service_monitor = self.make_service_monitor([service])
+
+        mock_getServiceState = self.patch(
+            service_monitor, "getServiceState")
+        mock_getServiceState.return_value = succeed(
+            ServiceState(SERVICE_STATE.DEAD, "Result: exit-code"))
+
+        with FakeLogger(
+                "maas.service_monitor", level=logging.DEBUG) as maaslog:
+            yield service_monitor._ensureService(service)
+        self.assertDocTestMatches(
+            "Service '%s' is %s and '%s'." % (
+                service.service_name, SERVICE_STATE.DEAD, "Result: exit-code"),
+            maaslog.output)
+
+    @inlineCallbacks
+    def test___ensureService_logs_mismatch_for_dead_process_state(self):
+        service = make_fake_service(SERVICE_STATE.OFF)
+        service_monitor = self.make_service_monitor([service])
+
+        invalid_process_state = factory.make_name("invalid")
+        mock_getServiceState = self.patch(
+            service_monitor, "getServiceState")
+        mock_getServiceState.return_value = succeed(
+            ServiceState(SERVICE_STATE.DEAD, invalid_process_state))
+
+        with FakeLogger(
+                "maas.service_monitor", level=logging.WARNING) as maaslog:
+            yield service_monitor._ensureService(service)
+        self.assertDocTestMatches(
+            "Service '%s' is %s but not in the expected state of "
+            "'%s', its current state is '%s'." % (
+                service.service_name, SERVICE_STATE.DEAD,
+                service_monitor.SYSTEMD_PROCESS_STATE[SERVICE_STATE.DEAD],
+                invalid_process_state),
+            maaslog.output)
+
+    @inlineCallbacks
     def test___ensureService_performs_start_for_off_service(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])

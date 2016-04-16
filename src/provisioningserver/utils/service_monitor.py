@@ -152,6 +152,7 @@ class ServiceMonitor:
     SYSTEMD_PROCESS_STATE = {
         SERVICE_STATE.ON: "running",
         SERVICE_STATE.OFF: "dead",
+        SERVICE_STATE.DEAD: "Result: exit-code",
     }
 
     def __init__(self, *services):
@@ -402,8 +403,14 @@ class ServiceMonitor:
         active state.
         """
         expected_state, _ = yield maybeDeferred(service.get_expected_state)
+        if expected_state == SERVICE_STATE.OFF:
+            # Service that should be off can also be dead.
+            expected_states = [SERVICE_STATE.OFF, SERVICE_STATE.DEAD]
+        else:
+            expected_states = [expected_state]
+
         state = yield self.getServiceState(service.name, now=True)
-        if state.active_state == expected_state:
+        if state.active_state in expected_states:
             expected_process_state = (
                 self.SYSTEMD_PROCESS_STATE[state.active_state])
             if state.process_state != expected_process_state:
@@ -434,7 +441,7 @@ class ServiceMonitor:
 
             # Check that the service has remained at its target state.
             state = yield self.getServiceState(service.name, now=True)
-            if state.active_state != expected_state:
+            if state.active_state not in expected_states:
                 error_msg = (
                     "Service '%s' failed to %s. Its current state "
                     "is '%s' and '%s'." % (
