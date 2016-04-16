@@ -6652,6 +6652,66 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=br0_vlan,
             ))
 
+    def test_registers_bridge_with_no_parents_and_links(self):
+        rack = self.create_empty_rack_controller()
+        interfaces = {
+            'br0': {
+                'enabled': True,
+                'mac_address': '4e:4d:9a:a8:a5:5f',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'bridge',
+                'links': [{
+                    'mode': "static",
+                    'address': "192.168.0.1/24"
+                }]
+            },
+            'eth0': {
+                'enabled': True,
+                'mac_address': '52:54:00:77:15:e3',
+                'links': [],
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            }
+        }
+        rack.update_interfaces(interfaces)
+        eth0 = get_one(
+            PhysicalInterface.objects.filter(node=rack, name='eth0'))
+        br0 = get_one(BridgeInterface.objects.filter(node=rack, name='br0'))
+        self.assertIsNotNone(eth0)
+        self.assertIsNotNone(br0)
+        subnet = get_one(Subnet.objects.filter(cidr='192.168.0.0/24'))
+        self.assertIsNotNone(subnet)
+        self.assertThat(subnet.vlan, Equals(br0.vlan))
+
+    def test_registers_bridge_with_no_parents_and_no_links(self):
+        rack = self.create_empty_rack_controller()
+        interfaces = {
+            'br0': {
+                'enabled': True,
+                'links': [],
+                'mac_address': '4e:4d:9a:a8:a5:5f',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'bridge'
+            },
+            'eth0': {
+                'enabled': True,
+                'links': [],
+                'mac_address': '52:54:00:77:15:e3',
+                'parents': [],
+                'source': 'ipaddr',
+                'type': 'physical'
+            },
+        }
+        rack.update_interfaces(interfaces)
+        eth0 = get_one(
+            PhysicalInterface.objects.filter(node=rack, name='eth0'))
+        br0 = get_one(BridgeInterface.objects.filter(node=rack, name='br0'))
+        self.assertIsNotNone(eth0)
+        self.assertIsNotNone(br0)
+
 
 class TestRackController(MAASServerTestCase):
 

@@ -332,12 +332,18 @@ class MAASIPSet(set):
     @property
     def first(self):
         """Returns the first IP address in this set."""
-        return self.ranges[0].first
+        if len(self.ranges) > 0:
+            return self.ranges[0].first
+        else:
+            return None
 
     @property
     def last(self):
         """Returns the last IP address in this set."""
-        return self.ranges[-1].last
+        if len(self.ranges) > 0:
+            return self.ranges[-1].last
+        else:
+            return None
 
     def ip_has_purpose(self, ip, purpose):
         """Returns True if the specified IP address has the specified purpose

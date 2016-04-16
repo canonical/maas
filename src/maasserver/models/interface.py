@@ -1115,23 +1115,29 @@ class ChildInterface(Interface):
 
     def get_node(self):
         if self.id is None:
-            return None
+            # This should be correct since the interface was just now created.
+            return self.node
         else:
             parent = self.parents.first()
-            if parent is not None:
+            if parent is not None and parent != self:
                 return parent.get_node()
             else:
-                return None
+                # This could be a bridge interface without a parent.
+                return self.node
 
     def is_enabled(self):
         if self.id is None:
             return True
         else:
-            is_enabled = {
-                parent.is_enabled()
-                for parent in self.parents.all()
-            }
-            return True in is_enabled
+            if self.parents.count() > 0:
+                is_enabled = {
+                    parent.is_enabled()
+                    for parent in self.parents.all()
+                    if parent != self
+                }
+                return True in is_enabled
+            else:
+                return self.enabled
 
     def _validate_acceptable_parent_types(self, parent_types):
         """Raises a ValidationError if the interface has parents which are not

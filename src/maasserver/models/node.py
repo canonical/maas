@@ -3256,9 +3256,11 @@ class RackController(Node):
         parent_nics = Interface.objects.get_interfaces_on_node_by_name(
             self, ifnames)
 
-        # Ignore child interfaces that don't have parents. MAAS won't know what
-        # to do with them since they can't be connected to a fabric.
-        if len(parent_nics) == 0:
+        # Ignore most child interfaces that don't have parents. MAAS won't know
+        # what to do with them since they can't be connected to a fabric.
+        # Bridges are an exception since some MAAS demo/test environments
+        # contain virtual bridges.
+        if len(parent_nics) == 0 and child_type is not BridgeInterface:
             return None
 
         mac_address = config["mac_address"]
@@ -3266,12 +3268,14 @@ class RackController(Node):
             self, name, mac_address, parent_nics)
 
         links = config["links"]
-        self._configure_vlan_from_links(interface, parent_nics, links)
+        found_vlan = self._configure_vlan_from_links(
+            interface, parent_nics, links)
 
         # Update all the IP address on this interface. Fix the VLAN the
         # interface belongs to so its the same as the links and all parents to
         # be on the same VLAN.
-        update_ip_addresses = self._update_links(interface, links)
+        update_ip_addresses = self._update_links(
+            interface, links, use_interface_vlan=found_vlan)
         self._update_parent_vlans(interface, parent_nics, update_ip_addresses)
         return interface
 
@@ -3314,16 +3318,26 @@ class RackController(Node):
                     parent_nic.save()
 
     def _configure_vlan_from_links(self, interface, parent_nics, links):
+        """Attempt to configure the interface VLAN based on the links and
+        connected subnets. Returns True if the VLAN was configured; otherwise,
+        returns False."""
         # Make sure that the VLAN on the interface is correct. When
         # links exists on this interface we place it into the correct
         # VLAN. If it cannot be determined it is placed on the same fabric
         # as its first parent interface.
         connected_to_subnets = self._get_connected_subnets(links)
-        if len(connected_to_subnets) == 0:
+        if len(connected_to_subnets) == 0 and len(parent_nics) > 0:
             # Not connected to any known subnets. We add it to the same
             # VLAN as its first parent.
             interface.vlan = parent_nics[0].vlan
-        interface.save()
+            interface.save()
+            return True
+        elif len(connected_to_subnets) > 0:
+            subnet = next(iter(connected_to_subnets))
+            interface.vlan = subnet.vlan
+            interface.save()
+            return True
+        return False
 
     def _get_connected_subnets(self, links):
         """Return a set of subnets that `links` belongs to."""
@@ -3358,7 +3372,8 @@ class RackController(Node):
                 return ip_address.subnet.vlan
         return None
 
-    def _update_links(self, interface, links, force_vlan=False):
+    def _update_links(
+            self, interface, links, force_vlan=False, use_interface_vlan=True):
         """Update the links on `interface`."""
         interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED).delete()
@@ -3366,6 +3381,13 @@ class RackController(Node):
             interface.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED))
         updated_ip_addresses = set()
+        if use_interface_vlan:
+            vlan = interface.vlan
+        elif len(links) > 0:
+            fabric = Fabric.objects.create()
+            vlan = fabric.get_default_vlan()
+            interface.vlan = vlan
+            interface.save()
         for link in links:
             if link["mode"] == "dhcp":
                 dhcp_address = self._get_alloc_type_from_ip_addresses(
@@ -3388,7 +3410,7 @@ class RackController(Node):
                     subnet, _ = Subnet.objects.get_or_create(
                         cidr=str(ip_network.cidr), defaults={
                             "name": str(ip_network.cidr),
-                            "vlan": interface.vlan,
+                            "vlan": vlan,
                             "space": Space.objects.get_default_space(),
                         })
 
@@ -3427,7 +3449,7 @@ class RackController(Node):
                 subnet, _ = Subnet.objects.get_or_create(
                     cidr=str(ip_network.cidr), defaults={
                         "name": str(ip_network.cidr),
-                        "vlan": interface.vlan,
+                        "vlan": vlan,
                         "space": Space.objects.get_default_space(),
                     })
 

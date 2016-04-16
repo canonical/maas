@@ -244,7 +244,7 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
     def test__renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             interface_count=2)
-        interfaces = node.interface_set.all()
+        interfaces = list(node.interface_set.all())
         vlan = node.interface_set.first().vlan
         bond_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND, node=node, vlan=vlan,
@@ -286,7 +286,7 @@ class TestVLANOnBondNetworkLayout(MAASServerTestCase,
     def test__renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             interface_count=2)
-        phys_ifaces = node.interface_set.all()
+        phys_ifaces = list(node.interface_set.all())
         phys_vlan = node.interface_set.first().vlan
         bond_iface = factory.make_Interface(iftype=INTERFACE_TYPE.BOND,
                                             node=node, vlan=phys_vlan,
