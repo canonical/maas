@@ -249,7 +249,7 @@ def get_curtin_yaml_config(node):
         storage_config = []
 
     return (
-        [main_config] + reporter_config + storage_config + network_config +
+        storage_config + [main_config] + reporter_config + network_config +
         swap_config + kernel_config + verbose_config)
 
 
