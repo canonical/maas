@@ -5,10 +5,27 @@
 
 __all__ = []
 
-from maasserver.forms import DeviceForm
+from django.http import HttpRequest
+from django.http.request import QueryDict
+from maasserver.forms import (
+    DeviceForm,
+    DeviceWithMACsForm,
+)
+from maasserver.models import (
+    Device,
+    Interface,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
+from maasserver.utils.forms import get_QueryDict
+from maasserver.utils.orm import (
+    get_one,
+    reload_object,
+)
+from testtools.matchers import (
+    Contains,
+    Equals,
+)
 
 
 class TestDeviceForm(MAASServerTestCase):
@@ -39,3 +56,48 @@ class TestDeviceForm(MAASServerTestCase):
         reload_object(parent)
 
         self.assertEqual(parent, device.parent)
+
+
+class TestDeviceWithMACsForm(MAASServerTestCase):
+
+    def make_request(self):
+        """Return a :class:`HttpRequest` with the given parameters."""
+        request = HttpRequest()
+        request.user = factory.make_User()
+        return request
+
+    def test_contains_mac_addresses_field_and_converts_non_querydict(self):
+        form = DeviceWithMACsForm(data={})
+        self.assertThat(form.fields, Contains('mac_addresses'))
+        self.assertIsInstance(form.data, QueryDict)
+
+    def test_creates_device_with_mac(self):
+        hostname = factory.make_name("device")
+        mac = factory.make_mac_address()
+        form = DeviceWithMACsForm(data=get_QueryDict({
+            "hostname": hostname,
+            "mac_addresses": mac
+        }), request=self.make_request())
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        form.save()
+        device = get_one(Device.objects.filter(hostname=hostname))
+        self.assertThat(device.hostname, Equals(hostname))
+        iface = get_one(Interface.objects.filter(mac_address=mac))
+        self.assertThat(iface.node, Equals(device))
+
+    def test_creates_device_with_macs(self):
+        hostname = factory.make_name("device")
+        mac1 = factory.make_mac_address()
+        mac2 = factory.make_mac_address()
+        form = DeviceWithMACsForm(data=get_QueryDict({
+            "hostname": hostname,
+            "mac_addresses": [mac1, mac2]
+        }), request=self.make_request())
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        form.save()
+        device = get_one(Device.objects.filter(hostname=hostname))
+        self.assertThat(device.hostname, Equals(hostname))
+        iface = get_one(Interface.objects.filter(mac_address=mac1))
+        self.assertThat(iface.node, Equals(device))
+        iface = get_one(Interface.objects.filter(mac_address=mac2))
+        self.assertThat(iface.node, Equals(device))

@@ -55,6 +55,7 @@ from django.forms import (
     Form,
     MultipleChoiceField,
 )
+from django.http import QueryDict
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
@@ -128,6 +129,7 @@ from maasserver.utils import strip_domain
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
+    get_QueryDict,
     set_form_error,
 )
 from maasserver.utils.orm import (
@@ -1055,6 +1057,12 @@ class WithMACAddressesMixin:
 
     def __init__(self, *args, **kwargs):
         super(WithMACAddressesMixin, self).__init__(*args, **kwargs)
+        # This is a workaround for a Django bug in which self.data (which is
+        # supposed to be a QueryDict) ends up being a normal Python dict.
+        # This class requires a QueryDict (which it seems like Django should
+        # enforce, for consistency).
+        if not isinstance(self.data, QueryDict):
+            self.data = get_QueryDict(self.data)
         self.set_up_mac_addresses_field()
 
     def set_up_mac_addresses_field(self):

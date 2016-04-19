@@ -133,6 +133,24 @@ class TestDevicesAPI(APITestCase):
         self.assertEquals(domain, device.domain)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
 
+    def test_POST_without_macs_raises_appropriate_error(self):
+        hostname = factory.make_name('host')
+        domain = factory.make_Domain()
+        response = self.client.post(
+            reverse('devices_handler'),
+            {
+                'hostname': hostname,
+                'domain': domain.name,
+            })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_empty_POST_raises_appropriate_error(self):
+        response = self.client.post(
+            reverse('devices_handler'), {})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
             reverse('devices_handler'),
