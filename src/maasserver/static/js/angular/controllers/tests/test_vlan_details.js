@@ -516,7 +516,10 @@ describe("VLANDetailsController", function() {
         controller.provideDHCPAction.primaryRack = "p2";
         controller.updatePrimaryRack();
         expect(controller.provideDHCPAction.primaryRack).toEqual("p2");
-        expect(controller.provideDHCPAction.secondaryRack).toBe(null);
+        // This should automatically select p1 by default; the user has to
+        // clear it out manually if desired. (this is done via an extra option
+        // in the view.)
+        expect(controller.provideDHCPAction.secondaryRack).toBe("p1");
         controller.provideDHCPAction.secondaryRack = "p2";
         controller.updateSecondaryRack();
         expect(controller.provideDHCPAction.primaryRack).toBe(null);

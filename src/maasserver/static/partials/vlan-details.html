@@ -53,9 +53,8 @@
                                                 data-ng-change="vlanDetails.updateSecondaryRack()"
                                                 data-ng-options="rack.system_id as rack.hostname for rack in vlanDetails.relatedControllers | filter:vlanDetails.filterPrimaryRack">
                                             <option value=""
-                                                    disabled="disabled"
                                                     selected="selected"
-                                                    data-ng-show="vlanDetails.provideDHCPAction.secondaryRack === ''">Choose secondary controller</option>
+                                                    data-ng-show="vlanDetails.relatedControllers.length >= 2"></option>
                                         </select>
                                     </div>
                                     <div class="inline"

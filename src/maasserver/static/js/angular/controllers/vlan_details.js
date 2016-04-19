@@ -165,6 +165,13 @@ angular.module('MAAS').controller('VLANDetailsController', [
             if(dhcp.primaryRack === dhcp.secondaryRack) {
                 dhcp.secondaryRack = null;
             }
+            var i;
+            for(i = 0 ; i < vm.relatedControllers.length ; i++) {
+                if(vm.relatedControllers[i].system_id !== dhcp.primaryRack) {
+                    dhcp.secondaryRack = vm.relatedControllers[i].system_id;
+                    break;
+                }
+            }
         };
 
         // Called from the Provide DHCP form when the secondary rack changes.
