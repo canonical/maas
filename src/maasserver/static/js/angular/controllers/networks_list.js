@@ -366,10 +366,10 @@ angular.module('MAAS').controller('NetworksListController', [
 
                 $scope.updateActions();
 
-                $scope.$watchCollection("subnets", $scope.updateGroupBy);
-                $scope.$watchCollection("fabrics", $scope.updateGroupBy);
-                $scope.$watchCollection("spaces", $scope.updateGroupBy);
-                $scope.$watchCollection("vlans", $scope.updateGroupBy);
+                $scope.$watch("subnets", $scope.updateGroupBy, true);
+                $scope.$watch("fabrics", $scope.updateGroupBy, true);
+                $scope.$watch("spaces", $scope.updateGroupBy, true);
+                $scope.$watch("vlans", $scope.updateGroupBy, true);
 
                 // If the route has been updated, a new search string must
                 // potentially be rendered.
