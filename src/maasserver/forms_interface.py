@@ -17,6 +17,7 @@ from maasserver.enum import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     INTERFACE_TYPE,
+    NODE_TYPE,
 )
 from maasserver.forms import (
     MAASModelForm,
@@ -203,8 +204,13 @@ class PhysicalInterfaceForm(InterfaceForm):
     def clean_vlan(self):
         new_vlan = self.cleaned_data.get('vlan')
         if new_vlan and new_vlan.fabric.get_default_vlan() != new_vlan:
-            raise ValidationError(
-                "A physical interface can only belong to an untagged VLAN.")
+            # A device's physical interface can be connected to a tagged VLAN.
+            # This is because a container or VM could be bridged on the machine
+            # to a tagged VLAN interface. See lp:1572070 for details.
+            if self.node.node_type != NODE_TYPE.DEVICE:
+                raise ValidationError(
+                    "A physical interface can only belong to an "
+                    "untagged VLAN.")
         return new_vlan
 
     def clean(self):

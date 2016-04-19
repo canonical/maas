@@ -195,6 +195,25 @@ class PhysicalInterfaceFormTest(MAASServerTestCase):
             "A physical interface can only belong to an untagged VLAN.",
             form.errors['vlan'][0])
 
+    def test_allows_interface_on_tagged_vlan_for_device(self):
+        device = factory.make_Device()
+        fabric = factory.make_Fabric()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=device, vlan=fabric.get_default_vlan())
+        vlan = factory.make_VLAN(fabric=fabric)
+        mac_address = factory.make_mac_address()
+        form = PhysicalInterfaceForm(
+            node=device,
+            data={
+                'name': factory.make_name("eth"),
+                'mac_address': mac_address,
+                'vlan': vlan.id,
+            })
+        self.assertTrue(form.is_valid(), form.errors)
+        interface = form.save()
+        self.assertEquals(vlan, interface.vlan)
+
     def test__rejects_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         fabric = factory.make_Fabric()
