@@ -38,6 +38,7 @@ from maasserver.models import (
 )
 from maasserver.models.interface import (
     BondInterface,
+    BridgeInterface,
     Interface,
     PhysicalInterface,
     VLANInterface,
@@ -582,3 +583,17 @@ class VLANInterfaceHandler(InterfaceHandler):
     """
     hidden = True
     model = VLANInterface
+
+
+class BridgeInterfaceHandler(InterfaceHandler):
+    """
+    This handler only exists because piston requires a unique handler per
+    class type. Without this class the resource_uri will not be added to any
+    object that is of type `BridgeInterface` when it is emitted from the
+    `InterfaceHandler`.
+
+    Important: This should not be used in the urls_api.py. This is only here
+        to support piston.
+    """
+    hidden = True
+    model = BridgeInterface

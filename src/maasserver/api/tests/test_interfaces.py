@@ -22,6 +22,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from testtools.matchers import (
+    Contains,
     ContainsDict,
     Equals,
     MatchesDict,
@@ -512,20 +513,24 @@ class TestInterfacesAPIForControllers(APITestCase):
         node = self.maker()
         for _ in range(3):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_Interface(INTERFACE_TYPE.BRIDGE, node=node)
         uri = get_interfaces_uri(node)
         response = self.client.get(uri)
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
+        output_content = json_load_bytes(response.content)
         expected_ids = [
             nic.id
             for nic in node.interface_set.all()
             ]
         result_ids = [
             nic["id"]
-            for nic in json_load_bytes(response.content)
+            for nic in output_content
             ]
         self.assertItemsEqual(expected_ids, result_ids)
+        for nic in output_content:
+            self.assertThat(nic, Contains('links'))
 
     def test_create_physical_is_forbidden(self):
         self.become_admin()
