@@ -9,6 +9,8 @@ __all__ = [
     "get_maas_version_ui",
     ]
 
+from functools import lru_cache
+
 import apt_pkg
 from maasserver.api.logger import maaslog
 from provisioningserver.utils import shell
@@ -78,29 +80,13 @@ def get_maas_branch_version():
             return None
 
 
-_cache = {}
-
-
-# A very simply memoize function: when we switch to Django 1.7 we should use
-# Django's lru_cache method.
-def simple_cache(fun):
-    def wrapped(*args, **kwargs):
-        key = hash(repr(fun) + repr(args) + repr(kwargs))
-        if key not in _cache:
-            _cache[key] = fun(*args, **kwargs)
-        return _cache[key]
-
-    wrapped.__doc__ = "%s %s" % (fun.__doc__, "(cached)")
-    return wrapped
-
-
-@simple_cache
+@lru_cache(maxsize=1)
 def get_maas_package_version():
     """Return the apt version for the main MAAS package."""
     return get_version_from_apt(REGION_PACKAGE_NAME)
 
 
-@simple_cache
+@lru_cache(maxsize=1)
 def get_maas_version_subversion():
     """Return a tuple with the MAAS version and the MAAS subversion."""
     apt_version = get_maas_package_version()
@@ -117,7 +103,7 @@ def get_maas_version_subversion():
             return "from source (+bzr%d)" % branch_version, ''
 
 
-@simple_cache
+@lru_cache(maxsize=1)
 def get_maas_version_ui():
     """Return the version string for the running MAAS region.
 
@@ -127,7 +113,7 @@ def get_maas_version_ui():
     return "%s (%s)" % (version, subversion) if subversion else version
 
 
-@simple_cache
+@lru_cache(maxsize=1)
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
     doc_prefix = 'docs'

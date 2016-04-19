@@ -116,7 +116,9 @@ class TestVersionTestCase(MAASTestCase):
 
     def setUp(self):
         super(TestVersionTestCase, self).setUp()
-        self.patch(version, "_cache", {})
+        for attribute in vars(version).values():
+            if hasattr(attribute, "cache_clear"):
+                attribute.cache_clear()
 
 
 class TestGetMAASPackageVersion(TestVersionTestCase):
