@@ -16,6 +16,7 @@ DI_FILE_TYPES = [
 
 def remove_di_bootresourcefiles(apps, schema_editor):
     BootResourceFile = apps.get_model("maasserver", "BootResourceFile")
+    LargeFile = apps.get_model("maasserver", "LargeFile")
     for resource_file in BootResourceFile.objects.filter(
             filetype__in=DI_FILE_TYPES):
         # Delete the largefile and content before deleting the resource file
