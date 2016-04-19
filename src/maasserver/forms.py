@@ -14,6 +14,7 @@ __all__ = [
     "ClaimIPForMACForm",
     "CommissioningForm",
     "CommissioningScriptForm",
+    "ControllerForm",
     "get_machine_edit_form",
     "get_machine_create_form",
     "CreatePhysicalBlockDeviceForm",
@@ -97,6 +98,7 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Config,
+    Controller,
     Device,
     Domain,
     Filesystem,
@@ -206,6 +208,115 @@ class APIEditMixin:
         """
         self.cleaned_data = remove_None_values(self.cleaned_data)
         super(APIEditMixin, self)._post_clean()
+
+
+class WithPowerMixin:
+    """A form mixin which dynamically adds power_type and power_parameters to
+    the list of fields.  This mixin also overrides the 'save' method to persist
+    these fields and is intended to be used with a class inheriting from
+    MachineForm.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(WithPowerMixin, self).__init__(*args, **kwargs)
+        self.data = self.data.copy()
+        WithPowerMixin.set_up_power_type(self, self.data)
+
+    @staticmethod
+    def _get_power_type(form, data, machine):
+        if data is None:
+            data = {}
+
+        power_type = data.get('power_type', form.initial.get('power_type'))
+
+        # If power_type is None (this is a machine creation form or this
+        # form deals with an API call which does not change the value of
+        # 'power_type') or invalid: get the machine's current 'power_type'
+        # value or the default value if this form is not linked to a machine.
+        power_types = get_power_types(ignore_errors=True)
+        if len(power_types) == 0:
+            return ''
+
+        if power_type not in power_types:
+            return '' if machine is None else machine.power_type
+        return power_type
+
+    @staticmethod
+    def set_up_power_type(form, data, machine=None):
+        """Set up the 'power_type' and 'power_parameters' fields.
+
+        This can't be done at the model level because the choices need to
+        be generated on the fly by get_power_type_choices().
+        """
+        power_type = WithPowerMixin._get_power_type(form, data, machine)
+        choices = [BLANK_CHOICE] + get_power_type_choices()
+        form.fields['power_type'] = forms.ChoiceField(
+            required=False, choices=choices, initial=power_type)
+        form.fields['power_parameters'] = get_power_type_parameters()[
+            power_type]
+        if form.instance is not None and form.instance.power_type != '':
+            form.initial['power_type'] = form.instance.power_type
+
+    @staticmethod
+    def check_power_type(form, cleaned_data):
+        # skip_check tells us to allow power_parameters to be saved
+        # without any validation.  Nobody can remember why this was
+        # added at this stage but it might have been a request from
+        # smoser, we think.
+        skip_check = (
+            form.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
+        # Try to contact the cluster controller; if it's down then we
+        # prevent saving the form as we can't validate the power
+        # parameters and type.
+        if not skip_check:
+            power_types = get_power_types(ignore_errors=True)
+            if len(power_types) == 0:
+                set_form_error(
+                    form, "power_type",
+                    "No rack controllers are connected, unable to "
+                    "validate the power type.")
+
+            # If power_type is not set and power_parameters_skip_check is not
+            # on, reset power_parameters (set it to the empty string).
+            if cleaned_data.get('power_type', '') == '':
+                cleaned_data['power_parameters'] = ''
+        return cleaned_data
+
+    @staticmethod
+    def set_power_type(form, machine):
+        """Persist the machine into the database."""
+        # Only change power_type if the power_type was passed in the initial
+        # data. clean_data will always have power_type, so we cannot use that
+        # as a reference.
+        power_type_changed = False
+        if form.data.get('power_type') is not None:
+            new_power_type = form.cleaned_data.get('power_type')
+            if machine.power_type != new_power_type:
+                machine.power_type = new_power_type
+                power_type_changed = True
+        # Only change power_parameters if the power_parameters was passed in
+        # the initial data. clean_data will always have power_parameters, so we
+        # cannot use that as a reference.
+        initial_parameters = {
+            param
+            for param in form.data.keys()
+            if (param.startswith("power_parameters") and
+                not param == 'power_parameters_%s' % SKIP_CHECK_NAME)
+        }
+        if power_type_changed or len(initial_parameters) > 0:
+            machine.power_parameters = form.cleaned_data.get(
+                'power_parameters')
+
+    def clean(self):
+        cleaned_data = super(WithPowerMixin, self).clean()
+        return WithPowerMixin.check_power_type(self, cleaned_data)
+
+    def save(self, *args, **kwargs):
+        """Persist the node into the database."""
+        node = super(WithPowerMixin, self).save()
+        WithPowerMixin.set_power_type(self, node)
+        node.save()
+        return node
 
 
 class MAASModelForm(APIEditMixin, forms.ModelForm):
@@ -679,6 +790,40 @@ class DeviceForm(NodeForm):
         return device
 
 
+class ControllerForm(MAASModelForm, WithPowerMixin):
+
+    class Meta:
+        model = Controller
+
+        fields = ['zone']
+
+    zone = forms.ModelChoiceField(
+        label="Physical zone", required=False,
+        initial=Zone.objects.get_default_zone,
+        queryset=Zone.objects.all(), to_field_name='name')
+
+    def __init__(self, data=None, instance=None, request=None, **kwargs):
+        super(ControllerForm, self).__init__(
+            data=data, instance=instance, **kwargs)
+        WithPowerMixin.set_up_power_type(self, data, instance)
+        if instance is not None:
+            self.initial['zone'] = instance.zone.name
+
+    def clean(self):
+        cleaned_data = super(ControllerForm, self).clean()
+        return WithPowerMixin.check_power_type(self, cleaned_data)
+
+    def save(self, *args, **kwargs):
+        """Persist the node into the database."""
+        controller = super(ControllerForm, self).save(commit=False)
+        zone = self.cleaned_data.get('zone')
+        if zone:
+            controller.zone = zone
+        WithPowerMixin.set_power_type(self, controller)
+        controller.save()
+        return controller
+
+
 CLUSTER_NOT_AVAILABLE = mark_safe(
     "The cluster controller for this node is not responding; power type "
     "validation is not available. "
@@ -749,7 +894,7 @@ class AdminNodeForm(NodeForm):
         return node
 
 
-class AdminMachineForm(MachineForm, AdminNodeForm):
+class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerMixin):
     """A `MachineForm` which includes fields that only an admin may change."""
 
     class Meta:
@@ -765,94 +910,11 @@ class AdminMachineForm(MachineForm, AdminNodeForm):
     def __init__(self, data=None, instance=None, request=None, **kwargs):
         super(AdminMachineForm, self).__init__(
             data=data, instance=instance, **kwargs)
-        AdminMachineForm.set_up_power_type(self, data, instance)
-
-    @staticmethod
-    def _get_power_type(form, data, machine):
-        if data is None:
-            data = {}
-
-        power_type = data.get('power_type', form.initial.get('power_type'))
-
-        # If power_type is None (this is a machine creation form or this
-        # form deals with an API call which does not change the value of
-        # 'power_type') or invalid: get the machine's current 'power_type'
-        # value or the default value if this form is not linked to a machine.
-        power_types = get_power_types(ignore_errors=True)
-        if len(power_types) == 0:
-            return ''
-
-        if power_type not in power_types:
-            return '' if machine is None else machine.power_type
-        return power_type
-
-    @staticmethod
-    def set_up_power_type(form, data, machine=None):
-        """Set up the 'power_type' and 'power_parameters' fields.
-
-        This can't be done at the model level because the choices need to
-        be generated on the fly by get_power_type_choices().
-        """
-        power_type = AdminMachineForm._get_power_type(form, data, machine)
-        choices = [BLANK_CHOICE] + get_power_type_choices()
-        form.fields['power_type'] = forms.ChoiceField(
-            required=False, choices=choices, initial=power_type)
-        form.fields['power_parameters'] = get_power_type_parameters()[
-            power_type]
-
-    @staticmethod
-    def check_power_type(form, cleaned_data):
-        # skip_check tells us to allow power_parameters to be saved
-        # without any validation.  Nobody can remember why this was
-        # added at this stage but it might have been a request from
-        # smoser, we think.
-        skip_check = (
-            form.data.get('power_parameters_%s' % SKIP_CHECK_NAME) == 'true')
-        # Try to contact the cluster controller; if it's down then we
-        # prevent saving the form as we can't validate the power
-        # parameters and type.
-        if not skip_check:
-            power_types = get_power_types(ignore_errors=True)
-            if len(power_types) == 0:
-                set_form_error(
-                    form, "power_type",
-                    "No rack controllers are connected, unable to "
-                    "validate the power type.")
-
-            # If power_type is not set and power_parameters_skip_check is not
-            # on, reset power_parameters (set it to the empty string).
-            if cleaned_data.get('power_type', '') == '':
-                cleaned_data['power_parameters'] = ''
-        return cleaned_data
+        WithPowerMixin.set_up_power_type(self, data, instance)
 
     def clean(self):
         cleaned_data = super(AdminMachineForm, self).clean()
-        return AdminMachineForm.check_power_type(self, cleaned_data)
-
-    @staticmethod
-    def set_power_type(form, machine):
-        """Persist the machine into the database."""
-        # Only change power_type if the power_type was passed in the initial
-        # data. clean_data will always have power_type, so we cannot use that
-        # as a reference.
-        power_type_changed = False
-        if form.data.get('power_type') is not None:
-            new_power_type = form.cleaned_data.get('power_type')
-            if machine.power_type != new_power_type:
-                machine.power_type = new_power_type
-                power_type_changed = True
-        # Only change power_parameters if the power_parameters was passed in
-        # the initial data. clean_data will always have power_parameters, so we
-        # cannot use that as a reference.
-        initial_parameters = {
-            param
-            for param in form.data.keys()
-            if (param.startswith("power_parameters") and
-                not param == 'power_parameters_%s' % SKIP_CHECK_NAME)
-        }
-        if power_type_changed or len(initial_parameters) > 0:
-            machine.power_parameters = form.cleaned_data.get(
-                'power_parameters')
+        return WithPowerMixin.check_power_type(self, cleaned_data)
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
@@ -860,7 +922,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm):
         zone = self.cleaned_data.get('zone')
         if zone:
             machine.zone = zone
-        AdminMachineForm.set_power_type(self, machine)
+        WithPowerMixin.set_power_type(self, machine)
         if kwargs.get('commit', True):
             machine.save(*args, **kwargs)
             self.save_m2m()  # Save many to many relations.
@@ -1067,30 +1129,6 @@ class WithMACAddressesMixin:
             IP_BASED_HOSTNAME_REGEXP.match(stripped_hostname) is not None)
         if generate_hostname:
             node.set_random_hostname()
-        return node
-
-
-class WithPowerMixin:
-    """A form mixin which dynamically adds power_type and power_parameters to
-    the list of fields.  This mixin also overrides the 'save' method to persist
-    these fields and is intended to be used with a class inheriting from
-    MachineForm.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(WithPowerMixin, self).__init__(*args, **kwargs)
-        self.data = self.data.copy()
-        AdminMachineForm.set_up_power_type(self, self.data)
-
-    def clean(self):
-        cleaned_data = super(WithPowerMixin, self).clean()
-        return AdminMachineForm.check_power_type(self, cleaned_data)
-
-    def save(self, *args, **kwargs):
-        """Persist the node into the database."""
-        node = super(WithPowerMixin, self).save()
-        AdminMachineForm.set_power_type(self, node)
-        node.save()
         return node
 
 

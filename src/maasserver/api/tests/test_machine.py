@@ -65,10 +65,7 @@ from metadataserver.models import (
     NodeUserData,
 )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import (
-    ANY,
-    Mock,
-)
+from mock import ANY
 from netaddr import IPNetwork
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
@@ -1506,59 +1503,6 @@ class TestMachineAPITransactional(APITransactionTestCase):
         self.assertEqual(
             http.client.SERVICE_UNAVAILABLE, response.status_code,
             response.content)
-
-
-class TestPowerParameters(APITestCase):
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_get_power_parameters(self):
-        self.become_admin()
-        power_parameters = {factory.make_string(): factory.make_string()}
-        machine = factory.make_Node(power_parameters=power_parameters)
-        response = self.client.get(
-            self.get_machine_uri(machine), {'op': 'power_parameters'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_params = json_load_bytes(response.content)
-        self.assertEqual(machine.power_parameters, parsed_params)
-
-    def test_get_power_parameters_empty(self):
-        self.become_admin()
-        machine = factory.make_Node()
-        response = self.client.get(
-            self.get_machine_uri(machine), {'op': 'power_parameters'})
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed_params = json_load_bytes(response.content)
-        self.assertEqual({}, parsed_params)
-
-    def test_power_parameters_requires_admin(self):
-        machine = factory.make_Node()
-        response = self.client.get(
-            self.get_machine_uri(machine), {'op': 'power_parameters'})
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-
-class TestQueryPowerState(APITestCase):
-    """Tests for /api/2.0/machines/<machine>/?op=query_power_state"""
-
-    def get_machine_uri(self, machine):
-        """Get the API URI for `machine`."""
-        return reverse('machine_handler', args=[machine.system_id])
-
-    def test_query_power_state(self):
-        machine = factory.make_Node()
-        mock__power_control_node = self.patch(
-            node_module.Node, "power_query").return_value
-        mock__power_control_node.wait = Mock(return_value=POWER_STATE.ON)
-        response = self.client.get(
-            self.get_machine_uri(machine), {'op': 'query_power_state'})
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(POWER_STATE.ON, parsed_result['state'])
 
 
 class TestAbort(APITransactionTestCase):

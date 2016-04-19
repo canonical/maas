@@ -219,6 +219,45 @@ class NodeHandler(OperationsHandler):
             # Not sure what media type to use here.
             content_type='application/bson')
 
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request, system_id):
+        """Obtain power parameters.
+
+        This method is reserved for admin users and returns a 403 if the
+        user is not one.
+
+        This returns the power parameters, if any, configured for a
+        node. For some types of power control this will include private
+        information such as passwords and secret keys.
+
+        Returns 404 if the node is not found.
+        """
+        node = get_object_or_404(self.model, system_id=system_id)
+        return node.power_parameters
+
+    @operation(idempotent=True)
+    def query_power_state(self, request, system_id):
+        """Query the power state of a node.
+
+        Send a request to the node's power controller which asks it about
+        the node's state.  The reply to this could be delayed by up to
+        30 seconds while waiting for the power controller to respond.
+        Use this method sparingly as it ties up an appserver thread
+        while waiting.
+
+        :param system_id: The node to query.
+        :return: a dict whose key is "state" with a value of one of
+            'on' or 'off'.
+
+        Returns 404 if the node is not found.
+        Returns node's power state.
+        """
+        node = get_object_or_404(self.model, system_id=system_id)
+        return {
+            "state": node.power_query().wait(45),
+        }
+
 
 class AnonNodeHandler(AnonymousOperationsHandler):
     """Anonymous access to Node."""

@@ -21,6 +21,8 @@ from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
 )
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms import ControllerForm
 from maasserver.models import RackController
 from maasserver.utils.orm import post_commit_do
 
@@ -36,6 +38,8 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     'swap_size',
     'osystem',
     'distro_series',
+    'power_type',
+    'power_state',
     'ip_addresses',
     ('interface_set', (
         'id',
@@ -72,6 +76,49 @@ class RackControllerHandler(NodeHandler):
     api_doc_section_name = "RackController"
     model = RackController
     fields = DISPLAYED_RACK_CONTROLLER_FIELDS
+
+    @admin_method
+    def update(self, request, system_id):
+        """Update a specific Rack controller.
+
+        :param power_type: The new power type for this rack controller. If you
+            use the default value, power_parameters will be set to the empty
+            string.
+            Available to admin users.
+            See the `Power types`_ section for a list of the available power
+            types.
+        :type power_type: unicode
+
+        :param power_parameters_{param1}: The new value for the 'param1'
+            power parameter.  Note that this is dynamic as the available
+            parameters depend on the selected value of the rack controller's
+            power_type.  Available to admin users. See the `Power types`_
+            section for a list of the available power parameters for each
+            power type.
+        :type power_parameters_{param1}: unicode
+
+        :param power_parameters_skip_check: Whether or not the new power
+            parameters for this rack controller should be checked against the
+            expected power parameters for the rack controller's power type
+            ('true' or 'false'). The default is 'false'.
+        :type power_parameters_skip_check: unicode
+
+        :param zone: Name of a valid physical zone in which to place this
+            rack controller.
+        :type zone: unicode
+
+        Returns 404 if the rack controller is not found.
+        Returns 403 if the user does not have permission to update the rack
+        controller.
+        """
+        rack = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        form = ControllerForm(data=request.data, instance=rack)
+
+        if form.is_valid():
+            return form.save()
+        else:
+            raise MAASAPIValidationError(form.errors)
 
     @admin_method
     @operation(idempotent=False)

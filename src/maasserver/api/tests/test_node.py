@@ -10,7 +10,10 @@ import http.client
 import bson
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    POWER_STATE,
+)
 from maasserver.models import (
     Node,
     node as node_module,
@@ -23,6 +26,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
+from mock import Mock
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
@@ -240,6 +244,59 @@ class TestGetDetails(APITestCase):
         url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+
+
+class TestPowerParameters(APITestCase):
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_get_power_parameters(self):
+        self.become_admin()
+        power_parameters = {factory.make_string(): factory.make_string()}
+        node = factory.make_Node(power_parameters=power_parameters)
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
+        self.assertEqual(node.power_parameters, parsed_params)
+
+    def test_get_power_parameters_empty(self):
+        self.become_admin()
+        node = factory.make_Node()
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_params = json_load_bytes(response.content)
+        self.assertEqual({}, parsed_params)
+
+    def test_power_parameters_requires_admin(self):
+        node = factory.make_Node()
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+
+class TestQueryPowerState(APITestCase):
+    """Tests for /api/2.0/nodes/<node>/?op=query_power_state"""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_query_power_state(self):
+        node = factory.make_Node()
+        mock__power_control_node = self.patch(
+            node_module.Node, "power_query").return_value
+        mock__power_control_node.wait = Mock(return_value=POWER_STATE.ON)
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'query_power_state'})
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(POWER_STATE.ON, parsed_result['state'])
 
 
 class TestSetOwnerData(APITestCase):

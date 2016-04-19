@@ -16,6 +16,7 @@ __all__ = [
     'CacheSet',
     'ComponentError',
     'Config',
+    'Controller',
     'DHCPSnippet',
     'DNSData',
     'DNSResource',
@@ -112,6 +113,7 @@ from maasserver.models.iprange import IPRange
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.node import (
+    Controller,
     Device,
     Machine,
     Node,
@@ -158,6 +160,7 @@ ignore_unused(
     CacheSet,
     ComponentError,
     Config,
+    Controller,
     DHCPSnippet,
     Event,
     EventType,

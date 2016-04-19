@@ -13,6 +13,7 @@ from maasserver.testing.api import (
 )
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -31,6 +32,20 @@ class TestRackControllerAPI(APITestCase):
     def get_rack_uri(rack):
         """Get the API URI for `rack`."""
         return reverse('rackcontroller_handler', args=[rack.system_id])
+
+    def test_PUT_updates_rack_controller(self):
+        self.become_admin()
+        rack = factory.make_RackController(owner=self.logged_in_user)
+        zone = factory.make_zone()
+        response = self.client.put(
+            self.get_rack_uri(rack), {'zone': zone.name})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(zone.name, reload_object(rack).zone.name)
+
+    def test_PUT_requires_admin(self):
+        rack = factory.make_RackController(owner=self.logged_in_user)
+        response = self.client.put(self.get_rack_uri(rack), {})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_refresh_checks_permission(self):
         self.patch(node_module.RackController, 'refresh')
@@ -109,6 +124,8 @@ class TestRackControllersAPI(APITestCase):
                 'memory',
                 'swap_size',
                 'osystem',
+                'power_state',
+                'power_type',
                 'resource_uri',
                 'distro_series',
                 'interface_set',

@@ -19,7 +19,6 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseNotFound,
 )
-from django.shortcuts import get_object_or_404
 from formencode import validators
 from formencode.validators import StringBool
 from maasserver import locks
@@ -258,14 +257,8 @@ class MachineHandler(NodeHandler, OwnerDataMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
 
-        altered_query_data = request.data.copy()
-        # Allow power_parameters to be set if power_type is not provided by
-        # adding the model's power_type value to the query data.
-        if 'power_type' not in request.data:
-            altered_query_data['power_type'] = machine.power_type
-
         Form = get_machine_edit_form(request.user)
-        form = Form(data=altered_query_data, instance=machine)
+        form = Form(data=request.data, instance=machine)
 
         if form.is_valid():
             return form.save()
@@ -660,45 +653,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin):
             yaml.safe_dump(
                 get_curtin_merged_config(machine), default_flow_style=False),
             content_type='text/plain')
-
-    @admin_method
-    @operation(idempotent=True)
-    def power_parameters(self, request, system_id):
-        """Obtain power parameters.
-
-        This method is reserved for admin users and returns a 403 if the
-        user is not one.
-
-        This returns the power parameters, if any, configured for a
-        machine. For some types of power control this will include private
-        information such as passwords and secret keys.
-
-        Returns 404 if the machine is not found.
-        """
-        machine = get_object_or_404(self.model, system_id=system_id)
-        return machine.power_parameters
-
-    @operation(idempotent=True)
-    def query_power_state(self, request, system_id):
-        """Query the power state of a machine.
-
-        Send a request to the machine's power controller which asks it about
-        the machine's state.  The reply to this could be delayed by up to
-        30 seconds while waiting for the power controller to respond.
-        Use this method sparingly as it ties up an appserver thread
-        while waiting.
-
-        :param system_id: The machine to query.
-        :return: a dict whose key is "state" with a value of one of
-            'on' or 'off'.
-
-        Returns 404 if the machine is not found.
-        Returns machine's power state.
-        """
-        machine = get_object_or_404(self.model, system_id=system_id)
-        return {
-            "state": machine.power_query().wait(45),
-        }
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):

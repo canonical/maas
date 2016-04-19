@@ -3,10 +3,13 @@
 
 """Tests for the Region Controller API."""
 
+import http.client
+
 from django.core.urlresolvers import reverse
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
 
 
 class TestRegionControllerAPI(APITestCase):
@@ -16,6 +19,25 @@ class TestRegionControllerAPI(APITestCase):
         self.assertEqual(
             '/api/2.0/regioncontrollers/region-name/',
             reverse('regioncontroller_handler', args=['region-name']))
+
+    @staticmethod
+    def get_region_uri(region):
+        """Get the API URI for `region`."""
+        return reverse('regioncontroller_handler', args=[region.system_id])
+
+    def test_PUT_updates_region_controller(self):
+        self.become_admin()
+        region = factory.make_RegionController()
+        zone = factory.make_zone()
+        response = self.client.put(
+            self.get_region_uri(region), {'zone': zone.name})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(zone.name, reload_object(region).zone.name)
+
+    def test_PUT_requires_admin(self):
+        region = factory.make_RegionController()
+        response = self.client.put(self.get_region_uri(region), {})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
 class TestRegionControllersAPI(APITestCase):
@@ -46,6 +68,8 @@ class TestRegionControllersAPI(APITestCase):
                 'memory',
                 'swap_size',
                 'osystem',
+                'power_state',
+                'power_type',
                 'resource_uri',
                 'distro_series',
                 'interface_set',

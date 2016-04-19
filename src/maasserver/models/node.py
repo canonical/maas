@@ -4,6 +4,7 @@
 """Node objects."""
 
 __all__ = [
+    "Controller",
     "Device",
     "Node",
     "Machine",
@@ -3021,7 +3022,19 @@ class Machine(Node):
             node_type=NODE_TYPE.MACHINE, *args, **kwargs)
 
 
-class RackController(Node):
+class Controller(Node):
+    """A node which is either a rack or region controller."""
+
+    objects = ControllerManager()
+
+    class Meta(DefaultMeta):
+        proxy = True
+
+    def __init__(self, *args, **kwargs):
+        super(Controller, self).__init__(*args, **kwargs)
+
+
+class RackController(Controller):
     """A node which is running rackd."""
 
     objects = RackControllerManager()
@@ -3691,7 +3704,7 @@ class RackController(Node):
         return response['running']
 
 
-class RegionController(Node):
+class RegionController(Controller):
     """A node which is running multiple regiond's."""
 
     objects = RegionControllerManager()
