@@ -2,6 +2,42 @@
 Changelog
 =========
 
+2.0.0 (beta3)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1553665    Unconfigured interfaces shouldn't add DNS records
+
+LP: #1571563    Can't override built in partitioning
+
+LP: #1566109    adding a device with no mac address gives an internal server error
+
+LP: #1564927    [2.0] Can't start OMAPI protocol: address not available
+
+LP: #1570606    [2.0] subnet.list: list index out of range error when using a /31 subnet
+
+LP: #1570600    [2.0b2] Trying to enabled dhcp on fabric-1 with IPv4 networks, results in maas-dhcpd6 attempted to be enabled
+
+LP: #1570609    [2.0b2] builtins.TypeError: cannot use a bytes pattern on a string-like object
+
+LP: #1571851    [2.0b2] interface_set returns an interface without 'links' even if empty
+
+LP: #1570626    [2.0b2] NameError: name 'LargeFile' is not defined
+
+LP: #1572070    [2.0b2] Cannot link physical device interfaces to tagged vlans, breaking juju 2.0 multi-NIC containers
+
+LP: #1569483    [2.0b2] Can't deploy CentOS
+
+LP: #1571622    [2.0b2] Bad VLAN Validation on UI Node Details page
+
+LP: #1555715    [UI 2.0a1] changing a subnet's space does not cause a refresh in networks/spaces tab in the UI
+
+LP: #1570152    [UI 2.0b1] Can't delete subnet in the UI, no action for it.
+
+LP: #1571002    [UI 2.0b2] When reconfiguring DHCP, I can't unselect Secondary Rack Controller
+
 
 2.0.0 (beta2)
 =============
