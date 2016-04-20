@@ -3524,6 +3524,7 @@ class RackController(Controller):
 
         return updated_ip_addresses
 
+    @transactional
     def refresh(self):
         """Refresh the hardware and networking columns of the rack controller."
 
