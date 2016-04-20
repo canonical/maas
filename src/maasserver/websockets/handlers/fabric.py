@@ -28,10 +28,12 @@ class FabricHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         data["name"] = obj.get_name()
-        data["vlan_ids"] = [
+        # The default VLAN always has the lowest ID. We sort to place the
+        # lowest ID first.
+        data["vlan_ids"] = sorted([
             vlan.id
             for vlan in obj.vlan_set.all()
-        ]
+        ])
         return data
 
     def delete(self, parameters):
