@@ -7,6 +7,7 @@ __all__ = [
     "SubnetHandler",
     ]
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.subnet import Subnet
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -28,6 +29,7 @@ class SubnetHandler(TimestampedModelHandler):
         pk = 'id'
         allowed_methods = [
             'create',
+            'delete',
             'get',
             'list',
             'set_active'
@@ -46,3 +48,10 @@ class SubnetHandler(TimestampedModelHandler):
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_node_summary=True)
         return data
+
+    def delete(self, parameters):
+        """Delete this Subnet."""
+        subnet = self.get_object(parameters)
+        assert self.user.has_perm(
+            NODE_PERMISSION.ADMIN, subnet), "Permission denied."
+        subnet.delete()

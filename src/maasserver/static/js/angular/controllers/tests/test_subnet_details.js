@@ -221,4 +221,43 @@ describe("SubnetDetailsController", function() {
         expect($scope.subnet.dns_servers).toEqual(["127.0.0.1", "127.0.0.2"]);
         expect($scope.all_dns_servers).toBe("127.0.0.1 127.0.0.2");
     });
+
+    describe("deleteButton", function() {
+
+        it("confirms delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            expect($scope.confirmingDelete).toBe(true);
+        });
+
+        it("clears error", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.error = makeName("error");
+            $scope.deleteButton();
+            expect($scope.error).toBeNull();
+        });
+    });
+
+    describe("cancelDeleteButton", function() {
+
+        it("cancels delete", function() {
+            var controller = makeControllerResolveSetActiveItem();
+            $scope.deleteButton();
+            $scope.cancelDeleteButton();
+            expect($scope.confirmingDelete).toBe(false);
+        });
+    });
+
+    describe("deleteSubnet", function() {
+
+        it("calls deleteSubnet", function() {
+            var controller = makeController();
+            var deleteSubnet = spyOn(SubnetsManager, "deleteSubnet");
+            var defer = $q.defer();
+            deleteSubnet.and.returnValue(defer.promise);
+            $scope.deleteConfirmButton();
+            expect(deleteSubnet).toHaveBeenCalled();
+        });
+    });
+
 });

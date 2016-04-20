@@ -238,7 +238,7 @@ angular.module('MAAS').controller('AddDeviceController', [
         };
 
         // Convert the Python dict error message to displayed message.
-        $scope.convertPythonDictToErrorMsg = function(pythonError) {
+        $scope.devicePythonDictToErrorMsg = function(pythonError) {
             var elements = pythonError.match(/'([A-Za-z0-9 \.:_\-]+)'/g);
             var result = '', msg = '';
             for (k=0; k < elements.length; ++k) {
@@ -282,7 +282,7 @@ angular.module('MAAS').controller('AddDeviceController', [
                     $scope.hide();
                 }
             }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+                $scope.error = $scope.devicePythonDictToErrorMsg(error);
             });
         };
 

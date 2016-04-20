@@ -1,83 +1,42 @@
-<div data-ng-hide="loaded">
-    <header class="page-header">
-        <div class="inner-wrapper">
-            <h1 class="page-header__title twelve-col">Loading...</h1>
+<header class="page-header margin-bottom" data-maas-sticky-header>
+    <div class="inner-wrapper">
+        <h1 class="page-header__title eight-col">{$ subnet.cidr $}</h1>
+        <div data-ng-hide="loaded">
+            <div class="inner-wrapper">
+                <h1 class="page-header__title twelve-col">Loading...</h1>
+            </div>
         </div>
-    </header>
-</div>
+        <div class="page-header__actions ng-hide" data-ng-show="isSuperUser() && !isDefaultSubnet() && !loading">
+            <div class="right no-margin-bottom last-col">
+                <button class="cta-ubuntu"
+                    data-ng-click="deleteButton()"
+                    data-ng-hide="confirmingDelete">Delete Subnet</button>
+            </div>
+        </div>
+        <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
+            <div class="page-header__feedback ng-hide" data-ng-show="!error">
+                <p class="page-header__feedback-message error">
+                    Are you sure you want to delete this subnet and release all
+                    IP addresses assigned within its range?
+                </p>
+                <div class="right">
+                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Go</button>
+                </div>
+            </div>
+            <div class="page-header__feedback ng-hide" data-ng-show="error">
+                <p class="page-header__feedback-message error">
+                    {$ error $}
+                </p>
+                <div class="right">
+                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Retry</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
 <div data-ng-if="loaded">
-    <header class="page-header margin-bottom" data-maas-sticky-header>
-        <div class="inner-wrapper">
-            <h1 class="page-header__title eight-col">{$ subnet.cidr $}</h1>
-            <div class="page-header__actions">
-                <div class="page-header__cta">
-                    <div class="right cta-group ng-hide">
-                        <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
-                        <ul class="cta-group__dropdown" role="menu" data-ng-show="shown">
-                            <!-- <li class="cta-group__item ng-scope">
-                                <a>Fabric</a>
-                            </li>
-                            <li class="cta-group__item ng-scope">
-                                <a>VLAN</a>
-                            </li>
-                            <li class="cta-group__item ng-scope">
-                                <a>Space</a>
-                            </li>
-                            <li class="cta-group__item ng-scope">
-                                <a>Subnet</a>
-                            </li> -->
-                        </ul>
-                    </div>
-                </div>
-                <div class="page-header__cta ng-hide">
-                    <span class="page-header__cta-feedback">
-                        2 Selected
-                    </span>
-                    <div class="right cta-group">
-                        <a class="cta-group__link ng-binding" data-ng-click="shown=!shown">Take action</a>
-                        <ul class="cta-group__dropdown ng-hide" role="menu" data-ng-show="shown">
-                            <li class="cta-group__item ng-scope">
-                                <a>Move subnet</a>
-                            </li>
-                            <li class="cta-group__item ng-scope">
-                                <a>Remove subnet</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <div class="page-header__dropdown border ng-hide">
-                <form class="form-inline tweleve-col padding-top--ten padding-bottom--ten">
-                    <div class="form__group">
-                        <label for="move-subnet">Move this subnet to</label>
-                        <select name="move-subnet" id="move-subnet">
-                            <option value="1">Space 1</option>
-                            <option value="2">Space 2</option>
-                            <option value="3">Space 3</option>
-                        </select>
-                        <div class="right">
-                            <button class="cta-ubuntu text-button">Cancel</button>
-                            <button class="cta-ubuntu">Move subnet</button>
-                        </div>
-                    </div>
-                </form>
-                <div class="page-header__feedback">
-                    <p class="page-header__feedback-message warning">Are you sure you want to remove this subnet release all IP addresses assigned within its range?</p>
-                    <div class="right">
-                        <button class="cta-ubuntu text-button">Cancel</button>
-                        <button class="cta-ubuntu">Remove subnet</button>
-                    </div>
-                </div>
-                <div class="page-header__feedback">
-                    <p class="page-header__feedback-message warning">Are you sure you want to remove this subnet?</p>
-                    <div class="right">
-                        <button class="cta-ubuntu text-button">Cancel</button>
-                        <button class="cta-ubuntu">Remove subnet</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
     <section class="row">
         <div class="inner-wrapper">
             <div class="tweleve-col">
@@ -289,11 +248,6 @@
                         </div>
                         -->
                     </main>
-                </div>
-                <!-- XXX mpontillo re-enable buttons when adding edit mode -->
-                <div class="tweleve-col padding-bottom ng-hide">
-                    <a class="link-cta-ubuntu secondary margin-right">Reserve range</a>
-                    <a class="link-cta-ubuntu secondary">Reserve dynamic range</a>
                 </div>
             </div>
             <div class="tweleve-col">

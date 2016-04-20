@@ -66,29 +66,10 @@ angular.module('MAAS').controller('DomainDetailsController', [
             $scope.confirmingDelete = false;
         };
 
-        // Convert the Python dict error message to displayed message.
-        // We know it's probably a form ValidationError dictionary, so just use
-        // it as such, and recover if that doesn't parse as JSON.
-        $scope.convertPythonDictToErrorMsg = function(pythonError) {
-            var dictionary;
-            try {
-                dictionary = JSON.parse(pythonError);
-            } catch(e) {
-                if (e instanceof SyntaxError) {
-                    return pythonError;
-                } else {
-                    throw e;
-                }
-            }
-            var result = '', msg = '';
-            var key;
-            angular.forEach(dictionary, function(value, key) {
-                result += key + ":  ";
-                angular.forEach(dictionary[key], function(value) {
-                        result += value + "  ";
-                });
-            });
-            return result;
+        // Called when an error message from the Python world needs to be
+        // rendered in the UI.
+        $scope.convertPythonDictToErrorMsg = function(error) {
+            return ManagerHelperService.parseLikelyValidationError(error);
         };
 
         // Called when the confirm delete domain button is pressed.

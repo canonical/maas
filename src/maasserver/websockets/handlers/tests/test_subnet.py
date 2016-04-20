@@ -8,10 +8,12 @@ __all__ = []
 from maasserver.models.subnet import Subnet
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from netaddr import IPNetwork
 from provisioningserver.utils.network import IPRangeStatistics
+from testtools import ExpectedException
 from testtools.matchers import Equals
 
 
@@ -60,3 +62,36 @@ class TestSubnetHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_subnets,
             handler.list({}))
+
+
+class TestSubnetHandlerDelete(MAASServerTestCase):
+
+    def test__delete_as_admin_success(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        handler.delete({
+            "id": subnet.id,
+        })
+        subnet = reload_object(subnet)
+        self.assertThat(subnet, Equals(None))
+
+    def test__delete_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": subnet.id,
+            })
+
+    def test__reloads_user(self):
+        user = factory.make_admin()
+        handler = SubnetHandler(user, {})
+        subnet = factory.make_Subnet()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": subnet.id,
+            })

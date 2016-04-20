@@ -763,14 +763,14 @@ describe("AddDeviceController", function() {
             });
     });
 
-    describe("convertPythonDictToErrorMsg", function() {
+    describe("devicePythonDictToErrorMsg", function() {
         it("converts hostname error for display",
             function() {
                 var controller = makeController();
                 var errorMsg = makeName("error");
                 var error = "{'hostname': ['Node " + errorMsg + "']}";
                 var expected = "Device " + errorMsg + "  ";
-                expect($scope.convertPythonDictToErrorMsg(
+                expect($scope.devicePythonDictToErrorMsg(
                         error)).toBe(expected);
         });
 
@@ -780,7 +780,7 @@ describe("AddDeviceController", function() {
                     var errorMsg = makeName("error");
                     var error = "{'mac_addresses': ['" + errorMsg + "']}";
                     var expected = errorMsg + "  ";
-                    expect($scope.convertPythonDictToErrorMsg(
+                    expect($scope.devicePythonDictToErrorMsg(
                             error)).toBe(expected);
         });
 
@@ -792,7 +792,7 @@ describe("AddDeviceController", function() {
                     var error = "{'" + errorSegment1 +
                         "': ['" + errorSegment2 + "']}";
                     var expected = errorSegment1 + errorSegment2;
-                    expect($scope.convertPythonDictToErrorMsg(
+                    expect($scope.devicePythonDictToErrorMsg(
                             error)).toBe(expected);
         });
     });

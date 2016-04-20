@@ -68,4 +68,17 @@ describe("SpacesManager", function() {
             );
         });
     });
+
+    describe("delete", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = {};
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(SpacesManager.deleteSpace(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "space.delete", obj
+            );
+        });
+    });
 });

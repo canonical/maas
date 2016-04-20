@@ -7,11 +7,11 @@
 angular.module('MAAS').controller('SubnetDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$filter', '$location',
     'SubnetsManager', 'IPRangesManager', 'SpacesManager', 'VLANsManager',
-    'FabricsManager', 'ManagerHelperService', 'ErrorService',
+    'UsersManager', 'FabricsManager', 'ManagerHelperService', 'ErrorService',
     function(
         $scope, $rootScope, $routeParams, $filter, $location, SubnetsManager,
-        IPRangesManager, SpacesManager, VLANsManager, FabricsManager,
-        ManagerHelperService, ErrorService) {
+        IPRangesManager, SpacesManager, VLANsManager, UsersManager,
+        FabricsManager, ManagerHelperService, ErrorService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -63,6 +63,38 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             return FabricsManager.getItemFromList(fabric_id).name;
         };
 
+        // Return true if the authenticated user is super user.
+        $scope.isSuperUser = function() {
+            return UsersManager.isSuperUser();
+        };
+
+        // Called when the delete subnet button is pressed.
+        $scope.deleteButton = function() {
+            $scope.error = null;
+            $scope.confirmingDelete = true;
+        };
+
+        // Called when the cancel delete subnet button is pressed.
+        $scope.cancelDeleteButton = function() {
+            $scope.confirmingDelete = false;
+        };
+
+        // Called when an error message from the Python world needs to be
+        // rendered in the UI.
+        $scope.convertPythonDictToErrorMsg = function(error) {
+            return ManagerHelperService.parseLikelyValidationError(error);
+        };
+
+        // Called when the confirm delete subnet button is pressed.
+        $scope.deleteConfirmButton = function() {
+            SubnetsManager.deleteSubnet($scope.subnet).then(function() {
+                $scope.confirmingDelete = false;
+                $location.path("/networks");
+            }, function(error) {
+                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+            });
+        };
+
         // Called when the subnet has been loaded.
         function subnetLoaded(subnet) {
             $scope.subnet = subnet;
@@ -78,7 +110,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             SubnetsManager, IPRangesManager, SpacesManager, VLANsManager,
-            FabricsManager
+            UsersManager, FabricsManager
         ]).then(function() {
             // Possibly redirected from another controller that already had
             // this subnet set to active. Only call setActiveItem if not

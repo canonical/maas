@@ -8,8 +8,11 @@ __all__ = []
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.websockets.handlers.space import SpaceHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestSpaceHandler(MAASServerTestCase):
@@ -51,3 +54,36 @@ class TestSpaceHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_spaces,
             handler.list({}))
+
+
+class TestSpaceHandlerDelete(MAASServerTestCase):
+
+    def test__delete_as_admin_success(self):
+        user = factory.make_admin()
+        handler = SpaceHandler(user, {})
+        space = factory.make_Space()
+        handler.delete({
+            "id": space.id,
+        })
+        space = reload_object(space)
+        self.assertThat(space, Equals(None))
+
+    def test__delete_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = SpaceHandler(user, {})
+        space = factory.make_Space()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": space.id,
+            })
+
+    def test__reloads_user(self):
+        user = factory.make_admin()
+        handler = SpaceHandler(user, {})
+        space = factory.make_Space()
+        user.is_superuser = False
+        user.save()
+        with ExpectedException(AssertionError, "Permission denied."):
+            handler.delete({
+                "id": space.id,
+            })

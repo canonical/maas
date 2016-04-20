@@ -102,4 +102,17 @@ describe("VLANsManager", function() {
             );
         });
     });
+
+    describe("delete", function() {
+
+        it("calls the region with expected parameters", function() {
+            var obj = { id: "whatever" };
+            var result = {};
+            spyOn(RegionConnection, "callMethod").and.returnValue(result);
+            expect(VLANsManager.deleteVLAN(obj)).toBe(result);
+            expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                "vlan.delete", obj, true
+            );
+        });
+    });
 });
