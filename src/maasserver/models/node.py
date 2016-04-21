@@ -3663,11 +3663,11 @@ class RackController(Controller):
             # Determine the status of the boot images
             if not BootResource.objects.boot_images_are_in_sync(boot_images):
                 if self.is_import_boot_images_running():
-                    status = "Syncing"
+                    status = "syncing"
                 else:
-                    status = "Out of sync"
+                    status = "out-of-sync"
             else:
-                status = "Synced"
+                status = "synced"
 
             for image in boot_images:
                 if image['osystem'] == 'custom':
@@ -3689,7 +3689,7 @@ class RackController(Controller):
 
             return {'images': images, 'connected': True, 'status': status}
         except (NoConnectionsAvailable, TimeoutError):
-            return {'images': [], 'connected': False, 'status': 'Unknown'}
+            return {'images': [], 'connected': False, 'status': 'unknown'}
 
     def is_import_boot_images_running(self):
         """Return whether the boot images are running

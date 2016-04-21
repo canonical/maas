@@ -6977,14 +6977,14 @@ class TestRackController(MAASServerTestCase):
                 'architecture': 'amd64',
                 'subarches': ['generic'],
             }], images['images'])
-        self.assertEquals('Synced', images['status'])
+        self.assertEquals('synced', images['status'])
 
     def test_list_boot_images_when_disconnected(self):
         rack_controller = factory.make_RackController()
         images = rack_controller.list_boot_images()
         self.assertEquals(False, images['connected'])
         self.assertItemsEqual([], images['images'])
-        self.assertEquals('Unknown', images['status'])
+        self.assertEquals('unknown', images['status'])
 
     def test_list_boot_images_syncing(self):
         rack_controller = factory.make_RackController()
@@ -7033,7 +7033,7 @@ class TestRackController(MAASServerTestCase):
                 'architecture': 'amd64',
                 'subarches': ['generic'],
             }], images['images'])
-        self.assertEquals('Syncing', images['status'])
+        self.assertEquals('syncing', images['status'])
 
     def test_list_boot_images_out_of_sync(self):
         rack_controller = factory.make_RackController()
@@ -7082,7 +7082,7 @@ class TestRackController(MAASServerTestCase):
                 'architecture': 'amd64',
                 'subarches': ['generic'],
             }], images['images'])
-        self.assertEquals('Out of sync', images['status'])
+        self.assertEquals('out-of-sync', images['status'])
 
     def test_is_import_images_running(self):
         running = factory.pick_bool()
