@@ -169,7 +169,7 @@ define karma-deps
   karma-opera-launcher@0.3.0
   karma-phantomjs-launcher@0.2.3
   karma-failed-reporter@0.0.3
-  phantomjs@1.9.19
+  phantomjs@2.1.7
 endef
 
 bin/karma: deps = $(strip $(karma-deps))
