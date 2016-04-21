@@ -13,17 +13,15 @@ from tempfile import NamedTemporaryFile
 
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
-    PowerActionError,
     PowerAuthError,
+    PowerConnError,
     PowerDriver,
+    PowerError,
+    PowerFatalError,
+    PowerSettingError,
 )
-from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-)
 
 
 IPMI_CONFIG = """\
@@ -34,7 +32,116 @@ EndSection
 """
 
 
-maaslog = get_maas_logger("drivers.power.ipmi")
+IPMI_ERRORS = {
+    'username invalid': {
+        'message': (
+            "Incorrect username.  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'password invalid': {
+        'message': (
+            "Incorrect password.  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'password verification timeout': {
+        'message': (
+            "Authentication timeout.  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'k_g invalid': {
+        'message': (
+            "Incorrect K_g key.  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'privilege level insufficient': {
+        'message': (
+            "Access denied while performing power action."
+            "  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'privilege level cannot be obtained for this user': {
+        'message': (
+            "Access denied while performing power action."
+            "  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    'authentication type unavailable for attempted privilege level': {
+        'message': (
+            "Access denied while performing power action."
+            "  Check BMC configuration and try again."),
+        'exception': PowerSettingError
+    },
+    'cipher suite id unavailable': {
+        'message': (
+            "Access denied while performing power action: cipher suite"
+            " unavailable.  Check BMC configuration and try again."),
+        'exception': PowerSettingError
+    },
+    'ipmi 2.0 unavailable': {
+        'message': (
+            "IPMI 2.0 was not discovered on the BMC."
+            "  Please try to use IPMI 1.5 instead."),
+        'exception': PowerSettingError
+    },
+    'connection timeout': {
+        'message': (
+            "Connection timed out while performing power action."
+            "  Check BMC configuration and connectivity and try again."),
+        'exception': PowerConnError
+    },
+    'session timeout': {
+        'message': (
+            "The IPMI session has timed out. MAAS performed several retries."
+            "  Check BMC configuration and connectivity and try again."),
+        'exception': PowerConnError
+    },
+    'internal IPMI error': {
+        'message': (
+            "An IPMI error has occurred that FreeIPMI does not know how to"
+            " handle.  Please try the power action manually, and file a bug if"
+            " appropriate."),
+        'exception': PowerFatalError
+    },
+    'device not found': {
+        'message': (
+            "Error locating IPMI device."
+            "  Check BMC configuration and try again."),
+        'exception': PowerSettingError
+    },
+    'driver timeout': {
+        'message': (
+            "Device communication timeout while performing power action."
+            "  MAAS performed several retries.  Check BMC configuration and"
+            " connectivity and try again."),
+        'exception': PowerConnError
+    },
+    'message timeout': {
+        'message': (
+            "Device communication timeout while performing power action."
+            "  MAAS performed several retries.  Check BMC configuration and"
+            " connectivity and try again."),
+        'exception': PowerConnError
+    },
+    'BMC busy': {
+        'message': (
+            "Device busy while performing power action."
+            "  MAAS performed several retries.  Please wait and try again."),
+        'exception': PowerConnError
+    },
+    'could not find inband device': {
+        'message': (
+            "An inband device could not be found."
+            "  Check BMC configuration and try again."),
+        'exception': PowerSettingError
+    },
+    'driver timeout': {
+        'message': (
+            "The inband driver has timed out communicating to the local BMC or"
+            " service processor.  MAAS performed several retries."
+            "  Check BMC configuration and try again."),
+        'exception': PowerConnError
+    },
+}
 
 
 class IPMIPowerDriver(PowerDriver):
@@ -61,33 +168,39 @@ class IPMIPowerDriver(PowerDriver):
             # need to check stderr.
             command = tuple(command) + ("--filename", tmp_config.name)
             process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
-            stdout, stderr = process.communicate()
-        stdout = stdout.decode("utf-8")
+            _, stderr = process.communicate()
         stderr = stderr.decode("utf-8").strip()
-        if "password invalid" in stderr:
-            raise PowerAuthError("Invalid password.")
+        for error, error_info in IPMI_ERRORS.items():
+            if error in stderr:
+                raise error_info.get('exception')(
+                    "%s\n%s " % (stderr, error_info.get('message')))
         if process.returncode != 0:
-            maaslog.warning(
-                'Failed to change the boot order to PXE %s: %s' % (
+            raise PowerError(
+                "Failed to change the boot order to PXE %s: %s" % (
                     power_address, stderr))
 
     @staticmethod
-    def _issue_ipmi_power_command(command, power_change, power_address):
+    def _issue_ipmipower_command(command, power_change, power_address):
         env = shell.select_c_utf8_locale()
         command = tuple(command)  # For consistency when testing.
-        try:
-            output = call_and_check(command, env=env).decode("utf-8")
-        except ExternalProcessError as e:
-            raise PowerActionError(
+        process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
+        stdout, stderr = process.communicate()
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8").strip()
+        for error, error_info in IPMI_ERRORS.items():
+            if error in stderr:
+                raise error_info.get('exception')(
+                    "%s\n%s" % (stderr, error_info.get('message')))
+        if process.returncode != 0:
+            raise PowerError(
                 "Failed to power %s %s: %s" % (
-                    power_change, power_address, e.output_as_unicode))
+                    power_change, power_address, stderr))
+        if 'on' in stdout:
+            return 'on'
+        elif 'off' in stdout:
+            return 'off'
         else:
-            if 'on' in output:
-                return 'on'
-            elif 'off' in output:
-                return 'off'
-            else:
-                return output
+            return stdout
 
     def _issue_ipmi_command(
             self, power_change, power_address=None, power_user=None,
@@ -145,7 +258,7 @@ class IPMIPowerDriver(PowerDriver):
             ipmipower_command.append('--stat')
 
         # Update or query the power state.
-        return self._issue_ipmi_power_command(
+        return self._issue_ipmipower_command(
             ipmipower_command, power_change, power_address)
 
     def power_on(self, system_id, context):
