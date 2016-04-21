@@ -36,6 +36,13 @@ class TestUbuntuOS(MAASTestCase):
                 return info._format("fullname", row)
         return None
 
+    def get_supported_lts_releases(self):
+        info = UbuntuDistroInfo()
+        unsupported_releases = ['precise', 'xenial']
+        return [name for name in info.supported()
+                if name not in unsupported_releases
+                if info.is_lts(name)]
+
     def test_get_boot_image_purposes(self):
         osystem = UbuntuOS()
         archs = [factory.make_name('arch') for _ in range(2)]
@@ -63,12 +70,12 @@ class TestUbuntuOS(MAASTestCase):
         osystem = UbuntuOS()
         expected = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(expected, list)
-        self.assertEqual(expected, [self.get_lts_release()])
+        self.assertEqual(expected, self.get_supported_lts_releases())
 
     def test_default_commissioning_release(self):
         osystem = UbuntuOS()
         expected = osystem.get_default_commissioning_release()
-        self.assertEqual(expected, self.get_lts_release())
+        self.assertEqual(expected, 'trusty')
 
     def test_get_release_title(self):
         osystem = UbuntuOS()

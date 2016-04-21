@@ -57,14 +57,18 @@ class UbuntuOS(OperatingSystem):
         only exists on Ubuntu, because that is the only operating
         system that supports commissioning.
         """
-        return [self.get_lts_release()]
+        info = UbuntuDistroInfo()
+        unsupported_releases = ['precise', 'xenial']
+        return [name for name in info.supported()
+                if name not in unsupported_releases
+                if info.is_lts(name)]
 
     def get_default_commissioning_release(self):
         """Gets the default commissioning release for Ubuntu. This only exists
         on Ubuntu, because that is the only operating system that supports
         commissioning.
         """
-        return self.get_lts_release()
+        return 'trusty'
 
     def get_distro_series_info_row(self, release):
         """Returns the distro series row information from python-distro-info.

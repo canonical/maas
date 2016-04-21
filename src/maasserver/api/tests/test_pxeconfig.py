@@ -617,7 +617,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def test_pxeconfig_returns_commissioning_os_series_for_other_oses(self):
         osystem = Config.objects.get_config('default_osystem')
-        release = Config.objects.get_config('default_distro_series')
+        release = Config.objects.get_config('commissioning_distro_series')
         nodegroup = factory.make_NodeGroup()
         os_image = make_rpc_boot_image(purpose='xinstall')
         architecture = '%s/%s' % (
