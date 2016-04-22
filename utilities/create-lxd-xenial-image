@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+CONTAINER=xenial-maas-$USER
+LXD_USER=$USER
+MAAS_BIND_MOUNT=/opt/src/maas
+PROFILE=maas-dev-$USER
+DESCRIPTION="MAAS Xenial development environment"
+
+cd "$(dirname $0)"/..
+MAAS_SANDBOX=$(basename $PWD)
+
+if lxc profile list | grep -q "^$PROFILE$"; then
+    echo "Found LXD profile: $PROFILE"
+else
+    echo "LXD profile not found: $PROFILE"
+    echo "Please run configure-lxd-profile to continue."
+    exit 1
+fi
+
+
+if ! lxc launch ubuntu:x $CONTAINER --profile $PROFILE ; then
+    echo "Container has already been created."
+    echo "If you wish to recreate it, use:"
+    echo "    lxc delete $CONTAINER --force"
+    echo "    lxc image delete $CONTAINER"
+    echo "Then re-run this script."
+    exit 0
+fi
+utilities/wait-for-systemd-container $CONTAINER
+# Change the default user to match the user on the local system.
+# Note; if in the future we don't want the bind mount, we can do this in order
+# to move the /home to the correct location:
+#     -m
+lxc exec $CONTAINER -- usermod -l $LXD_USER ubuntu -d /home/$LXD_USER --uid $(id -u)
+# Rename the default group to match the local user.
+lxc exec $CONTAINER -- groupmod -n $LXD_USER ubuntu --gid $(id -g)
+lxc exec $CONTAINER -- chown -R $LXD_USER:$LXD_USER /home/$LXD_USER
+lxc exec $CONTAINER -- bash -c "echo 127.0.1.1 $CONTAINER >> /etc/hosts"
+lxc exec $CONTAINER -- bash -c "echo $LXD_USER ALL=NOPASSWD: ALL >> /etc/sudoers"
+lxc exec $CONTAINER -- bash -c "rm -f /var/lib/apt/lists/* 2> /dev/null ; true"
+lxc exec $CONTAINER -- apt-get update
+lxc exec $CONTAINER --env DEBIAN_FRONTEND=noninteractive -- apt-get dist-upgrade -y
+lxc exec $CONTAINER --env DEBIAN_FRONTEND=noninteractive -- apt-get install build-essential -y
+lxc exec $CONTAINER -- apt-get clean
+lxc snapshot $CONTAINER installed
+lxc exec $CONTAINER -- mknod /dev/loop0 b 7 0
+lxc exec $CONTAINER -- sudo -u $LXD_USER bash -c \
+    "cd $MAAS_BIND_MOUNT/$MAAS_SANDBOX ; make install-dependencies"
+lxc exec $CONTAINER -- apt-get clean
+lxc snapshot $CONTAINER $PROFILE
+# Create an image based on the container we just created, so that we can
+# easily re-launch the container without having to reinstall MAAS dependencies.
+lxc publish $CONTAINER --force --alias=$CONTAINER description="$DESCRIPTION"

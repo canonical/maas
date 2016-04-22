@@ -200,6 +200,13 @@ define test-scripts
   bin/test.js
 endef
 
+lxd:
+	utilities/configure-lxd-profile
+	utilities/create-lxd-xenial-image
+
+test+lxd: lxd $(strip $(test-scripts))
+	utilities/isolated-make-test
+
 test: $(strip $(test-scripts))
 	@bin/maas-region makemigrations --dry-run --exit && exit 1 ||:
 	@$(RM) coverage.data
@@ -391,6 +398,7 @@ define phony_targets
   lint-py
   lint-py-imports
   lint-rst
+  lxd
   man
   print-%
   sampledata
@@ -399,6 +407,7 @@ define phony_targets
   test
   test-migrations
   test+coverage
+  test+lxd
 endef
 
 #
