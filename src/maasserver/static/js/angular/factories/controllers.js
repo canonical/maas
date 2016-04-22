@@ -40,5 +40,11 @@ angular.module('MAAS').factory(
             return services;
         };
 
+        // Check the boot image import status.
+        ControllersManager.prototype.checkImageStates = function(controllers) {
+            return RegionConnection.callMethod(
+                this._handler + ".check_images", controllers);
+        };
+
         return new ControllersManager();
     }]);

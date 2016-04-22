@@ -1300,7 +1300,7 @@ class Node(CleanSave, TimestampedModel):
         This is need as Django doesn't add this attribute to the `Node` model,
         it only adds blockdevice_set.
         """
-        # Avoid circular imports
+        # Avoid circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
         return VirtualBlockDevice.objects.filter(node=self)
 
@@ -1347,7 +1347,7 @@ class Node(CleanSave, TimestampedModel):
 
     def add_physical_interface(self, mac_address, name=None):
         """Add a new `PhysicalInterface` to `node` with `mac_address`."""
-        # Avoid circular imports
+        # Avoid circular imports.
         from maasserver.models import PhysicalInterface, UnknownInterface
         if name is None:
             name = self.get_next_ifname()
@@ -2136,7 +2136,7 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = None
         self.save()
 
-        # Avoid circular imports
+        # Avoid circular imports.
         from metadataserver.models import NodeResult
         # Clear installation results
         NodeResult.objects.filter(
@@ -2257,7 +2257,7 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = ''
         self.save()
 
-        # Avoid circular imports
+        # Avoid circular imports.
         from metadataserver.models import NodeResult
         # Clear installation results
         NodeResult.objects.filter(
@@ -3531,7 +3531,7 @@ class RackController(Controller):
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
         """
-        # Avoid circular imports
+        # Avoid circular imports.
         from metadataserver.models import NodeKey
 
         self._register_request_event(
@@ -3597,7 +3597,7 @@ class RackController(Controller):
 
     def delete(self):
         """Delete this rack controller."""
-        # Avoid circular dependency
+        # Avoid circular dependency.
         from maasserver.models import RegionRackRPCConnection
         connections = RegionRackRPCConnection.objects.filter(
             rack_controller=self)
@@ -3652,23 +3652,32 @@ class RackController(Controller):
                     "Missing connections to %d region controller(s)." % (
                         dead_regions + len(missing_regions)))
 
+    def get_image_sync_status(self, boot_images=None):
+        """Return the status of the boot image import process."""
+        try:
+            if boot_images is None:
+                # Avoid circular imports.
+                from maasserver.clusterrpc.boot_images import get_boot_images
+                boot_images = get_boot_images(self)
+            if BootResource.objects.boot_images_are_in_sync(boot_images):
+                status = "synced"
+            else:
+                if self.is_import_boot_images_running():
+                    status = "syncing"
+                else:
+                    status = "out-of-sync"
+        except (NoConnectionsAvailable, TimeoutError):
+            status = 'unknown'
+        return status
+
     def list_boot_images(self):
         """Return a list of boot images available on the rack controller."""
-        # Avoid circular imports
+        # Avoid circular imports.
         from maasserver.clusterrpc.boot_images import get_boot_images
         try:
             # Combine all boot images one per name and arch
             downloaded_boot_images = defaultdict(set)
             boot_images = get_boot_images(self)
-            # Determine the status of the boot images
-            if not BootResource.objects.boot_images_are_in_sync(boot_images):
-                if self.is_import_boot_images_running():
-                    status = "syncing"
-                else:
-                    status = "out-of-sync"
-            else:
-                status = "synced"
-
             for image in boot_images:
                 if image['osystem'] == 'custom':
                     image_name = image['release']
@@ -3686,7 +3695,7 @@ class RackController(Controller):
                 'architecture': arch,
                 'subarches': sorted(subarches),
             } for (name, arch), subarches in downloaded_boot_images.items()]
-
+            status = self.get_image_sync_status(boot_images)
             return {'images': images, 'connected': True, 'status': status}
         except (NoConnectionsAvailable, TimeoutError):
             return {'images': [], 'connected': False, 'status': 'unknown'}
@@ -3719,7 +3728,7 @@ class RegionController(Controller):
 
     def delete(self):
         """Delete this region controller."""
-        # Avoid circular dependency
+        # Avoid circular dependency.
         from maasserver.models import RegionControllerProcess
         connections = RegionControllerProcess.objects.filter(
             region=self)

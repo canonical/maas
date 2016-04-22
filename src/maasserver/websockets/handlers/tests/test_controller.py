@@ -72,3 +72,15 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             AdminMachineWithMACAddressesForm,
             handler.get_form_class("update"))
+
+    def test_check_images(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {})
+        node1 = factory.make_RackController(owner=owner)
+        node2 = factory.make_RackController(owner=owner)
+        data = handler.check_images([
+            {"system_id": node1.system_id},
+            {"system_id": node2.system_id}])
+        self.assertEqual({
+            node1.system_id: "unknown",
+            node2.system_id: "unknown"}, data)

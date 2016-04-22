@@ -9,7 +9,11 @@ __all__ = [
 
 from maasserver.enum import NODE_PERMISSION
 from maasserver.forms import AdminMachineWithMACAddressesForm
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Node,
+    RackController,
+    typecast_to_node_type,
+)
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
 
@@ -28,6 +32,7 @@ class ControllerHandler(MachineHandler):
             'action',
             'set_active',
             'check_power',
+            'check_images',
             'create_physical',
             'create_vlan',
             'create_bond',
@@ -86,3 +91,13 @@ class ControllerHandler(MachineHandler):
             for service in obj.service_set.all()
         ]
         return data
+
+    def check_images(self, params):
+        """Get the image sync statuses of requested controllers."""
+        result = {}
+        for node in [self.get_object(param) for param in params]:
+            # We use a RackController method; without the cast, it's a Node.
+            node = typecast_to_node_type(node)
+            if isinstance(node, RackController):
+                result[node.system_id] = node.get_image_sync_status()
+        return result

@@ -6978,6 +6978,7 @@ class TestRackController(MAASServerTestCase):
                 'subarches': ['generic'],
             }], images['images'])
         self.assertEquals('synced', images['status'])
+        self.assertEquals('synced', rack_controller.get_image_sync_status())
 
     def test_list_boot_images_when_disconnected(self):
         rack_controller = factory.make_RackController()
@@ -6985,6 +6986,7 @@ class TestRackController(MAASServerTestCase):
         self.assertEquals(False, images['connected'])
         self.assertItemsEqual([], images['images'])
         self.assertEquals('unknown', images['status'])
+        self.assertEquals('unknown', rack_controller.get_image_sync_status())
 
     def test_list_boot_images_syncing(self):
         rack_controller = factory.make_RackController()
@@ -7034,6 +7036,7 @@ class TestRackController(MAASServerTestCase):
                 'subarches': ['generic'],
             }], images['images'])
         self.assertEquals('syncing', images['status'])
+        self.assertEquals('syncing', rack_controller.get_image_sync_status())
 
     def test_list_boot_images_out_of_sync(self):
         rack_controller = factory.make_RackController()
@@ -7083,6 +7086,8 @@ class TestRackController(MAASServerTestCase):
                 'subarches': ['generic'],
             }], images['images'])
         self.assertEquals('out-of-sync', images['status'])
+        self.assertEquals(
+            'out-of-sync', rack_controller.get_image_sync_status())
 
     def test_list_boot_images_when_empty(self):
         rack_controller = factory.make_RackController()

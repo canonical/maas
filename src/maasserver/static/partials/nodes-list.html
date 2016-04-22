@@ -783,6 +783,9 @@
                     <th class="table-listing__header table-col--15">
                         <a href="" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Last Image Sync</a>
                     </th>
+                    <th class="table-listing__header table-col--15">
+                        <a href="" data-ng-click="sortTable('updated', 'controllers')" data-ng-class="{sort: tabs.controllers.predicate === 'updated', 'sort-asc': tabs.controllers.reverse === false, 'sort-desc': tabs.controllers.reverse === true}">Images Status</a>
+                    </th>
                 </tr>
             </thead>
             <tbody>
@@ -800,6 +803,7 @@
                     <td class="table-col--4 table-listing__cell align-center" data-maas-controller-status="controller" data-maas-services="services"></td>
                     <td class="table-col--25 table-listing__cell">{$ controller.node_type_display $}</td>
                     <td class="table-col--15 table-listing__cell">{$ controller.last_image_sync || 'Never' $}</td>
+                    <td class="table-col--15 table-listing__cell">{$ controller.image_sync_status || 'Checking...' $}</td>
                 </tr>
             </tbody>
         </table>

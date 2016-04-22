@@ -5,13 +5,13 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$routeParams', '$location', 'MachinesManager',
-    'DevicesManager', 'ControllersManager', 'GeneralManager',
-    'ManagerHelperService', 'SearchService', 'ZonesManager',
+    '$scope', '$interval', '$rootScope', '$routeParams', '$location',
+    'MachinesManager', 'DevicesManager', 'ControllersManager',
+    'GeneralManager', 'ManagerHelperService', 'SearchService', 'ZonesManager',
     'UsersManager', 'ServicesManager',
-    function($scope, $rootScope, $routeParams, $location, MachinesManager,
-        DevicesManager, ControllersManager, GeneralManager,
-        ManagerHelperService, SearchService, ZonesManager,
+    function($scope, $interval, $rootScope, $routeParams, $location,
+        MachinesManager, DevicesManager, ControllersManager,
+        GeneralManager, ManagerHelperService, SearchService, ZonesManager,
         UsersManager, ServicesManager) {
 
         // Mapping of device.ip_assignment to viewable text.
@@ -569,6 +569,21 @@ angular.module('MAAS').controller('NodesListController', [
             return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
+        $scope.getControllersImageSyncStatus = function() {
+            ControllersManager.checkImageStates($scope.controllers).then(
+                    function(results) {
+                angular.forEach($scope.controllers, function(controller) {
+                    status = results[controller.system_id];
+                    if(status) {
+                        controller.image_sync_status =
+                            results[controller.system_id];
+                    } else {
+                        controller.image_sync_status = "Unknown";
+                    }
+                });
+            });
+        };
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.
@@ -576,11 +591,20 @@ angular.module('MAAS').controller('NodesListController', [
             [MachinesManager, DevicesManager, ControllersManager,
             GeneralManager, ZonesManager, UsersManager, ServicesManager]).then(
             function() {
+
+                if($routeParams.tab === "controllers") {
+                    $scope.getControllersImageSyncStatus();
+                    $scope.statusPoll = $interval(function() {
+                        $scope.getControllersImageSyncStatus();
+                    }, 10000);
+                }
+
                 $scope.loading = false;
             });
 
         // Stop polling and save the current filter when the scope is destroyed.
         $scope.$on("$destroy", function() {
+            $interval.cancel($scope.statusPoll);
             GeneralManager.stopPolling("osinfo");
             SearchService.storeFilters("nodes", $scope.tabs.nodes.filters);
             SearchService.storeFilters("devices", $scope.tabs.devices.filters);

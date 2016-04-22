@@ -29,6 +29,20 @@ describe("ControllersManager", function() {
         RegionConnection.connect("");
     });
 
+    // Make a random controller.
+    function makecontroller(selected) {
+        var controller = {
+            system_id: makeName("system_id"),
+            name: makeName("name"),
+            status: makeName("status"),
+            owner: makeName("owner")
+        };
+        if(angular.isDefined(selected)) {
+            controller.$selected = selected;
+        }
+        return controller;
+    }
+
     it("sanity check", function() {
         expect(ControllersManager._pk).toBe("system_id");
         expect(ControllersManager._handler).toBe("controller");
@@ -36,6 +50,28 @@ describe("ControllersManager", function() {
 
     it("set requires attributes", function() {
         expect(Object.keys(ControllersManager._metadataAttributes)).toEqual([]);
+    });
+
+
+    describe("checkImageStates", function() {
+
+        it("calls controller.check_images with system_ids", function(done) {
+            var controllers = [makecontroller(), makecontroller()];
+            var states = [makeName("state"), makeName("state")];
+            response = {};
+            response[controllers[0].system_id] = states[0];
+            response[controllers[1].system_id] = states[1];
+            webSocket.returnData.push(makeFakeResponse(response));
+
+            ControllersManager.checkImageStates(controllers).then(
+                    function(retval) {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("controller.check_images");
+                expect(sentObject.params).toEqual(controllers);
+                expect(retval).toEqual(response);
+                done();
+            });
+        });
     });
 
 });
