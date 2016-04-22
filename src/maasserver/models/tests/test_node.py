@@ -7084,6 +7084,20 @@ class TestRackController(MAASServerTestCase):
             }], images['images'])
         self.assertEquals('out-of-sync', images['status'])
 
+    def test_list_boot_images_when_empty(self):
+        rack_controller = factory.make_RackController()
+        self.patch(boot_images, 'get_boot_images').return_value = []
+        self.patch(
+            BootResource.objects,
+            'boot_images_are_in_sync').return_value = False
+        self.patch(
+            rack_controller,
+            'is_import_boot_images_running').return_value = True
+        images = rack_controller.list_boot_images()
+        self.assertTrue(images['connected'])
+        self.assertItemsEqual([], images['images'])
+        self.assertEquals('syncing', images['status'])
+
     def test_is_import_images_running(self):
         running = factory.pick_bool()
         rackcontroller = factory.make_RackController()

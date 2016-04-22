@@ -3671,14 +3671,14 @@ class RackController(Controller):
 
             for image in boot_images:
                 if image['osystem'] == 'custom':
-                    name = image['release']
+                    image_name = image['release']
                 else:
-                    name = "%s/%s" % (image['osystem'], image['release'])
-                arch = image['architecture']
-                subarch = image['subarchitecture']
-                downloaded_boot_images[name, arch].add(subarch)
-            # Prevent lint error 'list comprehension redefines'
-            del name, arch
+                    image_name = "%s/%s" % (image['osystem'], image['release'])
+                image_arch = image['architecture']
+                image_subarch = image['subarchitecture']
+                downloaded_boot_images[image_name, image_arch].add(
+                    image_subarch)
+
             # Return a list of dictionaries each containing one entry per
             # name, architecture like boot-resources does
             images = [{
