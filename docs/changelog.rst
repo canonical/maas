@@ -11,21 +11,37 @@ See https://launchpad.net/maas/+milestone/1.9.2 for full details.
 Bug Fix Update
 --------------
 
-#1499934    Power state could not be queried (vmware)
+LP: #1572070    MAAS 2.0 cannot link physical device interfaces to tagged vlans, breaking juju 2.0 multi-NIC containers
 
-#1543707    MAAS 1.9+ should not allow whitespace characters in space names
+LP: #1573046    14.04 images not available for commissioning as distrio-info --lts now reports xenial
 
-#1543968    MAAS 1.9.0 allows non-unique space names
+LP: #1571563    Can't override built in partitioning
 
-#1567213    devices results missing interface_set
+LP: #1552923    API allows attaching physical, bond interface to VLAN with a known tag (Inconsistent with UI)
 
-#1568051    ThreadPool context entry failure causes thread pool to break
+LP: #1566336    MAAS keeps IPs assigned to eth0, even after eth0 is enslaved into a bond
 
-#1212205    get_file_by_name does not check owner
+LP: #1543195    unable to set mtu on default VLAN
 
-#1298772    MAAS API vulnerable to CSRF attack
+LP: #1560693    Migration 0188 dist-upgrade update failure
 
-#1379826    uuid.uuid1() is not suitable as an unguessable identifier/token
+LP: #1554747    CPU Utilization of postgresql thread reaches 100% for deleting a node from MaaS
+
+LP: #1499934    Power state could not be queried (vmware)
+
+LP: #1543707    MAAS 1.9+ should not allow whitespace characters in space names
+
+LP: #1543968    MAAS 1.9.0 allows non-unique space names
+
+LP: #1567213    devices results missing interface_set
+
+LP: #1568051    ThreadPool context entry failure causes thread pool to break
+
+LP: #1212205    get_file_by_name does not check owner
+
+LP: #1298772    MAAS API vulnerable to CSRF attack
+
+LP: #1379826    uuid.uuid1() is not suitable as an unguessable identifier/token
 
 
 1.9.1
@@ -36,14 +52,13 @@ See https://launchpad.net/maas/+milestone/1.9.1 for full details.
 Bug Fix Update
 --------------
 
-#1523779    Fix grub-install error on deploying power8 machines.
+LP: #1523779    Fix grub-install error on deploying power8 machines.
 
-#1526542    Skip block devices with duplicate serial numbers to fix multipath issue.
+LP: #1526542    Skip block devices with duplicate serial numbers to fix multipath issue.
 
-#1532262    Fix failure to power query requests for SM15K servers.
+LP: #1532262    Fix failure to power query requests for SM15K servers.
 
-#1484696    Fix bug in apache2 maas config where it will reuse websocket connections
-            to work around a bug in apache2 itself.
+LP: #1484696    Fix bug in apache2 maas config where it will reuse websocket connections to work around a bug in apache2 itself.
 
 
 1.9.0
