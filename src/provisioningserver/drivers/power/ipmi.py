@@ -20,6 +20,7 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
     PowerSettingError,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import shell
 from provisioningserver.utils.network import find_ip_via_arp
 
@@ -144,11 +145,15 @@ IPMI_ERRORS = {
 }
 
 
+maaslog = get_maas_logger("drivers.power.ipmi")
+
+
 class IPMIPowerDriver(PowerDriver):
 
     name = 'ipmi'
     description = "IPMI Power Driver."
     settings = []
+    wait_time = (4, 8, 12)
 
     def detect_missing_packages(self):
         if not shell.has_command_available('ipmipower'):
@@ -172,10 +177,9 @@ class IPMIPowerDriver(PowerDriver):
         stderr = stderr.decode("utf-8").strip()
         for error, error_info in IPMI_ERRORS.items():
             if error in stderr:
-                raise error_info.get('exception')(
-                    "%s\n%s " % (stderr, error_info.get('message')))
+                raise error_info.get('exception')(error_info.get('message'))
         if process.returncode != 0:
-            raise PowerError(
+            maaslog.warning(
                 "Failed to change the boot order to PXE %s: %s" % (
                     power_address, stderr))
 
@@ -184,17 +188,16 @@ class IPMIPowerDriver(PowerDriver):
         env = shell.select_c_utf8_locale()
         command = tuple(command)  # For consistency when testing.
         process = Popen(command, stdout=PIPE, stderr=PIPE, env=env)
-        stdout, stderr = process.communicate()
-        stdout = stdout.decode("utf-8")
-        stderr = stderr.decode("utf-8").strip()
+        stdout, _ = process.communicate()
+        stdout = stdout.decode("utf-8").strip()
         for error, error_info in IPMI_ERRORS.items():
-            if error in stderr:
-                raise error_info.get('exception')(
-                    "%s\n%s" % (stderr, error_info.get('message')))
+            # ipmipower dumps errors to stdout
+            if error in stdout:
+                raise error_info.get('exception')(error_info.get('message'))
         if process.returncode != 0:
             raise PowerError(
                 "Failed to power %s %s: %s" % (
-                    power_change, power_address, stderr))
+                    power_change, power_address, stdout))
         if 'on' in stdout:
             return 'on'
         elif 'off' in stdout:

@@ -92,8 +92,12 @@ class PowerToolError(PowerFatalError):
     """
 
 
-class PowerAuthError(PowerError):
-    """Error raised when power driver fails to authenticate to BMC."""
+class PowerAuthError(PowerFatalError):
+    """Error raised when power driver fails to authenticate to BMC.
+
+    This exception will cause the power action to fail instantly,
+    without retrying.
+    """
 
 
 class PowerConnError(PowerError):

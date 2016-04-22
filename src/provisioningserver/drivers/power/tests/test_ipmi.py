@@ -150,22 +150,26 @@ class TestIPMIPowerDriver(MAASTestCase):
                 factory.make_name('power_change'),
                 factory.make_name('power_address'))
 
-    def test__issue_ipmi_chassis_config_command_raises_unknown_error(self):
+    def test__issue_ipmi_chassis_config_command_logs_maaslog_warning(self):
         power_address = factory.make_name('power_address')
         stderr = factory.make_name('stderr')
         popen_mock = self.patch(ipmi_module, 'Popen')
         process = popen_mock.return_value
         process.communicate.return_value = (b'', stderr.encode('utf-8'))
-        self.assertRaises(
-            PowerError, IPMIPowerDriver._issue_ipmi_chassis_config_command,
+        maaslog = self.patch(ipmi_module, 'maaslog')
+        IPMIPowerDriver._issue_ipmi_chassis_config_command(
             factory.make_name('command'), factory.make_name('power_change'),
             power_address)
+        self.assertThat(
+            maaslog.warning, MockCalledOnceWith(
+                "Failed to change the boot order to PXE %s: %s" % (
+                    power_address, stderr)))
 
     def test__issue_ipmipower_command_raises_error(self):
         for error, error_info in IPMI_ERRORS.items():
             popen_mock = self.patch(ipmi_module, 'Popen')
             process = popen_mock.return_value
-            process.communicate.return_value = (b'', error.encode('utf-8'))
+            process.communicate.return_value = (error.encode('utf-8'), b'')
             self.assertRaises(
                 error_info.get('exception'),
                 IPMIPowerDriver._issue_ipmipower_command,
