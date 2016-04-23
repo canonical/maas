@@ -41,16 +41,3 @@ For more information about the Curtin installer, see the `curtin project`_
 on Launchpad.
 
 .. _curtin project: https://launchpad.net/curtin
-
-.. _debian-installer:
-
-The Debian Installer (Deprecated)
----------------------------------
-
-The Debian Installer installs Ubuntu on a node in exactly the same way
-as you would install it manually.
-
-.. note::
-  Starting from MAAS 1.8, the Debian Installer has been deprecated and
-  it is no longer supported. While it is still available in MAAS, it is
-  not recommended and is not supported.
