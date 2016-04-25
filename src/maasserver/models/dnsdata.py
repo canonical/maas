@@ -151,6 +151,7 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         sql_query = """
             SELECT
                 dnsresource.name,
+                domain.name,
                 node.system_id,
                 node.node_type,
                 """ + ttl_clause + """ AS ttl,
@@ -161,11 +162,53 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 dnsdata.dnsresource_id = dnsresource.id
             JOIN maasserver_domain as domain ON
                 dnsresource.domain_id = domain.id
-            LEFT JOIN maasserver_node AS node ON
-                node.hostname = dnsresource.name
+            LEFT JOIN
+                (
+                    /* Create a "node" that has the fields we care about and
+                     * also has a "fqdn" field.
+                     * The fqdn requires that we fetch domain[node.domain_id]
+                     * which, in turn, means that we need this inner select.
+                     */
+                    SELECT
+                        nd.hostname AS hostname,
+                        nd.system_id AS system_id,
+                        nd.node_type AS node_type,
+                        nd.domain_id AS domain_id,
+                        CONCAT(nd.hostname, '.', dom.name) AS fqdn
+                    FROM maasserver_node AS nd
+                    JOIN maasserver_domain AS dom ON
+                        nd.domain_id = dom.id
+                ) AS node ON (
+                    /* We get the various node fields in the final result for
+                     * any resource records that have an FQDN equal to the
+                     * respective node.  Because of how names at the top of a
+                     * domain are handled (we hide the fact from the user and
+                     * put the node in the parent domain, but all the actual
+                     * data lives in the child domain), we need to merge the
+                     * two views of the world.
+                     * If either this is the right node (node name and domain
+                     * match, or dnsresource name is '@' and the node fqdn is
+                     * the domain name), then we include the information about
+                     * the node.
+                     */
+                    (
+                        dnsresource.name = node.hostname AND
+                        dnsresource.domain_id = node.domain_id
+                    ) OR
+                    (
+                        dnsresource.name = '@' AND
+                        node.fqdn = domain.name
+                    )
+                )
             WHERE
-                dnsresource.domain_id = %s AND (
-                    dnsdata.rrtype != 'CNAME' OR node.hostname IS NULL)
+                /* The entries must be in this domain (though node.domain_id
+                 * may be out-of-domain and that's OK.
+                 * Additionally, if there is a CNAME and a node, then the node
+                 * wins, and we drop the CNAME until the node no longer has the
+                 * same name.
+                 */
+                (dnsresource.domain_id = %s OR node.fqdn IS NOT NULL) AND
+                (dnsdata.rrtype != 'CNAME' OR node.fqdn IS NULL)
             ORDER BY
                 dnsresource.name,
                 dnsdata.rrtype,
@@ -176,8 +219,15 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
         # not spill CNAME and other data.
         mapping = defaultdict(HostnameRRsetMapping)
         cursor.execute(sql_query, (domain.id,))
-        for (name, system_id, node_type,
+        for (name, d_name, system_id, node_type,
                 ttl, rrtype, rrdata) in cursor.fetchall():
+            if name == '@' and d_name != domain.name:
+                name, d_name = d_name.split('.', 1)
+                # Since we don't allow more than one label in dnsresource
+                # names, we should never ever be wrong in this assertion.
+                assert d_name == domain.name, (
+                    "Invalid domain; expected '%s' == '%s'" % (
+                        d_name, domain.name))
             mapping[name].node_type = node_type
             mapping[name].system_id = system_id
             mapping[name].rrset.add((ttl, rrtype, rrdata))

@@ -40,6 +40,7 @@ from maasserver import DefaultMeta
 from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.domain import Domain
+from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 
@@ -70,17 +71,26 @@ def validate_dnsresource_name(value, rrtype):
             raise ValidationError("Invalid dnsresource name: %s." % value)
 
 
-def separate_fqdn(fqdn, rrtype):
+def separate_fqdn(fqdn, rrtype=None, domainname=None):
     """Separate an fqdn based on resource type.
 
     :param fqdn: Fully qualified domain name, blank, or "@".
     :param rrtype: resource record type. (May be None.)
+    :param domainname: If specified, force the fqdn to be in this domain,
+    otherwise return ('@', fqdn) if the fqdn is a domain name.
 
     Returns (name, domain) where name is appropriate for the resource record in
     the domain.
     """
     if fqdn is None or fqdn == '' or fqdn == '@':
         return (fqdn, None)
+    elif Domain.objects.filter(name=fqdn).exists():
+        if domainname == fqdn or domainname is None:
+            return ('@', fqdn)
+        else:
+            # strip off the passed in ".$domainname" from the fqdn.
+            name = fqdn[:-len(domainname) - 1]
+            return (name, domainname)
     elif rrtype == 'SRV':
         spec = SRV_LHS
     else:
@@ -208,7 +218,20 @@ class DNSResource(CleanSave, TimestampedModel):
 
         Return the FQDN for this DNSResource.
         """
-        return "%s.%s" % (self.name, self.domain.name)
+        if self.name == '@':
+            return self.domain.name
+        else:
+            return "%s.%s" % (self.name, self.domain.name)
+
+    def get_addresses(self):
+        """Return all addresses associated with this FQDN."""
+        # Since Node.hostname is unique, this will be at most 1 node.
+        node = Node.objects.filter(
+            hostname=self.name, domain_id=self.domain_id)
+        ips = [ip.get_ip() for ip in self.ip_addresses.all()]
+        if node.exists():
+            ips += node[0].static_ip_addresses()
+        return ips
 
     def get_name(self):
         """Return the name of the dnsresource."""

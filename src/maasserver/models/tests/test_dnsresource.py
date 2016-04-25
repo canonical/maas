@@ -119,6 +119,24 @@ class DNSResourceTest(MAASServerTestCase):
             ("foo", "test.example.com"),
             separate_fqdn("foo.test.example.com", 'A'))
 
+    def test_separate_fqdn_returns_atsign_for_top_of_domain(self):
+        name = "%s.%s.%s" % (
+            factory.make_name("a"),
+            factory.make_name("b"),
+            factory.make_name("c"))
+        factory.make_Domain(name=name)
+        self.assertEqual(('@', name), separate_fqdn(name))
+
+    def test_separate_fqdn_allows_domain_override(self):
+        parent = "%s.%s" % (
+            factory.make_name("b"),
+            factory.make_name("c"))
+        label = factory.make_name("a")
+        name = "%s.%s" % (label, parent)
+        factory.make_Domain(name=name)
+        self.assertEqual(
+            (label, parent), separate_fqdn(name, domainname=parent))
+
     def test_creates_dnsresource(self):
         name = factory.make_name('name')
         domain = factory.make_Domain()
@@ -136,6 +154,15 @@ class DNSResourceTest(MAASServerTestCase):
         dnsresource_from_db = DNSResource.objects.get(name=name)
         self.assertThat(dnsresource_from_db, MatchesStructure.byEquality(
             name=name))
+
+    def test_fqdn_returns_correctly_for_atsign(self):
+        name = '@'
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        sip = factory.make_StaticIPAddress()
+        dnsresource.ip_addresses.add(sip)
+        self.assertEqual(domain.name, dnsresource.fqdn)
 
     def test_allows_underscores_without_addresses(self):
         name = factory.make_name('n_me')
@@ -196,3 +223,21 @@ class DNSResourceTest(MAASServerTestCase):
                     "{'__all__': "
                     "['Cannot add address: CNAME present.']")):
             dnsrr.save()
+
+    def test_get_addresses_returns_addresses(self):
+        # Verify that the return includes node addresses, and
+        # dnsresource-attached addresses.
+        name = factory.make_name()
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, hostname=name, domain=domain)
+        sip1 = factory.make_StaticIPAddress()
+        node.interface_set.first().ip_addresses.add(sip1)
+        sip2 = factory.make_StaticIPAddress()
+        dnsresource.ip_addresses.add(sip2)
+        self.assertItemsEqual(
+            (sip1.get_ip(), sip2.get_ip()),
+            dnsresource.get_addresses())

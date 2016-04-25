@@ -14,9 +14,17 @@ from django.core.exceptions import (
 )
 from django.db.models import ProtectedError
 from django.db.utils import IntegrityError
+from maasserver.dns.zonegenerator import (
+    get_hostname_dnsdata_mapping,
+    lazydict,
+)
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.config import Config
-from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnsdata import (
+    DNSData,
+    HostnameRRsetMapping,
+)
+from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import (
     DEFAULT_DOMAIN_NAME,
     Domain,
@@ -194,6 +202,134 @@ class DomainTest(MAASServerTestCase):
         factory.make_DNSResource(domain=domain)
         with ExpectedException(ProtectedError):
             domain.delete()
+
+    def test_add_delegations_may_do_nothing(self):
+        domain = factory.make_Domain()
+        mapping = {}
+        domain.add_delegations(mapping, '::1', 30)
+
+    def test_add_delegations_adds_delegation(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        factory.make_Domain(name="%s.%s" % (name, parent.name))
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        parent.add_delegations(mapping, "::1", 30)
+        expected_map = HostnameRRsetMapping(
+            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+        self.assertEqual(expected_map, mapping[name])
+
+    def test_add_delegations_adds_nsrrset_and_glue(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        dnsrr = factory.make_DNSResource(name='@', domain=child)
+        nsname = factory.make_name()
+        factory.make_DNSData(
+            dnsresource=dnsrr, rrtype='NS',
+            rrdata="%s.%s." % (nsname, child.name))
+        nsrr = factory.make_DNSResource(name=nsname, domain=child)
+        other_name = factory.make_name()
+        factory.make_DNSResource(name=other_name, domain=parent)
+        factory.make_DNSData(
+            dnsresource=dnsrr, rrtype='NS',
+            rrdata="%s.%s." % (other_name, parent.name))
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        parent.add_delegations(mapping, "::1", 30)
+        expected_map = {
+            name: HostnameRRsetMapping(
+                rrset={
+                    (30, 'AAAA', '::1'),
+                    (30, 'NS', name),
+                    (30, 'NS', "%s.%s." % (nsname, child.name)),
+                    (30, 'NS', "%s.%s." % (other_name, parent.name)),
+                }
+            ),
+        }
+        for sip in nsrr.ip_addresses.all():
+            if IPAddress(sip.ip).version == 6:
+                expected_map[nsname] = HostnameRRsetMapping(
+                    rrset={(30, 'AAAA', sip.ip)})
+            else:
+                expected_map[nsname] = HostnameRRsetMapping(
+                    rrset={(30, 'A', sip.ip)})
+        self.assertEqual(expected_map, mapping)
+
+    def test_add_delegations_adds_nsrrset_and_glue_in_depth(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        g_name = factory.make_name()
+        grandchild = factory.make_Domain(name="%s.%s" % (g_name, child.name))
+        dnsrr = factory.make_DNSResource(name='@', domain=child)
+        nsname = factory.make_name()
+        factory.make_DNSData(
+            dnsresource=dnsrr, rrtype='NS',
+            rrdata="%s.%s." % (nsname, grandchild.name))
+        nsrr = factory.make_DNSResource(name=nsname, domain=grandchild)
+        other_name = factory.make_name()
+        factory.make_DNSResource(name=other_name, domain=parent)
+        factory.make_DNSData(
+            dnsresource=dnsrr, rrtype='NS',
+            rrdata="%s.%s." % (other_name, parent.name))
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        expected_map = {
+            name: HostnameRRsetMapping(
+                rrset={
+                    (30, 'AAAA', '::1'),
+                    (30, 'NS', name),
+                    (30, 'NS', "%s.%s." % (nsname, grandchild.name)),
+                    (30, 'NS', "%s.%s." % (other_name, parent.name)),
+                }
+            ),
+        }
+        ns_part = "%s.%s" % (nsname, g_name)
+        for sip in nsrr.ip_addresses.all():
+            if IPAddress(sip.ip).version == 6:
+                expected_map[ns_part] = HostnameRRsetMapping(
+                    rrset={(30, 'AAAA', sip.ip)})
+            else:
+                expected_map[ns_part] = HostnameRRsetMapping(
+                    rrset={(30, 'A', sip.ip)})
+        parent.add_delegations(mapping, "::1", 30)
+        self.assertEqual(expected_map, mapping)
+
+    def test_add_delegations_allows_dots(self):
+        parent = factory.make_Domain()
+        name = "%s.%s" % (factory.make_name(), factory.make_name())
+        factory.make_Domain(name="%s.%s" % (name, parent.name))
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        parent.add_delegations(mapping, "::1", 30)
+        expected_map = HostnameRRsetMapping(
+            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+        self.assertEqual(expected_map, mapping[name])
+
+    def test_add_delegations_stops_at_one_deep(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        factory.make_Domain(name="%s.%s" % (factory.make_name(), child.name))
+        mappings = lazydict(get_hostname_dnsdata_mapping)
+        mapping = mappings[parent]
+        parent.add_delegations(mapping, "::1", 30)
+        expected_map = HostnameRRsetMapping(
+            rrset={(30, 'AAAA', '::1'), (30, 'NS', name)})
+        self.assertEqual(expected_map, mapping[name])
+
+    def test_save_migrates_dnsresource(self):
+        p_name = "%s.%s" % (factory.make_name(), factory.make_name())
+        c_name = factory.make_name()
+        parent = factory.make_Domain(name=p_name)
+        dnsrr = factory.make_DNSResource(name=c_name, domain=parent)
+        child = factory.make_Domain(name="%s.%s" % (c_name, p_name))
+        dnsrr_from_db = DNSResource.objects.get(id=dnsrr.id)
+        self.assertEqual('@', dnsrr_from_db.name)
+        self.assertEqual(child, dnsrr_from_db.domain)
+        self.assertItemsEqual(
+            [], DNSResource.objects.filter(name=c_name, domain=parent))
 
     def test_update_kms_srv_deletes_srv_records(self):
         domain = factory.make_Domain()

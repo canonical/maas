@@ -227,8 +227,15 @@ class TestDNSDataMapping(MAASServerTestCase):
     """Tests for get_hostname_dnsdata_mapping()."""
 
     def make_mapping(self, dnsresource, raw_ttl=False):
-        nodes = Node.objects.filter(
-            hostname=dnsresource.name, domain=dnsresource.domain)
+        if dnsresource.name == '@' and dnsresource.domain.name.find('.') >= 0:
+            h_name, d_name = dnsresource.domain.name.split('.', 1)
+            nodes = Node.objects.filter(hostname=h_name, domain__name=d_name)
+        else:
+            h_name = dnsresource.name
+            # Yes, dnsrr.name='@' and domain.name='maas' hits this, and we find
+            # nothing, which is what we need to find.
+            nodes = Node.objects.filter(
+                hostname=h_name, domain=dnsresource.domain)
         if nodes.count() > 0:
             system_id = nodes.first().system_id
         else:
@@ -254,14 +261,39 @@ class TestDNSDataMapping(MAASServerTestCase):
             dnsrr = factory.make_DNSResource(
                 name=name, domain=domain, no_ip_addresses=True)
             for count in range(random.randint(1, 5)):
-                data = factory.make_DNSData(
-                    dnsresource=dnsrr, ip_addresses=True)
-            expected_mapping.update(self.make_mapping(data.dnsresource))
+                factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
+            expected_mapping.update(self.make_mapping(dnsrr))
         # Add one resource to the domain which has no data, so it should not be
         # in the returned mapping.
         factory.make_DNSResource(domain=domain, no_ip_addresses=True)
         actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
         self.assertItemsEqual(expected_mapping, actual)
+
+    def test_get_hostname_dnsdata_mapping_returns_mapping_at_domain(self):
+        parent = Domain.objects.get_default_domain()
+        name = factory.make_name("node")
+        d_name = "%s.%s" % (name, parent.name)
+        domain = factory.make_Domain(name=d_name)
+        expected_mapping = {}
+        # Make a node that is at the top of the domain, and a couple others.
+        dnsrr = factory.make_DNSResource(
+            name='@', domain=domain, no_ip_addresses=True)
+        factory.make_DNSData(dnsresource=dnsrr, ip_addresses=True)
+        factory.make_Node_with_Interface_on_Subnet(
+            hostname=name, domain=parent)
+        expected_mapping.update(self.make_mapping(dnsrr))
+        # Add one resource to the domain which has no data, so it should not be
+        # in the returned mapping.
+        factory.make_DNSResource(domain=domain, no_ip_addresses=True)
+        actual = DNSData.objects.get_hostname_dnsdata_mapping(domain)
+        self.assertItemsEqual(expected_mapping, actual)
+        # We are done with dnsrr from the child domain's perspective, make it
+        # look like it would if it were in the parent domain.
+        dnsrr.name = name
+        dnsrr.domain = parent
+        expected_parent = self.make_mapping(dnsrr)
+        actual_parent = DNSData.objects.get_hostname_dnsdata_mapping(parent)
+        self.assertItemsEqual(expected_parent, actual_parent)
 
     def test_get_hostname_dnsdata_mapping_handles_ttl(self):
         # We create 2 domains, one with a ttl, one withoout.

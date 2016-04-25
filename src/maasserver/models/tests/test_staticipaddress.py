@@ -737,6 +737,24 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: HostnameIPMapping(
             node.system_id, 30, {phy_staticip.ip}, node.node_type)}, mapping)
 
+    def test_get_hostname_ip_mapping_returns_domain_head_ips(self):
+        parent = factory.make_Domain()
+        name = factory.make_name()
+        child = factory.make_Domain(name='%s.%s' % (name, parent.name))
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, domain=parent, hostname=name)
+        sip1 = factory.make_StaticIPAddress(subnet=subnet)
+        node.interface_set.first().ip_addresses.add(sip1)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            parent)
+        self.assertEqual({node.fqdn: HostnameIPMapping(
+            node.system_id, 30, {sip1.ip}, node.node_type)}, mapping)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            child)
+        self.assertEqual({node.fqdn: HostnameIPMapping(
+            node.system_id, 30, {sip1.ip}, node.node_type)}, mapping)
+
 
 class TestStaticIPAddress(MAASServerTestCase):
 

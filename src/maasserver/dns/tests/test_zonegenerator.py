@@ -325,6 +325,24 @@ class TestZoneGenerator(MAASServerTestCase):
                 reverse_zone(default_domain, "10/29"),
                 reverse_zone(default_domain, "10/24")))
 
+    def test_with_child_domain_yields_delegation(self):
+        default_domain = Domain.objects.get_default_domain().name
+        domain = factory.make_Domain(name='henry')
+        factory.make_Domain(name="john.henry")
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric)
+        zones = ZoneGenerator(
+            domain, subnet, serial=random.randint(0, 65535)).as_list()
+        self.assertThat(
+            zones, MatchesSetwise(
+                forward_zone("henry"),
+                reverse_zone(default_domain, "10/29"),
+                reverse_zone(default_domain, "10/24")))
+        expected_map = {'john': HostnameRRsetMapping(
+            None, {(30, 'A', '127.0.0.1'), (30, 'NS', 'john')})}
+        self.assertItemsEqual(expected_map, zones[0]._other_mapping)
+
     def test_returns_interface_ips_but_no_nulls(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name='henry')

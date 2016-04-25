@@ -20,6 +20,7 @@ from maasserver.enum import (
 from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
 from maasserver.models.node import Node
 from maasserver.models.staticipaddress import (
@@ -189,19 +190,24 @@ class ZoneGenerator:
         for domain in domains:
             # 1. node: ip mapping(domain)
             # Map all of the nodes in this domain, including the user-reserved
-            # ip addresses.
+            # ip addresses.  Separate_fqdn handles top-of-domain names needing
+            # to have the name '@', and we already know the domain name, so we
+            # discard that part of the return.
             mapping = {
-                hostname.split('.')[0]: info
+                separate_fqdn(hostname, domainname=domain.name)[0]: info
                 for hostname, info in mappings[domain].items()
             }
-            # 2. Create non-address records.  Specifically ignore any CNAME
+            # 2a. Create non-address records.  Specifically ignore any CNAME
             # records that collide with addresses in mapping.
             other_mapping = rrset_mappings[domain]
 
-            # 3. Default domain we place all forward entries for the managed
-            # and unmanaged dynamic ranges in this domain.
+            # 2b. Capture NS RRsets for anything that is a child of this domain
+            domain.add_delegations(other_mapping, dns_ip, default_ttl)
+
+            # 3. All forward entries for the managed and unmanaged dynamic
+            # ranges go into the default domain.
             dynamic_ranges = []
-            if domain.id == 0:
+            if domain.is_default():
                 subnets = Subnet.objects.all().prefetch_related("iprange_set")
                 for subnet in subnets:
                     # We loop through the whole set so the prefetch above works

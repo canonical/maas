@@ -247,6 +247,78 @@ class Domain(CleanSave, TimestampedModel):
             dnsresource__domain_id=self.id).count()
         return ip_count + rr_count
 
+    def add_delegations(self, mapping, dns_ip, default_ttl):
+        """Find any subdomains that need to be added to this domain, and add
+        them.
+
+        This function updates the mapping to add delegations and any needed
+        glue records for any domains that are descendants of this one.  These
+        are not in the database, because they may be multi-lable (foo.bar.maas
+        and maas are domains, but bar.maas isn't), and we don't want to allow
+        multi-label elements in the model, due to the extreme complexity it
+        introduces.
+        """
+
+        # Recursive includes.
+        from maasserver.models.dnsresource import separate_fqdn
+        subdomains = Domain.objects.filter(name__endswith="." + self.name)
+        possible = subdomains[:]
+        # Anything with an intervening domain should not be delegated from
+        # this domain.
+        for middle in possible:
+            subdomains = subdomains.exclude(name__endswith="." + middle.name)
+        for subdomain in subdomains:
+            nsttl = subdomain.get_base_ttl('NS', default_ttl)
+            ttl = subdomain.get_base_ttl('A', default_ttl)
+            # Strip off this domain name from the end of the resource name.
+            name = subdomain.name[:-len(self.name) - 1]
+            # Generate the NS and glue record that will automatically be in the
+            # child zone.
+            mapping[name].rrset.add((nsttl, 'NS', name))
+            if IPAddress(dns_ip).version == 4:
+                mapping[name].rrset.add((ttl, 'A', dns_ip))
+            else:
+                mapping[name].rrset.add((ttl, 'AAAA', dns_ip))
+            # Also return any NS RRset from the dnsdata for the '@' label in
+            # that zone.  Add glue records for NS hosts as needed.
+            for lhs in subdomain.dnsresource_set.filter(name='@'):
+                for data in lhs.dnsdata_set.filter(rrtype='NS'):
+                    mapping[name].rrset.add((ttl, data.rrtype, data.rrdata))
+                    # Figure out if we need to add glue, and generate it if
+                    # needed.
+                    if data.rrdata == '@':
+                        # We already generated this glue.
+                        continue
+                    if not data.rrdata.endswith("."):
+                        # Non-qualified NSRR, append the domain.
+                        fqdn = "%s.%s." % (data.rrdata, subdomain.name)
+                    elif not data.rrdata.endswith("%s." % subdomain.name):
+                        continue
+                    else:
+                        # NSRR is an FQDN in or under subdomain.
+                        fqdn = data.rrdata
+                    # If we get here, then the NS host is in subdomain, or some
+                    # subdomain thereof, and is not '@' in the subdomain.
+                    # Strip the trailing dot, and split the FQDN.
+                    h_name, d_name = separate_fqdn(fqdn[:-1], 'NS')
+                    # Make sure we look in the right domain for the addresses.
+                    if d_name == subdomain.name:
+                        nsrrset = subdomain.dnsresource_set.filter(name=h_name)
+                    else:
+                        nsdomain = Domain.objects.filter(name=d_name)
+                        if not nsdomain.exists():
+                            continue
+                        else:
+                            nsdomain = nsdomain[0]
+                        nsrrset = nsdomain.dnsresource_set.filter(name=h_name)
+                        h_name = fqdn[:-len(subdomain.name) - 2]
+                    for nsrr in nsrrset:
+                        for addr in nsrr.get_addresses():
+                            if IPAddress(addr).version == 4:
+                                mapping[h_name].rrset.add((ttl, 'A', addr))
+                            else:
+                                mapping[h_name].rrset.add((ttl, 'AAAA', addr))
+
     def __str__(self):
         return "name=%s" % self.get_name()
 
@@ -272,6 +344,15 @@ class Domain(CleanSave, TimestampedModel):
         super(Domain, self).save(*args, **kwargs)
         if created:
             self.update_kms_srv()
+        # If there is a DNSResource in our parent domain that matches this
+        # domain name, the migrate the DNSResource to the new domain.
+        parent = Domain.objects.filter(name=".".join(self.name.split('.')[1:]))
+        if parent.exists():
+            me = parent[0].dnsresource_set.filter(name=self.name.split('.')[0])
+            for rr in me:
+                rr.name = '@'
+                rr.domain = self
+                rr.save()
 
     def clean_name(self):
         # Automatically strip any trailing dot from the domain name.

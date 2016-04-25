@@ -310,7 +310,14 @@ class StaticIPAddressManager(Manager):
         if isinstance(domain_or_subnet, Subnet):
             search_term = "staticip.subnet_id"
         elif isinstance(domain_or_subnet, Domain):
-            search_term = "node.domain_id"
+            # The model has nodes int he parent domain, but they actually live
+            # in the child domain.  And the parent needs the glue.  So we
+            # return such nodes addresses in _BOTH_ the parent and the child
+            # domains. domain2.name will be non-null if this host's fqdn is the
+            # name of a domain in MAAS.
+            # n.b.  The SQL says: WHERE ... $search_term = %s ...
+            # we overload that to accomplish our objectives.
+            search_term = """domain2.name IS NOT NULL OR node.domain_id"""
         else:
             raise ValueError('bad object passed to get_hostname_ip_mapping')
 
@@ -344,10 +351,15 @@ class StaticIPAddressManager(Manager):
                 link.interface_id = interface.id
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.staticipaddress_id
+            LEFT JOIN maasserver_domain as domain2 ON
+                /* Pick up another copy of domain looking for instances of
+                 * nodes a the top of a domain.
+                 */
+                domain2.name = CONCAT(node.hostname, '.', domain.name)
             WHERE
                 staticip.ip IS NOT NULL AND
                 host(staticip.ip) != '' AND
-                """ + search_term + """ = %s AND
+                (""" + search_term + """ = %s) AND
                 (
                     node.disable_ipv4 IS FALSE OR
                     family(staticip.ip) <> 4
