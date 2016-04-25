@@ -30,7 +30,6 @@ from mock import (
 from provisioningserver.drivers.power import (
     ipmi as ipmi_module,
     PowerAuthError,
-    PowerError,
     PowerFatalError,
 )
 from provisioningserver.drivers.power.ipmi import (
@@ -313,7 +312,7 @@ class TestIPMIPowerDriver(MAASTestCase):
             PowerFatalError, ipmi_power_driver._issue_ipmi_command,
             'on', **context)
 
-    def test__issue_ipmi_command_crashes_when_unable_to_find_match(self):
+    def test__issue_ipmi_command_returns_output_when_no_regex_match(self):
         _, _, _, _, _, _, _, context = make_parameters()
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
@@ -322,10 +321,8 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
         call_and_check_mock.return_value = "Rubbish"
-
-        self.assertRaises(
-            PowerError, ipmi_power_driver._issue_ipmi_command,
-            'on', **context)
+        result = ipmi_power_driver._issue_ipmi_command('on', **context)
+        self.assertEqual(result, "Rubbish")
 
     def test_power_on_calls__issue_ipmi_command(self):
         _, _, _, _, _, _, _, context = make_parameters()

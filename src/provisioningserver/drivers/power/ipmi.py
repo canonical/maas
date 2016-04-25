@@ -25,7 +25,6 @@ from tempfile import NamedTemporaryFile
 from provisioningserver.drivers.power import (
     PowerAuthError,
     PowerDriver,
-    PowerError,
     PowerFatalError,
 )
 from provisioningserver.logger import get_maas_logger
@@ -99,13 +98,11 @@ class IPMIPowerDriver(PowerDriver):
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, e.output_as_unicode))
         else:
-            match = re.search(":\s*(on|off|ok)", output)
+            match = re.search(":\s*(on|off)", output)
             if match is None:
-                raise PowerError(
-                    "IPMI Power Driver unable to extract node power"
-                    " state from: %s" % output)
+                return output
             else:
-                # If there is a match this should be either on/off/ok
+                # If there is a match this will be either on/off
                 return match.group(1)
 
     def _issue_ipmi_command(
