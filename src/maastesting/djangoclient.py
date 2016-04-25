@@ -10,23 +10,27 @@ __all__ = [
 from functools import wraps
 
 from django.test import client
+from django.utils.http import urlencode
 
 
 def transparent_encode_multipart(func):
     """Wrap an HTTP client method, transparently encoding multipart data.
 
-    This wraps Django's `Client` HTTP verb methods -- put, get, etc. -- in a
-    way that's both convenient and compatible across Django versions. It
-    augments those methods to accept a dict of data to be sent as part of the
+    This wraps some of Django's `Client` HTTP verb methods -- delete, options,
+    patch, put -- so they accept a dict of data to be sent as part of the
     request body, in MIME multipart encoding.
 
+    This also accepts an optional dict of query parameters (as `query`) to be
+    encoded as a query string and appended to the given path.
+
     Since Django 1.5, these HTTP verb methods require data in the form of a
-    byte string. The application (that's us) need to take care of MIME
+    byte string. The application (that's us) needs to take care of MIME
     encoding.
     """
     @wraps(func)
     def maybe_encode_multipart(
-            self, path, data=b"", content_type=None, **extra):
+            self, path, data=b"", content_type=None, secure=False, query=None,
+            **extra):
 
         if isinstance(data, bytes):
             if content_type is None:
@@ -39,7 +43,11 @@ def transparent_encode_multipart(func):
                 "Cannot combine data (%r) with content-type (%r)."
                 % (data, content_type))
 
-        return func(self, path, data, content_type, **extra)
+        if query is not None:
+            query = urlencode(query, doseq=True)
+            path = path + ("&" if "?" in path else "?") + query
+
+        return func(self, path, data, content_type, secure, **extra)
 
     return maybe_encode_multipart
 

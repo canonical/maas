@@ -226,7 +226,7 @@ class Action(Command):
             with opener() as fd:
                 return fd.read()
 
-        if method == "GET":
+        if method in ["GET", "DELETE"]:
             query.extend(
                 (name, slurp(value) if callable(value) else value)
                 for name, value in data)

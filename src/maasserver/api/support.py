@@ -180,13 +180,15 @@ class OperationsHandlerType(HandlerMetaClass):
         exports.update(operations)
 
         # Check that no CRUD methods have been marked as operations (i.e.
-        # those that are used via op=name). This causes weird behaviour within
-        # Piston3 and/or Django so avoid it.
-        for signature in OperationsResource.crudmap.items():
-            if signature in exports:
+        # those that are used via op=name). This causes (unconfirmed) weird
+        # behaviour within Piston3 and/or Django, and is plain confusing
+        # anyway, so forbid it.
+        methods_exported = {method for http_method, method in exports}
+        for http_method, method in OperationsResource.crudmap.items():
+            if method in methods_exported:
                 raise AssertionError(
-                    "A CRUD operation (%s) has been registered as an "
-                    "operation on %s." % ("%s/%s" % signature, name))
+                    "A CRUD operation (%s/%s) has been registered as an "
+                    "operation on %s." % (http_method, method, name))
 
         # Export CRUD methods.
         exports.update(crud)

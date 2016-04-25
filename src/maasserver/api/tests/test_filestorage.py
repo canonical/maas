@@ -385,3 +385,15 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase):
         self.assertEqual(http.client.NO_CONTENT, response.status_code)
         files = FileStorage.objects.filter(filename=filename)
         self.assertEqual([], list(files))
+
+    def test_delete_on_files(self):
+        filename = factory.make_name('file')
+        factory.make_FileStorage(
+            filename=filename, content=b"test content",
+            owner=self.logged_in_user)
+        response = self.client.delete(
+            reverse('files_handler'), query={"filename": filename})
+
+        self.assertEqual(http.client.NO_CONTENT, response.status_code)
+        files = FileStorage.objects.filter(filename=filename)
+        self.assertEqual([], list(files))

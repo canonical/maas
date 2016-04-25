@@ -139,7 +139,6 @@ class FileHandler(OperationsHandler):
             stream, content_type='application/json; charset=utf-8',
             status=int(http.client.OK))
 
-    @operation(idempotent=False)
     def delete(self, request, filename):
         """Delete a FileStorage object."""
         stored_file = get_object_or_404(
@@ -158,7 +157,7 @@ class FileHandler(OperationsHandler):
 class FilesHandler(OperationsHandler):
     """Manage the collection of all the files in this MAAS."""
     api_doc_section_name = "Files"
-    update = delete = None
+    update = None
     anonymous = AnonFilesHandler
 
     get_by_name = operation(
@@ -210,6 +209,22 @@ class FilesHandler(OperationsHandler):
             files = files.filter(filename__startswith=prefix)
         files = files.order_by('filename')
         return files
+
+    def delete(self, request, **kwargs):
+        """Delete a FileStorage object.
+
+        :param filename: The filename of the object to be deleted.
+        :type filename: unicode
+        """
+        # It is valid for a path in a POST, PUT, or DELETE (or any other HTTP
+        # method) to contain a query string. However, Django only makes
+        # parameters from the query string available in the badly named
+        # request.GET object.
+        filename = get_mandatory_param(request.GET, 'filename')
+        stored_file = get_object_or_404(
+            FileStorage, filename=filename, owner=request.user)
+        stored_file.delete()
+        return rc.DELETED
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

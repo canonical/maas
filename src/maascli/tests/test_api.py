@@ -527,9 +527,9 @@ class TestPayloadPreparation(MAASTestCase):
           "expected_headers": sentinel.headers}),
         ("delete-with-data",
          {"method": "DELETE", "data": [("foo", "bar"), ("foo", "baz")],
-          "expected_uri": uri_base,
-          "expected_body": sentinel.body,
-          "expected_headers": sentinel.headers}),
+          "expected_uri": uri_base + "?foo=bar&foo=baz",
+          "expected_body": None,
+          "expected_headers": []}),
         )
 
     # Scenarios for non-ReSTful operations; i.e. with an "op" parameter.
@@ -579,9 +579,9 @@ class TestPayloadPreparation(MAASTestCase):
           "expected_headers": sentinel.headers}),
         ("delete-with-data",
          {"method": "DELETE", "data": [("foo", "bar"), ("foo", "baz")],
-          "expected_uri": uri_base + "?op=something",
-          "expected_body": sentinel.body,
-          "expected_headers": sentinel.headers}),
+          "expected_uri": uri_base + "?op=something&foo=bar&foo=baz",
+          "expected_body": None,
+          "expected_headers": []}),
         )
 
     scenarios_without_op = tuple(
