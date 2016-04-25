@@ -162,7 +162,7 @@ misc_bucket:
 
 
 
-packages: [ freeipmi-tools, openipmi, ipmitool ]
+packages: [ freeipmi-tools, openipmi, ipmitool, archdetect-deb ]
 output: {all: '| tee -a /var/log/cloud-init-output.log'}
 runcmd:
  - [ sh, -c, *maas_enlist ]
