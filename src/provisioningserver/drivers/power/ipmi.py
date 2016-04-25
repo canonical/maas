@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+import re
 from subprocess import (
     PIPE,
     Popen,
@@ -24,6 +25,7 @@ from tempfile import NamedTemporaryFile
 from provisioningserver.drivers.power import (
     PowerAuthError,
     PowerDriver,
+    PowerError,
     PowerFatalError,
 )
 from provisioningserver.logger import get_maas_logger
@@ -97,12 +99,14 @@ class IPMIPowerDriver(PowerDriver):
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, e.output_as_unicode))
         else:
-            if 'on' in output:
-                return 'on'
-            elif 'off' in output:
-                return 'off'
+            match = re.search(":\s*(o[\w]+)", output)
+            if match is None:
+                raise PowerError(
+                    "IPMI Power Driver unable to extract node power"
+                    " state from: %s" % output)
             else:
-                return output
+                # If there is a match this should be either on/off/ok
+                return match.group(1)
 
     def _issue_ipmi_command(
             self, power_change, power_address=None, power_user=None,

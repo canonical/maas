@@ -30,6 +30,7 @@ from mock import (
 from provisioningserver.drivers.power import (
     ipmi as ipmi_module,
     PowerAuthError,
+    PowerError,
     PowerFatalError,
 )
 from provisioningserver.drivers.power.ipmi import (
@@ -173,7 +174,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (None, '')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'on'
+        call_and_check_mock.return_value = "host: on"
 
         result = ipmi_power_driver._issue_ipmi_command('on', **context)
 
@@ -202,7 +203,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (None, '')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'off'
+        call_and_check_mock.return_value = "host: off"
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
@@ -232,7 +233,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (None, '')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'off'
+        call_and_check_mock.return_value = "host: off"
 
         result = ipmi_power_driver._issue_ipmi_command('off', **context)
 
@@ -258,7 +259,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         process.communicate.return_value = (None, '')
         process.returncode = 0
         call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
-        call_and_check_mock.return_value = 'other'
+        call_and_check_mock.return_value = "host: off"
 
         result = ipmi_power_driver._issue_ipmi_command('query', **context)
 
@@ -266,7 +267,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         self.expectThat(
             call_and_check_mock, MockCalledOnceWith(
                 ipmipower_command, env=env))
-        self.expectThat(result, Equals('other'))
+        self.expectThat(result, Equals('off'))
 
     def test__issue_ipmi_command_raises_power_fatal_error(self):
         _, _, _, _, _, _, _, context = make_parameters()
@@ -297,7 +298,7 @@ class TestIPMIPowerDriver(MAASTestCase):
                 'Failed to change the boot order to PXE %s: %s' % (
                     context['power_address'], 'maaslog error')))
 
-    def test__issue_ipmi_command_issues_catches_external_process_error(self):
+    def test__issue_ipmi_command_catches_external_process_error(self):
         _, _, _, _, _, _, _, context = make_parameters()
         ipmi_power_driver = IPMIPowerDriver()
         popen_mock = self.patch(ipmi_module, 'Popen')
@@ -310,6 +311,20 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         self.assertRaises(
             PowerFatalError, ipmi_power_driver._issue_ipmi_command,
+            'on', **context)
+
+    def test__issue_ipmi_command_crashes_when_unable_to_find_match(self):
+        _, _, _, _, _, _, _, context = make_parameters()
+        ipmi_power_driver = IPMIPowerDriver()
+        popen_mock = self.patch(ipmi_module, 'Popen')
+        process = popen_mock.return_value
+        process.communicate.return_value = (None, '')
+        process.returncode = 0
+        call_and_check_mock = self.patch(ipmi_module, 'call_and_check')
+        call_and_check_mock.return_value = "Rubbish"
+
+        self.assertRaises(
+            PowerError, ipmi_power_driver._issue_ipmi_command,
             'on', **context)
 
     def test_power_on_calls__issue_ipmi_command(self):
