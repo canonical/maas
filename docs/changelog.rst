@@ -11,6 +11,8 @@ See https://launchpad.net/maas/+milestone/1.9.2 for full details.
 Bug Fix Update
 --------------
 
+LP: #1508741    IPMI driver does not handle timeouts correctly
+
 LP: #1572070    MAAS 2.0 cannot link physical device interfaces to tagged vlans, breaking juju 2.0 multi-NIC containers
 
 LP: #1573046    14.04 images not available for commissioning as distrio-info --lts now reports xenial

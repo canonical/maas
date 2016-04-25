@@ -99,7 +99,7 @@ class IPMIPowerDriver(PowerDriver):
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, e.output_as_unicode))
         else:
-            match = re.search(":\s*(o[\w]+)", output)
+            match = re.search(":\s*(on|off|ok)", output)
             if match is None:
                 raise PowerError(
                     "IPMI Power Driver unable to extract node power"
