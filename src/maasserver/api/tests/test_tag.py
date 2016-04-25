@@ -130,17 +130,111 @@ class TestTagAPI(APITestCase):
 
     def test_GET_nodes_returns_nodes(self):
         tag = factory.make_Tag()
-        node1 = factory.make_Node()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
         # Create a second node that isn't tagged.
         factory.make_Node()
-        node1.tags.add(tag)
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual([node1.system_id],
-                         [r['system_id'] for r in parsed_result])
+        self.assertItemsEqual(
+            [machine.system_id, device.system_id, rack.system_id,
+             region.system_id],
+            [r['system_id'] for r in parsed_result])
+
+    def test_GET_machines_returns_machines(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(self.get_tag_uri(tag), {'op': 'machines'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual(
+            [machine.system_id],
+            [r['system_id'] for r in parsed_result])
+
+    def test_GET_devices_returns_devices(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(self.get_tag_uri(tag), {'op': 'devices'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual(
+            [device.system_id],
+            [r['system_id'] for r in parsed_result])
+
+    def test_GET_rack_controllers_returns_rack_controllers(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(
+            self.get_tag_uri(tag), {'op': 'rack_controllers'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual(
+            [rack.system_id],
+            [r['system_id'] for r in parsed_result])
+
+    def test_GET_region_controllers_returns_region_controllers(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(
+            self.get_tag_uri(tag), {'op': 'region_controllers'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual(
+            [region.system_id],
+            [r['system_id'] for r in parsed_result])
 
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_User()

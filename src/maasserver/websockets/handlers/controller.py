@@ -10,7 +10,7 @@ __all__ = [
 from maasserver.enum import NODE_PERMISSION
 from maasserver.forms import AdminMachineWithMACAddressesForm
 from maasserver.models.node import (
-    Node,
+    Controller,
     RackController,
     typecast_to_node_type,
 )
@@ -23,7 +23,7 @@ class ControllerHandler(MachineHandler):
     class Meta(MachineHandler.Meta):
         abstract = False
         queryset = node_prefetch(
-            Node.controllers.all().prefetch_related("interface_set"))
+            Controller.controllers.all().prefetch_related("interface_set"))
         allowed_methods = [
             'list',
             'get',
@@ -76,9 +76,8 @@ class ControllerHandler(MachineHandler):
 
     def get_queryset(self):
         """Return `QuerySet` for controllers only viewable by `user`."""
-        controllers = super(ControllerHandler, self).get_queryset()
-        return Node.controllers.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=controllers)
+        return Controller.controllers.get_nodes(
+            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
 
     def dehydrate(self, obj, data, for_list=False):
         data = super().dehydrate(obj, data, for_list=for_list)

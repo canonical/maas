@@ -442,6 +442,10 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         """
         if from_nodes is None:
             from_nodes = self.all()
+        else:
+            # Make sure even if given a query set of multiple node types
+            # get_nodes only returns nodes applicable to this manager.
+            from_nodes = from_nodes.filter(**self.extra_filters)
         nodes = self._filter_visible_nodes(from_nodes, user, perm)
         return self.filter_by_ids(nodes, ids)
 

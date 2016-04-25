@@ -156,9 +156,8 @@ class MachineHandler(NodeHandler):
 
     def get_queryset(self):
         """Return `QuerySet` for devices only viewable by `user`."""
-        nodes = super(MachineHandler, self).get_queryset()
         return Machine.objects.get_nodes(
-            self.user, NODE_PERMISSION.VIEW, from_nodes=nodes)
+            self.user, NODE_PERMISSION.VIEW, from_nodes=self._meta.queryset)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""

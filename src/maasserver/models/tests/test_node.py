@@ -3263,6 +3263,18 @@ class NodeManagerTest(MAASServerTestCase):
             user=None, perm=NODE_PERMISSION.EDIT, ids=[node.system_id])
         self.assertItemsEqual([], observed)
 
+    def test_get_nodes_only_returns_managed_nodes(self):
+        user = factory.make_User()
+        machine = self.make_node(user)
+        for _ in range(3):
+            self.make_node(user, node_type=NODE_TYPE.DEVICE)
+        self.assertItemsEqual(
+            [machine],
+            Machine.objects.get_nodes(
+                user=user, perm=NODE_PERMISSION.VIEW,
+                from_nodes=Node.objects.all())
+        )
+
     def test_filter_nodes_by_spaces(self):
         # Create a throwaway node and a throwaway space.
         # (to ensure they are filtered out.)

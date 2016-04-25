@@ -30,8 +30,11 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import TagForm
 from maasserver.models import (
+    Device,
+    Machine,
     Node,
     RackController,
+    RegionController,
     Tag,
 )
 from maasserver.models.node import typecast_to_node_type
@@ -121,12 +124,7 @@ class TagHandler(OperationsHandler):
         tag.delete()
         return rc.DELETED
 
-    @operation(idempotent=True)
-    def nodes(self, request, name):
-        """Get the list of nodes that have this tag.
-
-        Returns 404 if the tag is not found.
-        """
+    def _get_node_type(self, model, request, name):
         # Workaround an issue where piston3 will try to use the fields from
         # this handler instead of the fields defined for the returned object.
         # This is done because this operation actually returns a list of nodes
@@ -135,10 +133,50 @@ class TagHandler(OperationsHandler):
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         return [
             typecast_to_node_type(node)
-            for node in Node.objects.get_nodes(
+            for node in model.objects.get_nodes(
                 request.user, NODE_PERMISSION.VIEW,
                 from_nodes=tag.node_set.all())
         ]
+
+    @operation(idempotent=True)
+    def nodes(self, request, name):
+        """Get the list of nodes that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
+        return self._get_node_type(Node, request, name)
+
+    @operation(idempotent=True)
+    def machines(self, request, name):
+        """Get the list of machines that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
+        return self._get_node_type(Machine, request, name)
+
+    @operation(idempotent=True)
+    def devices(self, request, name):
+        """Get the list of devices that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
+        return self._get_node_type(Device, request, name)
+
+    @operation(idempotent=True)
+    def rack_controllers(self, request, name):
+        """Get the list of rack controllers that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
+        return self._get_node_type(RackController, request, name)
+
+    @operation(idempotent=True)
+    def region_controllers(self, request, name):
+        """Get the list of region controllers that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
+        return self._get_node_type(RegionController, request, name)
 
     def _get_nodes_for(self, request, param):
         system_ids = get_list_from_dict_or_multidict(request.data, param)
