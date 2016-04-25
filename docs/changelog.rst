@@ -43,6 +43,8 @@ LP: #1298772    MAAS API vulnerable to CSRF attack
 
 LP: #1379826    uuid.uuid1() is not suitable as an unguessable identifier/token
 
+LP: #1573264    Enlistment fails: archdetect not found.
+
 
 1.9.1
 =====
