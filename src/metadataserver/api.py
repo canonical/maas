@@ -358,20 +358,13 @@ class StatusHandler(MetadataViewHandler):
                         "Installation failed (refer to the "
                         "installation log for more information).")
             elif node.status == NODE_STATUS.DISK_ERASING:
-                # XXX mpontillo 2016-02-12 we need to check that
-                # only one "top level" event is sent during disk
-                # erasing.
-                if result == 'SUCCESS':
-                    # disk erasing complete, release node.
-                    node.release()
-                elif result in ['FAIL', 'FAILURE']:
+                if result in ['FAIL', 'FAILURE']:
                     node.mark_failed(None, "Failed to erase disks.")
 
             # Deallocate the node if we enter any terminal state.
             if node.status in [
                     NODE_STATUS.READY,
-                    NODE_STATUS.FAILED_COMMISSIONING,
-                    NODE_STATUS.FAILED_DISK_ERASING]:
+                    NODE_STATUS.FAILED_COMMISSIONING]:
                 node.owner = None
                 node.error = 'failed: %s' % description
 

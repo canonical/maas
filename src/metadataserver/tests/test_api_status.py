@@ -287,7 +287,7 @@ class TestStatusAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
         self.assertThat(populate_tags_for_single_node, MockNotCalled())
 
-    def test_status_erasure_failure_clears_owner(self):
+    def test_status_erasure_failure_doesnt_clear_owner(self):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.DISK_ERASING, owner=user)
@@ -299,12 +299,11 @@ class TestStatusAPI(MAASServerTestCase):
             'name': 'cmd-erase',
             'description': 'Erasing disk',
         }
-        self.assertEqual(user, node.owner)  # Node has an owner
         response = call_status(client, node, payload)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
-        self.assertIsNone(reload_object(node).owner)
+        self.assertEqual(user, node.owner)
 
     def test_status_with_file_bad_encoder_fails(self):
         node = factory.make_Node(
