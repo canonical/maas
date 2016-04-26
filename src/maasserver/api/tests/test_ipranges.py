@@ -92,6 +92,19 @@ class TestIPRangesAPI(APITestCase):
         self.assertThat(data['end_ip'], Equals('10.0.0.20'))
         self.assertThat(data['subnet']['id'], Equals(subnet.id))
 
+    def test_create_requires_type_and_reports_simple_error_if_missing(self):
+        self.become_admin()
+        uri = get_ipranges_uri()
+        factory.make_Subnet(cidr='10.0.0.0/24')
+        response = self.client.post(uri, {
+            "start_ip": "10.0.0.10",
+            "end_ip": "10.0.0.20",
+        })
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+        self.assertThat(response.content, Equals(
+            b'{"type": ["This field is required."]}'))
+
 
 class TestIPRangeAPI(APITestCase):
 

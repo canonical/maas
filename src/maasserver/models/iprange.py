@@ -183,12 +183,17 @@ class IPRange(CleanSave, TimestampedModel):
                 validation_errors[field] = [message]
             raise ValidationError(validation_errors)
 
+        # Check against the valid types before going further, since whether
+        # or not the range overlaps anything that could cause an error heavily
+        # depends on its type.
+        valid_types = {choice[0] for choice in IPRANGE_TYPE_CHOICES}
         """Make sure the new or updated range isn't going to cause a conflict.
         If it will, raise ValidationError.
         """
         # If model is incomplete, save() will fail, so don't bother checking.
-        if self.subnet_id is None or self.start_ip is None or (
-                self.end_ip is None) or self.type is None:
+        if (self.subnet_id is None or self.start_ip is None or
+                self.end_ip is None or self.type is None or
+                self.type not in valid_types):
             return
 
         # The _state.adding flag is False if this instance exists in the DB.
