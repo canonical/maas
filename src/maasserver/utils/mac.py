@@ -18,5 +18,8 @@ def get_vendor_for_mac(mac):
     data = EUI(mac)
     try:
         return data.oui.registration().org
-    except NotRegisteredError:
+    except (NotRegisteredError, UnicodeDecodeError):
+        # UnicodeDecodeError can be raised if the name of the vendor cannot
+        # be decoded from ascii. This is something broken in the netaddr
+        # library, we are just catching the error here not to break the UI.
         return 'Unknown Vendor'

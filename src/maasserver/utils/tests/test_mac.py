@@ -6,8 +6,11 @@
 __all__ = []
 
 
+from maasserver.testing.factory import factory
+from maasserver.utils import mac
 from maasserver.utils.mac import get_vendor_for_mac
 from maastesting.testcase import MAASTestCase
+from mock import MagicMock
 
 
 class TestGetVendorForMac(MAASTestCase):
@@ -21,3 +24,15 @@ class TestGetVendorForMac(MAASTestCase):
         self.assertEqual(
             "Unknown Vendor",
             get_vendor_for_mac('aa:bb:cc:dd:ee:ff'))
+
+    def test_get_vendor_for_mac_handlers_unicode_error(self):
+        try:
+            b'\xD3'.decode('ascii')
+        except UnicodeDecodeError as exc:
+            error = exc
+        eui_result = MagicMock()
+        eui_result.oui.registration.side_effect = error
+        self.patch(mac, "EUI").return_value = eui_result
+        self.assertEqual(
+            "Unknown Vendor",
+            get_vendor_for_mac(factory.make_mac_address()))
