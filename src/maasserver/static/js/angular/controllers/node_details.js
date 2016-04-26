@@ -405,10 +405,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
         }
 
         // Update the node with new data on the region.
-        $scope.updateNode = function(node) {
+        $scope.updateNode = function(node, queryPower) {
+            if(angular.isUndefined(queryPower)) {
+                queryPower = false;
+            }
             return $scope.nodesManager.updateItem(node).then(function(node) {
                 updateHeader();
                 updateSummary();
+                if(queryPower) {
+                    $scope.checkPowerState();
+                }
             }, function(error) {
                 console.log(error);
                 updateHeader();
@@ -804,7 +810,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
             node.power_parameters = angular.copy($scope.power.parameters);
 
             // Update the node.
-            $scope.updateNode(node);
+            $scope.updateNode(node, true);
         };
 
         // Return true if the "load more" events button should be available.
@@ -834,6 +840,38 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 text += " - " + event.description;
             }
             return text;
+        };
+
+        $scope.getPowerEventError = function() {
+            for(i=0;i<$scope.node.events.length;i++) {
+                var event = $scope.node.events[i];
+                if(event.type.level === "warning" &&
+                   event.type.description === "Failed to query node's BMC") {
+                    // Latest power event is an error
+                    return event;
+                } else if(event.type.level === "info" &&
+                          event.type.description === "Queried node's BMC") {
+                    // Latest power event is not an error
+                    return;
+                }
+            }
+            // No power event found, thus no error
+            return;
+        };
+
+        $scope.hasPowerEventError = function() {
+            var event = $scope.getPowerEventError();
+            return angular.isObject(event);
+        };
+
+        $scope.getPowerEventErrorText = function() {
+            var event = $scope.getPowerEventError();
+            if(angular.isObject(event)) {
+                // Return text
+                return event.description;
+            } else {
+                return "";
+            }
         };
 
         // Called when the machine output view has changed.

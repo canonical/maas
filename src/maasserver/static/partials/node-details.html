@@ -353,6 +353,9 @@
                             rack controller.  To proceed, install the {$ getPowerErrors() $}
                             on the rack controller.
                         </li>
+                        <li class="flash-messages__item error" data-ng-if="hasPowerEventError()">
+			    {$ getPowerEventErrorText() $}
+                        </li>
                         <li class="flash-messages__item info" data-ng-if="power.type.name == 'manual'">
                             Power control for this power type will need to be handled manually.
                         </li>

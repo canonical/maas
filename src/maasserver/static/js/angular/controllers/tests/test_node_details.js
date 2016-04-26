@@ -1881,6 +1881,79 @@ describe("NodeDetailsController", function() {
             });
     });
 
+    describe("getPowerEventError", function() {
+
+        it("returns event if there is a power event error", function() {
+            var controller = makeController();
+            var evt = makeEvent();
+            evt.type.level = "warning";
+            evt.type.description = "Failed to query node's BMC";
+            $scope.node = node;
+            $scope.node.events = [
+                makeEvent(),
+                evt
+            ];
+            expect($scope.getPowerEventError()).toBe(evt);
+        });
+
+        it("returns nothing if there is no power event error", function() {
+            var controller = makeController();
+            var evt_info = makeEvent();
+            var evt_error = makeEvent();
+            evt_info.type.level = "info";
+            evt_info.type.description = "Queried node's BMC";
+            evt_error.type.level = "warning";
+            evt_error.type.description = "Failed to query node's BMC";
+            $scope.node = node;
+            $scope.node.events = [
+                makeEvent(),
+                evt_info,
+                evt_error
+            ];
+            expect($scope.getPowerEventError()).toBe();
+        });
+    });
+
+    describe("hasPowerEventError", function() {
+
+        it("returns true if last event is an error", function() {
+            var controller = makeController();
+            var evt = makeEvent();
+            evt.type.level = "warning";
+            evt.type.description = "Failed to query node's BMC";
+            $scope.node = node;
+            $scope.node.events = [evt];
+            expect($scope.hasPowerEventError()).toBe(true);
+        });
+
+        it("returns false if last event is not an error", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.node.events = [makeEvent()];
+            expect($scope.hasPowerEventError()).toBe(false);
+            });
+    });
+
+    describe("getPowerEventErrorText", function() {
+
+        it("returns just empty string", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.node.events = [makeEvent()];
+            expect($scope.getPowerEventErrorText()).toBe("");
+        });
+
+        it("returns event description", function() {
+            var controller = makeController();
+            var evt = makeEvent();
+            evt.type.level = "warning";
+            evt.type.description = "Failed to query node's BMC";
+            $scope.node = node;
+            $scope.node.events = [evt];
+            expect($scope.getPowerEventErrorText()).toBe(evt.description);
+            });
+    });
+
     describe("machineOutputViewChanged", function() {
 
         it("sets showSummaryToggle to false if no selectedView", function() {

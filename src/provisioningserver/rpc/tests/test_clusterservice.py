@@ -1629,19 +1629,12 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
     @inlineCallbacks
     def test_returns_power_state(self):
         state = random.choice(['on', 'off'])
-        perform_power_query = self.patch(
-            power_module.query, "perform_power_query")
-        perform_power_query.return_value = state
-
-        # During the transition from template-based power drivers to Python
-        # drivers, alias perform_power_driver_query to perform_power_query.
-        self.patch(
-            power_module.query, "perform_power_driver_query",
-            perform_power_query)
-
-        # Intercept calls to report the status.
+        perform_power_driver_query = self.patch(
+            power_module.query, "perform_power_driver_query")
+        perform_power_driver_query.return_value = state
         report_power_state = self.patch(
-            power_module.query, "report_power_state")
+            clusterservice, "report_power_state")
+        report_power_state.return_value = succeed(state)
 
         power_type = random.choice(QUERY_POWER_TYPES)
         arguments = {
@@ -1653,20 +1646,17 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
 
         # Make sure power driver doesn't check for installed packages.
         power_driver = power_drivers_by_name.get(power_type)
-        if power_driver:
-            self.patch_autospec(
-                power_driver, "detect_missing_packages").return_value = []
+        self.patch_autospec(
+            power_driver, "detect_missing_packages").return_value = []
 
         observed = yield call_responder(
             Cluster(), cluster.PowerQuery, arguments)
         self.assertEqual({'state': state}, observed)
         self.assertThat(
-            perform_power_query,
+            perform_power_driver_query,
             MockCalledOnceWith(
                 arguments['system_id'], arguments['hostname'],
                 arguments['power_type'], arguments['context']))
-        # The region is NOT told about the change.
-        self.assertThat(report_power_state, MockNotCalled())
 
 
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):

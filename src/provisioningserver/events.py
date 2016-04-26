@@ -52,6 +52,7 @@ class EVENT_TYPES:
     NODE_POWERED_OFF = 'NODE_POWERED_OFF'
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
+    NODE_POWER_QUERIED = 'NODE_POWER_QUERIED'
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
     # PXE request event.
     NODE_PXE_REQUEST = 'NODE_PXE_REQUEST'
@@ -112,6 +113,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_POWER_OFF_FAILED: EventDetail(
         description="Failed to power off node",
         level=ERROR,
+    ),
+    EVENT_TYPES.NODE_POWER_QUERIED: EventDetail(
+        description="Queried node's BMC",
+        level=INFO,
     ),
     EVENT_TYPES.NODE_POWER_QUERY_FAILED: EventDetail(
         description="Failed to query node's BMC",

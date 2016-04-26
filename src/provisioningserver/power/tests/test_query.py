@@ -90,9 +90,24 @@ class TestPowerHelpers(MAASTestCase):
             protocol.SendEvent,
             MockCalledOnceWith(
                 ANY, type_name=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
-                system_id=system_id, description=(
-                    "Power state could not be queried: " + message),
-            ))
+                system_id=system_id, description=message))
+
+    def test_power_query_success_emits_event(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        state = factory.make_name('state')
+        message = "Power state queried: %s" % state
+        protocol, io = self.patch_rpc_methods()
+        d = power.query.power_query_success(
+            system_id, hostname, state)
+        # This blocks until the deferred is complete.
+        io.flush()
+        self.assertIsNone(extract_result(d))
+        self.assertThat(
+            protocol.SendEvent,
+            MockCalledOnceWith(
+                ANY, type_name=EVENT_TYPES.NODE_POWER_QUERIED,
+                system_id=system_id, description=message))
 
 
 class TestPowerQuery(MAASTestCase):
@@ -249,10 +264,8 @@ class TestPowerQueryExceptions(MAASTestCase):
         (power_type, {
             "power_type": power_type,
             "power_driver": power_drivers_by_name.get(power_type),
-            "func": (  # Function to invoke driver.
-                "perform_power_driver_query"
-                if power_type in PowerDriverRegistry
-                else "perform_power_query"),
+            "func": (  # Function to invoke power driver.
+                "perform_power_driver_query"),
             "waits": (  # Pauses between retries.
                 [] if power_type in PowerDriverRegistry
                 else DEFAULT_WAITING_POLICY),
@@ -322,7 +335,7 @@ class TestPowerQueryExceptions(MAASTestCase):
         self.assertThat(
             send_event_node, MockCalledOnceWith(
                 EVENT_TYPES.NODE_POWER_QUERY_FAILED,
-                system_id, hostname, expected_message))
+                system_id, hostname, exception_message))
 
         # Nothing was logged to the Twisted log.
         self.assertEqual("", logger_twisted.output)
