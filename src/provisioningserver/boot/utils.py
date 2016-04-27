@@ -23,6 +23,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
 
@@ -46,8 +47,15 @@ def get_file(url):
     # Build a new opener so that the environment is checked for proxy
     # URLs. Using urllib2.urlopen() means that we'd only be using the
     # proxies as defined when urlopen() was called the first time.
-    response = urllib.request.build_opener().open(url)
-    return response.read()
+    try:
+        response = urllib.request.build_opener().open(url)
+        return response.read()
+    except urllib.error.URLError as e:
+        maaslog.error("Unable to download %s: %s", url, str(e.reason))
+        raise
+    except BaseException as e:
+        maaslog.error("Unable to download %s: %s", url, str(e))
+        raise
 
 
 def get_md5sum(data):

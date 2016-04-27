@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Download boot resource descriptions from Simplestreams repo.
@@ -192,6 +192,7 @@ def download_image_descriptions(path, keyring=None):
     :param keyring: Optional keyring for verifying the repo's signatures.
     :return: A `BootImageMapping` describing available boot resources.
     """
+    maaslog.info("Downloading image descriptions from %s", path)
     mirror, rpath = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring)
     reader = UrlMirrorReader(mirror, policy=policy)

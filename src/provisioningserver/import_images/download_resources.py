@@ -225,6 +225,7 @@ def download_boot_resources(path, store, snapshot_path, product_mapping,
     :param keyring_file: Optional path to a keyring file for verifying
         signatures.
     """
+    maaslog.info("Downloading boot resources from %s", path)
     writer = RepoWriter(snapshot_path, store, product_mapping)
     (mirror, rpath) = path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring_file)

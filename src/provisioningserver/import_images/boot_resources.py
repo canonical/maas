@@ -95,7 +95,11 @@ def install_boot_loaders(destination, arches):
     """
     for _, boot_method in BootMethodRegistry:
         if arches.intersection(boot_method.bootloader_arches) != set():
-            boot_method.install_bootloader(destination)
+            try:
+                boot_method.install_bootloader(destination)
+            except BaseException:
+                maaslog.error(
+                    "Unable to download the %s bootloader.", boot_method.name)
 
 
 def make_arg_parser(doc):
