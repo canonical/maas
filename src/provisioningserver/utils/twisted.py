@@ -5,6 +5,8 @@
 
 __all__ = [
     'asynchronous',
+    'callInReactor',
+    'callInReactorWithTimeout',
     'callOut',
     'deferred',
     'DeferredValue',
@@ -408,6 +410,38 @@ def callOutToThread(thing, func, *args, **kwargs):
     result in this case.
     """
     return deferToThread(func, *args, **kwargs).addCallback(lambda _: thing)
+
+
+@asynchronous(timeout=FOREVER)
+def callInReactor(func, *args, **kwargs):
+    """Call the given `func` in the reactor.
+
+    The return value from `func` will be returned unaltered to callers in the
+    reactor thread, i.e. the call will not be wrapped in `maybeDeferred`.
+
+    The return value from `func` will be returned unaltered to callers outside
+    of the reactor thread UNLESS it is a `Deferred` instance, in which case it
+    will be waited for indefinitely. The result of that `Deferred` will be
+    returned to the caller.
+    """
+    return func(*args, **kwargs)
+
+
+@asynchronous(timeout=FOREVER)
+def callInReactorWithTimeout(timeout, func, *args, **kwargs):
+    """Call the given `func` in the reactor.
+
+    To callers in the reactor thread, a `Deferred` will always be returned. It
+    will be cancelled after `timeout` seconds unless it has already fired.
+
+    The return value from `func` will be returned unaltered to callers outside
+    of the reactor thread UNLESS it is a `Deferred` instance, in which case it
+    will be waited for. It will be cancelled after `timeout` seconds unless it
+    has already fired.
+
+    See `deferWithTimeout` for details.
+    """
+    return deferWithTimeout(timeout, func, *args, **kwargs)
 
 
 class DeferredValue:

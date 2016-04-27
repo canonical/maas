@@ -40,6 +40,8 @@ from mock import (
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
+    callInReactor,
+    callInReactorWithTimeout,
     callOut,
     callOutToThread,
     DeferredValue,
@@ -737,6 +739,122 @@ class TestCallOutToThread(MAASTestCase):
 
         yield callOutToThread(None, captureThread)
         self.expectThat(threads, HasLength(2))
+
+
+class TestCallInReactor(MAASTestCase):
+    """Tests for `callInReactor`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def returnThreadIdent(self, *_, **__):
+        return threading.get_ident()
+
+    def test__without_arguments_from_reactor(self):
+        func = Mock(side_effect=self.returnThreadIdent)
+        result = callInReactor(func)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(func, MockCalledOnceWith())
+
+    @inlineCallbacks
+    def test__without_arguments_from_thread(self):
+        func = Mock(side_effect=self.returnThreadIdent)
+        result = yield deferToNewThread(callInReactor, func)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(func, MockCalledOnceWith())
+
+    def test__with_arguments_in_reactor(self):
+        func = Mock(side_effect=self.returnThreadIdent)
+        result = callInReactor(func, sentinel.a, b=sentinel.b)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(func, MockCalledOnceWith(sentinel.a, b=sentinel.b))
+
+    @inlineCallbacks
+    def test__with_arguments_in_thread(self):
+        func = Mock(side_effect=self.returnThreadIdent)
+        result = yield deferToNewThread(
+            callInReactor, func, sentinel.a, b=sentinel.b)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(func, MockCalledOnceWith(sentinel.a, b=sentinel.b))
+
+
+class TestCallInReactorErrors(MAASTestCase):
+    """Tests for error behaviour in `callInReactor`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__propagates_exceptions_in_reactor(self):
+        with ExpectedException(ZeroDivisionError):
+            callInReactor(operator.truediv, 0, 0)
+
+    @inlineCallbacks
+    def test__propagates_exceptions_in_thread(self):
+        with ExpectedException(ZeroDivisionError):
+            yield deferToNewThread(callInReactor, operator.truediv, 0, 0)
+
+
+class TestCallInReactorWithTimeout(MAASTestCase):
+    """Tests for `callInReactorWithTimeout`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super(TestCallInReactorWithTimeout, self).setUp()
+        self.deferWithTimeout = self.patch(twisted_module, "deferWithTimeout")
+        self.deferWithTimeout.side_effect = self.returnThreadIdent
+
+    def returnThreadIdent(self, *_, **__):
+        return threading.get_ident()
+
+    def test__without_arguments_from_reactor(self):
+        result = callInReactorWithTimeout(sentinel.timeout, sentinel.func)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(
+            self.deferWithTimeout, MockCalledOnceWith(
+                sentinel.timeout, sentinel.func))
+
+    @inlineCallbacks
+    def test__without_arguments_from_thread(self):
+        result = yield deferToNewThread(
+            callInReactorWithTimeout, sentinel.timeout, sentinel.func)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(
+            self.deferWithTimeout, MockCalledOnceWith(
+                sentinel.timeout, sentinel.func))
+
+    def test__with_arguments_in_reactor(self):
+        result = callInReactorWithTimeout(
+            sentinel.timeout, sentinel.func, sentinel.a, b=sentinel.b)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(
+            self.deferWithTimeout, MockCalledOnceWith(
+                sentinel.timeout, sentinel.func, sentinel.a, b=sentinel.b))
+
+    @inlineCallbacks
+    def test__with_arguments_in_thread(self):
+        result = yield deferToNewThread(
+            callInReactorWithTimeout, sentinel.timeout, sentinel.func,
+            sentinel.a, b=sentinel.b)
+        self.assertThat(result, Equals(threading.get_ident()))
+        self.assertThat(
+            self.deferWithTimeout, MockCalledOnceWith(
+                sentinel.timeout, sentinel.func, sentinel.a, b=sentinel.b))
+
+
+class TestCallInReactorWithTimeoutErrors(MAASTestCase):
+    """Tests for error behaviour in `callInReactorWithTimeout`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test__propagates_exceptions_in_reactor(self):
+        with ExpectedException(ZeroDivisionError):
+            yield callInReactorWithTimeout(5.0, operator.truediv, 0, 0)
+
+    @inlineCallbacks
+    def test__propagates_exceptions_in_thread(self):
+        with ExpectedException(ZeroDivisionError):
+            yield deferToNewThread(
+                callInReactorWithTimeout, 5.0, operator.truediv, 0, 0)
 
 
 class TestDeferredValue(MAASTestCase):
