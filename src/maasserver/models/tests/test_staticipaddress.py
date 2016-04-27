@@ -905,6 +905,21 @@ class TestRenderJSON(MAASServerTestCase):
         self.expectThat(json, Not(Contains("user")))
         self.expectThat(json, Contains("node_summary"))
 
+    def test__node_summary_includes_interface_name(self):
+        user = factory.make_User()
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            disable_ipv4=False, subnet=subnet)
+        self.expectThat(node.interface_set.count(), Equals(1))
+        iface = node.interface_set.first()
+        ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet), user=user,
+            interface=node.get_boot_interface())
+        json = ip.render_json(with_node_summary=True)
+        self.expectThat(json, Not(Contains("user")))
+        self.expectThat(json, Contains("node_summary"))
+        self.expectThat(json['node_summary']['via'], Equals(iface.name))
+
     def test__data_is_accurate_and_complete(self):
         user = factory.make_User()
         hostname = factory.make_name('hostname')

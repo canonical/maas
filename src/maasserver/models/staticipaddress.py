@@ -473,13 +473,22 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         return "%s:type=%s" % (self.ip, strtype)
 
     def get_node(self):
-        """Return the Node of the first interface connected to this IP
+        """Return the Node of the first Interface connected to this IP
         address."""
-        interface = self.interface_set.first()
+        interface = self.get_interface()
         if interface is not None:
             return interface.get_node()
         else:
             return None
+
+    def get_interface(self):
+        """Return the first Interface connected to this IP address."""
+        # Note that, while this relationship is modeled as a many-to-many,
+        # MAAS currently only relates a single interface per IP address
+        # at this time. In the future, we may want to model virtual IPs, in
+        # which case this will need to change.
+        interface = self.interface_set.first()
+        return interface
 
     def get_interface_link_type(self):
         """Return the `INTERFACE_LINK_TYPE`."""
@@ -650,13 +659,17 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         if with_username and self.user is not None:
             data["user"] = self.user.username
         if with_node_summary:
+            iface = self.get_interface()
             node = self.get_node()
             if node is not None:
                 data["node_summary"] = {
                     "system_id": node.system_id,
                     "node_type": node.node_type,
                     "fqdn": node.fqdn,
+                    "hostname": node.hostname,
                 }
+                if iface is not None:
+                    data["node_summary"]["via"] = iface.get_name()
                 if (with_username and
                         self.alloc_type != IPADDRESS_TYPE.DISCOVERED):
                     # If a user owns this node, overwrite any username we found
