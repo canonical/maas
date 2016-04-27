@@ -34,13 +34,15 @@ angular.module('MAAS').controller('FabricDetailsController', [
 
         // Called when the fabric has been loaded.
         function fabricLoaded(fabric) {
-            $scope.fabric = fabric;
-            $scope.loaded = true;
-            $scope.vlans = FabricsManager.getVLANs($scope.fabric);
-            $scope.racks = getRackControllers();
+            if(angular.isObject(fabric)) {
+                $scope.fabric = fabric;
+                $scope.loaded = true;
+                $scope.vlans = FabricsManager.getVLANs($scope.fabric);
+                $scope.racks = getRackControllers();
 
-            updateTitle();
-            updateVLANTable();
+                updateTitle();
+                updateVLANTable();
+            }
         }
 
         // Return the rack controller objects attached to this Fabric.  The
@@ -80,6 +82,18 @@ angular.module('MAAS').controller('FabricDetailsController', [
                         };
                         rows.push(row);
                     });
+                } else {
+                    // If there are no subnets, populate the row based on the
+                    // information we have (just the VLAN).
+                    var row = {
+                        vlan: vlan,
+                        vlan_name: VLANsManager.getName(vlan),
+                        subnet: null,
+                        subnet_name: null,
+                        space: null,
+                        space_name: null
+                    };
+                    rows.push(row);
                 }
             });
             $scope.rows = rows;
@@ -129,8 +143,8 @@ angular.module('MAAS').controller('FabricDetailsController', [
             FabricsManager.deleteFabric($scope.fabric).then(function() {
                 $scope.confirmingDelete = false;
                 $location.path("/fabrics");
-            }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+            }, function(reply) {
+                $scope.error = $scope.convertPythonDictToErrorMsg(reply.error);
             });
         };
 

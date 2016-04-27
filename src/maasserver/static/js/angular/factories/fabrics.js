@@ -35,12 +35,14 @@ angular.module('MAAS').factory(
         // instead you should watch this function.
         FabricsManager.prototype.getVLANs = function(fabric) {
             var vlans = [];
-            angular.forEach(fabric.vlan_ids, function(vlan_id) {
-                var vlan = VLANsManager.getItemFromList(vlan_id);
-                if(angular.isObject(vlan)) {
-                    vlans.push(vlan);
-                }
-            });
+            if(angular.isObject(fabric) && angular.isObject(fabric.vlan_ids)) {
+                angular.forEach(fabric.vlan_ids, function(vlan_id) {
+                    var vlan = VLANsManager.getItemFromList(vlan_id);
+                    if(angular.isObject(vlan)) {
+                        vlans.push(vlan);
+                    }
+                });
+            }
             return vlans;
         };
 

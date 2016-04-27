@@ -27,7 +27,10 @@ from maasserver.models.vlan import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnce
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Contains,
+    MatchesStructure,
+)
 
 
 class TestFabricManagerGetFabricOr404(MAASServerTestCase):
@@ -239,10 +242,20 @@ class TestFabric(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL,
             vlan=fabric.get_default_vlan())
         error = self.assertRaises(ValidationError, fabric.delete)
-        self.assertEqual(
-            "Can't delete fabric: interfaces are connected to VLANs from this "
-            "fabric.",
-            error.message)
+        self.assertThat(error.message, Contains(
+            "Can't delete fabric; the following interfaces are "
+            "still connected: "))
+
+    def test_cant_delete_fabric_if_connected_to_subnet(self):
+        fabric = factory.make_Fabric()
+        factory.make_Subnet(vlan=fabric.get_default_vlan())
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            vlan=fabric.get_default_vlan())
+        error = self.assertRaises(ValidationError, fabric.delete)
+        self.assertThat(error.message, Contains(
+            "Can't delete fabric; the following subnets are "
+            "still present: "))
 
     def test_cant_delete_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()

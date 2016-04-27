@@ -26,6 +26,7 @@ from django.db.utils import IntegrityError
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
+from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
 
@@ -193,11 +194,20 @@ class Fabric(CleanSave, TimestampedModel):
         if self.is_default():
             raise ValidationError(
                 "This fabric is the default fabric, it cannot be deleted.")
-        # Circular imports.
-        if Interface.objects.filter(vlan__fabric=self).exists():
+        if Subnet.objects.filter(vlan__fabric=self).exists():
+            subnets = Subnet.objects.filter(vlan__fabric=self).order_by(
+                'cidr')
+            descriptions = [str(subnet.cidr) for subnet in subnets]
             raise ValidationError(
-                "Can't delete fabric: interfaces are connected to VLANs from "
-                "this fabric.")
+                "Can't delete fabric; the following subnets are "
+                "still present: %s" % (", ".join(descriptions)))
+        if Interface.objects.filter(vlan__fabric=self).exists():
+            interfaces = Interface.objects.filter(vlan__fabric=self).order_by(
+                'node', 'name')
+            descriptions = [iface.get_log_string() for iface in interfaces]
+            raise ValidationError(
+                "Can't delete fabric; the following interfaces are "
+                "still connected: %s" % (", ".join(descriptions)))
         super(Fabric, self).delete()
 
     def _create_default_vlan(self):

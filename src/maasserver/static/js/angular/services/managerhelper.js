@@ -78,7 +78,7 @@ angular.module('MAAS').service('ManagerHelperService', [
         // Returns a printable version of the specified dictionary (useful
         // for displaying an error to the user).
         this.getPrintableString = function(dict, showNames) {
-           var result = '';
+            var result = '';
             angular.forEach(dict, function(value, key) {
                 var error = dict[key];
                 if(showNames === true) {

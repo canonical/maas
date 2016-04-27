@@ -16,7 +16,7 @@ describe("FabricDetailsController", function() {
             name: makeName("fabric")
         };
         FabricsManager._items.push(fabric);
-        return fabric;
+       return fabric;
     }
 
     // Grab the needed angular pieces.
@@ -51,14 +51,13 @@ describe("FabricDetailsController", function() {
 
     // Makes the NodesListController
     function makeController(loadManagerDefer) {
-        spyOn(UsersManager, "isSuperUser").and.returnValue(true);
+       spyOn(UsersManager, "isSuperUser").and.returnValue(true);
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagerDefer)) {
             loadManagers.and.returnValue(loadManagerDefer.promise);
         } else {
             loadManagers.and.returnValue($q.defer().promise);
         }
-
         // Create the controller.
         var controller = $controller("FabricDetailsController", {
             $scope: $scope,
@@ -74,8 +73,7 @@ describe("FabricDetailsController", function() {
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
-
-        return controller;
+       return controller;
     }
 
     // Make the controller and resolve the setActiveItem call.
@@ -87,7 +85,9 @@ describe("FabricDetailsController", function() {
         var controller = makeController(defer);
         $routeParams.fabric_id = fabric.id;
 
+        $rootScope.$digest();
         defer.resolve();
+
         $rootScope.$digest();
         setActiveDefer.resolve(fabric);
         $rootScope.$digest();
@@ -172,6 +172,39 @@ describe("FabricDetailsController", function() {
         fabric.id = 0;
         var controller = makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(fabric.name);
+    });
+
+    it("updates $scope.rows with VLANs containing subnet(s)", function() {
+        var spaces = [{ id: 0, name: "space-0" }];
+        var vlans = [{ id: 1, name: "vlan4", vid: 4, fabric: fabric.id }];
+        var subnets = [
+            { id: 0, name:"subnet1", vlan: 1, space: 0, cidr: "10.20.0.0/16" }
+        ];
+        fabric.vlan_ids = [1];
+        spaces[0].subnet_ids = [0];
+        vlans[0].subnet_ids = [0];
+        SpacesManager._items.push(spaces[0]);
+        VLANsManager._items.push(vlans[0]);
+        SubnetsManager._items.push(subnets[0]);
+        var controller = makeControllerResolveSetActiveItem();
+        $scope.$apply();
+        $rootScope.$digest();
+        var rows = $scope.rows;
+        expect(rows[0].vlan).toBe(vlans[0]);
+        expect(rows[0].subnet_name).toEqual("10.20.0.0/16 (subnet1)");
+        expect(rows[0].space_name).toEqual("space-0");
+    });
+
+    it("updates $scope.rows with VLANs containing no subnet(s)", function() {
+        var vlans = [ { id: 1, name: "vlan4", vid: 4, fabric: fabric.id } ];
+        fabric.vlan_ids = [1];
+        VLANsManager._items.push(vlans[0]);
+        var controller = makeControllerResolveSetActiveItem();
+        $rootScope.$digest();
+        var rows = $scope.rows;
+        expect(rows[0].vlan).toBe(vlans[0]);
+        expect(rows[0].subnet_name).toBe(null);
+        expect(rows[0].space_name).toBe(null);
     });
 
     describe("canBeDeleted", function() {
