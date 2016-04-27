@@ -6,6 +6,7 @@
 __all__ = []
 
 from collections import OrderedDict
+import platform
 import subprocess
 
 from maastesting.factory import factory
@@ -479,3 +480,12 @@ class TestBMCSupportsLANPlus(MAASTestCase):
         run_command.return_value = self.output
         detected = bmc_supports_lan2_0()
         self.assertEqual(self.support, detected)
+
+    def test_support_detection_ppc64el(self):
+        """Test that ppc64el returns 2.0"""
+        run_command = self.patch(maas_ipmi_autodetect, 'run_command')
+        run_command.return_value = ''
+        ppc64le_platform = self.patch(platform, 'machine')
+        ppc64le_platform.return_value = 'ppc64le'
+        detected = bmc_supports_lan2_0()
+        self.assertEqual(True, detected)

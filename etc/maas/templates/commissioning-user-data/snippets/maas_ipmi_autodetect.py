@@ -22,6 +22,7 @@
 from collections import OrderedDict
 import json
 import os
+import platform
 import random
 import re
 import string
@@ -236,7 +237,9 @@ def generate_random_password(min_length=8, max_length=15):
 def bmc_supports_lan2_0():
     """Detect if BMC supports LAN 2.0."""
     output = run_command(('ipmi-locate'))
-    return 'IPMI Version: 2.0' in output
+    if 'IPMI Version: 2.0' in output or platform.machine() == 'ppc64le':
+        return True
+    return False
 
 
 def main():
