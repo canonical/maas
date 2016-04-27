@@ -76,6 +76,8 @@ class UserProfile(CleanSave, Model):
                 "allocated to this user." %
                 (self.user.username, nb_nodes))
             raise CannotDeleteUserException(msg)
+        if self.user.filestorage_set.exists():
+            self.user.filestorage_set.all().delete()
         self.user.consumers.all().delete()
         self.user.delete()
         super(UserProfile, self).delete()

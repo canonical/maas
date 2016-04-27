@@ -16,7 +16,10 @@ __all__ = []
 
 from django.contrib.auth.models import User
 from maasserver.exceptions import CannotDeleteUserException
-from maasserver.models import UserProfile
+from maasserver.models import (
+    FileStorage,
+    UserProfile,
+)
 from maasserver.models.user import (
     GENERIC_CONSUMER,
     get_auth_tokens,
@@ -89,6 +92,21 @@ class UserProfileTest(MAASServerTestCase):
         profile.delete()
         self.assertFalse(Consumer.objects.filter(id__in=consumer_ids).exists())
         self.assertFalse(Token.objects.filter(id__in=token_ids).exists())
+
+    def test_delete_deletes_related_filestorage_objects(self):
+        # Deleting a profile deletes the related filestorage objects.
+        profile = factory.make_User().userprofile
+        profile_id = profile.id
+        filestorage = factory.make_FileStorage(owner=profile.user)
+        filestorage_id = filestorage.id
+        self.assertTrue(FileStorage.objects.filter(id=filestorage_id).exists())
+        self.assertTrue(
+            UserProfile.objects.filter(id=profile_id).exists())
+        profile.delete()
+        self.assertFalse(
+            FileStorage.objects.filter(id=filestorage_id).exists())
+        self.assertFalse(
+            UserProfile.objects.filter(id=profile_id).exists())
 
     def test_delete_attached_nodes(self):
         # Cannot delete a user with nodes attached to it.
