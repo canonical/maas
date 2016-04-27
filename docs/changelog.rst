@@ -47,6 +47,8 @@ LP: #1379826    uuid.uuid1() is not suitable as an unguessable identifier/token
 
 LP: #1573264    Enlistment fails: archdetect not found.
 
+LP: #1556219    Discover correct IPMI driver in Power8.
+
 
 1.9.1
 =====
