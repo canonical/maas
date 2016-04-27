@@ -4,61 +4,69 @@
 """Model export and helpers for maasserver."""
 
 __all__ = [
-    'BMC',
     'Bcache',
     'BlockDevice',
+    'BMC',
+    'BondInterface',
     'BootResource',
     'BootResourceFile',
     'BootResourceSet',
     'BootSource',
     'BootSourceCache',
     'BootSourceSelection',
+    'BridgeInterface',
     'CacheSet',
     'ComponentError',
     'Config',
     'Controller',
+    'Device',
     'DHCPSnippet',
     'DNSData',
+    'DNSPublication',
     'DNSResource',
-    'Device',
     'Domain',
     'Event',
+    'EventType',
     'Fabric',
     'FanNetwork',
     'FileStorage',
     'Filesystem',
     'FilesystemGroup',
-    'IPRange',
     'Interface',
+    'IPRange',
     'LargeFile',
     'LicenseKey',
+    'logger',
     'Machine',
     'Node',
+    'NodeGroupToRackController',
     'OwnerData',
     'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
     'PhysicalInterface',
-    'RAID',
     'RackController',
+    'RAID',
     'RegionController',
     'RegionControllerProcess',
     'RegionControllerProcessEndpoint',
     'RegionRackRPCConnection',
-    'SSHKey',
-    'SSLKey',
     'Service',
     'Space',
+    'SSHKey',
+    'SSLKey',
+    'StaticIPAddress',
     'Subnet',
     'Tag',
     'Template',
+    'UnknownInterface',
     'UserProfile',
-    'VLAN',
     'VersionedTextFile',
     'VirtualBlockDevice',
+    'VLAN',
+    'VLANInterface',
     'VolumeGroup',
     'Zone',
-    'logger',
     ]
 
 from django.contrib.auth.backends import ModelBackend
@@ -87,6 +95,7 @@ from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.event import Event
@@ -146,57 +155,6 @@ from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston3.doc import HandlerDocumentation
-
-# Suppress warning about symbols being imported, but only used for
-# export in __all__.
-ignore_unused(
-    BMC,
-    Bcache,
-    BondInterface,
-    BridgeInterface,
-    BootResource,
-    BootResourceFile,
-    BootResourceSet,
-    CacheSet,
-    ComponentError,
-    Config,
-    Controller,
-    DHCPSnippet,
-    Event,
-    EventType,
-    Fabric,
-    FileStorage,
-    Filesystem,
-    FilesystemGroup,
-    IPRange,
-    Interface,
-    LargeFile,
-    LicenseKey,
-    NodeGroupToRackController,
-    OwnerData,
-    Partition,
-    PartitionTable,
-    RAID,
-    RackController,
-    RegionController,
-    RegionControllerProcess,
-    RegionControllerProcessEndpoint,
-    SSHKey,
-    Service,
-    StaticIPAddress,
-    Tag,
-    Template,
-    UnknownInterface,
-    UserProfile,
-    VLAN,
-    VLANInterface,
-    VersionedTextFile,
-    VirtualBlockDevice,
-    VolumeGroup,
-    Zone,
-    logger,
-)
-
 
 # Connect the 'create_user' method to the post save signal of User.
 post_save.connect(create_user, sender=User)
