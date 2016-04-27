@@ -737,6 +737,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         self.assertEqual({node.fqdn: HostnameIPMapping(
             node.system_id, 30, {phy_staticip.ip}, node.node_type)}, mapping)
 
+    @skip("XXX: GavinPanella 2016-04-27 bug=1556188: Fails spuriously.")
     def test_get_hostname_ip_mapping_returns_domain_head_ips(self):
         parent = factory.make_Domain()
         name = factory.make_name()
