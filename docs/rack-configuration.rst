@@ -12,7 +12,7 @@ may not be managed by MAAS.
 
 Managing a VLAN normally means that MAAS will server DHCP from the Rack
 Controller, for the purpose of providing IP address to machines that
-are being enlisted or commissioned. also, any other DHCP client that is
+are being enlisted or commissioned. Also, any other DHCP client that is
 on the VLAN will obtain a dynamic IP address from the MAAS DHCP server.
 
 **Do this only on a network that was set up with this in mind**. Enabling
@@ -44,8 +44,8 @@ Rack Controller interface connected to that VLAN. This is because:
    between the machine's subnet and MAAS' DHCP server.
 
 
-Rack Controller Registration
-----------------------------
+Registration
+------------
 
 If you install your first Rack Controller on the same system as the Region
 Controller, as is the case when you install the full "maas" ubuntu package,
@@ -85,8 +85,8 @@ of the MAAS Region Controller. Once entered, the Rack Controller
 configuration will be complete.
 
 
-Rack Controller Interface Management
-------------------------------------
+Interface Management
+--------------------
 
 MAAS automatically recognises the network interfaces on each Rack
 Controller.  Some (though not necessarily all) of these will be connected
@@ -119,8 +119,8 @@ it needs to provide DHCP for at least one subnet, by configuring the
 corresponding VLAN to which the Rack Controller is connected to.
 
 
-Providing DHCP Services
------------------------
+Providing DHCP + HA
+-------------------
 In order for MAAS to be able to manage machines on the network, and more
 specifically, in order to be able to enlist, commission and deploy machines
 it needs to provide and manage DHCP. As such, Rack Controller(s) can
@@ -145,8 +145,8 @@ range is to:
  This allows the machine to obtain IP addresses that will remain
  allocated to a machine throughout the rest of its deployment.
 
-Enabling a Rack Controller to provide DHCP on a VLAN
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Enabling a DHCP on a VLAN (optional HA)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 As an example, we will configure MAAS to provide DHCP on a Rack
 Controller.
 
@@ -164,19 +164,23 @@ The second step is to create a dynamic range::
 
 The third, and last step is to enable DHCP on a VLAN. For this to be
 effective we need to at least select the Primary Rack controller that will
-provide DHCP. We can select a Secondary Rack controller if we are providing
-HA::
+provide DHCP::
 
  $ maas admin vlan update fabric-0 untagged dhcp_on=True primary_rack=node01
+
+If enabling DHCP HA is something you need for your MAAS deployment, then
+following operation would enable HA::
+
+ $ maas admin vlan update fabric-0 untagged dhcp_on=True primary_rack=node01 secondary_rack=node02
+
+Note that if you are enabling DHCP over the CLI, but the subnet doesn't have a
+Gateway IP defined, you can define the gateway using::
+
+  $ maas admin subnet update 192.168.10.0/24 gateway_ip=192.168.10.1
 
 You can also do the same configuration via the WebUI on the VLAN details page:
 
 .. image:: media/vlan_provide_dhcp.png
-
-Note that if you are enabling DHCP over the CLI, the subnet doesn't have a
-Gateway IP defined, you can do so with::
-
- $ maas admin subnet update 192.168.10.0/24 gateway_ip=192.168.10.1
 
 
 Multiple networks

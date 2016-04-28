@@ -55,6 +55,7 @@ Setting up a MAAS server
    install
    configure
    rack-configuration
+   ha
    static-ips
    ipv6
    bootsources
