@@ -30,16 +30,19 @@ class TestVLANForm(MAASServerTestCase):
     def test__creates_vlan(self):
         fabric = factory.make_Fabric()
         vlan_name = factory.make_name("vlan")
+        vlan_description = factory.make_name("description")
         vid = random.randint(1, 1000)
         mtu = random.randint(552, 4096)
         form = VLANForm(fabric=fabric, data={
             "name": vlan_name,
+            "description": vlan_description,
             "vid": vid,
             "mtu": mtu,
         })
         self.assertTrue(form.is_valid(), form.errors)
         vlan = form.save()
         self.assertEqual(vlan_name, vlan.name)
+        self.assertEqual(vlan_description, vlan.description)
         self.assertEqual(vid, vlan.vid)
         self.assertEqual(fabric, vlan.fabric)
         self.assertEqual(mtu, vlan.mtu)
@@ -67,16 +70,19 @@ class TestVLANForm(MAASServerTestCase):
     def test__updates_vlan(self):
         vlan = factory.make_VLAN()
         new_name = factory.make_name("vlan")
+        new_description = factory.make_name("description")
         new_vid = random.randint(1, 1000)
         new_mtu = random.randint(552, 4096)
         form = VLANForm(instance=vlan, data={
             "name": new_name,
+            "description": new_description,
             "vid": new_vid,
             "mtu": new_mtu,
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(vlan).name)
+        self.assertEqual(new_description, reload_object(vlan).description)
         self.assertEqual(new_vid, reload_object(vlan).vid)
         self.assertEqual(new_mtu, reload_object(vlan).mtu)
 

@@ -18,4 +18,5 @@ class SpaceForm(MAASModelForm):
         model = Space
         fields = (
             'name',
+            'description',
             )

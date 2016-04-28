@@ -27,6 +27,7 @@ class TestSubnetForm(MAASServerTestCase):
 
     def test__creates_subnet(self):
         subnet_name = factory.make_name("subnet")
+        subnet_description = factory.make_name("description")
         vlan = factory.make_VLAN()
         space = factory.make_Space()
         network = factory.make_ip4_or_6_network()
@@ -39,6 +40,7 @@ class TestSubnetForm(MAASServerTestCase):
                     network, but_not=[gateway_ip] + dns_servers))
         form = SubnetForm({
             "name": subnet_name,
+            "description": subnet_description,
             "vlan": vlan.id,
             "space": space.id,
             "cidr": cidr,
@@ -49,7 +51,8 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = form.save()
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=subnet_name, vlan=vlan, space=space, cidr=cidr,
+                name=subnet_name, description=subnet_description,
+                vlan=vlan, space=space, cidr=cidr,
                 gateway_ip=gateway_ip, dns_servers=dns_servers))
 
     def test__creates_subnet_name_equal_to_cidr(self):
@@ -198,6 +201,7 @@ class TestSubnetForm(MAASServerTestCase):
 
     def test__updates_subnet(self):
         new_name = factory.make_name("subnet")
+        new_description = factory.make_name("description")
         subnet = factory.make_Subnet()
         new_vlan = factory.make_VLAN()
         new_space = factory.make_Space()
@@ -211,6 +215,7 @@ class TestSubnetForm(MAASServerTestCase):
                     new_network, but_not=[new_gateway_ip] + new_dns_servers))
         form = SubnetForm(instance=subnet, data={
             "name": new_name,
+            "description": new_description,
             "vlan": new_vlan.id,
             "space": new_space.id,
             "cidr": new_cidr,
@@ -222,7 +227,8 @@ class TestSubnetForm(MAASServerTestCase):
         subnet = reload_object(subnet)
         self.assertThat(
             subnet, MatchesStructure.byEquality(
-                name=new_name, vlan=new_vlan, space=new_space, cidr=new_cidr,
+                name=new_name, description=new_description,
+                vlan=new_vlan, space=new_space, cidr=new_cidr,
                 gateway_ip=new_gateway_ip, dns_servers=new_dns_servers))
 
     def test__updates_subnet_name_to_cidr(self):

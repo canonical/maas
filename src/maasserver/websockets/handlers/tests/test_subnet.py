@@ -25,6 +25,7 @@ class TestSubnetHandler(MAASServerTestCase):
             "updated": dehydrate_datetime(subnet.updated),
             "created": dehydrate_datetime(subnet.created),
             "name": subnet.name,
+            "description": subnet.description,
             "dns_servers": [server for server in subnet.dns_servers],
             "vlan": subnet.vlan_id,
             "space": subnet.space_id,

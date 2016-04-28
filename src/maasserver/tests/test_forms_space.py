@@ -19,12 +19,15 @@ class TestSpaceForm(MAASServerTestCase):
 
     def test__creates_space(self):
         space_name = factory.make_name("space")
+        space_description = factory.make_name("description")
         form = SpaceForm({
             "name": space_name,
+            "description": space_description,
         })
         self.assertTrue(form.is_valid(), form.errors)
         space = form.save()
         self.assertEqual(space_name, space.get_name())
+        self.assertEqual(space_description, space.description)
 
     def test__doest_require_name_on_update(self):
         space = factory.make_Space()
@@ -33,10 +36,13 @@ class TestSpaceForm(MAASServerTestCase):
 
     def test__updates_space(self):
         new_name = factory.make_name("space")
+        new_description = factory.make_name("description")
         space = factory.make_Space()
         form = SpaceForm(instance=space, data={
             "name": new_name,
+            "description": new_description,
         })
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(space).name)
+        self.assertEqual(new_description, reload_object(space).description)

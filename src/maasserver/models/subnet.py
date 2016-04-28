@@ -328,6 +328,8 @@ class Subnet(CleanSave, TimestampedModel):
         validators=[SUBNET_NAME_VALIDATOR],
         help_text="Identifying name for this subnet.")
 
+    description = TextField(null=False, blank=True)
+
     vlan = ForeignKey(
         'VLAN', default=get_default_vlan, editable=True, blank=False,
         null=False, on_delete=PROTECT)

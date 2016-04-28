@@ -21,6 +21,7 @@ class TestSpaceHandler(MAASServerTestCase):
         data = {
             "id": space.id,
             "name": space.get_name(),
+            "description": space.description,
             "updated": dehydrate_datetime(space.updated),
             "created": dehydrate_datetime(space.created),
             "subnet_ids": [

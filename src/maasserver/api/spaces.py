@@ -41,6 +41,7 @@ class SpacesHandler(OperationsHandler):
         """Create a space.
 
         :param name: Name of the space.
+        :param description: Description of the space.
         """
         form = SpaceForm(data=request.data)
         if form.is_valid():
@@ -86,6 +87,7 @@ class SpaceHandler(OperationsHandler):
         """Update space.
 
         :param name: Name of the space.
+        :param description: Description of the space.
 
         Returns 404 if the space is not found.
         """

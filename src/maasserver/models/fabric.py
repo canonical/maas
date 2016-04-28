@@ -20,6 +20,7 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
     Manager,
+    TextField,
 )
 from django.db.models.query import QuerySet
 from django.db.utils import IntegrityError
@@ -168,6 +169,8 @@ class Fabric(CleanSave, TimestampedModel):
     name = CharField(
         max_length=256, editable=True, null=True, blank=True, unique=True,
         validators=[validate_fabric_name])
+
+    description = TextField(null=False, blank=True)
 
     class_type = CharField(
         max_length=256, editable=True, null=True, blank=True,

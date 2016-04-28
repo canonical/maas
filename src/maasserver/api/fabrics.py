@@ -42,6 +42,7 @@ class FabricsHandler(OperationsHandler):
         """Create a fabric.
 
         :param name: Name of the fabric.
+        :param description: Description of the fabric.
         :param class_type: Class type of the fabric.
         """
         form = FabricForm(data=request.data)
@@ -88,6 +89,7 @@ class FabricHandler(OperationsHandler):
         """Update fabric.
 
         :param name: Name of the fabric.
+        :param description: Description of the fabric.
         :param class_type: Class type of the fabric.
 
         Returns 404 if the fabric is not found.

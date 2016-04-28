@@ -67,6 +67,7 @@ class VlansHandler(OperationsHandler):
         """Create a VLAN.
 
         :param name: Name of the VLAN.
+        :param description: Description of the VLAN.
         :param vid: VLAN ID of the VLAN.
         """
         fabric = Fabric.objects.get_fabric_or_404(
@@ -158,6 +159,8 @@ class VlanHandler(OperationsHandler):
 
         :param name: Name of the VLAN.
         :type name: unicode
+        :param description: Description of the VLAN.
+        :type description: unicode
         :param vid: VLAN ID of the VLAN.
         :type vid: integer
         :param mtu: The MTU to use on the VLAN.

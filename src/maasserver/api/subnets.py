@@ -51,6 +51,7 @@ class SubnetsHandler(OperationsHandler):
         """Create a subnet.
 
         :param name: Name of the subnet.
+        :param description: Description of the subnet.
         :param fabric: Fabric for the subnet. Defaults to the fabric the
             provided VLAN belongs to or defaults to the default fabric.
         :param vlan: VLAN this subnet belongs to. Defaults to the default
@@ -118,6 +119,7 @@ class SubnetHandler(OperationsHandler):
         """Update subnet.
 
         :param name: Name of the subnet.
+        :param description: Description of the subnet.
         :param vlan: VLAN this subnet belongs to.
         :param space: Space this subnet is in.
         :param cidr: The network CIDR for this subnet.

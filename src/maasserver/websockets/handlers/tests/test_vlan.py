@@ -26,6 +26,7 @@ class TestVLANHandler(MAASServerTestCase):
         data = {
             "id": vlan.id,
             "name": vlan.name,
+            "description": vlan.description,
             "vid": vlan.vid,
             "mtu": vlan.mtu,
             "fabric": vlan.fabric_id,

@@ -18,5 +18,6 @@ class FabricForm(MAASModelForm):
         model = Fabric
         fields = (
             'name',
+            'description',
             'class_type',
             )

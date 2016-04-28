@@ -25,6 +25,7 @@ class VLANForm(MAASModelForm):
         model = VLAN
         fields = (
             'name',
+            'description',
             'vid',
             'mtu',
             'dhcp_on',

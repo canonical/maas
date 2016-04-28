@@ -44,6 +44,7 @@ class SubnetForm(MAASModelForm):
         model = Subnet
         fields = (
             'name',
+            'description',
             'vlan',
             'space',
             'cidr',

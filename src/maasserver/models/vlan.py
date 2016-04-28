@@ -19,6 +19,7 @@ from django.db.models import (
     IntegerField,
     Manager,
     Q,
+    TextField,
 )
 from django.db.models.query import QuerySet
 from maasserver import DefaultMeta
@@ -154,6 +155,8 @@ class VLAN(CleanSave, TimestampedModel):
     name = CharField(
         max_length=256, editable=True, null=True, blank=True,
         validators=[VLAN_NAME_VALIDATOR])
+
+    description = TextField(null=False, blank=True)
 
     vid = IntegerField(editable=True)
 
