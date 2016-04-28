@@ -8,6 +8,8 @@ Changelog
 Issues fixed in this release
 ----------------------------
 
+LP: #1573219    Deleting user in UI leads to 500
+
 LP: #1553665    Unconfigured interfaces shouldn't add DNS records
 
 LP: #1571563    Can't override built in partitioning
