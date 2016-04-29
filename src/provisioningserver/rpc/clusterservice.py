@@ -35,10 +35,7 @@ from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.networks import get_interfaces_definition
 from provisioningserver.power.change import maybe_change_power_state
-from provisioningserver.power.query import (
-    get_power_state,
-    report_power_state,
-)
+from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
     get_architecture,
     get_os_release,
@@ -270,8 +267,10 @@ class Cluster(RPCProtocol):
     def power_query(self, system_id, hostname, power_type, context):
         d = get_power_state(
             system_id, hostname, power_type, context=context)
-        d = report_power_state(d, system_id, hostname)
         d.addCallback(lambda x: {'state': x})
+        d.addErrback(lambda f: {
+            'state': 'error',
+            'error_msg': f.getErrorMessage()})
         return d
 
     @cluster.PowerDriverCheck.responder

@@ -36,7 +36,8 @@ class TestManualPowerDriver(MAASTestCase):
     def test_power_query(self):
         driver = manual_module.ManualPowerDriver()
         mock = self.patch(manual_module.maaslog, 'info')
-        driver.power_query("fake_id", {})
+        power_state = driver.power_query("fake_id", {})
+        self.assertEqual(power_state, 'unknown')
         self.assertThat(
             mock, MockCalledOnceWith(
                 "You need to check power state of %s manually." % "fake_id"))

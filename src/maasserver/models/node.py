@@ -2895,6 +2895,8 @@ class Node(CleanSave, TimestampedModel):
         waiting time. Recommend timeout is 45 seconds. 30 seconds for the
         power_query_all and 15 seconds for the power_query.
         """
+        # Avoid circular imports.
+        from maasserver.models.event import Event
         d = deferToDatabase(transactional(self.get_effective_power_info))
 
         def cb_query(power_info):
@@ -2903,20 +2905,49 @@ class Node(CleanSave, TimestampedModel):
             d.addCallback(lambda result: (result, power_info))
             return d
 
+        @transactional
+        def cb_create_event(result):
+            response, _ = result
+            power_state = response["state"]
+            power_error = (
+                response["error_msg"] if "error_msg" in response else None)
+            # Add event log for success or failure.
+            # Use power_error for failure message.
+            if power_error is None:
+                message = "Power state queried: %s" % power_state
+                Event.objects.create_node_event(
+                    system_id=self.system_id,
+                    event_type=EVENT_TYPES.NODE_POWER_QUERIED,
+                    event_description=message)
+            else:
+                Event.objects.create_node_event(
+                    system_id=self.system_id,
+                    event_type=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                    event_description=power_error)
+            return result
+
         def cb_update_power(result):
             response, power_info = result
             power_state = response["state"]
             if power_info.can_be_queried and self.power_state != power_state:
 
                 @transactional
-                def cb_update_node():
+                def cb_update_queryable_node():
                     self.update_power_state(power_state)
                     return power_state
-                return deferToDatabase(cb_update_node)
+                return deferToDatabase(cb_update_queryable_node)
+            elif not power_info.can_be_queried:
+
+                @transactional
+                def cb_update_non_queryable_node():
+                    self.update_power_state(POWER_STATE.UNKNOWN)
+                    return POWER_STATE.UNKNOWN
+                return deferToDatabase(cb_update_non_queryable_node)
             else:
                 return power_state
 
         d.addCallback(cb_query)
+        d.addCallback(partial(deferToDatabase, cb_create_event))
         d.addCallback(cb_update_power)
         return d
 

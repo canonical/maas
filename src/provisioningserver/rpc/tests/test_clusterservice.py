@@ -56,7 +56,10 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
 )
-from provisioningserver.drivers.power import power_drivers_by_name
+from provisioningserver.drivers.power import (
+    power_drivers_by_name,
+    PowerError,
+)
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
@@ -1632,10 +1635,6 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         perform_power_driver_query = self.patch(
             power_module.query, "perform_power_driver_query")
         perform_power_driver_query.return_value = state
-        report_power_state = self.patch(
-            clusterservice, "report_power_state")
-        report_power_state.return_value = succeed(state)
-
         power_type = random.choice(QUERY_POWER_TYPES)
         arguments = {
             'system_id': factory.make_name('system'),
@@ -1651,7 +1650,35 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
 
         observed = yield call_responder(
             Cluster(), cluster.PowerQuery, arguments)
-        self.assertEqual({'state': state}, observed)
+        self.assertEqual({'state': state, 'error_msg': None}, observed)
+        self.assertThat(
+            perform_power_driver_query,
+            MockCalledOnceWith(
+                arguments['system_id'], arguments['hostname'],
+                arguments['power_type'], arguments['context']))
+
+    @inlineCallbacks
+    def test_returns_power_error(self):
+        perform_power_driver_query = self.patch(
+            power_module.query, "perform_power_driver_query")
+        perform_power_driver_query.side_effect = PowerError('Error message')
+        power_type = random.choice(QUERY_POWER_TYPES)
+        arguments = {
+            'system_id': factory.make_name('system'),
+            'hostname': factory.make_name('hostname'),
+            'power_type': power_type,
+            'context': factory.make_name('context'),
+        }
+
+        # Make sure power driver doesn't check for installed packages.
+        power_driver = power_drivers_by_name.get(power_type)
+        self.patch_autospec(
+            power_driver, "detect_missing_packages").return_value = []
+
+        observed = yield call_responder(
+            Cluster(), cluster.PowerQuery, arguments)
+        self.assertEqual(
+            {'state': "error", 'error_msg': "Error message"}, observed)
         self.assertThat(
             perform_power_driver_query,
             MockCalledOnceWith(

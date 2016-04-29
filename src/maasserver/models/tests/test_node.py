@@ -4207,7 +4207,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test__does_not_update_power_state_for_non_queryable_power_type(self):
+    def test__updates_power_state_unknown_for_non_queryable_power_type(self):
         node = yield deferToDatabase(
             transactional(factory.make_Node), power_type='apc',
             power_state=POWER_STATE.ON)
@@ -4218,11 +4218,58 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
         mock_update_power_state = self.patch(node, "update_power_state")
         observed_state = yield node.power_query()
 
-        self.assertEqual(POWER_STATE.OFF, observed_state)
+        self.assertEqual(POWER_STATE.UNKNOWN, observed_state)
         self.assertThat(
             mock_power_control,
             MockCalledOnceWith(ANY, power_query, ANY))
-        self.assertThat(mock_update_power_state, MockNotCalled())
+        self.assertThat(
+            mock_update_power_state, MockCalledOnceWith(POWER_STATE.UNKNOWN))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__creates_node_event_with_no_power_error(self):
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_state=POWER_STATE.ON)
+        mock_create_node_event = self.patch(Event.objects, 'create_node_event')
+        mock_power_control = self.patch(node, "_power_control_node")
+        mock_power_control.return_value = defer.succeed({
+            "state": POWER_STATE.ON,
+        })
+        observed_state = yield node.power_query()
+
+        self.assertEqual(POWER_STATE.ON, observed_state)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(ANY, power_query, ANY))
+        self.assertThat(
+            mock_create_node_event, MockCalledOnceWith(
+                system_id=node.system_id,
+                event_type=EVENT_TYPES.NODE_POWER_QUERIED,
+                event_description="Power state queried: %s" % POWER_STATE.ON))
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test__creates_node_event_with_power_error(self):
+        node = yield deferToDatabase(
+            transactional(factory.make_Node), power_state=POWER_STATE.ERROR)
+        mock_create_node_event = self.patch(Event.objects, 'create_node_event')
+        mock_power_control = self.patch(node, "_power_control_node")
+        power_error = factory.make_name('Power Error')
+        mock_power_control.return_value = defer.succeed({
+            "state": POWER_STATE.ERROR,
+            "error_msg": power_error,
+        })
+        observed_state = yield node.power_query()
+
+        self.assertEqual(POWER_STATE.ERROR, observed_state)
+        self.assertThat(
+            mock_power_control,
+            MockCalledOnceWith(ANY, power_query, ANY))
+        self.assertThat(
+            mock_create_node_event, MockCalledOnceWith(
+                system_id=node.system_id,
+                event_type=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                event_description=power_error))
 
 
 class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):

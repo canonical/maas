@@ -180,24 +180,6 @@ class TestPowerQuery(MAASTestCase):
             power_driver.detect_missing_packages, MockCalledOnceWith())
         return assert_fails_with(d, exceptions.PowerActionFail)
 
-    def test_get_power_state_returns_unknown_for_certain_power_types(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        # Use a power type that is not among power.QUERY_POWER_TYPES.
-        power_type = factory.make_name('power_type')
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'is_driver_available').return_value = False
-        _, _, io = self.patch_rpc_methods()
-
-        d = power.query.get_power_state(
-            system_id, hostname, power_type, context)
-        # This blocks until the deferred is complete.
-        io.flush()
-
-        return assert_fails_with(d, exceptions.PowerActionFail)
-
     def test_report_power_state_changes_power_state_if_failure(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')

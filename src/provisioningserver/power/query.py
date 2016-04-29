@@ -60,16 +60,10 @@ def perform_power_driver_query(system_id, hostname, power_type, context):
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     """Return the power state of the given node.
 
-    :return: The string "on" or "off".
-    :raises PowerActionFail: When `power_type` is not queryable, or when
-        there's a failure when querying the node's power state.
+    :return: The string "on", "off" or "unknown".
+    :raises PowerActionFail: When there's a failure querying the node's
+        power state.
     """
-    if power_type not in power.QUERY_POWER_TYPES:
-        # query_all_nodes() won't call this with an un-queryable power
-        # type, however this is left here to prevent PEBKAC.
-        raise PowerActionFail(
-            "Unknown power_type '%s'" % power_type)
-
     def check_power_state(state):
         if state not in ("on", "off", "unknown"):
             # This is considered an error.

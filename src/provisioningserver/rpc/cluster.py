@@ -270,6 +270,7 @@ class PowerQuery(_Power):
     """
     response = [
         (b"state", amp.Unicode()),
+        (b"error_msg", amp.Unicode(optional=True)),
     ]
 
 

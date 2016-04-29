@@ -49,3 +49,4 @@ class ManualPowerDriver(PowerDriver):
         """Power query machine manually."""
         maaslog.info(
             "You need to check power state of %s manually." % system_id)
+        return 'unknown'
