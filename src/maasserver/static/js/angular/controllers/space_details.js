@@ -94,19 +94,14 @@ angular.module('MAAS').controller('SpaceDetailsController', [
             $scope.confirmingDelete = false;
         };
 
-        // Called when an error message from the Python world needs to be
-        // rendered in the UI.
-        $scope.convertPythonDictToErrorMsg = function(error) {
-            return ManagerHelperService.parseLikelyValidationError(error);
-        };
-
         // Called when the confirm delete space button is pressed.
         $scope.deleteConfirmButton = function() {
             SpacesManager.deleteSpace($scope.space).then(function() {
                 $scope.confirmingDelete = false;
                 $location.path("/spaces");
             }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+                $scope.error =
+                    ManagerHelperService.parseValidationError(error);
             });
         };
 

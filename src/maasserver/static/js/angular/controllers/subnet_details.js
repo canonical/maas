@@ -79,19 +79,14 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             $scope.confirmingDelete = false;
         };
 
-        // Called when an error message from the Python world needs to be
-        // rendered in the UI.
-        $scope.convertPythonDictToErrorMsg = function(error) {
-            return ManagerHelperService.parseLikelyValidationError(error);
-        };
-
         // Called when the confirm delete subnet button is pressed.
         $scope.deleteConfirmButton = function() {
             SubnetsManager.deleteSubnet($scope.subnet).then(function() {
                 $scope.confirmingDelete = false;
                 $location.path("/networks");
             }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+                $scope.error =
+                    ManagerHelperService.parseValidationError(error);
             });
         };
 

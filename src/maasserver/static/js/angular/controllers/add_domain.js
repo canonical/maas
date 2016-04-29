@@ -81,12 +81,6 @@ angular.module('MAAS').controller('AddDomainController', [
             $scope.hide();
         };
 
-        // Called when an error message from the Python world needs to be
-        // rendered in the UI.
-        $scope.convertPythonDictToErrorMsg = function(error) {
-            return ManagerHelperService.parseLikelyValidationError(error);
-        };
-
         // Called when save is clicked.
         $scope.save = function(addAnother) {
             // Do nothing if domain in error.
@@ -107,7 +101,8 @@ angular.module('MAAS').controller('AddDomainController', [
                     $scope.hide();
                 }
             }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+                $scope.error =
+                    ManagerHelperService.parseValidationError(error);
             });
         };
     }]);

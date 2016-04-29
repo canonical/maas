@@ -127,19 +127,14 @@ angular.module('MAAS').controller('FabricDetailsController', [
             $scope.confirmingDelete = false;
         };
 
-        // Called when an error message from the Python world needs to be
-        // rendered in the UI.
-        $scope.convertPythonDictToErrorMsg = function(error) {
-            return ManagerHelperService.parseLikelyValidationError(error);
-        };
-
         // Called when the confirm delete fabric button is pressed.
         $scope.deleteConfirmButton = function() {
             FabricsManager.deleteFabric($scope.fabric).then(function() {
                 $scope.confirmingDelete = false;
                 $location.path("/fabrics");
             }, function(reply) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(reply.error);
+                $scope.error =
+                    ManagerHelperService.parseValidationError(reply.error);
             });
         };
 

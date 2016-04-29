@@ -99,7 +99,7 @@ angular.module('MAAS').service('ManagerHelperService', [
         // Convert the Python dict error message to displayed message.
         // We know it's probably a form ValidationError dictionary, so just use
         // it as such, and recover if that doesn't parse as JSON.
-        this.parseLikelyValidationError = function(error, showNames) {
+        this.parseValidationError = function(error, showNames) {
             error = this.tryParsingJSON(error);
             if(!angular.isObject(error)) {
                 return error;

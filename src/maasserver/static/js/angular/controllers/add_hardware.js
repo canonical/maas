@@ -517,7 +517,8 @@ angular.module('MAAS').controller('AddHardwareController', [
                             $scope.hide();
                         }
                     }, function(error) {
-                        $scope.error = error;
+                        $scope.error =
+                            ManagerHelperService.parseValidationError(error);
                     });
         };
 
@@ -565,7 +566,8 @@ angular.module('MAAS').controller('AddHardwareController', [
                     $scope.hide();
                 }
             }, function(error) {
-                $scope.error = error;
+                $scope.error =
+                    ManagerHelperService.parseValidationError(error.data);
             });
         };
 

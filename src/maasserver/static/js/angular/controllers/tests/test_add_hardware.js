@@ -779,11 +779,11 @@ describe("AddHardwareController", function() {
 
         it("sets error when $http rejects", function() {
             $scope.saveChassis(false);
-            var error = makeName("error");
+            var error = {data:makeName("error")};
             httpDefer.reject(error);
             $rootScope.$digest();
 
-            expect($scope.error).toBe(error);
+            expect($scope.error).toBe(error.data);
         });
     });
 });

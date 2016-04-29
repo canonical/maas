@@ -181,24 +181,24 @@ describe("ManagerHelperService", function() {
         });
     });
 
-    describe("parseLikelyValidationError", function() {
+    describe("parseValidationError", function() {
 
         it("returns a flat error for a flat string", function() {
-            var result = ManagerHelperService.parseLikelyValidationError(
+            var result = ManagerHelperService.parseValidationError(
                 "This is an error.");
             expect(result).toEqual("This is an error.");
         });
 
         it("returns a formatted error for a JSON string without names",
             function() {
-            var result = ManagerHelperService.parseLikelyValidationError(
+            var result = ManagerHelperService.parseValidationError(
                 '{"This": "is an error on JSON."}', false);
             expect(result).toEqual("is an error on JSON.");
         });
 
         it("returns a formatted error for a JSON string with names",
             function() {
-            var result = ManagerHelperService.parseLikelyValidationError(
+            var result = ManagerHelperService.parseValidationError(
                 '{"This": "is an error on JSON."}', true);
             expect(result).toEqual("This: is an error on JSON.");
         });

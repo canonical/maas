@@ -66,19 +66,14 @@ angular.module('MAAS').controller('DomainDetailsController', [
             $scope.confirmingDelete = false;
         };
 
-        // Called when an error message from the Python world needs to be
-        // rendered in the UI.
-        $scope.convertPythonDictToErrorMsg = function(error) {
-            return ManagerHelperService.parseLikelyValidationError(error);
-        };
-
         // Called when the confirm delete domain button is pressed.
         $scope.deleteConfirmButton = function() {
             DomainsManager.deleteDomain($scope.domain).then(function() {
                 $scope.confirmingDelete = false;
                 $location.path("/domains");
             }, function(error) {
-                $scope.error = $scope.convertPythonDictToErrorMsg(error);
+                $scope.error =
+                    ManagerHelperService.parseValidationError(error);
             });
         };
 
