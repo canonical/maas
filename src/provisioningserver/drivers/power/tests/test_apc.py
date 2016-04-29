@@ -70,7 +70,8 @@ class TestAPCPowerDriver(MAASTestCase):
 
         self.expectThat(
             apc_module.Popen,
-            MockCalledOnceWith(command.split(), stdout=PIPE, env=env))
+            MockCalledOnceWith(
+                command.split(), stdout=PIPE, stderr=PIPE, env=env))
         self.expectThat(output, Equals(apc_module.APCState.ON))
 
     def test_run_process_crashes_on_external_process_error(self):

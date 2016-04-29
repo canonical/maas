@@ -46,7 +46,8 @@ class APCPowerDriver(PowerDriver):
     def run_process(self, command):
         """Run SNMP command in subprocess."""
         proc = Popen(
-            command.split(), stdout=PIPE, env=select_c_utf8_locale())
+            command.split(), stdout=PIPE, stderr=PIPE,
+            env=select_c_utf8_locale())
         stdout, stderr = proc.communicate()
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
