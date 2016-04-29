@@ -11,7 +11,7 @@ import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from maasserver.dns.config import zone_serial
+from maasserver.models.dnspublication import zone_serial
 from maasserver.models.domain import Domain
 from maasserver.sequence import INT_MAX
 from maasserver.testing.api import APITestCase

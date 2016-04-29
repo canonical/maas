@@ -8,7 +8,7 @@ __all__ = []
 from contextlib import closing
 
 from django.db import connection
-from maasserver.dns.config import zone_serial
+from maasserver.models.dnspublication import zone_serial
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers.system import register_system_triggers
 from maasserver.utils.orm import psql_array

@@ -13,12 +13,9 @@ from django.db import connection
 from maasserver.dns.zonegenerator import ZoneGenerator
 from maasserver.enum import RDNS_MODE
 from maasserver.models.config import Config
+from maasserver.models.dnspublication import zone_serial
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
-from maasserver.sequence import (
-    INT_MAX,
-    Sequence,
-)
 from provisioningserver.dns.actions import (
     bind_reload,
     bind_reload_with_retries,
@@ -30,13 +27,6 @@ from provisioningserver.logger import get_maas_logger
 
 
 maaslog = get_maas_logger("dns")
-
-
-# A DNS zone's serial is a 32-bit integer.  Also, we start with the
-# value 1 because 0 has special meaning for some DNS servers.  Even if
-# we control the DNS server we use, better safe than sorry.
-zone_serial = Sequence(
-    'maasserver_zone_serial_seq', increment=1, minvalue=1, maxvalue=INT_MAX)
 
 
 def current_zone_serial():

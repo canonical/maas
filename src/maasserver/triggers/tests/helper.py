@@ -8,7 +8,6 @@ __all__ = []
 
 from crochet import wait_for
 from django.contrib.auth.models import User
-from maasserver.dns.config import zone_serial
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_TYPE,
@@ -18,6 +17,7 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
+from maasserver.models.dnspublication import zone_serial
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.event import Event

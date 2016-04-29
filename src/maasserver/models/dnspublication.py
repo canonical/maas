@@ -21,7 +21,17 @@ from django.db.models.fields import (
     IntegerField,
 )
 from maasserver import DefaultMeta
-from maasserver.dns.config import zone_serial
+from maasserver.sequence import (
+    INT_MAX,
+    Sequence,
+)
+
+# A DNS zone's serial is a 32-bit integer. Also, we start with the value 1
+# because 0 has special meaning for some DNS servers. Even if we control the
+# DNS server we use, better safe than sorry.
+zone_serial = Sequence(
+    'maasserver_zone_serial_seq', increment=1, minvalue=1, maxvalue=INT_MAX,
+    owner='maasserver_dnspublication.serial')
 
 
 def next_serial():

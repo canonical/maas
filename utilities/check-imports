@@ -360,7 +360,18 @@ checks = [
     ),
     (
         RegionMigrationsSouth,
-        RegionControllerRule | Allow("south|south.**"),
+        Rule(
+            Allow("django|django.**"),
+            Allow("lxml|lxml.**"),
+            Allow("netaddr|netaddr.**"),
+            Allow("south|south.**"),
+            Allow(StandardLibraries),
+
+            # XXX: The following three permissions are temporary;
+            # they MUST be eliminated before MAAS 2.0 release.
+            Allow("maasserver|maasserver.**"),
+            Allow("metadataserver|metadataserver.**"),
+        )
     ),
     (
         RegionMigrationsBuiltin,

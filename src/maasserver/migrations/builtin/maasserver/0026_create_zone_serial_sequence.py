@@ -3,8 +3,10 @@ from __future__ import unicode_literals
 
 from django.db import migrations
 
-# At the time of writing this should match the definition in
-# maasserver.dns.config.zone_serial, and vice-versa.
+# At the time of writing this should match the definition of zone_serial in
+# maasserver.dns.config. This is done with a snippet of PL/pgSQL to support
+# PostgreSQL before 9.5, which does not support `CREATE SEQUENCE ... IF NOT
+# EXISTS`.
 sequence_create = ("""\
 DO
 $$

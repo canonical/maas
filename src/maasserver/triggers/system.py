@@ -15,7 +15,7 @@ __all__ = [
 
 from textwrap import dedent
 
-from maasserver.dns.config import zone_serial
+from maasserver.models.dnspublication import zone_serial
 from maasserver.triggers import (
     register_procedure,
     register_trigger,

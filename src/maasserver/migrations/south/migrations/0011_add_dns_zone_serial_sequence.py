@@ -6,19 +6,38 @@
 import datetime
 
 from django.db import models
-from maasserver.dns.config import zone_serial
 from south.db import db
 from south.v2 import SchemaMigration
+
+# Stolen from the future, namely 0026_create_zone_serial_sequence in Django's
+# new built-in migrations. This is done with a snippet of PL/pgSQL to support
+# PostgreSQL before 9.5, which does not support `CREATE SEQUENCE ... IF NOT
+# EXISTS`.
+sequence_create = ("""\
+DO
+$$
+BEGIN
+    CREATE SEQUENCE maasserver_zone_serial_seq
+    MINVALUE {minvalue:d} MAXVALUE {maxvalue:d};
+EXCEPTION WHEN duplicate_table THEN
+    -- Do nothing, it already exists.
+END
+$$ LANGUAGE plpgsql;
+""").format(minvalue=1, maxvalue=((2 ** 32) - 1))
+
+sequence_drop = (
+    "DROP SEQUENCE IF EXISTS maasserver_zone_serial_seq"
+)
 
 
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        zone_serial.create()
+        db.execute(sequence_create)
 
 
     def backwards(self, orm):
-        zone_serial.drop()
+        db.execute(sequence_drop)
 
 
     models = {
