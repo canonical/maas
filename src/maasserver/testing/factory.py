@@ -105,6 +105,7 @@ from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import reload_object
+from maasserver.worker_user import get_worker_user
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
@@ -425,9 +426,12 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def make_RackController(self, last_image_sync=undefined, **kwargs):
+    def make_RackController(
+            self, last_image_sync=undefined, owner=None, **kwargs):
+        if owner is None:
+            owner = get_worker_user()
         node = self.make_Node_with_Interface_on_Subnet(
-            node_type=NODE_TYPE.RACK_CONTROLLER,
+            node_type=NODE_TYPE.RACK_CONTROLLER, owner=owner,
             with_dhcp_rack_primary=False, with_dhcp_rack_secondary=False,
             **kwargs)
         if last_image_sync is undefined:

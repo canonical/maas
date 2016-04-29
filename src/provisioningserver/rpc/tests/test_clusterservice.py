@@ -1852,6 +1852,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         self.useFixture(ClusterConfigurationFixture())
         # Prevent real work being done, which would involve HTTP calls.
         self.patch_autospec(tags, "process_node_tags")
+        rack_id = factory.make_name("rack")
 
         nodes = [
             {"system_id": factory.make_name("node")}
@@ -1860,6 +1861,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
         response = yield call_responder(
             Cluster(), cluster.EvaluateTag, {
+                "system_id": rack_id,
                 "tag_name": "all-nodes",
                 "tag_definition": "//*",
                 "tag_nsmap": [
@@ -1886,6 +1888,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         resource_secret = factory.make_name("rsec")
         credentials = convert_tuple_to_string(
             (consumer_key, resource_token, resource_secret))
+        rack_id = factory.make_name("rack")
         nodes = [
             {"system_id": factory.make_name("node")}
             for _ in range(3)
@@ -1893,6 +1896,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
 
         yield call_responder(
             Cluster(), cluster.EvaluateTag, {
+                "system_id": rack_id,
                 "tag_name": tag_name,
                 "tag_definition": tag_definition,
                 "tag_nsmap": [
@@ -1903,7 +1907,8 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
             })
 
         self.assertThat(evaluate_tag, MockCalledOnceWith(
-            nodes, tag_name, tag_definition, {tag_ns_prefix: tag_ns_uri},
+            rack_id, nodes, tag_name, tag_definition,
+            {tag_ns_prefix: tag_ns_uri},
             (consumer_key, resource_token, resource_secret),
         ))
 

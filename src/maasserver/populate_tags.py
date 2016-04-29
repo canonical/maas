@@ -9,6 +9,7 @@ __all__ = [
     ]
 
 from functools import partial
+from math import ceil
 
 from apiclient.creds import convert_tuple_to_string
 from lxml import etree
@@ -21,9 +22,12 @@ from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
 )
-from maasserver.models.user import get_creds_tuple
+from maasserver.models.user import (
+    create_auth_token,
+    get_auth_tokens,
+    get_creds_tuple,
+)
 from maasserver.rpc import getAllClients
-from metadataserver.models.nodekey import NodeKey
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.tags import merge_details
@@ -49,8 +53,16 @@ tag_nsmap = {
 }
 
 
-def chunk_list(items, size):
-    """Split `items` into multiple lists of maximum `size`."""
+def chunk_list(items, num_chunks):
+    """Split `items` into (at most) `num_chunks` lists.
+
+    Every chunk will have at least one element in its list, which may
+    mean that we don't actually get as many chunks as the user asked
+    for.  The final chunk (of how ever many we create) is likely to be
+    smaller than the rest, since we always round up to the nearest
+    integer for chunk size.
+    """
+    size = ceil(len(items) / num_chunks)
     for i in range(0, len(items), size):
         yield items[i:i + size]
 
@@ -60,7 +72,7 @@ def populate_tags(tag):
     """Evaluate `tag` for all nodes.
 
     This returns a `Deferred` that will fire when all tags have been
-    evaluated. This is intended FOR TESTING ONLY because:
+    evaluated. The return value is intended FOR TESTING ONLY because:
 
     - You must not use the `Deferred` in the calling thread; it must only be
       manipulated in the reactor thread. Pretending it's not there is safer
@@ -84,26 +96,31 @@ def populate_tags(tag):
         {"system_id": node_id}
         for node_id in node_ids
     ]
-    chunk_size = int(len(node_ids) / len(clients))
-    chunked_node_ids = list(chunk_list(node_ids, chunk_size))
+    chunked_node_ids = list(chunk_list(node_ids, len(clients)))
     connected_racks = []
     for idx, client in enumerate(clients):
         rack = RackController.objects.get(system_id=client.ident)
-        token = NodeKey.objects.get_token_for_node(rack)
+        tokens = list(get_auth_tokens(rack.owner))
+        if len(tokens) > 0:
+            # Use the latest token.
+            token = tokens[-1]
+        else:
+            token = create_auth_token(rack.owner)
         creds = convert_tuple_to_string(get_creds_tuple(token))
-        connected_racks.append({
-            "system_id": rack.system_id,
-            "hostname": rack.hostname,
-            "client": client,
-            "tag_name": tag.name,
-            "tag_definition": tag.definition,
-            "tag_nsmap": [
-                {"prefix": prefix, "uri": uri}
-                for prefix, uri in tag_nsmap.items()
-            ],
-            "credentials": creds,
-            "nodes": list(chunked_node_ids[idx]),
-        })
+        if len(chunked_node_ids) > idx:
+            connected_racks.append({
+                "system_id": rack.system_id,
+                "hostname": rack.hostname,
+                "client": client,
+                "tag_name": tag.name,
+                "tag_definition": tag.definition,
+                "tag_nsmap": [
+                    {"prefix": prefix, "uri": uri}
+                    for prefix, uri in tag_nsmap.items()
+                ],
+                "credentials": creds,
+                "nodes": list(chunked_node_ids[idx]),
+            })
 
     [d] = _do_populate_tags(connected_racks)
     return d
@@ -121,6 +138,7 @@ def _do_populate_tags(clients):
         client = client_info["client"]
         return client(
             EvaluateTag,
+            system_id=client_info["system_id"],
             tag_name=client_info["tag_name"],
             tag_definition=client_info["tag_definition"],
             tag_nsmap=client_info["tag_nsmap"],

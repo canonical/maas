@@ -18,9 +18,11 @@ from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous
-def evaluate_tag(nodes, tag_name, tag_definition, tag_nsmap, credentials):
+def evaluate_tag(
+        system_id, nodes, tag_name, tag_definition, tag_nsmap, credentials):
     """Evaluate `tag_definition` against this cluster's nodes' details.
 
+    :param system_id: System ID for the rack controller.
     :param nodes: List of nodes to evaluate.
     :param tag_name: The name of the tag, used for logging.
     :param tag_definition: The XPath expression of the tag.
@@ -33,5 +35,6 @@ def evaluate_tag(nodes, tag_name, tag_definition, tag_nsmap, credentials):
         auth=MAASOAuth(*credentials), dispatcher=MAASDispatcher(),
         base_url=maas_url)
     process_node_tags(
-        nodes=nodes, tag_name=tag_name, tag_definition=tag_definition,
+        rack_id=system_id, nodes=nodes,
+        tag_name=tag_name, tag_definition=tag_definition,
         tag_nsmap=tag_nsmap, client=client)

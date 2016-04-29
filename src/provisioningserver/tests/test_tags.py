@@ -525,15 +525,16 @@ class TestTagUpdating(PservTestCase):
         post_mock = MagicMock(return_value=response)
         self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
+        rack_id = factory.make_name('rack')
         tag_definition = factory.make_name('//')
         result = tags.post_updated_nodes(
-            client, name, tag_definition,
+            client, rack_id, name, tag_definition,
             ['add-system-id'], ['remove-1', 'remove-2'])
         self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/2.0/tags/%s/' % (name,)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True,
-            definition=tag_definition,
+            rack_controller=rack_id, definition=tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
     def test_post_updated_nodes_handles_conflict(self):
@@ -542,6 +543,7 @@ class TestTagUpdating(PservTestCase):
         # that case, which should be handled.
         client = self.fake_client()
         name = factory.make_name('tag')
+        rack_id = factory.make_name('rack')
         right_tag_defintion = factory.make_name('//')
         wrong_tag_definition = factory.make_name('//')
         content = ("Definition supplied '%s' doesn't match"
@@ -552,14 +554,14 @@ class TestTagUpdating(PservTestCase):
         post_mock = MagicMock(side_effect=err)
         self.patch(client, 'post', post_mock)
         result = tags.post_updated_nodes(
-            client, name, wrong_tag_definition,
+            client, rack_id, name, wrong_tag_definition,
             ['add-system-id'], ['remove-1', 'remove-2'])
         # self.assertEqual({'added': 1, 'removed': 2}, result)
         url = '/api/2.0/tags/%s/' % (name,)
         self.assertEqual({}, result)
         post_mock.assert_called_once_with(
             url, op='update_nodes', as_json=True,
-            definition=wrong_tag_definition,
+            rack_controller=rack_id, definition=wrong_tag_definition,
             add=['add-system-id'], remove=['remove-1', 'remove-2'])
 
     def test_classify_evaluates_xpath(self):
@@ -599,7 +601,9 @@ class TestTagUpdating(PservTestCase):
         tag_name = factory.make_name('tag')
         tag_definition = '//lshw:node'
         tag_nsmap = {"lshw": "lshw"}
+        rack_id = factory.make_name('rack')
         tags.process_node_tags(
+            rack_id,
             [{"system_id": "system-id1"}, {"system_id": "system-id2"}],
             tag_name, tag_definition, tag_nsmap,
             self.fake_client())
@@ -608,5 +612,5 @@ class TestTagUpdating(PservTestCase):
             mock_post,
             MockCalledOnceWith(
                 tag_url, as_json=True, op='update_nodes',
-                definition=tag_definition,
+                rack_controller=rack_id, definition=tag_definition,
                 add=['system-id1'], remove=['system-id2']))

@@ -9,7 +9,11 @@ from apiclient.creds import convert_tuple_to_string
 from fixtures import FakeLogger
 from maasserver import populate_tags as populate_tags_module
 from maasserver.models import Tag
-from maasserver.models.user import get_creds_tuple
+from maasserver.models.user import (
+    create_auth_token,
+    get_auth_tokens,
+    get_creds_tuple,
+)
 from maasserver.populate_tags import (
     _do_populate_tags,
     populate_tags,
@@ -30,7 +34,6 @@ from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
 )
-from metadataserver.models.nodekey import NodeKey
 from mock import (
     ANY,
     call,
@@ -110,6 +113,7 @@ class TestDoPopulateTags(MAASServerTestCase):
                 rack_controllers, clients, rack_creds, rack_nodes):
             self.expectThat(client, MockCallsMatch(call(
                 EvaluateTag, tag_name=tag_name, tag_definition=tag_definition,
+                system_id=rack.system_id,
                 tag_nsmap=tag_nsmap, credentials=creds, nodes=nodes)))
 
     def test__logs_successes(self):
@@ -193,7 +197,12 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
         protocols = []
         rack_creds = []
         for rack in rack_controllers:
-            token = NodeKey.objects.get_token_for_node(rack)
+            tokens = list(get_auth_tokens(rack.owner))
+            if len(tokens) > 0:
+                # Use the latest token.
+                token = tokens[-1]
+            else:
+                token = create_auth_token(rack.owner)
             creds = convert_tuple_to_string(get_creds_tuple(token))
             rack_creds.append(creds)
 
@@ -213,6 +222,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
                 rack_controllers, protocols, rack_creds):
             self.expectThat(protocol.EvaluateTag, MockCalledOnceWith(
                 protocol, tag_name=tag.name, tag_definition=tag.definition,
+                system_id=rack.system_id,
                 tag_nsmap=ANY, credentials=creds, nodes=ANY))
 
 

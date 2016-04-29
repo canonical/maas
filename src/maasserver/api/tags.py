@@ -38,8 +38,8 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.node import typecast_to_node_type
+from maasserver.models.user import get_auth_tokens
 from maasserver.utils.orm import get_one
-from metadataserver.models.nodekey import NodeKey
 from piston3.utils import rc
 
 
@@ -55,7 +55,12 @@ def check_rack_controller_access(request, rack_controller):
     except Unauthorized as e:
         raise PermissionDenied(str(e))
 
-    token = NodeKey.objects.get_token_for_node(rack_controller)
+    tokens = list(get_auth_tokens(rack_controller.owner))
+    if len(tokens) > 0:
+        # Use the latest token.
+        token = tokens[-1]
+    else:
+        token = None
     if key != token.key:
         raise PermissionDenied(
             "Only allowed for the %r rack controller." % (

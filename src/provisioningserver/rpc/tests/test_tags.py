@@ -30,13 +30,14 @@ class TestEvaluateTag(MAASTestCase):
 
     def test__calls_process_node_tags(self):
         credentials = "aaa", "bbb", "ccc"
+        rack_id = factory.make_name('rack')
         process_node_tags = self.patch_autospec(tags, "process_node_tags")
         tags.evaluate_tag(
-            [], sentinel.tag_name, sentinel.tag_definition, sentinel.tag_nsmap,
-            credentials)
+            rack_id, [], sentinel.tag_name, sentinel.tag_definition,
+            sentinel.tag_nsmap, credentials)
         self.assertThat(
             process_node_tags, MockCalledOnceWith(
-                nodes=[],
+                nodes=[], rack_id=rack_id,
                 tag_name=sentinel.tag_name,
                 tag_definition=sentinel.tag_definition,
                 tag_nsmap=sentinel.tag_nsmap, client=ANY))
@@ -46,13 +47,14 @@ class TestEvaluateTag(MAASTestCase):
         resource_token = factory.make_name("rtok")
         resource_secret = factory.make_name("rsec")
         credentials = consumer_key, resource_token, resource_secret
+        rack_id = factory.make_name("rack")
 
         self.patch_autospec(tags, "process_node_tags")
         self.patch_autospec(tags, "MAASOAuth").side_effect = MAASOAuth
 
         tags.evaluate_tag(
-            [], sentinel.tag_name, sentinel.tag_definition, sentinel.tag_nsmap,
-            credentials)
+            rack_id, [], sentinel.tag_name, sentinel.tag_definition,
+            sentinel.tag_nsmap, credentials)
 
         client = tags.process_node_tags.call_args[1]["client"]
         self.assertIsInstance(client, MAASClient)

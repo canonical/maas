@@ -8,11 +8,17 @@ __all__ = []
 import http.client
 import json
 
+from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
+from maasserver.models.user import (
+    create_auth_token,
+    get_auth_tokens,
+    get_creds_tuple,
+)
 from maasserver.testing.api import (
     APITestCase,
     make_worker_client,
@@ -145,8 +151,10 @@ class TestTagAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
+        # XXX lamont Bug#1576417 : Region controllers should not be here
+        # either, but are the subject of said bug.
         self.assertItemsEqual(
-            [machine.system_id, device.system_id, rack.system_id,
+            [machine.system_id, device.system_id,
              region.system_id],
             [r['system_id'] for r in parsed_result])
 
@@ -192,7 +200,10 @@ class TestTagAPI(APITestCase):
             [device.system_id],
             [r['system_id'] for r in parsed_result])
 
+    # XXX lamont Bug#1576417: Add a test that non-admins do not get to fetch
+    # rack controllers.
     def test_GET_rack_controllers_returns_rack_controllers(self):
+        self.become_admin()
         tag = factory.make_Tag()
         machine = factory.make_Node()
         device = factory.make_Device()
@@ -361,11 +372,20 @@ class TestTagAPI(APITestCase):
         rack_controller = factory.make_RackController()
         node = factory.make_Node()
         client = make_worker_client(rack_controller)
+        tokens = list(get_auth_tokens(rack_controller.owner))
+        if len(tokens) > 0:
+            # Use the latest token.
+            token = tokens[-1]
+        else:
+            token = create_auth_token(rack_controller.owner)
+        token.save()
+        creds = convert_tuple_to_string(get_creds_tuple(token))
         response = client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'add': [node.system_id],
                 'rack_controller': rack_controller.system_id,
+                'credentials': creds,
             })
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
@@ -391,11 +411,15 @@ class TestTagAPI(APITestCase):
         tag = factory.make_Tag()
         rack_controller = factory.make_RackController()
         node = factory.make_Node()
+        token = create_auth_token(rack_controller.owner)
+        token.save()
+        creds = convert_tuple_to_string(get_creds_tuple(token))
         response = self.client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
                 'add': [node.system_id],
                 'rack_controller': rack_controller.system_id,
+                'credentials': creds,
             })
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], tag.node_set.all())

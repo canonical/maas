@@ -351,7 +351,8 @@ class Cluster(RPCProtocol):
 
     @cluster.EvaluateTag.responder
     def evaluate_tag(
-            self, tag_name, tag_definition, tag_nsmap, credentials, nodes):
+            self, system_id, tag_name, tag_definition, tag_nsmap,
+            credentials, nodes):
         """evaluate_tag()
 
         Implementation of
@@ -359,7 +360,7 @@ class Cluster(RPCProtocol):
         """
         # It's got to run in a thread because it does blocking IO.
         d = deferToThread(
-            evaluate_tag, nodes, tag_name, tag_definition,
+            evaluate_tag, system_id, nodes, tag_name, tag_definition,
             # Transform tag_nsmap into a format that LXML likes.
             {entry["prefix"]: entry["uri"] for entry in tag_nsmap},
             # Parse the credential string into a 3-tuple.

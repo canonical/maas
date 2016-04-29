@@ -406,6 +406,8 @@ class EvaluateTag(amp.Command):
     """
 
     arguments = [
+        # System ID for rack controller.
+        (b"system_id", amp.Unicode()),
         (b"tag_name", amp.Unicode()),
         (b"tag_definition", amp.Unicode()),
         (b"tag_nsmap", AmpList([

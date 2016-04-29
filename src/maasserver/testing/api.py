@@ -19,6 +19,7 @@ from abc import (
     abstractproperty,
 )
 
+from maasserver.models.user import create_auth_token
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import (
@@ -27,8 +28,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maastesting.testcase import MAASTestCase
-from metadataserver.models.nodekey import NodeKey
-from metadataserver.nodeinituser import get_node_init_user
+from maasserver.worker_user import get_worker_user
 
 
 class MultipleUsersScenarios(metaclass=ABCMeta):
@@ -119,9 +119,10 @@ def log_in_as_normal_user(client):
 
 def make_worker_client(rack_controller):
     """Create a test client logged in as if it were `rack_controller`."""
-    token = NodeKey.objects.get_token_for_node(rack_controller)
-    return OAuthAuthenticatedClient(
-        get_node_init_user(), token=token)
+    assert get_worker_user() == rack_controller.owner, (
+        "Rack controller owner should be the MAAS worker user.")
+    token = create_auth_token(rack_controller.owner)
+    return OAuthAuthenticatedClient(rack_controller.owner, token=token)
 
 
 def explain_unexpected_response(expected_status, response):

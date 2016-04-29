@@ -81,10 +81,12 @@ def get_details_for_nodes(client, system_ids):
     return details
 
 
-def post_updated_nodes(client, tag_name, tag_definition, added, removed):
+def post_updated_nodes(
+        client, rack_id, tag_name, tag_definition, added, removed):
     """Update the nodes relevant for a particular tag.
 
     :param client: MAAS client
+    :param rack_id: System ID for rack controller
     :param tag_name: Name of tag
     :param tag_definition: Definition of the tag, used to assure that the work
         being done matches the current value.
@@ -98,7 +100,8 @@ def post_updated_nodes(client, tag_name, tag_definition, added, removed):
     try:
         return process_response(client.post(
             path, op='update_nodes', as_json=True,
-            definition=tag_definition, add=added, remove=removed))
+            rack_controller=rack_id, definition=tag_definition,
+            add=added, remove=removed))
     except urllib.error.HTTPError as e:
         if e.code == http.client.CONFLICT:
             if e.fp is not None:
@@ -267,7 +270,7 @@ def gen_node_details(client, batches):
             yield system_id, merge_details(details)
 
 
-def process_all(client, tag_name, tag_definition, system_ids,
+def process_all(client, rack_id, tag_name, tag_definition, system_ids,
                 xpath, batch_size=None):
     maaslog.debug(
         "processing %d system_ids for tag %s.",
@@ -281,15 +284,16 @@ def process_all(client, tag_name, tag_definition, system_ids,
     nodes_matched, nodes_unmatched = classify(
         partial(try_match_xpath, xpath, logger=maaslog), node_details)
     post_updated_nodes(
-        client, tag_name, tag_definition,
+        client, rack_id, tag_name, tag_definition,
         nodes_matched, nodes_unmatched)
 
 
 def process_node_tags(
-        nodes, tag_name, tag_definition, tag_nsmap,
+        rack_id, nodes, tag_name, tag_definition, tag_nsmap,
         client, batch_size=None):
     """Update the nodes for a new/changed tag definition.
 
+    :param rack_id: System ID for the rack controller.
     :param nodes: List of nodes to process tags for.
     :param client: A `MAASClient` used to fetch the node's details via
         calls to the web API.
@@ -305,5 +309,5 @@ def process_node_tags(
         for node in nodes
     ]
     process_all(
-        client, tag_name, tag_definition, system_ids, xpath,
+        client, rack_id, tag_name, tag_definition, system_ids, xpath,
         batch_size=batch_size)
