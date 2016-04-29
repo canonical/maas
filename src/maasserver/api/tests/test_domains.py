@@ -99,19 +99,39 @@ class TestDomainsAPI(APITestCase):
             'serial': str(serial)})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertEqual(serial, next(zone_serial))
+        # The handler forces a DNS reload by creating a new DNS publication,
+        # so the serial has already been incremented.
+        self.assertEqual(serial + 1, next(zone_serial))
 
-    def test_set_serial_detects_bad_values(self):
+    def test_set_serial_rejects_serials_less_than_1(self):
         zone_serial.create_if_not_exists()
         self.become_admin()
         uri = get_domains_uri()
-        serial = random.randint(1, INT_MAX)
-        response = self.client.post(uri, {
-            'op': 'set_serial',
-            'serial': str(serial)})
+        # A serial of 1 is fine.
+        response = self.client.post(
+            uri, {'op': 'set_serial', 'serial': '1'})
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
-        self.assertEqual(serial, next(zone_serial))
+        # A serial of 0 is rejected.
+        response = self.client.post(
+            uri, {'op': 'set_serial', 'serial': '0'})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
+
+    def test_set_serial_rejects_serials_greater_than_4294967295(self):
+        zone_serial.create_if_not_exists()
+        self.become_admin()
+        uri = get_domains_uri()
+        # A serial of 4294967295 is fine.
+        response = self.client.post(
+            uri, {'op': 'set_serial', 'serial': '4294967295'})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        # A serial of 4294967296 is rejected.
+        response = self.client.post(
+            uri, {'op': 'set_serial', 'serial': '4294967296'})
+        self.assertEqual(
+            http.client.BAD_REQUEST, response.status_code, response.content)
 
 
 class TestDomainAPI(APITestCase):

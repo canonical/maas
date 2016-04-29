@@ -9,11 +9,10 @@ __all__ = [
     ]
 
 from django.conf import settings
-from django.db import connection
 from maasserver.dns.zonegenerator import ZoneGenerator
 from maasserver.enum import RDNS_MODE
 from maasserver.models.config import Config
-from maasserver.models.dnspublication import zone_serial
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from provisioningserver.dns.actions import (
@@ -30,7 +29,7 @@ maaslog = get_maas_logger("dns")
 
 
 def current_zone_serial():
-    return '%0.10d' % zone_serial.current()
+    return '%0.10d' % DNSPublication.objects.get_most_recent().serial
 
 
 def is_dns_enabled():
@@ -40,8 +39,7 @@ def is_dns_enabled():
 
 def dns_force_reload():
     """Force the DNS to be regenerated."""
-    cursor = connection.cursor()
-    cursor.execute("SELECT pg_notify('sys_dns', '')")
+    DNSPublication(source="Force reload").save()
 
 
 def dns_update_all_zones(reload_retry=False):

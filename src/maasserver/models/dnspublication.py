@@ -16,9 +16,9 @@ from django.db.models import (
     Model,
 )
 from django.db.models.fields import (
+    BigIntegerField,
     CharField,
     DateTimeField,
-    IntegerField,
 )
 from maasserver import DefaultMeta
 from maasserver.sequence import (
@@ -42,12 +42,26 @@ class DNSPublicationManager(Manager):
     """Manager for DNS publishing records."""
 
     def get_most_recent(self):
-        """Return the most recently inserted `DNSPublication`."""
-        return self.order_by("-id")[0]
+        """Return the most recently inserted `DNSPublication`.
+
+        :raise DoesNotExist: If DNS has never been published.
+        """
+        for publication in self.order_by("-id")[:1]:
+            return publication
+        else:
+            # This is unlikely to be a problem in a running MAAS installation,
+            # but it can crop up a lot in tests because we can't, for example,
+            # use migrations to provide an initial publication.
+            raise self.model.DoesNotExist() from None
 
     def collect_garbage(self):
         """Delete all but the most recently inserted `DNSPublication`."""
-        self.filter(id__lt=self.get_most_recent().id).delete()
+        try:
+            publication = self.get_most_recent()
+        except self.model.DoesNotExist:
+            pass  # Nothing to do.
+        else:
+            self.filter(id__lt=publication.id).delete()
 
 
 class DNSPublication(Model):
@@ -67,7 +81,7 @@ class DNSPublication(Model):
 
     # The serial number with which to publish the zone. We don't use the
     # primary key for this because zone serials are allowed to cycle.
-    serial = IntegerField(
+    serial = BigIntegerField(
         editable=False, null=False, default=next_serial, unique=False,
         validators=(
             MinValueValidator(zone_serial.minvalue),

@@ -10,6 +10,7 @@ from datetime import (
     datetime,
     timedelta,
 )
+import json
 import random
 
 from crochet import wait_for
@@ -29,7 +30,7 @@ from maasserver.models.interface import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.system import register_system_triggers
-from maasserver.triggers.tests.helper import (
+from maasserver.triggers.testing import (
     DNSHelpersMixin,
     TransactionalHelpersMixin,
 )
@@ -37,6 +38,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from netaddr import IPAddress
 from provisioningserver.utils.twisted import DeferredValue
+from testtools.matchers import Equals
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
@@ -2293,7 +2295,7 @@ class TestDNSDomainListener(
     @inlineCallbacks
     def test_sends_message_for_domain_insert(self):
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2302,16 +2304,19 @@ class TestDNSDomainListener(
         try:
             yield deferToDatabase(self.create_domain)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_domain_insert"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_domain_update(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2322,16 +2327,19 @@ class TestDNSDomainListener(
                 "name": factory.make_name("domain"),
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_domain_update"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_domain_delete(self):
         yield deferToDatabase(register_system_triggers)
         domain = yield deferToDatabase(self.create_domain)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2340,9 +2348,12 @@ class TestDNSDomainListener(
         try:
             yield deferToDatabase(self.delete_domain, domain.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_domain_delete"))
 
 
 class TestDNSStaticIPAddressListener(
@@ -2355,7 +2366,7 @@ class TestDNSStaticIPAddressListener(
     def test_sends_message_for_staticipaddress_update(self):
         yield deferToDatabase(register_system_triggers)
         sip = yield deferToDatabase(self.create_staticipaddress)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2366,9 +2377,12 @@ class TestDNSStaticIPAddressListener(
                 "alloc_type": IPADDRESS_TYPE.STICKY,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_staticipaddress_update"))
 
 
 class TestDNSInterfaceStaticIPAddressListener(
@@ -2381,7 +2395,7 @@ class TestDNSInterfaceStaticIPAddressListener(
     def test_sends_message_for_interface_staticipaddress_link(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2392,9 +2406,12 @@ class TestDNSInterfaceStaticIPAddressListener(
                 "interface": interface,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_nic_ip_link"))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2404,7 +2421,7 @@ class TestDNSInterfaceStaticIPAddressListener(
         sip = yield deferToDatabase(self.create_staticipaddress, {
             "interface": interface,
         })
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2413,9 +2430,12 @@ class TestDNSInterfaceStaticIPAddressListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_nic_ip_unlink"))
 
 
 class TestDNSDNSResourceListener(
@@ -2427,25 +2447,31 @@ class TestDNSDNSResourceListener(
     @inlineCallbacks
     def test_sends_message_for_dnsresource_insert(self):
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.create_dnsresource)
+            # Pass ip_addresses=[] to avoid an extra .save() -- and thus an
+            # UPDATE -- in the factory method.
+            yield deferToDatabase(
+                self.create_dnsresource, {"ip_addresses": []})
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsresource_insert"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_dnsresource_update(self):
         yield deferToDatabase(register_system_triggers)
         resource = yield deferToDatabase(self.create_dnsresource)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2456,16 +2482,19 @@ class TestDNSDNSResourceListener(
                 "name": factory.make_name("resource"),
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsresource_update"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_dnsresource_delete(self):
         yield deferToDatabase(register_system_triggers)
         resource = yield deferToDatabase(self.create_dnsresource)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2474,9 +2503,12 @@ class TestDNSDNSResourceListener(
         try:
             yield deferToDatabase(self.delete_dnsresource, resource.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsresource_delete"))
 
 
 class TestDNSDNSResourceStaticIPAddressListener(
@@ -2490,7 +2522,7 @@ class TestDNSDNSResourceStaticIPAddressListener(
         yield deferToDatabase(register_system_triggers)
         resource = yield deferToDatabase(self.create_dnsresource)
         sip = yield deferToDatabase(self.create_staticipaddress)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2499,9 +2531,12 @@ class TestDNSDNSResourceStaticIPAddressListener(
         try:
             yield deferToDatabase(resource.ip_addresses.add, sip)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsresource_ip_link"))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2510,7 +2545,7 @@ class TestDNSDNSResourceStaticIPAddressListener(
         resource = yield deferToDatabase(self.create_dnsresource)
         sip = yield deferToDatabase(self.create_staticipaddress)
         yield deferToDatabase(resource.ip_addresses.add, sip)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2519,9 +2554,12 @@ class TestDNSDNSResourceStaticIPAddressListener(
         try:
             yield deferToDatabase(resource.ip_addresses.remove, sip)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsresource_ip_unlink"))
 
 
 class TestDNSDNSDataListener(
@@ -2533,7 +2571,7 @@ class TestDNSDNSDataListener(
     @inlineCallbacks
     def test_sends_message_for_dnsdata_insert(self):
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2542,9 +2580,12 @@ class TestDNSDNSDataListener(
         try:
             yield deferToDatabase(self.create_dnsdata)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsdata_insert"))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2554,7 +2595,7 @@ class TestDNSDNSDataListener(
             "rrtype": "TXT",
             "rrdata": factory.make_name("txt"),
         })
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2565,16 +2606,19 @@ class TestDNSDNSDataListener(
                 "rrdata": factory.make_name("txt"),
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsdata_update"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_dnsdata_delete(self):
         yield deferToDatabase(register_system_triggers)
         data = yield deferToDatabase(self.create_dnsdata)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2583,9 +2627,12 @@ class TestDNSDNSDataListener(
         try:
             yield deferToDatabase(self.delete_dnsdata, data.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_dnsdata_delete"))
 
 
 class TestDNSSubnetListener(
@@ -2597,7 +2644,7 @@ class TestDNSSubnetListener(
     @inlineCallbacks
     def test_sends_message_for_subnet_insert(self):
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2606,16 +2653,19 @@ class TestDNSSubnetListener(
         try:
             yield deferToDatabase(self.create_subnet)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_subnet_insert"))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_cidr_update(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2623,43 +2673,53 @@ class TestDNSSubnetListener(
         yield listener.startService()
         try:
             network = factory.make_ip4_or_6_network()
+            cidr_old, cidr_new = subnet.cidr, str(network.cidr)
             yield deferToDatabase(self.update_subnet, subnet.id, {
-                "cidr": str(network.cidr),
+                "cidr": cidr_new,
                 "gateway_ip": factory.pick_ip_in_network(network),
                 "dns_servers": [],
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Subnet %s: CIDR changed from %s to %s"
+                % (subnet.name, cidr_old, cidr_new)))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_rdns_mode_update(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            rdns_old = subnet.rdns_mode
+            rdns_new = factory.pick_enum(RDNS_MODE, but_not=[rdns_old])
             yield deferToDatabase(self.update_subnet, subnet.id, {
-                "rdns_mode": factory.pick_enum(
-                    RDNS_MODE, but_not=[subnet.rdns_mode]),
+                "rdns_mode": rdns_new,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Subnet %s: RDNS mode changed from %s to %s"
+                % (subnet.name, rdns_old, rdns_new)))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_subnet_delete(self):
         yield deferToDatabase(register_system_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2668,9 +2728,12 @@ class TestDNSSubnetListener(
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_subnet_delete"))
 
 
 class TestDNSNodeListener(
@@ -2683,20 +2746,26 @@ class TestDNSNodeListener(
     def test_sends_message_for_node_update_hostname(self):
         yield deferToDatabase(register_system_triggers)
         node = yield deferToDatabase(self.create_node)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            hostname_old = node.hostname
+            hostname_new = factory.make_name("hostname")
             yield deferToDatabase(self.update_node, node.system_id, {
-                "hostname": factory.make_name("hostname"),
+                "hostname": hostname_new,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Node %s: hostname changed from %s to %s"
+                % (node.system_id, hostname_old, hostname_new)))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2704,7 +2773,7 @@ class TestDNSNodeListener(
         yield deferToDatabase(register_system_triggers)
         node = yield deferToDatabase(self.create_node)
         domain = yield deferToDatabase(self.create_domain)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2715,16 +2784,19 @@ class TestDNSNodeListener(
                 "domain": domain,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Node %s: domain changed" % node.system_id))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_node_delete(self):
         yield deferToDatabase(register_system_triggers)
         node = yield deferToDatabase(self.create_node)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2733,9 +2805,12 @@ class TestDNSNodeListener(
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source,
+            Equals("Call to sys_dns_node_delete"))
 
 
 class TestDNSInterfaceListener(
@@ -2764,20 +2839,26 @@ class TestDNSInterfaceListener(
     def test_sends_message_for_interface_update_name(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
             "sys_dns", lambda *args: dv.set(args))
         yield listener.startService()
         try:
+            name_old = interface.name
+            name_new = factory.make_name("name")
             yield deferToDatabase(self.update_interface, interface.id, {
-                "name": factory.make_name("name"),
+                "name": name_new,
             })
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Interface %s: renamed from %s to %s"
+                % (name_new, name_old, name_new)))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2785,7 +2866,7 @@ class TestDNSInterfaceListener(
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_unknown_interface)
         node = yield deferToDatabase(self.create_node)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2795,16 +2876,19 @@ class TestDNSInterfaceListener(
             yield deferToDatabase(
                 self.migrate_unknown_to_physical, interface.id, node)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Interface %s: node set" % interface.name))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_physical_to_unknown(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2814,9 +2898,12 @@ class TestDNSInterfaceListener(
             yield deferToDatabase(
                 self.migrate_physical_to_unknown, interface.id)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Interface %s: node unset" % interface.name))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2824,7 +2911,7 @@ class TestDNSInterfaceListener(
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
         node = yield deferToDatabase(self.create_node)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2834,9 +2921,12 @@ class TestDNSInterfaceListener(
             yield deferToDatabase(
                 self.update_interface, interface.id, {"node": node})
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Interface %s: node changed" % interface.name))
 
 
 class TestDNSConfigListener(
@@ -2847,8 +2937,9 @@ class TestDNSConfigListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_upstream_dns_insert(self):
+        upstream_dns_new = factory.make_ip_address()
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2857,17 +2948,22 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "upstream_dns", factory.make_ip_address())
+                "upstream_dns", upstream_dns_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration upstream_dns set to %s"
+                % json.dumps(upstream_dns_new)))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_default_dns_ttl_insert(self):
+        default_dns_ttl_new = random.randint(10, 1000)
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2876,17 +2972,22 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "default_dns_ttl", random.randint(10, 1000))
+                "default_dns_ttl", default_dns_ttl_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration default_dns_ttl set to %s"
+                % json.dumps(default_dns_ttl_new)))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_windows_kms_host_insert(self):
+        kms_host_new = factory.make_name("kms-host-new")
         yield deferToDatabase(register_system_triggers)
-        zone_serial = yield self.get_zone_serial_current()
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2895,20 +2996,26 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "windows_kms_host", factory.make_name("kms"))
+                "windows_kms_host", kms_host_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration windows_kms_host set to %s"
+                % json.dumps(kms_host_new)))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_upstream_dns_update(self):
+        upstream_dns_old = factory.make_ip_address()
+        upstream_dns_new = factory.make_ip_address()
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             Config.objects.set_config,
-            "upstream_dns", factory.make_ip_address())
-        zone_serial = yield self.get_zone_serial_current()
+            "upstream_dns", upstream_dns_old)
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2917,20 +3024,27 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "upstream_dns", factory.make_ip_address())
+                "upstream_dns", upstream_dns_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration upstream_dns changed from %s to %s"
+                % (json.dumps(upstream_dns_old),
+                   json.dumps(upstream_dns_new))))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_default_dns_ttl_update(self):
+        default_dns_ttl_old = random.randint(10, 1000)
+        default_dns_ttl_new = random.randint(10, 1000)
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             Config.objects.set_config,
-            "default_dns_ttl", random.randint(10, 1000))
-        zone_serial = yield self.get_zone_serial_current()
+            "default_dns_ttl", default_dns_ttl_old)
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2939,20 +3053,27 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "default_dns_ttl", random.randint(10, 1000))
+                "default_dns_ttl", default_dns_ttl_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration default_dns_ttl changed from %s to %s"
+                % (json.dumps(default_dns_ttl_old),
+                   json.dumps(default_dns_ttl_new))))
 
     @wait_for_reactor
     @inlineCallbacks
     def test_sends_message_for_config_windows_kms_host_update(self):
+        kms_host_old = factory.make_name("kms-host-old")
+        kms_host_new = factory.make_name("kms-host-new")
         yield deferToDatabase(register_system_triggers)
         yield deferToDatabase(
             Config.objects.set_config,
-            "windows_kms_host", factory.make_name("kms"))
-        zone_serial = yield self.get_zone_serial_current()
+            "windows_kms_host", kms_host_old)
+        yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
         listener.register(
@@ -2961,11 +3082,15 @@ class TestDNSConfigListener(
         try:
             yield deferToDatabase(
                 Config.objects.set_config,
-                "windows_kms_host", factory.make_name("kms"))
+                "windows_kms_host", kms_host_new)
             yield dv.get(timeout=2)
-            yield self.assertZoneSerialIncrement(zone_serial)
+            yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
+        self.assertThat(
+            self.getCapturedPublication().source, Equals(
+                "Configuration windows_kms_host changed from %s to %s"
+                % (json.dumps(kms_host_old), json.dumps(kms_host_new))))
 
 
 class TestProxySubnetListener(

@@ -787,11 +787,26 @@ DHCP_SNIPPET_DELETE = dedent("""\
 DNS_SUBNET_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_subnet_update()
     RETURNS trigger as $$
+    DECLARE
+      changes text[];
     BEGIN
-      IF OLD.cidr != NEW.cidr OR OLD.rdns_mode != NEW.rdns_mode THEN
-        -- Increment the zone serial.
-        PERFORM nextval('maasserver_zone_serial_seq');
-        PERFORM pg_notify('sys_dns', '');
+      IF OLD.cidr != NEW.cidr THEN
+        changes := changes || (
+          'CIDR changed from ' || OLD.cidr || ' to ' || NEW.cidr);
+      END IF;
+      IF OLD.rdns_mode != NEW.rdns_mode THEN
+        changes := changes || (
+          'RDNS mode changed from ' || OLD.rdns_mode || ' to ' ||
+          NEW.rdns_mode);
+      END IF;
+      IF array_length(changes, 1) != 0 THEN
+        INSERT INTO maasserver_dnspublication
+          (serial, created, source)
+        VALUES
+          (nextval('maasserver_zone_serial_seq'), now(),
+           substring(
+             ('Subnet ' || NEW.name || ': ' || array_to_string(changes, ', '))
+             FOR 255));
       END IF;
       RETURN NEW;
     END;
@@ -804,11 +819,25 @@ DNS_SUBNET_UPDATE = dedent("""\
 DNS_NODE_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_node_update()
     RETURNS trigger as $$
+    DECLARE
+      changes text[];
     BEGIN
-      IF OLD.hostname != NEW.hostname OR OLD.domain_id != NEW.domain_id THEN
-        -- Increment the zone serial.
-        PERFORM nextval('maasserver_zone_serial_seq');
-        PERFORM pg_notify('sys_dns', '');
+      IF OLD.hostname != NEW.hostname THEN
+        changes := changes || (
+          'hostname changed from ' || OLD.hostname || ' to ' || NEW.hostname);
+      END IF;
+      IF OLD.domain_id != NEW.domain_id THEN
+        changes := changes || 'domain changed'::text;
+      END IF;
+      IF array_length(changes, 1) != 0 THEN
+        INSERT INTO maasserver_dnspublication
+          (serial, created, source)
+        VALUES
+          (nextval('maasserver_zone_serial_seq'), now(),
+           substring(
+             ('Node ' || NEW.system_id || ': ' ||
+              array_to_string(changes, ', '))
+             FOR 255));
       END IF;
       RETURN NEW;
     END;
@@ -822,14 +851,29 @@ DNS_NODE_UPDATE = dedent("""\
 DNS_INTERFACE_UPDATE = dedent("""\
     CREATE OR REPLACE FUNCTION sys_dns_interface_update()
     RETURNS trigger as $$
+    DECLARE
+      changes text[];
     BEGIN
-      IF (OLD.name != NEW.name OR
-        (OLD.node_id IS NULL AND NEW.node_id IS NOT NULL) OR
-        (OLD.node_id IS NOT NULL AND NEW.node_id IS NULL) OR
-        (OLD.node_id != NEW.node_id)) THEN
-        -- Increment the zone serial.
-        PERFORM nextval('maasserver_zone_serial_seq');
-        PERFORM pg_notify('sys_dns', '');
+      IF OLD.name != NEW.name THEN
+        changes := changes || (
+          'renamed from ' || OLD.name || ' to ' || NEW.name);
+      END IF;
+      IF OLD.node_id IS NULL AND NEW.node_id IS NOT NULL THEN
+        changes := changes || 'node set'::text;
+      ELSIF OLD.node_id IS NOT NULL AND NEW.node_id IS NULL THEN
+        changes := changes || 'node unset'::text;
+      ELSIF OLD.node_id != NEW.node_id THEN
+        changes := changes || 'node changed'::text;
+      END IF;
+      IF array_length(changes, 1) != 0 THEN
+        INSERT INTO maasserver_dnspublication
+          (serial, created, source)
+        VALUES
+          (nextval('maasserver_zone_serial_seq'), now(),
+           substring(
+             ('Interface ' || NEW.name || ': ' ||
+              array_to_string(changes, ', '))
+             FOR 255));
       END IF;
       RETURN NEW;
     END;
@@ -847,10 +891,14 @@ DNS_CONFIG_INSERT = dedent("""\
       -- Only care about the
       IF (NEW.name = 'upstream_dns' OR
           NEW.name = 'default_dns_ttl' OR
-          NEW.name = 'windows_kms_host') THEN
-        -- Increment the zone serial.
-        PERFORM nextval('maasserver_zone_serial_seq');
-        PERFORM pg_notify('sys_dns', '');
+          NEW.name = 'windows_kms_host')
+      THEN
+        INSERT INTO maasserver_dnspublication
+          (serial, created, source)
+        VALUES
+          (nextval('maasserver_zone_serial_seq'), now(), substring(
+            ('Configuration ' || NEW.name || ' set to ' || NEW.value)
+            FOR 255));
       END IF;
       RETURN NEW;
     END;
@@ -869,11 +917,28 @@ DNS_CONFIG_UPDATE = dedent("""\
       IF (OLD.value != NEW.value AND (
           NEW.name = 'upstream_dns' OR
           NEW.name = 'default_dns_ttl' OR
-          NEW.name = 'windows_kms_host')) THEN
-        -- Increment the zone serial.
-        PERFORM nextval('maasserver_zone_serial_seq');
-        PERFORM pg_notify('sys_dns', '');
+          NEW.name = 'windows_kms_host'))
+      THEN
+        INSERT INTO maasserver_dnspublication
+          (serial, created, source)
+        VALUES
+          (nextval('maasserver_zone_serial_seq'), now(), substring(
+            ('Configuration ' || NEW.name || ' changed from ' ||
+             OLD.value || ' to ' || NEW.value)
+            FOR 255));
       END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+# Triggered when DNS needs to be published. In essense this means on insert
+# into maasserver_dnspublication.
+DNS_PUBLISH = dedent("""\
+    CREATE OR REPLACE FUNCTION sys_dns_publish()
+    RETURNS trigger AS $$
+    BEGIN
+      PERFORM pg_notify('sys_dns', '');
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -896,22 +961,23 @@ PROXY_SUBNET_UPDATE = dedent("""\
 
 
 def render_sys_dns_procedure(proc_name, on_delete=False):
-    """Render a database procedure with name `proc_name` that increments
-    the zone serial and notifies that a DNS update is needed.
+    """Render a database procedure that creates a new DNS publication.
 
     :param proc_name: Name of the procedure.
     :param on_delete: True when procedure will be used as a delete trigger.
     """
     return dedent("""\
-        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        CREATE OR REPLACE FUNCTION {proc}() RETURNS trigger AS $$
         BEGIN
-          -- Increment the zone serial.
-          PERFORM nextval('maasserver_zone_serial_seq');
-          PERFORM pg_notify('sys_dns', '');
-          RETURN %s;
+          INSERT INTO maasserver_dnspublication
+            (serial, created, source)
+          VALUES
+            (nextval('maasserver_zone_serial_seq'), now(),
+             substring('Call to {proc}' FOR 255));
+          RETURN {rval};
         END;
         $$ LANGUAGE plpgsql;
-        """ % (proc_name, 'NEW' if not on_delete else 'OLD'))
+        """).format(proc=proc_name, rval='OLD' if on_delete else 'NEW')
 
 
 def render_sys_proxy_procedure(proc_name, on_delete=False):
@@ -1106,6 +1172,12 @@ def register_system_triggers():
     register_trigger(
         "maasserver_dnsdata",
         "sys_dns_dnsdata_delete", "delete")
+
+    # - DNSPublication
+    register_procedure(DNS_PUBLISH)
+    register_trigger(
+        "maasserver_dnspublication",
+        "sys_dns_publish", "insert")
 
     # - Subnet
     register_procedure(

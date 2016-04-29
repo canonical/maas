@@ -8,7 +8,6 @@ __all__ = []
 import random
 import time
 
-from crochet import wait_for
 from django.conf import settings
 from django.core.management import call_command
 import dns.resolver
@@ -20,7 +19,6 @@ from maasserver.dns.config import (
     dns_update_all_zones,
     get_trusted_networks,
     get_upstream_dns,
-    zone_serial,
 )
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -31,11 +29,10 @@ from maasserver.models import (
     Config,
     Domain,
 )
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import transactional
-from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
 from provisioningserver.dns.config import (
@@ -51,16 +48,13 @@ from provisioningserver.testing.bindfixture import (
     BINDServer,
 )
 from provisioningserver.testing.tests.test_bindfixture import dig_call
-from provisioningserver.utils.twisted import (
-    DeferredValue,
-    retries,
-)
+from provisioningserver.utils.twisted import retries
 from testtools.matchers import (
     Contains,
+    Equals,
     FileContains,
     MatchesStructure,
 )
-from twisted.internet.defer import inlineCallbacks
 
 
 class TestDNSUtilities(MAASServerTestCase):
@@ -70,34 +64,24 @@ class TestDNSUtilities(MAASServerTestCase):
         self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
         return listener
 
-    def test_zone_serial_parameters(self):
+    def test_current_zone_serial_returns_serial_of_latest_publication(self):
+        publication = DNSPublication(source=factory.make_name("source"))
+        publication.save()
         self.assertThat(
-            zone_serial,
-            MatchesStructure.byEquality(
-                maxvalue=2 ** 32 - 1,
-                minvalue=1,
-                increment=1,
-                )
-            )
+            int(current_zone_serial()),
+            Equals(publication.serial))
 
-    def test_current_zone_serial_returns_same_serial(self):
-        zone_serial.create_if_not_exists()
-        initial = current_zone_serial()
-        self.assertEquals(initial, current_zone_serial())
-
-    @wait_for(30)
-    @inlineCallbacks
-    def test_dns_force_reload_sends_notification(self):
-        dv = DeferredValue()
-        listener = self.make_listener_without_delay()
-        listener.register(
-            "sys_dns", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(transactional(dns_force_reload))
-            yield dv.get(timeout=2)
-        finally:
-            yield listener.stopService()
+    def test_dns_force_reload_saves_new_publication(self):
+        # A 'sys_dns' signal is also sent, but that is a side-effect of
+        # inserting into the DNS publications table, and is tested as part of
+        # the system triggers code.
+        self.assertRaises(
+            DNSPublication.DoesNotExist,
+            DNSPublication.objects.get_most_recent)
+        dns_force_reload()
+        self.assertThat(
+            DNSPublication.objects.get_most_recent(),
+            MatchesStructure.byEquality(source="Force reload"))
 
 
 class TestDNSServer(MAASServerTestCase):
@@ -112,8 +96,9 @@ class TestDNSServer(MAASServerTestCase):
 
     def setUp(self):
         super(TestDNSServer, self).setUp()
-        # Make sure the zone_serial is created.
-        zone_serial.create_if_not_exists()
+        # Ensure there's an initial DNS publication. Outside of tests this is
+        # guaranteed by a migration.
+        DNSPublication(source="Initial").save()
         # Allow test-local changes to configuration.
         self.useFixture(RegionConfigurationFixture())
         # Immediately make DNS changes as they're needed.
@@ -202,7 +187,7 @@ class TestDNSServer(MAASServerTestCase):
                     else:
                         serial = ans.rrset.items[0].serial
 
-            if serial == zone_serial.current():
+            if serial == DNSPublication.objects.get_most_recent().serial:
                 # The zone is up-to-date; we're done.
                 return
             else:

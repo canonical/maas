@@ -20,7 +20,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.triggers.tests.helper import TransactionalHelpersMixin
+from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import register_websocket_triggers
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.utils.twisted import (

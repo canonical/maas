@@ -17,7 +17,7 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.dhcpsnippet import DHCPSnippet
 from maasserver.models.dnsdata import DNSData
-from maasserver.models.dnspublication import zone_serial
+from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
 from maasserver.models.event import Event
@@ -55,7 +55,15 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.models import NodeResult
-from twisted.internet.defer import inlineCallbacks
+from testtools.matchers import (
+    GreaterThan,
+    Is,
+    Not,
+)
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+)
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -638,12 +646,42 @@ class TransactionalHelpersMixin:
 class DNSHelpersMixin:
     """Helper to get the zone serial and to assert it was incremented."""
 
-    def get_zone_serial_current(self):
-        return deferToDatabase(transactional(zone_serial.current))
+    @transactional
+    def getPublication(self):
+        try:
+            return DNSPublication.objects.get_most_recent()
+        except DNSPublication.DoesNotExist:
+            return None
 
     @inlineCallbacks
-    def assertZoneSerialIncrement(self, previous):
-        current = yield deferToDatabase(transactional(zone_serial.current))
-        self.assertTrue(
-            current > previous,
-            "Zone serial was not incremented.")
+    def capturePublication(self):
+        """Capture the most recent `DNSPublication` record."""
+        self.__publication = yield deferToDatabase(self.getPublication)
+        returnValue(self.__publication)
+
+    def getCapturedPublication(self):
+        """Return the captured publication."""
+        try:
+            return self.__publication
+        except AttributeError:
+            self.fail(
+                "No reference publication has been captured; "
+                "use `capturePublication` before calling "
+                "`getCapturedPublication`.")
+
+    @inlineCallbacks
+    def assertPublicationUpdated(self):
+        """Assert there's a newer `DNSPublication` record.
+
+        Call `capturePublication` first to obtain a reference record.
+        """
+        old = self.getCapturedPublication()
+        new = yield self.capturePublication()
+        if old is None:
+            self.assertThat(
+                new, Not(Is(None)),
+                "DNS has not been published at all.")
+        else:
+            self.assertThat(
+                new.serial, GreaterThan(old.serial),
+                "DNS has not been published again.")

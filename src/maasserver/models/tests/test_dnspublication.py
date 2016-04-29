@@ -11,7 +11,11 @@ from datetime import (
 )
 from random import randint
 
-from maasserver.models.dnspublication import DNSPublication
+from django.db import connection
+from maasserver.models.dnspublication import (
+    DNSPublication,
+    zone_serial,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
@@ -22,6 +26,29 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+
+
+class TestZoneSerial(MAASServerTestCase):
+    """Tests for the `maasserver_zone_serial_seq` sequence."""
+
+    def test_parameters(self):
+        self.assertThat(
+            zone_serial, MatchesStructure.byEquality(
+                maxvalue=2 ** 32 - 1, minvalue=1, increment=1, cycle=True,
+                owner="maasserver_dnspublication.serial",
+            ))
+
+    def test_parameters_in_database(self):
+        zone_serial.create_if_not_exists()
+        query = (
+            "SELECT start_value, increment_by, max_value, "
+            "min_value, is_cycled FROM %s" % zone_serial.name
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(query)
+            self.assertThat(
+                cursor.fetchone(), Equals(
+                    (1, 1, 2 ** 32 - 1, 1, True)))
 
 
 class TestDNSPublication(MAASServerTestCase):
@@ -68,10 +95,14 @@ class TestDNSPublicationManager(MAASServerTestCase):
             MatchesStructure(serial=Equals(10)))
 
     def test_get_most_recent_crashes_when_no_publications(self):
-        # This is okay because we're going to ensure (using a migration) that
-        # there is never less than one publication in the table. If this crash
-        # happens we have bigger problems.
-        self.assertRaises(IndexError, DNSPublication.objects.get_most_recent)
+        # This is okay because we ensure (using a migration) that there is
+        # never less than one publication in the table. If this crash happens
+        # we have bigger problems. However, we do not currently use migrations
+        # in tests, so it is important to have a deterministic outcome when
+        # there are no publications.
+        self.assertRaises(
+            DNSPublication.DoesNotExist,
+            DNSPublication.objects.get_most_recent)
 
     def test_collect_garbage_removes_all_but_most_recent_record(self):
         for serial in range(10):
@@ -82,3 +113,8 @@ class TestDNSPublicationManager(MAASServerTestCase):
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
             MatchesStructure(serial=Equals(serial)))
+
+    def test_collect_garbage_does_nothing_when_no_publications(self):
+        self.assertThat(DNSPublication.objects.all(), HasLength(0))
+        DNSPublication.objects.collect_garbage()
+        self.assertThat(DNSPublication.objects.all(), HasLength(0))
