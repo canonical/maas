@@ -2,6 +2,47 @@
 Changelog
 =========
 
+2.0.0 (beta4)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1527634    [2.0] Disk erasing with Xenial results it abnormal poweroff
+
+LP: #1555864    [2.0a1] UI Nodes page shows 'ascii' codec can't decode byte
+
+LP: #1571007    [2.0b2] MAAS Rack Controller doesn't log when it is importing images.
+
+LP: #1575945    [2.0b3] rackd fails to register vlan interfaces with "vlan" naming scheme
+
+LP: #1573492    [2.0b3] Traceback deleting fabric
+
+LP: #1566108    [2.0b3] adding files with paths in the filename confuses maas
+
+LP: #1571621    [2.0b3] MAAS does not add node to DNS Domain
+
+LP: #1573644    [2.0b3] tag only supports 'nodes' and and not 'machines' or 'controller's
+
+LP: #1573264    [2.0b3] enlistment fails: /tmp/sh.UZ7qJT/bin/maas-enlist: archdetect: not found
+
+LP: #1562919    [2.0b3] creating a dnsresource-record at the root of a zone should allow fqdn=
+
+LP: #1573690    [2.0b3] In the domain details pages, sometimes names have links to nodes when they should not
+
+LP: #1573660    [2.0b4] ipranges create raises incorrect error for missing type
+
+LP: #1557597    [UI 2.0] fabric and space pages fail to update automatically
+
+LP: #1567150    [UI 2.0b1] Subnet page doesn't show which machine or device owns an IP address
+
+LP: #1571680    [UI 2.0b2] MAAS Controller listing page doesn't indicate whne a rack is downloading images
+
+LP: #1573219    [1.9.1] Deleting user in UI leads to 500
+
+LP: #1556219    [1.9.1] maas enlistment of power8 found ipmi 1.5 should do ipmi 2.0
+
+
 2.0.0 (beta3)
 =============
 
