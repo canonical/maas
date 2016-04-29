@@ -1209,6 +1209,14 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "flags": ["UP"],
                 "vid": 10,
                 "inet": ["192.168.123.2/24", "192.168.123.3/32"],
+                "parent": "bond0",
+            },
+            "vlan20": {
+                "type": "ethernet.vlan",
+                "mac": factory.make_mac_address(),
+                "flags": ["UP"],
+                "vid": 20,
+                "parent": "eth0",
             },
             "wlan0": {
                 "type": "ethernet.wireless",
@@ -1303,6 +1311,14 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "parents": Equals([]),
                 "links": Equals([]),
                 "source": Equals("ipaddr"),
+            }),
+            "vlan20": MatchesDict({
+                "type": Equals("vlan"),
+                "enabled": Is(True),
+                "parents": Equals(["eth0"]),
+                "links": Equals([]),
+                "source": Equals("ipaddr"),
+                "vid": Equals(20),
             }),
             "br0": MatchesDict({
                 "type": Equals("bridge"),

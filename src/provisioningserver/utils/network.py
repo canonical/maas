@@ -824,7 +824,7 @@ def get_all_interfaces_definition():
                     parents.append(bond_nic)
         elif ipaddr["type"] == "ethernet.vlan":
             iface_type = "vlan"
-            parents.append(name.split(".", 1)[0])
+            parents.append(ipaddr['parent'])
             vid = ipaddr["vid"]
         elif ipaddr["type"] == "ethernet.bridge":
             iface_type = "bridge"
