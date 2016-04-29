@@ -31,31 +31,6 @@ describe("SpacesManager", function() {
         expect(SpacesManager._handler).toBe("space");
     });
 
-    describe("getSubnets", function() {
-
-        it("returns subnet objects", function() {
-            var i, subnets = [], space_subnets = [];
-            for(i = 0; i < 6; i++) {
-                var subnet = makeSubnet();
-                subnets.push(subnet);
-                if(i < 3) {
-                    space_subnets.push(subnet);
-                }
-            }
-
-            var subnet_ids = [];
-            angular.forEach(space_subnets, function(subnet) {
-                subnet_ids.push(subnet.id);
-            });
-
-            SubnetsManager._items = subnets;
-            var space = {
-                "subnet_ids": subnet_ids
-            };
-            expect(space_subnets).toEqual(SpacesManager.getSubnets(space));
-        });
-    });
-
     describe("create", function() {
 
         it("calls the region with expected parameters", function() {

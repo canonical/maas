@@ -46,7 +46,7 @@
 <div data-ng-show="!loading">
     <section class="row">
         <div class="inner-wrapper">
-            <div class="tweleve-col">
+            <div class="twelve-col">
                 <h2>Fabric summary</h2>
             </div>
             <form>
@@ -67,8 +67,10 @@
                     -->
                     <dl>
                         <dt class="two-col">Rack controllers</dt>
-                        <dd class="four-col last-col" data-ng-repeat="rack in racks">
-                            <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                        <dd class="four-col last-col">
+                        <div data-ng-repeat="(system_id, rack) in racks">
+                            <a href="#/node/controller/{$ system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                        </div>
                         </dd>
                     </dl>
                 </fieldset>
@@ -77,10 +79,10 @@
     </section>
     <section class="row">
         <div class="inner-wrapper">
-            <div class="tweleve-col">
+            <div class="twelve-col">
                 <h2>VLANs on this fabric</h2>
             </div>
-            <div class="tweleve-col">
+            <div class="twelve-col">
                 <table>
                     <thead>
                         <tr>

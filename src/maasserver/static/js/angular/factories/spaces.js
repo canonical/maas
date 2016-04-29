@@ -29,20 +29,6 @@ angular.module('MAAS').factory(
 
         SpacesManager.prototype = new Manager();
 
-        // Return the Subnet objects that are part of this space. The returned
-        // array is calculated on each call, you should not watch this array,
-        // instead you should watch this function.
-        SpacesManager.prototype.getSubnets = function(space) {
-            var subnets = [];
-            angular.forEach(space.subnet_ids, function(subnet_id) {
-                var subnet = SubnetsManager.getItemFromList(subnet_id);
-                if(angular.isObject(subnet)) {
-                    subnets.push(subnet);
-                }
-            });
-            return subnets;
-        };
-
         // Create a space.
         SpacesManager.prototype.create = function(space) {
             // We don't add the item to the list because a NOTIFY event will

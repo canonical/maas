@@ -21,9 +21,9 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         $rootScope.page = "spaces";
 
         // Initial values.
-        $scope.loaded = false;
         $scope.space = null;
-        $scope.subnets = null;
+        $scope.subnets = SubnetsManager.getItems();
+        $scope.loaded = false;
 
         // Updates the page title.
         function updateTitle() {
@@ -33,22 +33,21 @@ angular.module('MAAS').controller('SpaceDetailsController', [
         // Called when the space has been loaded.
         function spaceLoaded(space) {
             $scope.space = space;
-            $scope.loaded = true;
-            $scope.subnets = SpacesManager.getSubnets($scope.space);
-
             updateTitle();
-            updateSubnetTable();
+            $scope.predicate = "[subnet_name, vlan_name]";
+            $scope.$watch("subnets", updateSubnets, true);
+            updateSubnets();
+            $scope.loaded = true;
         }
 
         // Generate a table that can easily be rendered in the view.
-        function updateSubnetTable() {
+        function updateSubnets() {
             var rows = [];
-            var subnets = $filter('orderBy')($scope.subnets, ['name']);
-            angular.forEach(subnets, function(subnet) {
-                var vlan = VLANsManager.getItemFromList(
-                    subnet.vlan);
-                var fabric = FabricsManager.getItemFromList(
-                    vlan.fabric);
+            angular.forEach($filter('filter')(
+                    $scope.subnets, {space:$scope.space.id}, true),
+                    function(subnet) {
+                var vlan = VLANsManager.getItemFromList(subnet.vlan);
+                var fabric = FabricsManager.getItemFromList(vlan.fabric);
                 var row = {
                     vlan: vlan,
                     vlan_name: VLANsManager.getName(vlan),

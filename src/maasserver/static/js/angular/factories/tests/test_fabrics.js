@@ -31,31 +31,6 @@ describe("FabricsManager", function() {
         expect(FabricsManager._handler).toBe("fabric");
     });
 
-    describe("getVLANs", function() {
-
-        it("returns VLAN objects", function() {
-            var i, vlans = [], fabric_vlans = [];
-            for(i = 0; i < 6; i++) {
-                var vlan = makeVLAN();
-                vlans.push(vlan);
-                if(i < 3) {
-                    fabric_vlans.push(vlan);
-                }
-            }
-
-            var vlan_ids = [];
-            angular.forEach(fabric_vlans, function(vlan) {
-                vlan_ids.push(vlan.id);
-            });
-
-            VLANsManager._items = vlans;
-            var fabric = {
-                "vlan_ids": vlan_ids
-            };
-            expect(fabric_vlans).toEqual(FabricsManager.getVLANs(fabric));
-        });
-    });
-
     describe("getName", function() {
 
         it("returns undefined if no object is passed in", function() {

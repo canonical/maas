@@ -30,22 +30,6 @@ angular.module('MAAS').factory(
 
         FabricsManager.prototype = new Manager();
 
-        // Return the VLAN objects that are part of this fabric. The returned
-        // array is calculated on each call, you should not watch this array,
-        // instead you should watch this function.
-        FabricsManager.prototype.getVLANs = function(fabric) {
-            var vlans = [];
-            if(angular.isObject(fabric) && angular.isObject(fabric.vlan_ids)) {
-                angular.forEach(fabric.vlan_ids, function(vlan_id) {
-                    var vlan = VLANsManager.getItemFromList(vlan_id);
-                    if(angular.isObject(vlan)) {
-                        vlans.push(vlan);
-                    }
-                });
-            }
-            return vlans;
-        };
-
         // Given a Fabric object, returns its display name.
         FabricsManager.prototype.getName = function(fabric) {
             if(!angular.isObject(fabric)) {

@@ -914,8 +914,7 @@ class TestIPRangeStatistics(MAASTestCase):
         u = s.get_full_range('2001:db8::/64')
         stats = IPRangeStatistics(u)
         self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
-        self.assertThat(
-            stats.suggested_dynamic_range, HasLength((2 ** 64) >> 2))
+        self.assertEqual((2 ** 64) >> 2, stats.suggested_dynamic_range.size)
         self.assertThat(
             stats.suggested_dynamic_range, Contains(
                 "2001:db8:0:0:c000::"))

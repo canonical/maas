@@ -23,9 +23,11 @@ angular.module('MAAS').controller('FabricDetailsController', [
         $rootScope.page = "fabrics";
 
         // Initial values.
-        $scope.loaded = false;
         $scope.fabric = null;
-        $scope.vlans = null;
+        $scope.vlans = VLANsManager.getItems();
+        $scope.subnets = SubnetsManager.getItems();
+        $scope.controllers = ControllersManager.getItems();
+        $scope.loaded = false;
 
         // Updates the page title.
         function updateTitle() {
@@ -36,42 +38,28 @@ angular.module('MAAS').controller('FabricDetailsController', [
         function fabricLoaded(fabric) {
             if(angular.isObject(fabric)) {
                 $scope.fabric = fabric;
-                $scope.loaded = true;
-                $scope.vlans = FabricsManager.getVLANs($scope.fabric);
-                $scope.racks = getRackControllers();
-
                 updateTitle();
-                updateVLANTable();
+                $scope.$watch("vlans", updateVLANs, true);
+                $scope.$watch("subnets", updateVLANs, true);
+                $scope.$watch("controllers", updateVLANs, true);
+                $scope.loaded = true;
+                // Initial table sort order.
+                $scope.predicate = "[vlan_name, vlan.id, subnet_name]";
             }
         }
 
-        // Return the rack controller objects attached to this Fabric.  The
-        // returned array is calculated on each call, you should not watch this
-        // array, instead you should watch this function.
-        function getRackControllers() {
-            var racks = [];
-            angular.forEach($scope.vlans, function(vlan) {
-                angular.forEach(vlan.rack_sids, function(rack_sid) {
-                    var rack = ControllersManager.getItemFromList(rack_sid);
-                    if(angular.isObject(rack)) {
-                        racks.push(rack);
-                    }
-                });
-            });
-            return racks;
-        }
-
         // Generate a table that can easily be rendered in the view.
-        function updateVLANTable() {
+        function updateVLANs() {
             var rows = [];
-            var vlans = $filter('orderBy')($scope.vlans, ['name']);
-            angular.forEach(vlans, function(vlan) {
-                var subnets = $filter('orderBy')(
-                    VLANsManager.getSubnets(vlan), ['cidr']);
+            var racks = {};
+            angular.forEach($filter('filter')(
+                    $scope.vlans, {fabric:$scope.fabric.id}, true),
+                    function(vlan) {
+                var subnets =
+                    $filter('filter')($scope.subnets, {vlan:vlan.id}, true);
                 if(subnets.length > 0) {
                     angular.forEach(subnets, function(subnet) {
-                        var space = SpacesManager.getItemFromList(
-                            subnet.space);
+                        var space = SpacesManager.getItemFromList(subnet.space);
                         var row = {
                             vlan: vlan,
                             vlan_name: VLANsManager.getName(vlan),
@@ -83,7 +71,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
                         rows.push(row);
                     });
                 } else {
-                    // If there are no subnets, populate the row based on the
+                    // If there are no subnets, populate a row based on the
                     // information we have (just the VLAN).
                     var row = {
                         vlan: vlan,
@@ -95,10 +83,17 @@ angular.module('MAAS').controller('FabricDetailsController', [
                     };
                     rows.push(row);
                 }
+                // Enumerate racks for vlan.
+                angular.forEach(vlan.rack_sids, function(rack_sid) {
+                    var rack = ControllersManager.getItemFromList(rack_sid);
+                    if(angular.isObject(rack)) {
+                        racks[rack.system_id] = rack;
+                    }
+                });
             });
             $scope.rows = rows;
+            $scope.racks = racks;
         }
-
 
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
@@ -151,24 +146,27 @@ angular.module('MAAS').controller('FabricDetailsController', [
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             FabricsManager, VLANsManager, SubnetsManager, SpacesManager,
-            ControllersManager, UsersManager]).then(function() {
-            // Possibly redirected from another controller that already had
-            // this fabric set to active. Only call setActiveItem if not
-            // already the activeItem.
-            var activeFabric = FabricsManager.getActiveItem();
-            var requestedFabric = parseInt($routeParams.fabric_id, 10);
-            if(isNaN(requestedFabric)) {
-                ErrorService.raiseError("Invalid fabric identifier.");
-            } else if(angular.isObject(activeFabric) &&
-                activeFabric.id === requestedFabric) {
-                fabricLoaded(activeFabric);
-            } else {
-                FabricsManager.setActiveItem(
-                    requestedFabric).then(function(fabric) {
-                        fabricLoaded(fabric);
-                    }, function(error) {
-                        ErrorService.raiseError(error);
-                    });
-            }
-        });
-    }]);
+            ControllersManager, UsersManager]).then(
+            function() {
+                // Possibly redirected from another controller that already had
+                // this fabric set to active. Only call setActiveItem if not
+                // already the activeItem.
+                var activeFabric = FabricsManager.getActiveItem();
+                var requestedFabric = parseInt($routeParams.fabric_id, 10);
+
+                if(isNaN(requestedFabric)) {
+                    ErrorService.raiseError("Invalid fabric identifier.");
+                } else if(angular.isObject(activeFabric) &&
+                    activeFabric.id === requestedFabric) {
+                    fabricLoaded(activeFabric);
+                } else {
+                    FabricsManager.setActiveItem(
+                        requestedFabric).then(function(fabric) {
+                            fabricLoaded(fabric);
+                        }, function(error) {
+                            ErrorService.raiseError(error);
+                        });
+                }
+            });
+    }
+]);
