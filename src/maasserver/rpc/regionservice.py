@@ -13,7 +13,6 @@ from datetime import (
     datetime,
     timedelta,
 )
-from functools import partial
 import os
 from os import urandom
 import random
@@ -88,6 +87,7 @@ from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
+    deferred,
     DeferredValue,
     deferWithTimeout,
     FOREVER,
@@ -95,7 +95,6 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 from twisted.application import service
-from twisted.application.internet import TimerService
 from twisted.internet import (
     defer,
     reactor,
@@ -114,6 +113,7 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
+from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
@@ -435,6 +435,7 @@ class Region(RPCProtocol):
 @transactional
 def registerConnection(rack_controller, host):
     """Register the connection into the database."""
+    # XXX: getServiceNamed() is NOT SAFE outside of reactor.
     maas_id = eventloop.services.getServiceNamed(
         "rpc-advertise").getRegionID()
     region = RegionController.objects.get(system_id=maas_id)
@@ -453,6 +454,7 @@ def registerConnection(rack_controller, host):
 @transactional
 def unregisterConnection(ident, host):
     """Unregister the connection into the database."""
+    # XXX: getServiceNamed() is NOT SAFE outside of reactor.
     maas_id = eventloop.services.getServiceNamed(
         "rpc-advertise").getRegionID()
     region = RegionController.objects.get(system_id=maas_id)
@@ -890,7 +892,12 @@ class RegionService(service.Service, object):
             return common.Client(random.choice(conns))
 
 
-class RegionAdvertisingService(TimerService, object):
+def ignoreCancellation(failure):
+    """Suppress `defer.CancelledError`."""
+    failure.trap(defer.CancelledError)
+
+
+class RegionAdvertisingService(service.Service):
     """Advertise the `RegionControllerProcess` and all of its
     `RegionControllerProcessEndpoints` into the database.
 
@@ -918,62 +925,64 @@ class RegionAdvertisingService(TimerService, object):
     # not conflict), so a thread-lock is a sufficient workaround.
     lock = threading.Lock()
 
+    # A LoopingCall that ensures that this region is being advertised, and the
+    # Deferred that fires when it has stopped.
+    advertiser = advertiserDone = None
+
     starting = None
     stopping = None
 
     def __init__(self):
-        super(RegionAdvertisingService, self).__init__(
-            self.INTERVAL_NO_ENDPOINTS, self.try_update)
-        self.maas_id = None
+        super(RegionAdvertisingService, self).__init__()
+        self.advertiser = LoopingCall(self._tryUpdate)
         self.processId = DeferredValue()
-
-    def try_update(self):
-        return deferToDatabase(self.update).addErrback(
-            log.err, "Failed to update this region's process and endpoints; "
-            "%s record's may be out of date" % (eventloop.loop.name,))
+        self.maasId = DeferredValue()
 
     def getRegionID(self):
-        """Return the system_id for this running region controller."""
-        return self.maas_id
+        """Return the system_id for this running region controller.
 
-    def _update_interval(self, seconds):
-        """Change the update interval."""
-        self._loop.interval = self.step = seconds
+        XXX: This value is referred to variously as a region ID, a system ID,
+        or a MAAS ID. We should remove at least one of these terms.
+        """
+        # TODO: Return a Deferred instead?
+        if self.maasId.isSet:
+            return self.maasId.value
+        else:
+            return None
 
     @asynchronous
     def startService(self):
-        self.starting = self._prepareService()
-
-        def prepared(_):
-            return super(RegionAdvertisingService, self).startService()
-        self.starting.addCallback(prepared)
-
-        def ignore_cancellation(failure):
-            failure.trap(defer.CancelledError)
-        self.starting.addErrback(ignore_cancellation)
-
-        self.starting.addErrback(log.err)
+        self.starting = maybeDeferred(super().startService)
+        # Populate advertising records in the database.
+        self.starting.addCallback(callOut, self._prepareService)
+        # Start the advertising loop to keep those records up-to-date.
+        self.starting.addCallback(callOut, self.startAdvertising)
+        # We may get cancelled; suppress the exception as a penultimate step.
+        self.starting.addErrback(ignoreCancellation)
+        # XXX: Should we log here, or let failures propagate instead?
+        self.starting.addErrback(
+            log.err, "Failure starting advertising service.")
+        # Let the caller track all of this.
         return self.starting
 
     @asynchronous
     def stopService(self):
-        if self.starting.called:
-            # Start-up is complete; remove all records then up-call in
-            # the usual way.
-            self.stopping = deferToDatabase(self.remove)
-            self.stopping.addCallback(lambda ignore: (
-                super(RegionAdvertisingService, self).stopService()))
-            return self.stopping
-        else:
-            # Start-up has not yet finished; cancel it.
-            self.starting.cancel()
-            return self.starting
+        # Officially begin stopping this service.
+        self.stopping = maybeDeferred(super().stopService)
+        # Wait for all start-up tasks to finish.
+        self.stopping.addCallback(callOut, lambda: self.starting)
+        # Stop the advertising loop and wait for it to complete.
+        self.stopping.addCallback(callOut, self.stopAdvertising)
+        # Remove this regiond from all advertising records.
+        self.stopping.addCallback(callOut, deferToDatabase, self.demote)
+        # Let the caller track all of this.
+        return self.stopping
 
     @inlineCallbacks
     def _prepareService(self):
-        """Keep calling `prepare` until it works.
+        """Keep calling `promote` until it works.
 
-        The call to `prepare` can sometimes fail, particularly after starting
+        The call to `promote` can sometimes fail, particularly after starting
         the region for the first time on a fresh MAAS installation, but the
         mechanism is not yet understood. We take a pragmatic stance and just
         keep trying until it works.
@@ -981,66 +990,98 @@ class RegionAdvertisingService(TimerService, object):
         Each failure will be logged, and there will be a pause of 5 seconds
         between each attempt.
         """
-        while True:
+        def get_preparation_details():
+            return get_maas_id(), gethostname(), get_mac_addresses()
+
+        while self.running:
             try:
-                d = deferToThread(
-                    lambda: (
-                        get_maas_id(), gethostname(), get_mac_addresses()))
-                d.addCallback(partial(deferToDatabase, self.prepare))
-                d.addCallback(self.prepared)
-                yield d
-            except defer.CancelledError:
-                raise
-            except Exception as e:
-                log.err(e, (
+                prep_info = yield deferToThread(get_preparation_details)
+                prep_ids = yield deferToDatabase(self.promote, prep_info)
+                yield self._servicePrepared(prep_ids)
+            except:
+                log.err(None, (
                     "Preparation of %s failed; will try again in "
                     "5 seconds." % self.__class__.__name__))
                 yield pause(5)
             else:
                 break
+        else:
+            # Preparation did not complete before this service was shutdown,
+            # so raise CancelledError to prevent callbacks from being called.
+            raise defer.CancelledError()
+
+    def _servicePrepared(self, ids):
+        """Set `maasId` and `processId`.
+
+        Also ensures that the `maas_id` file is created. This is read by other
+        regiond processes on this host so that the `RegionControllerProcess`s
+        they create in the database all refer to the same `RegionController`.
+
+        :param ids: A ``(maas-id, process-id)`` tuple.
+        """
+        maas_id, process_id = ids
+        set_maas_id(maas_id)  # Create `maas_id` file.
+        self.processId.set(process_id)
+        self.maasId.set(maas_id)
 
     @synchronous
     @synchronised(lock)
     @with_connection  # Needed by the following lock.
     @synchronised(locks.eventloop)
     @transactional
-    def prepare(self, result):
-        """Ensure that the `RegionController` exists.
+    def promote(self, details):
+        """Promote this regiond to active duty.
 
-        If not, create it. On first creation the `system_id` of the
-        `RegionController` is written to /var/lib/maas/maas_id. That file
-        is used by the other `RegionControllerProcess` on this region to use
-        the same `RegionController`.
+        Ensure that `RegionController` and `RegionControllerProcess` records
+        exists for this regiond.
+
+        :param details: A ``(maas-id, hostname, mac-addresses)`` tuple.
+        :return: A ``(maas-id, process-id)`` tuple.
         """
-        maas_id, hostname, mac_addresses = result
-        region_filter = Q()
-        if maas_id is not None:
-            region_filter |= Q(system_id=maas_id)
+        maas_id, hostname, mac_addresses = details
+        region_filter = Q() if maas_id is None else Q(system_id=maas_id)
         region_filter |= Q(hostname=hostname)
         region_filter |= Q(interface__mac_address__in=mac_addresses)
         region_obj = get_one(Node.objects.filter(region_filter).distinct())
-        if region_obj is not None:
-            # Already exists make sure its set as a region.
-            region_obj = self._fix_node_for_region(region_obj)
+        if region_obj is None:
+            # This is the first time MAAS has run on this node.
+            region_obj = RegionController.objects.create(hostname=hostname)
         else:
-            # This is the first time MAAS has ran on this node. Create a
-            # new `RegionController`.
-            region_obj = RegionController.objects.create(
-                hostname=hostname)
+            # Already exists. Make sure it's set as a region.
+            region_obj = self._fix_node_for_region(region_obj, hostname)
 
         # Create the process for this region. This process object will
         # continuously be updated in the database in the `update` loop. The
         # `update` loop also removes the old processes from the database.
         process, _ = RegionControllerProcess.objects.get_or_create(
             region=region_obj, pid=os.getpid())
+
         return region_obj.system_id, process.id
 
-    def prepared(self, ids):
-        """Called after `prepare` to set the maas_id and processId."""
-        maas_id, process_id = ids
-        self.maas_id = maas_id
-        set_maas_id(maas_id)
-        self.processId.set(process_id)
+    @deferred
+    def startAdvertising(self):
+        """Keep advertising that this regiond is on active duty.
+
+        :return: A `Deferred` that will fire when the loop has started.
+        """
+        assert self.processId.isSet, "Process ID has not been set!"
+        assert self.maasId.isSet, "MAAS ID has not been set!"
+        self.advertiserDone = self.advertiser.start(self.INTERVAL_NO_ENDPOINTS)
+
+    @deferred
+    def stopAdvertising(self):
+        """Stop advertising that this regiond is on active duty.
+
+        :return: A `Deferred` that will fire when the loop has stopped.
+        """
+        if self.advertiser.running:
+            self.advertiser.stop()
+            return self.advertiserDone
+
+    def _tryUpdate(self):
+        return deferToDatabase(self.update).addErrback(
+            log.err, "Failed to update this region's process and endpoints; "
+            "%s record's may be out of date" % (eventloop.loop.name,))
 
     @synchronous
     @synchronised(lock)
@@ -1055,7 +1096,7 @@ class RegionAdvertisingService(TimerService, object):
         """
         # Get the region controller and update its hostname and last
         # updated time.
-        region_obj = RegionController.objects.get(system_id=self.maas_id)
+        region_obj = RegionController.objects.get(system_id=self.maasId.value)
         update_fields = ["updated"]
         hostname = gethostname()
         if region_obj.hostname != hostname:
@@ -1092,10 +1133,10 @@ class RegionAdvertisingService(TimerService, object):
         addresses = frozenset(self._get_addresses())
         if len(addresses) == 0:
             # No endpoints; set the interval so it updates quickly.
-            self._update_interval(self.INTERVAL_NO_ENDPOINTS)
+            self.advertiser.interval = self.INTERVAL_NO_ENDPOINTS
         else:
             # Has endpoints; update less frequent.
-            self._update_interval(self.INTERVAL_WITH_ENDPOINTS)
+            self.advertiser.interval = self.INTERVAL_WITH_ENDPOINTS
             for addr, port in addresses:
                 endpoint, created = (
                     RegionControllerProcessEndpoint.objects.get_or_create(
@@ -1129,7 +1170,7 @@ class RegionAdvertisingService(TimerService, object):
 
         # Update the status of all regions that have no processes running.
         for other_region in RegionController.objects.exclude(
-                system_id=self.maas_id).prefetch_related("processes"):
+                system_id=self.maasId.value).prefetch_related("processes"):
             # Use len with `all` so the prefetch cache is used.
             if len(other_region.processes.all()) == 0:
                 Service.objects.mark_dead(other_region, dead_region=True)
@@ -1158,16 +1199,20 @@ class RegionAdvertisingService(TimerService, object):
     @synchronous
     @synchronised(lock)
     @transactional
-    def remove(self):
-        """Removes all records related to this process.
+    def demote(self):
+        """Demote this regiond from active duty.
 
-        A subsequent call to `update()` will restore these records,
-        hence calling this while this service is started won't be
-        terribly efficacious.
+        Removes all `RegionControllerProcess` records related to this process.
+
+        A subsequent call to `update()` will restore these records, hence
+        calling this while this service is running won't ultimately be very
+        useful.
         """
-        region_obj = Node.objects.get(system_id=self.maas_id)
-        RegionControllerProcess.objects.get(
-            region=region_obj, pid=os.getpid()).delete()
+        if self.maasId.isSet:
+            # There should be only one, but this loop copes with zero too.
+            for region_obj in Node.objects.filter(system_id=self.maasId.value):
+                RegionControllerProcess.objects.get(
+                    region=region_obj, pid=os.getpid()).delete()
 
     def _get_addresses(self):
         """Generate the addresses on which to advertise region availablilty.
@@ -1208,8 +1253,8 @@ class RegionAdvertisingService(TimerService, object):
         # No port or hit KeyError.
         return []
 
-    def _fix_node_for_region(self, region_obj):
-        """Fix the `node_type` and `hostname` on `region_obj`.
+    def _fix_node_for_region(self, region_obj, hostname):
+        """Fix the `node_type` and `hostname` fields on `region_obj`.
 
         This method only updates the database if it has changed.
         """
@@ -1222,7 +1267,6 @@ class RegionAdvertisingService(TimerService, object):
             else:
                 region_obj.node_type = NODE_TYPE.REGION_CONTROLLER
             update_fields.append("node_type")
-        hostname = gethostname()
         if region_obj.hostname != hostname:
             region_obj.hostname = hostname
             update_fields.append("hostname")
