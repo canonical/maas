@@ -12,6 +12,8 @@ LP: #1527634    [2.0] Disk erasing with Xenial results it abnormal poweroff
 
 LP: #1555864    [2.0a1] UI Nodes page shows 'ascii' codec can't decode byte
 
+LP: #1574003    [2.0a4] When power_type changed to manual "power_state" was not set to "unknown"
+
 LP: #1571007    [2.0b2] MAAS Rack Controller doesn't log when it is importing images.
 
 LP: #1575945    [2.0b3] rackd fails to register vlan interfaces with "vlan" naming scheme
@@ -29,6 +31,8 @@ LP: #1573264    [2.0b3] enlistment fails: /tmp/sh.UZ7qJT/bin/maas-enlist: archde
 LP: #1562919    [2.0b3] creating a dnsresource-record at the root of a zone should allow fqdn=
 
 LP: #1573690    [2.0b3] In the domain details pages, sometimes names have links to nodes when they should not
+
+LP: #1576854    [2.0b3] Can't power on/off Rack Controller
 
 LP: #1573660    [2.0b4] ipranges create raises incorrect error for missing type
 
