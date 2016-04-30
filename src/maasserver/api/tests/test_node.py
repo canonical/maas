@@ -12,6 +12,7 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     POWER_STATE,
 )
 from maasserver.models import (
@@ -22,15 +23,26 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
+from maasserver.utils.orm import reload_object
+from maastesting.matchers import (
+    Equals,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
-from mock import Mock
+from mock import (
+    ANY,
+    Mock,
+)
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
 )
+from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -280,25 +292,6 @@ class TestPowerParameters(APITestCase):
             http.client.FORBIDDEN, response.status_code, response.content)
 
 
-class TestQueryPowerState(APITestCase):
-    """Tests for /api/2.0/nodes/<node>/?op=query_power_state"""
-
-    def get_node_uri(self, node):
-        """Get the API URI for `node`."""
-        return reverse('node_handler', args=[node.system_id])
-
-    def test_query_power_state(self):
-        node = factory.make_Node()
-        mock__power_control_node = self.patch(
-            node_module.Node, "power_query").return_value
-        mock__power_control_node.wait = Mock(return_value=POWER_STATE.ON)
-        response = self.client.get(
-            self.get_node_uri(node), {'op': 'query_power_state'})
-        self.assertEqual(http.client.OK, response.status_code)
-        parsed_result = json_load_bytes(response.content)
-        self.assertEqual(POWER_STATE.ON, parsed_result['state'])
-
-
 class TestSetOwnerData(APITestCase):
     """Tests for op=set_owner_data for both machines and devices."""
 
@@ -375,3 +368,255 @@ class TestSetOwnerData(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             {}, json_load_bytes(response.content)['owner_data'])
+
+
+class TestPowerMixin(APITestCase):
+    """Test the power mixin."""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        # Use the machine handler to test as that will always support all
+        # power commands
+        return reverse('machine_handler', args=[node.system_id])
+
+    def test_POST_power_off_checks_permission(self):
+        machine = factory.make_Node()
+        machine_stop = self.patch(machine, 'stop')
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_off'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+        self.assertThat(machine_stop, MockNotCalled())
+
+    def test_POST_power_off_returns_nothing_if_machine_was_not_stopped(self):
+        # The machine may not be stopped because, for example, its power type
+        # does not support it. In this case the machine is not returned to the
+        # caller.
+        machine = factory.make_Node(owner=self.logged_in_user)
+        machine_stop = self.patch(node_module.Machine, 'stop')
+        machine_stop.return_value = False
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_off'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertIsNone(json_load_bytes(response.content))
+        self.assertThat(machine_stop, MockCalledOnceWith(
+            ANY, stop_mode=ANY, comment=None))
+
+    def test_POST_power_off_returns_machine(self):
+        machine = factory.make_Node(owner=self.logged_in_user)
+        self.patch(node_module.Machine, 'stop').return_value = True
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_off'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
+
+    def test_POST_power_off_may_be_repeated(self):
+        machine = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='manual')
+        self.patch(machine, 'stop')
+        self.client.post(self.get_node_uri(machine), {'op': 'power_off'})
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_off'})
+        self.assertEqual(http.client.OK, response.status_code)
+
+    def test_POST_power_off_power_offs_machines(self):
+        machine = factory.make_Node(owner=self.logged_in_user)
+        machine_stop = self.patch(node_module.Machine, 'stop')
+        stop_mode = factory.make_name('stop_mode')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(machine),
+            {'op': 'power_off', 'stop_mode': stop_mode, 'comment': comment})
+        self.assertThat(
+            machine_stop,
+            MockCalledOnceWith(
+                self.logged_in_user, stop_mode=stop_mode, comment=comment))
+
+    def test_POST_power_off_handles_missing_comment(self):
+        machine = factory.make_Node(owner=self.logged_in_user)
+        machine_stop = self.patch(node_module.Machine, 'stop')
+        stop_mode = factory.make_name('stop_mode')
+        self.client.post(
+            self.get_node_uri(machine),
+            {'op': 'power_off', 'stop_mode': stop_mode})
+        self.assertThat(
+            machine_stop,
+            MockCalledOnceWith(
+                self.logged_in_user, stop_mode=stop_mode, comment=None))
+
+    def test_POST_power_off_returns_503_when_power_already_in_progress(self):
+        machine = factory.make_Node(owner=self.logged_in_user)
+        exc_text = factory.make_name("exc_text")
+        self.patch(
+            node_module.Machine,
+            'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_off'})
+        self.assertResponseCode(http.client.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            exc_text, response.content.decode(settings.DEFAULT_CHARSET))
+
+    def test_POST_power_on_checks_permission(self):
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            owner=factory.make_User())
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_on'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_POST_power_on_checks_ownership(self):
+        self.become_admin()
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY)
+        response = self.client.post(
+            self.get_node_uri(machine), {'op': 'power_on'})
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertEqual(
+            "Can't start node: it hasn't been allocated.",
+            response.content.decode(settings.DEFAULT_CHARSET))
+
+    def test_POST_power_on_returns_machine(self):
+        self.patch(node_module.Machine, "_start")
+        machine = factory.make_Node(
+            owner=self.logged_in_user, interface=True,
+            power_type='manual',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem['default_release']
+        response = self.client.post(
+            self.get_node_uri(machine),
+            {
+                'op': 'power_on',
+                'distro_series': distro_series,
+            })
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)['system_id'])
+
+    def test_mark_broken_changes_status(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_mark_broken_updates_error_description(self):
+        # 'error_description' parameter was renamed 'comment' for consistency
+        # make sure this comment updates the node's error_description
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        comment = factory.make_name('comment')
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'comment': comment})
+        self.assertEqual(http.client.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, comment),
+            (node.status, node.error_description)
+        )
+
+    def test_mark_broken_updates_error_description_compatibility(self):
+        # test old 'error_description' parameter is honored for compatibility
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        error_description = factory.make_name('error_description')
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'error_description': error_description})
+        self.assertEqual(http.client.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, error_description),
+            (node.status, node.error_description)
+        )
+
+    def test_mark_broken_passes_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        node_mark_broken = self.patch(node_module.Machine, 'mark_broken')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'comment': comment})
+        self.assertThat(
+            node_mark_broken,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_mark_broken_handles_missing_comment(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        node_mark_broken = self.patch(node_module.Machine, 'mark_broken')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertThat(
+            node_mark_broken,
+            MockCalledOnceWith(self.logged_in_user, None))
+
+    def test_mark_broken_requires_ownership(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_mark_broken_allowed_from_any_other_state(self):
+        self.patch(node_module.Machine, "_stop")
+        for status, _ in NODE_STATUS_CHOICES:
+            if status == NODE_STATUS.BROKEN:
+                continue
+
+            node = factory.make_Node(status=status, owner=self.logged_in_user)
+            response = self.client.post(
+                self.get_node_uri(node), {'op': 'mark_broken'})
+            self.expectThat(
+                response.status_code, Equals(http.client.OK), response)
+            node = reload_object(node)
+            self.expectThat(node.status, Equals(NODE_STATUS.BROKEN))
+
+    def test_mark_fixed_changes_status(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_mark_fixed_requires_admin(self):
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
+    def test_mark_fixed_passes_comment(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
+        comment = factory.make_name('comment')
+        self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_fixed', 'comment': comment})
+        self.assertThat(
+            node_mark_fixed,
+            MockCalledOnceWith(self.logged_in_user, comment))
+
+    def test_mark_fixed_handles_missing_comment(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertThat(
+            node_mark_fixed,
+            MockCalledOnceWith(self.logged_in_user, None))
+
+    def test_query_power_state(self):
+        node = factory.make_Node()
+        mock__power_control_node = self.patch(
+            node_module.Node, "power_query").return_value
+        mock__power_control_node.wait = Mock(return_value=POWER_STATE.ON)
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'query_power_state'})
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(POWER_STATE.ON, parsed_result['state'])

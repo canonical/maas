@@ -169,12 +169,13 @@ class OperationsHandlerType(HandlerMetaClass):
         # Add parent classes' exports if they still correspond to a valid
         # method on the class we're considering. This allows subclasses to
         # remove methods by defining an attribute of the same name as None.
-        if cls.exports is not None:
-            for key in cls.exports.keys():
-                if key[1] is not None:
-                    new_func = getattr(cls, key[1], None)
+        for base in bases:
+            for key, value in vars(base).items():
+                export = getattr(value, "export", None)
+                if export is not None:
+                    new_func = getattr(cls, key, None)
                     if new_func is not None:
-                        exports[key] = new_func
+                        exports[export] = new_func
 
         # Export custom operations.
         exports.update(operations)

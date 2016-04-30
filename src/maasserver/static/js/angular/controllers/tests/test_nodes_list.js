@@ -306,7 +306,11 @@ describe("NodesListController", function() {
                     SearchService.getEmptyFilter());
                 expect(tabScope.column).toBe("fqdn");
                 expect(tabScope.actionOption).toBeNull();
-                expect(tabScope.takeActionOptions).toEqual([]);
+                // The controllers page uses a function so it can handle
+                // different controller types
+                if(tab !== "controllers") {
+                    expect(tabScope.takeActionOptions).toEqual([]);
+                }
                 expect(tabScope.actionErrorCount).toBe(0);
                 expect(tabScope.zoneSelection).toBeNull();
 

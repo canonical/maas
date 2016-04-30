@@ -185,7 +185,7 @@ describe("NodeDetailsController", function() {
         expect($scope.node).toBeNull();
         expect($scope.actionOption).toBeNull();
         expect($scope.allActionOptions).toBe(
-            GeneralManager.getData("node_actions"));
+            GeneralManager.getData("machine_actions"));
         expect($scope.availableActionOptions).toEqual([]);
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));

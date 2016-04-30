@@ -21,8 +21,8 @@ angular.module('MAAS').factory(
         function GeneralManager() {
             // Holds the available endpoints and its data.
             this._data = {
-                node_actions: {
-                    method: "general.node_actions",
+                machine_actions: {
+                    method: "general.machine_actions",
                     data: [],
                     loaded: false,
                     polling: false,
@@ -35,8 +35,22 @@ angular.module('MAAS').factory(
                     polling: false,
                     nextPromise: null
                 },
-                controller_actions: {
-                    method: "general.controller_actions",
+                region_controller_actions: {
+                    method: "general.region_controller_actions",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
+                rack_controller_actions: {
+                    method: "general.rack_controller_actions",
+                    data: [],
+                    loaded: false,
+                    polling: false,
+                    nextPromise: null
+                },
+                region_and_rack_controller_actions: {
+                    method: "general.region_and_rack_controller_actions",
                     data: [],
                     loaded: false,
                     polling: false,

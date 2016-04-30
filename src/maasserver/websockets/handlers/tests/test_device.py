@@ -460,14 +460,14 @@ class TestDeviceHandler(MAASServerTestCase):
             {"system_id": device.system_id, "action": "unknown"})
 
     def test_action_performs_action(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         device = factory.make_Node(owner=user, node_type=NODE_TYPE.DEVICE)
         handler = DeviceHandler(user, {})
         handler.action({"system_id": device.system_id, "action": "delete"})
         self.assertIsNone(reload_object(device))
 
     def test_action_performs_action_passing_extra(self):
-        user = factory.make_User()
+        user = factory.make_admin()
         device = self.make_device_with_ip_address(owner=user)
         zone = factory.make_Zone()
         handler = DeviceHandler(user, {})

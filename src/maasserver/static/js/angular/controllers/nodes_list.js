@@ -52,7 +52,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
         $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
-            "node_actions");
+            "machine_actions");
         $scope.tabs.nodes.actionErrorCount = 0;
         $scope.tabs.nodes.actionProgress = {
             total: 0,
@@ -114,8 +114,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.controllers.filters = SearchService.getEmptyFilter();
         $scope.tabs.controllers.column = 'fqdn';
         $scope.tabs.controllers.actionOption = null;
+        // Rack controllers contain all options
         $scope.tabs.controllers.takeActionOptions = GeneralManager.getData(
-            "controller_actions");
+            "rack_controller_actions");
         $scope.tabs.controllers.actionErrorCount = 0;
         $scope.tabs.controllers.actionProgress = {
             total: 0,

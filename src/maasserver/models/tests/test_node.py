@@ -861,7 +861,7 @@ class TestNode(MAASServerTestCase):
 
     def test_get_effective_power_info_can_be_False_for_rack_controller(self):
         for node_type in (NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                          NODE_TYPE.RACK_CONTROLLER):
+                          NODE_TYPE.REGION_CONTROLLER):
             node = factory.make_Node(node_type=node_type)
             gepp = self.patch(node, "get_effective_power_parameters")
             # For manual the power can never be turned off or on.
@@ -3425,6 +3425,14 @@ class NodeManagerTest(MAASServerTestCase):
             node,
             Node.objects.get_node_or_404(
                 node.system_id, user, NODE_PERMISSION.VIEW))
+
+    def test_get_node_or_404_returns_proper_node_object(self):
+        user = factory.make_User()
+        node = self.make_node(user, node_type=NODE_TYPE.RACK_CONTROLLER)
+        rack = Node.objects.get_node_or_404(
+            node.system_id, user, NODE_PERMISSION.VIEW)
+        self.assertEqual(node, rack)
+        self.assertIsInstance(rack, RackController)
 
     def test_netboot_on(self):
         node = factory.make_Node(netboot=False)

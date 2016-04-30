@@ -45,7 +45,10 @@ from maasserver.models.filesystemgroup import (
     VolumeGroup,
 )
 from maasserver.models.interface import Interface
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Machine,
+    Node,
+)
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.models.partition import (
     Partition,
@@ -1909,9 +1912,9 @@ class TestMachineHandler(MAASServerTestCase):
     def test_action_performs_action_passing_extra(self):
         user = factory.make_User()
         factory.make_SSHKey(user)
-        self.patch(Node, 'on_network').return_value = True
+        self.patch(Machine, 'on_network').return_value = True
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        self.patch(Node, "_start").return_value = None
+        self.patch(Machine, "_start").return_value = None
         osystem = make_usable_osystem(self)
         handler = MachineHandler(user, {})
         handler.action({

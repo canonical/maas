@@ -15,6 +15,7 @@ from maasserver.enum import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     NODE_PERMISSION,
+    NODE_TYPE,
 )
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
@@ -42,9 +43,11 @@ class GeneralHandler(Handler):
             'hwe_kernels',
             'default_min_hwe_kernel',
             'osinfo',
-            'node_actions',
+            'machine_actions',
             'device_actions',
-            'controller_actions',
+            'rack_controller_actions',
+            'region_controller_actions',
+            'region_and_rack_controller_actions',
             'random_hostname',
             'bond_options',
             'version',
@@ -89,41 +92,42 @@ class GeneralHandler(Handler):
             for name, action in actions.items()
             ]
 
-    def node_actions(self, params):
-        """Return all possible node actions."""
-        if self.user.is_superuser:
-            actions = ACTIONS_DICT
-        else:
-            # Standard users will not be able to use any admin actions. Hide
-            # them as they will never be actionable on any node.
-            actions = dict()
-            for name, action in ACTIONS_DICT.items():
-                permission = action.permission
-                if action.node_permission is not None:
-                    permission = action.node_permission
-                if permission != NODE_PERMISSION.ADMIN:
-                    actions[name] = action
+    def _node_actions(self, params, node_type):
+        # Only admins can perform controller actions
+        if (not self.user.is_superuser and node_type in [
+                NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
+            return {}
+
+        actions = dict()
+        for name, action in ACTIONS_DICT.items():
+            if (action.node_permission == NODE_PERMISSION.ADMIN and
+                    not self.user.is_superuser):
+                continue
+            elif node_type in action.for_type:
+                actions[name] = action
         return self.dehydrate_actions(actions)
+
+    def machine_actions(self, params):
+        """Return all possible machine actions."""
+        return self._node_actions(params, NODE_TYPE.MACHINE)
 
     def device_actions(self, params):
         """Return all possible device actions."""
-        # Remove the actions that can only be performed on nodes.
-        actions = {
-            name: action
-            for name, action in ACTIONS_DICT.items()
-            if not action.node_only
-            }
-        return self.dehydrate_actions(actions)
+        return self._node_actions(params, NODE_TYPE.DEVICE)
 
-    def controller_actions(self, params):
-        """Return all possible device actions."""
-        # Remove the actions that can only be performed on nodes.
-        actions = {
-            name: action
-            for name, action in ACTIONS_DICT.items()
-            if not action.node_only
-            }
-        return self.dehydrate_actions(actions)
+    def region_controller_actions(self, params):
+        """Return all possible region controller actions."""
+        return self._node_actions(params, NODE_TYPE.REGION_CONTROLLER)
+
+    def rack_controller_actions(self, params):
+        """Return all possible rack controller actions."""
+        return self._node_actions(params, NODE_TYPE.RACK_CONTROLLER)
+
+    def region_and_rack_controller_actions(self, params):
+        """Return all possible region and rack controller actions."""
+        return self._node_actions(
+            params, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
 
     def random_hostname(self, params):
         """Return a random hostname."""

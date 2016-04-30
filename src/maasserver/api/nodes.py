@@ -8,12 +8,14 @@ __all__ = [
     "store_node_power_parameters",
 ]
 
+from base64 import b64decode
 from itertools import chain
 import json
 
 import bson
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -23,17 +25,21 @@ from maasserver.api.support import (
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_list,
+    get_optional_param,
 )
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_TYPE,
     NODE_TYPE_CHOICES,
 )
 from maasserver.exceptions import (
     ClusterUnavailable,
     MAASAPIBadRequest,
     MAASAPIValidationError,
+    NodeStateViolation,
+    StaticIPAddressExhaustion,
 )
 from maasserver.fields import MAC_RE
 from maasserver.forms import BulkNodeActionForm
@@ -236,28 +242,6 @@ class NodeHandler(OperationsHandler):
         node = get_object_or_404(self.model, system_id=system_id)
         return node.power_parameters
 
-    @operation(idempotent=True)
-    def query_power_state(self, request, system_id):
-        """Query the power state of a node.
-
-        Send a request to the node's power controller which asks it about
-        the node's state.  The reply to this could be delayed by up to
-        30 seconds while waiting for the power controller to respond.
-        Use this method sparingly as it ties up an appserver thread
-        while waiting.
-
-        :param system_id: The node to query.
-        :return: a dict whose key is "state" with a value of one of
-            'on' or 'off'.
-
-        Returns 404 if the node is not found.
-        Returns node's power state.
-        """
-        node = get_object_or_404(self.model, system_id=system_id)
-        return {
-            "state": node.power_query().wait(45),
-        }
-
 
 class AnonNodeHandler(AnonymousOperationsHandler):
     """Anonymous access to Node."""
@@ -413,3 +397,173 @@ class OwnerDataMixin:
         }
         OwnerData.objects.set_owner_data(node, owner_data)
         return node
+
+
+class PowerMixin:
+    """Mixin which adds power commands to a node type."""
+
+    @operation(idempotent=True)
+    def query_power_state(self, request, system_id):
+        """Query the power state of a node.
+
+        Send a request to the node's power controller which asks it about
+        the node's state.  The reply to this could be delayed by up to
+        30 seconds while waiting for the power controller to respond.
+        Use this method sparingly as it ties up an appserver thread
+        while waiting.
+
+        :param system_id: The node to query.
+        :return: a dict whose key is "state" with a value of one of
+            'on' or 'off'.
+
+        Returns 404 if the node is not found.
+        Returns node's power state.
+        """
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.VIEW)
+        return {
+            "state": node.power_query().wait(45),
+        }
+
+    @operation(idempotent=False)
+    def power_on(self, request, system_id):
+        """Turn on a node.
+
+        :param user_data: If present, this blob of user-data to be made
+            available to the nodes through the metadata service.
+        :type user_data: base64-encoded unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Ideally we'd have MIME multipart and content-transfer-encoding etc.
+        deal with the encapsulation of binary data, but couldn't make it work
+        with the framework in reasonable time so went for a dumb, manual
+        encoding instead.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to start the machine.
+        Returns 503 if the start-up attempted to allocate an IP address,
+        and there were no IP addresses available on the relevant cluster
+        interface.
+        """
+        user_data = request.POST.get('user_data', None)
+        comment = get_optional_param(request.POST, 'comment')
+
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        if node.owner is None and node.node_type != NODE_TYPE.RACK_CONTROLLER:
+            raise NodeStateViolation(
+                "Can't start node: it hasn't been allocated.")
+        if user_data is not None:
+            user_data = b64decode(user_data)
+        try:
+            node.start(request.user, user_data=user_data, comment=comment)
+        except StaticIPAddressExhaustion:
+            # The API response should contain error text with the
+            # system_id in it, as that is the primary API key to a node.
+            raise StaticIPAddressExhaustion(
+                "%s: Unable to allocate static IP due to address"
+                " exhaustion." % system_id)
+        return node
+
+    @operation(idempotent=False)
+    def power_off(self, request, system_id):
+        """Power off a node.
+
+        :param stop_mode: An optional power off mode. If 'soft',
+            perform a soft power down if the node's power type supports
+            it, otherwise perform a hard power off. For all values other
+            than 'soft', and by default, perform a hard power off. A
+            soft power off generally asks the OS to shutdown the system
+            gracefully before powering off, while a hard power off
+            occurs immediately without any warning to the OS.
+        :type stop_mode: unicode
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to stop the node.
+        """
+        stop_mode = request.POST.get('stop_mode', 'hard')
+        comment = get_optional_param(request.POST, 'comment')
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        power_action_sent = node.stop(
+            request.user, stop_mode=stop_mode, comment=comment)
+        if power_action_sent:
+            return node
+        else:
+            return None
+
+    @operation(idempotent=False)
+    def mark_broken(self, request, system_id):
+        """Mark a node as 'broken'.
+
+        If the node is allocated, release it first.
+
+        :param comment: Optional comment for the event log. Will be
+            displayed on the node as an error description until marked fixed.
+        :type comment: unicode
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to mark the node
+        broken.
+        """
+        node = self.model.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
+        comment = get_optional_param(request.POST, 'comment')
+        if not comment:
+            # read old error_description to for backward compatibility
+            comment = get_optional_param(request.POST, 'error_description')
+        node.mark_broken(request.user, comment)
+        return node
+
+    @operation(idempotent=False)
+    def mark_fixed(self, request, system_id):
+        """Mark a broken node as fixed and set its status as 'ready'.
+
+        :param comment: Optional comment for the event log.
+        :type comment: unicode
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to mark the machine
+        fixed.
+        """
+        comment = get_optional_param(request.POST, 'comment')
+        node = self.model.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
+        node.mark_fixed(request.user, comment)
+        maaslog.info(
+            "%s: User %s marked node as fixed", node.hostname,
+            request.user.username)
+        return node
+
+
+class PowersMixin:
+    """Mixin which adds power commands to a nodes type."""
+
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request):
+        """Retrieve power parameters for multiple machines.
+
+        :param id: An optional list of system ids.  Only machines with
+            matching system ids will be returned.
+        :type id: iterable
+
+        :return: A dictionary of power parameters, keyed by machine system_id.
+
+        Raises 403 if the user is not an admin.
+        """
+        match_ids = get_optional_list(request.GET, 'id')
+
+        if match_ids is None:
+            machines = self.base_model.objects.all()
+        else:
+            machines = self.base_model.objects.filter(system_id__in=match_ids)
+
+        return {machine.system_id: machine.power_parameters
+                for machine in machines}

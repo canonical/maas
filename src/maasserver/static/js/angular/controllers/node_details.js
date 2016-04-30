@@ -22,7 +22,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.loaded = false;
         $scope.node = null;
         $scope.actionOption = null;
-        $scope.allActionOptions = GeneralManager.getData("node_actions");
+        $scope.allActionOptions = GeneralManager.getData("machine_actions");
         $scope.availableActionOptions = [];
         $scope.actionError = null;
         $scope.power_types = GeneralManager.getData("power_types");

@@ -8,7 +8,6 @@ __all__ = [
     "get_storage_layout_params",
 ]
 
-from base64 import b64decode
 import re
 
 from django.conf import settings
@@ -29,6 +28,8 @@ from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
     OwnerDataMixin,
+    PowerMixin,
+    PowersMixin,
     store_node_power_parameters,
 )
 from maasserver.api.support import (
@@ -50,7 +51,6 @@ from maasserver.exceptions import (
     MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
-    StaticIPAddressExhaustion,
     Unauthorized,
 )
 from maasserver.forms import (
@@ -178,7 +178,7 @@ def get_storage_layout_params(request, required=False, extract_params=False):
     return storage_layout, params
 
 
-class MachineHandler(NodeHandler, OwnerDataMixin):
+class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
     """Manage an individual Machine.
 
     The Machine is identified by its system_id.
@@ -278,36 +278,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin):
         return ('machine_handler', (machine_system_id, ))
 
     @operation(idempotent=False)
-    def power_off(self, request, system_id):
-        """Power off a machine.
-
-        :param stop_mode: An optional power off mode. If 'soft',
-            perform a soft power down if the machine's power type supports
-            it, otherwise perform a hard power off. For all values other
-            than 'soft', and by default, perform a hard power off. A
-            soft power off generally asks the OS to shutdown the system
-            gracefully before powering off, while a hard power off
-            occurs immediately without any warning to the OS.
-        :type stop_mode: unicode
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to stop the machine.
-        """
-        stop_mode = request.POST.get('stop_mode', 'hard')
-        comment = get_optional_param(request.POST, 'comment')
-        machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
-        power_action_sent = machine.stop(
-            request.user, stop_mode=stop_mode, comment=comment)
-        if power_action_sent:
-            return machine
-        else:
-            return None
-
-    @operation(idempotent=False)
     def deploy(self, request, system_id):
         """Deploy an operating system to a machine.
 
@@ -361,48 +331,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin):
             else:
                 raise MAASAPIValidationError(form.errors)
         return self.power_on(request, system_id)
-
-    @operation(idempotent=False)
-    def power_on(self, request, system_id):
-        """Turn on a machine.
-
-        :param user_data: If present, this blob of user-data to be made
-            available to the machines through the metadata service.
-        :type user_data: base64-encoded unicode
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-
-        Ideally we'd have MIME multipart and content-transfer-encoding etc.
-        deal with the encapsulation of binary data, but couldn't make it work
-        with the framework in reasonable time so went for a dumb, manual
-        encoding instead.
-
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to start the machine.
-        Returns 503 if the start-up attempted to allocate an IP address,
-        and there were no IP addresses available on the relevant cluster
-        interface.
-        """
-        user_data = request.POST.get('user_data', None)
-        comment = get_optional_param(request.POST, 'comment')
-
-        machine = self.model.objects.get_node_or_404(
-            system_id=system_id, user=request.user,
-            perm=NODE_PERMISSION.EDIT)
-        if machine.owner is None:
-            raise NodeStateViolation(
-                "Can't start machine: it hasn't been allocated.")
-        if user_data is not None:
-            user_data = b64decode(user_data)
-        try:
-            machine.start(request.user, user_data=user_data, comment=comment)
-        except StaticIPAddressExhaustion:
-            # The API response should contain error text with the
-            # system_id in it, as that is the primary API key to a machine.
-            raise StaticIPAddressExhaustion(
-                "%s: Unable to allocate static IP due to address"
-                " exhaustion." % system_id)
-        return machine
 
     @operation(idempotent=False)
     def release(self, request, system_id):
@@ -654,65 +582,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin):
                 get_curtin_merged_config(machine), default_flow_style=False),
             content_type='text/plain')
 
-    @operation(idempotent=False)
-    def mark_broken(self, request, system_id):
-        """Mark a machine as 'broken'.
-
-        If the machine is allocated, release it first.
-
-        :param comment: Optional comment for the event log. Will be
-            displayed on the Node as an error description until marked fixed.
-        :type comment: unicode
-
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to mark the machine
-        broken.
-        """
-        node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
-        comment = get_optional_param(request.POST, 'comment')
-        if not comment:
-            # read old error_description to for backward compatibility
-            comment = get_optional_param(request.POST, 'error_description')
-        node.mark_broken(request.user, comment)
-        return node
-
-    @operation(idempotent=False)
-    def mark_fixed(self, request, system_id):
-        """Mark a broken machine as fixed and set its status as 'ready'.
-
-        :param comment: Optional comment for the event log.
-        :type comment: unicode
-
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission to mark the machine
-        fixed.
-        """
-        comment = get_optional_param(request.POST, 'comment')
-        node = self.model.objects.get_node_or_404(
-            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
-        node.mark_fixed(request.user, comment)
-        maaslog.info(
-            "%s: User %s marked machine as fixed", node.hostname,
-            request.user.username)
-        return node
-
-    @operation(idempotent=False)
-    def set_owner_data(self, request, system_id):
-        """Set key/value data for the current owner.
-
-        Pass any key/value data to this method to add, modify, or remove. A key
-        is removed when the value for that key is set to an empty string.
-
-        This operation will not remove any previous keys unless explicitly
-        passed with an empty string. All owner data is removed when the machine
-        is no longer allocated to a user.
-
-        Returns 404 if the machine is not found.
-        Returns 403 if the user does not have permission.
-        """
-        return super().set_owner_data(request, system_id)
-
 
 def create_machine(request):
     """Service an http request to create a machine.
@@ -857,7 +726,7 @@ class AnonMachinesHandler(AnonNodesHandler):
         return ('machines_handler', [])
 
 
-class MachinesHandler(NodesHandler):
+class MachinesHandler(NodesHandler, PowersMixin):
     """Manage the collection of all the machines in the MAAS."""
     api_doc_section_name = "Machines"
     anonymous = AnonMachinesHandler
@@ -1184,29 +1053,6 @@ class MachinesHandler(NodesHandler):
                 machine.constraints_by_type['verbose_storage'] = storage
                 machine.constraints_by_type['verbose_interfaces'] = interfaces
             return machine
-
-    @admin_method
-    @operation(idempotent=True)
-    def power_parameters(self, request):
-        """Retrieve power parameters for multiple machines.
-
-        :param id: An optional list of system ids.  Only machines with
-            matching system ids will be returned.
-        :type id: iterable
-
-        :return: A dictionary of power parameters, keyed by machine system_id.
-
-        Raises 403 if the user is not an admin.
-        """
-        match_ids = get_optional_list(request.GET, 'id')
-
-        if match_ids is None:
-            machines = self.base_model.objects.all()
-        else:
-            machines = self.base_model.objects.filter(system_id__in=match_ids)
-
-        return {machine.system_id: machine.power_parameters
-                for machine in machines}
 
     @admin_method
     @operation(idempotent=False)

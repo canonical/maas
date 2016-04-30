@@ -11,7 +11,6 @@ from maasserver.enum import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     BOOT_RESOURCE_TYPE,
-    NODE_PERMISSION,
 )
 from maasserver.models import BootSourceCache
 from maasserver.models.config import Config
@@ -105,40 +104,60 @@ class TestGeneralHandler(MAASServerTestCase):
         }
         self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
 
-    def test_node_actions_for_admin(self):
+    def test_machine_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         actions_expected = self.dehydrate_actions(ACTIONS_DICT)
-        self.assertItemsEqual(actions_expected, handler.node_actions({}))
+        self.assertItemsEqual(actions_expected, handler.machine_actions({}))
 
-    def test_node_actions_for_non_admin(self):
+    def test_machine_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        actions_expected = dict()
-        for name, action in ACTIONS_DICT.items():
-            permission = action.permission
-            if action.node_permission is not None:
-                permission = action.node_permission
-            if permission != NODE_PERMISSION.ADMIN:
-                actions_expected[name] = action
-        actions_expected = self.dehydrate_actions(actions_expected)
-        self.assertItemsEqual(actions_expected, handler.node_actions({}))
+        self.assertItemsEqual(
+            ['release', 'mark-broken', 'on', 'deploy', 'mark-fixed',
+             'commission', 'abort', 'acquire', 'off'],
+            [action['name'] for action in handler.machine_actions({})])
+
+    def test_device_actions_for_admin(self):
+        handler = GeneralHandler(factory.make_admin(), {})
+        self.assertItemsEqual(
+            ['set-zone', 'delete'],
+            [action['name'] for action in handler.device_actions({})])
 
     def test_device_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        actions_expected = self.dehydrate_actions({
-            name: action
-            for name, action in ACTIONS_DICT.items()
-            if not action.node_only
-            })
-        self.assertItemsEqual(actions_expected, handler.device_actions({}))
+        self.assertItemsEqual([], handler.device_actions({}))
 
-    def test_controller_actions_for_non_admin(self):
+    def test_region_controller_actions_for_admin(self):
+        handler = GeneralHandler(factory.make_admin(), {})
+        self.assertItemsEqual(
+            ['set-zone', 'delete'],
+            [action['name']
+             for action in handler.region_controller_actions({})])
+
+    def test_region_controller_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {})
-        actions_expected = self.dehydrate_actions({
-            name: action
-            for name, action in ACTIONS_DICT.items()
-            if not action.node_only
-            })
-        self.assertItemsEqual(actions_expected, handler.controller_actions({}))
+        self.assertItemsEqual([], handler.region_controller_actions({}))
+
+    def test_rack_controller_actions_for_admin(self):
+        handler = GeneralHandler(factory.make_admin(), {})
+        self.assertItemsEqual(
+            ['delete', 'mark-broken', 'mark-fixed', 'off', 'on', 'set-zone'],
+            [action['name'] for action in handler.rack_controller_actions({})])
+
+    def test_rack_controller_actions_for_non_admin(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertItemsEqual([], handler.rack_controller_actions({}))
+
+    def test_region_and_rack_controller_actions_for_admin(self):
+        handler = GeneralHandler(factory.make_admin(), {})
+        self.assertItemsEqual(
+            ['set-zone', 'delete'],
+            [action['name']
+             for action in handler.region_and_rack_controller_actions({})])
+
+    def test_region_and_rack_controller_actions_for_non_admin(self):
+        handler = GeneralHandler(factory.make_User(), {})
+        self.assertItemsEqual(
+            [], handler.region_and_rack_controller_actions({}))
 
     def test_random_hostname_checks_hostname_existence(self):
         existing_node = factory.make_Node(hostname="hostname")

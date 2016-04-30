@@ -471,7 +471,7 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         node = get_object_or_404(
             self.model, system_id=system_id, **kwargs)
         if user.has_perm(perm, node):
-            return node
+            return typecast_to_node_type(node)
         else:
             raise PermissionDenied()
 
@@ -1823,7 +1823,8 @@ class Node(CleanSave, TimestampedModel):
 
         # boot_mode is something that tells the template whether this is
         # a PXE boot or a local HD boot.
-        if self.status == NODE_STATUS.DEPLOYED:
+        if (self.status == NODE_STATUS.DEPLOYED or
+                self.node_type != NODE_TYPE.MACHINE):
             power_params['boot_mode'] = 'local'
         else:
             power_params['boot_mode'] = 'pxe'
@@ -1854,7 +1855,7 @@ class Node(CleanSave, TimestampedModel):
             return PowerInfo(False, False, False, None, None)
         else:
             if power_type == 'manual' or self.node_type in (
-                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_CONTROLLER,
                     NODE_TYPE.REGION_AND_RACK_CONTROLLER):
                 can_be_started = False
                 can_be_stopped = False
@@ -2598,7 +2599,8 @@ class Node(CleanSave, TimestampedModel):
                 return "xinstall"
             else:
                 return "local"
-        elif self.status == NODE_STATUS.DEPLOYED:
+        elif (self.status == NODE_STATUS.DEPLOYED or
+                self.node_type != NODE_TYPE.MACHINE):
             return "local"
         else:
             return "poweroff"

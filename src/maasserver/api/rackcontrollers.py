@@ -12,6 +12,8 @@ from django.http import HttpResponse
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
+    PowerMixin,
+    PowersMixin,
 )
 from maasserver.api.support import (
     admin_method,
@@ -68,7 +70,7 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
 )
 
 
-class RackControllerHandler(NodeHandler):
+class RackControllerHandler(NodeHandler, PowerMixin):
     """Manage an individual rack controller.
 
     The rack controller is identified by its system_id.
@@ -173,7 +175,7 @@ class RackControllerHandler(NodeHandler):
         return ('rackcontroller_handler', (rackcontroller_id, ))
 
 
-class RackControllersHandler(NodesHandler):
+class RackControllersHandler(NodesHandler, PowersMixin):
     """Manage the collection of all rack controllers in MAAS."""
     api_doc_section_name = "RackControllers"
     base_model = RackController

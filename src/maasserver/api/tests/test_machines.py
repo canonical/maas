@@ -1464,59 +1464,6 @@ class TestMachinesAPI(APITestCase):
         machine = reload_object(machine)
         self.assertEqual(original_zone, machine.zone)
 
-    def test_GET_power_parameters_requires_admin(self):
-        response = self.client.get(
-            reverse('machines_handler'),
-            {
-                'op': 'power_parameters',
-            })
-        self.assertEqual(
-            http.client.FORBIDDEN, response.status_code, response.content)
-
-    def test_GET_power_parameters_without_ids_does_not_filter(self):
-        self.become_admin()
-        machines = [
-            factory.make_Node(power_parameters={factory.make_string():
-                                                factory.make_string()})
-            for _ in range(0, 3)
-        ]
-        response = self.client.get(
-            reverse('machines_handler'),
-            {
-                'op': 'power_parameters',
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        expected = {
-            machine.system_id: machine.power_parameters
-            for machine in machines
-        }
-        self.assertEqual(expected, parsed)
-
-    def test_GET_power_parameters_with_ids_filters(self):
-        self.become_admin()
-        machines = [
-            factory.make_Node(power_parameters={factory.make_string():
-                                                factory.make_string()})
-            for _ in range(0, 6)
-        ]
-        expected_machines = random.sample(machines, 3)
-        response = self.client.get(
-            reverse('machines_handler'),
-            {
-                'op': 'power_parameters',
-                'id': [machine.system_id for machine in expected_machines],
-            })
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content)
-        parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        expected = {
-            machine.system_id: machine.power_parameters
-            for machine in expected_machines
-        }
-        self.assertEqual(expected, parsed)
-
     def test_POST_add_chassis_requires_admin(self):
         response = self.client.post(
             reverse('machines_handler'),

@@ -74,7 +74,7 @@ class FakeNodeAction(NodeAction):
     display = "Action label"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.VIEW
-    node_only = False
+    for_type = [NODE_TYPE.MACHINE]
 
     # For testing: an inhibition for inhibit() to return.
     fake_inhibition = None
@@ -241,6 +241,14 @@ class TestNodeAction(MAASServerTestCase):
             actionable_statuses = [NODE_STATUS.ALLOCATED]
 
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
+
+    def test_is_actionable_checks_permission(self):
+
+        class MyAction(FakeNodeAction):
+            node_permission = NODE_PERMISSION.ADMIN
+
+        node = factory.make_Node()
         self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
 
 

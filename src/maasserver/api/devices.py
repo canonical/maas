@@ -12,7 +12,6 @@ from maasserver.api.nodes import (
     NodesHandler,
     OwnerDataMixin,
 )
-from maasserver.api.support import operation
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
@@ -116,21 +115,6 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             perm=NODE_PERMISSION.EDIT)
         device.delete()
         return rc.DELETED
-
-    @operation(idempotent=False)
-    def set_owner_data(self, request, system_id):
-        """Set key/value data for the current owner.
-
-        Pass any key/value data to this method to add, modify, or remove. A key
-        is removed when the value for that key is set to an empty string.
-
-        This operation will not remove any previous keys unless explicitly
-        passed with an empty string.
-
-        Returns 404 if the device is not found.
-        Returns 403 if the user does not have permission.
-        """
-        return super().set_owner_data(request, system_id)
 
     @classmethod
     def resource_uri(cls, device=None):

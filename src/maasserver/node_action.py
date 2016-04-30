@@ -31,6 +31,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
 )
 from maasserver.exceptions import (
@@ -83,11 +84,10 @@ class NodeAction(metaclass=ABCMeta):
         Will be used as the label for the action's button.
         """)
 
-    node_only = abstractproperty("""
-        Can only be performed when the node type is node.
+    for_type = abstractproperty("""
+        Can only be performed when the node type is in the for_type set.
 
-        A boolean value.  True for only available for node_type node, false
-        otherwise.
+        A list of NODE_TYPEs which are applicable for this action.
         """)
 
     actionable_statuses = abstractproperty("""
@@ -124,9 +124,12 @@ class NodeAction(metaclass=ABCMeta):
         If the node is not node_type node then actionable_statuses will not
         be used, as the status doesn't matter for a non-node type.
         """
-        if self.node_only and not self.node.node_type == NODE_TYPE.MACHINE:
+        if self.node.node_type not in self.for_type:
             return False
-        if self.node.node_type == NODE_TYPE.MACHINE:
+        elif (self.node_permission == NODE_PERMISSION.ADMIN and
+                not self.user.is_superuser):
+            return False
+        elif self.node.node_type == NODE_TYPE.MACHINE:
             return self.node.status in self.actionable_statuses
         return True
 
@@ -181,7 +184,7 @@ class Delete(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
-    node_only = False
+    for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
 
     def execute(self):
         """Redirect to the delete view's confirmation page.
@@ -201,7 +204,7 @@ class SetZone(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.EDIT
     node_permission = NODE_PERMISSION.ADMIN
-    node_only = False
+    for_type = {i for i, _ in enumerate(NODE_TYPE_CHOICES)}
 
     def execute(self, zone_id=None):
         """See `NodeAction.execute`."""
@@ -225,7 +228,7 @@ class Commission(NodeAction):
         NODE_STATUS.BROKEN,
     )
     permission = NODE_PERMISSION.ADMIN
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(
             self, enable_ssh=False, skip_networking=False,
@@ -256,7 +259,7 @@ class Abort(NodeAction):
         NODE_STATUS.DEPLOYING
     )
     permission = NODE_PERMISSION.ADMIN
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -273,7 +276,7 @@ class Acquire(NodeAction):
     display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -288,7 +291,7 @@ class Deploy(NodeAction):
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.VIEW
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self, osystem=None, distro_series=None, hwe_kernel=None):
         """See `NodeAction.execute`."""
@@ -334,7 +337,7 @@ class PowerOn(NodeAction):
         NODE_STATUS.BROKEN,
     )
     permission = NODE_PERMISSION.EDIT
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -366,7 +369,7 @@ class PowerOff(NodeAction):
     # Let a user power off a node in any non-active status.
     actionable_statuses = NON_MONITORED_STATUSES
     permission = NODE_PERMISSION.EDIT
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -395,7 +398,7 @@ class Release(NodeAction):
         NODE_STATUS.FAILED_DISK_ERASING,
     )
     permission = NODE_PERMISSION.EDIT
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -423,7 +426,7 @@ class MarkBroken(NodeAction):
         NODE_STATUS.DISK_ERASING,
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -437,7 +440,7 @@ class MarkFixed(NodeAction):
     display_sentence = "marked fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
-    node_only = True
+    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
 
     def execute(self):
         """See `NodeAction.execute`."""

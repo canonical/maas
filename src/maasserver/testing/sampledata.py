@@ -299,6 +299,40 @@ def populate(seed="sampledata"):
         alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.3",
         subnet=subnet_3, interface=bond0_10)
 
+    # Region controller (happy-region)
+    #   eth0     - fabric 0 - untagged
+    #   eth1     - fabric 0 - untagged
+    #   eth2     - fabric 1 - untagged - 172.16.2.4/24 - static
+    #   bond0    - fabric 0 - untagged - 172.16.1.4/24 - static
+    #   bond0.10 - fabric 0 - 10       - 172.16.3.4/24 - static
+    region = factory.make_Node(
+        node_type=NODE_TYPE.REGION_CONTROLLER,
+        hostname="happy-region", interface=False)
+    eth0 = factory.make_Interface(
+        INTERFACE_TYPE.PHYSICAL, name="eth0",
+        node=region, vlan=fabric0_untagged)
+    eth1 = factory.make_Interface(
+        INTERFACE_TYPE.PHYSICAL, name="eth1",
+        node=region, vlan=fabric0_untagged)
+    eth2 = factory.make_Interface(
+        INTERFACE_TYPE.PHYSICAL, name="eth2",
+        node=region, vlan=fabric1_untagged)
+    bond0 = factory.make_Interface(
+        INTERFACE_TYPE.BOND, name="bond0",
+        node=region, vlan=fabric0_untagged, parents=[eth0, eth1])
+    bond0_10 = factory.make_Interface(
+        INTERFACE_TYPE.VLAN, node=region,
+        vlan=fabric0_vlan10, parents=[bond0])
+    factory.make_StaticIPAddress(
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.1.4",
+        subnet=subnet_1, interface=bond0)
+    factory.make_StaticIPAddress(
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.2.4",
+        subnet=subnet_2, interface=eth2)
+    factory.make_StaticIPAddress(
+        alloc_type=IPADDRESS_TYPE.STICKY, ip="172.16.3.4",
+        subnet=subnet_3, interface=bond0_10)
+
     # Create one machine for every status. Each machine has a random interface
     # and storage configration.
     node_statuses = [
