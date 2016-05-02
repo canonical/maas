@@ -56,7 +56,8 @@ class TestAPCSNMP(MAASTestCase):
 
         apc.run_process(command)
         self.assertThat(
-            apc_module.Popen, MockCalledOnceWith(command.split(), stdout=PIPE))
+            apc_module.Popen, MockCalledOnceWith(
+                command.split(), stdout=PIPE, stderr=PIPE))
 
     def test_run_process_returns_result(self):
         ip = factory.make_ipv4_address()

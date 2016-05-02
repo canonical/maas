@@ -46,7 +46,7 @@ class APCException(Exception):
 class APCSNMP:
 
     def run_process(self, command):
-        proc = Popen(command.split(), stdout=PIPE)
+        proc = Popen(command.split(), stdout=PIPE, stderr=PIPE)
         stdout, stderr = proc.communicate()
 
         if proc.returncode != 0:
