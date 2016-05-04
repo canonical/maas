@@ -13,7 +13,7 @@ from maasserver import eventloop
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils.threads import deferToDatabase
+from maastesting.factory import factory
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
 from testtools.matchers import (
@@ -27,7 +27,11 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesSetwise,
 )
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    CancelledError,
+    fail,
+    inlineCallbacks,
+)
 
 
 is_valid_port = MatchesAll(
@@ -68,6 +72,41 @@ class RPCViewTest(MAASTransactionServerTestCase):
         info = json.loads(response.content.decode("unicode_escape"))
         self.assertEqual({"eventloops": None}, info)
 
+    def simulateExceptionInAdvertiseService(self, exception):
+        # Simulate a time-out when getting the advertising instance.
+        eventloop.loop.populate().wait(2.0)
+        advertiser = eventloop.services.getServiceNamed("rpc-advertise")
+        self.patch(advertiser, "_tryPromote")
+        advertiser._tryPromote.return_value = fail(exception)
+
+    def test_rpc_info_when_rpc_advertise_not_fully_started(self):
+        self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
+
+        # Simulate a time-out when getting the advertising instance.
+        self.simulateExceptionInAdvertiseService(CancelledError())
+
+        eventloop.start().wait(2.0)
+        self.addCleanup(lambda: eventloop.reset().wait(5))
+
+        response = self.client.get(reverse('rpc-info'))
+        self.assertEqual("application/json", response["Content-Type"])
+        info = json.loads(response.content.decode("unicode_escape"))
+        self.assertEqual({"eventloops": None}, info)
+
+    def test_rpc_info_when_rpc_advertise_startup_failed(self):
+        self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
+
+        # Simulate a crash when the rpc-advertise service starts.
+        self.simulateExceptionInAdvertiseService(factory.make_exception())
+
+        eventloop.start().wait(2.0)
+        self.addCleanup(lambda: eventloop.reset().wait(5))
+
+        response = self.client.get(reverse('rpc-info'))
+        self.assertEqual("application/json", response["Content-Type"])
+        info = json.loads(response.content.decode("unicode_escape"))
+        self.assertEqual({"eventloops": None}, info)
+
     def test_rpc_info_when_rpc_advertise_running(self):
         self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
 
@@ -84,7 +123,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
             yield getServiceNamed("rpc-advertise").starting
             # Force an update, because it's very hard to track when the
             # first iteration of the rpc-advertise service has completed.
-            yield deferToDatabase(getServiceNamed("rpc-advertise").update)
+            yield getServiceNamed("rpc-advertise")._tryUpdate()
         wait_for_startup()
 
         response = self.client.get(reverse('rpc-info'))

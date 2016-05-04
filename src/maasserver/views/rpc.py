@@ -15,6 +15,10 @@ import json
 
 from django.http import HttpResponse
 from maasserver import eventloop
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    FOREVER,
+)
 
 
 def info(request):
@@ -29,26 +33,43 @@ def info(request):
     instead ask again later.
 
     """
-    try:
-        advertiser = eventloop.services.getServiceNamed("rpc-advertise")
-    except KeyError:
-        # RPC advertising service has not been created, so we declare
-        # that there are no endpoints *at all*.
+    advertising = _getAdvertisingInstance()
+    if advertising is None:
+        # RPC advertising service is not running, so we declare that there are
+        # no endpoints *at all*.
         endpoints = None
     else:
-        if advertiser.running:
-            endpoints = {}
-            for name, addr, port in advertiser.dump():
-                if name in endpoints:
-                    endpoints[name].append((addr, port))
-                else:
-                    endpoints[name] = [(addr, port)]
-        else:
-            # RPC advertising service is not running, so we declare that
-            # there are no endpoints *at all*.
-            endpoints = None
+        endpoints = {}
+        for name, addr, port in advertising.dump():
+            if name in endpoints:
+                endpoints[name].append((addr, port))
+            else:
+                endpoints[name] = [(addr, port)]
 
     # Each endpoint is an entry point into this event-loop.
     info = {"eventloops": endpoints}
 
     return HttpResponse(json.dumps(info), content_type="application/json")
+
+
+@asynchronous(timeout=FOREVER)
+def _getAdvertisingInstance():
+    """Return the currently active :class:`RegionAdvertising` instance.
+
+    Or `None` if the RPC advertising service is not running, has failed to
+    start-up, or takes too long to start.
+    """
+    try:
+        advertiser = eventloop.services.getServiceNamed("rpc-advertise")
+    except KeyError:
+        # The advertising service has not been created.
+        return None
+    else:
+        if advertiser.running:
+            # Wait a short time in case the advertising service is still
+            # starting. Errors may arise from a failure during its start-up,
+            # but suppress them here because they are logged elsewhere.
+            return advertiser.advertising.get(1.0).addErrback(lambda _: None)
+        else:
+            # The advertising service is not running.
+            return None

@@ -5,9 +5,11 @@
 
 __all__ = [
     'asynchronous',
+    'call',
     'callInReactor',
     'callInReactorWithTimeout',
     'callOut',
+    'callOutToThread',
     'deferred',
     'DeferredValue',
     'deferToNewThread',
@@ -372,6 +374,29 @@ def deferWithTimeout(timeout, func=None, *args, **kwargs):
     return d.addBoth(done)
 
 
+def call(_, func, *args, **kwargs):
+    """Call the given `func`, discarding the first argument.
+
+    For example, where ``doSomethingElse`` needs to become part of the
+    callback chain, is not interested in the result of the previous step, but
+    which produces an interesting result itself::
+
+      d = doSomethingImportant()
+      d.addCallback(call, doSomethingElse)
+      d.addCallback(doSomethingWithTheResult)
+
+    Often this would be handled by allowing a disposable first argument in
+    ``doSomethingElse``, or with an ugly ``lambda``::
+
+      d = doSomethingImportant()
+      d.addCallback(lambda ignore_this: doSomethingElse())
+      d.addCallback(doSomethingWithTheResult)
+
+    :return: :class:`Deferred`.
+    """
+    return maybeDeferred(func, *args, **kwargs)
+
+
 def callOut(thing, func, *args, **kwargs):
     """Call out to the given `func`, but return `thing`.
 
@@ -388,6 +413,8 @@ def callOut(thing, func, *args, **kwargs):
     Note also that if the call-out raises an exception, this will be
     propagated; nothing is done to suppress the exception or preserve the
     result in this case.
+
+    :return: :class:`Deferred`.
     """
     return maybeDeferred(func, *args, **kwargs).addCallback(lambda _: thing)
 
@@ -408,6 +435,8 @@ def callOutToThread(thing, func, *args, **kwargs):
     Note also that if the call-out raises an exception, this will be
     propagated; nothing is done to suppress the exception or preserve the
     result in this case.
+
+    :return: :class:`Deferred`.
     """
     return deferToThread(func, *args, **kwargs).addCallback(lambda _: thing)
 

@@ -40,6 +40,7 @@ from mock import (
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
+    call,
     callInReactor,
     callInReactorWithTimeout,
     callOut,
@@ -677,6 +678,29 @@ class TestDeferWithTimeout(MAASTestCase):
 
         # The timeout has already been cancelled.
         self.assertThat(clock.getDelayedCalls(), Equals([]))
+
+
+class TestCall(MAASTestCase):
+    """Tests for `call`."""
+
+    def test__without_arguments(self):
+        func = Mock(return_value=sentinel.something)
+        # The result going in is discarded; func's result is passed on.
+        d = call(sentinel.result, func)
+        self.assertThat(extract_result(d), Is(sentinel.something))
+        self.assertThat(func, MockCalledOnceWith())
+
+    def test__with_arguments(self):
+        func = Mock(return_value=sentinel.something)
+        # The result going in is discarded; func's result is passed on.
+        d = call(sentinel.r, func, sentinel.a, sentinel.b, c=sentinel.c)
+        self.assertThat(extract_result(d), Is(sentinel.something))
+        self.assertThat(func, MockCalledOnceWith(
+            sentinel.a, sentinel.b, c=sentinel.c))
+
+    def test__does_not_suppress_errors(self):
+        d = call(sentinel.result, operator.truediv, 0, 0)
+        self.assertRaises(ZeroDivisionError, extract_result, d)
 
 
 class TestCallOut(MAASTestCase):
