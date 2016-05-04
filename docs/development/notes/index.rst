@@ -13,3 +13,4 @@ the development team, that might be useful to developers.
 
    check-imports
    unhandled-error-in-deferred
+   anatomy-of-recommissioning-in-maas-2.0
