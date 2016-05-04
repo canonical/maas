@@ -1276,6 +1276,14 @@ class Node(CleanSave, TimestampedModel):
 
     def save(self, *args, **kwargs):
         super(Node, self).save(*args, **kwargs)
+        # We let hostname be blank for the initial save, but fix it before the
+        # save completes.  This is because set_random_hostname() operates by
+        # trying to re-save the node with a random hostname, and retrying until
+        # there is no conflict.  The end result is that no IP addresses will
+        # ever be linked to any node that has a blank hostname, since the node
+        # must be saved for there to be any linkage to it from an interface.
+        if self.hostname == '':
+            self.set_random_hostname()
         self.remove_orphaned_bmcs()
 
     def display_status(self):

@@ -125,7 +125,6 @@ from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
 )
-from maasserver.utils import strip_domain
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -1127,15 +1126,11 @@ class WithMACAddressesMixin:
                 raise ValidationError({
                     "mac_addresses": mac_addresses_errors
                     })
-        hostname = self.cleaned_data['hostname']
-        stripped_hostname = strip_domain(hostname)
         # Generate a hostname for this node if the provided hostname is
         # IP-based (because this means that this name comes from a DNS
-        # reverse query to the MAAS DNS) or an empty string.
-        generate_hostname = (
-            hostname == "" or
-            IP_BASED_HOSTNAME_REGEXP.match(stripped_hostname) is not None)
-        if generate_hostname:
+        # reverse query to the MAAS DNS).  If the provided hostname was empty,
+        # that was randomized in Node.save().
+        if IP_BASED_HOSTNAME_REGEXP.match(node.hostname) is not None:
             node.set_random_hostname()
         return node
 

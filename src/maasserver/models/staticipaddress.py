@@ -310,7 +310,7 @@ class StaticIPAddressManager(Manager):
         if isinstance(domain_or_subnet, Subnet):
             search_term = "staticip.subnet_id"
         elif isinstance(domain_or_subnet, Domain):
-            # The model has nodes int he parent domain, but they actually live
+            # The model has nodes in the parent domain, but they actually live
             # in the child domain.  And the parent needs the glue.  So we
             # return such nodes addresses in _BOTH_ the parent and the child
             # domains. domain2.name will be non-null if this host's fqdn is the

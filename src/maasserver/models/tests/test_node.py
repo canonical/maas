@@ -185,6 +185,10 @@ class TestTypeCastNode(MAASServerTestCase):
             [Device, Machine, Node, RackController, RegionController])
         self.assertRaises(AssertionError, typecast_node, node, cast_to)
 
+    def test_sets_hostname_if_blank(self):
+        node = factory.make_Node(hostname='')
+        self.assertNotEqual('', node.hostname)
+
 
 class TestTypeCastToNodeType(MAASServerTestCase):
     def test_cast_to_machine(self):
