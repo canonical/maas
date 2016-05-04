@@ -7,11 +7,16 @@
 angular.module('MAAS').filter('filterByFabric', function() {
     return function(vlans, fabric) {
         var filtered = [];
-        if(!angular.isObject(fabric)) {
+        var id;
+        if(angular.isObject(fabric)) {
+            id = fabric.id;
+        } else if(angular.isNumber(fabric)) {
+            id = fabric;
+        } else {
             return filtered;
         }
         angular.forEach(vlans, function(vlan) {
-            if(vlan.fabric === fabric.id) {
+            if(vlan.fabric === id) {
                 filtered.push(vlan);
             }
         });

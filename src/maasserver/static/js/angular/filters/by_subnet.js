@@ -7,11 +7,16 @@
 angular.module('MAAS').filter('filterBySubnet', function() {
     return function(foreign_objects, subnet) {
         var filtered = [];
-        if(!angular.isObject(subnet)) {
+        var id;
+        if(angular.isObject(subnet)) {
+            id = subnet.id;
+        } else if(angular.isNumber(subnet)) {
+            id = subnet;
+        } else {
             return filtered;
         }
         angular.forEach(foreign_objects, function(obj) {
-            if(obj.subnet === subnet.id) {
+            if(obj.subnet === id) {
                 filtered.push(obj);
             }
         });

@@ -34,16 +34,16 @@ angular.module('MAAS').controller('NetworksListController', [
         $scope.ADD_FABRIC_ACTION = {
             name: "add_fabric",
             title: "Fabric",
-            selectedTitle: "Add Fabric",
+            selectedTitle: "Add fabric",
             form:
             {
                 items: [
                     {
                         title: "Name",
-                        placeholder: "Fabric name"
+                        placeholder: "Fabric name (optional)"
                     }
                 ],
-                submit: "Add Fabric",
+                submit: "Add fabric",
                 manager: FabricsManager
             }
         };
@@ -75,23 +75,23 @@ angular.module('MAAS').controller('NetworksListController', [
         $scope.ADD_SPACE_ACTION = {
             name: "add_space",
             title: "Space",
-            selectedTitle: "Add Space",
+            selectedTitle: "Add space",
             form:
             {
                 items: [
                     {
                         title: "Name",
-                        placeholder: "Space name"
+                        placeholder: "Space name (optional)"
                     }
                 ],
-                submit: "Add Space",
+                submit: "Add space",
                 manager: SpacesManager
             }
         };
         $scope.ADD_SUBNET_ACTION = {
             name: "add_subnet",
             title: "Subnet",
-            selectedTitle: "Add Subnet",
+            selectedTitle: "Add subnet",
             form:
             {
                 items: [
@@ -117,14 +117,14 @@ angular.module('MAAS').controller('NetworksListController', [
                     },
                     {
                         title: "Gateway IP",
-                        placeholder: "169.254.0.1"
+                        placeholder: "169.254.0.1 (optional)"
                     },
                     {
                         title: "DNS Servers",
-                        placeholder: "8.8.8.8 8.8.4.4"
+                        placeholder: "8.8.8.8 8.8.4.4 (optional)"
                     }
                 ],
-                submit: "Add Subnet",
+                submit: "Add subnet",
                 manager: SubnetsManager
             }
 

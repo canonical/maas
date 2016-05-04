@@ -23,10 +23,7 @@ angular.module('MAAS').controller('SubnetDetailsController', [
         // Initial values.
         $scope.loaded = false;
         $scope.subnet = null;
-        $scope.space = null;
-        $scope.vlan = null;
-        $scope.fabric = null;
-        $scope.all_dns_servers = "";
+        $scope.subnetManager = SubnetsManager;
         $scope.ipranges = IPRangesManager.getItems();
         $scope.spaces = SpacesManager.getItems();
         $scope.vlans = VLANsManager.getItems();
@@ -44,23 +41,8 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             }
         }
 
-        // Called when the dns_servers array is updated.
-        $scope.updateDNSServers = function() {
-            var subnet = $scope.subnet;
-            if(angular.isObject(subnet) &&
-                angular.isArray(subnet.dns_servers)) {
-                $scope.all_dns_servers = subnet.dns_servers.join(" ");
-            } else {
-                $scope.all_dns_servers = "";
-            }
-        };
-
         $scope.getVLANName = function(vlan) {
            return VLANsManager.getName(vlan);
-        };
-
-        $scope.getFabricNameById = function(fabric_id) {
-            return FabricsManager.getItemFromList(fabric_id).name;
         };
 
         // Return true if the authenticated user is super user.
@@ -90,16 +72,36 @@ angular.module('MAAS').controller('SubnetDetailsController', [
             });
         };
 
+        // Called by maas-obj-form before it saves the subnet. The passed
+        // subnet is the object right before its sent over the websocket.
+        $scope.subnetPreSave = function(subnet, changedFields) {
+            // Adjust the subnet object if the fabric changed.
+            if(changedFields.indexOf("fabric") !== -1) {
+                // Fabric changed, the websocket expects VLAN to be updated, so
+                // we set the VLAN to the default VLAN for the new fabric.
+                subnet.vlan = FabricsManager.getItemFromList(
+                    subnet.fabric).vlan_ids[0];
+            }
+            return subnet;
+        };
+
         // Called when the subnet has been loaded.
         function subnetLoaded(subnet) {
             $scope.subnet = subnet;
-            $scope.space = SpacesManager.getItemFromList(subnet.space);
-            $scope.vlan = VLANsManager.getItemFromList(subnet.vlan);
-            $scope.fabric = FabricsManager.getItemFromList($scope.vlan.fabric);
-            $scope.updateDNSServers();
             $scope.loaded = true;
 
             updateTitle();
+
+            // Watch the vlan and fabric field so if its changed on the subnet
+            // we make sure that the fabric is updated. It is possible that
+            // fabric is removed from the subnet since it is injected from this
+            // controller, so when it is removed we add it back.
+            var updateFabric = function() {
+                $scope.subnet.fabric = (
+                    VLANsManager.getItemFromList($scope.subnet.vlan).fabric);
+            };
+            $scope.$watch("subnet.fabric", updateFabric);
+            $scope.$watch("subnet.vlan", updateFabric);
         }
 
         // Load all the required managers.
@@ -125,6 +127,5 @@ angular.module('MAAS').controller('SubnetDetailsController', [
                         ErrorService.raiseError(error);
                     });
             }
-            $scope.$watch("subnet.dns_servers", $scope.updateDNSServers, true);
         });
     }]);

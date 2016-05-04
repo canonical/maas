@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.forms_space import SpaceForm
 from maasserver.models.space import Space
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -21,8 +22,11 @@ class SpaceHandler(TimestampedModelHandler):
             Space.objects.all().prefetch_related(
                 "subnet_set__staticipaddress_set__interface_set"))
         pk = 'id'
+        form = SpaceForm
+        form_requires_request = False
         allowed_methods = [
             'create',
+            'update',
             'delete',
             'get',
             'list',

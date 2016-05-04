@@ -142,6 +142,7 @@ class SubnetForm(MAASModelForm):
         for dns_server in dns_servers:
             ip_list_form = IPListFormField()
             ip_list_cleaned = ip_list_form.clean(dns_server)
-            clean_dns_servers += ip_list_cleaned.split(" ")
+            if ip_list_cleaned is not None:
+                clean_dns_servers += ip_list_cleaned.split(" ")
         cleaned_data["dns_servers"] = clean_dns_servers
         return cleaned_data

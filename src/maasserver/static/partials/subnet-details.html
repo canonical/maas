@@ -10,7 +10,7 @@
             <div class="right no-margin-bottom last-col">
                 <button class="cta-ubuntu"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete Subnet</button>
+                    data-ng-hide="confirmingDelete">Delete subnet</button>
             </div>
         </div>
         <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
@@ -42,60 +42,33 @@
             <div class="tweleve-col">
                 <h2>Subnet summary</h2>
             </div>
-            <form>
-                <fieldset class="six-col">
-                    <div class="inline">
-                        <label for="CIDR" class="two-col">CIDR</label>
-                        <div class="three-col last-col">
-                           <input type="text" id="CIDR" placeholder="169.254.0.0/16" data-ng-disabled="true" value="{$ subnet.cidr $}">
-                        </div>
-                    </div>
-                    <div class="inline">
-                        <label for="Name" class="two-col">Name</label>
-                        <div class="three-col last-col">
-                           <input data-ng-disabled="true" type="text" id="Name" placeholder="Name" value="{$ subnet.name $}">
-                        </div>
-                    </div>
-                    <div class="inline">
-                        <label for="DNS" class="two-col">DNS</label>
-                        <div class="three-col last-col">
-                           <input data-ng-disabled="true" type="text" id="DNS" placeholder="0.0.0.0" value="{$ all_dns_servers $}">
-                        </div>
-                    </div>
-                    <div class="inline">
-                        <label for="Gateway-IP" class="two-col">Gateway IP</label>
-                        <div class="three-col last-col">
-                           <input data-ng-disabled="true" type="text" id="Gateway-IP" placeholder="0.0.0.0" value="{$ subnet.gateway_ip $}">
-                        </div>
-                    </div>
+            <maas-obj-form obj="subnet" manager="subnetManager" pre-process="subnetPreSave">
+                <fieldset class="six-col form">
+                    <maas-obj-field type="text" key="name" label="Name" placeholder="Subnet name"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    <maas-obj-field-group>
+                        <maas-obj-field type="text" key="cidr" label="CIDR" placeholder="Subnet CIDR"
+                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                        <maas-obj-field type="text" key="gateway_ip" label="Gateway IP" placeholder="Gateway IP"
+                            label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    </maas-obj-field-group>
+                    <maas-obj-field type="text" key="dns_servers" label="DNS" placeholder="DNS nameservers for subnet"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    <maas-obj-field type="textarea" key="description" label="Description" placeholder="Subnet description"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
                 <fieldset class="six-col last-col">
-                    <dl class="six-col no-margin-bottom">
-                        <dt class="two-col">Fabric</dt>
-                        <dd class="three-col"><a href="#/fabric/{$ fabric.id $}">{$ fabric.name $}</a></dd>
-                    </dl>
-                    <div class="inline">
-                        <label for="vlan" class="two-col">VLAN</label>
-                        <div class="four-col last-col">
-                            <select name="vlan" id="vlan"
-                                    data-ng-disabled="true"
-                                    data-ng-model="vlan"
-                                    data-ng-options="v as getVLANName(v) group by getFabricNameById(v.fabric) for v in vlans">
-                            </select>
-                        </div>
-                    </div>
-                    <div class="inline">
-                        <label for="space" class="two-col">Space</label>
-                        <div class="four-col last-col">
-                            <select name="space" id="space"
-                                data-ng-disabled="true"
-                                data-ng-model="space"
-                                data-ng-options="space as space.name for space in spaces">
-                            </select>
-                        </div>
-                    </div>
+                    <maas-obj-field type="options" key="fabric" label="Fabric" placeholder="Choose fabric"
+                        options="fabric.id as fabric.name for fabric in fabrics | orderBy:'name'"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field type="options" key="vlan" label="VLAN" placeholder="Choose VLAN"
+                        options="v.id as getVLANName(v) for v in vlans | filterByFabric:subnet.fabric"
+                        label-width="two" input-width="three"></maas-obj-field>
+                    <maas-obj-field type="options" key="space" label="Space" placeholder="Choose space"
+                        options="space.id as space.name for space in spaces"
+                        label-width="two" input-width="three"></maas-obj-field>
                 </fieldset>
-            </form>
+            </maas-obj-form>
         </div>
     </section>
     <section class="row">

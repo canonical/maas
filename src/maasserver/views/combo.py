@@ -85,6 +85,7 @@ MERGE_VIEWS = {
             "js/angular/directives/enter_blur.js",
             "js/angular/directives/error_overlay.js",
             "js/angular/directives/error_toggle.js",
+            "js/angular/directives/maas_obj_form.js",
             "js/angular/directives/model_field.js",
             "js/angular/directives/os_select.js",
             "js/angular/directives/power_parameters.js",

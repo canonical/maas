@@ -7,11 +7,16 @@
 angular.module('MAAS').filter('filterBySpace', function() {
     return function(subnets, space) {
         var filtered = [];
-        if(!angular.isObject(space)) {
+        var id;
+        if(angular.isObject(space)) {
+            id = space.id;
+        } else if(angular.isNumber(space)) {
+            id = space;
+        } else {
             return filtered;
         }
         angular.forEach(subnets, function(subnet) {
-            if(subnet.space === space.id) {
+            if(subnet.space === id) {
                 filtered.push(subnet);
             }
         });

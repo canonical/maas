@@ -10,7 +10,7 @@
             <div class="right no-margin-bottom last-col">
                 <button class="cta-ubuntu"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete Space</button>
+                    data-ng-hide="confirmingDelete">Delete space</button>
             </div>
         </div>
         <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
@@ -49,24 +49,14 @@
             <div class="twelve-col">
                 <h2>Space summary</h2>
             </div>
-            <form>
-                <fieldset class="twelve-col">
-                    <div class="inline">
-                        <label for="name" class="two-col">Name</label>
-                        <div class="three-col last-col">
-                           <input data-ng-disabled="true" type="text" id="name" placeholder="{$ space.name $}">
-                        </div>
-                    </div>
-                    <!-- XXX lamont 2016-03-14 adding description was breaking migrations, so we're holding off on that for now.
-                    <div class="inline">
-                        <label for="description" class="two-col">Description</label>
-                        <div class="five-col last-col">
-                            <textarea name="description" id="description" cols="30" rows="10" class="three-col" placeholder="{$ space.description $}"></textarea>
-                        </div>
-                    </div>
-                    -->
+            <maas-obj-form obj="space" manager="spaceManager">
+                <fieldset class="nine-col form">
+                    <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    <maas-obj-field type="textarea" key="description" label="Description" placeholder="Space description"
+                        label-width="two" input-width="six" blur-on-enter="true"></maas-obj-field>
                 </fieldset>
-            </form>
+            </maas-obj-form>
         </div>
     </section>
     <section class="row">

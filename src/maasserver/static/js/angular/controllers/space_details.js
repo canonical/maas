@@ -22,6 +22,7 @@ angular.module('MAAS').controller('SpaceDetailsController', [
 
         // Initial values.
         $scope.space = null;
+        $scope.spaceManager = SpacesManager;
         $scope.subnets = SubnetsManager.getItems();
         $scope.loaded = false;
 

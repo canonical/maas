@@ -46,8 +46,10 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.title = null;
         vm.actionOption = null;
         vm.actionOptions = [];
+        vm.vlanManager = VLANsManager;
         vm.subnets = SubnetsManager.getItems();
         vm.spaces = SpacesManager.getItems();
+        vm.fabrics = FabricsManager.getItems();
         vm.controllers = ControllersManager.getItems();
         vm.actionError = null;
         vm.relatedSubnets = [];

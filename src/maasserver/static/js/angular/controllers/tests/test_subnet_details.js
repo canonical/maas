@@ -208,20 +208,6 @@ describe("SubnetDetailsController", function() {
         expect($rootScope.title).toBe(subnet.cidr + " (" + subnet.name + ")");
     });
 
-    it("updates all_dns_servers when dns_servers changes", function() {
-        var controller = makeControllerResolveSetActiveItem();
-        expect($scope.subnet.dns_servers).toEqual([]);
-        expect($scope.all_dns_servers).toBe("");
-        $scope.subnet.dns_servers.push("127.0.0.1");
-        $scope.$digest();
-        expect($scope.subnet.dns_servers).toEqual(["127.0.0.1"]);
-        expect($scope.all_dns_servers).toBe("127.0.0.1");
-        $scope.subnet.dns_servers.push("127.0.0.2");
-        $scope.$digest();
-        expect($scope.subnet.dns_servers).toEqual(["127.0.0.1", "127.0.0.2"]);
-        expect($scope.all_dns_servers).toBe("127.0.0.1 127.0.0.2");
-    });
-
     describe("deleteButton", function() {
 
         it("confirms delete", function() {
@@ -257,6 +243,26 @@ describe("SubnetDetailsController", function() {
             deleteSubnet.and.returnValue(defer.promise);
             $scope.deleteConfirmButton();
             expect(deleteSubnet).toHaveBeenCalled();
+        });
+    });
+
+    describe("subnetPreSave", function() {
+
+        it("updates vlan when fabric changed", function() {
+            var controller = makeController();
+            var vlan = {
+                id: makeInteger(0, 100)
+            };
+            var fabric = {
+                id: makeInteger(0, 100),
+                vlan_ids: [vlan.id]
+            };
+            FabricsManager._items.push(fabric);
+            var subnet = {
+                fabric: fabric.id
+            };
+            var updatedSubnet = $scope.subnetPreSave(subnet, ['fabric']);
+            expect(updatedSubnet.vlan).toBe(vlan.id);
         });
     });
 

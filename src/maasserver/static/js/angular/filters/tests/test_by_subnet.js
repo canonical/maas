@@ -42,6 +42,15 @@ describe("filterBySubnet", function() {
             .toEqual([foreign2]);
     });
 
+    it("matches related objects by id", function() {
+        var subnet = {id: 1};
+        var foreign1 = {subnet: 0};
+        var foreign2 = {subnet: 1};
+        expect(
+            filterBySubnet([foreign1, foreign2], subnet.id))
+            .toEqual([foreign2]);
+    });
+
     it("matches multiple related objects", function() {
         var subnet = {id: 1};
         var foreign1 = {subnet: 1};

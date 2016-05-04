@@ -124,8 +124,9 @@
                     </p>
                 </div>
             </div>
-            <div class="page-header__dropdown border ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
-                <h3 class="padding-top--ten">Add machine</h3>
+            <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
+                <h3 class="padding-top--ten" data-ng-if="showMachine()">Add machine</h3>
+                <h3 class="padding-top--ten" data-ng-if="showChassis()">Add chassis</h3>
                 <div class="page-header__feedback" data-ng-hide="architectures.length">
                     <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
                     <p class="page-header__feedback-message info">
@@ -136,21 +137,23 @@
                     <fieldset class="six-col no-padding no-margin-bottom">
                         <div class="inline">
                             <label for="machine-name" class="two-col">Machine name</label>
-                            <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
+                            <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name (optional)"
                                 data-ng-model="machine.name">
                         </div>
                         <div class="inline">
                             <label for="domain" class="two-col">Domain</label>
-                            <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
+                            <select name="domain" id="domain" class="three-col"
                                 data-ng-model="machine.domain"
                                 data-ng-options="domain as domain.name for domain in domains">
+                                <option value="" disabled>Choose a domain</option>
                             </select>
                         </div>
                         <div class="inline">
                             <label for="architecture" class="two-col">Architecture</label>
-                            <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
+                            <select name="architecture" id="architecture" class="three-col"
                                 data-ng-model="machine.architecture"
                                 data-ng-options="arch for arch in architectures">
+                                <option value="" disabled>Choose a architecture</option>
                             </select>
                         </div>
                         <div class="inline">

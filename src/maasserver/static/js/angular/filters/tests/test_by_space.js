@@ -26,7 +26,7 @@ describe("filterBySpace", function() {
         expect(filterBySpace(subnets)).toEqual([]);
     });
 
-    it("only returns subnets with space id", function() {
+    it("only returns subnets with space by object", function() {
         var i, subnet, space_id = 1, other_space_id = 2;
         var subnet_spaces = [], other_subnet_spaces = [], all_subnets = [];
         for(i = 0; i < 3; i++) {
@@ -47,5 +47,25 @@ describe("filterBySpace", function() {
             id: space_id
         };
         expect(filterBySpace(all_subnets, space)).toEqual(subnet_spaces);
+    });
+
+    it("only returns subnets with space by id", function() {
+        var i, subnet, space_id = 1, other_space_id = 2;
+        var subnet_spaces = [], other_subnet_spaces = [], all_subnets = [];
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                space: space_id
+            };
+            subnet_spaces.push(subnet);
+            all_subnets.push(subnet);
+        }
+        for(i = 0; i < 3; i++) {
+            subnet = {
+                space: other_space_id
+            };
+            other_subnet_spaces.push(subnet);
+            all_subnets.push(subnet);
+        }
+        expect(filterBySpace(all_subnets, space_id)).toEqual(subnet_spaces);
     });
 });

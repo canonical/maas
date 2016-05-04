@@ -12,6 +12,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
 )
 from maasserver.forms_iprange import IPRangeForm
+from maasserver.forms_vlan import VLANForm
 from maasserver.models import (
     IPRange,
     RackController,
@@ -39,8 +40,11 @@ class VLANHandler(TimestampedModelHandler):
                 .prefetch_related("interface_set__node")
                 .prefetch_related("subnet_set"))
         pk = 'id'
+        form = VLANForm
+        form_requires_request = False
         allowed_methods = [
             'create',
+            'update',
             'list',
             'get',
             'set_active',

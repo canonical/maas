@@ -23,9 +23,13 @@
         </div>
         <!-- Forms -->
         <div data-ng-repeat="option in actionOptions">
-            <div class="ng-hide clearfix border-bottom margin-bottom padding-bottom" data-ng-show="actionOption.name === option.name">
-                <div class="page-header__dropdown border no-padding-bottom">
-                    <form class="twelve-col padding-top--ten no-margin-bottom">
+            <div class="clearfix margin-bottom" data-ng-if="actionOption.name === option.name">
+
+
+
+                <div class="page-header__dropdown no-padding-bottom">
+                    <h3>{$ actionOption.selectedTitle $}</h3>
+                    <form class="twelve-col padding-top--ten margin-bottom">
                         <div class="inline six-col {$ $odd ? 'last-col' : '' $}"
                              data-maas-model-field="item"
                              data-maas-label-class="two-col"
@@ -33,29 +37,36 @@
                              data-maas-input-text-class="three-col {$ $odd ? 'last-col' : '' $}"
                              data-ng-repeat="item in option.form.items"></div>
                     </form>
-                    <div class="ng-hide" data-ng-show="!option.error">
-                        <div class="right">
-                            <button class="cta-ubuntu text-button"
-                                    data-ng-disabled="requesting"
-                                    data-ng-click="cancelAction(option)">Cancel</button>
-                            <button class="cta-ubuntu"
-                                    data-ng-disabled="requesting"
-                                    data-ng-click="submitAction(option)">
-                                {$ option.form.submit ? option.form.submit : "Go" $}
-                            </button>
+
+                    <div class="page-header__feedback twelve-col no-margin-bottom">
+                        <div data-ng-if="!option.error">
+                            <div class="right">
+                                <button class="cta-ubuntu text-button"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="cancelAction(option)">Cancel</button>
+                                <button class="cta-ubuntu"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="submitAction(option)">
+                                    {$ option.form.submit ? option.form.submit : "Go" $}
+                                </button>
+                            </div>
+                        </div>
+                        <div data-ng-if="option.error">
+                            <div class="twelve-col">
+                                <p class="page-header__feedback-message info">{$ option.error $}</p>
+                            </div>
+                            <div class="right align-right">
+                                <button class="cta-ubuntu text-button"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="cancelAction(option)">Cancel</button>
+                                <button class="cta-ubuntu"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="submitAction(option)">Retry</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="ng-hide" data-ng-show="option.error">
-                        <p class="page-header__feedback-message info" style="white-space: pre-wrap;">{$ option.error $}</p>
-                        <div class="right">
-                            <button class="cta-ubuntu text-button"
-                                    data-ng-disabled="requesting"
-                                    data-ng-click="cancelAction(option)">Cancel</button>
-                            <button class="cta-ubuntu"
-                                    data-ng-disabled="requesting"
-                                    data-ng-click="submitAction(option)">Retry</button>
-                        </div>
-                    </div>
+
+
 
                 </div>
            </div>

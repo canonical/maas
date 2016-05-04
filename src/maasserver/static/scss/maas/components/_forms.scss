@@ -415,8 +415,45 @@ select {
 
 .form {
 
+  .form__siblings {
+    float: left;
+    width: 100%;
+
+    &:hover {
+
+      .form__group--subtle {
+
+        input,
+        select,
+        textarea {
+          border-color: #B2B2B2;
+          background-color: $white;
+          outline: none;
+        }
+      }
+    }
+
+    &.form__siblings--active {
+
+      .form__group--subtle {
+
+        input,
+        select,
+        textarea {
+          border-color: #B2B2B2;
+          background-color: $white;
+          outline: none;
+        }
+      }
+    }
+  }
+
   .form__group {
     margin-bottom: 10px;
+
+    .form__group-errors {
+      margin-top: 5px;
+    }
 
     &.form__group--inline {
       width: 100%;
@@ -432,15 +469,46 @@ select {
         font-size: 16px;
         margin-top: 0;
         margin-bottom: 0;
+        line-height: 36px;
+        vertical-align: top;
       }
 
       input,
-      select {
+      select,
+      textarea,
+      .form__group-input {
         display: inline-block;
         clear: none;
         margin: 0;
         float: none;
         font-size: 16px
+      }
+    }
+
+    &.form__group--subtle {
+
+      input,
+      select,
+      textarea {
+        border-color: #e3e3e3;
+        background-color: transparent;
+
+        &:hover {
+          border-color: #B2B2B2;
+          background-color: $white;
+          outline: none;
+        }
+
+        &:active,
+        &:focus {
+          border-color: #888;
+          outline: none;
+          background-color: $white;
+        }
+
+        &.invalid {
+            border-color: #d90000 !important;
+        }
       }
     }
   }
@@ -456,10 +524,14 @@ select {
         display: inline-block;
         max-width: 100%;
         margin-bottom: 5px;
+        line-height: 36px;
+        vertical-align: top;
       }
 
       input,
-      select {
+      select,
+      textarea,
+      .form__group-input {
         display: inline-block;
         width: auto;
         vertical-align: middle;

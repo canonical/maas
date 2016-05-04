@@ -24,6 +24,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
 
         // Initial values.
         $scope.fabric = null;
+        $scope.fabricManager = FabricsManager;
         $scope.vlans = VLANsManager.getItems();
         $scope.subnets = SubnetsManager.getItems();
         $scope.controllers = ControllersManager.getItems();

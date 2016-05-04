@@ -843,7 +843,12 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
 
         $scope.getPowerEventError = function() {
-            for(i=0;i<$scope.node.events.length;i++) {
+            if(!angular.isObject($scope.node)) {
+                return;
+            }
+
+            var i;
+            for(i = 0; i < $scope.node.events.length; i++) {
                 var event = $scope.node.events[i];
                 if(event.type.level === "warning" &&
                    event.type.description === "Failed to query node's BMC") {

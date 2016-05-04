@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.forms_fabric import FabricForm
 from maasserver.models.fabric import Fabric
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -21,7 +22,16 @@ class FabricHandler(TimestampedModelHandler):
             Fabric.objects.all().prefetch_related(
                 "vlan_set__interface_set"))
         pk = 'id'
-        allowed_methods = ['list', 'get', 'create', 'delete', 'set_active']
+        form = FabricForm
+        form_requires_request = False
+        allowed_methods = [
+            'list',
+            'get',
+            'create',
+            'update',
+            'delete',
+            'set_active',
+            ]
         listen_channels = [
             "fabric",
             ]

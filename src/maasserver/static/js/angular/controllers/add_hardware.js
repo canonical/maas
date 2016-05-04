@@ -233,6 +233,7 @@ angular.module('MAAS').controller('AddHardwareController', [
                 var i;
                 for(i = 0; i < $scope.architectures.length; i++) {
                     if($scope.architectures[i] === "amd64/generic") {
+                        console.log($scope.architectures[i]);
                         return $scope.architectures[i];
                     }
                 }

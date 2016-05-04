@@ -77,6 +77,7 @@ class HandlerOptions(object):
     list_exclude = None
     non_changeable = None
     form = None
+    form_requires_request = True
     listen_channels = []
 
     def __new__(cls, meta=None):
@@ -359,9 +360,12 @@ class Handler(metaclass=HandlerMetaclass):
         form_class = self.get_form_class("create")
         if form_class is not None:
             data = self.preprocess_form("create", params)
-            request = HttpRequest()
-            request.user = self.user
-            form = form_class(request=request, data=data)
+            if self._meta.form_requires_request:
+                request = HttpRequest()
+                request.user = self.user
+                form = form_class(request=request, data=data)
+            else:
+                form = form_class(data=data)
             if form.is_valid():
                 try:
                     obj = form.save()

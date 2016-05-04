@@ -8,6 +8,7 @@ __all__ = [
     ]
 
 from maasserver.enum import NODE_PERMISSION
+from maasserver.forms_subnet import SubnetForm
 from maasserver.models.subnet import Subnet
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -27,8 +28,11 @@ class SubnetHandler(TimestampedModelHandler):
                   .prefetch_related(
                       'staticipaddress_set__interface_set__node'))
         pk = 'id'
+        form = SubnetForm
+        form_requires_request = False
         allowed_methods = [
             'create',
+            'update',
             'delete',
             'get',
             'list',
@@ -37,6 +41,9 @@ class SubnetHandler(TimestampedModelHandler):
         listen_channels = [
             "subnet",
         ]
+
+    def dehydrate_dns_servers(self, dns_servers):
+        return " ".join(sorted(dns_servers))
 
     def dehydrate(self, subnet, data, for_list=False):
         full_range = subnet.get_iprange_usage()

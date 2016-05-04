@@ -10,7 +10,7 @@
             <div class="right no-margin-bottom last-col">
                 <button class="cta-ubuntu"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete Fabric</button>
+                    data-ng-hide="confirmingDelete">Delete fabric</button>
             </div>
         </div>
         <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
@@ -49,32 +49,24 @@
             <div class="twelve-col">
                 <h2>Fabric summary</h2>
             </div>
-            <form>
+            <maas-obj-form obj="fabric" manager="fabricManager">
                 <fieldset class="six-col">
-                    <div class="inline">
-                        <label for="name" class="two-col">Name</label>
-                        <div class="three-col last-col">
-                           <input data-ng-disabled="true" type="text" id="name" placeholder="{$ fabric.name $}">
-                        </div>
-                    </div>
-                    <!-- XXX lamont 2016-03-14 adding description was breaking migrations, so we're holding off on that for now.
-                    <div class="inline">
-                        <label for="description" class="two-col">Description</label>
-                        <div class="three-col last-col">
-                            <textarea name="description" id="description" cols="30" rows="10" class="three-col" placeholder="{$ fabric.description $}"></textarea>
-                        </div>
-                    </div>
-                    -->
+                    <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                    <maas-obj-field type="textarea" key="description" label="Description" placeholder="Fabric description"
+                        label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
+                </fieldset>
+                <fieldset class="six-col last-col">
                     <dl>
                         <dt class="two-col">Rack controllers</dt>
                         <dd class="four-col last-col">
-                        <div data-ng-repeat="(system_id, rack) in racks">
-                            <a href="#/node/controller/{$ system_id $}" class="link--alt">{$ rack.hostname $}</a>
-                        </div>
+                            <span class="margin-right--ten" data-ng-repeat="rack in racks | orderBy:'hostname' track by rack.system_id">
+                                <a href="#/node/controller/{$ rack.system_id $}" class="link--alt">{$ rack.hostname $}</a>
+                            </span>
                         </dd>
                     </dl>
                 </fieldset>
-            </form>
+            </maas-obj-form>
         </div>
     </section>
     <section class="row">
