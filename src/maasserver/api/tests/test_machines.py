@@ -1146,7 +1146,7 @@ class TestMachinesAPI(APITestCase):
         self.become_admin()
         target_state = NODE_STATUS.COMMISSIONING
 
-        self.patch(Node, "_start").return_value = None
+        self.patch(Machine, "_start").return_value = None
         machine = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.NEW)
         response = self.client.post(
@@ -1244,7 +1244,7 @@ class TestMachinesAPI(APITestCase):
         self.become_admin()
         target_state = NODE_STATUS.COMMISSIONING
 
-        self.patch(Node, "_start").return_value = None
+        self.patch(Machine, "_start").return_value = None
         machines = [
             factory.make_Node_with_Interface_on_Subnet(status=NODE_STATUS.NEW)
             for counter in range(2)]
@@ -1260,7 +1260,7 @@ class TestMachinesAPI(APITestCase):
 
     def test_POST_accept_returns_actually_accepted_machines(self):
         self.become_admin()
-        self.patch(Node, "_start").return_value = None
+        self.patch(Machine, "_start").return_value = None
         acceptable_machines = [
             factory.make_Node_with_Interface_on_Subnet(status=NODE_STATUS.NEW)
             for counter in range(2)
@@ -1383,7 +1383,7 @@ class TestMachinesAPI(APITestCase):
 
     def test_POST_release_returns_modified_machines(self):
         owner = self.logged_in_user
-        self.patch(Node, "_stop").return_value = None
+        self.patch(Machine, "_stop").return_value = None
         acceptable_states = [NODE_STATUS.READY] + RELEASABLE_STATUSES
         machines = [
             factory.make_Node_with_Interface_on_Subnet(
@@ -1405,7 +1405,7 @@ class TestMachinesAPI(APITestCase):
 
     def test_POST_release_erases_disks_when_enabled(self):
         owner = self.logged_in_user
-        self.patch(Node, "_start").return_value = None
+        self.patch(Machine, "_start").return_value = None
         machine = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, power_state=POWER_STATE.OFF,
             owner=owner)

@@ -426,7 +426,7 @@ class MarkBroken(NodeAction):
         NODE_STATUS.DISK_ERASING,
     ] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
-    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self):
         """See `NodeAction.execute`."""
@@ -440,7 +440,7 @@ class MarkFixed(NodeAction):
     display_sentence = "marked fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
-    for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
+    for_type = {NODE_TYPE.MACHINE}
 
     def execute(self):
         """See `NodeAction.execute`."""

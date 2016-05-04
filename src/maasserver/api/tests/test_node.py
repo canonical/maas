@@ -12,7 +12,6 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_STATUS,
-    NODE_STATUS_CHOICES,
     POWER_STATE,
 )
 from maasserver.models import (
@@ -26,9 +25,7 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
-from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
-    Equals,
     MockCalledOnceWith,
     MockNotCalled,
 )
@@ -492,123 +489,6 @@ class TestPowerMixin(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
-
-    def test_mark_broken_changes_status(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'mark_broken'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
-
-    def test_mark_broken_updates_error_description(self):
-        # 'error_description' parameter was renamed 'comment' for consistency
-        # make sure this comment updates the node's error_description
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        comment = factory.make_name('comment')
-        response = self.client.post(
-            self.get_node_uri(node),
-            {'op': 'mark_broken', 'comment': comment})
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, comment),
-            (node.status, node.error_description)
-        )
-
-    def test_mark_broken_updates_error_description_compatibility(self):
-        # test old 'error_description' parameter is honored for compatibility
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        error_description = factory.make_name('error_description')
-        response = self.client.post(
-            self.get_node_uri(node),
-            {'op': 'mark_broken', 'error_description': error_description})
-        self.assertEqual(http.client.OK, response.status_code)
-        node = reload_object(node)
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, error_description),
-            (node.status, node.error_description)
-        )
-
-    def test_mark_broken_passes_comment(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        node_mark_broken = self.patch(node_module.Machine, 'mark_broken')
-        comment = factory.make_name('comment')
-        self.client.post(
-            self.get_node_uri(node),
-            {'op': 'mark_broken', 'comment': comment})
-        self.assertThat(
-            node_mark_broken,
-            MockCalledOnceWith(self.logged_in_user, comment))
-
-    def test_mark_broken_handles_missing_comment(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
-        node_mark_broken = self.patch(node_module.Machine, 'mark_broken')
-        self.client.post(
-            self.get_node_uri(node), {'op': 'mark_broken'})
-        self.assertThat(
-            node_mark_broken,
-            MockCalledOnceWith(self.logged_in_user, None))
-
-    def test_mark_broken_requires_ownership(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'mark_broken'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_mark_broken_allowed_from_any_other_state(self):
-        self.patch(node_module.Machine, "_stop")
-        for status, _ in NODE_STATUS_CHOICES:
-            if status == NODE_STATUS.BROKEN:
-                continue
-
-            node = factory.make_Node(status=status, owner=self.logged_in_user)
-            response = self.client.post(
-                self.get_node_uri(node), {'op': 'mark_broken'})
-            self.expectThat(
-                response.status_code, Equals(http.client.OK), response)
-            node = reload_object(node)
-            self.expectThat(node.status, Equals(NODE_STATUS.BROKEN))
-
-    def test_mark_fixed_changes_status(self):
-        self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'mark_fixed'})
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
-
-    def test_mark_fixed_requires_admin(self):
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'mark_fixed'})
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-
-    def test_mark_fixed_passes_comment(self):
-        self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        node_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
-        comment = factory.make_name('comment')
-        self.client.post(
-            self.get_node_uri(node),
-            {'op': 'mark_fixed', 'comment': comment})
-        self.assertThat(
-            node_mark_fixed,
-            MockCalledOnceWith(self.logged_in_user, comment))
-
-    def test_mark_fixed_handles_missing_comment(self):
-        self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        node_mark_fixed = self.patch(node_module.Machine, 'mark_fixed')
-        self.client.post(
-            self.get_node_uri(node), {'op': 'mark_fixed'})
-        self.assertThat(
-            node_mark_fixed,
-            MockCalledOnceWith(self.logged_in_user, None))
 
     def test_query_power_state(self):
         node = factory.make_Node()
