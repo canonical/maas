@@ -182,7 +182,6 @@ describe("FabricDetailsController", function() {
         ];
         fabric.vlan_ids = [1];
         spaces[0].subnet_ids = [0];
-        vlans[0].subnet_ids = [0];
         SpacesManager._items.push(spaces[0]);
         VLANsManager._items.push(vlans[0]);
         SubnetsManager._items.push(subnets[0]);

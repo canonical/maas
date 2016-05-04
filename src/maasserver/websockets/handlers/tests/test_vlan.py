@@ -36,10 +36,6 @@ class TestVLANHandler(MAASServerTestCase):
             "external_dhcp": vlan.external_dhcp,
             "primary_rack": vlan.primary_rack,
             "secondary_rack": vlan.secondary_rack,
-            "subnet_ids": sorted([
-                subnet.id
-                for subnet in vlan.subnet_set.all()
-            ]),
         }
         data['rack_sids'] = sorted(list({
             interface.node.system_id

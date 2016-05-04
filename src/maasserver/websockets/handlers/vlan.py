@@ -58,10 +58,6 @@ class VLANHandler(TimestampedModelHandler):
             data["primary_rack_sid"] = obj.primary_rack.system_id
         if obj.secondary_rack is not None:
             data["secondary_rack_sid"] = obj.secondary_rack.system_id
-        data["subnet_ids"] = sorted([
-            subnet.id
-            for subnet in obj.subnet_set.all()
-        ])
         nodes = {
             interface.node
             for interface in obj.interface_set.all()

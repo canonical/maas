@@ -279,7 +279,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
                             var vlanRecord = {
                                 "fabric": nic.fabric,
                                 "vlan": nic.vlan,
-                                "subnets": VLANsManager.getSubnets(nic.vlan),
+                                "subnets": $filter('filter')(
+                                    $scope.subnets, {vlan:nic.vlan.id}, true),
                                 "primary_rack": null,
                                 "secondary_rack": null,
                                 "sort_key": nic.fabric.name + "|" +
@@ -502,7 +503,10 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         // Called by $parent when the node has been loaded.
         $scope.nodeLoaded = function() {
             $scope.$watch("node.interfaces", updateInterfaces);
-            $scope.$watchCollection($scope.subnets, updateInterfaces);
+            // Watch subnets for the served VLANs section.
+            if ($scope.$parent.isController) {
+                $scope.$watch("subnets", updateInterfaces, true);
+            }
             $scope.nodeHasLoaded = true;
             updateLoaded();
         };
@@ -955,7 +959,8 @@ angular.module('MAAS').controller('NodeNetworkingController', [
             // Alias used defaults based from its parent.
             if(type === INTERFACE_TYPE.ALIAS) {
                 defaultVLAN = nic.vlan;
-                defaultSubnet = VLANsManager.getSubnets(defaultVLAN)[0];
+                defaultSubnet = $filter('filter')(
+                    $scope.subnets, {vlan:defaultVLAN.id}, true)[0];
                 defaultMode = LINK_MODE.AUTO;
             }
 
@@ -996,8 +1001,9 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         $scope.addTypeChanged = function() {
             if($scope.newInterface.type === INTERFACE_TYPE.ALIAS) {
                 $scope.newInterface.vlan = $scope.newInterface.parent.vlan;
-                $scope.newInterface.subnet = VLANsManager.getSubnets(
-                    $scope.newInterface.vlan)[0];
+                $scope.newInterface.subnet = $filter('filter')(
+                    $scope.subnets,
+                    {vlan:$scope.newInterface.vlan.id}, true)[0];
                 $scope.newInterface.mode = LINK_MODE.AUTO;
             } else if($scope.newInterface.type === INTERFACE_TYPE.VLAN) {
                 var vlans = getUnusedVLANs($scope.newInterface.parent);

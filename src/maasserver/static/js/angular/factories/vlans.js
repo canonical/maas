@@ -29,20 +29,6 @@ angular.module('MAAS').factory(
 
         VLANsManager.prototype = new Manager();
 
-        // Return the Subnet objects that are part of this VLAN. The returned
-        // array is calculated on each call, you should not watch this array,
-        // instead you should watch this function.
-        VLANsManager.prototype.getSubnets = function(vlan) {
-            var subnets = [];
-            angular.forEach(vlan.subnet_ids, function(subnet_id) {
-                var subnet = SubnetsManager.getItemFromList(subnet_id);
-                if(angular.isObject(subnet)) {
-                    subnets.push(subnet);
-                }
-            });
-            return subnets;
-        };
-
         VLANsManager.prototype.getName = function(vlan) {
             var name = vlan.vid;
             if(vlan.vid === 0) {

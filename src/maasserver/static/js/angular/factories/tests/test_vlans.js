@@ -31,31 +31,6 @@ describe("VLANsManager", function() {
         expect(VLANsManager._handler).toBe("vlan");
     });
 
-    describe("getSubnets", function() {
-
-        it("returns subnet objects", function() {
-            var i, subnets = [], vlan_subnets = [];
-            for(i = 0; i < 6; i++) {
-                var subnet = makeSubnet();
-                subnets.push(subnet);
-                if(i < 3) {
-                    vlan_subnets.push(subnet);
-                }
-            }
-
-            var subnet_ids = [];
-            angular.forEach(vlan_subnets, function(subnet) {
-                subnet_ids.push(subnet.id);
-            });
-
-            SubnetsManager._items = subnets;
-            var vlan = {
-                "subnet_ids": subnet_ids
-            };
-            expect(vlan_subnets).toEqual(VLANsManager.getSubnets(vlan));
-        });
-    });
-
     describe("configureDHCP", function() {
 
         it("calls the region with expected parameters", function() {
