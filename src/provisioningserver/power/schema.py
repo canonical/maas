@@ -319,9 +319,6 @@ JSON_POWER_TYPE_PARAMETERS = [
         'description': 'Intel AMT',
         'fields': [
             make_json_field(
-                'mac_address', "MAC Address", field_type='mac_address',
-                scope=POWER_PARAMETER_SCOPE.NODE),
-            make_json_field(
                 'power_pass', "Power password", field_type='password'),
             make_json_field('power_address', "Power address")
         ],
