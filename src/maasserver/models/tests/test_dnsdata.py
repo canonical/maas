@@ -33,6 +33,8 @@ INVALID_MX_MSG = (
 INVALID_SRV_MSG = (
     "Invalid SRV: Should be '<priority> <weight> <port> <server>'."
     " Range for priority, weight, and port are 0-65536.")
+INVALID_SSHFP_MSG = (
+    "Invalid SSHFP: Should be '<algorithm> <fptype> <fingerprint>'.")
 CNAME_AND_OTHER_MSG = (
     "CNAME records for a name cannot coexist with non-CNAME records.")
 MULTI_CNAME_MSG = "Only one CNAME can be associated with a name."
@@ -128,6 +130,17 @@ class DNSDataTest(MAASServerTestCase):
                 ValidationError,
                 re.escape(
                     "{'__all__': [\"%s\"]}" % INVALID_CNAME_MSG)):
+            dnsdata.save()
+
+    def test_rejects_bad_sshfp_record(self):
+        dnsresource = factory.make_DNSResource(no_ip_addresses=True)
+        dnsdata = DNSData(
+            dnsresource=dnsresource,
+            rrtype='SSHFP', rrdata="wrong data")
+        with ExpectedException(
+                ValidationError,
+                re.escape(
+                    "{'__all__': [\"%s\"]}" % INVALID_SSHFP_MSG)):
             dnsdata.save()
 
     def test_creates_mx(self):

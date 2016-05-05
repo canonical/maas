@@ -45,7 +45,7 @@ from provisioningserver.logger import get_maas_logger
 
 CNAME_LABEL = r'[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}'
 CNAME_SPEC = r'^(%s\.)*%s\.?$' % (CNAME_LABEL, CNAME_LABEL)
-SUPPORTED_RRTYPES = {'CNAME', 'MX', 'NS', 'SRV', 'TXT'}
+SUPPORTED_RRTYPES = {'CNAME', 'MX', 'NS', 'SRV', 'SSHFP', 'TXT'}
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
 INVALID_MX_MSG = (
     "Invalid MX: Should be '<preference> <server>'."
@@ -53,6 +53,8 @@ INVALID_MX_MSG = (
 INVALID_SRV_MSG = (
     "Invalid SRV: Should be '<priority> <weight> <port> <server>'."
     " Range for priority, weight, and port are 0-65536.")
+INVALID_SSHFP_MSG = (
+    "Invalid SSHFP: Should be '<algorithm> <fptype> <fingerprint>'.")
 CNAME_AND_OTHER_MSG = (
     "CNAME records for a name cannot coexist with non-CNAME records.")
 MULTI_CNAME_MSG = "Only one CNAME can be associated with a name."
@@ -287,11 +289,20 @@ class DNSData(CleanSave, TimestampedModel):
             # things...  Make sure it meets the more general case.
             if re.compile(CNAME_SPEC).search(self.rrdata) is None:
                 raise ValidationError(INVALID_CNAME_MSG)
+        elif self.rrtype == "SSHFP":
+            # SSHFP is <algo> <fptype> <fingerprint>.  Do minimal checking so
+            # that we support future algorithms and types.
+            spec = re.compile(
+                r"^(?P<algo>[0-9]+)\s+(?P<fptype>[0-9]+)\s+(?P<fp>.*)$")
+            res = spec.search(self.rrdata)
+            if res is None:
+                raise ValidationError(INVALID_SSHFP_MSG)
+            # No further checking.
         elif self.rrtype == "TXT":
             # TXT is freeform, we simply pass it through
             pass
         elif self.rrtype == "MX":
-            spec = re.compile(r"^(?P<pref>[0-9])+\s+(?P<mxhost>.+)$")
+            spec = re.compile(r"^(?P<pref>[0-9]+)\s+(?P<mxhost>.+)$")
             res = spec.search(self.rrdata)
             if res is None:
                 raise ValidationError(INVALID_MX_MSG)

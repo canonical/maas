@@ -479,6 +479,7 @@ class Factory(maastesting.factory.Factory):
                 ('NS', "Name Server"),
                 # We don't autogenerate SRV, because of NAME.
                 # ('SRV', "Service"),
+                ('SSHFP', "SSH Fingerprint"),
                 ('TXT', "Text"),
             ))
             if rrtype in exclude:
@@ -492,6 +493,17 @@ class Factory(maastesting.factory.Factory):
             elif rrtype == 'MX':
                 rrdata = "%d %s" % (
                     random.randint(0, 65535), self.make_name('mx'))
+            elif rrtype == 'SSHFP':
+                algo = random.randint(1, 4)
+                fptype = random.randint(1, 2)
+                if fptype == 1:
+                    fp = hashlib.sha1()
+                elif fptype == 2:
+                    fp = hashlib.sha256()
+                # Add other types as needed.
+                fp.update(factory.make_name('sshfp').encode('ASCII'))
+                rrdata = "%d %d %s" % (
+                    algo, fptype, fp.digest())
             elif rrtype == 'SRV':
                 raise ValueError("No automatic generation of SRV DNSData")
             elif rrtype == 'TXT':
