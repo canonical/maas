@@ -21,15 +21,30 @@ from lxml import etree
 from provisioningserver.drivers.power import (
     is_power_parameter_set,
     PowerActionError,
+    PowerAuthError,
     PowerConnError,
     PowerDriver,
-    PowerFatalError,
+    PowerSettingError,
 )
 from provisioningserver.utils import (
     shell,
     typed,
 )
 
+
+AMT_ERRORS = {
+    '401 Unauthorized': {
+        'message': (
+            "Incorrect password.  Check BMC configuration and try again."),
+        'exception': PowerAuthError
+    },
+    "500 Can't connect": {
+        'message': (
+            "Could not connect to BMC.  "
+            "Check BMC configuration and try again."),
+        'exception': PowerConnError
+    },
+}
 
 REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
 
@@ -176,7 +191,7 @@ class AMTPowerDriver(PowerDriver):
             sleep(1)
 
         if output is None:
-            raise PowerFatalError("amttool power querying FAILED.")
+            raise PowerActionError("amttool power querying failed.")
 
         # Ensure that from this point forward that output is a str.
         output = output.decode("utf-8")
@@ -228,7 +243,7 @@ class AMTPowerDriver(PowerDriver):
             elif state in ('6', '8', '12', '13'):
                 return 'off'
             else:
-                raise PowerFatalError(
+                raise PowerActionError(
                     "Got unknown power state from node: %s" % state)
 
     def amttool_restart(self, ip_address, power_pass, amttool_boot_mode):
@@ -306,12 +321,16 @@ class AMTPowerDriver(PowerDriver):
         stdout = stdout.decode("utf-8")
         stderr = stderr.decode("utf-8")
         if stdout == "" or stdout.isspace():
+            for error, error_info in AMT_ERRORS.items():
+                if error in stderr:
+                    raise error_info.get(
+                        'exception')(error_info.get('message'))
             raise PowerConnError(
                 "Unable to retrieve AMT version: %s" % stderr)
         else:
             match = re.search("AMT version:\s*([0-9]+)", stdout)
             if match is None:
-                raise PowerFatalError(
+                raise PowerActionError(
                     "Unable to extract AMT version from "
                     "amttool output: %s" % stdout)
             else:
@@ -341,7 +360,9 @@ class AMTPowerDriver(PowerDriver):
         elif is_power_parameter_set(ip_address):
             return ip_address
         else:
-            raise PowerFatalError('No host provided')
+            raise PowerSettingError(
+                "No IP address provided.  "
+                "Please update BMC configuration and try again.")
 
     def power_on(self, system_id, context):
         """Power on AMT node."""
