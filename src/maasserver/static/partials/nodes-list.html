@@ -124,7 +124,7 @@
                     </p>
                 </div>
             </div>
-            <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
+            <div class="page-header__dropdown border ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
                 <h3 class="padding-top--ten" data-ng-if="showMachine()">Add machine</h3>
                 <h3 class="padding-top--ten" data-ng-if="showChassis()">Add chassis</h3>
                 <div class="page-header__feedback" data-ng-hide="architectures.length">
@@ -153,7 +153,7 @@
                             <select name="architecture" id="architecture" class="three-col"
                                 data-ng-model="machine.architecture"
                                 data-ng-options="arch for arch in architectures">
-                                <option value="" disabled>Choose a architecture</option>
+                                <option value="" disabled>Choose an architecture</option>
                             </select>
                         </div>
                         <div class="inline">
@@ -304,7 +304,7 @@
                     </p>
                 </div>
             </div>
-            <div class="page-header__dropdown ng-hide" data-ng-show="addDeviceScope.viewable" data-ng-controller="AddDeviceController">
+            <div class="page-header__dropdown border ng-hide" data-ng-show="addDeviceScope.viewable" data-ng-controller="AddDeviceController">
                 <h3>Add device</h3>
                 <form class="twelve-col">
                     <fieldset class="twelve-col last-col no-padding">

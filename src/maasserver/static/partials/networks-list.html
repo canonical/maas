@@ -24,11 +24,8 @@
         <!-- Forms -->
         <div data-ng-repeat="option in actionOptions">
             <div class="clearfix margin-bottom" data-ng-if="actionOption.name === option.name">
-
-
-
-                <div class="page-header__dropdown no-padding-bottom">
-                    <h3>{$ actionOption.selectedTitle $}</h3>
+                <div class="page-header__dropdown border">
+                    <h3 class="padding-top--ten">{$ actionOption.selectedTitle $}</h3>
                     <form class="twelve-col padding-top--ten margin-bottom">
                         <div class="inline six-col {$ $odd ? 'last-col' : '' $}"
                              data-maas-model-field="item"
@@ -37,8 +34,7 @@
                              data-maas-input-text-class="three-col {$ $odd ? 'last-col' : '' $}"
                              data-ng-repeat="item in option.form.items"></div>
                     </form>
-
-                    <div class="page-header__feedback twelve-col no-margin-bottom">
+                    <div class="page-header__feedback twelve-col no-margin-bottom no-padding-bottom">
                         <div data-ng-if="!option.error">
                             <div class="right">
                                 <button class="cta-ubuntu text-button"
@@ -65,9 +61,6 @@
                             </div>
                         </div>
                     </div>
-
-
-
                 </div>
            </div>
         </div>
