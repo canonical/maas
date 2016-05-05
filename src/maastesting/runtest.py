@@ -9,8 +9,10 @@ __all__ = [
     'MAASTwistedRunTest',
     ]
 
+import os
 import sys
 import threading
+import traceback
 import types
 
 from testtools import (
@@ -23,8 +25,16 @@ from twisted.internet import (
     reactor,
 )
 from twisted.internet.base import DelayedCall
+from twisted.internet.defer import (
+    DeferredList,
+    inlineCallbacks,
+    returnValue,
+)
 from twisted.internet.process import reapAllProcesses
-from twisted.internet.task import LoopingCall
+from twisted.internet.task import (
+    deferLater,
+    LoopingCall,
+)
 from twisted.internet.threads import blockingCallFromThread
 
 
@@ -118,6 +128,33 @@ class MAASCrochetReactorStalled(Exception):
     """Raised when the reactor appears to be stalled."""
 
 
+class MAASCrochetDirtyThreadsError(Exception):
+    """Passed to `addError` when a threadpool remains in use after a test.
+
+    :ivar threadpools: A list of strings describing threadpools still in use.
+    :ivar stacks: A list of ``(thread-description, stack)`` tuples for all
+        threads running at the moment an in-use threadpool was discovered.
+    """
+
+    def __init__(self, threadpools, stacks):
+        super(MAASCrochetDirtyThreadsError, self).__init__()
+        self.threadpools = threadpools
+        self.stacks = stacks
+
+    def __str__(self):
+        """Return a multi-line message describing all of the unclean state."""
+        msg = ["One or more threadpools were still in use:\n"]
+        # Mention each non-quiet threadpool.
+        for threadpool in self.threadpools:
+            msg.append("  " + threadpool)
+            msg.append("\n")
+        # Include stacks of all threads.
+        for threadDesc, stack in self.stacks:
+            msg.append("\nThread %s stack:\n" % threadDesc)
+            msg.extend(stack)
+        return "".join(msg)
+
+
 class MAASCrochetDirtyReactorError(Exception):
     """Passed to `addError` when the reactor is unclean after a test.
 
@@ -125,15 +162,12 @@ class MAASCrochetDirtyReactorError(Exception):
         weren't cleaned up.
     :ivar selectables: A list of strings describing those selectables which
         weren't cleaned up.
-    :ivar threadpools: A list of strings describing those threadpools still in
-        use.
     """
 
-    def __init__(self, delayedCalls, selectables, threadpools):
+    def __init__(self, delayedCalls, selectables):
         super(MAASCrochetDirtyReactorError, self).__init__()
         self.delayedCalls = delayedCalls
         self.selectables = selectables
-        self.threadpools = threadpools
 
     def __str__(self):
         """Return a multi-line message describing all of the unclean state."""
@@ -146,9 +180,6 @@ class MAASCrochetDirtyReactorError(Exception):
         if len(self.selectables) > 0:
             msg += "\nSelectables:\n"
             msg += "\n".join(self.selectables)
-        if len(self.threadpools) > 0:
-            msg += "\nThreadpools:\n"
-            msg += "\n".join(self.threadpools)
         return msg
 
 
@@ -176,14 +207,24 @@ class MAASCrochetRunTest(MAASRunTest):
             self._got_user_exception(sys.exc_info())
 
     def _clean(self):
-        # Spin a bit to flush out imminent delayed calls.
+        # Spin a bit to flush out imminent delayed calls. It's not clear why
+        # we do this: left-over delayed calls are detritus like any other.
+        # However, this is done by both testtools and Twisted's trial, and we
+        # do it for consistency with them.
         if not self._tickReactor(0.5):
             raise MAASCrochetReactorStalled(
                 "Reactor did not respond after 500ms.")
-        # Find leftover delayed calls, selectables, and threadpools in use.
-        dirty = blockingCallFromThread(reactor, self._cleanReactor)
-        if any(len(items) > 0 for items in dirty):
-            raise MAASCrochetDirtyReactorError(*dirty)
+        # Ensure that all threadpools are quiet. Do this first because we must
+        # crash the whole run if they don't go quiet before the next test.
+        dirtyPools, threadStacks = (
+            blockingCallFromThread(reactor, self._cleanThreads))
+        if len(dirtyPools) != 0:
+            raise MAASCrochetDirtyThreadsError(dirtyPools, threadStacks)
+        # Find leftover delayed calls and selectables in use.
+        dirtyCalls, dirtySelectables = (
+            blockingCallFromThread(reactor, self._cleanReactor))
+        if len(dirtyCalls) != 0 or len(dirtySelectables) != 0:
+            raise MAASCrochetDirtyReactorError(dirtyCalls, dirtySelectables)
 
     def _tickReactor(self, timeout):
         ticked = threading.Event()
@@ -195,7 +236,6 @@ class MAASCrochetRunTest(MAASRunTest):
         return (
             [str(leftover) for leftover in self._cleanPending()],
             [repr(leftover) for leftover in self._cleanSelectables()],
-            [repr(leftover) for leftover in self._cleanThreads()],
         )
 
     def _cleanPending(self):
@@ -219,22 +259,83 @@ class MAASCrochetRunTest(MAASRunTest):
             yield sel
 
     def _cleanThreads(self):
-        for poolName in "threadpool", "threadpoolForDatabase":
-            try:
-                pool = getattr(reactor, poolName)
-            except AttributeError:
-                pass  # Pool not configured.
+        """Find threadpools still in use and wait for them to quiesce."""
+        noisy = [
+            pool for pool in self._getThreadpools()
+            if not self._isThreadpoolQuiet(pool)
+        ]
+
+        if len(noisy) == 0:
+            stacks = None  # Save the effort.
+        else:
+            stacks = self._captureThreadStacks()
+
+        d = DeferredList(
+            map(self._waitForThreadpoolToQuiesce, noisy),
+            fireOnOneErrback=True, consumeErrors=True)
+
+        def unwrap(results):
+            return [repr(pool) for _, pool in results], stacks
+        return d.addCallback(unwrap)
+
+    def _getThreadpools(self):
+        """Get currently configured threadpools."""
+        for poolName in {"threadpool", "threadpoolForDatabase"}:
+            pool = getattr(reactor, poolName, None)
+            if pool is not None:
+                yield pool
+
+    @inlineCallbacks
+    def _waitForThreadpoolToQuiesce(self, pool):
+        """Return a :class:`Deferred` that waits for `pool` to quiesce."""
+        now = reactor.seconds()
+        until = now + 90.0
+        while now < until:
+            if self._isThreadpoolQuiet(pool):
+                # The pool is quiet. It's safe to move on. Return the pool so
+                # that it can still be reported.
+                returnValue(pool)
             else:
-                lock = getattr(pool, "lock", None)
-                if isinstance(lock, defer.DeferredLock):
-                    if lock.locked:
-                        yield pool
-                elif isinstance(lock, defer.DeferredSemaphore):
-                    if lock.tokens != lock.limit:
-                        yield pool
-                else:
-                    if len(pool.working) != 0:
-                        yield pool
+                # Pause for a second to give it a chance to go quiet.
+                now = yield deferLater(reactor, 1.0, reactor.seconds)
+        else:
+            # Despite waiting a long time the pool will not go quiet. The
+            # validity of subsequent tests is compromised. Die immediately.
+            print("Threadpool", repr(pool), "is NOT quiet.", file=sys.stderr)
+            os._exit(3)
+
+    def _isThreadpoolQuiet(self, pool):
+        """Is the given threadpool quiet, i.e. not in use?
+
+        This can handle MAAS's custom threadpools as well as Twisted's default
+        implementation.
+        """
+        lock = getattr(pool, "lock", None)
+        if isinstance(lock, defer.DeferredLock):
+            return not lock.locked
+        elif isinstance(lock, defer.DeferredSemaphore):
+            return lock.tokens == lock.limit
+        else:
+            return len(pool.working) == 0
+
+    def _captureThreadStacks(self):
+        """Capture the stacks for all currently running threads.
+
+        :return: A list of ``(thread-description, stack)`` tuples. See
+            `traceback.format_stack` for the format of ``stack``.
+        """
+        threads = {t.ident: t for t in threading.enumerate()}
+
+        def describe(ident):
+            if ident in threads:
+                return repr(threads[ident])
+            else:
+                return "<*Unknown* %d>" % ident
+
+        return [
+            (describe(ident), traceback.format_stack(frame))
+            for ident, frame in sys._current_frames().items()
+        ]
 
 
 class MAASTwistedRunTest(deferredruntest.AsynchronousDeferredRunTest):
