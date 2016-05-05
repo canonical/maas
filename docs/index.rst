@@ -62,7 +62,7 @@ Setting up a MAAS server
    nodes
    hardware-enablement-kernels
    sstreams-mirror
-   networks
+   networking
    kernel-options
    installing-ubuntu
    os-support

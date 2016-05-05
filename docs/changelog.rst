@@ -3026,7 +3026,7 @@ Advanced Networking.
   also use networking information in acquisition constraints when asking for a
   new node allocation.
 
-  See :ref:`The full Networking documentation <networks>`.
+  See :doc:`The full networking documentation <networking>`.
 
 Zones.
   A Zone is an arbitrary grouping of nodes.  MAAS now allows admins to define
