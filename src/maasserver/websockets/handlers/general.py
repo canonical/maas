@@ -7,7 +7,7 @@ __all__ = [
     "GeneralHandler",
     ]
 
-from operator import itemgetter
+from collections import OrderedDict
 
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
@@ -85,14 +85,14 @@ class GeneralHandler(Handler):
 
     def dehydrate_actions(self, actions):
         """Dehydrate all the actions."""
-        return sorted([
+        return [
             {
                 "name": name,
                 "title": action.display,
                 "sentence": action.display_sentence,
             }
             for name, action in actions.items()
-            ], key=itemgetter("name"))
+            ]
 
     def _node_actions(self, params, node_type):
         # Only admins can perform controller actions
@@ -101,7 +101,7 @@ class GeneralHandler(Handler):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER]):
             return {}
 
-        actions = dict()
+        actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():
             if (action.node_permission == NODE_PERMISSION.ADMIN and
                     not self.user.is_superuser):

@@ -5,8 +5,6 @@
 
 __all__ = []
 
-from operator import itemgetter
-
 from distro_info import UbuntuDistroInfo
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
@@ -30,14 +28,14 @@ import petname
 class TestGeneralHandler(MAASServerTestCase):
 
     def dehydrate_actions(self, actions):
-        return sorted([
+        return [
             {
                 "name": name,
                 "title": action.display,
                 "sentence": action.display_sentence,
             }
             for name, action in actions.items()
-            ], key=itemgetter("name"))
+            ]
 
     def test_architectures(self):
         arches = [
