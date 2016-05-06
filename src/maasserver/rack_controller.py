@@ -91,12 +91,12 @@ class RackControllerService(Service):
         """Start listening for messages."""
         super(RackControllerService, self).startService()
 
-        def cb_registerWithPostgres(processId):
+        def cb_registerWithPostgres(advertising):
             # Register the coreHandler with postgres.
-            self.processId = processId
+            self.processId = advertising.process_id
             self.postgresListener.register(
-                "sys_core_%d" % processId, self.coreHandler)
-            return processId
+                "sys_core_%d" % self.processId, self.coreHandler)
+            return self.processId
 
         @transactional
         def cb_getManagingProcesses(processId):
@@ -122,7 +122,7 @@ class RackControllerService(Service):
             failure.trap(CancelledError)
             self.starting = None
 
-        self.starting = self.advertisingService.processId.get()
+        self.starting = self.advertisingService.advertising.get()
         self.starting.addCallback(cb_registerWithPostgres)
         self.starting.addCallback(
             partial(deferToDatabase, cb_getManagingProcesses))

@@ -6,10 +6,19 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from maasserver import rack_controller
 from maasserver.rack_controller import RackControllerService
+from maasserver.rpc.regionservice import (
+    RegionAdvertising,
+    RegionAdvertisingService,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
@@ -20,11 +29,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import (
-    call,
-    MagicMock,
-    sentinel,
-)
+from provisioningserver.utils.twisted import DeferredValue
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
@@ -54,21 +59,23 @@ class TestRackControllerService(MAASServerTestCase):
                 advertisingService=sentinel.advertiser))
 
     def test_startService_sets_starting_to_result_of_processId_get(self):
-        defer = MagicMock()
-        advertiser = MagicMock()
-        advertiser.processId.get.return_value = defer
+        advertising = Mock(DeferredValue, get=Mock())
+        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
         service = RackControllerService(sentinel.listener, advertiser)
         observed = service.startService()
-        self.assertEqual(defer, observed)
-        self.assertEqual(defer, service.starting)
+        self.assertEqual(advertising.get.return_value, observed)
+        self.assertEqual(advertising.get.return_value, service.starting)
 
     @wait_for_reactor
     @inlineCallbacks
     def test_startService_registers_with_postgres_listener(self):
         regionProcessId = random.randint(0, 100)
-        advertiser = MagicMock()
-        advertiser.processId.get.return_value = succeed(regionProcessId)
-        listener = MagicMock()
+
+        advertising = DeferredValue()
+        advertising.set(RegionAdvertising(sentinel.region_id, regionProcessId))
+        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+
+        listener = Mock()
         service = RackControllerService(listener, advertiser)
         yield service.startService()
         self.assertThat(
@@ -82,18 +89,22 @@ class TestRackControllerService(MAASServerTestCase):
     @inlineCallbacks
     def test_startService_clears_starting_once_complete(self):
         regionProcessId = random.randint(0, 100)
-        advertiser = MagicMock()
-        advertiser.processId.get.return_value = succeed(regionProcessId)
-        listener = MagicMock()
+
+        advertising = DeferredValue()
+        advertising.set(RegionAdvertising(sentinel.region_id, regionProcessId))
+        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+
+        listener = Mock()
         service = RackControllerService(listener, advertiser)
         yield service.startService()
         self.assertIsNone(service.starting)
 
     @wait_for_reactor
     def test_startService_handles_cancel(self):
-        advertiser = MagicMock()
-        advertiser.processId.get.return_value = Deferred()
-        listener = MagicMock()
+        advertising = DeferredValue()
+        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+
+        listener = Mock()
         service = RackControllerService(listener, advertiser)
         starting = service.startService()
         self.assertIs(starting, service.starting)
@@ -116,9 +127,12 @@ class TestRackControllerService(MAASServerTestCase):
 
         process, rack_controllers = yield deferToDatabase(
             create_process_and_racks)
-        advertiser = MagicMock()
-        advertiser.processId.get.return_value = succeed(process.id)
-        listener = MagicMock()
+
+        advertising = DeferredValue()
+        advertising.set(RegionAdvertising(sentinel.region_id, process.id))
+        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+
+        listener = Mock()
         service = RackControllerService(listener, advertiser)
         mock_coreHandler = self.patch(service, "coreHandler")
         yield service.startService()
@@ -132,7 +146,7 @@ class TestRackControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_handles_canceling_startup(self):
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = random.randint(0, 100)
@@ -148,7 +162,7 @@ class TestRackControllerService(MAASServerTestCase):
     @inlineCallbacks
     def test_stopService_calls_unregister_for_the_process(self):
         processId = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -166,7 +180,7 @@ class TestRackControllerService(MAASServerTestCase):
             random.randint(0, 100)
             for _ in range(3)
         }
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -183,7 +197,7 @@ class TestRackControllerService(MAASServerTestCase):
     def test_coreHandler_unwatch_calls_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -199,7 +213,7 @@ class TestRackControllerService(MAASServerTestCase):
     def test_coreHandler_unwatch_doesnt_call_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -210,7 +224,7 @@ class TestRackControllerService(MAASServerTestCase):
     def test_coreHandler_watch_calls_register_and_startProcessing(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -226,7 +240,7 @@ class TestRackControllerService(MAASServerTestCase):
     def test_coreHandler_watch_doesnt_call_register(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -242,7 +256,7 @@ class TestRackControllerService(MAASServerTestCase):
     def test_coreHandler_raises_ValueError_for_unknown_action(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.processId = processId
@@ -252,7 +266,7 @@ class TestRackControllerService(MAASServerTestCase):
 
     def test_dhcpHandler_adds_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         service.watching = set([rack_id])
@@ -263,7 +277,7 @@ class TestRackControllerService(MAASServerTestCase):
 
     def test_dhcpHandler_doesnt_add_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = MagicMock()
+        listener = Mock()
         service = RackControllerService(
             listener, sentinel.advertiser)
         mock_startProcessing = self.patch(service, "startProcessing")
