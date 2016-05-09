@@ -6,6 +6,11 @@
 __all__ = []
 
 
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
@@ -14,10 +19,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
-from mock import (
-    Mock,
-    sentinel,
-)
 from provisioningserver.pserv_services import networks_monitoring_service
 from provisioningserver.pserv_services.networks_monitoring_service import (
     NetworksMonitoringService,

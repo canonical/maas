@@ -9,6 +9,10 @@ from argparse import Namespace
 import http.client
 import json
 import sys
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from apiclient.creds import (
     convert_string_to_tuple,
@@ -19,10 +23,6 @@ from maascli import auth
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    sentinel,
-)
 
 
 def make_credentials():

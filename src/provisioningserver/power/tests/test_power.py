@@ -6,11 +6,11 @@
 __all__ = []
 
 import random
+from unittest.mock import ANY
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import ANY
 from provisioningserver import power
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture

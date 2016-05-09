@@ -6,6 +6,10 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    call,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -14,10 +18,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    sentinel,
-)
 from provisioningserver.drivers import (
     make_setting_field,
     power,

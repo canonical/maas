@@ -8,6 +8,11 @@ __all__ = []
 from datetime import timedelta
 import os
 import random
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+)
 
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.clusterrpc import boot_images as boot_images_module
@@ -41,11 +46,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    ANY,
-    call,
-    MagicMock,
-)
 from provisioningserver.boot.tests import test_tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
@@ -389,7 +389,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
                 param['release']))
 
 
-from mock import sentinel
+from unittest.mock import sentinel
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from testtools.matchers import MatchesStructure, Is, Equals
 from urllib.parse import urlparse

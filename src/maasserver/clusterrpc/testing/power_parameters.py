@@ -7,9 +7,10 @@ __all__ = [
     'StaticPowerTypesFixture',
     ]
 
+from unittest.mock import Mock
+
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
-from mock import Mock
 from provisioningserver.power import schema
 from testtools import monkey
 

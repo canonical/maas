@@ -7,6 +7,12 @@ __all__ = []
 
 import copy
 from operator import itemgetter
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -18,12 +24,6 @@ from maastesting.matchers import (
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-)
-from mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
 )
 from provisioningserver.dhcp.testing.config import (
     make_dhcp_snippets,

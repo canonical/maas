@@ -18,15 +18,15 @@ from abc import (
 import collections
 import itertools
 from os import path
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 import fixtures
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.twisted import always_succeed_with
-from mock import (
-    Mock,
-    sentinel,
-)
 import provisioningserver
 from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (

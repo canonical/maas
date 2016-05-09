@@ -7,6 +7,7 @@ __all__ = []
 
 
 import time
+from unittest.mock import call
 
 from maasserver import nonces_cleanup
 from maasserver.nonces_cleanup import (
@@ -26,7 +27,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import call
 from piston3.models import Nonce
 from testtools.matchers import (
     ContainsAll,

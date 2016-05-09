@@ -13,6 +13,12 @@ import os.path
 import platform
 import random
 from random import randint
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 from urllib.parse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
@@ -33,12 +39,6 @@ from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
     TwistedLoggerFixture,
-)
-from mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
 )
 from provisioningserver import (
     concurrency,

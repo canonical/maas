@@ -8,15 +8,15 @@ __all__ = []
 import os.path
 import random
 from unittest import skipUnless
+from unittest.mock import (
+    MagicMock,
+    sentinel,
+)
 
 from maasserver.utils import version
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    MagicMock,
-    sentinel,
-)
 from provisioningserver.utils import shell
 from testtools.matchers import (
     GreaterThan,

@@ -10,6 +10,7 @@ import logging
 from operator import itemgetter
 import random
 import re
+from unittest.mock import ANY
 
 from crochet import wait_for
 from django.contrib.auth.models import User
@@ -91,7 +92,6 @@ from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
-from mock import ANY
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,

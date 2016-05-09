@@ -9,6 +9,7 @@ import http.client
 import json
 import logging
 import random
+from unittest.mock import Mock
 
 from crochet import TimeoutError
 from django.conf import settings
@@ -49,7 +50,6 @@ from maasserver.utils.orm import (
 )
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
-from mock import Mock
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,

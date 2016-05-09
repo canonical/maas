@@ -7,6 +7,7 @@ __all__ = []
 
 import base64
 import email
+from unittest.mock import Mock
 
 from maasserver.preseed import get_preseed_context
 from maasserver.testing.factory import factory
@@ -14,7 +15,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledWith
 from metadataserver.user_data import utils
 from metadataserver.user_data.commissioning import generate_user_data
-from mock import Mock
 from testtools.matchers import ContainsAll
 
 

@@ -7,10 +7,10 @@ __all__ = []
 
 import os
 import re
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from provisioningserver.boot import (
     BytesReader,
     powernv as powernv_module,

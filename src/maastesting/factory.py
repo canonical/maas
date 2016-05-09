@@ -24,13 +24,13 @@ import random
 import string
 import subprocess
 import time
+from unittest import mock
 import urllib.error
 import urllib.parse
 import urllib.request
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
-import mock
 from netaddr import (
     IPAddress,
     IPNetwork,

@@ -12,15 +12,15 @@ from os import (
     stat,
 )
 from os.path import dirname
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    sentinel,
-)
 from provisioningserver import security
 from provisioningserver.utils.fs import (
     ensure_dir,

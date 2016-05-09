@@ -6,6 +6,11 @@
 
 __all__ = []
 
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
+
 from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -14,10 +19,6 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    ANY,
-    sentinel,
-)
 from provisioningserver.pserv_services import (
     node_power_monitor_service as npms,
 )

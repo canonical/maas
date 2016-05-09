@@ -6,6 +6,10 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    MagicMock,
+    sentinel,
+)
 
 from django.core.exceptions import (
     PermissionDenied,
@@ -30,10 +34,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
-from mock import (
-    MagicMock,
-    sentinel,
-)
 from testtools import ExpectedException
 from testtools.matchers import Equals
 

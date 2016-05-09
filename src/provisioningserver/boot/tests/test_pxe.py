@@ -8,11 +8,11 @@ __all__ = []
 from collections import OrderedDict
 import os
 import re
+from unittest import mock
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver import kernel_opts
 from provisioningserver.boot import (
     BytesReader,

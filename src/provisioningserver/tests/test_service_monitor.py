@@ -5,9 +5,10 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.service_monitor import (
     DHCPService,
     DHCPv4Service,

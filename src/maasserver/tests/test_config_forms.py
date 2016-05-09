@@ -5,6 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import (
+    ANY,
+    Mock,
+)
+
 from django import forms
 from django.forms import widgets
 from django.http import QueryDict
@@ -18,10 +23,6 @@ from maasserver.config_forms import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from mock import (
-    ANY,
-    Mock,
-)
 
 
 class TestDictCharField(MAASServerTestCase):

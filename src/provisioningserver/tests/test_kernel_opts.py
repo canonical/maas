@@ -8,10 +8,10 @@ __all__ = [
     ]
 
 import os
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver import kernel_opts
 from provisioningserver.drivers import (
     Architecture,

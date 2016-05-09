@@ -5,6 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import (
+    call,
+    sentinel,
+)
+
 from django.contrib.auth.models import User
 from maasserver.models import (
     Node,
@@ -35,10 +40,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
-from mock import (
-    call,
-    sentinel,
-)
 from testtools.matchers import MatchesStructure
 
 

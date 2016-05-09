@@ -6,12 +6,12 @@
 __all__ = []
 
 import logging
+from unittest.mock import sentinel
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,

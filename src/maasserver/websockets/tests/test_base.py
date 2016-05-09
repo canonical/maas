@@ -7,6 +7,11 @@ __all__ = []
 
 from operator import attrgetter
 import random
+from unittest.mock import (
+    ANY,
+    MagicMock,
+    sentinel,
+)
 
 from django.db.models.query import QuerySet
 from maasserver.forms import (
@@ -33,11 +38,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    MagicMock,
-    sentinel,
-)
 from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     Equals,

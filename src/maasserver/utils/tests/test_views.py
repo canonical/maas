@@ -12,6 +12,11 @@ from random import (
     randint,
     random,
 )
+from unittest.mock import (
+    ANY,
+    call,
+    sentinel,
+)
 from weakref import WeakSet
 
 from apiclient.multipart import encode_multipart_data
@@ -43,11 +48,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from mock import (
-    ANY,
-    call,
-    sentinel,
-)
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
 from testtools.matchers import (

@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import create_autospec
+
 from maasserver.models import nodeprobeddetails
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from mock import create_autospec
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,

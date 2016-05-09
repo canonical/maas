@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from django import forms
 import jsonschema
 from maasserver.clusterrpc import power_parameters
@@ -22,7 +24,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.power.schema import make_json_field
 
 

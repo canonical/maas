@@ -7,6 +7,10 @@
 __all__ = []
 
 import json
+from unittest.mock import (
+    call,
+    Mock,
+)
 import urllib.parse
 
 from maastesting.factory import factory
@@ -18,10 +22,6 @@ from maastesting.matchers import (
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-)
-from mock import (
-    call,
-    Mock,
 )
 from provisioningserver.drivers.hardware import seamicro
 from provisioningserver.drivers.hardware.seamicro import (

@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import sentinel
 
 from maasserver.clusterrpc import utils
 from maasserver.node_action import RPC_EXCEPTIONS
@@ -13,7 +14,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import async
 from maastesting.matchers import MockCalledOnceWith
-from mock import sentinel
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 

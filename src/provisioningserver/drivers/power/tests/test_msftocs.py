@@ -8,6 +8,10 @@ __all__ = []
 from io import StringIO
 from random import randint
 from textwrap import dedent
+from unittest.mock import (
+    call,
+    Mock,
+)
 import urllib.parse
 
 from hypothesis import given
@@ -20,10 +24,6 @@ from maastesting.matchers import (
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-)
-from mock import (
-    call,
-    Mock,
 )
 from provisioningserver.drivers.power import (
     msftocs as msftocs_module,

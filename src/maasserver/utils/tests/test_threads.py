@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import sentinel
 
 from crochet import wait_for
 from django.db import connection
@@ -14,7 +15,6 @@ from maasserver.utils import (
     threads,
 )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.utils.twisted import (
     ThreadPool,
     ThreadUnpool,

@@ -7,6 +7,11 @@ __all__ = []
 
 import random
 from subprocess import PIPE
+from unittest.mock import (
+    ANY,
+    call,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -14,11 +19,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    call,
-    sentinel,
-)
 from provisioningserver.drivers.power import (
     ipmi as ipmi_module,
     PowerError,

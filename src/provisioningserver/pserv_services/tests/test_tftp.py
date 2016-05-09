@@ -14,6 +14,11 @@ from socket import (
     AF_INET,
     AF_INET6,
 )
+from unittest.mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -25,11 +30,6 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    ANY,
-    Mock,
-    sentinel,
-)
 from netaddr import IPNetwork
 from netaddr.ip import (
     IPV4_LINK_LOCAL,

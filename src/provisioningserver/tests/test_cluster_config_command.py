@@ -9,14 +9,14 @@ from argparse import ArgumentParser
 import io
 from itertools import combinations
 import pprint
+from unittest.mock import (
+    Mock,
+    patch,
+)
 import uuid
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import (
-    Mock,
-    patch,
-)
 from provisioningserver import cluster_config_command
 from provisioningserver.config import (
     ClusterConfiguration,

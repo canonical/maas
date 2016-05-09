@@ -9,12 +9,12 @@ import errno
 import os.path
 import random
 from textwrap import dedent
+from unittest.mock import Mock
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (

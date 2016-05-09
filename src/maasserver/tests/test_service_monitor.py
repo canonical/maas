@@ -7,6 +7,10 @@ __all__ = []
 
 import os
 import random
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from maasserver import (
@@ -31,10 +35,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    Mock,
-    sentinel,
-)
 from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceState,

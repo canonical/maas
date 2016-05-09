@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 from unittest import skip
+from unittest.mock import sentinel
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
@@ -30,7 +31,6 @@ from maasserver.models.partitiontable import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from mock import sentinel
 from testtools.matchers import Equals
 
 

@@ -8,6 +8,7 @@ __all__ = []
 import builtins
 import os
 import sys
+from unittest.mock import call
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
@@ -21,7 +22,6 @@ from maastesting.fixtures import (
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from mock import call
 from testtools.matchers import (
     Equals,
     Is,

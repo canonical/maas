@@ -11,6 +11,10 @@ import random
 from random import randint
 from subprocess import CalledProcessError
 from textwrap import dedent
+from unittest.mock import (
+    call,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -19,10 +23,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    sentinel,
-)
 from netaddr import IPNetwork
 from provisioningserver.dns import actions
 from provisioningserver.dns.config import (

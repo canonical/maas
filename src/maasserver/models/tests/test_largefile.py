@@ -7,6 +7,10 @@ __all__ = []
 
 from io import BytesIO
 from random import randint
+from unittest.mock import (
+    ANY,
+    call,
+)
 
 from crochet import wait_for
 from django.db import transaction
@@ -22,10 +26,6 @@ from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
-)
-from mock import (
-    ANY,
-    call,
 )
 import psycopg2
 from testtools.matchers import (

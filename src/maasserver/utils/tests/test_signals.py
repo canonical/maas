@@ -6,6 +6,11 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from maasserver.models import Config
 from maasserver.testing.factory import factory
@@ -26,11 +31,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-)
-from mock import (
-    call,
-    Mock,
-    sentinel,
 )
 from testtools.matchers import (
     AfterPreprocessing,

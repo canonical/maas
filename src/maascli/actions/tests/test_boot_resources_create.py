@@ -10,6 +10,11 @@ import hashlib
 import json
 import os
 from random import randint
+from unittest.mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 
 from apiclient.testing.credentials import make_api_credentials
 import httplib2
@@ -29,11 +34,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    Mock,
-    sentinel,
-)
 
 
 class TestBootResourcesCreateAction(MAASTestCase):

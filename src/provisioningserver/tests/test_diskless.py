@@ -7,6 +7,7 @@ __all__ = []
 
 import os
 from textwrap import dedent
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -14,7 +15,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver import diskless
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.diskless import (

@@ -7,6 +7,7 @@ __all__ = []
 
 import http.client
 import json
+from unittest.mock import Mock
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -39,7 +40,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith
-from mock import Mock
 from testtools.matchers import (
     Contains,
     Equals,

@@ -11,6 +11,10 @@ import http.client
 import json
 import sys
 from textwrap import dedent
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 import httplib2
 from maascli import api
@@ -27,10 +31,6 @@ from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    Mock,
-    sentinel,
-)
 from testtools.matchers import (
     EndsWith,
     Equals,

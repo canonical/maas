@@ -7,10 +7,10 @@ __all__ = []
 
 import errno
 import os.path
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,

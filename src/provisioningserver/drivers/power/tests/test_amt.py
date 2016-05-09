@@ -11,15 +11,15 @@ from os.path import (
 )
 from random import choice
 from textwrap import dedent
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from lxml import etree
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    Mock,
-    sentinel,
-)
 from provisioningserver.drivers.power import (
     amt as amt_module,
     PowerActionError,

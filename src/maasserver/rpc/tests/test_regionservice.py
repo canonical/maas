@@ -22,6 +22,13 @@ from socket import gethostname
 import threading
 import time
 from unittest import skip
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+    Mock,
+    sentinel,
+)
 from urllib.parse import urlparse
 
 from crochet import wait_for
@@ -96,13 +103,6 @@ from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
     TwistedLoggerFixture,
-)
-from mock import (
-    ANY,
-    call,
-    MagicMock,
-    Mock,
-    sentinel,
 )
 import netaddr
 from provisioningserver.rpc import (

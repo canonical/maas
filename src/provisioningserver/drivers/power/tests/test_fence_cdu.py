@@ -6,6 +6,11 @@
 __all__ = []
 
 
+from unittest.mock import (
+    call,
+    sentinel,
+)
+
 from hypothesis import given
 from hypothesis.strategies import sampled_from
 from maastesting.matchers import (
@@ -13,10 +18,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    sentinel,
-)
 from provisioningserver.drivers.power import (
     fence_cdu as fence_cdu_module,
     PowerError,

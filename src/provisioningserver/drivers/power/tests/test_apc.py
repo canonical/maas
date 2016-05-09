@@ -6,11 +6,11 @@
 __all__ = []
 
 from subprocess import PIPE
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from provisioningserver.drivers.power import (
     apc as apc_module,
     PowerActionError,

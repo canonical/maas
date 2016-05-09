@@ -6,6 +6,10 @@
 __all__ = []
 
 from random import choice
+from unittest.mock import (
+    call,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -13,10 +17,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    sentinel,
-)
 from provisioningserver.drivers.power import (
     dli as dli_module,
     PowerActionError,

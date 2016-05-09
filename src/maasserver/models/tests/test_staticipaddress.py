@@ -7,6 +7,7 @@ __all__ = []
 
 from random import randint
 from unittest import skip
+from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -44,7 +45,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from mock import sentinel
 from netaddr import IPAddress
 from testtools import ExpectedException
 from testtools.matchers import (

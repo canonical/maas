@@ -7,6 +7,7 @@ __all__ = []
 
 from base64 import b64encode
 import http.client
+from unittest.mock import ANY
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -65,7 +66,6 @@ from metadataserver.models import (
     NodeUserData,
 )
 from metadataserver.nodeinituser import get_node_init_user
-from mock import ANY
 from netaddr import IPNetwork
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (

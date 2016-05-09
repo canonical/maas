@@ -5,6 +5,12 @@
 
 __all__ = []
 
+from unittest.mock import (
+    ANY,
+    call,
+    create_autospec,
+)
+
 from apiclient.creds import convert_tuple_to_string
 from fixtures import FakeLogger
 from maasserver import populate_tags as populate_tags_module
@@ -33,11 +39,6 @@ from maastesting.matchers import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
-)
-from mock import (
-    ANY,
-    call,
-    create_autospec,
 )
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,

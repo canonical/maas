@@ -8,6 +8,7 @@ __all__ = []
 import os
 import os.path
 from subprocess import CalledProcessError
+from unittest import mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -16,7 +17,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver.import_images import uec2roottar
 from testtools.matchers import HasLength
 from testtools.testcase import ExpectedException

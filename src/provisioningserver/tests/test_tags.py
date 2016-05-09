@@ -10,6 +10,11 @@ import http.client
 from itertools import chain
 import json
 from textwrap import dedent
+from unittest.mock import (
+    call,
+    MagicMock,
+    sentinel,
+)
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,11 +28,6 @@ from maastesting.matchers import (
     IsCallable,
     MockCalledOnceWith,
     MockCallsMatch,
-)
-from mock import (
-    call,
-    MagicMock,
-    sentinel,
 )
 from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture

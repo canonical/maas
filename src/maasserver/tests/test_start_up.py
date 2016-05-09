@@ -5,6 +5,11 @@
 
 __all__ = []
 
+from unittest.mock import (
+    ANY,
+    call,
+)
+
 from maasserver import (
     eventloop,
     locks,
@@ -24,10 +29,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-)
-from mock import (
-    ANY,
-    call,
 )
 from testtools.matchers import (
     Equals,

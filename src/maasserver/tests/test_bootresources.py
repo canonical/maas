@@ -14,6 +14,11 @@ from os import environ
 from random import randint
 from subprocess import CalledProcessError
 from unittest import skip
+from unittest.mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -78,11 +83,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    ANY,
-    Mock,
-    sentinel,
-)
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.cluster import (

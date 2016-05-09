@@ -5,10 +5,11 @@
 
 __all__ = []
 
+from unittest import mock
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver.import_images import helpers
 from simplestreams.util import SignatureMissingException
 

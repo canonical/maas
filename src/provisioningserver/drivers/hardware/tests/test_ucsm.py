@@ -8,6 +8,12 @@ __all__ = []
 from io import StringIO
 from itertools import permutations
 import random
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,12 +32,6 @@ from maastesting.matchers import (
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-)
-from mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
 )
 from provisioningserver.drivers.hardware import ucsm
 from provisioningserver.drivers.hardware.ucsm import (

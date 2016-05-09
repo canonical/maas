@@ -11,6 +11,10 @@ from os.path import (
     dirname,
     join,
 )
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 import crochet as crochet_module
 from maastesting import noseplug
@@ -24,10 +28,6 @@ from maastesting.noseplug import (
     Select,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    sentinel,
-)
 from testtools.matchers import (
     Equals,
     IsInstance,

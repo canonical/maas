@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -20,7 +21,6 @@ from maasserver.models.sshkey import (
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from mock import Mock
 from testtools.matchers import EndsWith
 
 

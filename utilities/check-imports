@@ -152,7 +152,6 @@ TestingLibraries = Pattern(
     "fixtures|fixtures.**",
     "hypothesis|hypothesis.**",
     "maastesting|maastesting.**",
-    "mock|mock.**",  # Deprecated: use unittest.mock.
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",
     "selenium|selenium.**",

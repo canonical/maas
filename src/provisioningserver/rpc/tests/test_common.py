@@ -7,6 +7,10 @@ __all__ = []
 
 import random
 import re
+from unittest.mock import (
+    create_autospec,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,10 +22,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
     TwistedLoggerFixture,
-)
-from mock import (
-    create_autospec,
-    sentinel,
 )
 from provisioningserver.rpc import common
 from provisioningserver.rpc.interfaces import IConnection

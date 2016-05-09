@@ -16,6 +16,11 @@ from random import (
 import re
 import threading
 import time
+from unittest.mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 
 from crochet import EventualResult
 from maastesting.factory import factory
@@ -32,11 +37,6 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    ANY,
-    Mock,
-    sentinel,
-)
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,

@@ -7,6 +7,13 @@ __all__ = []
 
 from datetime import datetime
 import random
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from django.core.exceptions import (
@@ -121,13 +128,6 @@ from metadataserver.models import (
 from metadataserver.user_data import (
     commissioning,
     disk_erasing,
-)
-from mock import (
-    ANY,
-    call,
-    MagicMock,
-    Mock,
-    sentinel,
 )
 from provisioningserver.events import (
     EVENT_DETAILS,

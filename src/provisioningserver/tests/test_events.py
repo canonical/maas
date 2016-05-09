@@ -7,6 +7,10 @@ __all__ = [
     ]
 
 import random
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,16 +22,12 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from mock import (
-    ANY,
-    sentinel,
-)
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
     EventDetail,
-    NodeEventHub,
     nodeEventHub,
+    NodeEventHub,
     send_event_node,
     send_event_node_mac_address,
 )

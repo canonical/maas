@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from itertools import product
 import os
 import os.path
+from unittest.mock import Mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,7 +19,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
-from mock import Mock
 from provisioningserver import upgrade_cluster
 from provisioningserver.boot.tftppath import list_subdirs
 from provisioningserver.testing.config import ClusterConfigurationFixture

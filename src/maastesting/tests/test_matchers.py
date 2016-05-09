@@ -5,6 +5,14 @@
 
 __all__ = []
 
+from unittest.mock import (
+    call,
+    create_autospec,
+    Mock,
+    NonCallableMock,
+    sentinel,
+)
+
 from maastesting import matchers
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -25,13 +33,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    create_autospec,
-    Mock,
-    NonCallableMock,
-    sentinel,
-)
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,

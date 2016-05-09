@@ -6,6 +6,10 @@
 __all__ = []
 
 import http.client
+from unittest.mock import (
+    ANY,
+    Mock,
+)
 
 import bson
 from django.conf import settings
@@ -31,10 +35,6 @@ from maastesting.matchers import (
 )
 from metadataserver.models import NodeKey
 from metadataserver.nodeinituser import get_node_init_user
-from mock import (
-    ANY,
-    Mock,
-)
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,

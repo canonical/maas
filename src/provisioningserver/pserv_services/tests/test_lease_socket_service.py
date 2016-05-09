@@ -9,14 +9,14 @@ import json
 import os
 import socket
 import time
+from unittest.mock import (
+    MagicMock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTwistedRunTest
-from mock import (
-    MagicMock,
-    sentinel,
-)
 from provisioningserver.pserv_services import lease_socket_service
 from provisioningserver.pserv_services.lease_socket_service import (
     LeaseSocketService,

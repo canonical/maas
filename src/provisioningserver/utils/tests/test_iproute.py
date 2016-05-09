@@ -6,11 +6,11 @@
 __all__ = []
 
 import random
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.utils import iproute as iproute_module
 from provisioningserver.utils.iproute import (
     _parse_route_definition,

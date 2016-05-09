@@ -7,6 +7,10 @@ __all__ = []
 
 import http.client
 import json
+from unittest.mock import (
+    ANY,
+    call,
+)
 
 from apiclient.creds import convert_tuple_to_string
 from django.conf import settings
@@ -31,10 +35,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from metadataserver.models.commissioningscript import inject_lshw_result
-from mock import (
-    ANY,
-    call,
-)
 from testtools.matchers import MatchesStructure
 
 

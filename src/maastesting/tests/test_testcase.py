@@ -8,6 +8,12 @@ __all__ = []
 import os.path
 from shutil import rmtree
 from tempfile import mkdtemp
+from unittest import mock as mock_module
+from unittest.mock import (
+    call,
+    MagicMock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -16,12 +22,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    MagicMock,
-    sentinel,
-)
-import mock as mock_module
 from testtools.matchers import (
     DirExists,
     FileExists,

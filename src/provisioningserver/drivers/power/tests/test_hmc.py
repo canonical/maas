@@ -8,13 +8,13 @@ __all__ = []
 from io import BytesIO
 from random import choice
 from socket import error as SOCKETError
+from unittest.mock import Mock
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from paramiko import SSHException
 from provisioningserver.drivers.power import (
     hmc as hmc_module,

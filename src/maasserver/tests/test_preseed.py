@@ -8,6 +8,7 @@ __all__ = []
 import http.client
 import os
 from pipes import quote
+from unittest.mock import sentinel
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -70,7 +71,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.models import NodeKey
-from mock import sentinel
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum

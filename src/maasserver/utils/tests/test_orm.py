@@ -11,6 +11,12 @@ from itertools import (
 )
 from random import randint
 import time
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
@@ -66,12 +72,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
-)
 from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,

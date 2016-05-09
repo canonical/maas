@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import call
+
 from maasserver.models import (
     RackController,
     RegionRackRPCConnection,
@@ -16,7 +18,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
 )
-from mock import call
 
 
 class TestRegionRackRPCConnection(MAASServerTestCase):

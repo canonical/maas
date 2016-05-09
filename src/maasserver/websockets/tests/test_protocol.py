@@ -7,6 +7,10 @@ __all__ = []
 from collections import deque
 import json
 import random
+from unittest.mock import (
+    MagicMock,
+    sentinel,
+)
 
 from apiclient.utils import ascii_url
 from crochet import wait_for
@@ -36,10 +40,6 @@ from maastesting.matchers import (
     MockCalledWith,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    MagicMock,
-    sentinel,
-)
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
 from testtools.matchers import (

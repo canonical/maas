@@ -7,10 +7,10 @@ __all__ = []
 
 from datetime import datetime
 import os
+from unittest import mock
 
 from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver.import_images import download_resources
 from provisioningserver.import_images.product_mapping import ProductMapping
 from simplestreams.objectstores import FileStore

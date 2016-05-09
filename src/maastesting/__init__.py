@@ -17,9 +17,8 @@ from os.path import (
     realpath,
 )
 import re
+from unittest import mock
 from warnings import filterwarnings
-
-import mock
 
 # The root of the source tree.
 root = abspath(join(dirname(realpath(__file__)), pardir, pardir))

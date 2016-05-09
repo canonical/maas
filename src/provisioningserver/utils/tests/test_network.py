@@ -11,11 +11,11 @@ from socket import (
     EAI_NONAME,
     gaierror,
 )
+from unittest import mock
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-import mock
 from netaddr import (
     IPAddress,
     IPNetwork,

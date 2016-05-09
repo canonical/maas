@@ -8,6 +8,11 @@ __all__ = []
 
 from collections import namedtuple
 import http.client
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -23,11 +28,6 @@ from maasserver.models.config import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    Mock,
-    sentinel,
-)
 from testtools.matchers import Equals
 
 

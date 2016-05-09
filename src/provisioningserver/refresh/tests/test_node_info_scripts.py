@@ -19,6 +19,7 @@ from subprocess import (
 )
 from textwrap import dedent
 import time
+from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -26,7 +27,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import call
 from provisioningserver.refresh import node_info_scripts as node_info_module
 from provisioningserver.refresh.node_info_scripts import (
     make_function_call_script,

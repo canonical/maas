@@ -6,6 +6,7 @@
 __all__ = []
 
 import socket
+from unittest.mock import sentinel
 
 from crochet import wait_for
 from django.db import connections
@@ -30,7 +31,6 @@ from maasserver.utils.orm import (
 )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from testtools.matchers import (
     Equals,
     IsInstance,

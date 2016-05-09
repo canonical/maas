@@ -5,8 +5,9 @@
 
 __all__ = []
 
+from unittest.mock import Mock
+
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from provisioningserver import support_dump
 from testtools.matchers import (
     Equals,

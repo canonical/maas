@@ -13,6 +13,7 @@ from operator import (
 )
 import os.path
 import sqlite3
+from unittest.mock import sentinel
 from uuid import uuid4
 
 from fixtures import EnvironmentVariableFixture
@@ -25,7 +26,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.config import (
     ClusterConfiguration,
     Configuration,

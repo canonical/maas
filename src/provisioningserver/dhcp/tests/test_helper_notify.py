@@ -7,11 +7,11 @@ __all__ = []
 
 import os
 import random
+from unittest.mock import sentinel
 
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTwistedRunTest
-from mock import sentinel
 from provisioningserver.pserv_services import lease_socket_service
 from provisioningserver.pserv_services.lease_socket_service import (
     LeaseSocketService,

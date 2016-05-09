@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from distro_info import UbuntuDistroInfo
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
@@ -21,7 +23,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
-from mock import sentinel
 import petname
 
 

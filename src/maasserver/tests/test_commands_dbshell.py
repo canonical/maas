@@ -6,6 +6,7 @@
 __all__ = []
 
 import subprocess
+from unittest import mock
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
@@ -13,7 +14,6 @@ from maasserver.management.commands.dbshell import Command as dbshell_command
 from maasserver.testing import database as database_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-import mock
 
 
 class TestDBShell(MAASServerTestCase):

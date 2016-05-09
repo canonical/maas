@@ -13,6 +13,10 @@ import json
 import os.path
 import random
 import tarfile
+from unittest.mock import (
+    ANY,
+    Mock,
+)
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
@@ -68,10 +72,6 @@ from metadataserver.models import (
 )
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
 from metadataserver.nodeinituser import get_node_init_user
-from mock import (
-    ANY,
-    Mock,
-)
 from netaddr import IPNetwork
 from provisioningserver.events import (
     EVENT_DETAILS,

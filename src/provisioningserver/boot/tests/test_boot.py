@@ -7,6 +7,7 @@ __all__ = []
 
 import errno
 import os
+from unittest import mock
 from urllib.parse import urlparse
 
 from fixtures import EnvironmentVariableFixture
@@ -16,7 +17,6 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-import mock
 from provisioningserver import boot
 from provisioningserver.boot import (
     BootMethod,

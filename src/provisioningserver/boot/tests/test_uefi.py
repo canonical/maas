@@ -8,11 +8,11 @@ __all__ = []
 from contextlib import contextmanager
 import os
 import re
+from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from mock import call
 from provisioningserver.boot import (
     BootMethodInstallError,
     BytesReader,

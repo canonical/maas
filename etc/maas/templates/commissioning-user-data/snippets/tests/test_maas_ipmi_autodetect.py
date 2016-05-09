@@ -8,6 +8,7 @@ __all__ = []
 from collections import OrderedDict
 import platform
 import subprocess
+from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -16,7 +17,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from mock import call
 from snippets import maas_ipmi_autodetect
 from snippets.maas_ipmi_autodetect import (
     apply_ipmi_user_settings,

@@ -5,13 +5,14 @@
 
 __all__ = []
 
-from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
-from mock import (
+from unittest.mock import (
     MagicMock,
     sentinel,
 )
+
+from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.events import (
     Event,
     EventGroup,

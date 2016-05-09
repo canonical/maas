@@ -6,11 +6,12 @@
 __all__ = []
 
 
+from unittest.mock import MagicMock
+
 from maasserver.testing.factory import factory
 from maasserver.utils import mac
 from maasserver.utils.mac import get_vendor_for_mac
 from maastesting.testcase import MAASTestCase
-from mock import MagicMock
 
 
 class TestGetVendorForMac(MAASTestCase):

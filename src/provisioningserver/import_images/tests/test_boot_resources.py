@@ -18,6 +18,8 @@ from subprocess import (
     PIPE,
     Popen,
 )
+from unittest import mock
+from unittest.mock import call
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -28,8 +30,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
-import mock
-from mock import call
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.config import (
     BootSources,

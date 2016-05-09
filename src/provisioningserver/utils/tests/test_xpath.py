@@ -7,12 +7,12 @@ __all__ = []
 
 import doctest
 from textwrap import dedent
+from unittest.mock import Mock
 
 from fixtures import FakeLogger
 from lxml import etree
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import Mock
 from provisioningserver.utils.xpath import try_match_xpath
 from testscenarios import multiply_scenarios
 from testtools.matchers import DocTestMatches

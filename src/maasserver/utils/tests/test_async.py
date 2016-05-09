@@ -9,6 +9,11 @@ from functools import partial
 from textwrap import dedent
 import threading
 from time import time
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 
 from crochet import wait_for
 from maasserver.exceptions import IteratorReusedError
@@ -23,11 +28,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    call,
-    Mock,
-    sentinel,
-)
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,

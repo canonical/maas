@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from crochet import wait_for
 from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
@@ -28,7 +30,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
 )
-from mock import ANY
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from twisted.internet import defer
 from twisted.internet.task import Clock

@@ -10,16 +10,16 @@ import os
 import subprocess
 import tempfile
 from textwrap import dedent
+from unittest.mock import (
+    ANY,
+    Mock,
+)
 
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    Mock,
-)
 from provisioningserver.dhcp import omshell
 from provisioningserver.dhcp.omshell import (
     call_dnssec_keygen,

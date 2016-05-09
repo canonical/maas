@@ -8,6 +8,7 @@ __all__ = []
 
 import random
 from textwrap import dedent
+from unittest.mock import call
 
 from lxml import etree
 from maastesting.factory import factory
@@ -20,7 +21,6 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from mock import call
 from provisioningserver.drivers.hardware import virsh
 from provisioningserver.utils.twisted import asynchronous
 from testtools.testcase import ExpectedException

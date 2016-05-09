@@ -5,9 +5,10 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.drivers import osystem as osystem_module
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,

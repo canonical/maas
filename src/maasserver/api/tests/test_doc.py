@@ -10,6 +10,7 @@ from inspect import getdoc
 from io import StringIO
 import sys
 import types
+from unittest.mock import sentinel
 
 from django.conf.urls import (
     include,
@@ -44,7 +45,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
 )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource

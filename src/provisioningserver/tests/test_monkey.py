@@ -8,9 +8,9 @@ __all__ = [
 
 
 import sys
+from unittest.mock import sentinel
 
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.monkey import add_term_error_code_to_tftp
 import tftp.datagram
 

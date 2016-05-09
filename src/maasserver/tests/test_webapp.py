@@ -8,6 +8,7 @@ __all__ = []
 
 import random
 from textwrap import dedent
+from unittest.mock import sentinel
 
 from django.core.handlers.wsgi import WSGIHandler
 from lxml import html
@@ -24,7 +25,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import sentinel
 from testtools.matchers import (
     Equals,
     Is,

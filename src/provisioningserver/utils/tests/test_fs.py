@@ -17,6 +17,12 @@ from subprocess import (
 )
 import tempfile
 import time
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+    sentinel,
+)
 
 from maastesting import root
 from maastesting.factory import factory
@@ -27,12 +33,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    ANY,
-    call,
-    Mock,
-    sentinel,
-)
 import provisioningserver.config
 from provisioningserver.utils.fs import (
     atomic_delete,

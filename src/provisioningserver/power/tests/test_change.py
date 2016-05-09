@@ -6,6 +6,11 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    ANY,
+    Mock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -16,11 +21,6 @@ from maastesting.testcase import (
 from maastesting.twisted import (
     always_succeed_with,
     TwistedLoggerFixture,
-)
-from mock import (
-    ANY,
-    Mock,
-    sentinel,
 )
 from provisioningserver import power
 from provisioningserver.drivers.power import (

@@ -5,6 +5,13 @@
 
 __all__ = []
 
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+    sentinel,
+)
+
 from crochet import wait_for
 from maasserver import region_controller
 from maasserver.region_controller import RegionControllerService
@@ -14,12 +21,6 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
-)
-from mock import (
-    ANY,
-    call,
-    MagicMock,
-    sentinel,
 )
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor

@@ -11,6 +11,11 @@ import io
 import logging
 import os
 import shutil
+from unittest import mock
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -22,11 +27,6 @@ from maastesting.testcase import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
-)
-import mock
-from mock import (
-    sentinel,
-    ANY,
 )
 from provisioningserver.boot import (
     BootMethodError,

@@ -7,6 +7,7 @@ __all__ = []
 
 import datetime
 import random
+from unittest.mock import sentinel
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -20,7 +21,6 @@ from maasserver.websockets.handlers.event import (
 )
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
 from maastesting.matchers import MockCalledOnceWith
-from mock import sentinel
 from testtools.matchers import (
     Equals,
     Is,

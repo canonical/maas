@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from django.db import transaction
 from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
@@ -60,7 +62,6 @@ from maasserver.utils.orm import (
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.noderesult import NodeResult
-from mock import ANY
 from netaddr import IPNetwork
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals

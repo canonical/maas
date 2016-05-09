@@ -8,10 +8,10 @@ __all__ = []
 import errno
 import fcntl
 import socket
+from unittest import mock
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,

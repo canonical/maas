@@ -7,6 +7,12 @@ __all__ = []
 
 from collections import namedtuple
 import errno
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+    sentinel,
+)
 
 from crochet import wait_for
 from django.db import connection
@@ -26,12 +32,6 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
-)
-from mock import (
-    ANY,
-    call,
-    MagicMock,
-    sentinel,
 )
 from provisioningserver.utils.twisted import DeferredValue
 from psycopg2 import OperationalError

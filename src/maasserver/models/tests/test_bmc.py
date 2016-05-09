@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import Mock
 
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -21,7 +22,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
-from mock import Mock
 from testtools.matchers import HasLength
 
 

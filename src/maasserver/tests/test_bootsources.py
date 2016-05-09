@@ -7,6 +7,7 @@ __all__ = []
 
 from os import environ
 from unittest import skip
+from unittest.mock import MagicMock
 
 from maasserver import bootsources
 from maasserver.bootsources import (
@@ -33,7 +34,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
-from mock import MagicMock
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
 )

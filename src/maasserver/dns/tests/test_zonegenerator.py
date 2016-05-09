@@ -7,6 +7,11 @@ __all__ = []
 
 import random
 import socket
+from unittest.mock import (
+    ANY,
+    call,
+    Mock,
+)
 from urllib.parse import urlparse
 
 from maasserver import server_address
@@ -43,11 +48,6 @@ from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
-)
-from mock import (
-    ANY,
-    call,
-    Mock,
 )
 from netaddr import (
     IPAddress,

@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 from unittest import skip
+from unittest.mock import call
 
 from django.core.exceptions import (
     PermissionDenied,
@@ -56,7 +57,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import call
 from netaddr import (
     IPAddress,
     IPNetwork,

@@ -10,6 +10,7 @@ from datetime import (
     datetime,
     timedelta,
 )
+from unittest.mock import call
 
 from maasserver import status_monitor
 from maasserver.node_status import NODE_FAILURE_STATUS_TRANSITIONS
@@ -26,7 +27,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from mock import call
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import Clock
 

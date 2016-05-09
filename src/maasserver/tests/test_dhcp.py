@@ -7,6 +7,7 @@ __all__ = []
 
 from operator import itemgetter
 import random
+from unittest.mock import ANY
 
 from crochet import wait_for
 from django.core.exceptions import ValidationError
@@ -45,7 +46,6 @@ from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
 )
-from mock import ANY
 from netaddr import (
     IPAddress,
     IPNetwork,

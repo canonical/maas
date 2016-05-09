@@ -7,6 +7,7 @@ __all__ = []
 
 import random
 import threading
+from unittest.mock import sentinel
 
 from crochet import wait_for
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -18,7 +19,6 @@ from maasserver.utils.orm import transactional
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
-from mock import sentinel
 from testtools.matchers import (
     Equals,
     HasLength,

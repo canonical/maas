@@ -6,6 +6,7 @@
 __all__ = []
 
 import random
+from unittest.mock import Mock
 
 from crochet import wait_for
 from maasserver.clusterrpc import power as power_module
@@ -26,7 +27,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
-from mock import Mock
 from provisioningserver.rpc.cluster import (
     PowerDriverCheck,
     PowerOff,

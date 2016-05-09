@@ -5,6 +5,7 @@
 __all__ = []
 
 import os
+from unittest import mock
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -13,7 +14,6 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-import mock
 from provisioningserver.import_images import keyrings
 
 

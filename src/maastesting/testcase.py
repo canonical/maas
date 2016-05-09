@@ -14,6 +14,7 @@ from collections import Sequence
 from contextlib import contextmanager
 from importlib import import_module
 import os
+from unittest import mock
 
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
@@ -24,8 +25,6 @@ from maastesting.runtest import (
     MAASTwistedRunTest,
 )
 from maastesting.scenarios import WithScenarios
-import mock
-import mock.mock
 from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
@@ -261,7 +260,7 @@ class MAASTestCase(
         :return: The patched-in object.
         """
         spec = getattr(obj, attribute)
-        if isinstance(spec, mock.mock.Base):
+        if isinstance(spec, mock.Base):
             raise TypeError(
                 "Cannot use a mock object as a specification: %s.%s = %r"
                 % (_get_name(obj), attribute, spec))

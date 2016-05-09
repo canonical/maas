@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from crochet import wait_for
 from maasserver import (
     eventloop,
@@ -12,7 +14,6 @@ from maasserver import (
 )
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.rpc import exceptions
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (

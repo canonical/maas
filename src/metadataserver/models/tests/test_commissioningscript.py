@@ -18,6 +18,11 @@ from random import randint
 import tarfile
 from textwrap import dedent
 import time
+from unittest.mock import (
+    create_autospec,
+    Mock,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maasserver.enum import (
@@ -53,11 +58,6 @@ from metadataserver.models.commissioningscript import (
     update_node_physical_block_devices,
 )
 from metadataserver.models.noderesult import NodeResult
-from mock import (
-    create_autospec,
-    Mock,
-    sentinel,
-)
 from netaddr import IPNetwork
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,

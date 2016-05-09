@@ -16,6 +16,7 @@ import socketserver
 import sys
 import threading
 from unittest import SkipTest
+from unittest.mock import Mock
 import wsgiref
 
 import crochet
@@ -39,7 +40,6 @@ from maastesting.djangotestcase import (
 )
 from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
-from mock import Mock
 
 
 class MAASRegionTestCaseBase(PostCommitHooksTestMixin):

@@ -6,6 +6,7 @@
 __all__ = []
 
 import threading
+from unittest.mock import sentinel
 from urllib.parse import (
     urlencode,
     urljoin,
@@ -30,7 +31,6 @@ from maasserver.utils import (
     synchronised,
 )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.testing.config import ClusterConfigurationFixture
 
 

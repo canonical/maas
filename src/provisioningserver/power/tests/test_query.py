@@ -7,6 +7,11 @@ __all__ = []
 
 import logging
 import random
+from unittest.mock import (
+    ANY,
+    call,
+    sentinel,
+)
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -22,11 +27,6 @@ from maastesting.testcase import (
 from maastesting.twisted import (
     always_fail_with,
     TwistedLoggerFixture,
-)
-from mock import (
-    ANY,
-    call,
-    sentinel,
 )
 from provisioningserver import power
 from provisioningserver.drivers.power import (

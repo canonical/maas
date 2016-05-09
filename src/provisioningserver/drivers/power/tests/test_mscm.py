@@ -10,6 +10,10 @@ from random import randint
 import re
 from socket import error as SOCKETError
 from textwrap import dedent
+from unittest.mock import (
+    call,
+    Mock,
+)
 
 from hypothesis import given
 from hypothesis.strategies import sampled_from
@@ -21,10 +25,6 @@ from maastesting.matchers import (
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
-)
-from mock import (
-    call,
-    Mock,
 )
 from paramiko import SSHException
 from provisioningserver.drivers.power import (

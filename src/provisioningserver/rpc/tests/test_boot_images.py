@@ -7,6 +7,10 @@ __all__ = []
 
 import os
 from random import randint
+from unittest.mock import (
+    ANY,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -14,10 +18,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
-from mock import (
-    ANY,
-    sentinel,
-)
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.import_images import boot_resources

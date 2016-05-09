@@ -9,6 +9,7 @@ import gzip
 from io import BytesIO
 import json
 from random import randint
+from unittest.mock import ANY
 import urllib.error
 import urllib.parse
 from urllib.parse import (
@@ -31,7 +32,6 @@ from maastesting.factory import factory
 from maastesting.fixtures import TempWDFixture
 from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import MAASTestCase
-from mock import ANY
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,

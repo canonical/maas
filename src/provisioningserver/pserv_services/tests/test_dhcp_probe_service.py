@@ -6,6 +6,12 @@
 __all__ = []
 
 
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
+
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
@@ -15,11 +21,6 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
-from mock import (
-    call,
-    Mock,
-    sentinel,
-)
 from provisioningserver.pserv_services import dhcp_probe_service
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,

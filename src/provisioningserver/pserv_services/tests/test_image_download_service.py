@@ -6,6 +6,11 @@
 __all__ = []
 
 from datetime import timedelta
+from unittest.mock import (
+    call,
+    Mock,
+    sentinel,
+)
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
@@ -18,11 +23,6 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    call,
-    Mock,
-    sentinel,
-)
 from provisioningserver.boot import tftppath
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,

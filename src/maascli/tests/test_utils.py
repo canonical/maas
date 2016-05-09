@@ -9,13 +9,13 @@ import collections
 import http.client
 import io
 import random
+from unittest.mock import sentinel
 
 import httplib2
 from maascli import utils
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,

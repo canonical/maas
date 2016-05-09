@@ -7,6 +7,10 @@
 __all__ = []
 
 import random
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,10 +22,6 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
 )
 from maastesting.twisted import TwistedLoggerFixture
-from mock import (
-    Mock,
-    sentinel,
-)
 from provisioningserver.pserv_services import service_monitor_service as sms
 from provisioningserver.rpc import (
     getRegionClient,

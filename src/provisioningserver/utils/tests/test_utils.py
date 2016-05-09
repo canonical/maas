@@ -11,16 +11,16 @@ from collections import Iterator
 from copy import deepcopy
 import os
 from textwrap import dedent
+from unittest.mock import (
+    Mock,
+    sentinel,
+)
 
 from fixtures import EnvironmentVariableFixture
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import (
-    Mock,
-    sentinel,
-)
 import provisioningserver
 import provisioningserver.utils
 from provisioningserver.utils import (

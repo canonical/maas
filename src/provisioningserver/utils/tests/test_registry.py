@@ -5,8 +5,9 @@
 
 __all__ = []
 
+from unittest.mock import sentinel
+
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
 from provisioningserver.utils.registry import Registry
 from provisioningserver.utils.testing import RegistryFixture
 

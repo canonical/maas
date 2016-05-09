@@ -8,6 +8,7 @@ __all__ = []
 import logging
 import random
 from textwrap import dedent
+from unittest.mock import Mock
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -19,7 +20,6 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from mock import Mock
 from provisioningserver.utils import service_monitor as service_monitor_module
 from provisioningserver.utils.service_monitor import (
     Service,
