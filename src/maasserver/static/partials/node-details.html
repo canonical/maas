@@ -39,16 +39,8 @@
                     data-ng-disabled="editHeaderInvalid()"
                     data-ng-click="saveEditHeader()">Save</a>
             </h1>
-            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
-            <div class="page-header__actions four-col last-col" data-ng-show="false && isController">
-                 <div class="page-header__cta two-col no-margin-bottom last-col">
-                    <div class="two-col no-margin-bottom last-col">
-                        <a href="#" class="link-cta-ubuntu right">Remove</a>
-                    </div>
-                </div>
-            </div>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <div data-ng-show="!isController && !header.editing && availableActionOptions.length">
+            <div data-ng-show="!header.editing && availableActionOptions.length">
                 <div class="page-header__actions four-col last-col">
                      <div class="page-header__cta two-col no-margin-bottom last-col">
                         <div class="two-col no-margin-bottom last-col">

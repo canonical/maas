@@ -246,8 +246,10 @@ class VLAN(CleanSave, TimestampedModel):
         """Return the name of the VLAN."""
         if self.is_fabric_default():
             return "untagged"
-        else:
+        elif self.name is not None:
             return self.name
+        else:
+            return str(self.vid)
 
     def manage_connected_interfaces(self):
         """Deal with connected interfaces:

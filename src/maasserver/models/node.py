@@ -3644,11 +3644,23 @@ class RackController(Controller):
         from maasserver.models import RegionRackRPCConnection
         connections = RegionRackRPCConnection.objects.filter(
             rack_controller=self)
-
         if len(connections) != 0:
             raise ValidationError(
                 "Unable to delete %s as it's currently connected to one or "
                 "more regions." % self.hostname)
+
+        primary_vlans = VLAN.objects.filter(primary_rack=self)
+        if len(primary_vlans) != 0:
+            raise ValidationError(
+                "Unable to delete '%s'; it is currently set as a primary rack"
+                " controller on VLANs %s" %
+                (self.hostname,
+                    ', '.join([str(vlan) for vlan in primary_vlans])))
+
+        for vlan in VLAN.objects.filter(secondary_rack=self):
+            vlan.secondary_rack = None
+            vlan.save()
+
         if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
             self.node_type = NODE_TYPE.REGION_CONTROLLER
             self.save()

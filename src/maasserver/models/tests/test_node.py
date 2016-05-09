@@ -6951,6 +6951,20 @@ class TestRackController(MAASServerTestCase):
         mock_filter.return_value = [rackcontroller]
         self.assertRaises(ValidationError, rackcontroller.delete)
 
+    def test_prevents_delete_when_primary_rack(self):
+        rackcontroller = factory.make_RackController()
+        factory.make_VLAN(primary_rack=rackcontroller)
+        self.assertRaises(ValidationError, rackcontroller.delete)
+
+    def test_delete_removes_secondary_link(self):
+        rackcontroller = factory.make_RackController()
+        vlan = factory.make_VLAN(secondary_rack=rackcontroller)
+        rackcontroller.delete()
+        self.assertIsNone(reload_object(vlan).secondary_rack)
+        self.assertRaises(
+            RackController.DoesNotExist,
+            RackController.objects.get, system_id=rackcontroller.system_id)
+
     def test_delete_converts_region_and_rack_to_region(self):
         region_and_rack = factory.make_Node(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
