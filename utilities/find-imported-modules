@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.5
 # -*- mode: python -*-
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
@@ -16,10 +16,8 @@ server, try the following:
 import argparse
 from itertools import (
     chain,
-    ifilter,
-    imap,
     takewhile,
-    )
+)
 from modulefinder import ModuleFinder
 from operator import itemgetter
 from os import path
@@ -53,7 +51,7 @@ p_not_import = lambda token: not p_import(token)
 
 def next_name(stream):
     """Advance to the next ``NAME`` token in `stream`."""
-    return next(ifilter(p_name, stream))
+    return next(filter(p_name, stream))
 
 
 def gen_import_tokens(stream):
@@ -71,8 +69,8 @@ def get_from_import_name(stream):
     Assumes that the stream is positioned just before ``name``.
     """
     stream = takewhile(p_not_import, stream)
-    names = ifilter(p_name, stream)
-    return ".".join(imap(get_text, names))
+    names = filter(p_name, stream)
+    return ".".join(map(get_text, names))
 
 
 def gen_from_import_names(stream):
@@ -81,7 +79,7 @@ def gen_from_import_names(stream):
     Assumes that the stream is positioned just before ``names``;
     `get_from_import_name` will do that for you.
     """
-    names = ifilter(p_name, stream)
+    names = filter(p_name, stream)
     for name in names:
         if get_text(name) == "as":
             # Swallow the next name.
@@ -143,9 +141,8 @@ def find_imports(readline):
 
 def find_imports_in_file(filename):
     """Call `find_imports` with the contents of `filename`."""
-    with open(filename, "rb") as fd:
-        for module in find_imports(fd.readline):
-            yield module
+    with tokenize.open(filename) as fd:
+        yield from find_imports(fd.readline)
 
 
 def is_in(name, haystack):
@@ -188,6 +185,6 @@ if __name__ == '__main__':
         if not is_in(module, standard_libs)
     }
     # Write it all out.
-    end = b"\0" if options.null else None
+    end = "\0" if options.null else None
     for module in sorted(modules):
         print(module, end=end)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.5
 # -*- mode: python -*-
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
@@ -27,11 +27,11 @@ from os.path import join
 from subprocess import (
     CalledProcessError,
     check_call,
-    )
+)
 from sys import (
     argv,
     stderr,
-    )
+)
 
 
 @contextmanager
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                 control(service_fg, "run")
             else:
                 tail_logs(services_bg)
-    except CalledProcessError, error:
+    except CalledProcessError as error:
         raise SystemExit(error.returncode)
     except KeyboardInterrupt:
         pass  # Ignore.

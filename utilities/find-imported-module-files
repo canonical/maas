@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.5
 # -*- mode: python -*-
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
@@ -20,8 +20,9 @@ from modulefinder import ModuleFinder
 from os import (
     getcwd,
     path,
-    )
+)
 import sys
+
 
 sys.path.insert(0, path.dirname(__file__))
 from python_standard_libs import python_standard_libs
@@ -70,6 +71,6 @@ if __name__ == '__main__':
         if not filename.startswith(here)
         )
     # Write it all out.
-    end = b"\0" if options.null else None
+    end = "\0" if options.null else None
     for filename in sorted(filenames):
         print(filename, end=end)

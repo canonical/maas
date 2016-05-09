@@ -1,23 +1,25 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3.5
 # -*- mode: python -*-
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Monitor for source changes."""
 
-from io import BytesIO
+from io import (
+    StringIO,
+    TextIOWrapper,
+)
 from os import (
     chdir,
     dup2,
     environ,
-    fdopen,
     pardir,
     path,
-    )
+)
 from subprocess import (
     call,
     check_call,
-    )
+)
 import sys
 import unittest
 
@@ -110,7 +112,7 @@ class TestReloader(unittest.TestCase):
 def self_test():
     """Run tests and exit if any fails."""
     suite = unittest.makeSuite(TestReloader)
-    runner = unittest.TextTestRunner(stream=BytesIO())
+    runner = unittest.TextTestRunner(stream=StringIO())
     if not runner.run(suite).wasSuccessful():
         sys.stderr.write(runner.stream.getvalue())
         raise SystemExit(1)
@@ -139,8 +141,16 @@ if __name__ == "__main__":
             dup2(log.fileno(), sys.stdout.fileno())
             dup2(log.fileno(), sys.stderr.fileno())
     # Ensure stdout and stderr are line-bufferred.
-    sys.stdout = fdopen(sys.stdout.fileno(), "ab", 1)
-    sys.stderr = fdopen(sys.stderr.fileno(), "ab", 1)
+    if not sys.stdout.line_buffering:
+        sys.stdout.flush()
+        sys.stdout = TextIOWrapper(
+            sys.stdout.buffer, sys.stdout.encoding,
+            line_buffering=True)
+    if not sys.stderr.line_buffering:
+        sys.stderr.flush()
+        sys.stderr = TextIOWrapper(
+            sys.stderr.buffer, sys.stderr.encoding,
+            line_buffering=True)
     # Keep watching for ever.
     notifier = pyinotify.Notifier(wm)
     notifier.loop()

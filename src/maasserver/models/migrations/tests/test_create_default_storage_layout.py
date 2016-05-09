@@ -10,15 +10,6 @@ the next release cycle (through MAAS 1.9) in case any bugs with this migration
 occur.
 """
 
-from __future__ import (
-    absolute_import,
-    print_function,
-    unicode_literals,
-    )
-
-str = None
-
-__metaclass__ = type
 __all__ = []
 
 from maasserver.enum import (
@@ -32,7 +23,6 @@ from maasserver.models import (
     PartitionTable,
     PhysicalBlockDevice,
     VirtualBlockDevice,
-    VolumeGroup,
 )
 from maasserver.models.migrations.create_default_storage_layout import (
     clear_full_storage_configuration,

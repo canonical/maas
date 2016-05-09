@@ -27,21 +27,17 @@ str = None
 __metaclass__ = type
 __all__ = [
     "clear_full_storage_configuration",
-    "create_lvm_layout",
 ]
 
 from datetime import datetime
 from uuid import uuid4
 
 from maasserver.enum import (
-    FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models.filesystemgroup import LVM_PE_SIZE
 from maasserver.models.partition import (
     MAX_PARTITION_SIZE_FOR_MBR,
-    MIN_PARTITION_SIZE,
     PARTITION_ALIGNMENT_SIZE,
 )
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
