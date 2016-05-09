@@ -106,6 +106,7 @@ from maasserver.utils.threads import (
     deferToDatabase,
 )
 from maastesting.matchers import (
+    MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -291,6 +292,30 @@ class TestMachineManager(MAASServerTestCase):
         self.assertEqual(
             [],
             list(Machine.objects.get_available_machines_for_acquisition(user)))
+
+
+class TestMachine(MAASServerTestCase):
+    def test_restore_default_configuration(self):
+        machine = factory.make_Machine(status=NODE_STATUS.NEW)
+        mock_set_default_storage_layout = self.patch(
+            machine, 'set_default_storage_layout')
+        mock_set_initial_networking_configuration = self.patch(
+            machine, 'set_initial_networking_configuration')
+        machine.restore_default_configuration()
+        self.assertThat(mock_set_default_storage_layout, MockCalledOnce())
+        self.assertThat(
+            mock_set_initial_networking_configuration, MockCalledOnce())
+
+    def test_restore_default_configuration_error_wrong_status(self):
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=factory.pick_choice(
+                NODE_STATUS_CHOICES,
+                but_not=[
+                    NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.ALLOCATED,
+                    NODE_STATUS.FAILED_DEPLOYMENT])
+        )
+        self.assertRaises(
+            ValidationError, machine.restore_default_configuration)
 
 
 class TestControllerManager(MAASServerTestCase):
@@ -479,6 +504,17 @@ class TestDeviceManager(MAASServerTestCase):
         device = factory.make_Device(architecture='')
         self.assertThat(device, IsInstance(Device))
         self.assertEqual('', device.architecture)
+
+
+class TestDevice(MAASServerTestCase):
+
+    def test_restore_default_configuration(self):
+        device = factory.make_Device()
+        mock_set_initial_networking_configuration = self.patch(
+            device, 'set_initial_networking_configuration')
+        device.restore_default_configuration()
+        self.assertThat(
+            mock_set_initial_networking_configuration, MockCalledOnce())
 
 
 class TestNode(MAASServerTestCase):
@@ -3609,6 +3645,17 @@ class TestNodeNetworking(MAASServerTestCase):
         auto_ip = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).first()
         self.assertIsNone(auto_ip)
+
+    def test_set_initial_net_config_rasies_validation_error_wrong_status(self):
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=factory.pick_choice(
+                NODE_STATUS_CHOICES,
+                but_not=[
+                    NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.ALLOCATED,
+                    NODE_STATUS.FAILED_DEPLOYMENT])
+        )
+        self.assertRaises(
+            ValidationError, machine.set_initial_networking_configuration)
 
     def test_set_initial_networking_configuration_auto_on_boot_nic(self):
         node = factory.make_Node_with_Interface_on_Subnet()

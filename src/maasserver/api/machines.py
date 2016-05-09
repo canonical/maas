@@ -77,7 +77,10 @@ from maasserver.storage_layouts import (
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils.orm import get_first
+from maasserver.utils.orm import (
+    get_first,
+    reload_object,
+)
 import yaml
 
 # Machine's fields exposed on the API.
@@ -420,7 +423,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         Note: This will clear the current storage layout and any extra
         configuration and replace it will the new layout.
 
-        :param storage_layout: Storage layout for the machine. (flat, lvm
+        :param storage_layout: Storage layout for the machine. (flat, lvm,
             and bcache)
 
         The following are optional for all layouts:
@@ -581,6 +584,45 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             yaml.safe_dump(
                 get_curtin_merged_config(machine), default_flow_style=False),
             content_type='text/plain')
+
+    @operation(idempotent=False)
+    def restore_networking_configuration(self, request, system_id):
+        """Reset a machine's networking options to its initial state.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to reset the machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        machine.set_initial_networking_configuration()
+        return reload_object(machine)
+
+    @operation(idempotent=False)
+    def restore_storage_configuration(self, request, system_id):
+        """Reset a machine's storage options to its initial state.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to reset the machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        machine.set_default_storage_layout()
+        return reload_object(machine)
+
+    @operation(idempotent=False)
+    def restore_default_configuration(self, request, system_id):
+        """Reset a machine's configuration to its initial state.
+
+        Returns 404 if the machine is not found.
+        Returns 403 if the user does not have permission to reset the machine.
+        """
+        machine = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        machine.restore_default_configuration()
+        return reload_object(machine)
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):

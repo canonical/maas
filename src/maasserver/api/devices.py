@@ -12,6 +12,7 @@ from maasserver.api.nodes import (
     NodesHandler,
     OwnerDataMixin,
 )
+from maasserver.api.support import operation
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
@@ -19,6 +20,7 @@ from maasserver.forms import (
     DeviceWithMACsForm,
 )
 from maasserver.models.node import Device
+from maasserver.utils.orm import reload_object
 from piston3.utils import rc
 
 # Device's fields exposed on the API.
@@ -115,6 +117,32 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
             perm=NODE_PERMISSION.EDIT)
         device.delete()
         return rc.DELETED
+
+    @operation(idempotent=False)
+    def restore_networking_configuration(self, request, system_id):
+        """Reset a device's network options.
+
+        Returns 404 if the device is not found
+        Returns 403 if the user does not have permission to reset the device.
+        """
+        device = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        device.set_initial_networking_configuration()
+        return reload_object(device)
+
+    @operation(idempotent=False)
+    def restore_default_configuration(self, request, system_id):
+        """Reset a device's configuration to its initial state.
+
+        Returns 404 if the device is not found.
+        Returns 403 if the user does not have permission to reset the device.
+        """
+        device = self.model.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.ADMIN)
+        device.restore_default_configuration()
+        return reload_object(device)
 
     @classmethod
     def resource_uri(cls, device=None):

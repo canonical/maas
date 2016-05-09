@@ -66,6 +66,7 @@ from maasserver.models import (
     IPRange,
     LargeFile,
     LicenseKey,
+    Machine,
     Node,
     OwnerData,
     Partition,
@@ -426,6 +427,10 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
+    def make_Machine(self, *args, **kwargs):
+        machine = self.make_Node(*args, node_type=NODE_TYPE.MACHINE, **kwargs)
+        return typecast_node(machine, Machine)
+
     def make_RackController(
             self, last_image_sync=undefined, owner=None, **kwargs):
         if owner is None:
@@ -679,6 +684,11 @@ class Factory(maastesting.factory.Factory):
             vlan.secondary_rack = secondary_rack
             vlan.save()
         return reload_object(node)
+
+    def make_Machine_with_Interface_on_Subnet(self, *args, **kwargs):
+        machine = self.make_Node_with_Interface_on_Subnet(
+            *args, node_type=NODE_TYPE.MACHINE, **kwargs)
+        return typecast_node(machine, Machine)
 
     UNDEFINED = float('NaN')
 

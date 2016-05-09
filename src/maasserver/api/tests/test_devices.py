@@ -16,11 +16,13 @@ from maasserver.enum import (
 from maasserver.models import (
     Device,
     Domain,
+    node as node_module,
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from maastesting.matchers import MockCalledOnce
 
 
 class DeviceOwnerDataTest(APITestCase):
@@ -348,3 +350,45 @@ class TestDeviceAPI(APITestCase):
         response = self.client.delete(get_device_uri(device))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(device, reload_object(device))
+
+    def test_restore_networking_configuration(self):
+        self.become_admin()
+        device = factory.make_Device()
+        mock_set_initial_networking_config = self.patch(
+            node_module.Device, 'set_initial_networking_configuration')
+        response = self.client.post(
+            get_device_uri(device),
+            {'op': 'restore_networking_configuration'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            device.system_id, json_load_bytes(response.content)['system_id'])
+        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+
+    def test_restore_networking_configuration_requires_admin(self):
+        device = factory.make_Device()
+        response = self.client.post(
+            get_device_uri(device),
+            {'op': 'restore_networking_configuration'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_restore_default_configuration(self):
+        self.become_admin()
+        device = factory.make_Device()
+        mock_set_initial_networking_config = self.patch(
+            node_module.Device, 'restore_default_configuration')
+        response = self.client.post(
+            get_device_uri(device),
+            {'op': 'restore_default_configuration'})
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            device.system_id, json_load_bytes(response.content)['system_id'])
+        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+
+    def test_restore_default_configuration_requires_admin(self):
+        device = factory.make_Device()
+        response = self.client.post(
+            get_device_uri(device),
+            {'op': 'restore_default_configuration'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
