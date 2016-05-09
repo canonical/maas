@@ -126,12 +126,23 @@ class TestRegisterRackController(MAASServerTestCase):
         rack_registered = register_rackcontroller(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
-    def test_finds_existing_controller_sets_needs_refresh_to_false(self):
+    def test_finds_existing_controller_needs_refresh_with_bad_info(self):
         node_type = random.choice([
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         ])
         node = factory.make_Node(node_type=node_type)
+        rack_registered = register_rackcontroller(system_id=node.system_id)
+        self.assertTrue(rack_registered.needs_refresh)
+
+    def test_finds_existing_controller_doesnt_need_refresh_good_info(self):
+        node_type = random.choice([
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ])
+        node = factory.make_Node(
+            node_type=node_type, cpu_count=random.randint(1, 32),
+            memory=random.randint(1024, 8096))
         rack_registered = register_rackcontroller(system_id=node.system_id)
         self.assertFalse(rack_registered.needs_refresh)
 

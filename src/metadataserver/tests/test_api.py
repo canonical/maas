@@ -21,6 +21,8 @@ from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_STATUS,
+    NODE_TYPE,
+    NODE_TYPE_CHOICES,
     POWER_STATE,
 )
 from maasserver.exceptions import (
@@ -58,6 +60,7 @@ from metadataserver.api import (
     poweroff as api_poweroff,
     UnknownMetadataVersion,
 )
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import (
     NodeKey,
     NodeResult,
@@ -192,6 +195,21 @@ class TestHelpers(DjangoTestCase):
             self.assertIn(origin, event.description)
             self.assertIn(description, event.description)
             self.assertEqual(expected_type[node.status], event.type.name)
+
+    def test_add_event_to_node_event_log_logs_rack_refresh(self):
+        rack = factory.make_RackController()
+        origin = factory.make_name('origin')
+        action = factory.make_name('action')
+        description = factory.make_name('description')
+        add_event_to_node_event_log(rack, origin, action, description)
+        event = Event.objects.get(node=rack)
+
+        self.assertEqual(rack, event.node)
+        self.assertEqual(action, event.action)
+        self.assertIn(origin, event.description)
+        self.assertIn(description, event.description)
+        self.assertEqual(
+            EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH, event.type.name)
 
 
 def make_node_client(node=None):
@@ -660,16 +678,32 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(status=factory.make_string())
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
-    def test_signaling_refuses_if_node_in_unexpected_state(self):
-        node = factory.make_Node(status=NODE_STATUS.NEW)
-        client = make_node_client(node=node)
+    def test_signaling_refuses_if_machine_in_unexpected_state(self):
+        machine = factory.make_Node(status=NODE_STATUS.NEW)
+        client = make_node_client(node=machine)
         response = call_signal(client)
         self.expectThat(
             response.status_code,
             Equals(http.client.CONFLICT))
         self.expectThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals("Node wasn't commissioning/installing (status is New)"))
+            Equals("Machine wasn't commissioning/installing (status is New)"))
+
+    def test_signaling_accepts_non_machine_results(self):
+        node = factory.make_Node(
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[NODE_TYPE.MACHINE]))
+        client = make_node_client(node=node)
+        script_result = random.randint(0, 10)
+        filename = factory.make_string()
+        response = call_signal(
+            client, script_result=script_result,
+            files={filename: factory.make_string().encode('ascii')})
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        result = NodeResult.objects.get(node=node)
+        self.assertEqual(RESULT_TYPE.COMMISSIONING, result.result_type)
+        self.assertEqual(script_result, result.script_result)
 
     def test_signaling_accepts_WORKING_status(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -737,7 +771,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_signaling_commissioning_success_clears_owner(self):
+    def test_signaling_commissioning_success_clears_owner_on_machine(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         node.owner = factory.make_User()
         node.save()
@@ -1002,11 +1036,10 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_does_not_sets_default_storage_layout_if_rack(self):
         self.patch_autospec(Node, "set_default_storage_layout")
-        node = factory.make_RackController(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_RackController()
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
             Node.set_default_storage_layout,
             MockNotCalled())
@@ -1046,11 +1079,10 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_doesnt_call_sets_initial_network_config_if_rack(self):
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
-        node = factory.make_RackController(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_RackController()
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
         self.assertThat(
             mock_set_initial_networking_configuration,
             MockNotCalled())

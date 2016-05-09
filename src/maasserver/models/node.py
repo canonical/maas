@@ -3582,8 +3582,6 @@ class RackController(Controller):
         self._register_request_event(
             self.owner, EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH,
             action='starting refresh')
-        self.status = NODE_STATUS.COMMISSIONING
-        self.save()
 
         client = getClientFor(self.system_id, timeout=1)
         token = NodeKey.objects.get_token_for_node(self)

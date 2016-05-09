@@ -163,6 +163,10 @@ def add_event_to_node_event_log(node, origin, action, description):
         type_name = EVENT_TYPES.NODE_COMMISSIONING_EVENT
     elif node.status == NODE_STATUS.DEPLOYING:
         type_name = EVENT_TYPES.NODE_INSTALL_EVENT
+    elif node.node_type in [
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER]:
+        type_name = EVENT_TYPES.REQUEST_RACK_CONTROLLER_REFRESH
     else:
         type_name = EVENT_TYPES.NODE_STATUS_EVENT
 
@@ -334,7 +338,8 @@ class StatusHandler(MetadataViewHandler):
                 content=sent_file['content'])
 
             # Set the result type according to the node's status.
-            if node.status == NODE_STATUS.COMMISSIONING:
+            if (node.status == NODE_STATUS.COMMISSIONING or
+                    node.node_type != NODE_TYPE.MACHINE):
                 _save_commissioning_result(
                     node, sent_file['path'], sent_file.get('result', 0),
                     content)
@@ -362,7 +367,7 @@ class StatusHandler(MetadataViewHandler):
                     node.mark_failed(None, "Failed to erase disks.")
 
             # Deallocate the node if we enter any terminal state.
-            if node.status in [
+            if node.node_type == NODE_TYPE.MACHINE and node.status in [
                     NODE_STATUS.READY,
                     NODE_STATUS.FAILED_COMMISSIONING]:
                 node.owner = None
@@ -462,26 +467,28 @@ class VersionIndexHandler(MetadataViewHandler):
         """
         node = get_queried_node(request, for_mac=mac)
         status = get_mandatory_param(request.POST, 'status')
-        if node.status not in self.signalable_states:
+        target_status = None
+        if (node.status not in self.signalable_states and
+                node.node_type == NODE_TYPE.MACHINE):
             raise NodeStateViolation(
-                "Node wasn't commissioning/installing (status is %s)"
+                "Machine wasn't commissioning/installing (status is %s)"
                 % NODE_STATUS_CHOICES_DICT[node.status])
 
         # These statuses are acceptable for commissioning, disk erasing,
         # and deploying.
-        if status not in self.signaling_statuses:
+        if (status not in self.signaling_statuses and
+                node.node_type == NODE_TYPE.MACHINE):
             raise MAASAPIBadRequest(
                 "Unknown commissioning/installation status: '%s'" % status)
 
-        if node.status not in self.effective_signalable_states:
+        if (node.status not in self.effective_signalable_states and
+                node.node_type == NODE_TYPE.MACHINE):
             # If commissioning, it is already registered.  Nothing to be done.
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
 
         if (node.status == NODE_STATUS.COMMISSIONING or
-            node.node_type in (
-                NODE_TYPE.RACK_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER)):
+                node.node_type != NODE_TYPE.MACHINE):
 
             # Store the commissioning results.
             self._store_commissioning_results(node, request)
@@ -535,9 +542,9 @@ class VersionIndexHandler(MetadataViewHandler):
             # No status change.  Nothing to be done.
             return rc.ALL_OK
 
-        node.status = target_status
-        # When moving to a terminal state, remove the allocation.
-        if node.node_type != NODE_TYPE.RACK_CONTROLLER:
+        if node.node_type == NODE_TYPE.MACHINE:
+            node.status = target_status
+            # When moving to a terminal state, remove the allocation.
             node.owner = None
         node.error = request.POST.get('error', '')
 

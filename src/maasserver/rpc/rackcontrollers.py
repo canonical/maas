@@ -115,10 +115,10 @@ def find_and_register_existing(system_id, hostname, interfaces):
         # We don't want to refresh existing rack controllers as each time a
         # rack controller connects to a region it creates four connections.
         # This means for every region we connect to we would refresh
-        # 4 * regions every time the rack controller restarts. Our information
-        # at this point should be current anyway and the user can always
-        # manually refresh.
-        needs_refresh = False
+        # 4 * regions every time the rack controller restarts. If the cpu_count
+        # and memory is non-zero our information at this point should be
+        # current and the user can always manually refresh.
+        needs_refresh = (node.cpu_count == 0 or node.memory == 0)
     elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
         maaslog.info(
             "Converting %s into a region and rack controller." % node.hostname)
