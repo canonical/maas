@@ -39,6 +39,7 @@ from maastesting.matchers import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
+    extract_result,
 )
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
@@ -47,7 +48,6 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
 from provisioningserver.utils.twisted import asynchronous
-from testtools.deferredruntest import extract_result
 from testtools.monkey import MonkeyPatcher
 
 

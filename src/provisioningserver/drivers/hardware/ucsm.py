@@ -60,7 +60,14 @@ UUID - The UUID for a server. MAAS persists the UUID of each UCS managed
 server it enlists, and uses it as a key for looking the server up later.
 """
 
+__all__ = [
+    'power_control_ucsm',
+    'power_state_ucsm',
+    'probe_and_enlist_ucsm',
+]
+
 import contextlib
+from typing import Optional
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -74,14 +81,8 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
-
-
-__all__ = [
-    'power_control_ucsm',
-    'power_state_ucsm',
-    'probe_and_enlist_ucsm',
-]
 
 
 class UCSMState:
@@ -432,8 +433,10 @@ def power_state_ucsm(url, username, password, uuid):
 
 
 @synchronous
+@typed
 def probe_and_enlist_ucsm(
-        user, url, username, password, accept_all=False, domain=None):
+        user: str, url: str, username: Optional[str], password: Optional[str],
+        accept_all: bool=False, domain: str=None):
     """Probe a UCS Manager and enlist all its servers.
 
     Here's what happens here: 1. Get a list of servers from the UCS

@@ -11,6 +11,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from importlib import import_module
 import traceback
+from typing import Optional
 from urllib.parse import unquote
 
 from provisioningserver.logger import get_maas_logger
@@ -18,6 +19,7 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -351,9 +353,11 @@ def get_vmware_servers(
 
 
 @synchronous
+@typed
 def probe_vmware_and_enlist(
-        user, host, username, password, port=None,
-        protocol=None, prefix_filter=None, accept_all=False, domain=None):
+        user: str, host: str, username: Optional[str], password: Optional[str],
+        port: int=None, protocol: str=None, prefix_filter: str=None,
+        accept_all: bool=False, domain: str=None):
 
     # Both '' and None mean the same thing, so normalize it.
     if prefix_filter is None:

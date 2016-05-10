@@ -27,6 +27,7 @@ from maastesting.testcase import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
+    extract_result,
 )
 from provisioningserver.boot import (
     BootMethodError,
@@ -41,7 +42,6 @@ from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from testtools.deferredruntest import extract_result
 from testtools.matchers import Is
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks

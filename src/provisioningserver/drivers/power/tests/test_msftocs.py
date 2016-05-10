@@ -51,10 +51,10 @@ def make_context():
     """Make and return a power parameters context."""
     return {
         'power_address': factory.make_ipv4_address(),
-        'power_port': randint(2000, 4000),
+        'power_port': "%d" % randint(2000, 4000),
         'power_user': factory.make_name('power_user'),
         'power_pass': factory.make_name('power_pass'),
-        'blade_id': randint(1, 24),
+        'blade_id': "%d" % randint(1, 24),
     }
 
 
@@ -289,7 +289,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
 
         yield deferToThread(
             probe_and_enlist_msftocs, user, context['power_address'],
-            context['power_port'], context['power_user'],
+            int(context['power_port']), context['power_user'],
             context['power_pass'], True, domain)
 
         self.expectThat(
@@ -308,7 +308,7 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         with ExpectedException(PowerFatalError):
             yield deferToThread(
                 probe_and_enlist_msftocs, user, context['power_address'],
-                context['power_port'], context['power_user'],
+                int(context['power_port']), context['power_user'],
                 context['power_pass'])
 
     @inlineCallbacks
@@ -322,5 +322,5 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         with ExpectedException(PowerFatalError):
             yield deferToThread(
                 probe_and_enlist_msftocs, user, context['power_address'],
-                context['power_port'], context['power_user'],
+                int(context['power_port']), context['power_user'],
                 context['power_pass'])

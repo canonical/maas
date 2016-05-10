@@ -38,6 +38,7 @@ from maastesting.testcase import (
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
+    extract_result,
     TwistedLoggerFixture,
 )
 from provisioningserver import (
@@ -97,7 +98,6 @@ from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -1701,7 +1701,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
         }),
     )
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=50000)
 
     def test__is_registered(self):
         self.assertIsNotNone(
@@ -1739,8 +1739,8 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                 server, failover_peers, shared_networks, hosts, interfaces,
                 global_dhcp_snippets):
             self.assertTrue(concurrency.dhcp.locked)
-            # While we're here, check this is *not* the IO thread.
-            self.expectThat(isInIOThread(), Is(False))
+            # While we're here, check this is the IO thread.
+            self.expectThat(isInIOThread(), Is(True))
 
         self.patch(dhcp, "configure", check_dhcp_locked)
 

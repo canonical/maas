@@ -5,6 +5,7 @@
 
 __all__ = []
 
+from typing import Optional
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,6 +21,7 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -51,10 +53,8 @@ class MicrosoftOCSPowerDriver(PowerDriver):
             params = []
         else:
             params = [param for param in params if bool(param)]
-        url = urllib.parse.urljoin(
-            'http://%s:%d/' % (context['power_address'],
-                               context['power_port']),
-            command) + '?' + '&'.join(params)
+        url_base = 'http://{power_address}:{power_port}/'.format(**context)
+        url = urllib.parse.urljoin(url_base, command) + '?' + '&'.join(params)
         authinfo = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         authinfo.add_password(
             None, url, context['power_user'], context['power_pass'])
@@ -170,17 +170,22 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
 
 @synchronous
+@typed
 def probe_and_enlist_msftocs(
-        user, ip, port, username, password, accept_all=False, domain=None):
+        user: str, ip: str, port: Optional[int], username: Optional[str],
+        password: Optional[str], accept_all: bool=False, domain: str=None):
     """ Extracts all of nodes from msftocs, sets all of them to boot via
     HDD by, default, sets them to bootonce via PXE, and then enlists them
     into MAAS.
     """
-    port = int(port) or 8000  # Default Port for MicrosoftOCS Chassis is 8000
+    # The default port for a MicrosoftOCS chassis is 8000. We expect an
+    # integer from the AddChassis RPC call.
+    port = 8000 if port is None or port == 0 else port
+
     msftocs_driver = MicrosoftOCSPowerDriver()
     context = {
         'power_address': ip,
-        'power_port': port,
+        'power_port': str(port),
         'power_user': username,
         'power_pass': password,
     }
@@ -190,12 +195,12 @@ def probe_and_enlist_msftocs(
     except urllib.error.HTTPError as e:
         raise PowerFatalError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
-            "port=%d, username=%s, password=%s. HTTP error code: %s"
+            "port=%s, username=%s, password=%s. HTTP error code: %s"
             % (ip, port, username, password, e.code))
     except urllib.error.URLError as e:
         raise PowerFatalError(
             "Failed to probe nodes for Microsoft OCS with ip=%s "
-            "port=%d, username=%s, password=%s. "
+            "port=%s, username=%s, password=%s. "
             "Server could not be reached: %s"
             % (ip, port, username, password, e.reason))
     else:

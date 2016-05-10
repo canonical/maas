@@ -27,8 +27,10 @@ from maastesting.matchers import (
     MockCallsMatch,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import TwistedLoggerFixture
-from testtools.deferredruntest import extract_result
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
 from testtools.matchers import (
     Contains,
     Equals,

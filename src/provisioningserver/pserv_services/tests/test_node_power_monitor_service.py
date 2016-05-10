@@ -18,7 +18,10 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from maastesting.twisted import TwistedLoggerFixture
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
 from provisioningserver.pserv_services import (
     node_power_monitor_service as npms,
 )
@@ -28,7 +31,6 @@ from provisioningserver.rpc import (
     region,
 )
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from testtools.deferredruntest import extract_result
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (
     fail,

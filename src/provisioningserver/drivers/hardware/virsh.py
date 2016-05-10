@@ -14,6 +14,7 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -257,9 +258,11 @@ class VirshSSH(pexpect.spawn):
 
 
 @synchronous
+@typed
 def probe_virsh_and_enlist(
-        user, poweraddr, password=None, prefix_filter=None, accept_all=False,
-        domain=None):
+        user: str, poweraddr: str, password: str=None,
+        prefix_filter: str=None, accept_all: bool=False,
+        domain: str=None):
     """Extracts all of the VMs from virsh and enlists them
     into MAAS.
 

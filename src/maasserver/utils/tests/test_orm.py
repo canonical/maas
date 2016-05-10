@@ -72,6 +72,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import (
     callOut,
     DeferredValue,
@@ -82,7 +83,6 @@ from psycopg2.errorcodes import (
     SERIALIZATION_FAILURE,
 )
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AllMatch,
     Equals,

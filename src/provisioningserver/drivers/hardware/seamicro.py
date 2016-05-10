@@ -294,7 +294,7 @@ def probe_seamicro15k_and_enlist(
         }
         maaslog.info("Creating seamicro15k node with MACs: %s", macs)
         system_id = create_node(
-            macs, 'amd64', 'sm15k', params, domain).wait(30)
+            macs, 'amd64', 'sm15k', params, domain=domain).wait(30)
 
         if accept_all:
             commission_node(system_id, user).wait(30)

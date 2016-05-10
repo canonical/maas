@@ -17,6 +17,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import (
     make_setting_field,
@@ -37,7 +38,6 @@ from provisioningserver.drivers.power import (
     PowerToolError,
 )
 from provisioningserver.utils.testing import RegistryFixture
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
@@ -271,7 +271,7 @@ def make_power_driver(name=None, description=None, settings=None,
 
 class TestPowerDriverPowerAction(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     scenarios = [
         ('on', dict(
@@ -308,9 +308,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         method = getattr(driver, self.action)
         with ExpectedException(PowerFatalError):
             yield method(system_id, context)
-        self.expectThat(
-            mock_query,
-            Equals(MockNotCalled()))
+        self.expectThat(mock_query, MockNotCalled())
 
     @inlineCallbacks
     def test_handles_non_fatal_error_on_first_call(self):
@@ -323,9 +321,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query.return_value = self.action
         method = getattr(driver, self.action)
         result = yield method(system_id, context)
-        self.expectThat(
-            mock_query,
-            Equals(MockCalledOnceWith(system_id, context)))
+        self.expectThat(mock_query, MockCalledOnceWith(system_id, context))
         self.expectThat(result, Equals(None))
 
     @inlineCallbacks
@@ -340,9 +336,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         method = getattr(driver, self.action)
         with ExpectedException(PowerError):
             yield method(system_id, context)
-        self.expectThat(
-            mock_query,
-            Equals(MockCalledOnceWith(system_id, context)))
+        self.expectThat(mock_query, MockCalledOnceWith(system_id, context))
 
     @inlineCallbacks
     def test_handles_non_fatal_error(self):
@@ -370,7 +364,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
 
 class TestPowerDriverQuery(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestPowerDriverQuery, self).setUp()

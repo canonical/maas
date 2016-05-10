@@ -8,7 +8,6 @@ __all__ = []
 import random
 from unittest.mock import (
     ANY,
-    Mock,
     sentinel,
 )
 
@@ -20,6 +19,7 @@ from maastesting.testcase import (
 )
 from maastesting.twisted import (
     always_succeed_with,
+    extract_result,
     TwistedLoggerFixture,
 )
 from provisioningserver import power
@@ -40,7 +40,6 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.testing.events import EventTypesAllRegistered
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Equals,
     IsInstance,
@@ -48,8 +47,10 @@ from testtools.matchers import (
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    fail,
     inlineCallbacks,
     returnValue,
+    succeed,
 )
 from twisted.internet.task import Clock
 
@@ -159,8 +160,8 @@ class TestChangePowerState(MAASTestCase):
         # Raise this exception when power_change_starting() is called, to
         # return early from change_power_state(). This lets us avoid set-up
         # for parts of the function that we're presently not interested in.
-        self.patch_autospec(power.change, "power_change_starting")
-        power.change.power_change_starting.side_effect = ArbitraryException()
+        pcs = self.patch_autospec(power.change, "power_change_starting")
+        pcs.return_value = fail(ArbitraryException())
 
         d = power.change.change_power_state(
             sentinel.system_id, sentinel.hostname, sentinel.power_type,
@@ -183,8 +184,8 @@ class TestChangePowerState(MAASTestCase):
         perform_power_driver_change = self.patch_autospec(
             power.change, 'perform_power_driver_change')
         perform_power_driver_query = self.patch_autospec(
-            power.query, 'perform_power_driver_query',
-            Mock(return_value=power_change))
+            power.query, 'perform_power_driver_query')
+        perform_power_driver_query.return_value = succeed(power_change)
         power_change_success = self.patch_autospec(
             power.change, 'power_change_success')
         yield self.patch_rpc_methods()
@@ -213,10 +214,9 @@ class TestChangePowerState(MAASTestCase):
         }
         self.patch(power, 'is_driver_available').return_value = True
         get_item = self.patch(PowerDriverRegistry, 'get_item')
-        get_item.return_value = Mock(return_value='on')
         perform_power_driver_query = self.patch(
-            power.query, 'perform_power_driver_query',
-            Mock(return_value=power_change))
+            power.query, 'perform_power_driver_query')
+        perform_power_driver_query.return_value = succeed(power_change)
         self.patch(power.change, 'power_change_success')
         yield self.patch_rpc_methods()
 
@@ -243,10 +243,9 @@ class TestChangePowerState(MAASTestCase):
         }
         self.patch(power, 'is_driver_available').return_value = True
         get_item = self.patch(PowerDriverRegistry, 'get_item')
-        get_item.return_value = Mock(return_value='off')
         perform_power_driver_query = self.patch(
-            power.query, 'perform_power_driver_query',
-            Mock(return_value=power_change))
+            power.query, 'perform_power_driver_query')
+        perform_power_driver_query.return_value = succeed(power_change)
         self.patch(power.change, 'power_change_success')
         yield self.patch_rpc_methods()
 
@@ -275,8 +274,8 @@ class TestChangePowerState(MAASTestCase):
         self.patch(power, 'is_driver_available').return_value = True
         exception = PowerError(factory.make_string())
         get_item = self.patch(PowerDriverRegistry, 'get_item')
-        get_item.side_effect = exception
-        self.patch(power.change, 'power_change_failure')
+        power_driver = get_item.return_value
+        power_driver.on.return_value = fail(exception)
 
         markNodeBroken = yield self.patch_rpc_methods()
 
@@ -289,9 +288,6 @@ class TestChangePowerState(MAASTestCase):
         self.expectThat(
             markNodeBroken, MockCalledOnceWith(
                 ANY, system_id=system_id, error_description=error_message))
-        self.expectThat(
-            power.change.power_change_failure, MockCalledOnceWith(
-                system_id, hostname, power_change, error_message))
 
 
 class TestMaybeChangePowerState(MAASTestCase):
@@ -307,12 +303,10 @@ class TestMaybeChangePowerState(MAASTestCase):
         self.useFixture(EventTypesAllRegistered())
 
     def patch_methods_using_rpc(self):
-        self.patch_autospec(power.change, 'power_change_starting')
-        power.change.power_change_starting.side_effect = (
-            always_succeed_with(None))
-
-        self.patch_autospec(power.change, 'change_power_state')
-        power.change.change_power_state.side_effect = always_succeed_with(None)
+        pcs = self.patch_autospec(power.change, 'power_change_starting')
+        pcs.return_value = always_succeed_with(None)
+        cps = self.patch_autospec(power.change, 'change_power_state')
+        cps.return_value = always_succeed_with(None)
 
     def test_always_returns_deferred(self):
         clock = Clock()
@@ -456,8 +450,8 @@ class TestMaybeChangePowerState(MAASTestCase):
         class TestException(Exception):
             pass
 
-        self.patch_autospec(power.change, 'power_change_starting')
-        power.change.power_change_starting.side_effect = TestException('boom')
+        pcs = self.patch_autospec(power.change, 'power_change_starting')
+        pcs.return_value = fail(TestException('boom'))
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_hostname()

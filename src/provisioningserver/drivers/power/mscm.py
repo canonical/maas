@@ -16,6 +16,7 @@ __all__ = [
 
 import re
 from socket import error as SOCKETError
+from typing import Optional
 
 from paramiko import (
     AutoAddPolicy,
@@ -32,6 +33,7 @@ from provisioningserver.rpc.utils import (
     commission_node,
     create_node,
 )
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -141,8 +143,10 @@ class MSCMPowerDriver(PowerDriver):
 
 
 @synchronous
+@typed
 def probe_and_enlist_mscm(
-        user, host, username, password, accept_all=False, domain=None):
+        user: str, host: str, username: Optional[str], password: Optional[str],
+        accept_all: bool=False, domain: str=None):
     """ Extracts all of nodes from the MSCM, sets all of them to boot via M.2
     by, default, sets them to bootonce via PXE, and then enlists them into
     MAAS.  If accept_all is True, it will also commission them.

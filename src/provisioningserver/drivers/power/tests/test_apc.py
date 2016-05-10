@@ -32,7 +32,7 @@ class TestAPCPowerDriver(MAASTestCase):
         return {
             'power_address': factory.make_name('power_address'),
             'node_outlet': factory.make_name('node_outlet'),
-            'power_on_delay': 5,
+            'power_on_delay': '5',
         }
 
     def test_missing_packages(self):

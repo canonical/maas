@@ -82,7 +82,10 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import TwistedLoggerFixture
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.cluster import (
@@ -91,7 +94,6 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,
     ContainsAll,

@@ -25,7 +25,7 @@ class ArgumentTypeError(TypeError):
         super(ArgumentTypeError, self).__init__(
             "In %s, for argument '%s', %r is not of type %s; "
             "it is of type %s." % (
-                name_of(func), name, value, name_of(expected),
+                name_of(func), name, value, describe_typesig(expected),
                 name_of(type(value))))
 
 
@@ -36,11 +36,30 @@ class ReturnTypeError(TypeError):
         super(ReturnTypeError, self).__init__(
             "In %s, the returned value %r is not of type %s; "
             "it is of type %s." % (
-                name_of(func), value, name_of(expected),
+                name_of(func), value, describe_typesig(expected),
                 name_of(type(value))))
 
 
 def typed(func):
+    """Decorate `func` and check types on arguments and return values.
+
+    `func` is a callable with type annotations, like::
+
+      @typed
+      def do_something(foo: str, bar: int) -> str:
+          return foo * bar
+
+    It's also possible to use typing information from the built-in `typing`
+    module::
+
+      @typed
+      def do_something(foo: AnyStr, bar: SupportsInt) -> AnyStr:
+          return foo * int(bar)
+
+    Checking type signatures can be slow, so it's better to import `typed`
+    from `provisioningserver.utils`; that becomes a no-op in deployed
+    environments.
+    """
     signature = inspect.signature(func)
     type_hints = typing.get_type_hints(func)
     types_in = tuple(get_types_in(type_hints, func))
@@ -87,6 +106,7 @@ def typed(func):
 
 
 def get_types_in(hints, func):
+    """Yield type annotations for function arguments."""
     for name, hint in hints.items():
         if name == "return":
             pass  # Not handled here.
@@ -101,6 +121,7 @@ def get_types_in(hints, func):
 
 
 def get_type_out(hints, func):
+    """Return a type annotation for the return value."""
     if "return" in hints:
         hint = hints["return"]
         if hint is None:
@@ -116,6 +137,11 @@ def get_type_out(hints, func):
 
 
 def is_typesig(typesig):
+    """Is `typesig` a type signature?
+
+    A type signature is a subclass of `type`, or a tuple of type signatures
+    (i.e. recursively).
+    """
     if isinstance(typesig, tuple):
         if len(typesig) == 0:
             return False
@@ -125,7 +151,21 @@ def is_typesig(typesig):
         return isinstance(typesig, type)
 
 
+def describe_typesig(typesig):
+    """Return a string describing `typesig`.
+
+    See `is_typesig` for the definition of a `typesig`.
+    """
+    if issubclass(typesig, typing.Union):
+        return describe_typesig(typesig.__union_params__)
+    elif isinstance(typesig, tuple):
+        return " or ".join(map(describe_typesig, typesig))
+    else:
+        return name_of(typesig)
+
+
 def name_of(thing):
+    """Return a friendly name for `thing`."""
     try:
         return thing.__qualname__
     except AttributeError:

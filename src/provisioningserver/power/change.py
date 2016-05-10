@@ -38,6 +38,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
+    returnValue,
 )
 from twisted.internet.task import deferLater
 from twisted.python import log
@@ -250,11 +251,11 @@ def change_power_state(
     yield perform_power_driver_change(
         system_id, hostname, power_type, power_change, context)
     if power_type not in power.QUERY_POWER_TYPES:
-        return
+        returnValue(None)
     # Wait to let the node some time to change its power state.
     yield pause(1, clock)
     new_power_state = yield query.perform_power_driver_query(
         system_id, hostname, power_type, context)
     if new_power_state == "unknown" or new_power_state == power_change:
         yield power_change_success(system_id, hostname, power_change)
-        return
+    returnValue(new_power_state)

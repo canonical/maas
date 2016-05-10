@@ -13,6 +13,7 @@ from unittest.mock import call
 from lxml import etree
 from maastesting.factory import factory
 from maastesting.matchers import (
+    MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
@@ -331,20 +332,18 @@ class TestVirsh(MAASTestCase):
         # Perform the probe and enlist
         yield deferToThread(
             virsh.probe_virsh_and_enlist, user, poweraddr,
-            fake_password, True, domain)
+            fake_password, accept_all=True, domain=domain)
 
         # Check that login was called with the provided poweraddr and
         # password.
         self.expectThat(
             mock_login, MockCalledOnceWith(poweraddr, fake_password))
 
-        # The first machine should have poweroff called on it, as it
+        # The first and last machine should have poweroff called on it, as it
         # was initial in the on state.
-        self.expectThat(
-            mock_poweroff, MockCalledOnceWith(machines[0]))
+        self.expectThat(mock_poweroff, MockAnyCall(machines[0]))
 
-        self.expectThat(
-            mock_poweroff, MockCalledOnceWith(machines[3]))
+        self.expectThat(mock_poweroff, MockAnyCall(machines[3]))
 
         # Check that the create command had the correct parameters for
         # each machine.

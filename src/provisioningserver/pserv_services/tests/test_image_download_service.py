@@ -22,7 +22,10 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTwistedRunTest
-from maastesting.twisted import TwistedLoggerFixture
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
 from provisioningserver.boot import tftppath
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
@@ -35,7 +38,6 @@ from provisioningserver.rpc.region import (
     GetBootSourcesV2,
 )
 from provisioningserver.testing.testcase import PservTestCase
-from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock

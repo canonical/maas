@@ -233,7 +233,10 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
     scenarios = [
         (key, dict(product_name=key, arch=value))
         for key, value in cartridge_mapping.items()
-    ] + [('Fake', {'arch': 'fake', 'product_name': 'fake'})]
+    ]
+    scenarios += [
+        ('default', dict(product_name="fake", arch='amd64/generic')),
+    ]
 
     @inlineCallbacks
     def test_probe_and_enlist(self):
@@ -250,8 +253,7 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         password = factory.make_name('password')
         domain = factory.make_name('domain')
         system_id = factory.make_name('system_id')
-        Driver = self.patch(mscm_module, "MSCMPowerDriver")
-        mscm_driver = Driver.return_value
+        mscm_driver = self.patch(mscm_module, "MSCMPowerDriver").return_value
         mscm_driver.run_mscm_command.side_effect = (
             node_list, None, node_info, node_macaddr)
         create_node = self.patch(mscm_module, 'create_node')

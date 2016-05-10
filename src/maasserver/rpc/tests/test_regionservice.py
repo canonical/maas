@@ -102,6 +102,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
+    extract_result,
     TwistedLoggerFixture,
 )
 import netaddr
@@ -150,10 +151,7 @@ from provisioningserver.utils.twisted import (
     callInReactorWithTimeout,
     DeferredValue,
 )
-from testtools.deferredruntest import (
-    assert_fails_with,
-    extract_result,
-)
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,

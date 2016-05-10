@@ -338,7 +338,7 @@ class TestSeaMicro(MAASTestCase):
             SeaMicroAPIV09, 'get',
             Mock(return_value=result))
         mock_create_node = self.patch(seamicro, 'create_node')
-        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
+        mock_create_node.side_effect = asynchronous(lambda *_, **__: system_id)
         mock_commission_node = self.patch(seamicro, 'commission_node')
 
         yield deferToThread(
@@ -358,7 +358,8 @@ class TestSeaMicro(MAASTestCase):
         self.expectThat(
             mock_create_node,
             MockCalledWith(
-                last['serverMacAddr'], 'amd64', 'sm15k', power_params, domain))
+                last['serverMacAddr'], 'amd64', 'sm15k',
+                power_params, domain=domain))
         self.expectThat(
             mock_commission_node,
             MockCalledWith(system_id, user))
@@ -429,7 +430,7 @@ class TestSeaMicro(MAASTestCase):
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
         mock_create_node = self.patch(seamicro, 'create_node')
-        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
+        mock_create_node.side_effect = asynchronous(lambda *_, **__: system_id)
         mock_commission_node = self.patch(seamicro, 'commission_node')
 
         yield deferToThread(
@@ -449,7 +450,9 @@ class TestSeaMicro(MAASTestCase):
                         'power_address': ip,
                         'power_pass': password,
                         'power_user': username
-                    }),
+                    },
+                    domain=None,
+                ),
                 call(
                     fake_server_1.get_fake_macs(), 'amd64', 'sm15k',
                     {
@@ -458,7 +461,10 @@ class TestSeaMicro(MAASTestCase):
                         'power_address': ip,
                         'power_pass': password,
                         'power_user': username
-                    })))
+                    },
+                    domain=None,
+                ),
+            ))
         self.expectThat(
             mock_commission_node,
             MockCalledWith(system_id, user))

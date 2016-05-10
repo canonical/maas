@@ -36,7 +36,10 @@ from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
 )
-from maastesting.twisted import TwistedLoggerFixture
+from maastesting.twisted import (
+    extract_result,
+    TwistedLoggerFixture,
+)
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -62,10 +65,7 @@ from provisioningserver.utils.twisted import (
     ThreadPoolLimiter,
     ThreadUnpool,
 )
-from testtools.deferredruntest import (
-    assert_fails_with,
-    extract_result,
-)
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,

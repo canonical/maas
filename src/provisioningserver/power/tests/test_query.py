@@ -26,6 +26,7 @@ from maastesting.testcase import (
 )
 from maastesting.twisted import (
     always_fail_with,
+    extract_result,
     TwistedLoggerFixture,
 )
 from provisioningserver import power
@@ -41,10 +42,7 @@ from provisioningserver.rpc import (
 )
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from provisioningserver.testing.events import EventTypesAllRegistered
-from testtools.deferredruntest import (
-    assert_fails_with,
-    extract_result,
-)
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import Not
 from twisted.internet import reactor
 from twisted.internet.defer import (

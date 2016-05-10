@@ -21,13 +21,13 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
+    extract_result,
     TwistedLoggerFixture,
 )
 from provisioningserver.rpc import common
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Equals,
     Is,

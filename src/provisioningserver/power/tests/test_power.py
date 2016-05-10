@@ -11,10 +11,10 @@ from unittest.mock import ANY
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from maastesting.twisted import extract_result
 from provisioningserver import power
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from testtools.deferredruntest import extract_result
 from testtools.matchers import Equals
 
 
