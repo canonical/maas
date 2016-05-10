@@ -7,10 +7,7 @@ __all__ = []
 
 import os
 import random
-from unittest.mock import (
-    Mock,
-    sentinel,
-)
+from unittest.mock import sentinel
 
 from crochet import wait_for
 from maasserver import (
@@ -20,6 +17,10 @@ from maasserver import (
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.service import Service
+from maasserver.rpc.regionservice import (
+    RegionAdvertising,
+    RegionAdvertisingService,
+)
 from maasserver.service_monitor import (
     ProxyService,
     service_monitor,
@@ -39,7 +40,6 @@ from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceState,
 )
-from provisioningserver.utils.twisted import DeferredValue
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import (
     fail,
@@ -131,17 +131,16 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
             service.name: state
         })
 
-        advertisingService = Mock()
-        advertisingService.processId = DeferredValue()
-        monitor_service = ServiceMonitorService(
-            advertisingService, Clock())
+        advertiser = RegionAdvertisingService()
+        monitor_service = ServiceMonitorService(advertiser, Clock())
         yield monitor_service.startService()
 
         region = yield deferToDatabase(
             transactional(factory.make_RegionController))
         region_process = yield deferToDatabase(
             transactional(factory.make_RegionControllerProcess), region)
-        advertisingService.processId.set(region_process.id)
+        advertiser.advertising.set(
+            RegionAdvertising(region.id, region_process.id))
         yield monitor_service.stopService()
 
         service = yield deferToDatabase(

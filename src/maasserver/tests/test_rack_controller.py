@@ -8,6 +8,7 @@ __all__ = []
 import random
 from unittest.mock import (
     call,
+    create_autospec,
     Mock,
     sentinel,
 )
@@ -29,7 +30,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from provisioningserver.utils.twisted import DeferredValue
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
@@ -58,11 +58,11 @@ class TestRackControllerService(MAASServerTestCase):
                 postgresListener=sentinel.listener,
                 advertisingService=sentinel.advertiser))
 
-    def test_startService_sets_starting_to_result_of_processId_get(self):
-        advertising = Mock(DeferredValue, get=Mock())
-        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+    def test_startService_sets_starting_to_result_of_advertising_get(self):
+        advertiser = create_autospec(RegionAdvertisingService(), spec_set=True)
         service = RackControllerService(sentinel.listener, advertiser)
         observed = service.startService()
+        advertising = advertiser.advertising
         self.assertEqual(advertising.get.return_value, observed)
         self.assertEqual(advertising.get.return_value, service.starting)
 
@@ -71,9 +71,9 @@ class TestRackControllerService(MAASServerTestCase):
     def test_startService_registers_with_postgres_listener(self):
         regionProcessId = random.randint(0, 100)
 
-        advertising = DeferredValue()
-        advertising.set(RegionAdvertising(sentinel.region_id, regionProcessId))
-        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+        advertiser = RegionAdvertisingService()
+        advertiser.advertising.set(
+            RegionAdvertising(sentinel.region_id, regionProcessId))
 
         listener = Mock()
         service = RackControllerService(listener, advertiser)
@@ -90,9 +90,9 @@ class TestRackControllerService(MAASServerTestCase):
     def test_startService_clears_starting_once_complete(self):
         regionProcessId = random.randint(0, 100)
 
-        advertising = DeferredValue()
-        advertising.set(RegionAdvertising(sentinel.region_id, regionProcessId))
-        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+        advertiser = RegionAdvertisingService()
+        advertiser.advertising.set(
+            RegionAdvertising(sentinel.region_id, regionProcessId))
 
         listener = Mock()
         service = RackControllerService(listener, advertiser)
@@ -101,8 +101,7 @@ class TestRackControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     def test_startService_handles_cancel(self):
-        advertising = DeferredValue()
-        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+        advertiser = RegionAdvertisingService()
 
         listener = Mock()
         service = RackControllerService(listener, advertiser)
@@ -128,9 +127,9 @@ class TestRackControllerService(MAASServerTestCase):
         process, rack_controllers = yield deferToDatabase(
             create_process_and_racks)
 
-        advertising = DeferredValue()
-        advertising.set(RegionAdvertising(sentinel.region_id, process.id))
-        advertiser = Mock(RegionAdvertisingService, advertising=advertising)
+        advertiser = RegionAdvertisingService()
+        advertiser.advertising.set(
+            RegionAdvertising(sentinel.region_id, process.id))
 
         listener = Mock()
         service = RackControllerService(listener, advertiser)

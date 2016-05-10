@@ -98,9 +98,10 @@ class ServiceMonitorService(TimerService, object):
     @inlineCallbacks
     def _updateDatabase(self, services):
         """Update database about services status."""
-        processId = yield self.advertisingService.processId.get()
+        advertising = yield self.advertisingService.advertising.get()
         services = yield self._buildServices(services)
-        yield deferToDatabase(self._saveIntoDatabase, processId, services)
+        yield deferToDatabase(
+            self._saveIntoDatabase, advertising.process_id, services)
 
     @transactional
     def _saveIntoDatabase(self, processId, services):
