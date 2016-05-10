@@ -224,15 +224,14 @@ def get_curtin_yaml_config(node):
             "from curtin." % node.hostname)
         supports_custom_storage = False
 
+    network_config = compose_curtin_network_config(node)
+
     if node.osystem != "ubuntu":
         maaslog.info(
             "%s: custom network and storage options are only supported on "
-            "Ubuntu. Using flat storage layout and OS default network options."
+            "Ubuntu. Using flat storage layout."
             % node.hostname)
         supports_custom_storage = False
-        network_config = []
-    else:
-        network_config = compose_curtin_network_config(node)
 
     if supports_custom_storage:
         storage_config = compose_curtin_storage_config(node)

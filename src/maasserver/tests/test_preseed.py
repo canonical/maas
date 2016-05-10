@@ -765,13 +765,25 @@ class TestGetCurtinUserData(
         self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
         self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
-    def test_get_curtin_userdata_doesnt_call_compose_config_on_otheros(self):
+    def test_get_curtin_userdata_skips_storage_for_non_ubuntu(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config")
+        self.patch(
+            preseed_module, "curtin_supports_custom_storage").value = True
+        node.osystem = factory.make_name("osystem")
+        user_data = get_curtin_userdata(node)
+        self.assertIn("PREFIX='curtin'", user_data)
+        self.assertThat(mock_compose_storage, MockNotCalled())
+
+    def test_get_curtin_userdata_includes_networking_for_non_ubuntu(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller)
+        arch, subarch = node.architecture.split('/')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config")
         self.patch(
@@ -779,8 +791,7 @@ class TestGetCurtinUserData(
         node.osystem = factory.make_name("osystem")
         user_data = get_curtin_userdata(node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockNotCalled())
-        self.assertThat(mock_compose_network, MockNotCalled())
+        self.assertThat(mock_compose_network, MockCalledOnceWith(node))
 
     def test_get_curtin_userdata_calls_curtin_supports_custom_storage(self):
         node = factory.make_Node_with_Interface_on_Subnet(
