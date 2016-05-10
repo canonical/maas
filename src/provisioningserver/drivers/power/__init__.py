@@ -331,6 +331,7 @@ from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.virsh import VirshPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
+from provisioningserver.drivers.power.nova import NovaPowerDriver
 
 power_drivers = [
     AMTPowerDriver(),
@@ -347,6 +348,7 @@ power_drivers = [
     UCSMPowerDriver(),
     VirshPowerDriver(),
     VMwarePowerDriver(),
+    NovaPowerDriver(),
 ]
 for driver in power_drivers:
     PowerDriverRegistry.register_item(driver.name, driver)

@@ -31,6 +31,7 @@ python3-hivex
 python3-httplib2
 python3-jsonschema
 python3-lxml
+python3-novaclient
 python3-netaddr
 python3-netifaces
 python3-oauth

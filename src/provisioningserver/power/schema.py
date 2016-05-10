@@ -413,6 +413,17 @@ JSON_POWER_TYPE_PARAMETERS = [
         ],
         'ip_extractor': make_ip_extractor('power_address'),
     },
+    {
+        'name': 'nova',
+        'description': 'OpenStack nova',
+        'fields': [
+            make_json_field('nova_id', "Host UUID"),
+            make_json_field('os_tenantname', "Tenant name"),
+            make_json_field('os_username', "Username"),
+            make_json_field('os_password', "Password", field_type='password'),
+            make_json_field('os_authurl', "Auth URL"),
+        ],
+    },
 ]
 
 POWER_TYPE_PARAMETERS_BY_NAME = {

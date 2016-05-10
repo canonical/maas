@@ -29,6 +29,7 @@ QUERY_POWER_TYPES = [
     'ucsm',
     'virsh',
     'vmware',
+    'nova',
 ]
 
 
