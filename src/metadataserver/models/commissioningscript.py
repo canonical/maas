@@ -628,6 +628,15 @@ def update_node_physical_block_devices(node, output, exit_status):
             block_device.tags = tags
             block_device.save()
         else:
+            # First check if there is an existing device with the same name.
+            # If so, we need to rename it. Its name will be changed back later,
+            # when we loop around to it.
+            existing = PhysicalBlockDevice.objects.filter(
+                node=node, name=name).all()
+            for device in existing:
+                # Use the device ID to ensure a unique temporary name.
+                device.name = "%s.%d" % (device.name, device.id)
+                device.save()
             # New block device. Create it on the node.
             PhysicalBlockDevice.objects.create(
                 node=node,

@@ -2,6 +2,16 @@
 Changelog
 =========
 
+1.9.3
+=====
+
+See https://launchpad.net/maas/+milestone/1.9.3 for full details.
+
+Bug Fix Update
+--------------
+
+LP: #1575567    Re-commissioning doesn't detect storage changes
+
 
 1.9.2
 =====

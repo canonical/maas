@@ -1248,6 +1248,24 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ]
         self.assertItemsEqual(device_names, created_names)
 
+    def test__handles_renamed_block_device(self):
+        devices = [self.make_block_device(name='sda', serial='first')]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        devices = [
+            self.make_block_device(name='sda', serial='second'),
+            self.make_block_device(name='sdb', serial='first'),
+        ]
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        device_names = [device['NAME'] for device in devices]
+        created_names = [
+            device.name
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        self.assertItemsEqual(device_names, created_names)
+
     def test__only_updates_physical_block_devices(self):
         devices = [self.make_block_device() for _ in range(3)]
         node = factory.make_Node()
