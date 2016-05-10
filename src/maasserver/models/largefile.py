@@ -15,8 +15,6 @@ from django.db.models import (
     CharField,
     Manager,
 )
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.fields import (
     LargeObjectField,
@@ -26,7 +24,6 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import (
     get_one,
-    post_commit_do,
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
@@ -179,15 +176,3 @@ def delete_large_object_content_later(content):
         return d
 
     return reactor.callLater(0, unlink, content)
-
-
-@receiver(post_delete)
-def delete_large_object(sender, instance, **kwargs):
-    """Delete the large object when the `LargeFile` is deleted.
-
-    This is done using the `post_delete` signal instead of overriding delete
-    on `LargeFile`, so it works correctly for both the model and `QuerySet`.
-    """
-    if sender == LargeFile:
-        if instance.content is not None:
-            post_commit_do(delete_large_object_content_later, instance.content)

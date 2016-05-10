@@ -4,24 +4,34 @@
 """Signals coming off models."""
 
 __all__ = [
+    "blockdevices",
     "bmc",
-    "dhcpsnippet",
+    "bootresourcefiles",
+    "bootsources",
     "config",
+    "dhcpsnippet",
     "events",
     "interfaces",
+    "largefiles",
     "nodes",
+    "partitions",
     "power",
     "services",
     "staticipaddress",
 ]
 
 from maasserver.models.signals import (
+    blockdevices,
     bmc,
+    bootresourcefiles,
+    bootsources,
     config,
     dhcpsnippet,
     events,
     interfaces,
+    largefiles,
     nodes,
+    partitions,
     power,
     services,
     staticipaddress,

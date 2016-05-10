@@ -13,13 +13,10 @@ from django.db.models import (
     FilePathField,
     URLField,
 )
-from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import post_commit_do
-from twisted.internet import reactor
 
 
 class BootSource(CleanSave, TimestampedModel):
@@ -102,15 +99,3 @@ class BootSource(CleanSave, TimestampedModel):
             for selection in self.bootsourceselection_set.all()
             ]
         return data
-
-
-def update_boot_source_cache(sender, instance, **kwargs):
-    """Update the `BootSourceCache` using the updated source.
-
-    This only begins after a successful commit to the database, and is then
-    run in a thread. Nothing waits for its completion.
-    """
-    from maasserver.bootsources import cache_boot_sources  # Circular import.
-    post_commit_do(reactor.callLater, 0, cache_boot_sources)
-
-post_save.connect(update_boot_source_cache, BootSource)

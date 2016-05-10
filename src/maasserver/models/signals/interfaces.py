@@ -9,7 +9,11 @@ __all__ = [
 
 import threading
 
-from django.db.models.signals import post_save
+from django.db.models.signals import (
+    m2m_changed,
+    post_save,
+    pre_delete,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -20,17 +24,21 @@ from maasserver.models import (
     BridgeInterface,
     Interface,
     PhysicalInterface,
+    UnknownInterface,
     VLAN,
     VLANInterface,
 )
+from maasserver.models.node import Node
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
 
 
 INTERFACE_CLASSES = [
-    Interface,
-    PhysicalInterface,
     BondInterface,
     BridgeInterface,
+    Interface,
+    PhysicalInterface,
+    UnknownInterface,
     VLANInterface,
 ]
 
@@ -217,6 +225,83 @@ for klass in INTERFACE_CLASSES:
     signals.watch_fields(
         interface_vlan_update,
         klass, ['vlan_id'], delete=False)
+
+
+def delete_children_interface_handler(sender, instance, **kwargs):
+    """Remove children interface that no longer have a parent when the
+    parent gets removed."""
+    for rel in instance.children_relationships.all():
+        # Use cached QuerySet instead of `count()`.
+        if len(rel.child.parents.all()) == 1:
+            # Last parent of the child, so delete the child.
+            rel.child.delete()
+
+
+for klass in INTERFACE_CLASSES:
+    signals.watch(pre_delete, delete_children_interface_handler, klass)
+
+
+def delete_related_ip_addresses(sender, instance, **kwargs):
+    """Remove any related IP addresses that no longer will have any interfaces
+    linked to them."""
+    # Skip the removal if requested when the interface was deleted.
+    should_skip = (
+        hasattr(instance, "_skip_ip_address_removal") and
+        instance._skip_ip_address_removal)
+    if should_skip:
+        return
+
+    # Unlink all links.
+    for ip_address in instance.ip_addresses.all():
+        if ip_address.interface_set.count() == 1:
+            # This is the last interface linked to this IP address.
+            # Remove its link to the interface before the interface
+            # is deleted.
+            if ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
+                instance.unlink_ip_address(
+                    ip_address, clearing_config=True)
+            else:
+                ip_address.delete()
+
+
+for klass in INTERFACE_CLASSES:
+    signals.watch(pre_delete, delete_related_ip_addresses, klass)
+
+
+def resave_children_interface_handler(sender, instance, **kwargs):
+    """Re-save all of the children interfaces to update their information."""
+    for rel in instance.children_relationships.all():
+        rel.child.save()
+
+
+for klass in INTERFACE_CLASSES:
+    signals.watch(post_save, resave_children_interface_handler, klass)
+
+
+def remove_gateway_link_when_ip_address_removed_from_interface(
+        sender, instance, action, model, pk_set, **kwargs):
+    """When an IP address is removed from an interface it is possible that
+    the IP address was not deleted just moved. In that case we need to removed
+    the gateway links on the node model."""
+    if model == StaticIPAddress and action == "post_remove":
+        try:
+            node = instance.node
+        except Node.DoesNotExist:
+            return
+        if node is not None:
+            for pk in pk_set:
+                if node.gateway_link_ipv4_id == pk:
+                    node.gateway_link_ipv4_id = None
+                    node.save(update_fields=["gateway_link_ipv4_id"])
+                if node.gateway_link_ipv6_id == pk:
+                    node.gateway_link_ipv6_id = None
+                    node.save(update_fields=["gateway_link_ipv6_id"])
+
+
+signals.watch(
+    m2m_changed, remove_gateway_link_when_ip_address_removed_from_interface,
+    Interface.ip_addresses.through)
+
 
 # Enable all signals by default.
 signals.enable()

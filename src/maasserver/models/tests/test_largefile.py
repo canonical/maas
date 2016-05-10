@@ -15,7 +15,10 @@ from unittest.mock import (
 from crochet import wait_for
 from django.db import transaction
 from maasserver.fields import LargeObjectFile
-from maasserver.models import largefile as largefile_module
+from maasserver.models import (
+    largefile as largefile_module,
+    signals,
+)
 from maasserver.models.largefile import LargeFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -142,24 +145,24 @@ class TestLargeFile(MAASServerTestCase):
         self.assertTrue(LargeFile.objects.filter(id=largefile.id).exists())
 
     def test_deletes_content_asynchronously(self):
-        self.patch(largefile_module, "delete_large_object_content_later")
+        self.patch(signals.largefiles, "delete_large_object_content_later")
         largefile = factory.make_LargeFile()
         self.addCleanup(largefile.content.unlink)
         with post_commit_hooks:
             largefile.delete()
         self.assertThat(
-            largefile_module.delete_large_object_content_later,
+            signals.largefiles.delete_large_object_content_later,
             MockCalledOnceWith(largefile.content))
 
     def test_deletes_content_asynchronously_for_queries_too(self):
-        self.patch(largefile_module, "delete_large_object_content_later")
+        self.patch(signals.largefiles, "delete_large_object_content_later")
         for _ in 1, 2:
             largefile = factory.make_LargeFile()
             self.addCleanup(largefile.content.unlink)
         with post_commit_hooks:
             LargeFile.objects.all().delete()
         self.assertThat(
-            largefile_module.delete_large_object_content_later,
+            signals.largefiles.delete_large_object_content_later,
             MockCallsMatch(call(ANY), call(ANY)))
 
 

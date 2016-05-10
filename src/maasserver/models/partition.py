@@ -19,8 +19,6 @@ from django.db.models import (
     ForeignKey,
     Manager,
 )
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -295,20 +293,3 @@ class Partition(CleanSave, TimestampedModel):
                     "Cannot delete partition because its part of "
                     "a %s." % filesystem_group.get_nice_name())
         super(Partition, self).delete()
-
-
-@receiver(post_delete)
-def delete_partition_table(sender, instance, **kwargs):
-    """Delete the partition table if this is the last partition on the
-    partition table."""
-    # Circular imports.
-    from maasserver.models.partitiontable import PartitionTable
-    if sender == Partition:
-        try:
-            partition_table = instance.partition_table
-        except PartitionTable.DoesNotExist:
-            # Partition table has already been removed nothing to do.
-            return
-        else:
-            if partition_table.partitions.count() == 0:
-                partition_table.delete()

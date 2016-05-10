@@ -4,21 +4,20 @@
 """Testing helpers for ORM models and their supporting code."""
 
 __all__ = [
-    "SignalDisconnected",
-    "SignalsDisconnected",
     "UpdateBootSourceCacheDisconnected",
 ]
 
 from django.db.models.signals import post_save
 import fixtures
-from maasserver.models.bootsource import (
-    BootSource,
-    update_boot_source_cache,
-)
+from maasserver.models.bootsource import BootSource
+from maasserver.models.signals.bootsources import update_boot_source_cache
 
 
-class SignalDisconnected(fixtures.Fixture):
-    """Disconnect a receiver from the given signal."""
+class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
+    """Disconnect a receiver from the given signal.
+
+    :deprecated: Use the managers in `m.models.signals` instead.
+    """
 
     def __init__(
             self, signal, receiver, sender=None, weak=True,
@@ -40,10 +39,12 @@ class SignalDisconnected(fixtures.Fixture):
             dispatch_uid=self.dispatch_uid)
 
 
-class SignalsDisconnected(fixtures.Fixture):
+class SignalsDisconnected(fixtures.Fixture):  # DEPRECATED
     """Disconnect all receivers of the given signals.
 
     This is a fixture version of `NoReceivers`.
+
+    :deprecated: Use the managers in `m.models.signals` instead.
     """
 
     def __init__(self, *signals):
@@ -63,7 +64,11 @@ class SignalsDisconnected(fixtures.Fixture):
                 signal.receivers = []
 
 
-class UpdateBootSourceCacheDisconnected(SignalDisconnected):
+class UpdateBootSourceCacheDisconnected(SignalDisconnected):  # DEPRECATED
+    """Disconnects `update_boot_source_cache`.
+
+    :deprecated: Use the manager in `m.models.signals.bootsources` instead.
+    """
 
     def __init__(self, *signals):
         super(UpdateBootSourceCacheDisconnected, self).__init__(

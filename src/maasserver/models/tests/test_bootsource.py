@@ -10,7 +10,7 @@ from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.bootsources import cache_boot_sources
-from maasserver.models import bootsource as bootsource_module
+from maasserver.models import signals
 from maasserver.models.bootsource import BootSource
 from maasserver.models.testing import UpdateBootSourceCacheDisconnected
 from maasserver.testing.factory import factory
@@ -144,7 +144,7 @@ class TestBootSourceSignals(MAASServerTestCase):
     """Tests for the `BootSource` model's signals."""
 
     def test_arranges_for_later_update_to_boot_sources_post_commit(self):
-        post_commit_do = self.patch(bootsource_module, "post_commit_do")
+        post_commit_do = self.patch(signals.bootsources, "post_commit_do")
         make_BootSource()
         self.assertThat(post_commit_do, MockCalledOnceWith(
             reactor.callLater, 0, cache_boot_sources))
