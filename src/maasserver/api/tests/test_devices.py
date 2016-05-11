@@ -376,7 +376,7 @@ class TestDeviceAPI(APITestCase):
         self.become_admin()
         device = factory.make_Device()
         mock_set_initial_networking_config = self.patch(
-            node_module.Device, 'restore_default_configuration')
+            node_module.Device, 'set_initial_networking_configuration')
         response = self.client.post(
             get_device_uri(device),
             {'op': 'restore_default_configuration'})

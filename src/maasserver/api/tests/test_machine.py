@@ -60,6 +60,7 @@ from maastesting.matchers import (
     HasLength,
     MockCalledOnce,
     MockCalledOnceWith,
+    MockNotCalled,
 )
 from metadataserver.models import (
     NodeKey,
@@ -1894,7 +1895,7 @@ class TestRestoreNetworkingConfiguration(APITestCase):
         """Get the API URI for `machine`."""
         return reverse('machine_handler', args=[machine.system_id])
 
-    def test_(self):
+    def test_restore_networking_configuration(self):
         self.become_admin()
         machine = factory.make_Machine(status=NODE_STATUS.READY)
         mock_set_initial_networking_config = self.patch(
@@ -1914,6 +1915,17 @@ class TestRestoreNetworkingConfiguration(APITestCase):
             {'op': 'restore_networking_configuration'})
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_restore_networking_configuration_checks_machine_status(self):
+        self.become_admin()
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        mock_set_initial_networking_config = self.patch(
+            node_module.Machine, 'set_initial_networking_configuration')
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {'op': 'restore_networking_configuration'})
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertThat(mock_set_initial_networking_config, MockNotCalled())
 
 
 class TestRestoreStorageConfiguration(APITestCase):
@@ -1945,6 +1957,17 @@ class TestRestoreStorageConfiguration(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
 
+    def test_restore_storage_configuration_checks_machine_status(self):
+        self.become_admin()
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        mock_set_default_storage_layout = self.patch(
+            node_module.Machine, 'set_default_storage_layout')
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {'op': 'restore_storage_configuration'})
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertThat(mock_set_default_storage_layout, MockNotCalled())
+
 
 class TestRestoreDefaultConfiguration(APITestCase):
     """Tests for
@@ -1957,15 +1980,18 @@ class TestRestoreDefaultConfiguration(APITestCase):
     def test_restore_default_configuration(self):
         self.become_admin()
         machine = factory.make_Machine(status=NODE_STATUS.READY)
-        mock_restore_default_configuration = self.patch(
-            node_module.Machine, 'restore_default_configuration')
+        mock_set_default_storage_layout = self.patch(
+            node_module.Machine, 'set_default_storage_layout')
+        mock_set_initial_networking_config = self.patch(
+            node_module.Machine, 'set_initial_networking_configuration')
         response = self.client.post(
             self.get_machine_uri(machine),
             {'op': 'restore_default_configuration'})
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)['system_id'])
-        self.assertThat(mock_restore_default_configuration, MockCalledOnce())
+        self.assertThat(mock_set_default_storage_layout, MockCalledOnce())
+        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
 
     def test_restore_default_configuration_requires_admin(self):
         machine = factory.make_Machine()
@@ -1974,6 +2000,17 @@ class TestRestoreDefaultConfiguration(APITestCase):
             {'op': 'restore_default_configuration'})
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_restore_default_configuration_checks_machine_status(self):
+        self.become_admin()
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        mock_restore_default_configuration = self.patch(
+            node_module.Machine, 'restore_default_configuration')
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {'op': 'restore_default_configuration'})
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertThat(mock_restore_default_configuration, MockNotCalled())
 
 
 class TestMarkBroken(APITestCase):

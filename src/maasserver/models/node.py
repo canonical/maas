@@ -2424,11 +2424,9 @@ class Node(CleanSave, TimestampedModel):
             # No interfaces on the node. Nothing to do.
             return
 
-        if self.node_type == NODE_TYPE.MACHINE and self.status in [
-                NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED]:
-            raise ValidationError(
-                "Machine must be in a new, ready, allocated, or failed "
-                "deployment state to be reset.")
+        assert \
+            self.status not in [NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED], \
+            'Node cannot be in a deploying state when configuring network'
 
         # Set AUTO mode on the boot interface.
         auto_set = False
@@ -3072,17 +3070,6 @@ class Machine(Node):
     def __init__(self, *args, **kwargs):
         super(Machine, self).__init__(
             node_type=NODE_TYPE.MACHINE, *args, **kwargs)
-
-    def restore_default_configuration(self):
-        """Restores a machine's configuration to default settings."""
-        if self.status not in [
-                NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.ALLOCATED,
-                NODE_STATUS.FAILED_DEPLOYMENT]:
-            raise ValidationError(
-                "Machine must be in a new, ready, allocated, or failed "
-                "deployment state to restore default configuration.")
-        self.set_default_storage_layout()
-        self.set_initial_networking_configuration()
 
 
 class Controller(Node):
@@ -3824,10 +3811,6 @@ class Device(Node):
     def __init__(self, *args, **kwargs):
         super(Device, self).__init__(
             node_type=NODE_TYPE.DEVICE, *args, **kwargs)
-
-    def restore_default_configuration(self):
-        """Restores a device's configuration to default settings."""
-        self.set_initial_networking_configuration()
 
     def clean_architecture(self, prev):
         # Devices aren't required to have a defined architecture

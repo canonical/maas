@@ -141,7 +141,7 @@ class DeviceHandler(NodeHandler, OwnerDataMixin):
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
-        device.restore_default_configuration()
+        device.set_initial_networking_configuration()
         return reload_object(device)
 
     @classmethod

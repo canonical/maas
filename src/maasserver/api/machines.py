@@ -595,6 +595,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
+        if machine.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Machine must be in a ready state to restore networking "
+                "configuration")
         machine.set_initial_networking_configuration()
         return reload_object(machine)
 
@@ -608,6 +612,10 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
+        if machine.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Machine must be in a ready state to restore storage "
+                "configuration.")
         machine.set_default_storage_layout()
         return reload_object(machine)
 
@@ -621,7 +629,12 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
-        machine.restore_default_configuration()
+        if machine.status != NODE_STATUS.READY:
+            raise NodeStateViolation(
+                "Machine must be in a ready state to restore default "
+                "networking and storage configuration.")
+        machine.set_default_storage_layout()
+        machine.set_initial_networking_configuration()
         return reload_object(machine)
 
     @operation(idempotent=False)
