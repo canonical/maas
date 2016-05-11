@@ -140,6 +140,9 @@ def has_expired(lease, now):
     :return: Whether the lease has expired.
     """
     assert is_lease(lease)
+    # Deleted entries are definitely expired.
+    if 'deleted' in lease:
+        return True
     expiry_date = get_expiry_date(lease)
     if expiry_date is None:
         return False

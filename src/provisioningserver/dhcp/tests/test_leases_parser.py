@@ -447,6 +447,14 @@ class TestLeasesParserFunctions(MAASTestCase):
     def test_get_expiry_date_returns_None_if_no_expiry_given(self):
         self.assertIsNone(get_expiry_date(fake_parsed_lease(ends=None)))
 
+    def test_has_expired_returns_True_for_deleted_lease(self):
+        now = datetime.utcnow()
+        # Make a lease with no expiry, and mark it deleted.
+        lease = fake_parsed_lease(ends=None)
+        del lease.hardware
+        lease.deleted = True
+        self.assertTrue(has_expired(lease, now))
+
     def test_has_expired_returns_False_for_eternal_lease(self):
         now = datetime.utcnow()
         self.assertFalse(has_expired(fake_parsed_lease(ends=None), now))
