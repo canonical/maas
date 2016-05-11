@@ -72,6 +72,10 @@ from provisioningserver.utils.env import (
     get_maas_id,
     set_maas_id,
 )
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 from provisioningserver.utils.twisted import (
     DeferredValue,
     synchronous,
@@ -458,6 +462,26 @@ class Cluster(RPCProtocol):
         else:
             message = "Unknown chassis type %s" % chassis_type
             maaslog.error(message)
+        return {}
+
+    @cluster.DisableAndShutoffRackd.responder
+    def disable_and_shutoff_rackd(self):
+        """DisableAndShutoffRackd()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DisableAndShutoffRackd`.
+        """
+        maaslog.info("Rack deleted, disabling rackd service")
+        try:
+            # We can't use the --now flag as if the maas-rackd service is on
+            # but not enabled the service won't be stopped
+            call_and_check(
+                ['sudo', 'systemctl', 'disable', 'maas-rackd'])
+            call_and_check(
+                ['sudo', 'systemctl', 'stop', 'maas-rackd'])
+        except ExternalProcessError as e:
+            maaslog.error("Unable to disable and stop maas-rackd service")
+            raise exceptions.CannotDisableAndShutoffRackd(e.output_as_unicode)
         return {}
 
 

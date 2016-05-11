@@ -478,3 +478,15 @@ class AddChassis(amp.Command):
         (b"protocol", amp.Unicode(optional=True)),
     ]
     errors = {}
+
+
+class DisableAndShutoffRackd(amp.Command):
+    """Disable and shutdown the rackd service.
+
+    :since: 2.0
+    """
+    arguments = []
+    errors = {
+        exceptions.CannotDisableAndShutoffRackd: (
+            b"CannotDisableAndShutoffRackd"),
+    }

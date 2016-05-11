@@ -137,10 +137,12 @@ from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.power.schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc.cluster import (
     AddChassis,
+    DisableAndShutoffRackd,
     IsImportBootImagesRunning,
     RefreshRackControllerInfo,
 )
 from provisioningserver.rpc.exceptions import (
+    CannotDisableAndShutoffRackd,
     NoConnectionsAvailable,
     UnknownPowerType,
 )
@@ -6992,11 +6994,34 @@ class TestRackController(MAASServerTestCase):
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))
 
-    def test_prevents_delete_when_connected(self):
+    def test_disables_and_disconn_when_secondary_connected(self):
         rackcontroller = factory.make_RackController()
-        mock_filter = self.patch(RegionRackRPCConnection.objects, 'filter')
-        mock_filter.return_value = [rackcontroller]
-        self.assertRaises(ValidationError, rackcontroller.delete)
+        factory.make_VLAN(secondary_rack=rackcontroller)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(
+            rackcontroller, DisableAndShutoffRackd)
+        protocol.DisableAndShutoffRackd.return_value = defer.succeed({})
+
+        rackcontroller.delete()
+        self.expectThat(protocol.DisableAndShutoffRackd, MockCalledOnce())
+
+    def test_disables_and_disconn_when_secondary_connected_fails(self):
+        rackcontroller = factory.make_RackController()
+        factory.make_VLAN(secondary_rack=rackcontroller)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(
+            rackcontroller, DisableAndShutoffRackd)
+        protocol.DisableAndShutoffRackd.return_value = defer.fail(
+            CannotDisableAndShutoffRackd())
+
+        self.assertRaises(CannotDisableAndShutoffRackd, rackcontroller.delete)
+        self.expectThat(protocol.DisableAndShutoffRackd, MockCalledOnce())
 
     def test_prevents_delete_when_primary_rack(self):
         rackcontroller = factory.make_RackController()

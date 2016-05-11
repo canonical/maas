@@ -2392,3 +2392,28 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             'hostname': factory.make_hostname(),
             })
         self.assertEquals({}, response.result)
+
+
+class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DisableAndShutoffRackd.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_issues_restart(self):
+        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        response = call_responder(
+            Cluster(), cluster.DisableAndShutoffRackd, {})
+        self.assertEquals({}, response.result)
+        self.assertEquals(2, mock_call_and_check.call_count)
+
+    @inlineCallbacks
+    def test_raises_error_on_failure(self):
+        mock_call_and_check = self.patch(clusterservice, 'call_and_check')
+        mock_call_and_check.side_effect = ExternalProcessError(
+            1, 'systemctl', 'failure')
+        with ExpectedException(exceptions.CannotDisableAndShutoffRackd):
+            yield call_responder(
+                Cluster(), cluster.DisableAndShutoffRackd, {})

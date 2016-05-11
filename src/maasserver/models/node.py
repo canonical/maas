@@ -162,6 +162,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.cluster import (
     AddChassis,
+    DisableAndShutoffRackd,
     IsImportBootImagesRunning,
     RefreshRackControllerInfo,
 )
@@ -3658,15 +3659,6 @@ class RackController(Controller):
 
     def delete(self):
         """Delete this rack controller."""
-        # Avoid circular dependency.
-        from maasserver.models import RegionRackRPCConnection
-        connections = RegionRackRPCConnection.objects.filter(
-            rack_controller=self)
-        if len(connections) != 0:
-            raise ValidationError(
-                "Unable to delete %s as it's currently connected to one or "
-                "more regions." % self.hostname)
-
         primary_vlans = VLAN.objects.filter(primary_rack=self)
         if len(primary_vlans) != 0:
             raise ValidationError(
@@ -3674,6 +3666,15 @@ class RackController(Controller):
                 " controller on VLANs %s" %
                 (self.hostname,
                     ', '.join([str(vlan) for vlan in primary_vlans])))
+
+        try:
+            client = getClientFor(self.system_id, timeout=1)
+            call = client(DisableAndShutoffRackd)
+            call.wait(30)
+        except NoConnectionsAvailable:
+            # NoConnectionsAvailable is always thrown. Either because the rack
+            # is currently disconnected or rackd was killed
+            pass
 
         for vlan in VLAN.objects.filter(secondary_rack=self):
             vlan.secondary_rack = None

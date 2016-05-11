@@ -7,6 +7,7 @@ __all__ = [
     "AuthenticationFailed",
     "CannotConfigureDHCP",
     "CannotCreateHostMap",
+    "CannotDisableAndShutoffRackd",
     "CannotModifyHostMap",
     "CannotRegisterCluster",
     "CannotRemoveHostMap",
@@ -146,3 +147,7 @@ class RegistrationFailed(Exception):
 
 class BootConfigNoResponse(Exception):
     """The region gave no response for the boot configuration."""
+
+
+class CannotDisableAndShutoffRackd(Exception):
+    """Rackd cannot be disabled and shutoff."""
