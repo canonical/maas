@@ -8,8 +8,10 @@ __all__ = []
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import get_one
 from maasserver.websockets.handlers.iprange import IPRangeHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
+from testtools.matchers import MatchesStructure
 
 
 class TestIPRangeHandler(MAASServerTestCase):
@@ -23,7 +25,8 @@ class TestIPRangeHandler(MAASServerTestCase):
             "start_ip": iprange.start_ip,
             "end_ip": iprange.end_ip,
             "comment": iprange.comment,
-            "user": iprange.user.username if iprange.user else "",
+            "user": iprange.user.id if iprange.user else None,
+            "user_username": iprange.user.username if iprange.user else "",
             "type": iprange.type,
         }
         return data
@@ -48,3 +51,47 @@ class TestIPRangeHandler(MAASServerTestCase):
         self.assertItemsEqual(
             expected_ipranges,
             handler.list({}))
+
+    def test_create(self):
+        user = factory.make_User()
+        factory.make_Subnet(cidr="192.168.0.0/24")
+        handler = IPRangeHandler(user, {})
+        ip_range = handler.create({
+            "type": "reserved",
+            "start_ip": "192.168.0.10",
+            "end_ip": "192.168.0.20",
+        })
+        self.assertThat(
+            IPRange.objects.get(id=ip_range['id']),
+            MatchesStructure.byEquality(
+                type="reserved", start_ip="192.168.0.10",
+                end_ip="192.168.0.20"))
+
+    def test_update(self):
+        user = factory.make_User()
+        factory.make_Subnet(cidr="192.168.0.0/24")
+        handler = IPRangeHandler(user, {})
+        ip_range = handler.create({
+            "type": "reserved",
+            "start_ip": "192.168.0.10",
+            "end_ip": "192.168.0.20",
+        })
+        ip_range["end_ip"] = "192.168.0.30"
+        handler.update(ip_range)
+        self.assertThat(
+            IPRange.objects.get(id=ip_range['id']),
+            MatchesStructure.byEquality(
+                type="reserved", start_ip="192.168.0.10",
+                end_ip="192.168.0.30"))
+
+    def test_delete(self):
+        user = factory.make_User()
+        factory.make_Subnet(cidr="192.168.0.0/24")
+        handler = IPRangeHandler(user, {})
+        ip_range = handler.create({
+            "type": "reserved",
+            "start_ip": "192.168.0.10",
+            "end_ip": "192.168.0.20",
+        })
+        handler.delete(ip_range)
+        self.assertIsNone(get_one(IPRange.objects.filter(id=ip_range['id'])))

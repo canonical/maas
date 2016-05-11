@@ -158,7 +158,7 @@
     <section class="row">
         <div class="inner-wrapper">
             <h2>VLAN Summary</h2>
-            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager">
+            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!isSuperUser()">
                 <fieldset class="six-col form">
                     <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>

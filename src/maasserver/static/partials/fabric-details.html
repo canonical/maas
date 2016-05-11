@@ -49,7 +49,7 @@
             <div class="twelve-col">
                 <h2>Fabric summary</h2>
             </div>
-            <maas-obj-form obj="fabric" manager="fabricManager">
+            <maas-obj-form obj="fabric" manager="fabricManager" data-ng-disabled="!isSuperUser()">
                 <fieldset class="six-col">
                     <maas-obj-field type="text" key="name" label="Name" placeholder="Fabric name"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>

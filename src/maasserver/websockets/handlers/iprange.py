@@ -7,6 +7,7 @@ __all__ = [
     "IPRangeHandler",
     ]
 
+from maasserver.forms_iprange import IPRangeForm
 from maasserver.models import IPRange
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -22,9 +23,12 @@ class IPRangeHandler(TimestampedModelHandler):
     class Meta:
         queryset = IPRange.objects.all().select_related('user')
         pk = 'id'
+        form = IPRangeForm
         allowed_methods = [
             'list',
             'get',
+            'create',
+            'update',
             'delete',
         ]
         listen_channels = [
@@ -32,8 +36,9 @@ class IPRangeHandler(TimestampedModelHandler):
         ]
 
     def dehydrate(self, obj, data, for_list=False):
+        """Add extra fields to `data`."""
         if obj.user is None:
-            data['user'] = ""
+            data["user_username"] = ""
         else:
-            data['user'] = obj.user.username
+            data["user_username"] = obj.user.username
         return data

@@ -52,6 +52,16 @@ describe("maasObjForm", function() {
         return errors;
     }
 
+    // Return the list of rendered errors in the element.
+    function getErrorList(element) {
+        var errors = [];
+        var lis = element.find("ul.errors").children();
+        lis.each(function() {
+            errors.push(angular.element(this).text());
+        });
+        return errors;
+    }
+
     describe("input type=text", function() {
 
         var directive;
@@ -350,9 +360,9 @@ describe("maasObjForm", function() {
         });
     });
 
-    describe("calls preProcess function", function() {
+    describe("preProcess", function() {
 
-        it("calls preProcess function", function() {
+        it("calls function", function() {
             var preProcess = jasmine.createSpy();
             $scope.obj = {
                 key: makeName("key")
@@ -511,6 +521,240 @@ describe("maasObjForm", function() {
             // Check that field2 still has the old value.
             expect(field2.val()).not.toBe(newField2Value);
             expect(field2.val()).toBe(oldField2Value);
+        });
+    });
+
+    describe("disabled", function() {
+
+        var directive;
+        beforeEach(function() {
+            $scope.obj = {};
+            $scope.manager = {};
+            $scope.options = [{
+                id: 0,
+                text: "test"
+            }];
+            $scope.disabled = false;
+            var options = "option.id as option.text for option in options";
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ' +
+                    'ng-disabled="disabled">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                    '<maas-obj-field type="options" key="key2" label="Key 2" ',
+                        'placeholder="Placeholder 2" label-width="two" ',
+                        'input-width="three" options="' + options + '">',
+                    '</maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            directive = compileDirective(html);
+        });
+
+        it("both input and select can be disabled", function() {
+            var input = angular.element(directive.find("#key"));
+            var select = angular.element(directive.find("#key2"));
+
+            expect(input.prop("disabled")).toBe(false);
+            expect(select.prop("disabled")).toBe(false);
+
+            $scope.disabled = true;
+            $scope.$digest();
+
+            expect(input.prop("disabled")).toBe(true);
+            expect(select.prop("disabled")).toBe(true);
+        });
+    });
+
+    describe("afterSave", function() {
+
+        it("calls function", function() {
+            var afterSave = jasmine.createSpy('afterSave');
+            $scope.obj = {
+                key: makeName("key")
+            };
+            $scope.saved = afterSave;
+            var saveDefer = $q.defer();
+            var updateItemMethod = jasmine.createSpy();
+            updateItemMethod.and.returnValue(saveDefer.promise);
+            $scope.manager = {
+                updateItem: updateItemMethod
+            };
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'after-save="saved()">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var field = angular.element(directive.find("#key"));
+
+            var newKey = makeName("new_key");
+            changeFieldValue(field, newKey);
+
+            saveDefer.resolve({
+                key: newKey
+            });
+            $scope.$digest();
+            expect(afterSave).toHaveBeenCalled();
+        });
+    });
+
+    describe("tableForm", function() {
+
+        it("adds form__group classes by default", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var group = angular.element(
+                directive.find('maas-obj-field[key="key"]'));
+            var field = angular.element(directive.find("#key"));
+            expect(group.hasClass("form__group")).toBe(true);
+            expect(group.hasClass("form__group--inline")).toBe(true);
+            expect(group.hasClass("form__group--subtle")).toBe(true);
+            expect(
+                field.parent("div").hasClass("form__group-input")).toBe(true);
+        });
+
+        it("doesn't add form__group classes", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            $scope.manager = {};
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'table-form="true">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var group = angular.element(
+                directive.find('maas-obj-field[key="key"]'));
+            var field = angular.element(directive.find("#key"));
+            expect(group.hasClass("form__group")).toBe(false);
+            expect(group.hasClass("form__group--inline")).toBe(false);
+            expect(group.hasClass("form__group--subtle")).toBe(false);
+            expect(
+                field.parent("div").hasClass("form__group-input")).toBe(false);
+        });
+    });
+
+    describe("form mode", function() {
+
+        it("doesn't save on blur", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            var saveDefer = $q.defer();
+            var updateItemMethod = jasmine.createSpy();
+            updateItemMethod.and.returnValue(saveDefer.promise);
+            $scope.manager = {
+                updateItem: updateItemMethod
+            };
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var field = angular.element(directive.find("#key"));
+
+            var newKey = makeName("new_key");
+            changeFieldValue(field, newKey);
+
+            expect(updateItemMethod).not.toHaveBeenCalled();
+        });
+
+        it("saves on maasObjSave directive click", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            var saveDefer = $q.defer();
+            var updateItemMethod = jasmine.createSpy();
+            updateItemMethod.and.returnValue(saveDefer.promise);
+            $scope.manager = {
+                updateItem: updateItemMethod
+            };
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                    '<button maas-obj-save></button>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var field = angular.element(directive.find("#key"));
+            var button = angular.element(directive.find("button"));
+
+            var newKey = makeName("new_key");
+            changeFieldValue(field, newKey);
+
+            // Not called on blur. Called on click of button.
+            expect(updateItemMethod).not.toHaveBeenCalled();
+            button.triggerHandler('click');
+            expect(updateItemMethod).toHaveBeenCalledWith({
+                key: newKey
+            });
+        });
+
+        it("places global errors in maasObjErrors", function() {
+            $scope.obj = {
+                key: makeName("key")
+            };
+            var saveDefer = $q.defer();
+            var updateItemMethod = jasmine.createSpy();
+            updateItemMethod.and.returnValue(saveDefer.promise);
+            $scope.manager = {
+                updateItem: updateItemMethod
+            };
+            var html = [
+                '<maas-obj-form obj="obj" manager="manager" ',
+                    'save-on-blur="false">',
+                    '<maas-obj-field type="text" key="key" label="Key" ',
+                        'placeholder="Placeholder" label-width="two" ',
+                        'input-width="three"></maas-obj-field>',
+                    '<maas-obj-errors></maas-obj-errors>',
+                    '<button maas-obj-save></button>',
+                '</maas-obj-form>'
+                ].join('');
+            var directive = compileDirective(html);
+            var field = angular.element(directive.find("#key"));
+            var errors = angular.element(directive.find("maas-obj-errors"));
+            var button = angular.element(directive.find("button"));
+
+            var newKey = makeName("new_key");
+            changeFieldValue(field, newKey);
+            button.triggerHandler('click');
+
+            var error = makeName("error");
+            var keyError = makeName("keyError");
+            saveDefer.reject(angular.toJson({
+                "__all__": [error],
+                "key": [keyError]
+            }));
+            $scope.$digest();
+
+            // Error is placed on the input and in the global section.
+            expect(getFieldErrorList(field)).toEqual([keyError]);
+            expect(getErrorList(errors)).toEqual([error]);
         });
     });
 });

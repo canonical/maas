@@ -176,6 +176,9 @@ class IPRange(CleanSave, TimestampedModel):
 
     @transactional
     def clean_prevent_dupes_and_overlaps(self):
+        """Make sure the new or updated range isn't going to cause a conflict.
+        If it will, raise ValidationError.
+        """
 
         # A range overlap/conflict could be due to any of these fields.
         def fail(message, fields=['start_ip', 'end_ip', 'type']):
@@ -187,9 +190,7 @@ class IPRange(CleanSave, TimestampedModel):
         # or not the range overlaps anything that could cause an error heavily
         # depends on its type.
         valid_types = {choice[0] for choice in IPRANGE_TYPE_CHOICES}
-        """Make sure the new or updated range isn't going to cause a conflict.
-        If it will, raise ValidationError.
-        """
+
         # If model is incomplete, save() will fail, so don't bother checking.
         if (self.subnet_id is None or self.start_ip is None or
                 self.end_ip is None or self.type is None or
@@ -199,14 +200,22 @@ class IPRange(CleanSave, TimestampedModel):
         # The _state.adding flag is False if this instance exists in the DB.
         # See https://docs.djangoproject.com/en/1.9/ref/models/instances/.
         if not self._state.adding:
-            orig = IPRange.objects.get(pk=self.pk)
-            if orig.type == self.type and (
-                    orig.start_ip == self.start_ip) and (
-                    orig.end_ip == self.end_ip):
-                # Range not materially modified, no range dupe check required.
+            try:
+                orig = IPRange.objects.get(pk=self.id)
+            except IPRange.DoesNotExist:
+                # The code deletes itself and then tries to add it again to
+                # check that it fits. One the second pass of this function
+                # call the IPRange does not exist.
                 return
-            # Pre-existing range moved: remove existing, check, then re-create.
-            if IPRange.objects.filter(pk=self.id).exists():
+            else:
+                if orig.type == self.type and (
+                    orig.start_ip == self.start_ip) and (
+                        orig.end_ip == self.end_ip):
+                    # Range not materially modified, no range dupe check
+                    # required.
+                    return
+
+                # Remove existing, check, then re-create.
                 self_id = self.id
                 # Delete will be rolled back if imminent range checks raise.
                 self.delete()

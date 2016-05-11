@@ -16,12 +16,38 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             this.scope = scope;
             this.scope.saving = false;
 
+            // Set the managerMethod.
+            this.managerMethod = scope.managerMethod;
+            if(angular.isUndefined(this.managerMethod)) {
+                this.managerMethod = "updateItem";
+            }
+
             var self = this;
             scope.$watch("obj", function() {
                 // Update the object when it changes.
                 self.obj = scope.obj;
             });
         }
+
+        // Return true if table form.
+        MAASFormController.prototype.isTableForm = function () {
+            if(angular.isUndefined(this.scope.tableForm)) {
+                // Default is not a table form.
+                return false;
+            } else {
+                return this.scope.tableForm;
+            }
+        };
+
+        // Return true if the form should be saved on blur.
+        MAASFormController.prototype.saveOnBlur = function() {
+            if(angular.isUndefined(this.scope.saveOnBlur)) {
+                // Default is save on blur.
+                return true;
+            } else {
+                return this.scope.saveOnBlur;
+            }
+        };
 
         // Called by maas-obj-field to register it as a editable field.
         MAASFormController.prototype.registerField = function(key, scope) {
@@ -55,6 +81,14 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
         // Called by maas-obj-field to end edit mode for the field.
         MAASFormController.prototype.stopEditingField = function(key, value) {
             var field = this.fields[key];
+
+            // Do nothing if not save on blur.
+            if(!this.saveOnBlur()) {
+                field.editing = false;
+                return;
+            }
+
+            // Clear errors before saving.
             field.scope.clearErrors();
 
             // Copy the object and update the editing field.
@@ -83,11 +117,13 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
             }
 
             // Update the item with the manager.
-            return this.manager.updateItem(updatedObj).then(function(newObj) {
+            return this.manager[this.managerMethod](
+                updatedObj).then(function(newObj) {
                     // Update the value of the element.
                     field.editing = false;
                     field.scope.updateValue(newObj[key]);
                     self.scope.saving = false;
+                    self.scope.afterSave();
                     return newObj;
                 }, function(error) {
                     var errorJson = JSONService.tryParse(error);
@@ -107,9 +143,11 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                                 // Error on a field we don't know about, place
                                 // the error on the editing field. Prefixing
                                 // the error with the field.
-                                value = value.map(function(v) {
-                                    return key + ": " + v;
-                                });
+                                if(key !== "__all__") {
+                                    value = value.map(function(v) {
+                                        return key + ": " + v;
+                                    });
+                                }
                                 field.scope.setErrors(value);
                             }
                         });
@@ -122,12 +160,92 @@ angular.module('MAAS').directive('maasObjForm', ['JSONService',
                 });
         };
 
+        // Called when saveOnBlur is false to save the whole form.
+        MAASFormController.prototype.saveForm = function () {
+            var keys = [];
+            var updatedObj = angular.copy(this.obj);
+            angular.forEach(this.fields, function(value, key) {
+                value.scope.clearErrors();
+                var newValue = value.scope.getValue();
+                if(angular.isDefined(newValue) &&
+                    updatedObj[key] !== newValue) {
+                    updatedObj[key] = newValue;
+                    keys.push(key);
+                }
+            });
+
+            // Pre-process the updatedObj if one is defined.
+            if(angular.isFunction(this.scope.preProcess)) {
+                updatedObj = this.scope.preProcess(updatedObj, keys);
+            }
+
+            // Clear the errors on the errorScope before save.
+            if(angular.isDefined(this.errorScope)) {
+                this.errorScope.clearErrors();
+            }
+
+            var self = this;
+            this.scope.saving = true;
+            return this.manager[this.managerMethod](
+                updatedObj).then(function(newObj) {
+                    self.scope.saving = false;
+                    self.scope.afterSave();
+                    return newObj;
+                }, function(error) {
+                    var errorJson = JSONService.tryParse(error);
+                    if(angular.isObject(errorJson)) {
+                        // Add the error to each field it matches.
+                        angular.forEach(errorJson, function(value, key) {
+                            var errorField = self.fields[key];
+                            if(!angular.isArray(value)) {
+                                value = [value];
+                            }
+
+                            if(angular.isObject(errorField)) {
+                                // Error on a field we know about, place the
+                                // error on that field.
+                                errorField.scope.setErrors(value);
+                            } else {
+                                if(key !== "__all__") {
+                                    value = value.map(function(v) {
+                                        return key + ": " + v;
+                                    });
+                                }
+                                // Error on a field we don't know about, place
+                                // the error on errorScope if set.
+                                if(angular.isDefined(self.errorScope)) {
+                                    self.errorScope.setErrors(value);
+                                } else {
+                                    // No error scope, just log to console.
+                                    console.log(value);
+                                }
+                            }
+                        });
+                    } else {
+                        // Add the string error to just the field error.
+                        if(angular.isDefined(self.errorScope)) {
+                            self.errorScope.setErrors([error]);
+                        } else {
+                            // No error scope, just log to console.
+                            console.log(error);
+                        }
+                    }
+                    self.scope.saving = false;
+                    return error;
+                });
+        };
+
         return {
             restrict: "E",
             scope: {
                 obj: "=",
                 manager: "=",
-                preProcess: "="
+                managerMethod: "@",
+                preProcess: "=",
+                afterSave: "&",
+                tableForm: "=",
+                saveOnBlur: "=",
+                ngDisabled: "&"
             },
             transclude: true,
             template: (
@@ -157,6 +275,16 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
             };
         }
 
+        // Return true if table form.
+        MAASGroupController.prototype.isTableForm = function () {
+            return this.formController.isTableForm();
+        };
+
+        // Return true if should save on blur.
+        MAASGroupController.prototype.saveOnBlur = function () {
+            return this.formController.saveOnBlur();
+        };
+
         // Called by maas-obj-field to register it as a editable field.
         MAASGroupController.prototype.registerField = function(key, scope) {
             // Store the state of the field and its scope.
@@ -170,7 +298,6 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
         // Called by maas-obj-field to place field in edit mode.
         MAASGroupController.prototype.startEditingField = function(key) {
             this.fields[key].editing = true;
-            delete this.fields.lastValue;
 
             // Set all fields in the group as editing in the formController.
             var self = this;
@@ -183,7 +310,11 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
         MAASGroupController.prototype.stopEditingField = function(key, value) {
             var field = this.fields[key];
             field.editing = false;
-            field.lastValue = value;
+
+            // Exit early if not save on blur.
+            if(!this.saveOnBlur()) {
+                return;
+            }
 
             // Delay the handling of stop to make sure start is not called on
             // the next field in the group.
@@ -206,10 +337,11 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                 var updatedObj = angular.copy(self.formController.obj);
                 angular.forEach(self.fields, function(value, key) {
                     value.scope.clearErrors();
-                    if(!angular.isUndefined(value.lastValue) &&
-                        updatedObj[key] !== value.lastValue) {
+                    var newValue = value.scope.getValue();
+                    if(angular.isDefined(newValue) &&
+                        updatedObj[key] !== newValue) {
                         keys.push(key);
-                        updatedObj[key] = value.lastValue;
+                        updatedObj[key] = newValue;
                         changed = true;
                     }
                 });
@@ -224,7 +356,7 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                     keys.splice(0, 0, key);
                 }
 
-                // Update the object.
+                // Save the object.
                 self.formController.updateItem(updatedObj, keys);
             }, 10); // Really short has to be next click.
         };
@@ -246,6 +378,9 @@ angular.module('MAAS').directive('maasObjFieldGroup', ['JSONService',
                     // pre-link so the controller has the formController before
                     // registerField is called.
                     controllers[1].formController = controllers[0];
+
+                    // Set ngDisabled on this scope from the form controller.
+                    scope.ngDisabled = controllers[0].scope.ngDisabled;
                 }
             }
         };
@@ -259,13 +394,22 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
             scope: {},
             transclude: true,
             template: (
-                '<div class="form__group form__group--inline ' +
-                'form__group--subtle" ng-transclude></div>'),
+                '<div ng-transclude></div>'),
             link: function(scope, element, attrs, controllers) {
                 // Select the controller based on which is available.
                 var controller = controllers[1];
                 if(!angular.isObject(controller)) {
                     controller = controllers[0];
+                }
+
+                // Set ngDisabled from the parent controller.
+                scope.ngDisabled = controller.scope.ngDisabled;
+
+                // Set the classes for the wrapper if not a table form.
+                if(!controller.isTableForm()) {
+                    element.addClass("form__group");
+                    element.addClass("form__group--inline");
+                    element.addClass("form__group--subtle");
                 }
 
                 // type and key required.
@@ -295,29 +439,33 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 element.append(labelElement);
 
                 // Add the wrapper for the input.
-                var inputWrapper = angular.element(
-                    '<div class="form__group-input"></div>');
+                var inputWrapper = angular.element('<div></div>');
+                if(!controller.isTableForm()) {
+                    inputWrapper.addClass("form__group-input");
+                }
                 if(attrs.inputWidth) {
                     inputWrapper.addClass(attrs.inputWidth + "-col");
                     inputWrapper.addClass("last-col");
                 }
 
                 // Render the input based on the type.
-                var placeholder = attrs.placeholder || scope.label;
+                var placeholder = attrs.placeholder || label;
                 var inputElement = null;
                 if(attrs.type === "text" || attrs.type === "textarea") {
                     if(attrs.type === "text") {
-                        inputElement = angular.element(
+                        inputElement = $compile(
                             '<input type="text" id="' + attrs.key +
-                            '" placeholder="' + placeholder + '">');
+                            '" placeholder="' + placeholder + '"' +
+                            'ng-disabled="ngDisabled()">')(scope);
                     } else if(attrs.type === "textarea") {
-                        inputElement = angular.element(
+                        inputElement = $compile(
                             '<textarea id="' + attrs.key +
-                            '" placeholder="' + placeholder + '"></textarea>');
+                            '" placeholder="' + placeholder + '"' +
+                            'ng-disabled="ngDisabled()"></textarea>')(scope);
                     }
 
                     // Allow enter on blur, by default.
-                    if(attrs.blurOnEnter !== "false") {
+                    if(attrs.blurOnEnter) {
                         inputElement.bind("keydown keypress", function(evt) {
                             if(evt.which === 13) {
                                 inputElement.blur();
@@ -361,6 +509,11 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     scope.updateValue = function(newValue) {
                         inputElement.val(newValue);
                     };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return inputElement.val();
+                    };
                 } else if(attrs.type === "options") {
                     // Requires the options attribute on the element. This
                     // is copied directly into the ngOptions directive on
@@ -377,6 +530,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                     // isolated scope we need the child to use the parent so
                     // ngOptions can use properties defined in that scope.
                     var childScope = scope.$parent.$new();
+                    childScope._ngDisabled = scope.ngDisabled;
                     childScope._selectValue = controller.registerField(
                         attrs.key, scope);
                     childScope._selectNgChange = function(key) {
@@ -389,13 +543,19 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                         '<select id="' + attrs.key + '" ' +
                         'ng-model="_selectValue" ' +
                         'ng-options="' + options + '"' +
-                        'ng-change="_selectNgChange(\'' + attrs.key + '\')">' +
+                        'ng-change="_selectNgChange(\'' + attrs.key + '\')"' +
+                        'ng-disabled="_ngDisabled()">' +
                         '<option value="" disabled>' + placeholder +
                         '</option></select>')(childScope);
 
                     // Called by controller to update the value.
                     scope.updateValue = function(newValue) {
                         childScope._selectValue = newValue;
+                    };
+
+                    // Called by controller to get the value.
+                    scope.getValue = function() {
+                        return childScope._selectValue;
                     };
                 } else {
                     throw new Error(
@@ -432,3 +592,52 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
             }
         };
     }]);
+
+angular.module('MAAS').directive('maasObjSave', function() {
+        return {
+            restrict: "A",
+            require: ["^^maasObjForm"],
+            scope: {},
+            link: function(scope, element, attrs, controllers) {
+                // Only allow maas-obj-save when saveOnBlur is false.
+                var controller = controllers[0];
+                if(controller.saveOnBlur()) {
+                    throw new Error(
+                        "maas-obj-save is only allowed when save-on-blur is " +
+                        "set to false.");
+                }
+
+                element.on("click", function() {
+                    controller.saveForm();
+                });
+            }
+        };
+    });
+
+angular.module('MAAS').directive('maasObjErrors', function() {
+        return {
+            restrict: "E",
+            require: ["^^maasObjForm"],
+            scope: {},
+            template: '<ul class="errors"></ul>',
+            link: function(scope, element, attrs, controllers) {
+                // Set on the controller the global error handler.
+                controllers[0].errorScope = scope;
+                var ul = element.find("ul");
+
+                // Called by controller to clear all errors.
+                scope.clearErrors = function() {
+                    ul.empty();
+                };
+
+                // Called by controller to set errors.
+                scope.setErrors = function(errors) {
+                    if(errors.length > 0) {
+                        angular.forEach(errors, function(error) {
+                            ul.append("<li>" + error + "</li>");
+                        });
+                    }
+                };
+            }
+        };
+    });

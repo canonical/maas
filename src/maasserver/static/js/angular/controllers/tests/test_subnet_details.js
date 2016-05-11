@@ -71,13 +71,14 @@ describe("SubnetDetailsController", function() {
 
     // Load any injected managers and services.
     var SubnetsManager, IPRangesManager, SpacesManager, VLANsManager;
-    var FabricsManager, ManagerHelperService, ErrorService;
+    var FabricsManager, UsersManager, HelperService, ErrorService;
     beforeEach(inject(function($injector) {
         SubnetsManager = $injector.get("SubnetsManager");
         IPRangesManager = $injector.get("IPRangesManager");
         SpacesManager = $injector.get("SpacesManager");
         VLANsManager = $injector.get("VLANsManager");
         FabricsManager = $injector.get("FabricsManager");
+        UsersManager = $injector.get("UsersManager");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
     }));
@@ -266,4 +267,198 @@ describe("SubnetDetailsController", function() {
         });
     });
 
+    describe("addRange", function() {
+
+        it("reserved", function() {
+            var controller = makeController();
+            $scope.subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.addRange('reserved');
+            expect($scope.newRange).toEqual({
+                type: 'reserved',
+                subnet: $scope.subnet.id,
+                start_ip: "",
+                end_ip: "",
+                comment: ""
+            });
+        });
+
+        it("dynamic", function() {
+            var controller = makeController();
+            $scope.subnet = {
+                id: makeInteger(0, 100)
+            };
+            $scope.addRange('dynamic');
+            expect($scope.newRange).toEqual({
+                type: 'dynamic',
+                subnet: $scope.subnet.id,
+                start_ip: "",
+                end_ip: "",
+                comment: "Dynamic"
+            });
+        });
+    });
+
+    describe("cancelAddRange", function() {
+
+        it("clears newRange", function() {
+            var controller = makeController();
+            $scope.newRange = {};
+            $scope.cancelAddRange();
+            expect($scope.newRange).toBeNull();
+        });
+    });
+
+    describe("ipRangeCanBeModified", function() {
+
+        it("returns true for super user", function() {
+            var controller = makeController();
+            var range = {
+                type: "dynamic"
+            };
+            spyOn($scope, "isSuperUser").and.returnValue(true);
+            expect($scope.ipRangeCanBeModified(range)).toBe(true);
+        });
+
+        it("returns false for standard user and dynamic", function() {
+            var controller = makeController();
+            var range = {
+                type: "dynamic"
+            };
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            expect($scope.ipRangeCanBeModified(range)).toBe(false);
+        });
+
+        it("returns false for standard user who is not owner", function() {
+            var controller = makeController();
+            var user = {
+                id: makeInteger(0, 100)
+            };
+            var range = {
+                type: "reserved",
+                user: makeInteger(101, 200)
+            };
+            spyOn(UsersManager, "getAuthUser").and.returnValue(user);
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            expect($scope.ipRangeCanBeModified(range)).toBe(false);
+        });
+
+        it("returns true for standard user who is owner", function() {
+            var controller = makeController();
+            var user = {
+                id: makeInteger(0, 100)
+            };
+            var range = {
+                type: "reserved",
+                user: user.id
+            };
+            spyOn(UsersManager, "getAuthUser").and.returnValue(user);
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            expect($scope.ipRangeCanBeModified(range)).toBe(true);
+        });
+    });
+
+    describe("isIPRangeInEditMode", function() {
+
+        it("returns true when editIPRange", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.editIPRange = range;
+            expect($scope.isIPRangeInEditMode(range)).toBe(true);
+        });
+
+        it("returns false when editIPRange", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.editIPRange = range;
+            expect($scope.isIPRangeInEditMode({})).toBe(false);
+        });
+    });
+
+    describe("ipRangeToggleEditMode", function() {
+
+        it("clears deleteIPRange", function() {
+            var controller = makeController();
+            $scope.deleteIPRange = {};
+            $scope.ipRangeToggleEditMode({});
+            expect($scope.deleteIPRange).toBeNull();
+        });
+
+        it("clears editIPRange when already set", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.editIPRange = range;
+            $scope.ipRangeToggleEditMode(range);
+            expect($scope.editIPRange).toBeNull();
+        });
+
+        it("sets editIPRange when different range", function() {
+            var controller = makeController();
+            var range = {};
+            var otherRange = {};
+            $scope.editIPRange = otherRange;
+            $scope.ipRangeToggleEditMode(range);
+            expect($scope.editIPRange).toBe(range);
+        });
+    });
+
+    describe("isIPRangeInDeleteMode", function() {
+
+        it("return true when deleteIPRange is same", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.deleteIPRange = range;
+            expect($scope.isIPRangeInDeleteMode(range)).toBe(true);
+        });
+
+        it("return false when deleteIPRange is different", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.deleteIPRange = range;
+            expect($scope.isIPRangeInDeleteMode({})).toBe(false);
+        });
+    });
+
+    describe("ipRangeEnterDeleteMode", function() {
+
+        it("clears editIPRange and sets deleteIPRange", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.editIPRange = {};
+            $scope.ipRangeEnterDeleteMode(range);
+            expect($scope.editIPRange).toBeNull();
+            expect($scope.deleteIPRange).toBe(range);
+        });
+    });
+
+    describe("ipRangeCancelDelete", function() {
+
+        it("clears deleteIPRange", function() {
+            var controller = makeController();
+            $scope.deleteIPRange = {};
+            $scope.ipRangeCancelDelete();
+            expect($scope.deleteIPRange).toBeNull();
+        });
+    });
+
+    describe("ipRangeConfirmDelete", function() {
+
+        it("calls deleteItem and clears deleteIPRange on resolve", function() {
+            var controller = makeController();
+            var range = {};
+            $scope.deleteIPRange = range;
+
+            var defer = $q.defer();
+            spyOn(IPRangesManager, "deleteItem").and.returnValue(
+                defer.promise);
+            $scope.ipRangeConfirmDelete();
+
+            expect(IPRangesManager.deleteItem).toHaveBeenCalledWith(range);
+            defer.resolve();
+            $scope.$digest();
+
+            expect($scope.deleteIPRange).toBeNull();
+        });
+    });
 });

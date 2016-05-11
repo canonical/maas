@@ -354,6 +354,19 @@ angular.module('MAAS').service(
                 });
         };
 
+        // Send the create information to the region.
+        Manager.prototype.createItem = function(item) {
+            var self = this;
+            var method = this._handler + ".create";
+            item = angular.copy(item);
+            delete item.$selected;
+            return RegionConnection.callMethod(
+                method, item).then(function(item) {
+                    self._replaceItem(item);
+                    return item;
+                });
+        };
+
         // Send the update information to the region.
         Manager.prototype.updateItem = function(item) {
             var self = this;

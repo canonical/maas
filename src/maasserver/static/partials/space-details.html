@@ -49,7 +49,7 @@
             <div class="twelve-col">
                 <h2>Space summary</h2>
             </div>
-            <maas-obj-form obj="space" manager="spaceManager">
+            <maas-obj-form obj="space" manager="spaceManager" data-ng-disabled="!isSuperUser()">
                 <fieldset class="nine-col form">
                     <maas-obj-field type="text" key="name" label="Name" placeholder="Space name"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>

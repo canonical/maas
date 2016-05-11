@@ -36,12 +36,11 @@ class IPRangeForm(MAASModelForm):
         if instance is None:
             start_ip = data.get('start_ip')
             subnet = data.get('subnet')
-            user = data.get('subnet')
             if subnet is None and start_ip is not None:
                 subnet = Subnet.objects.get_best_subnet_for_ip(start_ip)
                 if subnet is not None:
                     data['subnet'] = subnet.id
-            if user is None and request is not None:
+            if request is not None:
                 data['user'] = request.user.id
         super().__init__(
             data=data, instance=instance, *args, **kwargs)

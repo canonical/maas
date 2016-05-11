@@ -516,3 +516,15 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         iprange.type = IPRANGE_TYPE.RESERVED
         iprange.start_ip = "192.168.0.1"
         iprange.save()
+
+    def test__changing_end_ip_works(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            subnet=subnet,
+            type=IPRANGE_TYPE.DYNAMIC,
+            start_ip="192.168.0.2",
+            end_ip="192.168.0.5",
+        )
+        iprange.save()
+        iprange.end_ip = "192.168.0.10"
+        iprange.save()

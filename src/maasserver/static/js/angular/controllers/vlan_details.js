@@ -59,6 +59,11 @@ angular.module('MAAS').controller('VLANDetailsController', [
         vm.primaryRack = null;
         vm.secondaryRack = null;
 
+        // Return true if the authenticated user is super user.
+        vm.isSuperUser = function() {
+            return UsersManager.isSuperUser();
+        };
+
         // Get the aciton structure for the action with the specified name.
         vm.getActionByName = function(name) {
             var i;

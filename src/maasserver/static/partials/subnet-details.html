@@ -42,7 +42,7 @@
             <div class="tweleve-col">
                 <h2>Subnet summary</h2>
             </div>
-            <maas-obj-form obj="subnet" manager="subnetManager" pre-process="subnetPreSave">
+            <maas-obj-form obj="subnet" manager="subnetManager" pre-process="subnetPreSave" data-ng-disabled="!isSuperUser()">
                 <fieldset class="six-col form">
                     <maas-obj-field type="text" key="name" label="Name" placeholder="Subnet name"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>
@@ -104,123 +104,133 @@
                 <div class="table margin-bottom">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table-col--15">Start IP Address</div>
-                            <div class="table__header table-col--15">End IP Address</div>
-                            <div class="table__header table-col--10 ng-hide">Amount</div>
-                            <div class="table__header table-col--10 ng-hide">Used</div>
-                            <div class="table__header table-col--10">Owner</div>
-                            <div class="table__header table-col--40">Purpose</div>
+                            <div class="table__header table-col--20">Start IP Address</div>
+                            <div class="table__header table-col--20">End IP Address</div>
+                            <div class="table__header table-col--15">Owner</div>
+                            <div class="table__header table-col--45">Purpose</div>
                         </div>
                     </header>
                     <main class="table__body">
-                        <div class="table__row" data-ng-repeat="iprange in ipranges | filterBySubnet:subnet">
-                            <div class="table__data table-col--15">{$ iprange.start_ip $}</div>
-                            <div class="table__data table-col--15">{$ iprange.end_ip $}</div>
-                            <!-- XXX mpontillo need amount, usage% -->
-                            <div class="table__data table-col--10 ng-hide">100</div>
-                            <div class="table__data table-col--10 ng-hide">54%</div>
-                            <div class="table__data table-col--10">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user $}</div>
-                            <div class="table__data table-col--34">{$ iprange.type == "dynamic" ? "Dynamic" : "Reserved: " + iprange.comment$}</div>
-                            <!-- XXX mpontillo need to implement edit mode -->
-                            <div class="table__data table-col--6 ng-hide">
-                                <div class="table__controls align-right">
-                                    <a class="icon edit"></a>
-                                    <a class="icon delete"></a>
+                        <div class="table__row"
+                            data-ng-repeat="iprange in (subnetIPRanges = ipranges | filterBySubnet:subnet | orderBy:'start_ip')"
+                            data-ng-class="{active: isIPRangeInEditMode(iprange) || isIPRangeInDeleteMode(iprange)}">
+                            <div class="table__data table-col--20">{$ iprange.start_ip $}</div>
+                            <div class="table__data table-col--20">{$ iprange.end_ip $}</div>
+                            <div class="table__data table-col--15">{$ iprange.type == "dynamic" ? "MAAS" : iprange.user_username $}</div>
+                            <div class="table__data table-col--36">{$ iprange.type == "dynamic" ? "Dynamic" : iprange.comment $}</div>
+                            <div class="table__data table-col--9">
+                                <div class="table__controls" data-ng-if="ipRangeCanBeModified(iprange)">
+                                    <a class="icon delete tooltip margin-right" data-tooltip="Remove"
+                                        data-ng-click="ipRangeEnterDeleteMode(iprange)">Remove</a>
+                                    <a class="icon open tooltip" data-tooltip="Edit row"
+                                        data-ng-click="ipRangeToggleEditMode(iprange)"
+                                        data-ng-if="!isIPRangeInEditMode(iprange)">Edit</a>
+                                    <a class="icon close tooltip" data-tooltip="Close"
+                                        data-ng-click="ipRangeToggleEditMode(iprange)"
+                                        data-ng-if="isIPRangeInEditMode(iprange)">Close</a>
                                 </div>
                             </div>
-                        </div>
-                        <!-- XXX mpontillo editing examples commented out for now -->
-                        <!--
-                        <div class="table__row active">
-                            <div class="table__data table-col--15">172.168.10.131</div>
-                            <div class="table__data table-col--15">172.168.10.140</div>
-                            <div class="table__data table-col--10">9</div>
-                            <div class="table__data table-col--10"><a href="#">54%</a></div>
-                            <div class="table__data table-col--10">mark</div>
-                            <div class="table__data table-col--34">Dynamic</div>
-                            <div class="table__data table-col--6">
-                                <div class="table__controls align-right">
-                                    <a class="icon edit"></a>
-                                    <a class="icon delete"></a>
-                                </div>
-                            </div>
-                            <div class="table__dropdown">
-                                <div class="table__row table__dropdown-row active">
-                                    <div class="table__data table-col--50">
-                                        <div class="six-col inline">
-                                            <label class="two-col" for="start-ip">Start IP address</label>
-                                            <input class="three-col last-col" type="text" id="start-ip" placeholder="127.0.0.1" value="172.168.10.131">
-                                        </div>
-                                        <div class="six-col inline">
-                                            <label class="two-col" for="addresses">Number of addresses</label>
-                                            <input class="three-col last-col" type="text" id="addresses" placeholder="100" value="9">
-                                        </div>
+                            <div class="table__dropdown" data-ng-if="isIPRangeInDeleteMode(iprange)">
+                                <div class="table__row active">
+                                    <div class="table__data left margin-top--five">
+                                          <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this IP range?</p>
                                     </div>
-                                    <div class="table__data table-col--50">
-                                        <div class="six-col inline">
-                                            <label class="two-col" for="end-ip">End IP address</label>
-                                            <input class="three-col last-col" type="text" id="end-ip" placeholder="127.0.0.1" value="172.168.10.140">
-                                        </div>
-                                        <div class="six-col inline">
-                                            <label class="two-col" for="purpose">Purpose</label>
-                                            <input class="three-col last-col" type="text" id="purpose" placeholder="OpenStack cloud" value="Dynamic">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="table__row table__dropdown-row active">
                                     <div class="table__data right">
-                                        <a class="link-cta-ubuntu text-button">Cancel</a>
-                                        <button class="cta-ubuntu">Save</button>
+                                          <a class="link-cta-ubuntu text-button" data-ng-click="ipRangeCancelDelete()">Cancel</a>
+                                          <button class="cta-ubuntu" data-ng-click="ipRangeConfirmDelete()">Remove</button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="table__row">
-                            <div class="table__data table-col--15">172.168.10.141</div>
-                            <div class="table__data table-col--15">172.168.10.189</div>
-                            <div class="table__data table-col--10">39</div>
-                            <div class="table__data table-col--10"><a href="#">4%</a></div>
-                            <div class="table__data table-col--10">mark</div>
-                            <div class="table__data table-col--34">Dynamic</div>
-                            <div class="table__data table-col--6">
-                                <div class="table__controls align-right">
-                                    <a class="icon edit"></a>
-                                    <a class="icon delete"></a>
+                            <div class="table__dropdown" data-ng-if="isIPRangeInEditMode(iprange)">
+                                <div class="table__row active">
+                                    <maas-obj-form obj="iprange" manager="iprangeManager" table-form="true"
+                                        save-on-blur="false" after-save="ipRangeToggleEditMode(iprange)">
+                                        <div class="table__data table-col--100">
+                                            <div class="twelve-col inline">
+                                                <div class="six-col">
+                                                    <maas-obj-field type="text" key="start_ip" label="Start IP address"
+                                                        label-width="two" input-width="three"></maas-obj-field>
+                                                </div>
+                                                <div class="six-col last-col">
+                                                    <maas-obj-field type="text" key="end_ip" label="End IP address"
+                                                        label-width="two" input-width="three"></maas-obj-field>
+                                                </div>
+                                            </div>
+                                            <div class="twelve-col inline">
+                                                <maas-obj-field data-ng-if="iprange.type !== 'dynamic'"
+                                                    type="text" key="comment" label="Purpose" placeholder="Purpose for IP range (optional)"
+                                                    label-width="two" input-width="nine"></maas-obj-field>
+                                                <div data-ng-if="iprange.type === 'dynamic'">
+                                                    <div class="twelve-col inline">
+                                                        <label class="two-col" for="purpose">Purpose</label>
+                                                        <input class="nine-col last-col" type="text" id="purpose" value="Dynamic" disabled>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="table__dropdown">
+                                            <div class="table__row table__dropdown-row active">
+                                                <div class="table__data left">
+                                                    <maas-obj-errors></maas-obj-errors>
+                                                </div>
+                                                <div class="table__data right">
+                                                    <a class="link-cta-ubuntu text-button" data-ng-click="ipRangeToggleEditMode(iprange)">Cancel</a>
+                                                    <button class="cta-ubuntu" maas-obj-save>Save</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </maas-obj-form>
                                 </div>
                             </div>
                         </div>
-                        <div class="table__row active">
-                            <div class="table__data table-col--50">
-                                <div class="six-col inline">
-                                    <label class="two-col" for="start-ip">Start IP address</label>
-                                    <input class="three-col last-col" type="text" id="start-ip" placeholder="127.0.0.1">
-                                </div>
-                                <div class="six-col inline">
-                                    <label class="two-col" for="addresses">Number of addresses</label>
-                                    <input class="three-col last-col" type="text" id="addresses" placeholder="100">
-                                </div>
-                            </div>
-                            <div class="table__data table-col--50">
-                                <div class="six-col inline">
-                                    <label class="two-col" for="end-ip">End IP address</label>
-                                    <input class="three-col last-col" type="text" id="end-ip" placeholder="127.0.0.1">
-                                </div>
-                                <div class="six-col inline">
-                                    <label class="two-col" for="purpose">Purpose</label>
-                                    <input class="three-col last-col" type="text" id="purpose" placeholder="OpenStack cloud">
-                                </div>
-                            </div>
-                            <div class="table__dropdown">
-                                <div class="table__row table__dropdown-row active">
-                                    <div class="table__data right">
-                                        <a class="link-cta-ubuntu text-button">Cancel</a>
-                                        <button class="cta-ubuntu">Reserve</button>
+                        <div class="table__row" data-ng-if="subnetIPRanges.length === 0 && !newRange">
+                            <div class="table__data table-col-100">No IP ranges have been reserved for this subnet.</div>
+                        </div>
+                        <div class="table__row active" data-ng-if="newRange">
+                            <maas-obj-form obj="newRange" manager="iprangeManager" manager-method="createItem"
+                                table-form="true" save-on-blur="false" after-save="cancelAddRange()">
+                                <div class="table__data table-col--100">
+                                    <div class="twelve-col inline">
+                                        <div class="six-col">
+                                            <maas-obj-field type="text" key="start_ip" label="Start IP address"
+                                                label-width="two" input-width="three"></maas-obj-field>
+                                        </div>
+                                        <div class="six-col last-col">
+                                            <maas-obj-field type="text" key="end_ip" label="End IP address"
+                                                label-width="two" input-width="three"></maas-obj-field>
+                                        </div>
+                                    </div>
+                                    <div class="twelve-col inline">
+                                        <maas-obj-field data-ng-if="newRange.type !== 'dynamic'"
+                                            type="text" key="comment" label="Purpose" placeholder="Purpose for IP range (optional)"
+                                            label-width="two" input-width="nine"></maas-obj-field>
+                                        <div data-ng-if="newRange.type === 'dynamic'">
+                                            <div class="twelve-col inline">
+                                                <label class="two-col" for="purpose">Purpose</label>
+                                                <input class="nine-col last-col" type="text" id="purpose" value="Dynamic" disabled>
+                                            </div>
+                                        </div>
+
                                     </div>
                                 </div>
-                            </div>
+                                <div class="table__dropdown">
+                                    <div class="table__row table__dropdown-row active">
+                                        <div class="table__data left">
+                                            <maas-obj-errors></maas-obj-errors>
+                                        </div>
+                                        <div class="table__data right">
+                                            <a class="link-cta-ubuntu text-button" data-ng-click="cancelAddRange()">Cancel</a>
+                                            <button class="cta-ubuntu" maas-obj-save>Reserve</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </maas-obj-form>
                         </div>
-                        -->
                     </main>
+                </div>
+                <div data-ng-if="!newRange">
+                    <button class="cta-ubuntu" data-ng-click="addRange('reserved')">Reserve range</button>
+                    <button class="cta-ubuntu" data-ng-if="isSuperUser()" data-ng-click="addRange('dynamic')">Reserve dynamic range</button>
                 </div>
             </div>
             <div class="tweleve-col">
