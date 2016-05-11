@@ -3650,11 +3650,7 @@ class TestNodeNetworking(MAASServerTestCase):
 
     def test_set_initial_net_config_rasies_validation_error_wrong_status(self):
         machine = factory.make_Machine_with_Interface_on_Subnet(
-            status=factory.pick_choice(
-                NODE_STATUS_CHOICES,
-                but_not=[
-                    NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.ALLOCATED,
-                    NODE_STATUS.FAILED_DEPLOYMENT])
+            status=random.choice([NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED])
         )
         self.assertRaises(
             ValidationError, machine.set_initial_networking_configuration)

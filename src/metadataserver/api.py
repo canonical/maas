@@ -501,6 +501,8 @@ class VersionIndexHandler(MetadataViewHandler):
                 # Commissioning was successful setup the default storage layout
                 # and the initial networking configuration for the node.
                 if status == SIGNAL_STATUS.OK:
+                    # XXX 2016-05-10 ltrager, LP:1580405 - Exceptions raised
+                    # here are not logged or shown to the user.
                     node.set_default_storage_layout()
                     node.set_initial_networking_configuration()
 

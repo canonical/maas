@@ -2424,9 +2424,8 @@ class Node(CleanSave, TimestampedModel):
             # No interfaces on the node. Nothing to do.
             return
 
-        if self.node_type == NODE_TYPE.MACHINE and self.status not in [
-                NODE_STATUS.NEW, NODE_STATUS.READY, NODE_STATUS.ALLOCATED,
-                NODE_STATUS.FAILED_DEPLOYMENT]:
+        if self.node_type == NODE_TYPE.MACHINE and self.status in [
+                NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED]:
             raise ValidationError(
                 "Machine must be in a new, ready, allocated, or failed "
                 "deployment state to be reset.")
