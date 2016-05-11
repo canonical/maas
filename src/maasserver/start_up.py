@@ -37,6 +37,7 @@ from maasserver.models import (
     BootSource,
     BootSourceSelection,
     NodeGroup,
+    NodeGroupInterface,
 )
 from maasserver.triggers import register_all_triggers
 from maasserver.utils import synchronised
@@ -180,6 +181,10 @@ def inner_start_up():
     # Make sure that the master nodegroup is created.
     # This must be serialized or we may initialize the master more than once.
     NodeGroup.objects.ensure_master()
+
+    # Make sure that there are no dynamic ranges on managed NodeGroupInterfaces
+    # that have allocated/reserved IP addresses.
+    NodeGroupInterface.objects.clear_dynamic_range_for_colliding_allocations()
 
     # Make sure that maas user's GNUPG home directory exists. This is needed
     # for importing of boot resources, which occurs on the region as well as

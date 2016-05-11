@@ -17,11 +17,15 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
 )
-from maasserver.models import NodeGroupInterface
+from maasserver.models import (
+    NodeGroupInterface,
+    Subnet,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -737,6 +741,35 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.save()
         self.assertEqual(interface, reload_object(interface))
 
+    def test_ignores_noncolliding_dynamic_ranges(self):
+        ngi_objects = NodeGroupInterface.objects
+        ngi = make_interface()
+        ngi_objects.clear_dynamic_range_for_colliding_allocations()
+        ngi = reload_object(ngi)
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, ngi.management)
+
+    def test_unmanages_colliding_dynamic_ranges(self):
+        ngi_objects = NodeGroupInterface.objects
+        ngi = make_interface()
+        # Now create the bad condition: reserved IP in the dynamic range.
+        # First, disable management, so that we can create the IP
+        ngi.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        ngi.save()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            ip=inet_ntop(IPAddress(ngi.ip_range_low)), subnet=ngi.subnet)
+        # Now, force management=DHCP, and don't bother with cleaning this.
+        self.patch(ngi, "full_clean")
+        ngi.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+        ngi.save()
+        # Now do the transition, and verify that we actually turned off
+        # management.
+        ngi_objects.clear_dynamic_range_for_colliding_allocations()
+        ngi = reload_object(ngi)
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED, ngi.management)
+
 
 class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
 
@@ -861,6 +894,33 @@ class TestNodeGroupInterfaceGetIPRangesInUse(MAASServerTestCase):
         self.assertThat(s[cluster_ip].purpose, Contains('cluster-ip'))
         self.assertThat(
             s[dynamic_range_low].purpose, Contains('dynamic-range'))
+
+    def test__cannot_set_dynamic_range_over_reserved(self):
+        net = IPNetwork('10.0.0.0/8')
+        ng = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ENABLED,
+            network=net)
+        subnet = Subnet.objects.first()
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            ip=inet_ntop(net.first + 20), subnet=subnet)
+        cluster_ip = inet_ntop(net.first + 2)
+        dynamic_range_low = inet_ntop(net.first + 10)
+        dynamic_range_high = inet_ntop(net.first + 19)
+        static_range_low = inet_ntop(net.first + 50)
+        static_range_high = inet_ntop(net.first + 99)
+        ngi = factory.make_NodeGroupInterface(
+            ng, subnet=subnet, ip=cluster_ip,
+            ip_range_low=dynamic_range_low,
+            ip_range_high=dynamic_range_high,
+            static_ip_range_low=static_range_low,
+            static_ip_range_high=static_range_high)
+        ngi.ip_range_low = dynamic_range_low
+        ngi.ip_range_high = inet_ntop(net.first + 49)
+        ngi.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
+        self.assertRaises(
+            ValidationError,
+            ngi.save)
 
 
 class TestNodeGroupInterfacePostSaveHandler(MAASServerTestCase):

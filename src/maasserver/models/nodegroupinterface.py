@@ -31,6 +31,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -43,18 +44,23 @@ from maasserver.fields import (
 )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPNetwork,
 )
 from netaddr.core import AddrFormatError
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import (
     intersect_iprange,
     make_ipaddress,
     make_iprange,
     make_network,
 )
+
+
+maaslog = get_maas_logger("nodegroupinterface")
 
 
 class NodeGroupInterfaceManager(Manager):
@@ -205,6 +211,28 @@ class NodeGroupInterfaceManager(Manager):
             return interface  # This is stable because the query is ordered.
         else:
             return None
+
+    def clear_dynamic_range_for_colliding_allocations(self):
+        """If there are any managed NodeGroupInterfaces that have allocated
+        addresses inside the dynamic range, then log an error and clear the
+        dynamic range.  Called from inner_start_up.
+
+        See https://launchpad.net/bugs/1536604.
+        """
+        for ngi in NodeGroupInterface.objects.exclude(
+                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED):
+            used = StaticIPAddress.objects.filter(
+                ip__gte=ngi.ip_range_low).filter(
+                ip__lte=ngi.ip_range_high).exclude(
+                alloc_type=IPADDRESS_TYPE.DHCP).exclude(
+                alloc_type=IPADDRESS_TYPE.DISCOVERED)
+            if used.exists():
+                maaslog.error((
+                    "Disabling DHCP on cluster %s, interface %s because "
+                    "dynamic range includes reserved/allocated addresses." % (
+                        ngi.nodegroup.cluster_name, ngi.name)))
+                ngi.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+                ngi.save()
 
 
 def get_default_vlan():
@@ -609,20 +637,38 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         # about is whether the lows and highs of the static range
         # fall within the dynamic range and vice-versa, which
         # IPRange gives us.
-        networks_overlap = (
+        ranges_overlap = (
             static_ip_range_low in dynamic_range or
             static_ip_range_high in dynamic_range or
             ip_range_low in static_range or
             ip_range_high in static_range
         )
-        if networks_overlap:
+        if ranges_overlap:
             message = "Static and dynamic IP ranges may not overlap."
-            errors = {
+            errors.update({
                 'ip_range_low': [message],
                 'ip_range_high': [message],
                 'static_ip_range_low': [message],
                 'static_ip_range_high': [message],
-                }
+                })
+
+        # And finally, make sure that there are no allocated addresses in the
+        # dynamic range.  This leads to lease parser errors when DHCP tries to
+        # give out the address that we already in use.
+        in_use = StaticIPAddress.objects.filter(
+            ip__gte=self.ip_range_low).filter(
+            ip__lte=self.ip_range_high).exclude(
+            alloc_type=IPADDRESS_TYPE.DHCP).exclude(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        if in_use.exists():
+            message = (
+                "Dynamic range may not have addresses already in use. "
+                "Conflicts with: %s" % (
+                    " ".join([sip.ip for sip in in_use])))
+            errors.update({
+                'ip_range_low': [message],
+                'ip_range_high': [message],
+            })
 
         if errors:
             raise ValidationError(errors)
