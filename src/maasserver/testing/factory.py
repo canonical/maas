@@ -880,7 +880,7 @@ class Factory(maastesting.factory.Factory):
     def make_Interface(
             self, iftype=INTERFACE_TYPE.PHYSICAL, node=None, mac_address=None,
             vlan=None, parents=None, name=None, cluster_interface=None,
-            ip=None, enabled=True, fabric=None):
+            ip=None, enabled=True, fabric=None, tags=None):
         if name is None:
             if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
                 name = self.make_name('eth')
@@ -920,9 +920,11 @@ class Factory(maastesting.factory.Factory):
             mac_address = self.make_MAC()
         if node is None and iftype == INTERFACE_TYPE.PHYSICAL:
             node = self.make_Node()
+        if tags is None:
+            tags = [self.make_name('tag') for _ in range(3)]
         interface = Interface(
             node=node, mac_address=mac_address, type=iftype,
-            name=name, vlan=vlan, enabled=enabled)
+            name=name, vlan=vlan, enabled=enabled, tags=tags)
         interface.save()
         if cluster_interface is not None:
             sip = StaticIPAddress.objects.create(

@@ -8,6 +8,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
 )
+from maasserver.api.utils import get_mandatory_param
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -541,6 +542,36 @@ class InterfaceHandler(OperationsHandler):
             return form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+    @operation(idempotent=False)
+    def add_tag(self, request, system_id, interface_id):
+        """Add a tag to interface on a node.
+
+        :param tag: The tag being added.
+
+        Returns 404 if the node or interface is not found.
+        Returns 403 if the user is not allowed to update the interface.
+        """
+        interface = Interface.objects.get_interface_or_404(
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        interface.add_tag(get_mandatory_param(request.POST, 'tag'))
+        interface.save()
+        return interface
+
+    @operation(idempotent=False)
+    def remove_tag(self, request, system_id, interface_id):
+        """Remove a tag from interface on a node.
+
+        :param tag: The tag being removed.
+
+        Returns 404 if the node or interface is not found.
+        Returns 403 if the user is not allowed to update the interface.
+        """
+        interface = Interface.objects.get_interface_or_404(
+            system_id, interface_id, request.user, NODE_PERMISSION.EDIT)
+        interface.remove_tag(get_mandatory_param(request.POST, 'tag'))
+        interface.save()
+        return interface
 
 
 class PhysicaInterfaceHandler(InterfaceHandler):

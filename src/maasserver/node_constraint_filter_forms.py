@@ -95,6 +95,8 @@ NETWORKING_CONSTRAINT_NAMES = {
     'subnet',
     'not_subnet',
     'mode',
+    'tag',
+    'not_tag',
 }
 
 

@@ -1227,6 +1227,74 @@ class TestNodeInterfaceAPI(APITestCase):
             self.assertEqual(
                 http.client.CONFLICT, response.status_code, response.content)
 
+    def test_add_tag_returns_403_when_not_admin(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        uri = get_interface_uri(interface)
+        response = self.client.post(
+            uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_add_tag_returns_404_when_system_id_doesnt_match(self):
+        self.become_admin()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        other_node = factory.make_Node()
+        uri = get_interface_uri(interface, node=other_node)
+        response = self.client.post(
+            uri, {'op': 'add_tag', 'tag': factory.make_name('tag')})
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
+    def test_add_tag_to_interface(self):
+        self.become_admin()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        tag_to_be_added = factory.make_name('tag')
+        uri = get_interface_uri(interface)
+        response = self.client.post(
+            uri, {'op': 'add_tag', 'tag': tag_to_be_added})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertIn(tag_to_be_added, parsed_device['tags'])
+        interface = reload_object(interface)
+        self.assertIn(tag_to_be_added, interface.tags)
+
+    def test_remove_tag_returns_403_when_not_admin(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        uri = get_interface_uri(interface)
+        response = self.client.post(
+            uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_remove_tag_returns_404_when_system_id_doesnt_match(self):
+        self.become_admin()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        other_node = factory.make_Node()
+        uri = get_interface_uri(interface, node=other_node)
+        response = self.client.post(
+            uri, {'op': 'remove_tag', 'tag': factory.make_name('tag')})
+
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
+    def test_remove_tag_from_block_device(self):
+        self.become_admin()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        tag_to_be_removed = interface.tags[0]
+        uri = get_interface_uri(interface)
+        response = self.client.post(
+            uri, {'op': 'remove_tag', 'tag': tag_to_be_removed})
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        parsed_device = json_load_bytes(response.content)
+        self.assertNotIn(tag_to_be_removed, parsed_device['tags'])
+        interface = reload_object(interface)
+        self.assertNotIn(tag_to_be_removed, interface.tags)
+
 
 class TestInterfaceAPIForControllers(APITestCase):
 

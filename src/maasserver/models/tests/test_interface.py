@@ -476,6 +476,33 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             node2.id: [iface2.id],
         })
 
+    def test__get_matching_node_map_by_multiple_tags(self):
+        tags = [
+            factory.make_name("tag")
+        ]
+        tags_specifier = "tag:%s" % '&&'.join(tags)
+        node = factory.make_Node()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, tags=tags)
+        # Other interface with subset of tags.
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=tags[1:])
+        nodes, map = Interface.objects.get_matching_node_map(
+            tags_specifier)
+        self.assertItemsEqual(nodes, [node.id])
+        self.assertItemsEqual(map, {node.id: [interface.id]})
+
+    def test__get_matching_node_map_by_tag(self):
+        tags = [
+            factory.make_name("tag")
+        ]
+        node = factory.make_Node()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, tags=tags)
+        nodes, map = Interface.objects.get_matching_node_map(
+            "tag:%s" % random.choice(tags))
+        self.assertItemsEqual(nodes, [node.id])
+        self.assertItemsEqual(map, {node.id: [interface.id]})
+
 
 class InterfaceTest(MAASServerTestCase):
 
@@ -684,6 +711,31 @@ class InterfaceTest(MAASServerTestCase):
         self.assertThat(
             eth0_100.get_all_related_interfaces(), Equals(
                 {eth0, eth0_100, eth0_101, br0}))
+
+    def test_add_tag_adds_new_tag(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
+        tag = factory.make_name('tag')
+        interface.add_tag(tag)
+        self.assertItemsEqual([tag], interface.tags)
+
+    def test_add_tag_doesnt_duplicate(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
+        tag = factory.make_name('tag')
+        interface.add_tag(tag)
+        interface.add_tag(tag)
+        self.assertItemsEqual([tag], interface.tags)
+
+    def test_remove_tag_deletes_tag(self):
+        tag = factory.make_name('tag')
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[tag])
+        interface.remove_tag(tag)
+        self.assertItemsEqual([], interface.tags)
+
+    def test_remove_tag_doesnt_error_on_missing_tag(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
+        tag = factory.make_name('tag')
+        #: Test is this doesn't raise an exception
+        interface.remove_tag(tag)
 
 
 class PhysicalInterfaceTest(MAASServerTestCase):

@@ -112,6 +112,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             'type': '__type',
             'vlan': (VLAN.objects, 'interface'),
             'vid': self._add_vlan_vid_query,
+            'tag': self._add_tag_query,
         }
         return super(InterfaceQueriesMixin, self).get_specifiers_q(
             specifiers, specifier_types=specifier_types, separator=separator,
@@ -166,6 +167,11 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         return op(
             current_q,
             Q(ip_addresses__ip__isnull=True) | Q(ip_addresses__ip=''))
+
+    def _add_tag_query(self, current_q, op, item):
+        # Allow item to instruct AND in the filter. eg: tag:e1000&&sriov.
+        items = item.split("&&")
+        return op(current_q, Q(tags__contains=items))
 
     def get_matching_node_map(self, specifiers):
         """Returns a tuple where the first element is a set of matching node
@@ -975,6 +981,16 @@ class Interface(CleanSave, TimestampedModel):
         if not remove_ip_address:
             self._skip_ip_address_removal = True
         super(Interface, self).delete()
+
+    def add_tag(self, tag):
+        """Add tag to interface."""
+        if tag not in self.tags:
+            self.tags.append(tag)
+
+    def remove_tag(self, tag):
+        """Remove tag from interface."""
+        if tag in self.tags:
+            self.tags.remove(tag)
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
