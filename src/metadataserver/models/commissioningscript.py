@@ -19,6 +19,7 @@ import json
 import logging
 import math
 import os.path
+import re
 import tarfile
 from time import time as now
 
@@ -175,12 +176,31 @@ def update_hardware_details(node, output, exit_status):
     else:
         # Same document, many queries: use XPathEvaluator.
         evaluator = etree.XPathEvaluator(doc)
-        cpu_count = evaluator(_xpath_processor_count)
+        cpu_count = evaluator(_xpath_processor_count) or 0
         memory = evaluator(_xpath_memory_bytes)
         if not memory or math.isnan(memory):
             memory = 0
-        node.cpu_count = cpu_count or 0
+        # XXX ltrager 2016-05-09 - Work around for LP:1579996. On some
+        # CPU's lshw doesn't detect all CPU cores. MAAS captures and
+        # processes /proc/cpuinfo so MAAS chooses the highest number.
+        if node.cpu_count is None or cpu_count > node.cpu_count:
+            node.cpu_count = cpu_count
         node.memory = memory
+        node.save()
+
+
+def parse_cpuinfo(node, output, exit_status):
+    """Parse the output of /proc/cpuinfo."""
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+    decoded_output = output.decode('ascii')
+    cpu_count = len([
+        m.start()
+        for m in re.finditer('processor\t:', decoded_output)
+    ])
+    if node.cpu_count is None or cpu_count > node.cpu_count:
+        node.cpu_count = cpu_count
         node.save()
 
 
@@ -354,6 +374,7 @@ def update_node_physical_block_devices(node, output, exit_status):
 
 # Register the post processing hooks.
 NODE_INFO_SCRIPTS[LSHW_OUTPUT_NAME]['hook'] = update_hardware_details
+NODE_INFO_SCRIPTS['00-maas-01-cpuinfo.out']['hook'] = parse_cpuinfo
 NODE_INFO_SCRIPTS['00-maas-02-virtuality.out']['hook'] = set_virtual_tag
 NODE_INFO_SCRIPTS['00-maas-07-block-devices.out']['hook'] = (
     update_node_physical_block_devices)

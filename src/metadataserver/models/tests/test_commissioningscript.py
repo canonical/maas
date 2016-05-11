@@ -52,6 +52,7 @@ from metadataserver.models.commissioningscript import (
     inject_lldp_result,
     inject_lshw_result,
     inject_result,
+    parse_cpuinfo,
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
@@ -412,6 +413,23 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger(name='commissioningscript'))
         update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
+
+
+class TestParseCPUInfo(MAASServerTestCase):
+
+    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
+
+    def test_parse_cpuinfo(self):
+        node = factory.make_Node()
+        cpuinfo = dedent("""\
+        processor\t: 0
+        vendor_id\t: GenuineIntel
+
+        processor\t: 1
+        vendor_id\t: GenuineIntel
+        """).encode('utf-8')
+        parse_cpuinfo(node, cpuinfo, 0)
+        self.assertEqual(2, reload_object(node).cpu_count)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

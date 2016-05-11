@@ -83,6 +83,11 @@ VIRTUALITY_SCRIPT = dedent("""\
     fi
     """)
 
+CPUINFO_SCRIPT = dedent("""\
+    #!/bin/sh
+    cat /proc/cpuinfo
+    """)
+
 
 # Run `dhclient` on all the unconfigured interfaces.
 # This is done to create records in the leases file for the
@@ -333,6 +338,11 @@ def null_hook(node, output, exit_status):
 NODE_INFO_SCRIPTS = OrderedDict([
     (LSHW_OUTPUT_NAME, {
         'content': LSHW_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'run_on_controller': True,
+    }),
+    ('00-maas-01-cpuinfo.out', {
+        'content': CPUINFO_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': True,
     }),
