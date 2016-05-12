@@ -7,9 +7,11 @@
 
 option arch code 93 = unsigned integer 16; # RFC4578
 option path-prefix code 210 = text; #RFC5071
+
+{{bootloader}}
+
 {{for dhcp_subnet in dhcp_subnets}}
 subnet6 {{dhcp_subnet['subnet_cidr']}} {
-       {{bootloader}}
        interface "{{dhcp_subnet['interface']}}";
        ignore-client-uids true;
        {{if dhcp_subnet.get('dns_servers')}}
