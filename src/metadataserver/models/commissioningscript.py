@@ -30,6 +30,7 @@ from django.db.models import (
 )
 from lxml import etree
 from maasserver.models import Fabric
+from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
@@ -332,6 +333,13 @@ def update_node_physical_block_devices(node, output, exit_status):
             block_device.tags = tags
             block_device.save()
         else:
+            # MAAS doesn't allow disks smaller than 4MiB so skip them
+            if size <= MIN_BLOCK_DEVICE_SIZE:
+                continue
+            # Skip loopback devices as they won't be available on next boot
+            if id_path.startswith('/dev/loop'):
+                continue
+
             # First check if there is an existing device with the same name.
             # If so, we need to rename it. Its name will be changed back later,
             # when we loop around to it.

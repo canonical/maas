@@ -686,6 +686,23 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             Contains('sata'))
 
+    def test__ignores_min_block_device_size_devices(self):
+        device = self.make_block_device(
+            size=random.randint(1, MIN_BLOCK_DEVICE_SIZE))
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertEquals(
+            0, len(PhysicalBlockDevice.objects.filter(node=node)))
+
+    def test__ignores_loop_devices(self):
+        device = self.make_block_device(id_path='/dev/loop0')
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertEquals(
+            0, len(PhysicalBlockDevice.objects.filter(node=node)))
+
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from the
