@@ -1105,8 +1105,9 @@
                     </section>
                     <a class="link-cta-ubuntu secondary tooltip"
                        data-tooltip="Create a tmpfs or ramfs filesystem"
-                       ng-disabled="dropdown !== null"
-                       ng-click="addSpecialFilesystem()">Add special filesystem</a>
+                       data-ng-disabled="dropdown !== null"
+                       data-ng-if="!isAllStorageDisabled()"
+                       data-ng-click="addSpecialFilesystem()">Add special filesystem</a>
                 </div>
                 <div class="twelve-col padding-bottom" data-ng-show="cachesets.length">
                     <h3>Available cache sets</h3>
