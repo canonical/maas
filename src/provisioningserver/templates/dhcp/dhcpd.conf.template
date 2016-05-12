@@ -22,6 +22,15 @@ option path-prefix code 210 = text; #RFC5071
 {{bootloader}}
 
 #
+# Shorter lease time for PXE booting
+#
+class "PXE" {
+   match if substring (option vendor-class-identifier, 0, 3) = "PXE";
+   default-lease-time 30;
+   max-lease-time 30;
+}
+
+#
 # Failover Peers
 #
 {{for failover_peer in failover_peers}}
@@ -71,12 +80,6 @@ shared-network {{shared_network["name"]}} {
            {{endif}}
            {{dhcp_snippet['value']}}
            {{endfor}}
-
-           class "PXE" {
-              match if substring (option vendor-class-identifier, 0, 3) = "PXE";
-              default-lease-time 30;
-              max-lease-time 30;
-           }
 
            {{for pool in dhcp_subnet['pools']}}
            pool {
