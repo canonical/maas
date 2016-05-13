@@ -1201,7 +1201,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
         # connectionLost() is called on the superclass.
         self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
 
-    def test_connectionLost_calls_unregisterDatabase_in_thread(self):
+    def test_connectionLost_calls_unregisterConnection_in_thread(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
@@ -1209,15 +1209,16 @@ class TestRegionServer(MAASTransactionServerTestCase):
         protocol.ident = factory.make_name("node")
         protocol.host = sentinel.host
         protocol.hostIsRemote = True
+        protocol.getRegionID = lambda: succeed(sentinel.region_id)
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
         service.connections[protocol.ident] = {protocol}
 
         mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
         protocol.connectionLost(reason=None)
         self.assertThat(
-            mock_deferToDatabase,
-            MockCalledOnceWith(
-                unregisterConnection, protocol.ident, protocol.host))
+            mock_deferToDatabase, MockCalledOnceWith(
+                unregisterConnection, sentinel.region_id, protocol.ident,
+                protocol.host))
         # The connection is removed from the set, but the key remains.
         self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.

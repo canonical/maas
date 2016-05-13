@@ -512,13 +512,16 @@ class RegionServer(Region):
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
 
+    def getRegionID(self):
+        """Obtain the region ID from the advertising service."""
+        advertise = eventloop.services.getServiceNamed("rpc-advertise")
+        advertise.advertising.get().addCallback(
+            lambda advertising: advertising.region_id)
+
     @region.RegisterRackController.responder
     @inlineCallbacks
     def register(
             self, system_id, hostname, interfaces, url, nodegroup_uuid=None):
-
-        # Get the rpc-advertise service for this region, for later.
-        advertise = eventloop.services.getServiceNamed("rpc-advertise")
 
         try:
             rack_controller = yield deferToDatabase(
@@ -543,18 +546,17 @@ class RegionServer(Region):
             self.hostIsRemote = isinstance(
                 self.host, (IPv4Address, IPv6Address))
 
-            # Get the advertising database abstraction if we're dealing with a
-            # non-local rack; we won't need to bother for local racks.
+            # Get the region ID if we're dealing with a non-local rack; we
+            # won't need to bother for local racks.
             if self.hostIsRemote:
-                advertising = yield advertise.advertising.get()
+                region_id = yield self.getRegionID()
 
             # Only register the connection into the database when its a valid
             # IPv4 and IPv6. Only time it is not an IPv4 or IPv6 address is
             # when mocking a connection.
             if self.hostIsRemote:
                 yield deferToDatabase(
-                    registerConnection, advertising.region_id,
-                    rack_controller, self.host)
+                    registerConnection, region_id, rack_controller, self.host)
 
             # Rack controller is now registered. Log this status and refresh
             # the information about the rack controller if needed.
@@ -576,8 +578,7 @@ class RegionServer(Region):
             # connected rack controller will drop the connection.
             if (self.ident is not None and self.hostIsRemote):
                 yield deferToDatabase(
-                    unregisterConnection, advertising.region_id,
-                    self.ident, self.host)
+                    unregisterConnection, region_id, self.ident, self.host)
             msg = (
                 "Failed to register rack controller '%s' into the "
                 "database. Connection has been dropped." % (
@@ -625,7 +626,9 @@ class RegionServer(Region):
 
     def connectionLost(self, reason):
         if self.hostIsRemote:
-            deferToDatabase(unregisterConnection, self.ident, self.host)
+            self.getRegionID().addCallback(
+                lambda region_id: deferToDatabase(
+                    unregisterConnection, region_id, self.ident, self.host))
         self.factory.service._removeConnectionFor(self.ident, self)
         log.msg("Rack controller '%s' disconnected." % self.ident)
         super(RegionServer, self).connectionLost(reason)
