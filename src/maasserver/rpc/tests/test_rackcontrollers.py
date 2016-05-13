@@ -21,12 +21,14 @@ from maasserver.models import (
     NodeGroupToRackController,
     RackController,
 )
+from maasserver.models.timestampedmodel import now
 from maasserver.rpc.rackcontrollers import (
     handle_upgrade,
     register_new_rackcontroller,
     register_rackcontroller,
     update_foreign_dhcp,
     update_interfaces,
+    update_last_image_sync,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -322,3 +324,13 @@ class TestUpdateInterfaces(MAASServerTestCase):
         self.assertThat(
             patched_update_interfaces,
             MockCalledOnceWith(sentinel.interfaces))
+
+
+class TestUpdateLastImageSync(MAASServerTestCase):
+
+    def test__updates_last_image_sync(self):
+        rack = factory.make_RackController()
+
+        update_last_image_sync(rack.system_id)
+
+        self.assertEqual(now(), reload_object(rack).last_image_sync)

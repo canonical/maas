@@ -26,6 +26,7 @@ __all__ = [
     "SendEvent",
     "SendEventMACAddress",
     "UpdateInterfaces",
+    "UpdateLastImageSync",
     "UpdateNodePowerState",
 ]
 
@@ -260,6 +261,20 @@ class ListNodePowerParameters(amp.Command):
     errors = {
         NoSuchCluster: b"NoSuchCluster",
     }
+
+
+class UpdateLastImageSync(amp.Command):
+    """Update Rack Controller's Last Image Sync.
+
+    :since: 2.0
+    """
+
+    arguments = [
+        # A rack controller's system_id.
+        (b'system_id', amp.Unicode()),
+    ]
+    response = []
+    errors = []
 
 
 class UpdateNodePowerState(amp.Command):

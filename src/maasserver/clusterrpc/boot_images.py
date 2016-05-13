@@ -23,7 +23,6 @@ from maasserver.models import (
     BootResource,
     RackController,
 )
-from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
@@ -289,11 +288,6 @@ class RackControllersImporter:
              for system_id in self.system_ids),
             consumeErrors=True)
 
-    @staticmethod
-    def touch_last_image_sync(system_ids):
-        RackController.objects.filter(
-            system_id__in=system_ids).update(last_image_sync=now())
-
     @asynchronous
     def run(self, concurrency=1):
         """Ask the rack controllers to download the region's boot resources.
@@ -314,20 +308,13 @@ class RackControllersImporter:
                 "Rack controller (%s) did not import boot resources; it is "
                 "not connected to the region at this time."
             )
-            successes = []
             for system_id, (success, result) in zip(self.system_ids, results):
                 if success:
-                    successes.append(system_id)
                     log.msg(message_success % system_id)
                 elif result.check(NoConnectionsAvailable):
                     log.msg(message_disconn % system_id)
                 else:
                     log.err(result, message_failure % system_id)
-
-            return deferToDatabase(
-                RackControllersImporter.touch_last_image_sync,
-                successes).addErrback(
-                log.err, "Failed to touch last image sync timestamps.")
 
         return self(lock).addCallback(report).addErrback(
             log.err, "General failure syncing boot resources.")

@@ -291,6 +291,18 @@ class Region(RPCProtocol):
         d.addCallback(lambda nodes: {"nodes": nodes})
         return d
 
+    @region.UpdateLastImageSync.responder
+    def update_last_image_sync(self, system_id):
+        """update_last_image_sync()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync`.
+        """
+        d = deferToDatabase(
+            rackcontrollers.update_last_image_sync, system_id)
+        d.addCallback(lambda args: {})
+        return d
+
     @region.UpdateNodePowerState.responder
     def update_node_power_state(self, system_id, power_state):
         """update_node_power_state()

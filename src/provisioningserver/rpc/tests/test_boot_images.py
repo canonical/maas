@@ -21,7 +21,10 @@ from maastesting.testcase import MAASTwistedRunTest
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.import_images import boot_resources
-from provisioningserver.rpc import boot_images
+from provisioningserver.rpc import (
+    boot_images,
+    region,
+)
 from provisioningserver.rpc.boot_images import (
     _run_import,
     fix_sources_for_cluster,
@@ -31,14 +34,23 @@ from provisioningserver.rpc.boot_images import (
     list_boot_images,
     reload_boot_images,
 )
+from provisioningserver.rpc.region import UpdateLastImageSync
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.config import (
     BootSourcesFixture,
     ClusterConfigurationFixture,
 )
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    Is,
+)
 from twisted.internet import defer
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+)
 from twisted.internet.task import Clock
 
 
@@ -205,7 +217,7 @@ class TestRunImport(PservTestCase):
         self.patch(boot_resources, 'logger')
         self.patch(boot_resources, 'locate_config').return_value = (
             fixture.filename)
-        self.assertIsNone(_run_import(sources=[]))
+        self.assertThat(_run_import(sources=[]), Is(False))
 
     def test__run_import_sets_GPGHOME(self):
         home = factory.make_name('home')
@@ -287,6 +299,76 @@ class TestImportBootImages(PservTestCase):
         # Lock is released once the download is done.
         clock.advance(1)
         self.assertFalse(concurrency.boot_images.locked)
+
+    @inlineCallbacks
+    def test_update_last_image_sync(self):
+        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id.return_value = factory.make_string()
+        getRegionClient = self.patch(boot_images, "getRegionClient")
+        _run_import = self.patch_autospec(boot_images, '_run_import')
+        _run_import.return_value = True
+        yield boot_images._import_boot_images(sentinel.sources)
+        self.assertThat(
+            _run_import, MockCalledOnceWith(sentinel.sources, None, None))
+        self.assertThat(getRegionClient, MockCalledOnceWith())
+        self.assertThat(get_maas_id, MockCalledOnceWith())
+        client = getRegionClient.return_value
+        self.assertThat(
+            client, MockCalledOnceWith(
+                UpdateLastImageSync, system_id=get_maas_id()))
+
+    @inlineCallbacks
+    def test_update_last_image_sync_not_performed(self):
+        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id.return_value = factory.make_string()
+        getRegionClient = self.patch(boot_images, "getRegionClient")
+        _run_import = self.patch_autospec(boot_images, '_run_import')
+        _run_import.return_value = False
+        yield boot_images._import_boot_images(sentinel.sources)
+        self.assertThat(
+            _run_import, MockCalledOnceWith(sentinel.sources, None, None))
+        self.assertThat(getRegionClient, MockNotCalled())
+        self.assertThat(get_maas_id, MockNotCalled())
+
+    @inlineCallbacks
+    def test_update_last_image_sync_end_to_end(self):
+        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id.return_value = factory.make_string()
+        self.useFixture(ClusterConfigurationFixture())
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateLastImageSync)
+        protocol.UpdateLastImageSync.return_value = succeed({})
+        self.addCleanup((yield connecting))
+        self.patch_autospec(boot_resources, 'import_images')
+        boot_resources.import_images.return_value = True
+        sources, hosts = make_sources()
+        yield boot_images.import_boot_images(sources)
+        self.assertThat(
+            boot_resources.import_images,
+            MockCalledOnceWith(sources))
+        self.assertThat(
+            protocol.UpdateLastImageSync,
+            MockCalledOnceWith(protocol, system_id=get_maas_id()))
+
+    @inlineCallbacks
+    def test_update_last_image_sync_end_to_end_import_not_performed(self):
+        self.useFixture(ClusterConfigurationFixture())
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateLastImageSync)
+        protocol.UpdateLastImageSync.return_value = succeed({})
+        self.addCleanup((yield connecting))
+        self.patch_autospec(boot_resources, 'import_images')
+        boot_resources.import_images.return_value = False
+        sources, hosts = make_sources()
+        yield boot_images.import_boot_images(sources)
+        self.assertThat(
+            boot_resources.import_images,
+            MockCalledOnceWith(sources))
+        self.assertThat(
+            protocol.UpdateLastImageSync,
+            MockNotCalled())
 
 
 class TestIsImportBootImagesRunning(PservTestCase):

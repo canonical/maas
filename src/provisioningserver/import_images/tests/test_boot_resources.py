@@ -28,7 +28,10 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
 )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+)
 from maastesting.utils import age_file
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.config import (
@@ -562,6 +565,8 @@ class TestParseSources(MAASTestCase):
 
 class TestImportImages(MAASTestCase):
     """Tests for the `import_images`() function."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_writes_source_keyrings(self):
         # Stop import_images() from actually doing anything.

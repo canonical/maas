@@ -16,9 +16,19 @@ from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.import_images import boot_resources
-from provisioningserver.utils.env import environment_variables
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.region import UpdateLastImageSync
+from provisioningserver.utils.env import (
+    environment_variables,
+    get_maas_id,
+)
 from provisioningserver.utils.twisted import synchronous
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+)
 from twisted.internet.threads import deferToThread
+from twisted.python import log
 
 
 CACHED_BOOT_IMAGES = None
@@ -103,11 +113,14 @@ def _run_import(sources, http_proxy=None, https_proxy=None):
     no_proxy_hosts += list(get_hosts_from_sources(sources))
     variables['no_proxy'] = ','.join(no_proxy_hosts)
     with environment_variables(variables):
-        boot_resources.import_images(sources)
+        imported = boot_resources.import_images(sources)
 
     # Update the boot images cache so `list_boot_images` returns the
     # correct information.
     reload_boot_images()
+
+    # Tell callers if anything happened.
+    return imported
 
 
 def import_boot_images(sources, http_proxy=None, https_proxy=None):
@@ -115,10 +128,37 @@ def import_boot_images(sources, http_proxy=None, https_proxy=None):
     lock = concurrency.boot_images
     if not lock.locked:
         return lock.run(
-            deferToThread, _run_import, sources,
-            http_proxy=http_proxy, https_proxy=https_proxy)
+            _import_boot_images, sources, http_proxy=http_proxy,
+            https_proxy=https_proxy)
+
+
+@inlineCallbacks
+def _import_boot_images(sources, http_proxy=None, https_proxy=None):
+    """Import boot images then inform the region.
+
+    Helper for `import_boot_images`.
+    """
+    proxies = dict(http_proxy=http_proxy, https_proxy=https_proxy)
+    imported = yield deferToThread(_run_import, sources, **proxies)
+    if imported:
+        yield touch_last_image_sync_timestamp().addErrback(
+            log.err, "Failure touching last image sync timestamp.")
 
 
 def is_import_boot_images_running():
     """Return True if the import process is currently running."""
     return concurrency.boot_images.locked
+
+
+def touch_last_image_sync_timestamp():
+    """Inform the region that images have just been synchronised.
+
+    :return: :class:`Deferred` that can fail with `NoConnectionsAvailable` or
+        any exception arising from an `UpdateLastImageSync` RPC.
+    """
+    try:
+        client = getRegionClient()
+    except:
+        return fail()
+    else:
+        return client(UpdateLastImageSync, system_id=get_maas_id())

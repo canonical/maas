@@ -32,6 +32,7 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
+from provisioningserver.rpc import getRegionClient
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.fs import (
     atomic_symlink,
@@ -40,6 +41,7 @@ from provisioningserver.utils.fs import (
     tempdir,
 )
 from provisioningserver.utils.shell import call_and_check
+from twisted.internet.defer import inlineCallbacks
 from twisted.python.filepath import FilePath
 
 
@@ -236,7 +238,7 @@ def import_images(sources):
     maaslog.info("Started importing boot images.")
     if len(sources) == 0:
         maaslog.warning("Can't import: region did not provide a source.")
-        return
+        return False
 
     with tempdir('keyrings') as keyrings_path:
         # XXX: Band-aid to ensure that the keyring_data is bytes. Future task:
@@ -256,7 +258,7 @@ def import_images(sources):
             maaslog.warning(
                 "Finished importing boot images, the region does not have "
                 "any boot images available.")
-            return
+            return False
 
         with ClusterConfiguration.open() as config:
             storage = FilePath(config.tftp_root).parent().path
@@ -265,7 +267,7 @@ def import_images(sources):
             maaslog.info(
                 "Finished importing boot images, the region does not "
                 "have any new images.")
-            return
+            return False
 
         product_mapping = map_products(image_descriptions)
 
@@ -290,6 +292,7 @@ def import_images(sources):
 
     # Import is now finished.
     maaslog.info("Finished importing boot images.")
+    return True
 
 
 def main(args):
@@ -318,12 +321,10 @@ def main_with_services(args):
     import traceback
 
     from provisioningserver import services
-    from provisioningserver.rpc import getRegionClient
     from provisioningserver.rpc.clusterservice import ClusterClientService
     from provisioningserver.rpc.exceptions import NoConnectionsAvailable
     from provisioningserver.utils.twisted import retries, pause
     from twisted.internet import reactor
-    from twisted.internet.defer import inlineCallbacks
     from twisted.internet.threads import deferToThread
 
     @inlineCallbacks

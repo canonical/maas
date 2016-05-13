@@ -5,8 +5,8 @@
 
 __all__ = [
     "register_rackcontroller",
+    "update_last_image_sync",
 ]
-
 
 from django.db import (
     IntegrityError,
@@ -22,6 +22,7 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.models.node import typecast_node
+from maasserver.models.timestampedmodel import now
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import synchronous
@@ -198,3 +199,14 @@ def update_interfaces(system_id, interfaces):
     """Update the interface definition on the rack controller."""
     rack_controller = RackController.objects.get(system_id=system_id)
     rack_controller.update_interfaces(interfaces)
+
+
+@synchronous
+@transactional
+def update_last_image_sync(system_id):
+    """Update rack controller's last_image_sync.
+
+    for :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync.
+    """
+    RackController.objects.filter(
+        system_id=system_id).update(last_image_sync=now())
