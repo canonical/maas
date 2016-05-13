@@ -3,11 +3,12 @@
 
 """API handlers: `ip-ranges`."""
 
-from maasserver.api.support import (
-    admin_method,
-    OperationsHandler,
+from maasserver.api.support import OperationsHandler
+from maasserver.enum import IPRANGE_TYPE
+from maasserver.exceptions import (
+    MAASAPIForbidden,
+    MAASAPIValidationError,
 )
-from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_iprange import IPRangeForm
 from maasserver.models import IPRange
 from piston3.utils import rc
@@ -22,6 +23,12 @@ DISPLAYED_IPRANGE_FIELDS = (
     'user',
     'subnet',
 )
+
+
+def raise_error_if_not_owner(iprange, user):
+    if not user.is_superuser and iprange.user_id != user.id:
+        raise MAASAPIForbidden(
+            "Unable to modify IP range. You don't own the IP range.")
 
 
 class IPRangesHandler(OperationsHandler):
@@ -39,7 +46,6 @@ class IPRangesHandler(OperationsHandler):
         """List all IP ranges."""
         return IPRange.objects.all()
 
-    @admin_method
     def create(self, request):
         """Create an IP range.
 
@@ -47,7 +53,16 @@ class IPRangesHandler(OperationsHandler):
         :param start_ip: Start IP address of this range (inclusive).
         :param end_ip: End IP address of this range (inclusive).
         :param subnet: Subnet this range is associated with. (optional)
+
+        Returns 403 if standard users tries to create a dynamic IP range.
         """
+        if ('type' in request.data and
+                request.data['type'] == IPRANGE_TYPE.DYNAMIC and
+                not request.user.is_superuser):
+            raise MAASAPIForbidden(
+                "Unable to create dynamic IP range. "
+                "You don't have sufficient privileges.")
+
         form = IPRangeForm(data=request.data, request=request)
         if form.is_valid():
             return form.save()
@@ -84,9 +99,11 @@ class IPRangeHandler(OperationsHandler):
         :param start_ip: Start IP address of this range (inclusive).
         :param end_ip: End IP address of this range (inclusive).
 
+        Returns 403 if not owner of IP range.
         Returns 404 if the IP Range is not found.
         """
         iprange = IPRange.objects.get_iprange_or_404(iprange_id)
+        raise_error_if_not_owner(iprange, request.user)
         form = IPRangeForm(instance=iprange, data=request.data)
         if form.is_valid():
             return form.save()
@@ -96,8 +113,10 @@ class IPRangeHandler(OperationsHandler):
     def delete(self, request, iprange_id):
         """Delete IP range.
 
+        Returns 403 if not owner of IP range.
         Returns 404 if the IP range is not found.
         """
         iprange = IPRange.objects.get_iprange_or_404(iprange_id)
+        raise_error_if_not_owner(iprange, request.user)
         iprange.delete()
         return rc.DELETED

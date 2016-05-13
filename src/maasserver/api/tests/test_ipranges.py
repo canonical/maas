@@ -59,7 +59,7 @@ class TestIPRangesAPI(APITestCase):
             ]
         self.assertItemsEqual(expected_ids, result_ids)
 
-    def test_create(self):
+    def test_create_dynamic(self):
         self.become_admin()
         uri = get_ipranges_uri()
         subnet = factory.make_Subnet(cidr='10.0.0.0/24')
@@ -76,12 +76,23 @@ class TestIPRangesAPI(APITestCase):
         self.assertThat(data['end_ip'], Equals('10.0.0.20'))
         self.assertThat(data['subnet']['id'], Equals(subnet.id))
 
-    def test_create_does_not_require_subnet(self):
-        self.become_admin()
+    def test_create_dynamic_requires_admin(self):
         uri = get_ipranges_uri()
         subnet = factory.make_Subnet(cidr='10.0.0.0/24')
         response = self.client.post(uri, {
             "type": "dynamic",
+            "start_ip": "10.0.0.10",
+            "end_ip": "10.0.0.20",
+            "subnet": "%d" % subnet.id,
+        })
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_create_does_not_require_subnet(self):
+        uri = get_ipranges_uri()
+        subnet = factory.make_Subnet(cidr='10.0.0.0/24')
+        response = self.client.post(uri, {
+            "type": "reserved",
             "start_ip": "10.0.0.10",
             "end_ip": "10.0.0.20",
         })
@@ -93,7 +104,6 @@ class TestIPRangesAPI(APITestCase):
         self.assertThat(data['subnet']['id'], Equals(subnet.id))
 
     def test_create_requires_type_and_reports_simple_error_if_missing(self):
-        self.become_admin()
         uri = get_ipranges_uri()
         factory.make_Subnet(cidr='10.0.0.0/24')
         response = self.client.post(uri, {
@@ -104,6 +114,20 @@ class TestIPRangesAPI(APITestCase):
             http.client.BAD_REQUEST, response.status_code, response.content)
         self.assertThat(response.content, Equals(
             b'{"type": ["This field is required."]}'))
+
+    def test_create_sets_user_to_authenticated_user(self):
+        uri = get_ipranges_uri()
+        factory.make_Subnet(cidr='10.0.0.0/24')
+        response = self.client.post(uri, {
+            "type": "reserved",
+            "start_ip": "10.0.0.10",
+            "end_ip": "10.0.0.20",
+        })
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content)
+        data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertThat(
+            data['user']['username'], Equals(self.logged_in_user.username))
 
 
 class TestIPRangeAPI(APITestCase):
@@ -144,7 +168,8 @@ class TestIPRangeAPI(APITestCase):
 
     def test_update(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
+        iprange = factory.make_IPRange(
+            subnet, '10.0.0.2', '10.0.0.10', user=self.logged_in_user)
         uri = get_iprange_uri(iprange)
         comment = factory.make_name("comment")
         response = self.client.put(uri, {
@@ -158,14 +183,41 @@ class TestIPRangeAPI(APITestCase):
                 response.content.decode(settings.DEFAULT_CHARSET))['comment'])
         self.assertEqual(comment, reload_object(iprange).comment)
 
+    def test_update_403_when_not_user(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        iprange = factory.make_IPRange(
+            subnet, '10.0.0.2', '10.0.0.10', user=factory.make_User())
+        uri = get_iprange_uri(iprange)
+        response = self.client.put(uri, {})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+
+    def test_update_404_when_invalid_id(self):
+        uri = reverse(
+            'iprange_handler', args=[random.randint(100, 1000)])
+        response = self.client.put(uri, {})
+        self.assertEqual(
+            http.client.NOT_FOUND, response.status_code, response.content)
+
     def test_delete_deletes_iprange(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
-        iprange = factory.make_IPRange(subnet, '10.0.0.2', '10.0.0.10')
+        iprange = factory.make_IPRange(
+            subnet, '10.0.0.2', '10.0.0.10', user=self.logged_in_user)
         uri = get_iprange_uri(iprange)
         response = self.client.delete(uri)
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)
         self.assertIsNone(reload_object(iprange))
+
+    def test_delete_403_when_not_user(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        iprange = factory.make_IPRange(
+            subnet, '10.0.0.2', '10.0.0.10', user=factory.make_User())
+        uri = get_iprange_uri(iprange)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content)
+        self.assertIsNotNone(reload_object(iprange))
 
     def test_delete_404_when_invalid_id(self):
         uri = reverse(
