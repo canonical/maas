@@ -22,6 +22,9 @@ from lxml import etree
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import post_commit_do
+from maasserver.utils.threads import deferToDatabase
+from twisted.internet import reactor
 
 
 class TagManager(Manager):
@@ -90,25 +93,63 @@ class Tag(CleanSave, TimestampedModel):
     def __str__(self):
         return self.name
 
-    def populate_nodes(self):
-        """Find all nodes that match this tag, and update them."""
-        if not self.is_defined:
-            return
-        # before we pass off any work, ensure the definition is valid XPATH
-        try:
-            etree.XPath(self.definition)
-        except etree.XPathSyntaxError as e:
-            msg = 'Invalid xpath expression: %s' % (e,)
-            raise ValidationError({'definition': [msg]})
-        # Now delete the existing tags
-        self.node_set.clear()
+    def _populate_nodes_later(self):
+        """Find all nodes that match this tag, and update them, later.
+
+        This schedules population to happen post-commit, without waiting for
+        its outcome.
+        """
         # Avoid circular imports.
         from maasserver.populate_tags import populate_tags
-        populate_tags(self)
 
-    def save(self, *args, **kwargs):
+        if self.is_defined:
+            # Schedule repopulate to happen after commit. This thread does not
+            # wait for it to complete.
+            post_commit_do(
+                reactor.callLater, 0, deferToDatabase,
+                populate_tags, self)
+
+    def _populate_nodes_now(self):
+        """Find all nodes that match this tag, and update them, now.
+
+        All computation will be done within the current transaction, within
+        the current thread. This could be costly.
+        """
+        # Avoid circular imports.
+        from maasserver.populate_tags import populate_tag_for_multiple_nodes
+        from maasserver.models.node import Node
+
+        if self.is_defined:
+            # Do the work here and now in this thread. This is probably a
+            # terrible mistake... unless you're testing.
+            populate_tag_for_multiple_nodes(self, Node.objects.all())
+
+    def populate_nodes(self):
+        """Find all nodes that match this tag, and update them.
+
+        By default, node population is deferred.
+        """
+        return self._populate_nodes_later()
+
+    def clean_definition(self):
+        if self.is_defined:
+            try:
+                etree.XPath(self.definition)
+            except etree.XPathSyntaxError as e:
+                msg = 'Invalid XPath expression: %s' % (e,)
+                raise ValidationError({'definition': [msg]})
+
+    def clean(self):
+        self.clean_definition()
+
+    def save(self, *args, populate=True, **kwargs):
+        """Save this tag.
+
+        :param populate: Whether or not to call `populate_nodes` if the
+            definition has changed.
+        """
         super(Tag, self).save(*args, **kwargs)
-        if self.definition != self._original_definition:
+        if populate and (self.definition != self._original_definition):
             self.populate_nodes()
         self._original_definition = self.definition
 

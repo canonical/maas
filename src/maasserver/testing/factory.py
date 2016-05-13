@@ -1025,8 +1025,9 @@ class Factory(maastesting.factory.Factory):
         else:
             return self.make_ipv4_Subnet_with_IPRanges()
 
-    def make_Tag(self, name=None, definition=None, comment='',
-                 kernel_opts=None, created=None, updated=None):
+    def make_Tag(
+            self, name=None, definition=None, comment='', kernel_opts=None,
+            created=None, updated=None, populate=True):
         if name is None:
             name = self.make_name('tag')
         if definition is None:
@@ -1035,14 +1036,22 @@ class Factory(maastesting.factory.Factory):
         tag = Tag(
             name=name, definition=definition, comment=comment,
             kernel_opts=kernel_opts)
-        tag.save()
+        # Save without populating nodes.
+        tag.save(populate=False)
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
         if updated is not None:
             Tag.objects.filter(id=tag.id).update(updated=updated)
         if created is not None:
             Tag.objects.filter(id=tag.id).update(created=created)
-        return reload_object(tag)
+        # Reload if we've changed the underlying record.
+        if updated is not None or created is not None:
+            tag = reload_object(tag)
+        # Populate nodes for this tag now that it's fully configured, if
+        # requested. This avoids dealing with the post-commit hook stuff.
+        if populate:
+            tag._populate_nodes_now()
+        return tag
 
     def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
         """Create a user with n `SSHKey`.  If user is not None, use this user

@@ -38,11 +38,6 @@ from metadataserver.models.commissioningscript import inject_lshw_result
 from testtools.matchers import MatchesStructure
 
 
-def patch_populate_tags(test):
-    from maasserver import populate_tags
-    return test.patch_autospec(populate_tags, "populate_tags")
-
-
 class TestTagAPI(APITestCase):
     """Tests for /api/2.0/tags/<tagname>/."""
 
@@ -116,15 +111,16 @@ class TestTagAPI(APITestCase):
         self.assertTrue(Tag.objects.filter(name='new-tag-name').exists())
 
     def test_PUT_updates_node_associations(self):
-        populate_tags = patch_populate_tags(self)
-        tag = factory.make_Tag(definition='//node/foo')
-        self.expectThat(populate_tags, MockCalledOnceWith(tag))
+        populate_nodes = self.patch_autospec(Tag, "populate_nodes")
+        tag = Tag(name=factory.make_name("tag"), definition='//node/foo')
+        tag.save()
+        self.expectThat(populate_nodes, MockCalledOnceWith(tag))
         self.become_admin()
         response = self.client.put(
             self.get_tag_uri(tag),
             {'definition': '//node/bar'})
         self.assertEqual(http.client.OK, response.status_code)
-        self.expectThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
+        self.expectThat(populate_nodes, MockCallsMatch(call(tag), call(tag)))
 
     def test_GET_nodes_with_no_nodes(self):
         tag = factory.make_Tag()
@@ -431,7 +427,7 @@ class TestTagAPI(APITestCase):
         node = factory.make_Node()
         client = make_worker_client(rack_controller)
         tag.definition = '//new/node/definition'
-        tag.save()
+        tag.save(populate=False)
         response = client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
@@ -444,16 +440,17 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual([], node.tags.all())
 
     def test_POST_rebuild_rebuilds_node_mapping(self):
-        populate_tags = patch_populate_tags(self)
-        tag = factory.make_Tag(definition='//foo/bar')
+        populate_nodes = self.patch_autospec(Tag, "populate_nodes")
+        tag = Tag(name=factory.make_name("tag"), definition='//foo/bar')
+        tag.save()
         self.become_admin()
-        self.assertThat(populate_tags, MockCalledOnceWith(tag))
+        self.assertThat(populate_nodes, MockCalledOnceWith(tag))
         response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual({'rebuilding': tag.name}, parsed_result)
-        self.assertThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
+        self.assertThat(populate_nodes, MockCallsMatch(call(tag), call(tag)))
 
     def test_POST_rebuild_leaves_manual_tags(self):
         tag = factory.make_Tag(definition='')
@@ -589,7 +586,7 @@ class TestTagsAPI(APITestCase):
             extra_kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts)
 
     def test_POST_new_populates_nodes(self):
-        populate_tags = patch_populate_tags(self)
+        populate_nodes = self.patch_autospec(Tag, "populate_nodes")
         self.become_admin()
         name = factory.make_string()
         definition = '//node/child'
@@ -602,8 +599,8 @@ class TestTagsAPI(APITestCase):
                 'definition': definition,
             })
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(populate_tags, MockCalledOnceWith(ANY))
-        # The tag passed to populate_tags() is the one created above.
-        [tag], _ = populate_tags.call_args
+        self.assertThat(populate_nodes, MockCalledOnceWith(ANY))
+        # The tag passed to populate_nodes() is the one created above.
+        [tag], _ = populate_nodes.call_args
         self.assertThat(tag, MatchesStructure.byEquality(
             name=name, comment=comment, definition=definition))

@@ -5,12 +5,20 @@
 
 __all__ = []
 
+from unittest.mock import ANY
+
 from django.core.exceptions import ValidationError
-from maasserver import populate_tags as populate_tags_module
+from maasserver import populate_tags
+from maasserver.models import tag as tag_module
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
+from maasserver.utils.threads import deferToDatabase
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+)
+from twisted.internet import reactor
 
 
 class TagTest(MAASServerTestCase):
@@ -56,11 +64,17 @@ class TagTest(MAASServerTestCase):
                         'too-long' * 33, '\xb5']:
             self.assertRaises(ValidationError, factory.make_Tag, name=invalid)
 
-    def test_applies_tags_to_nodes(self):
-        populate_tags = self.patch_autospec(
-            populate_tags_module, "populate_tags")
-        tag = factory.make_Tag(definition='//node/child')
-        self.assertThat(populate_tags, MockCalledOnceWith(tag))
+    def test_validate_traps_invalid_tag_definitions(self):
+        self.assertRaises(
+            ValidationError, factory.make_Tag,
+            definition="invalid::definition")
+
+    def test_applies_tags_to_nodes_on_save(self):
+        populate_nodes = self.patch_autospec(Tag, "populate_nodes")
+        tag = Tag(name=factory.make_name("tag"), definition='//node/child')
+        self.assertThat(populate_nodes, MockNotCalled())
+        tag.save()
+        self.assertThat(populate_nodes, MockCalledOnceWith(tag))
 
     def test_will_not_save_invalid_xpath(self):
         tag = factory.make_Tag(definition='//node/foo')
@@ -83,41 +97,86 @@ class TestTagIsDefined(MAASServerTestCase):
         self.assertIs(self.expected, tag.is_defined)
 
 
-class TestTagPopulateNodes(MAASServerTestCase):
+class TestTagPopulateNodesLater(MAASServerTestCase):
+
+    def test__populates_if_tag_is_defined(self):
+        post_commit_do = self.patch(tag_module, "post_commit_do")
+
+        tag = Tag(name=factory.make_name("tag"), definition="//foo")
+        tag.save(populate=False)
+
+        self.assertTrue(tag.is_defined)
+        self.assertThat(post_commit_do, MockNotCalled())
+        tag._populate_nodes_later()
+        self.assertThat(
+            post_commit_do, MockCalledOnceWith(
+                reactor.callLater, 0, deferToDatabase,
+                populate_tags.populate_tags, tag))
 
     def test__does_nothing_if_tag_is_not_defined(self):
-        tag = factory.make_Tag(definition="")
+        post_commit_do = self.patch(tag_module, "post_commit_do")
+
+        tag = Tag(name=factory.make_name("tag"), definition="")
+        tag.save(populate=False)
+
         self.assertFalse(tag.is_defined)
+        self.assertThat(post_commit_do, MockNotCalled())
+        tag._populate_nodes_later()
+        self.assertThat(post_commit_do, MockNotCalled())
+
+    def test__does_not_clear_node_set_before_populating(self):
+        post_commit_do = self.patch(tag_module, "post_commit_do")
+
+        tag = Tag(name=factory.make_name("tag"), definition="//foo")
+        tag.save(populate=False)
+
         nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
-        tag.populate_nodes()
-        # The set of related nodes is unchanged.
+        tag._populate_nodes_later()
         self.assertItemsEqual(nodes, tag.node_set.all())
+        self.assertThat(post_commit_do, MockCalledOnceWith(
+            reactor.callLater, 0, deferToDatabase,
+            populate_tags.populate_tags, tag))
 
-    def test__checks_definition_before_proceeding(self):
-        tag = factory.make_Tag(definition="")
-        tag.definition = "invalid::definition"
-        self.assertRaises(ValidationError, tag.populate_nodes)
+    def test__later_is_the_default(self):
+        tag = Tag(name=factory.make_name("tag"))
+        self.patch(tag, "_populate_nodes_later")
+        self.assertThat(tag._populate_nodes_later, MockNotCalled())
+        tag.save()
+        self.assertThat(tag._populate_nodes_later, MockCalledOnceWith())
 
-    def test__clears_node_set(self):
-        self.patch_autospec(populate_tags_module, "populate_tags")
 
-        tag = factory.make_Tag(definition="")
-        # Define the tag now but don't save because .save() calls
-        # populate_nodes(), but we want to do it explicitly here.
-        tag.definition = "//foo"
+class TestTagPopulateNodesNow(MAASServerTestCase):
+
+    def test__populates_if_tag_is_defined(self):
+        populate_multiple = self.patch_autospec(
+            populate_tags, "populate_tag_for_multiple_nodes")
+
+        tag = Tag(name=factory.make_name("tag"), definition="//foo")
+        tag.save(populate=False)
+
+        self.assertTrue(tag.is_defined)
+        self.assertThat(populate_multiple, MockNotCalled())
+        tag._populate_nodes_now()
+        self.assertThat(populate_multiple, MockCalledOnceWith(tag, ANY))
+
+    def test__does_nothing_if_tag_is_not_defined(self):
+        populate_multiple = self.patch_autospec(
+            populate_tags, "populate_tag_for_multiple_nodes")
+
+        tag = Tag(name=factory.make_name("tag"), definition="")
+        tag.save(populate=False)
+
+        self.assertFalse(tag.is_defined)
+        self.assertThat(populate_multiple, MockNotCalled())
+        tag._populate_nodes_now()
+        self.assertThat(populate_multiple, MockNotCalled())
+
+    def test__clears_node_set_before_populating(self):
+        tag = Tag(name=factory.make_name("tag"), definition="//foo")
+        tag.save(populate=False)
+
         nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
-        tag.populate_nodes()
+        tag._populate_nodes_now()
         self.assertItemsEqual([], tag.node_set.all())
-
-    def test__calls_populate_tags(self):
-        populate_tags = self.patch_autospec(
-            populate_tags_module, "populate_tags")
-
-        tag = factory.make_Tag(definition="")
-        # Define the tag now but don't save because .save() calls
-        # populate_nodes(), but we want to do it explicitly here.
-        tag.definition = "//foo"
-        tag.populate_nodes()
-        self.assertThat(populate_tags, MockCalledOnceWith(tag))

@@ -71,7 +71,7 @@ class PostCommitHooksTestMixin(testtools.TestCase):
             self.expectThat(
                 post_commit_hooks.hooks, HasLength(0),
                 "One or more post-commit tasks were present at the end of "
-                "this test." + description_of_hooks)
+                "this test.\n" + description_of_hooks)
             super(PostCommitHooksTestMixin, self).tearDown()
         finally:
             # By this point we will have reported the leaked post-commit

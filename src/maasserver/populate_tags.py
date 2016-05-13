@@ -4,9 +4,10 @@
 """Populate what nodes are associated with a tag."""
 
 __all__ = [
+    'populate_tag_for_multiple_nodes',
     'populate_tags',
     'populate_tags_for_single_node',
-    ]
+]
 
 from functools import partial
 from math import ceil
@@ -19,6 +20,7 @@ from maasserver.models.node import (
     RackController,
 )
 from maasserver.models.nodeprobeddetails import (
+    get_probed_details,
     get_single_probed_details,
     script_output_nsmap,
 )
@@ -28,9 +30,14 @@ from maasserver.models.user import (
     get_creds_tuple,
 )
 from maasserver.rpc import getAllClients
+from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import EvaluateTag
-from provisioningserver.tags import merge_details
+from provisioningserver.tags import (
+    DEFAULT_BATCH_SIZE,
+    gen_batches,
+    merge_details,
+)
 from provisioningserver.utils import classify
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -68,6 +75,7 @@ def chunk_list(items, num_chunks):
 
 
 @synchronous
+@transactional
 def populate_tags(tag):
     """Evaluate `tag` for all nodes.
 
@@ -85,45 +93,42 @@ def populate_tags(tag):
     logger.debug('Evaluating the "%s" tag for all nodes.', tag.name)
     clients = getAllClients()
     if len(clients) == 0:
-        # XXX: allenap 2014-09-22 bug=1372544: No connected rack controllers.
-        # Nothing can be evaluated when this occurs.
-        return
+        # We have no clients so we need to do the work locally.
+        return populate_tag_for_multiple_nodes(tag, Node.objects.all())
+    else:
+        # Split the work between the connected rack controllers.
+        node_ids = Node.objects.all().values_list("system_id", flat=True)
+        node_ids = [{"system_id": node_id} for node_id in node_ids]
+        chunked_node_ids = list(chunk_list(node_ids, len(clients)))
+        connected_racks = []
+        for idx, client in enumerate(clients):
+            rack = RackController.objects.get(system_id=client.ident)
+            token = _get_or_create_auth_token(rack.owner)
+            creds = convert_tuple_to_string(get_creds_tuple(token))
+            if len(chunked_node_ids) > idx:
+                connected_racks.append({
+                    "system_id": rack.system_id,
+                    "hostname": rack.hostname,
+                    "client": client,
+                    "tag_name": tag.name,
+                    "tag_definition": tag.definition,
+                    "tag_nsmap": [
+                        {"prefix": prefix, "uri": uri}
+                        for prefix, uri in tag_nsmap.items()
+                    ],
+                    "credentials": creds,
+                    "nodes": list(chunked_node_ids[idx]),
+                })
+        [d] = _do_populate_tags(connected_racks)
+        return d
 
-    # Split the work between the connected rack controllers. Building all the
-    # information that needs to be sent to them all.
-    node_ids = Node.objects.all().values_list("system_id", flat=True)
-    node_ids = [
-        {"system_id": node_id}
-        for node_id in node_ids
-    ]
-    chunked_node_ids = list(chunk_list(node_ids, len(clients)))
-    connected_racks = []
-    for idx, client in enumerate(clients):
-        rack = RackController.objects.get(system_id=client.ident)
-        tokens = list(get_auth_tokens(rack.owner))
-        if len(tokens) > 0:
-            # Use the latest token.
-            token = tokens[-1]
-        else:
-            token = create_auth_token(rack.owner)
-        creds = convert_tuple_to_string(get_creds_tuple(token))
-        if len(chunked_node_ids) > idx:
-            connected_racks.append({
-                "system_id": rack.system_id,
-                "hostname": rack.hostname,
-                "client": client,
-                "tag_name": tag.name,
-                "tag_definition": tag.definition,
-                "tag_nsmap": [
-                    {"prefix": prefix, "uri": uri}
-                    for prefix, uri in tag_nsmap.items()
-                ],
-                "credentials": creds,
-                "nodes": list(chunked_node_ids[idx]),
-            })
 
-    [d] = _do_populate_tags(connected_racks)
-    return d
+def _get_or_create_auth_token(user):
+    """Get the most recent OAuth token for `user`, or create one."""
+    for token in reversed(get_auth_tokens(user)):
+        return token
+    else:
+        return create_auth_token(user)
 
 
 @asynchronous(timeout=FOREVER)
@@ -177,11 +182,15 @@ def _do_populate_tags(clients):
     return [d]
 
 
+@synchronous
 def populate_tags_for_single_node(tags, node):
     """Reevaluate all tags for a single node.
 
-    Presumably this node's details have recently changed. Use
-    `populate_tags` when many nodes need reevaluating.
+    Presumably this node's details have recently changed. Use `populate_tags`
+    when many nodes need reevaluating AND there are rack controllers available
+    to which to farm-out work. Use `populate_tag_for_multiple_nodes` when many
+    nodes need reevaluating locally, i.e. when there are no rack controllers
+    connected.
     """
     probed_details = get_single_probed_details(node.system_id)
     probed_details_doc = merge_details(probed_details)
@@ -192,3 +201,28 @@ def populate_tags_for_single_node(tags, node):
     tags_matching, tags_nonmatching = classify(evaluator, tags_defined)
     node.tags.remove(*tags_nonmatching)
     node.tags.add(*tags_matching)
+
+
+@synchronous
+def populate_tag_for_multiple_nodes(tag, nodes, batch_size=DEFAULT_BATCH_SIZE):
+    """Reevaluate a single tag for a multiple nodes.
+
+    Presumably this tag's expression has recently changed. Use `populate_tags`
+    when many nodes need reevaluating AND there are rack controllers available
+    to which to farm-out work. Use this only when many nodes need reevaluating
+    locally, i.e. when there are no rack controllers connected.
+    """
+    # Same expression, multuple documents: compile expression with XPath.
+    xpath = etree.XPath(tag.definition, namespaces=tag_nsmap)
+    # The XML details documents can be large so work in batches.
+    for batch in gen_batches(nodes, batch_size):
+        probed_details = get_probed_details(node.system_id for node in batch)
+        probed_details_docs_by_node = {
+            node: merge_details(probed_details[node.system_id])
+            for node in batch
+        }
+        nodes_matching, nodes_nonmatching = classify(
+            partial(try_match_xpath, xpath, logger=maaslog),
+            probed_details_docs_by_node.items())
+        tag.node_set.remove(*nodes_nonmatching)
+        tag.node_set.add(*nodes_matching)

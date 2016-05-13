@@ -13,8 +13,15 @@ from unittest.mock import (
 
 from apiclient.creds import convert_tuple_to_string
 from fixtures import FakeLogger
-from maasserver import populate_tags as populate_tags_module
-from maasserver.models import Tag
+from maasserver import (
+    populate_tags as populate_tags_module,
+    rpc as rpc_module,
+)
+from maasserver.models import (
+    Node,
+    Tag,
+    tag as tag_module,
+)
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -22,6 +29,7 @@ from maasserver.models.user import (
 )
 from maasserver.populate_tags import (
     _do_populate_tags,
+    populate_tag_for_multiple_nodes,
     populate_tags,
     populate_tags_for_single_node,
 )
@@ -31,7 +39,12 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -48,13 +61,16 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.cluster import EvaluateTag
 from provisioningserver.rpc.common import Client
 from provisioningserver.utils.twisted import asynchronous
-from testtools.monkey import MonkeyPatcher
-
-
-def make_Tag_without_populating():
-    # Create a tag but prevent evaluation when saving.
-    dont_populate = MonkeyPatcher((Tag, "populate_nodes", lambda self: None))
-    return dont_populate.run_with_patches(factory.make_Tag)
+from testtools.matchers import (
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesStructure,
+)
+from twisted.internet import reactor
+from twisted.internet.base import DelayedCall
+from twisted.internet.task import Clock
+from twisted.internet.threads import blockingCallFromThread
 
 
 class TestDoPopulateTags(MAASServerTestCase):
@@ -186,6 +202,11 @@ class TestDoPopulateTags(MAASServerTestCase):
 
 
 class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
+    """Tests for populating tags on racks.
+
+    This happens when there are connected rack controllers able to carry out
+    the task.
+    """
 
     def prepare_live_rpc(self):
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -210,7 +231,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
             protocol = rpc_fixture.makeCluster(rack, EvaluateTag)
             protocol.EvaluateTag.side_effect = always_succeed_with({})
             protocols.append(protocol)
-        tag = make_Tag_without_populating()
+        tag = factory.make_Tag(populate=False)
 
         d = populate_tags(tag)
 
@@ -227,6 +248,57 @@ class TestPopulateTagsEndToNearlyEnd(MAASServerTestCase):
                 tag_nsmap=ANY, credentials=creds, nodes=ANY))
 
 
+class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
+    """Tests for populating tags in the region.
+
+    This happens when there are no rack controllers to carry out the task.
+    """
+
+    def test__saving_tag_schedules_node_population(self):
+        clock = self.patch(tag_module, "reactor", Clock())
+
+        with post_commit_hooks:
+            # Make a Tag by hand to trigger normal node population handling
+            # behaviour rather than the (generally more convenient) default
+            # behaviour in the factory.
+            tag = Tag(name=factory.make_name("tag"), definition='true()')
+            tag.save()
+
+        # A call has been scheduled to populate tags.
+        calls = clock.getDelayedCalls()
+        self.assertThat(calls, HasLength(1))
+        [call] = calls
+        self.assertThat(
+            call, MatchesAll(
+                IsInstance(DelayedCall),
+                MatchesStructure.byEquality(
+                    time=0, func=deferToDatabase,
+                    args=(populate_tags, tag), kw={}),
+                first_only=True,
+            ))
+
+    def test__populate_in_region_when_no_clients(self):
+        clock = self.patch(tag_module, "reactor", Clock())
+
+        # Ensure there are no clients.
+        self.patch(rpc_module, 'getAllClients').return_value = []
+
+        with post_commit_hooks:
+            node = factory.make_Node()
+            # Make a Tag by hand to trigger normal node population handling
+            # behaviour rather than the (generally more convenient) default
+            # behaviour in the factory.
+            tag = Tag(name=factory.make_name("tag"), definition='true()')
+            tag.save()
+
+        # A call has been scheduled to populate tags.
+        [call] = clock.getDelayedCalls()
+        # Execute the call ourselves in the real reactor.
+        blockingCallFromThread(reactor, call.func, *call.args, **call.kw)
+        # The tag's node set has been updated.
+        self.assertItemsEqual([node], tag.node_set.all())
+
+
 class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_updates_node_with_all_applicable_tags(self):
@@ -236,9 +308,9 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, LLDP_OUTPUT_NAME, 0, b"<bar/>")
         tags = [
-            factory.make_Tag("foo", "/foo"),
-            factory.make_Tag("bar", "//lldp:bar"),
-            factory.make_Tag("baz", "/foo/bar"),
+            factory.make_Tag("foo", "/foo", populate=False),
+            factory.make_Tag("bar", "//lldp:bar", populate=False),
+            factory.make_Tag("baz", "/foo/bar", populate=False),
             ]
         populate_tags_for_single_node(tags, node)
         self.assertItemsEqual(
@@ -249,8 +321,8 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
-            factory.make_Tag("foo", "/foo"),
-            factory.make_Tag("lou", "//nge:bar"),
+            factory.make_Tag("foo", "/foo", populate=False),
+            factory.make_Tag("lou", "//nge:bar", populate=False),
             ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(
@@ -261,10 +333,24 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
-            factory.make_Tag("foo", "/foo"),
+            factory.make_Tag("foo", "/foo", populate=False),
             Tag(name="empty", definition=""),
             Tag(name="null", definition=None),
             ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(
             ["foo"], [tag.name for tag in node.tags.all()])
+
+
+class TestPopulateTagForMultipleNodes(MAASServerTestCase):
+
+    def test_updates_nodes_with_tag(self):
+        nodes = [factory.make_Node() for _ in range(5)]
+        for node in nodes[0:2]:
+            factory.make_NodeResult_for_commissioning(
+                node, LLDP_OUTPUT_NAME, 0, b"<bar/>")
+        tag = factory.make_Tag("bar", "//lldp:bar", populate=False)
+        populate_tag_for_multiple_nodes(tag, nodes)
+        self.assertItemsEqual(
+            [node.hostname for node in nodes[0:2]],
+            [node.hostname for node in Node.objects.filter(tags__name='bar')])
