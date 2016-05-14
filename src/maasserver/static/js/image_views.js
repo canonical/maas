@@ -165,7 +165,7 @@ module.ImagesView = Y.Base.create(
     'imagesView', module.ImageListLoader, [], {
 
     regionImportingText: 'Step 1/2: Region importing',
-    clusterImportingText: 'Step 2/2: Clusters importing',
+    clusterImportingText: 'Step 2/2: Rack controllers importing',
 
 
     initializer: function(config) {
