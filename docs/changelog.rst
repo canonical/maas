@@ -2,6 +2,41 @@
 Changelog
 =========
 
+2.0.0 (beta5)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1572076    [UI 2.0b1] Impossible to change subnet CIDR or gateway with instant editing
+LP: #1568102    [UI 2.0b1] Network details page doesn't have CSS for editting
+LP: #1571670    [UI 2.0b2] Can't edit fabric's, vlans, subnets from the WebUI
+LP: #1571672    [UI 2.0b2] Can't add/edit/delete IP ranges through UI
+LP: #1570990    [UI/Backend 2.0b2] Can't delete a rack controller from the Rack Details Page
+LP: #1576267    [UI 2.0b3] interface addresses on rack controller details page not updated automatically
+LP: #1577386    [UI 2.0b4] Actions list is unordered
+LP: #1580827    [UI 2.0b4] I can 'add special filesystem' when the machine is deployed
+LP: #1521618    [1.9] wrong subnet in DHCP answer when multiple networks are present
+LP: #1536346    [2.0] include maas resetMachine() API primitive
+LP: #1575567    [2.0] Re-commissioning doesn't detect storage changes
+LP: #1570002    [2.0] Expose custom network in non ubuntu deployments
+LP: #1580260    [2.0a4] Reserved IP ranges should be allowed to be created by standard users
+LP: #1542353    [2.0b2] 6 Core system is listed as having a single CPU
+LP: #1570995    [2.0b2] Cannot delete a rack controller that was previously a 'machine'
+LP: #1576758    [2.0b3] IP Ranges section on the subnet page should be shown even if no ranges
+LP: #1372544    [2.0b3] Tag changes depend on rack / cluster connection
+LP: #1577953    [2.0b4] Rack Controller fail to update commissioning info?
+LP: #1577954    [2.0b4] Rack Controller mark-broken / mark-fixed
+LP: #1577970    [2.0b4] Registering external rack controller tracebacks
+LP: #1578800    [2.0b4] RackControllerService flooding log with: 'RegionAdvertisingService' object has no attribute 'processId'
+LP: #1580405    [2.0b4] set_initial_networking_configuration shouldn't raise ValidationError
+LP: #1580280    [2.0b4] Disks less than 4MB in size cause a traceback on the MAAS server
+LP: #1577974    [2.0b4] Rack Controller details page shows "never" under last image sync
+LP: #1580285    [2.0b4] Machines successfully commission but don't get marked 'Ready'
+LP: #1581654    [2.0b4] Region RPC losing connection and raising exception
+LP: #1580771    [2.0b4] unregisterConnection() missing 1 required positional argument: 'host'
+
+
 2.0.0 (beta4)
 =============
 
