@@ -106,6 +106,7 @@ from twisted.internet.address import (
 )
 from twisted.internet.defer import (
     CancelledError,
+    fail,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
@@ -482,6 +483,20 @@ def unregisterConnection(region_id, ident, host):
         endpoint=endpoint, rack_controller=rack_controller).delete()
 
 
+def getRegionID():
+    """Obtain the region ID from the advertising service.
+
+    :return: :class:`Deferred`
+    """
+    try:
+        advertise = eventloop.services.getServiceNamed("rpc-advertise")
+    except:
+        return fail()
+    else:
+        return advertise.advertising.get().addCallback(
+            lambda advertising: advertising.region_id)
+
+
 @implementer(IConnection)
 class RegionServer(Region):
     """The RPC protocol supported by a region controller, server version.
@@ -511,12 +526,6 @@ class RegionServer(Region):
         salt, digest = response["salt"], response["digest"]
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
-
-    def getRegionID(self):
-        """Obtain the region ID from the advertising service."""
-        advertise = eventloop.services.getServiceNamed("rpc-advertise")
-        advertise.advertising.get().addCallback(
-            lambda advertising: advertising.region_id)
 
     @region.RegisterRackController.responder
     @inlineCallbacks
@@ -549,7 +558,7 @@ class RegionServer(Region):
             # Get the region ID if we're dealing with a non-local rack; we
             # won't need to bother for local racks.
             if self.hostIsRemote:
-                region_id = yield self.getRegionID()
+                region_id = yield getRegionID()
 
             # Only register the connection into the database when its a valid
             # IPv4 and IPv6. Only time it is not an IPv4 or IPv6 address is
@@ -626,7 +635,7 @@ class RegionServer(Region):
 
     def connectionLost(self, reason):
         if self.hostIsRemote:
-            self.getRegionID().addCallback(
+            getRegionID().addCallback(
                 lambda region_id: deferToDatabase(
                     unregisterConnection, region_id, self.ident, self.host))
         self.factory.service._removeConnectionFor(self.ident, self)

@@ -65,6 +65,7 @@ from maasserver.rpc import (
     regionservice,
 )
 from maasserver.rpc.regionservice import (
+    getRegionID,
     Region,
     RegionAdvertising,
     RegionAdvertisingService,
@@ -90,6 +91,8 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
+    IsFiredDeferred,
+    IsUnfiredDeferred,
     MockAnyCall,
     MockCalledOnce,
     MockCalledOnceWith,
@@ -1155,6 +1158,28 @@ class TestRegisterAndUnregisterConnection(MAASServerTestCase):
                 endpoint=endpoint, rack_controller=rack_controller).first())
 
 
+class TestGetRegionID(MAASTestCase):
+    """Tests for `getRegionID`."""
+
+    def test__getRegionID_fails_when_advertising_service_not_running(self):
+        region_id = getRegionID()
+        self.assertThat(region_id, IsFiredDeferred())
+        error = self.assertRaises(KeyError, extract_result, region_id)
+        self.assertThat(str(error), Equals(repr('rpc-advertise')))
+
+    def test__getRegionID_returns_the_region_ID_when_available(self):
+        service = RegionAdvertisingService()
+        service.setName("rpc-advertise")
+        service.setServiceParent(eventloop.services)
+        self.addCleanup(service.disownServiceParent)
+        region_id = getRegionID()
+        self.assertThat(region_id, IsUnfiredDeferred())
+        service.advertising.set(
+            RegionAdvertising(sentinel.region_id, sentinel.process_id))
+        self.assertThat(region_id, IsFiredDeferred())
+        self.assertThat(region_id.result, Is(sentinel.region_id))
+
+
 class TestRegionServer(MAASTransactionServerTestCase):
 
     def test_interfaces(self):
@@ -1209,7 +1234,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         protocol.ident = factory.make_name("node")
         protocol.host = sentinel.host
         protocol.hostIsRemote = True
-        protocol.getRegionID = lambda: succeed(sentinel.region_id)
+        getRegionID = self.patch_autospec(regionservice, "getRegionID")
+        getRegionID.return_value = succeed(sentinel.region_id)
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
         service.connections[protocol.ident] = {protocol}
 
@@ -1348,10 +1374,9 @@ class TestRegionServer(MAASTransactionServerTestCase):
         self.assertIsNotNone(responder)
 
     def installFakeRegionAdvertisingService(self):
-        service = Service()
+        service = RegionAdvertisingService()
         service.setName("rpc-advertise")
-        service.advertising = DeferredValue()
-        service.advertising.set(Mock(
+        service.advertising.set(RegionAdvertising(
             region_id=factory.make_name("region-id"),
             process_id=randint(1000, 9999)))
         service.setServiceParent(eventloop.services)
