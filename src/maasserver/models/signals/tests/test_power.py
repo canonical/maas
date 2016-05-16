@@ -45,12 +45,15 @@ class TestStatusQueryEvent(MAASServerTestCase):
         old_status = NODE_STATUS.COMMISSIONING
         node = factory.make_Node(status=old_status, power_type='virsh')
         node.status = get_failed_status(old_status)
-        node.save()
-        # update_power_state_of_node_soon is registered as a post-commit task,
-        # so it's not called immediately.
-        self.expectThat(
-            power.update_power_state_of_node_soon,
-            MockNotCalled())
+
+        with post_commit_hooks:
+            node.save()
+            # update_power_state_of_node_soon is registered as a post-commit
+            # task, so it's not called immediately.
+            self.expectThat(
+                power.update_power_state_of_node_soon,
+                MockNotCalled())
+
         # One post-commit hooks have been fired, then it's called.
         post_commit_hooks.fire()
         self.assertThat(

@@ -39,6 +39,7 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.node import Node
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -500,6 +501,10 @@ class TestMetadataUserData(DjangoTestCase):
 class TestMetadataUserDataStateChanges(MAASServerTestCase):
     """Tests for the metadata user-data API endpoint."""
 
+    def setUp(self):
+        super(TestMetadataUserDataStateChanges, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
+
     def test_request_does_not_cause_status_change_if_not_deploying(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.DEPLOYING])
@@ -544,6 +549,10 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
 
 
 class TestInstallingAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestInstallingAPI, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
 
     def test_other_user_than_node_cannot_signal_installation_result(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
@@ -616,6 +625,10 @@ class TestInstallingAPI(MAASServerTestCase):
 
 
 class TestCommissioningAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestCommissioningAPI, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
 
     def test_commissioning_scripts(self):
         script = factory.make_CommissioningScript()
@@ -841,6 +854,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual('', reload_object(node).error)
 
     def test_signalling_stores_files_for_any_status(self):
+        self.useFixture(SignalsDisabled("power"))
         statuses = ['WORKING', 'OK', 'FAILED']
         filename = factory.make_string()
         nodes = {
@@ -962,8 +976,10 @@ class TestCommissioningAPI(MAASServerTestCase):
             power_address=factory.make_ipv4_address(),
             power_user=factory.make_string(),
             power_pass=factory.make_string())
-        response = call_signal(
-            client, power_type="moonshot", power_parameters=json.dumps(params))
+        with SignalsDisabled("power"):
+            response = call_signal(
+                client, power_type="moonshot",
+                power_parameters=json.dumps(params))
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
         node = reload_object(node)
@@ -1065,6 +1081,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             MockNotCalled())
 
     def test_signal_calls_sets_initial_network_config_if_OK(self):
+        self.useFixture(SignalsDisabled("power"))
         mock_set_initial_networking_configuration = self.patch_autospec(
             Node, "set_initial_networking_configuration")
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -1111,6 +1128,10 @@ class TestCommissioningAPI(MAASServerTestCase):
 
 
 class TestDiskErasingAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestDiskErasingAPI, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
 
     def test_signaling_erasing_failure_makes_node_failed_erasing(self):
         node = factory.make_Node(

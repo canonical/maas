@@ -13,13 +13,13 @@ from datetime import (
 from unittest.mock import call
 
 from maasserver import status_monitor
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_status import NODE_FAILURE_STATUS_TRANSITIONS
 from maasserver.status_monitor import (
     mark_nodes_failed_after_expiring,
     StatusMonitorService,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import post_commit_hooks
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
@@ -34,6 +34,7 @@ from twisted.internet.task import Clock
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
 
     def test__marks_all_possible_failed_status_as_failed(self):
+        self.useFixture(SignalsDisabled("power"))
         current_time = datetime.now()
         self.patch(status_monitor, "now").return_value = current_time
         expired_time = current_time - timedelta(minutes=1)
@@ -41,8 +42,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
             factory.make_Node(status=status, status_expires=expired_time)
             for status in NODE_FAILURE_STATUS_TRANSITIONS.keys()
         ]
-        with post_commit_hooks:
-            mark_nodes_failed_after_expiring()
+        mark_nodes_failed_after_expiring()
         failed_statuses = [
             reload_object(node).status
             for node in nodes
@@ -51,6 +51,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
             NODE_FAILURE_STATUS_TRANSITIONS.values(), failed_statuses)
 
     def test__skips_those_that_have_not_expired(self):
+        self.useFixture(SignalsDisabled("power"))
         current_time = datetime.now()
         self.patch(status_monitor, "now").return_value = current_time
         expired_time = current_time + timedelta(minutes=1)
@@ -58,8 +59,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
             factory.make_Node(status=status, status_expires=expired_time)
             for status in NODE_FAILURE_STATUS_TRANSITIONS.keys()
         ]
-        with post_commit_hooks:
-            mark_nodes_failed_after_expiring()
+        mark_nodes_failed_after_expiring()
         failed_statuses = [
             reload_object(node).status
             for node in nodes

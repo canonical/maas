@@ -25,6 +25,7 @@ from maasserver.models import (
     signals,
     StaticIPAddress,
 )
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import (
     Abort,
     Acquire,
@@ -297,6 +298,7 @@ class TestCommissionAction(MAASServerTestCase):
 class TestAbortAction(MAASTransactionServerTestCase):
 
     def test_Abort_aborts_disk_erasing(self):
+        self.useFixture(SignalsDisabled("power"))
         with transaction.atomic():
             owner = factory.make_User()
             node = factory.make_Node(

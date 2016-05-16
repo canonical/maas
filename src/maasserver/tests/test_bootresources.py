@@ -59,6 +59,7 @@ from maasserver.models import (
     Config,
     LargeFile,
 )
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.dblocks import lock_held_in_other_thread
@@ -723,6 +724,7 @@ class TestBootResourceStore(MAASServerTestCase):
             mock_prevent, MockNotCalled())
 
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
+        self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         with post_commit_hooks:
@@ -742,6 +744,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(product['label'], resource_set.label)
 
     def test_get_or_create_boot_resource_file_creates_resource_file(self):
+        self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
@@ -888,6 +891,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.assertThat(mock_save_later, MockNotCalled())
 
     def test_insert_deletes_mismatch_largefile(self):
+        self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
@@ -905,6 +909,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         self.assertThat(mock_save_later, MockNotCalled())
 
     def test_insert_prints_warning_if_mismatch_largefile(self):
+        self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
@@ -986,6 +991,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         # Test case for bug 1419041: if the call to insert() makes
         # an existing complete resource incomplete: print an error in the
         # log.
+        self.useFixture(SignalsDisabled("largefiles"))
         name, architecture, product = make_product()
         with transaction.atomic():
             resource = factory.make_BootResource(
@@ -1057,6 +1063,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             BootResourceSet.objects.filter(id=incomplete_set.id).exists())
 
     def test_resource_set_cleaner_keeps_only_newest_completed_set(self):
+        self.useFixture(SignalsDisabled("largefiles"))
         with transaction.atomic():
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)

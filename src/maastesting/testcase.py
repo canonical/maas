@@ -16,11 +16,13 @@ from importlib import import_module
 import os
 from unittest import mock
 
+import crochet
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import DocTestMatches
 from maastesting.runtest import (
+    MAASCrochetRunTest,
     MAASRunTest,
     MAASTwistedRunTest,
 )
@@ -100,9 +102,6 @@ class MAASTestCase(
 
     """
 
-    # Use a customised executor.
-    run_tests_with = MAASRunTest
-
     # Allow testtools to generate longer diffs when tests fail.
     maxDiff = testtools.TestCase.maxDiff * 3
 
@@ -125,6 +124,18 @@ class MAASTestCase(
     # instead, which will manage the database and transactions correctly.
     database_use_possible = "DJANGO_SETTINGS_MODULE" in os.environ
     database_use_permitted = False
+
+    @property
+    def run_tests_with(self):
+        """Use a customised executor.
+
+        If crochet is managing the Twisted reactor, use `MAASCrochetRunTest`,
+        otherwise default to `MAASRunTest`.
+        """
+        if crochet._watchdog.is_alive():
+            return MAASCrochetRunTest
+        else:
+            return MAASRunTest
 
     def setUp(self):
         self.maybeCloseDatabaseConnections()

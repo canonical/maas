@@ -58,6 +58,7 @@ from maasserver.models import (
     timestampedmodel,
 )
 from maasserver.models.interface import PhysicalInterface
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import (
     events as events_module,
@@ -196,24 +197,6 @@ from zope.interface.verify import verifyObject
 
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
-
-
-class SkipAll:
-
-    skipReason = "XXX: GavinPanella 2016-04-12 bug=1572646: Fails spuriously."
-
-    def setUp(self):
-        super(SkipAll, self).setUp()
-        self.skipTest(self.skipReason)
-
-    @classmethod
-    def make(cls, base):
-        return type(base.__name__, (cls, base), {})
-
-
-MAASTestCase = SkipAll.make(MAASTestCase)
-MAASServerTestCase = SkipAll.make(MAASServerTestCase)
-MAASTransactionServerTestCase = SkipAll.make(MAASTransactionServerTestCase)
 
 
 @transactional
@@ -517,6 +500,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
              "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
             response)
 
+    @wait_for_reactor
     @inlineCallbacks
     def test_get_archive_mirrors_with_ports_archive_set(self):
         url = factory.make_parsed_url()
@@ -525,7 +509,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
         response = yield call_responder(Region(), GetArchiveMirrors, {})
 
         self.assertEqual(
-            {"main": urlparse("http://arhive.ubuntu.com/ubuntu"),
+            {"main": urlparse("http://archive.ubuntu.com/ubuntu"),
              "ports": url},
             response)
 
@@ -590,6 +574,7 @@ class TestRegionProtocol_MarkNodeFailed(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
+        self.useFixture(SignalsDisabled("power"))
         system_id = yield deferToDatabase(self.create_deploying_node)
 
         error_description = factory.make_name('error-description')

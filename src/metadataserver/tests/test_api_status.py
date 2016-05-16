@@ -20,6 +20,7 @@ from maasserver.models import (
     Event,
     Tag,
 )
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
@@ -65,6 +66,10 @@ def call_status(client=None, node=None, payload=None):
 
 
 class TestStatusAPI(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestStatusAPI, self).setUp()
+        self.useFixture(SignalsDisabled("power"))
 
     def test_other_user_than_node_cannot_signal_installation_result(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)

@@ -205,7 +205,10 @@ class RackControllerService(Service):
 
     def process(self):
         """Process the next rack controller that needs an update."""
-        if len(self.needsDHCPUpdate) == 0:
+        if not self.running:
+            # We're shutting down.
+            self.processing.stop()
+        elif len(self.needsDHCPUpdate) == 0:
             # Nothing more to do.
             self.processing.stop()
         else:

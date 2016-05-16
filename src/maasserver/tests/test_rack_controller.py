@@ -312,7 +312,7 @@ class TestRackControllerService(MAASServerTestCase):
         service.running = False
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
-        yield service.processing
+        yield service.processingDone
         self.assertThat(mock_processDHCP, MockNotCalled())
 
     @wait_for_reactor

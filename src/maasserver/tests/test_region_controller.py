@@ -46,28 +46,37 @@ class TestRegionControllerService(MAASServerTestCase):
                 needsDNSUpdate=False,
                 postgresListener=sentinel.listener))
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_startService_registers_with_postgres_listener(self):
         listener = MagicMock()
         service = RegionControllerService(listener)
         service.startService()
+        yield service.processingDefer
         self.assertThat(
             listener.register,
             MockCallsMatch(
                 call("sys_dns", service.markDNSForUpdate),
                 call("sys_proxy", service.markProxyForUpdate)))
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_startService_calls_markDNSForUpdate(self):
         listener = MagicMock()
         service = RegionControllerService(listener)
         mock_markDNSForUpdate = self.patch(service, "markDNSForUpdate")
         service.startService()
+        yield service.processingDefer
         self.assertThat(mock_markDNSForUpdate, MockCalledOnceWith(None, None))
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_startService_calls_markProxyForUpdate(self):
         listener = MagicMock()
         service = RegionControllerService(listener)
         mock_markProxyForUpdate = self.patch(service, "markProxyForUpdate")
         service.startService()
+        yield service.processingDefer
         self.assertThat(
             mock_markProxyForUpdate, MockCalledOnceWith(None, None))
 

@@ -36,6 +36,7 @@ from maasserver.models import (
     StaticIPAddress,
 )
 from maasserver.models.node import RELEASABLE_STATUSES
+from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.storage_layouts import (
     MIN_BOOT_PARTITION_SIZE,
     StorageLayoutError,
@@ -1382,8 +1383,9 @@ class TestAbort(APITransactionTestCase):
         machine_stop = self.patch(node_module.Machine, "_stop")
         machine_stop.side_effect = lambda user: post_commit()
 
-        response = self.client.post(
-            self.get_machine_uri(machine), {'op': 'abort'})
+        with SignalsDisabled("power"):
+            response = self.client.post(
+                self.get_machine_uri(machine), {'op': 'abort'})
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(

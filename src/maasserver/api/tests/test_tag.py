@@ -539,6 +539,7 @@ class TestTagsAPI(APITestCase):
         self.assertFalse(Tag.objects.filter(name=name).exists())
 
     def test_POST_new_creates_tag(self):
+        self.patch_autospec(Tag, "populate_nodes")
         self.become_admin()
         name = factory.make_string()
         definition = '//node'
@@ -557,6 +558,7 @@ class TestTagsAPI(APITestCase):
         self.assertEqual(comment, parsed_result['comment'])
         self.assertEqual(definition, parsed_result['definition'])
         self.assertTrue(Tag.objects.filter(name=name).exists())
+        self.assertThat(Tag.populate_nodes, MockCalledOnceWith(ANY))
 
     def test_POST_new_without_definition_creates_tag(self):
         self.become_admin()
@@ -598,6 +600,7 @@ class TestTagsAPI(APITestCase):
         self.assertFalse(Tag.objects.filter(name=invalid).exists())
 
     def test_POST_new_kernel_opts(self):
+        self.patch_autospec(Tag, "populate_nodes")
         self.become_admin()
         name = factory.make_string()
         definition = '//node'
@@ -620,6 +623,7 @@ class TestTagsAPI(APITestCase):
         self.assertEqual(extra_kernel_opts, parsed_result['kernel_opts'])
         self.assertEqual(
             extra_kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts)
+        self.assertThat(Tag.populate_nodes, MockCalledOnceWith(ANY))
 
     def test_POST_new_populates_nodes(self):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")

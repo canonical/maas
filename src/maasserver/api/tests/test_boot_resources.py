@@ -14,6 +14,7 @@ from maasserver.api.boot_resources import (
     boot_resource_set_to_dict,
     boot_resource_to_dict,
 )
+from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -111,6 +112,11 @@ class TestHelpers(MAASServerTestCase):
         self.assertItemsEqual(
             boot_resource_set_to_dict(resource_set),
             dict_representation['sets'][resource_set.version])
+
+
+def prevent_scheduling_of_image_imports(test):
+    """Make `RackControllersImporter.schedule` a no-op."""
+    test.patch_autospec(RackControllersImporter, "schedule")
 
 
 class TestBootResourcesAPI(APITestCase):
@@ -211,6 +217,7 @@ class TestBootResourcesAPI(APITestCase):
         return upload_type, filetype
 
     def test_POST_creates_boot_resource(self):
+        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         name = factory.make_name('name')
@@ -241,6 +248,7 @@ class TestBootResourcesAPI(APITestCase):
         self.assertEqual(sample_binary_data, written_data)
 
     def test_POST_creates_boot_resource_with_default_filetype(self):
+        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         name = factory.make_name('name')
@@ -330,6 +338,7 @@ class TestBootResourcesAPI(APITestCase):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_POST_returns_full_definition_of_boot_resource(self):
+        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         name = factory.make_name('name')
@@ -464,6 +473,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
             reverse('boot_resource_file_upload_handler', args=['3', '5']))
 
     def test_PUT_resource_file_writes_content(self):
+        prevent_scheduling_of_image_imports(self)
         self.become_admin()
         rfile, content = self.make_empty_resource_file()
         response = self.client.put(
@@ -541,6 +551,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
             MockCalledOnceWith())
 
     def test_PUT_with_multiple_requests_and_large_content(self):
+        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         # Get large amount of data to test with
