@@ -143,6 +143,7 @@ class TestEventsAPI(APITestCase):
         # Even when node ids are passed to "list," events for nodes are
         # returned in event id order, not necessarily in the order of the
         # node id arguments.
+        self.become_admin()
         nodes = [factory.make_Node() for _ in range(3)]
         events = [factory.make_Event(node=node) for node in nodes]
         response = self.client.get(
@@ -310,6 +311,7 @@ class TestEventsAPI(APITestCase):
         self.assertEqual(parsed_result['count'], len(events))
 
     def test_GET_query_doesnt_list_devices(self):
+        self.become_admin()
         machines = [
             factory.make_Node(
                 agent_name=factory.make_name('agent-name'),

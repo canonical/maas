@@ -11,8 +11,8 @@
                     data-ng-class="{ active: currentpage === 'devices' }"
                     data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
                 </a>
-                <span class="divide"></span>
-                <a href=""
+                <span data-ng-show="isSuperUser()" class="divide"></span>
+                <a href="" data-ng-show="isSuperUser()"
                     data-ng-class="{ active: currentpage === 'controllers' }"
                     data-ng-click="toggleTab('controllers')">{$ controllers.length $} <ng-pluralize count="controllers.length" when="{'one': 'Controller', 'other': 'Controllers'}"></ng-pluralize>
                 </a>

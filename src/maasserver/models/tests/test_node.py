@@ -3255,6 +3255,9 @@ class NodeManagerTest(MAASServerTestCase):
     def test_get_nodes_with_admin_perm_returns_all_nodes_for_admin(self):
         user = factory.make_User()
         nodes = [self.make_node(user) for counter in range(5)]
+        nodes.append(factory.make_RackController())
+        nodes.append(factory.make_RegionController())
+        nodes.append(factory.make_RegionRackController())
         self.assertItemsEqual(
             nodes,
             Node.objects.get_nodes(
@@ -3281,6 +3284,24 @@ class NodeManagerTest(MAASServerTestCase):
                 user=user, perm=NODE_PERMISSION.VIEW,
                 from_nodes=Node.objects.all())
         )
+
+    def test_get_nodes_non_admin_hides_controllers(self):
+        user = factory.make_User()
+        user_visible_nodes = [self.make_node(user), self.make_node(None)]
+        admin_visible_nodes = user_visible_nodes + [
+            self.make_node(factory.make_User()),
+            factory.make_RackController(owner=user),
+            factory.make_RackController(owner=None),
+            factory.make_RegionController(),
+            factory.make_RegionRackController(),
+        ]
+        self.assertItemsEqual(
+            admin_visible_nodes,
+            Node.objects.get_nodes(
+                factory.make_admin(), NODE_PERMISSION.ADMIN))
+        self.assertItemsEqual(
+            user_visible_nodes,
+            Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
 
     def test_filter_nodes_by_spaces(self):
         # Create a throwaway node and a throwaway space.

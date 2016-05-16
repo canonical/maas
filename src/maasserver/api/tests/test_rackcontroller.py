@@ -6,6 +6,7 @@
 import http.client
 
 from django.core.urlresolvers import reverse
+from maasserver.api import rackcontrollers
 from maasserver.models import node as node_module
 from maasserver.testing.api import (
     APITestCase,
@@ -17,6 +18,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
+    MockNotCalled,
 )
 
 
@@ -87,6 +89,7 @@ class TestRackControllerAPI(APITestCase):
 
     def test_GET_list_boot_images(self):
         rack = factory.make_RackController(owner=factory.make_User())
+        self.become_admin()
         response = self.client.get(
             self.get_rack_uri(rack), {'op': 'list_boot_images'})
         self.assertEqual(
@@ -95,6 +98,14 @@ class TestRackControllerAPI(APITestCase):
         self.assertItemsEqual(
             ['connected', 'images', 'status'],
             json_load_bytes(response.content))
+
+    def test_GET_list_boot_images_denied_if_not_admin(self):
+        rack = factory.make_RackController(owner=factory.make_User())
+        response = self.client.get(
+            self.get_rack_uri(rack), {'op': 'list_boot_images'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
 
 
 class TestRackControllersAPI(APITestCase):
@@ -110,6 +121,7 @@ class TestRackControllersAPI(APITestCase):
             '/api/2.0/rackcontrollers/', reverse('rackcontrollers_handler'))
 
     def test_read_returns_limited_fields(self):
+        self.become_admin()
         factory.make_RackController(owner=self.logged_in_user)
         response = self.client.get(reverse('rackcontrollers_handler'))
         parsed_result = json_load_bytes(response.content)
@@ -159,3 +171,24 @@ class TestRackControllersAPI(APITestCase):
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code,
             explain_unexpected_response(http.client.FORBIDDEN, response))
+
+    def test_GET_describe_power_types(self):
+        get_all_power_types_from_clusters = self.patch(
+            rackcontrollers, "get_all_power_types_from_clusters")
+        self.become_admin()
+        response = self.client.get(
+            self.get_rack_uri(), {'op': 'describe_power_types'})
+        self.assertEqual(
+            http.client.OK, response.status_code,
+            explain_unexpected_response(http.client.OK, response))
+        self.assertThat(get_all_power_types_from_clusters, MockCalledOnce())
+
+    def test_GET_describe_power_types_denied_if_not_admin(self):
+        get_all_power_types_from_clusters = self.patch(
+            rackcontrollers, "get_all_power_types_from_clusters")
+        response = self.client.get(
+            self.get_rack_uri(), {'op': 'describe_power_types'})
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code,
+            explain_unexpected_response(http.client.FORBIDDEN, response))
+        self.assertThat(get_all_power_types_from_clusters, MockNotCalled())

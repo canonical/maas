@@ -54,6 +54,7 @@ class TestRegionControllersAPI(APITestCase):
             reverse('regioncontrollers_handler'))
 
     def test_read_returns_limited_fields(self):
+        self.become_admin()
         factory.make_RegionController()
         response = self.client.get(reverse('regioncontrollers_handler'))
         parsed_result = json_load_bytes(response.content)

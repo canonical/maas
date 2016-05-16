@@ -585,6 +585,11 @@ angular.module('MAAS').controller('NodesListController', [
             });
         };
 
+        // Return true if the authenticated user is super user.
+        $scope.isSuperUser = function() {
+            return UsersManager.isSuperUser();
+        };
+
         // Load the required managers for this controller. The ServicesManager
         // is required by the maasControllerStatus directive that is used
         // in the partial for this controller.

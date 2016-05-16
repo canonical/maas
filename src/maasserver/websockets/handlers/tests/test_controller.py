@@ -21,7 +21,7 @@ class TestControllerHandler(MAASServerTestCase):
             factory.make_RackController()
 
     def test_last_image_sync(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         handler = ControllerHandler(owner, {})
         node = factory.make_RackController(owner=owner)
         result = handler.list({})
@@ -34,7 +34,7 @@ class TestControllerHandler(MAASServerTestCase):
             node.last_image_sync))
 
     def test_last_image_sync_returns_none_for_none(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         handler = ControllerHandler(owner, {})
         node = factory.make_RackController(owner=owner, last_image_sync=None)
         result = handler.list({})
@@ -45,7 +45,7 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertIsNone(data.get("last_image_sync"))
 
     def test_list_ignores_devices_and_nodes(self):
-        owner = factory.make_User()
+        owner = factory.make_admin()
         handler = ControllerHandler(owner, {})
         # Create a device.
         factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)

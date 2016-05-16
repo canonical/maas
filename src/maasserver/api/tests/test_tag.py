@@ -147,11 +147,8 @@ class TestTagAPI(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
-        # XXX lamont Bug#1576417 : Region controllers should not be here
-        # either, but are the subject of said bug.
         self.assertItemsEqual(
-            [machine.system_id, device.system_id,
-             region.system_id],
+            [machine.system_id, device.system_id],
             [r['system_id'] for r in parsed_result])
 
     def test_GET_machines_returns_machines(self):
@@ -196,8 +193,6 @@ class TestTagAPI(APITestCase):
             [device.system_id],
             [r['system_id'] for r in parsed_result])
 
-    # XXX lamont Bug#1576417: Add a test that non-admins do not get to fetch
-    # rack controllers.
     def test_GET_rack_controllers_returns_rack_controllers(self):
         self.become_admin()
         tag = factory.make_Tag()
@@ -221,7 +216,28 @@ class TestTagAPI(APITestCase):
             [rack.system_id],
             [r['system_id'] for r in parsed_result])
 
+    def test_GET_rack_controllers_returns_no_rack_controllers_nonadmin(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(
+            self.get_tag_uri(tag), {'op': 'rack_controllers'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual([], parsed_result)
+
     def test_GET_region_controllers_returns_region_controllers(self):
+        self.become_admin()
         tag = factory.make_Tag()
         machine = factory.make_Node()
         device = factory.make_Device()
@@ -242,6 +258,26 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual(
             [region.system_id],
             [r['system_id'] for r in parsed_result])
+
+    def test_GET_region_controllers_returns_no_controllers_nonadmin(self):
+        tag = factory.make_Tag()
+        machine = factory.make_Node()
+        device = factory.make_Device()
+        rack = factory.make_RackController()
+        region = factory.make_RegionController()
+        # Create a second node that isn't tagged.
+        factory.make_Node()
+        machine.tags.add(tag)
+        device.tags.add(tag)
+        rack.tags.add(tag)
+        region.tags.add(tag)
+        response = self.client.get(
+            self.get_tag_uri(tag), {'op': 'region_controllers'})
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET))
+        self.assertItemsEqual([], parsed_result)
 
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_User()

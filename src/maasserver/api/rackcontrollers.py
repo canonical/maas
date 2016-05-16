@@ -154,6 +154,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
             "Import of boot images started on %s" % rack.hostname,
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
+    @admin_method
     @operation(idempotent=True)
     def list_boot_images(self, request, system_id):
         """List all available boot images.
@@ -192,6 +193,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
             "Import of boot images started on all rack controllers",
             content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET))
 
+    @admin_method
     @operation(idempotent=True)
     def describe_power_types(self, request):
         """Query all of the rack controllers for power information.

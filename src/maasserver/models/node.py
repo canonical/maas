@@ -409,7 +409,14 @@ class BaseNodeManager(Manager, NodeQueriesMixin):
         if user.is_superuser:
             # Admin is allowed to see all nodes.
             return nodes
-        elif perm == NODE_PERMISSION.VIEW:
+        # Non-admins aren't allowed to see controllers.
+        nodes = nodes.exclude(
+            Q(node_type__in=[
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                ]))
+        if perm == NODE_PERMISSION.VIEW:
             return nodes.filter(Q(owner__isnull=True) | Q(owner=user))
         elif perm == NODE_PERMISSION.EDIT:
             return nodes.filter(owner=user)
