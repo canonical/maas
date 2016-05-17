@@ -155,13 +155,13 @@ class TestSequence(MAASServerTestCase):
     def test_current_returns_none_when_table_does_not_exist(self):
         name = factory.make_name('seq', sep='')
         seq = Sequence(name)
-        self.assertEqual(None, seq.current())
+        self.assertIsNone(seq.current())
 
-    def test_current_returns_minimum_value_when_no_current_value(self):
+    def test_current_returns_none_when_no_current_value(self):
         name = factory.make_name('seq', sep='')
         seq = Sequence(name)
         seq.create()
-        self.assertEqual(1, seq.current())
+        self.assertIsNone(seq.current())
 
     def test_current_returns_current_value(self):
         name = factory.make_name('seq', sep='')
