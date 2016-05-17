@@ -10,7 +10,11 @@ See https://launchpad.net/maas/+milestone/1.9.3 for full details.
 Bug Fix Update
 --------------
 
-LP: #1575567    Re-commissioning doesn't detect storage changes
+LP: #1521618    [1.9] wrong subnet in DHCP answer when multiple networks are present
+LP: #1536604    [1.9] IntegrityError while uploading leases - when there are reserved IP's on the dynamic range
+LP: #1580712    [1.9] dhcp update error: str object has no attribute mac
+LP: #1575567    [1.9] Re-commissioning doesn't detect storage changes
+LP: #1576194    [1.9] Enlistment via DHCP fails because DNS has bogus PTR record
 
 
 1.9.2
