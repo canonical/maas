@@ -34,6 +34,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
+from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
 )
@@ -102,7 +103,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertAttributes(
             source,
             {
-                'url': 'https://images.maas.io/ephemeral-v2/releases/',
+                'url': DEFAULT_IMAGES_URL,
                 'keyring_filename': (
                     '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
             })

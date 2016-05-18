@@ -26,6 +26,7 @@ from maasserver.models import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
+from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
@@ -49,7 +50,7 @@ def ensure_boot_source_definition():
     """Set default boot source if none is currently defined."""
     if not BootSource.objects.exists():
         source = BootSource.objects.create(
-            url='https://images.maas.io/ephemeral-v2/releases/',
+            url=DEFAULT_IMAGES_URL,
             keyring_filename=(
                 '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
         # Default is to import newest Ubuntu LTS releases, for only amd64

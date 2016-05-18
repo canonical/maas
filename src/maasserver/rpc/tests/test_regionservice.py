@@ -746,6 +746,7 @@ class TestRegionService(MAASTestCase):
 
         self.assertThat(service.ports, Equals([sentinel.port]))
 
+    @skip("XXX test fails far too often; bug #1582944")
     @wait_for_reactor
     @inlineCallbacks
     def test_start_up_logs_failure_if_all_endpoint_options_fail(self):

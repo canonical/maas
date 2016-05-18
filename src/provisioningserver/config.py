@@ -162,6 +162,8 @@ logger = logging.getLogger(__name__)
 # Default result for cluster UUID if not set
 UUID_NOT_SET = None
 
+DEFAULT_IMAGES_URL = "http://images.maas.io/ephemeral-v2/daily/"
+
 
 class BootSourceSelection(Schema):
     """Configuration validator for boot source selection configuration."""
@@ -181,7 +183,7 @@ class BootSource(Schema):
     if_key_missing = None
 
     url = UnicodeString(
-        if_missing="https://images.maas.io/ephemeral-v2/releases/")
+        if_missing=DEFAULT_IMAGES_URL)
     keyring = UnicodeString(
         if_missing="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg")
     keyring_data = UnicodeString(if_missing="")

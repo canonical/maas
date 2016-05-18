@@ -153,6 +153,7 @@ from netaddr import (
     IPNetwork,
     valid_ipv6,
 )
+from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
 from provisioningserver.utils.twisted import (
@@ -1403,8 +1404,8 @@ class BootSourceSettingsForm(ConfigForm):
     boot_source_url = forms.URLField(
         label="Sync URL", required=True,
         help_text=(
-            "URL to sync boot image from. E.g. "
-            "https://images.maas.io/ephemeral-v2/releases/"))
+            "URL to sync boot image from. E.g. %s" % (
+                DEFAULT_IMAGES_URL)))
 
     def __init__(self, *args, **kwargs):
         super(BootSourceSettingsForm, self).__init__(*args, **kwargs)

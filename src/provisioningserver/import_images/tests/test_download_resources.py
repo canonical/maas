@@ -11,6 +11,7 @@ from unittest import mock
 
 from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
+from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import download_resources
 from provisioningserver.import_images.product_mapping import ProductMapping
 from simplestreams.objectstores import FileStore
@@ -73,7 +74,7 @@ class TestDownloadBootResources(MAASTestCase):
         snapshot_path = self.make_dir()
         cache_path = os.path.join(storage_path, 'cache')
         file_store = FileStore(cache_path)
-        source_url = "https://images.maas.io/ephemeral-v2/releases/"
+        source_url = DEFAULT_IMAGES_URL
 
         download_resources.download_boot_resources(
             source_url, file_store, snapshot_path, None, None)
