@@ -46,6 +46,7 @@ AMT_ERRORS = {
     },
 }
 
+
 REQUIRED_PACKAGES = [["amttool", "amtterm"], ["wsman", "wsmancli"]]
 
 
@@ -116,6 +117,34 @@ class AMTPowerDriver(PowerDriver):
         env['AMT_PASSWORD'] = power_pass
         return env
 
+    def _set_pxe_boot(self, ip_address, power_pass):
+        """Set to PXE for next boot."""
+        wsman_pxe_options = {
+            'ChangeBootOrder': (
+                join(dirname(__file__), "amt.wsman-pxe.xml"),
+                ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
+                 'CIM_BootConfigSetting?InstanceID="Intel(r) '
+                 'AMT: Boot Configuration 0"')),
+            'SetBootConfigRole': (
+                join(dirname(__file__), "amt.wsman-boot-config.xml"),
+                ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
+                 'CIM_BootService?SystemCreationClassName='
+                 '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
+                 ',CreationClassName="CIM_BootService",Name="Intel(r)'
+                 ' AMT Boot Service"')),
+        }
+        wsman_opts = (
+            '--port', '16992', '--hostname', ip_address, '--username',
+            'admin', '--password', power_pass,
+            '--noverifypeer', '--noverifyhost'
+        )
+        # Change boot order to PXE and enable boot config request
+        for method, (schema_file, schema_uri) in wsman_pxe_options.items():
+            with open(schema_file, "rb") as fd:
+                command = 'wsman', 'invoke', '--method', method, schema_uri
+                command += wsman_opts + ('--input', '-')
+                self._run(command, power_pass, stdin=fd.read())
+
     @typed
     def _run(
             self, command: tuple, power_pass: str,
@@ -157,23 +186,22 @@ class AMTPowerDriver(PowerDriver):
             'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
             'CIM_AssociatedPowerManagementService'
         )
-        wsman_power_opts = (
+        wsman_opts = (
             '--port', '16992', '--hostname', ip_address, '--username',
-            'admin', '-p', power_pass, '-V', '-v'
+            'admin', '--password', power_pass,
+            '--noverifypeer', '--noverifyhost'
         )
         if power_change in ('on', 'off', 'restart'):
             stdin = self._render_wsman_state_xml(power_change)
             command = (
-                'wsman', 'invoke', '-a',
-                'RequestPowerStateChange',
+                'wsman', 'invoke', '--method', 'RequestPowerStateChange',
                 wsman_power_schema_uri
-            ) + wsman_power_opts + ('-J', '-')
+            ) + wsman_opts + ('--input', '-')
         elif power_change == 'query':
-            wsman_query_opts = wsman_power_opts + ('-o', '-j', 'utf-8')
             stdin = None  # No input for query
             command = (
                 'wsman', 'enumerate', wsman_query_schema_uri
-            ) + wsman_query_opts
+            ) + wsman_opts + ('--optimize', '--encoding', 'utf-8')
         return self._run(command, power_pass, stdin=stdin)
 
     def amttool_query_state(self, ip_address, power_pass):
@@ -252,10 +280,6 @@ class AMTPowerDriver(PowerDriver):
             'power_cycle', ip_address, power_pass,
             amttool_boot_mode=amttool_boot_mode, stdin=b'yes')
 
-    def wsman_restart(self, ip_address, power_pass):
-        """Restart the node via wsman."""
-        self._issue_wsman_command('restart', ip_address, power_pass)
-
     def amttool_power_on(self, ip_address, power_pass, amttool_boot_mode):
         """Power on the node via amttool."""
         # Try several times.  Power commands often fail the first time.
@@ -269,10 +293,11 @@ class AMTPowerDriver(PowerDriver):
             sleep(1)
         raise PowerActionError("Machine is not powering on.  Giving up.")
 
-    def wsman_power_on(self, ip_address, power_pass):
+    def wsman_power_on(self, ip_address, power_pass, restart=False):
         """Power on the node via wsman."""
-        # Issue the wsman command to change power state.
-        self._issue_wsman_command('on', ip_address, power_pass)
+        power_command = 'restart' if restart else 'on'
+        self._set_pxe_boot(ip_address, power_pass)
+        self._issue_wsman_command(power_command, ip_address, power_pass)
         # Check power state several times.  It usually takes a second or
         # two to get the correct state.
         for _ in range(10):
@@ -380,7 +405,7 @@ class AMTPowerDriver(PowerDriver):
                     ip_address, power_pass, amttool_boot_mode)
         elif amt_command == 'wsman':
             if self.wsman_query_state(ip_address, power_pass) == 'on':
-                self.wsman_restart(ip_address, power_pass)
+                self.wsman_power_on(ip_address, power_pass, restart=True)
             else:
                 self.wsman_power_on(ip_address, power_pass)
 

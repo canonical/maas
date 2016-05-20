@@ -1,0 +1,12 @@
+<p:ChangeBootOrder_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootConfigSetting">
+  <p:Source xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+            xmlns:wsman="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
+    <wsa:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:Address>
+    <wsa:ReferenceParameters>
+      <wsman:ResourceURI>http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_BootSourceSetting</wsman:ResourceURI>
+      <wsman:SelectorSet>
+        <wsman:Selector wsman:Name="InstanceID">Intel(r) AMT: Force PXE Boot</wsman:Selector>
+      </wsman:SelectorSet>
+    </wsa:ReferenceParameters>
+  </p:Source>
+</p:ChangeBootOrder_INPUT>

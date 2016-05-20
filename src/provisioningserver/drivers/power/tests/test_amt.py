@@ -12,13 +12,17 @@ from os.path import (
 from random import choice
 from textwrap import dedent
 from unittest.mock import (
+    call,
     Mock,
     sentinel,
 )
 
 from lxml import etree
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
     amt as amt_module,
@@ -46,6 +50,7 @@ Remote Control Capabilities:
     SystemCapabilitiesSupported     powercycle powerdown powerup reset
     SystemFirmwareCapabilities      0
 """).encode('utf-8')
+
 
 WSMAN_OUTPUT = dedent("""\
 ...
@@ -172,6 +177,46 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError, amt_power_driver._run, (),
             factory.make_name("power-pass"), None)
 
+    def test__set_pxe_boot_sets_pxe(self):
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        power_pass = factory.make_name('power_pass')
+        wsman_pxe_options = {
+            'ChangeBootOrder': (
+                join(dirname(dirname(__file__)), "amt.wsman-pxe.xml"),
+                ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
+                 'CIM_BootConfigSetting?InstanceID="Intel(r) '
+                 'AMT: Boot Configuration 0"')),
+            'SetBootConfigRole': (
+                join(dirname(dirname(__file__)), "amt.wsman-boot-config.xml"),
+                ('http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
+                 'CIM_BootService?SystemCreationClassName='
+                 '"CIM_ComputerSystem",SystemName="Intel(r) AMT"'
+                 ',CreationClassName="CIM_BootService",Name="Intel(r)'
+                 ' AMT Boot Service"')),
+        }
+        wsman_opts = (
+            '--port', '16992', '--hostname', ip_address, '--username',
+            'admin', '--password', power_pass,
+            '--noverifypeer', '--noverifyhost'
+        )
+        _run_mock = self.patch(amt_power_driver, '_run')
+        amt_power_driver._set_pxe_boot(ip_address, power_pass)
+
+        commands = []
+        stdins = []
+        for method, (schema_file, schema_uri) in wsman_pxe_options.items():
+            with open(schema_file, "rb") as fd:
+                command = 'wsman', 'invoke', '--method', method, schema_uri
+                command += wsman_opts + ('--input', '-')
+                commands.append(command)
+                stdins.append(fd.read())
+
+        self.assertThat(
+            _run_mock, MockCallsMatch(
+                call(commands[0], power_pass, stdin=stdins[0]),
+                call(commands[1], power_pass, stdin=stdins[1])))
+
     def test__issue_amttool_command_calls__run(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
@@ -203,18 +248,19 @@ class TestAMTPowerDriver(MAASTestCase):
             ',CreationClassName="CIM_PowerManagementService",Name='
             '"Intel(r) AMT Power Management Service"'
         )
-        wsman_power_opts = (
+        wsman_opts = (
             '--port', '16992', '--hostname', ip_address, '--username',
-            'admin', '-p', power_pass, '-V', '-v'
+            'admin', '--password', power_pass,
+            '--noverifypeer', '--noverifyhost'
         )
         _render_wsman_state_xml_mock = self.patch(
             amt_power_driver, '_render_wsman_state_xml')
         _render_wsman_state_xml_mock.return_value = b'stdin'
         command = (
-            'wsman', 'invoke', '-a',
+            'wsman', 'invoke', '--method',
             'RequestPowerStateChange',
             wsman_power_schema_uri
-        ) + wsman_power_opts + ('-J', '-')
+        ) + wsman_opts + ('--input', '-')
         _run_mock = self.patch(amt_power_driver, '_run')
         _run_mock.return_value = b'output'
 
@@ -233,11 +279,12 @@ class TestAMTPowerDriver(MAASTestCase):
             'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/'
             'CIM_AssociatedPowerManagementService'
         )
-        wsman_power_opts = (
+        wsman_opts = (
             '--port', '16992', '--hostname', ip_address, '--username',
-            'admin', '-p', power_pass, '-V', '-v'
+            'admin', '--password', power_pass,
+            '--noverifypeer', '--noverifyhost'
         )
-        wsman_query_opts = wsman_power_opts + ('-o', '-j', 'utf-8')
+        wsman_query_opts = wsman_opts + ('--optimize', '--encoding', 'utf-8')
         command = (
             'wsman', 'enumerate', wsman_query_schema_uri
         ) + wsman_query_opts
@@ -452,23 +499,11 @@ class TestAMTPowerDriver(MAASTestCase):
             PowerActionError, amt_power_driver.wsman_query_state,
             ip_address, power_pass)
 
-    def test_wsman_restart_restarts(self):
-        amt_power_driver = AMTPowerDriver()
-        ip_address = factory.make_ipv4_address()
-        power_pass = factory.make_name('power_pass')
-        _issue_wsman_command_mock = self.patch(
-            amt_power_driver, '_issue_wsman_command')
-
-        amt_power_driver.wsman_restart(ip_address, power_pass)
-
-        self.assertThat(
-            _issue_wsman_command_mock, MockCalledOnceWith(
-                'restart', ip_address, power_pass))
-
     def test_wsman_power_on_powers_on(self):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name('power_pass')
+        _set_pxe_boot_mock = self.patch(amt_power_driver, '_set_pxe_boot')
         _issue_wsman_command_mock = self.patch(
             amt_power_driver, '_issue_wsman_command')
         wsman_query_state_mock = self.patch(
@@ -478,8 +513,34 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver.wsman_power_on(ip_address, power_pass)
 
         self.expectThat(
+            _set_pxe_boot_mock, MockCalledOnceWith(
+                ip_address, power_pass))
+        self.expectThat(
             _issue_wsman_command_mock, MockCalledOnceWith(
                 'on', ip_address, power_pass))
+        self.expectThat(
+            wsman_query_state_mock, MockCalledOnceWith(
+                ip_address, power_pass))
+
+    def test_wsman_power_on_powers_restart(self):
+        amt_power_driver = AMTPowerDriver()
+        ip_address = factory.make_ipv4_address()
+        power_pass = factory.make_name('power_pass')
+        _set_pxe_boot_mock = self.patch(amt_power_driver, '_set_pxe_boot')
+        _issue_wsman_command_mock = self.patch(
+            amt_power_driver, '_issue_wsman_command')
+        wsman_query_state_mock = self.patch(
+            amt_power_driver, 'wsman_query_state')
+        wsman_query_state_mock.return_value = 'on'
+
+        amt_power_driver.wsman_power_on(ip_address, power_pass, restart=True)
+
+        self.expectThat(
+            _set_pxe_boot_mock, MockCalledOnceWith(
+                ip_address, power_pass))
+        self.expectThat(
+            _issue_wsman_command_mock, MockCalledOnceWith(
+                'restart', ip_address, power_pass))
         self.expectThat(
             wsman_query_state_mock, MockCalledOnceWith(
                 ip_address, power_pass))
@@ -488,6 +549,7 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name('power_pass')
+        self.patch(amt_power_driver, '_set_pxe_boot')
         self.patch(amt_power_driver, '_issue_wsman_command')
         wsman_query_state_mock = self.patch(
             amt_power_driver, 'wsman_query_state')
@@ -677,8 +739,8 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_query_state_mock = self.patch(
             amt_power_driver, 'wsman_query_state')
         wsman_query_state_mock.return_value = 'on'
-        wsman_restart_mock = self.patch(
-            amt_power_driver, 'wsman_restart')
+        wsman_power_on_mock = self.patch(
+            amt_power_driver, 'wsman_power_on')
 
         amt_power_driver.power_on(context['system_id'], context)
 
@@ -689,8 +751,8 @@ class TestAMTPowerDriver(MAASTestCase):
             wsman_query_state_mock, MockCalledOnceWith(
                 context['ip_address'], context['power_pass']))
         self.expectThat(
-            wsman_restart_mock, MockCalledOnceWith(
-                context['ip_address'], context['power_pass']))
+            wsman_power_on_mock, MockCalledOnceWith(
+                context['ip_address'], context['power_pass'], restart=True))
 
     def test_power_on_powers_on_with_wsman_when_already_off(self):
         amt_power_driver = AMTPowerDriver()
