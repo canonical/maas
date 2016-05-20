@@ -186,6 +186,18 @@ class TestIPMIPowerDriver(MAASTestCase):
             factory.make_name('command'), factory.make_name('power_change'),
             factory.make_name('power_address'))
 
+    def test__issue_ipmipower_command_does_not_mistake_host_for_status(self):
+        popen_mock = self.patch(ipmi_module, 'Popen')
+        process = popen_mock.return_value
+        # "cameron" contains the string "on", but the machine is off.
+        process.communicate.return_value = (b'cameron: off', b'')
+        process.returncode = 0
+        self.assertThat(
+            IPMIPowerDriver._issue_ipmipower_command(
+                factory.make_name('command'), 'query',
+                factory.make_name('address')),
+            Equals("off"))
+
     def test__issue_ipmi_command_issues_power_on(self):
         context = make_context()
         ipmi_chassis_config_command = make_ipmi_chassis_config_command(

@@ -5,6 +5,7 @@
 
 __all__ = []
 
+import re
 from subprocess import (
     PIPE,
     Popen,
@@ -198,12 +199,8 @@ class IPMIPowerDriver(PowerDriver):
             raise PowerError(
                 "Failed to power %s %s: %s" % (
                     power_change, power_address, stdout))
-        if 'on' in stdout:
-            return 'on'
-        elif 'off' in stdout:
-            return 'off'
-        else:
-            return stdout
+        match = re.search(":\s*(on|off)", stdout)
+        return stdout if match is None else match.group(1)
 
     def _issue_ipmi_command(
             self, power_change, power_address=None, power_user=None,
