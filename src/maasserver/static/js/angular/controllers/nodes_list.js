@@ -574,8 +574,8 @@ angular.module('MAAS').controller('NodesListController', [
             ControllersManager.checkImageStates($scope.controllers).then(
                     function(results) {
                 angular.forEach($scope.controllers, function(controller) {
-                    status = results[controller.system_id];
-                    if(status) {
+                    // Results is a map of system_id to displayable status.
+                    if(results[controller.system_id]) {
                         controller.image_sync_status =
                             results[controller.system_id];
                     } else {

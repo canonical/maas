@@ -5,11 +5,11 @@
  */
 
 angular.module('MAAS').controller('NodeDetailsController', [
-    '$scope', '$rootScope', '$routeParams', '$location',
+    '$scope', '$rootScope', '$routeParams', '$location', '$interval',
     'MachinesManager', 'ControllersManager', 'ZonesManager', 'GeneralManager',
     'UsersManager', 'TagsManager', 'DomainsManager', 'ManagerHelperService',
     'ServicesManager', 'ErrorService', 'ValidationService', function(
-        $scope, $rootScope, $routeParams, $location,
+        $scope, $rootScope, $routeParams, $location, $interval,
         MachinesManager, ControllersManager, ZonesManager, GeneralManager,
         UsersManager, TagsManager, DomainsManager, ManagerHelperService,
         ServicesManager, ErrorService, ValidationService) {
@@ -335,6 +335,23 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
         }
 
+        function getControllersImageSyncStatus() {
+            if(angular.isObject($scope.node)) {
+                $scope.nodesManager.checkImageStates(
+                        [{system_id: $scope.node.system_id}]).then(
+                    function(results) {
+                        // Results is a map of system_id to displayable status.
+                        if(results[$scope.node.system_id]) {
+                            $scope.node.image_sync_status =
+                                results[$scope.node.system_id];
+                        } else {
+                            $scope.node.image_sync_status = "Unknown";
+                        }
+                    }
+                );
+            }
+        }
+
         // Starts the watchers on the scope.
         function startWatching() {
             // Update the title and name when the node fqdn changes.
@@ -381,6 +398,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.summary_yaml", updateMachineOutput);
             $scope.$watch("node.commissioning_results", updateMachineOutput);
             $scope.$watch("node.installation_results", updateMachineOutput);
+
+            if($scope.isController) {
+                getControllersImageSyncStatus();
+                $scope.imageStatusPoll = $interval(function() {
+                    getControllersImageSyncStatus();
+                }, 10000);
+            }
         }
 
         // Called when the node has been loaded.
@@ -1039,6 +1063,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Stop polling for architectures, hwe_kernels, and osinfo when the
         // scope is destroyed.
         $scope.$on("$destroy", function() {
+            $interval.cancel($scope.imageStatusPoll);
             GeneralManager.stopPolling("architectures");
             GeneralManager.stopPolling("hwe_kernels");
             GeneralManager.stopPolling("osinfo");

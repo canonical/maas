@@ -234,21 +234,14 @@
                                 <dd class="four-col last-col">
                                     {$ node.last_image_sync || 'Never' $}
                                 </dd>
+                            <dt class="two-col">Images status</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.image_sync_status || 'Checking...' $}
+                                </dd>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
                                     {$ node.zone.name $}
                                 </dd>
-                            <!-- XXX trapnine 2016-02-21 - Sample HTML disabled until implemented. -->
-                            <span class="ng-hide">
-                            <dt class="two-col">Fabrics</dt>
-                                <dd class="four-col last-col">
-                                    <a href="#" class="link--alt">Fabric 1</a>, <a href="#" class="link--alt">Fabric 2</a>, <a href="#" class="link--alt">Fabric 3</a>, <a href="#" class="link--alt">Fabric 4</a>
-                                </dd>
-                            <dt class="two-col">DHCP</dt>
-                                <dd class="four-col last-col">
-                                    <a href="#" class="link--alt">View compiled configuration</a>
-                                </dd>
-                            </span>
                         </dl>
                     </div>
                 </fieldset>
@@ -346,7 +339,7 @@
                             on the rack controller.
                         </li>
                         <li class="flash-messages__item error" data-ng-if="hasPowerEventError()">
-			    {$ getPowerEventErrorText() $}
+                            {$ getPowerEventErrorText() $}
                         </li>
                         <li class="flash-messages__item info" data-ng-if="power.type.name == 'manual'">
                             Power control for this power type will need to be handled manually.
