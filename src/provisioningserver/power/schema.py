@@ -415,7 +415,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'nova',
-        'description': 'OpenStack nova',
+        'description': 'OpenStack Nova',
         'fields': [
             make_json_field('nova_id', "Host UUID"),
             make_json_field('os_tenantname', "Tenant name"),
