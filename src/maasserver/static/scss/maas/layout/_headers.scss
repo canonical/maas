@@ -422,7 +422,8 @@ header.banner {
         // Feedback style, mainly used for actions feedback
         .page-header__feedback {
             border-top: 1px dotted #888;
-            display: inline-block;
+            display: block;
+            float: left;
             width: 100%;
             padding: 20px 0;
 

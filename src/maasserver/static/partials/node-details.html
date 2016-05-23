@@ -55,30 +55,30 @@
                 <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <div class="page-header__feedback ng-hide" data-ng-hide="isActionError() || isDeployError() || isSSHKeyError() || hasActionPowerError(actionOption.name)">
-                        <form class="form-inline">
-                            <div class="eight-col no-margin-bottom ng-hide" data-ng-show="actionOption.name === 'commission'">
-                                <div class="inline width--auto margin-top--ten margin-right left">
-                                    <input class="checkbox margin-right" id="enableSSH" type="checkbox"
+                        <form class="form form--inline">
+                            <span class="ng-hide" data-ng-show="actionOption.name === 'commission'">
+                                <div class="form__group u-margin--right u-margin--top-tiny">
+                                    <input class="checkbox" id="enableSSH" type="checkbox"
                                         data-ng-model="commissionOptions.enableSSH">
-                                    <label class="checkbox-label" for="enableSSH">Allow SSH access and prevent machine from powering off</label>
+                                    <label for="enableSSH">Allow SSH access and prevent machine from powering off</label>
                                 </div>
-                                <div class="inline width--auto margin-top--ten margin-right left">
-                                    <input class="checkbox margin-right" id="skipNetworking" type="checkbox"
+                                <div class="form__group u-margin--right u-margin--top-tiny">
+                                    <input class="checkbox" id="skipNetworking" type="checkbox"
                                         data-ng-model="commissionOptions.skipNetworking">
-                                    <label class="checkbox-label" for="skipNetworking">Retain network configuration</label>
+                                    <label for="skipNetworking">Retain network configuration</label>
                                 </div>
-                                <div class="inline width--auto margin-top--ten margin-right left">
+                                <div class="form__group u-margin--top-tiny">
                                     <input class="checkbox" id="skipStorage" type="checkbox"
                                         data-ng-model="commissionOptions.skipStorage">
-                                    <label class="checkbox-label" for="skipStorage">Retain storage configuration</label>
+                                    <label for="skipStorage">Retain storage configuration</label>
                                 </div>
-                            </div>
-                            <span class="ng-hide" data-ng-show="actionOption.name === 'deploy'">
+                            </span>
+                            <div class="form__group ng-hide" data-ng-show="actionOption.name === 'deploy'">
                                 <label for="image">Choose your image</label>
                                 <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
-                            </span>
+                            </div>
                             <div class="right">
-                                <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                                <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                                 <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
                             </div>
                         </form>
@@ -90,7 +90,7 @@
                             Node failed to be {$ actionOption.sentence $}, because of the following error: {$ actionError $}
                         </p>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                             <button class="cta-ubuntu" data-ng-click="actionGo()">Retry</button>
                         </div>
                     </div>
@@ -101,7 +101,7 @@
                             Node cannot be {$ actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
                         </p>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                         </div>
                     </div>
 
@@ -112,7 +112,7 @@
                             {$ getPowerErrors() $} on the rack controller.
                         </p>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                         </div>
                     </div>
 
@@ -121,7 +121,7 @@
                             Node cannot be {$ actionOption.sentence $}, because an SSH key has not been added to your account. To add an SSH key, visit <a href="account/prefs/">your account page</a>.
                         </p>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel()">Cancel</a>
                         </div>
                     </div>
 
@@ -558,14 +558,13 @@
                                     data-ng-class="{ active: isInterfaceSelected(interface), disabled: isDisabled(), noEdit: cannotEditInterface(interface) }"
                                     data-ng-repeat="interface in interfaces | removeInterfaceParents:newBondInterface">
                                     <div class="table__data table-col--3">
-                                        <span data-ng-hide="isAllNetworkingDisabled()">
-                                            <input class="checkbox" type="checkbox" id="{$ getUniqueKey(interface) $}"
-                                                data-ng-checked="isInterfaceSelected(interface)"
-                                                data-ng-click="toggleInterfaceSelect(interface)"
-                                                data-ng-disabled="isDisabled()"
-                                                data-ng-if="!isController">
-                                            <label class="checkbox-label" for="{$ getUniqueKey(interface) $}"></label>
-                                        </span>
+                                        <input type="checkbox" class="checkbox" id="{$ getUniqueKey(interface) $}"
+                                            data-ng-hide="isAllNetworkingDisabled()"
+                                            data-ng-checked="isInterfaceSelected(interface)"
+                                            data-ng-click="toggleInterfaceSelect(interface)"
+                                            data-ng-disabled="isDisabled()"
+                                            data-ng-if="!isController">
+                                        <label for="{$ getUniqueKey(interface) $}"></label>
                                     </div>
                                     <div class="table__data table-col--12" data-ng-show="column == 'name'">
                                         <span class="ng-hide" data-ng-show="interface.type == 'alias' || interface.type == 'vlan'">{$ interface.name $}</span>
@@ -771,8 +770,8 @@
                                 </div>
                                 <div class="table__row active ng-hide" data-ng-show="isShowingCreateBond()">
                                     <div class="table__data table-col--3">
-                                        <input class="checkbox" type="checkbox" id="bond-create" disabled="disabled" checked />
-                                        <label class="checkbox-label" for="bond-create"></label>
+                                        <input type="checkbox" class="checkbox" id="bond-create" disabled="disabled" checked />
+                                        <label for="bond-create"></label>
                                     </div>
                                     <div class="table__data table-col--12">
                                         <input type="text" class="table__input editible"
@@ -844,8 +843,8 @@
                                 </div>
                                 <div class="table__row active" data-ng-show="isShowingCreatePhysical()">
                                     <div class="table__data table-col--3">
-                                        <input class="checkbox" type="checkbox" id="interface-create" disabled="disabled" checked />
-                                        <label class="checkbox-label" for="interface-create"></label>
+                                        <input type="checkbox" class="checkbox" id="interface-create" disabled="disabled" checked />
+                                        <label for="interface-create"></label>
                                     </div>
                                     <div class="table__data table-col--12">
                                         <input type="text" class="table__input"
@@ -967,13 +966,12 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table-col--3">
-                                   <span data-ng-hide="isAllStorageDisabled()">
-                                        <input class="checkbox" type="checkbox" id="filesystem-check-all"
-                                            data-ng-checked="filesystemAllSelected"
-                                            data-ng-click="toggleFilesystemAllSelect()"
-                                            data-ng-disabled="isFilesystemsDisabled()" />
-                                        <label class="checkbox-label" for="filesystem-check-all"></label>
-                                   </span>
+                                    <input type="checkbox" class="checkbox" id="filesystem-check-all"
+                                        data-ng-hide="isAllStorageDisabled()"
+                                        data-ng-checked="filesystemAllSelected"
+                                        data-ng-click="toggleFilesystemAllSelect()"
+                                        data-ng-disabled="isFilesystemsDisabled()" />
+                                    <label for="filesystem-check-all"></label>
                                 </div>
                                 <div class="table__header table-col--20">Name</div>
                                 <div class="table__header table-col--15">Size</div>
@@ -992,13 +990,12 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: filesystem.$selected }">
                                     <div class="table__data table-col--3">
-                                        <span data-ng-hide="isAllStorageDisabled()">
-                                            <input class="checkbox" type="checkbox" id="{$ filesystem.name $}"
-                                                data-ng-checked="filesystem.$selected"
-                                                data-ng-click="toggleFilesystemSelect(filesystem)"
-                                                data-ng-disabled="isFilesystemsDisabled()" />
-                                            <label class="checkbox-label" for="{$ filesystem.name $}" ></label>
-                                        </span>
+                                        <input type="checkbox" class="checkbox" id="{$ filesystem.name $}"
+                                            data-ng-hide="isAllStorageDisabled()"
+                                            data-ng-checked="filesystem.$selected"
+                                            data-ng-click="toggleFilesystemSelect(filesystem)"
+                                            data-ng-disabled="isFilesystemsDisabled()" />
+                                        <label for="{$ filesystem.name $}" ></label>
                                     </div>
                                     <div class="table__data table-col--20">{$ filesystem.name $}</div>
                                     <div class="table__data table-col--15">{$ filesystem.size_human $}</div>
@@ -1108,13 +1105,12 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table-col--3">
-                                    <span data-ng-hide="isAllStorageDisabled()">
-                                        <input class="checkbox" type="checkbox" id="cachesets-check-all"
-                                            data-ng-checked="cachesetsAllSelected"
-                                            data-ng-click="toggleCacheSetAllSelect()"
-                                            data-ng-hide="isCacheSetsDisabled()" />
-                                        <label class="checkbox-label" for="cachesets-check-all"></label>
-                                    </span>
+                                    <input type="checkbox" class="checkbox" id="cachesets-check-all"
+                                        data-ng-hide="isAllStorageDisabled()"
+                                        data-ng-checked="cachesetsAllSelected"
+                                        data-ng-click="toggleCacheSetAllSelect()"
+                                        data-ng-hide="isCacheSetsDisabled()" />
+                                    <label for="cachesets-check-all"></label>
                                 </div>
                                 <div class="table__header table-col--15">Name</div>
                                 <div class="table__header table-col--27">Size</div>
@@ -1126,13 +1122,12 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: cacheset.$selected }">
                                     <div class="table__data table-col--3">
-                                        <span data-ng-hide="isAllStorageDisabled()">
-                                            <input class="checkbox" type="checkbox" id="{$ cacheset.name $}"
-                                                data-ng-checked="cacheset.$selected"
-                                                data-ng-click="toggleCacheSetSelect(cacheset)"
-                                                data-ng-hide="isCacheSetsDisabled()" />
-                                            <label class="checkbox-label" for="{$ cacheset.name $}" ></label>
-                                        </span>
+                                        <input type="checkbox" class="checkbox" id="{$ cacheset.name $}"
+                                            data-ng-hide="isAllStorageDisabled()"
+                                            data-ng-checked="cacheset.$selected"
+                                            data-ng-click="toggleCacheSetSelect(cacheset)"
+                                            data-ng-hide="isCacheSetsDisabled()" />
+                                        <label for="{$ cacheset.name $}" ></label>
                                     </div>
                                     <div class="table__data table-col--15">{$ cacheset.name $}</div>
                                     <div class="table__data table-col--27">{$ cacheset.size_human $}</div>
@@ -1175,13 +1170,12 @@
                         <header class="table__head">
                             <div class="table__row">
                                 <div class="table__header table-col--3">
-                                    <span data-ng-hide="isAllStorageDisabled()">
-                                        <input class="checkbox" type="checkbox" id="available-check-all"
-                                            data-ng-checked="availableAllSelected"
-                                            data-ng-click="toggleAvailableAllSelect()"
-                                            data-ng-disabled="isAvailableDisabled()" />
-                                        <label class="checkbox-label" for="available-check-all"></label>
-                                    </span>
+                                    <input type="checkbox" class="checkbox" id="available-check-all"
+                                        data-ng-hide="isAllStorageDisabled()"
+                                        data-ng-checked="availableAllSelected"
+                                        data-ng-click="toggleAvailableAllSelect()"
+                                        data-ng-disabled="isAvailableDisabled()" />
+                                    <label for="available-check-all"></label>
                                 </div>
                                 <div class="table__header table-col--16">
                                     <a class="table__header-link" data-ng-click="column = 'name'" data-ng-class="{active: column === 'name'}">Name</a>
@@ -1208,13 +1202,12 @@
                                 <div class="table__row"
                                     data-ng-class="{ active: item.$selected }">
                                     <div class="table__data table-col--3">
-                                        <span data-ng-hide="isAllStorageDisabled()">
-                                            <input class="checkbox" type="checkbox" id="{$ item.name $}"
-                                                data-ng-checked="item.$selected"
-                                                data-ng-click="toggleAvailableSelect(item)"
-                                                data-ng-disabled="isAvailableDisabled()" />
-                                            <label class="checkbox-label" for="{$ item.name $}" ></label>
-                                        </span>
+                                        <input type="checkbox" class="checkbox" id="{$ item.name $}"
+                                            data-ng-hide="isAllStorageDisabled()"
+                                            data-ng-checked="item.$selected"
+                                            data-ng-click="toggleAvailableSelect(item)"
+                                            data-ng-disabled="isAvailableDisabled()" />
+                                        <label for="{$ item.name $}" ></label>
                                     </div>
                                     <div class="table__data table-col--16" data-ng-show="column === 'name'">
                                         <input type="text" class="table__input"
@@ -1505,8 +1498,8 @@
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'bcache'">
                                 <div class="table__data table-col--3">
-                                    <input class="checkbox" type="checkbox" id="bcache-create" disabled="disabled" checked />
-                                    <label class="checkbox-label" for="bcache-create"></label>
+                                    <input type="checkbox" class="checkbox" id="bcache-create" disabled="disabled" checked />
+                                    <label for="bcache-create"></label>
                                 </div>
                                 <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
@@ -1588,8 +1581,8 @@
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'raid'">
                                 <div class="table__data table-col--3">
-                                    <input class="checkbox" type="checkbox" id="raid-create" disabled="disabled" checked />
-                                    <label class="checkbox-label" for="raid-create"></label>
+                                    <input type="checkbox" class="checkbox" id="raid-create" disabled="disabled" checked />
+                                    <label for="raid-create"></label>
                                 </div>
                                 <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
@@ -1681,8 +1674,8 @@
                             </div>
                             <div class="table__row active" data-ng-show="availableMode === 'volume-group'">
                                 <div class="table__data table-col--3">
-                                    <input class="checkbox" type="checkbox" id="vg-create" disabled="disabled" checked />
-                                    <label class="checkbox-label" for="vg-create"></label>
+                                    <input type="checkbox" class="checkbox" id="vg-create" disabled="disabled" checked />
+                                    <label for="vg-create"></label>
                                 </div>
                                 <div class="table__data table-col--15">
                                     <input type="text" class="table__input"
@@ -1799,8 +1792,8 @@
 
                 <div class="table__row active">
                     <div class="table__data table-col--3">
-                        <input class="checkbox" type="checkbox" id="check-all" />
-                        <label class="checkbox-label" for="check-all"></label>
+                        <input type="checkbox" class="checkbox" id="check-all" />
+                        <label for="check-all"></label>
                     </div>
                     <div class="table__data table-col--15">
                         <input type="text" value="VG0" class="table__input"><span class="table__label active">

@@ -155,6 +155,7 @@ a.link-cta-ubuntu {
     clear: both;
     position: relative;
     overflow: hidden;
+    min-width: 150px;
 
     /**
      * cta link style and dropdown toggle
@@ -187,7 +188,7 @@ a.link-cta-ubuntu {
         }
 
         &:hover {
-            background-color: $ubuntu-orange;
+            background-color: darken($ubuntu-orange, 6.2%);
 
             &:after {
                 background-color: darken($ubuntu-orange, 6.2%);
@@ -264,7 +265,7 @@ a.link-cta-ubuntu {
             }
 
             &:hover {
-                background-color: #FFF;
+                background-color: #F2F2F2;
 
                 &:after {
                     background-color: #F2F2F2;

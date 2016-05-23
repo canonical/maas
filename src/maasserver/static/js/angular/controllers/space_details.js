@@ -18,7 +18,7 @@ angular.module('MAAS').controller('SpaceDetailsController', [
 
         // Note: this value must match the top-level tab, in order for
         // highlighting to occur properly.
-        $rootScope.page = "spaces";
+        $rootScope.page = "networks";
 
         // Initial values.
         $scope.space = null;

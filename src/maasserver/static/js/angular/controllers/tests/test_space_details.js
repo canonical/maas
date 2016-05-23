@@ -98,7 +98,7 @@ describe("SpaceDetailsController", function() {
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
         expect($rootScope.title).toBe("Loading...");
-        expect($rootScope.page).toBe("spaces");
+        expect($rootScope.page).toBe("networks");
     });
 
     it("calls loadManagers with correct managers" +

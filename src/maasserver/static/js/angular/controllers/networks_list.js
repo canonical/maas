@@ -39,8 +39,8 @@ angular.module('MAAS').controller('NetworksListController', [
             {
                 items: [
                     {
-                        title: "Name",
-                        placeholder: "Fabric name (optional)"
+                        title: "Add fabric",
+                        placeholder: "Name (optional)"
                     }
                 ],
                 submit: "Add fabric",
@@ -55,17 +55,17 @@ angular.module('MAAS').controller('NetworksListController', [
             {
                 items: [
                     {
-                        title: "Fabric",
+                        title: "Add VLAN",
+                        placeholder: "Name (optional)"
+                    },
+                    {
+                        title: "with VID",
+                        placeholder: "numeric value 1-4094"
+                    },
+                    {
+                        title: "to fabric",
                         placeholder: "Select fabric",
                         manager: FabricsManager
-                    },
-                    {
-                        title: "VID",
-                        placeholder: "VID (1-4094)"
-                    },
-                    {
-                        title: "Name",
-                        placeholder: "VLAN name (optional)"
                     }
                 ],
                 submit: "Add VLAN",
@@ -80,8 +80,8 @@ angular.module('MAAS').controller('NetworksListController', [
             {
                 items: [
                     {
-                        title: "Name",
-                        placeholder: "Space name (optional)"
+                        title: "Add space",
+                        placeholder: "Name (optional)"
                     }
                 ],
                 submit: "Add space",
@@ -96,32 +96,32 @@ angular.module('MAAS').controller('NetworksListController', [
             {
                 items: [
                     {
+                        title: "Name",
+                        placeholder: "Name (optional)"
+                    },
+                    {
+                        title: "DNS server",
+                        placeholder: "Use IPv4 or IPv6 format (optional)"
+                    },
+                    {
+                        title: "CIDR",
+                        placeholder: "Use IPv4 or IPv6 format"
+                    },
+                    {
                         title: "VLAN",
-                        placeholder: "Select VLAN",
+                        placeholder: "Fabric, VLAN",
                         manager: VLANsManager,
                         groupReference: "fabric",
                         group: FabricsManager
                     },
                     {
+                        title: "Gateway IP",
+                        placeholder: "Use IPv4 or IPv6 format (optional)"
+                    },
+                    {
                         title: "Space",
                         defaultItem: 0,
                         manager: SpacesManager
-                    },
-                    {
-                        title: "CIDR",
-                        placeholder: "169.254.0.0/16"
-                    },
-                    {
-                        title: "Name",
-                        placeholder: "Subnet name (optional)"
-                    },
-                    {
-                        title: "Gateway IP",
-                        placeholder: "169.254.0.1 (optional)"
-                    },
-                    {
-                        title: "DNS Servers",
-                        placeholder: "8.8.8.8 8.8.4.4 (optional)"
                     }
                 ],
                 submit: "Add subnet",

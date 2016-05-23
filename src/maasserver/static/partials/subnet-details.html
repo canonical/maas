@@ -20,7 +20,7 @@
                     IP addresses assigned within its range?
                 </p>
                 <div class="right">
-                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
                     <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Go</button>
                 </div>
             </div>
@@ -29,7 +29,7 @@
                     {$ error $}
                 </p>
                 <div class="right">
-                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
                     <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
@@ -183,7 +183,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="table__row" data-ng-if="subnetIPRanges.length === 0 && !newRange">
+                        <div class="table__row" data-ng-if="subnetIPRanges.length === 0 || !newRange">
                             <div class="table__data table-col-100">No IP ranges have been reserved for this subnet.</div>
                         </div>
                         <div class="table__row active" data-ng-if="newRange">
@@ -229,8 +229,8 @@
                     </main>
                 </div>
                 <div data-ng-if="!newRange">
-                    <button class="cta-ubuntu" data-ng-click="addRange('reserved')">Reserve range</button>
-                    <button class="cta-ubuntu" data-ng-if="isSuperUser()" data-ng-click="addRange('dynamic')">Reserve dynamic range</button>
+                    <a class="link-cta-ubuntu secondary margin-right" data-ng-click="addRange('reserved')">Reserve range</a>
+                    <a class="link-cta-ubuntu secondary" data-ng-if="isSuperUser()" data-ng-click="addRange('dynamic')">Reserve dynamic range</a>
                 </div>
             </div>
             <div class="tweleve-col">

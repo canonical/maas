@@ -17,19 +17,6 @@
   }
 
   .listing-filter__select {
-    @include box-sizing();
-    @include rounded-corners(4px);
-    background:#FFF;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-    display: inline-block;
-    border: none;
-    padding: 12px 20px;
-    font-size: 1.25em;
-    margin-left: 0;
-    background-image: url('../img/icons/accordion-open.svg');
-    background-repeat: no-repeat;
-    background-position: top 20px right 15px;
-    max-height: none;
-    min-width: 100px;
+    min-width: 150px;
   }
 }

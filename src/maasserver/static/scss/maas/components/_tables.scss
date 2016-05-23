@@ -10,6 +10,10 @@
 $alto-grey:             #d2d2d2 !default;
 $text-color:            #333;
 $pale-grey:             #bcbcbc;
+$error:                 #d83832;
+$information:           #2ab7ec;
+$outline:               #d2d2d2;
+$success:               #38b44a;
 
 // scss-lint:disable SelectorFormat
 @mixin tables($table-border-color, $table-header-color, $table-font-size, $table-header-size) {
@@ -607,7 +611,7 @@ $pale-grey:             #bcbcbc;
   );
 
   @each $state, $color in $states {
-    &.table--#{$state} {
+    .table--#{$state} {
       border-color: $color;
 
       .table__header,

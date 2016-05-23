@@ -572,6 +572,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 // Called by controller to clear all errors.
                 scope.clearErrors = function() {
                     inputElement.removeClass("invalid");
+                    inputElement.removeClass("ng-dirty");
                     errorsElement.empty();
                 };
 
@@ -579,6 +580,7 @@ angular.module('MAAS').directive('maasObjField', ['$compile',
                 scope.setErrors = function(errors) {
                     if(errors.length > 0) {
                         inputElement.addClass("invalid");
+                        inputElement.addClass("ng-dirty");
                         angular.forEach(errors, function(error) {
                             errorsElement.append("<li>" + error + "</li>");
                         });

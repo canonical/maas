@@ -28,7 +28,7 @@
                 <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedItems.length">
                     <div class="right" data-maas-cta="addHardwareOptions"
                         data-ng-model="addHardwareOption"
-                        data-ng-change="addHardwareOptionChanged()" data-default-title="Add Hardware">
+                        data-ng-change="addHardwareOptionChanged()" data-default-title="Add hardware">
                     </div>
                 </div>
                 <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedItems.length">
@@ -81,7 +81,7 @@
                             </span>
                         </span>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel('nodes')">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel('nodes')">Cancel</a>
                             <button class="cta-ubuntu" data-ng-click="actionGo('nodes')" data-ng-hide="hasActionsFailed('nodes')">Go</button>
                             <button class="cta-ubuntu" data-ng-click="actionGo('nodes')" data-ng-show="hasActionsFailed('nodes')">Retry</button>
                         </div>
@@ -125,8 +125,8 @@
                 </div>
             </div>
             <div class="page-header__dropdown border ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
-                <h3 class="padding-top--ten" data-ng-if="showMachine()">Add machine</h3>
-                <h3 class="padding-top--ten" data-ng-if="showChassis()">Add chassis</h3>
+                <h3 class="u-padding--top" data-ng-if="showMachine()">Add machine</h3>
+                <h3 class="u-padding--top" data-ng-if="showChassis()">Add chassis</h3>
                 <div class="page-header__feedback" data-ng-hide="architectures.length">
                     <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
                     <p class="page-header__feedback-message info">
@@ -190,15 +190,19 @@
                     </fieldset>
                 </form>
                 <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
-                    <fieldset class="six-col"
+                    <fieldset class="six-col u-margin--bottom-none"
                         data-maas-power-parameters="chassisPowerTypes"
                         data-ng-model="chassis.power">
                     </fieldset>
-                    <label for="domain" class="two-col">Domain</label>
-                    <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
-                        data-ng-model="chassis.domain"
-                        data-ng-options="domain as domain.name for domain in domains">
-                    </select>
+                    <fieldset class="six-col last-col u-margin--bottom-none">
+                        <div class="inline">
+                            <label for="domain" class="two-col">Domain</label>
+                            <select name="domain" id="domain" class="three-col" placeholder="Choose a domain"
+                                data-ng-model="chassis.domain"
+                                data-ng-options="domain as domain.name for domain in domains">
+                            </select>
+                        </div>
+                    </fieldset>
                 </form>
                 <div class="page-header__feedback twelve-col no-margin-bottom" data-ng-show="showMachine()">
                     <form class="form-inline">
@@ -206,7 +210,7 @@
                             <p class="page-header__feedback-message info">{$ error $}</p>
                         </span>
                         <div class="right align-right">
-                            <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
                             <button class="cta-ubuntu secondary margin-right--ten"
                                 data-ng-class="{ disabled: machineHasError() }"
                                 data-ng-click="saveMachine(true)">Save and add another</button>
@@ -222,7 +226,7 @@
                             <p class="page-header__feedback-message info">{$ error $}</p>
                         </span>
                         <div class="right align-right">
-                            <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
                             <button class="cta-ubuntu secondary margin-right--ten"
                                 data-ng-class="{ disabled: chassisHasErrors() }"
                                 data-ng-click="saveChassis(true)">Save and add another</button>
@@ -272,7 +276,7 @@
                             </select>
                         </span>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel('devices')">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel('devices')">Cancel</a>
                             <button class="cta-ubuntu" data-ng-click="actionGo('devices')">Go</button>
                         </div>
                     </form>
@@ -305,7 +309,7 @@
                 </div>
             </div>
             <div class="page-header__dropdown border ng-hide" data-ng-show="addDeviceScope.viewable" data-ng-controller="AddDeviceController">
-                <h3>Add device</h3>
+                <h3 class="u-padding--top">Add device</h3>
                 <form class="twelve-col">
                     <fieldset class="twelve-col last-col no-padding">
                         <div class="inline">
@@ -382,7 +386,7 @@
                         <p class="page-header__feedback-message info">{$ error $}</p>
                     </div>
                     <div class="right align-right">
-                        <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                        <a href="" class="link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
                         <button class="cta-ubuntu secondary"
                             data-ng-class="{ disabled: deviceHasError() }"
                             data-ng-click="save(true)">Save and add another</button>
@@ -420,7 +424,7 @@
                             </select>
                         </span>
                         <div class="right">
-                            <a href="" class="margin-right" data-ng-click="actionCancel('controllers')">Cancel</a>
+                            <a href="" class="link-cta-ubuntu text-button" data-ng-click="actionCancel('controllers')">Cancel</a>
                             <button class="cta-ubuntu" data-ng-click="actionGo('controllers')">Go</button>
                         </div>
                     </form>
@@ -657,7 +661,7 @@
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
                     <tr
                         data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
-                        data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }">
+                        data-ng-class="{ 'table--error': !supportsAction(node, 'nodes'), selected: node.$selected }">
                         <td class="table-col--3">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" data-ng-disabled="hasActionsInProgress('nodes')" />
@@ -733,7 +737,7 @@
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                    data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
+                    data-ng-class="{ 'table--error': !supportsAction(device, 'devices'), selected: device.$selected }">
                     <td class="table-col--3">
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}" data-ng-disabled="hasActionsInProgress('devices')"/>
                         <label for="{$ device.fqdn $}" class="checkbox-label"></label>
@@ -795,7 +799,7 @@
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
                     data-ng-repeat="controller in tabs.controllers.filtered_items = (controllers | nodesFilter:tabs.controllers.search | orderBy:tabs.controllers.predicate:tabs.controllers.reverse) track by controller.system_id"
-                    data-ng-class="{ error: !supportsAction(controller, 'controllers'), selected: controller.$selected }">
+                    data-ng-class="{ 'table--error': !supportsAction(controller, 'controllers'), selected: controller.$selected }">
                     <td class="table-col--1 table-listing__cell">
                         <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(controller, 'controllers')" data-ng-model="controller.$selected" id="{$ controller.fqdn $}" data-ng-disabled="hasActionsInProgress('controllers')"/>
                         <label for="{$ controller.fqdn $}" class="checkbox-label"></label>

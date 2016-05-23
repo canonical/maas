@@ -11,10 +11,11 @@ dl {
 
   dt {
       clear: left;
+      color: #888;
   }
 
   dd {
-      color: #888;
+      color: $cool-grey;
       margin-left: 0;
   }
 

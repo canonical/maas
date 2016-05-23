@@ -14,7 +14,7 @@
                 <div class="right">
                     <button class="cta-ubuntu"
                         data-ng-click="addDomain()"
-                        data-ng-hide="addDomainScope.viewable">Add Domain</button>
+                        data-ng-hide="addDomainScope.viewable">Add domain</button>
                     <button class="cta-ubuntu secondary ng-hide"
                         data-ng-click="cancelAddDomain()"
                         data-ng-show="addDomainScope.viewable">Cancel add domain</button>
@@ -22,27 +22,20 @@
             </div>
         </div>
         <div class="page-header__dropdown border ng-hide" data-ng-show="addDomainScope.viewable" data-ng-controller="AddDomainController">
-            <h3 class="padding-top--ten">Add domain</h3>
-            <form class="twelve-col">
-                <fieldset class="twelve-col last-col">
-                    <div class="inline">
-                        <label for="domain-name" class="two-col">Name</label>
-                        <input type="text" id="domain-name" class="three-col" placeholder="Name your domain"
-                            data-ng-model="domain.name"
-                            data-ng-class="{ invalid: nameHasError() }">
-                    </div>
-                    <div class="inline">
-                        <label for="domain-authoritative" class="two-col">Authoritative</label>
-                        <input type="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
-                    </div>
-                </fieldset>
-            </form>
-            <div class="page-header__feedback twelve-col no-margin-bottom">
-                <div class="twelve-col ng-hide" data-ng-show="error">
-                    <p class="page-header__feedback-message info">{$ error $}</p>
+            <form class="form form--inline u-padding--top u-padding--bottom">
+                <div class="form__group">
+                    <label for="domain-name" class="u-margin--right">Add domain</label>
+                    <input type="text" id="domain-name" class="u-margin--right" placeholder="Domain name"
+                        data-ng-model="domain.name"
+                        data-ng-class="{ invalid: nameHasError() }">
                 </div>
+                <div class="form__group">
+                    <input type="checkbox" class="checkbox" id="domain-authoritative" data-ng-model="domain.authoritative">
+                    <label for="domain-authoritative">Authoritative</label>
+                </div>
+                <p class="u-display--inline-block u-margin--left-large u-margin--bottom-none ng-hide" data-ng-show="error"><i class="icon error u-margin--right-tiny"></i>{$ error $}</p>
                 <div class="right align-right">
-                    <a href="" class="margin-right alt" data-ng-click="cancel()">Cancel</a>
+                    <a href="" class="margin-right link-cta-ubuntu text-button" data-ng-click="cancel()">Cancel</a>
                     <button class="cta-ubuntu secondary"
                         data-ng-class="{ disabled: domainHasError() }"
                         data-ng-click="save(true)">Save and add another</button>
@@ -50,7 +43,7 @@
                         data-ng-class="{ disabled: domainHasError() }"
                         data-ng-click="save(false)">Save domain</button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </header>
@@ -61,19 +54,19 @@
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table-col--55" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</div>
-                            <div class="table__header table-col--15" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{sort: predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</div>
-                            <div class="table__header table-col--15" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{sort: predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</div>
-                            <div class="table__header table-col--15" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{sort: predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</div>
+                            <div class="table__header table-col--25" data-ng-click="predicate='name'; reverse = !reverse" data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Domain</div>
+                            <div class="table__header table-col--25" data-ng-click="predicate='hosts'; reverse = !reverse" data-ng-class="{sort: predicate === 'hosts', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Hosts</div>
+                            <div class="table__header table-col--25" data-ng-click="predicate='resource_count'; reverse = !reverse" data-ng-class="{sort: predicate === 'resource_count', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Total Records</div>
+                            <div class="table__header table-col--25" data-ng-click="predicate='authoritative'; reverse = !reverse" data-ng-class="{sort: predicate === 'authoritative', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Authoritative</div>
                         </div>
                     </header>
                     <main class="table-body">
                         <div class="table__row table__row--no-hover"
                              data-ng-repeat="row in domains | orderBy:predicate:reverse track by row.id">
-                            <div class="table__data table-col--55"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></div>
-                            <div class="table__data table-col--15">{$ row.hosts $}</div>
-                            <div class="table__data table-col--15">{$ row.resource_count $}</div>
-                            <div class="table__data table-col--15">{$ row.authoritative ? "Yes" : "No" $}</div>
+                            <div class="table__data table-col--25"><a href="#/domain/{$ row.id $}">{$ row.displayname $}</a></div>
+                            <div class="table__data table-col--25">{$ row.hosts $}</div>
+                            <div class="table__data table-col--25">{$ row.resource_count $}</div>
+                            <div class="table__data table-col--25">{$ row.authoritative ? "Yes" : "No" $}</div>
                         </div>
                     </main>
                 </div>

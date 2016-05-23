@@ -24,9 +24,43 @@
         <!-- Forms -->
         <div data-ng-repeat="option in actionOptions">
             <div class="clearfix margin-bottom" data-ng-if="actionOption.name === option.name">
-                <div class="page-header__dropdown border">
-                    <h3 class="padding-top--ten">{$ actionOption.selectedTitle $}</h3>
-                    <form class="twelve-col padding-top--ten margin-bottom">
+                <div class="page-header__dropdown" data-ng-if="actionOption !== 'add_subnet'" data-ng-hide="actionOption.name === 'add_subnet'">
+                    <form class="form form--inline border-top u-padding--top">
+                        <div class="form__group"
+                             data-maas-model-field="item"
+                             data-maas-label-class="u-margin--right u-margin--bottom-none"
+                             data-maas-select-class="u-margin--right u-display--inline-block"
+                             data-maas-input-text-class="u-margin--right u-display--inline-block"
+                             data-ng-repeat="item in option.form.items">
+                        </div>
+                        <span data-ng-if="!option.error">
+                            <div class="right">
+                                <button class="cta-ubuntu text-button"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="cancelAction(option)">Cancel</button>
+                                <button class="cta-ubuntu"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="submitAction(option)">
+                                    {$ option.form.submit ? option.form.submit : "Go" $}
+                                </button>
+                            </div>
+                        </span>
+                        <span data-ng-if="option.error">
+                            <p class="u-display--inline-block u-margin--none"><i class="icon error u-margin--right-tiny"></i>{$ option.error $}</p>
+                            <div class="right align-right">
+                                <button class="cta-ubuntu text-button"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="cancelAction(option)">Cancel</button>
+                                <button class="cta-ubuntu"
+                                        data-ng-disabled="requesting"
+                                        data-ng-click="submitAction(option)">Retry</button>
+                            </div>
+                        </span>
+                    </form>
+                </div>
+                <div class="page-header__dropdown border" data-ng-if="actionOption.name === 'add_subnet'">
+                    <h3 class="u-padding--top">{$ actionOption.selectedTitle $}</h3>
+                    <form class="twelve-col u-margin--bottom-small">
                         <div class="inline six-col {$ $odd ? 'last-col' : '' $}"
                              data-maas-model-field="item"
                              data-maas-label-class="two-col"
@@ -48,9 +82,7 @@
                             </div>
                         </div>
                         <div data-ng-if="option.error">
-                            <div class="twelve-col">
-                                <p class="page-header__feedback-message info">{$ option.error $}</p>
-                            </div>
+                            <p class="u-display--inline-block u-margin--none"><i class="icon error u-margin--right-tiny"></i>{$ option.error $}</p>
                             <div class="right align-right">
                                 <button class="cta-ubuntu text-button"
                                         data-ng-disabled="requesting"
@@ -89,10 +121,10 @@
         <div class="tweleve-col">
             <form class="form form--inline four-col">
                 <div class="form__group listing-filter">
-                    <label class="listing-filter__label margin-right--ten" for="network-filter">Group by</label>
+                    <label class="u-margin--right-small" for="network-filter">Group by</label>
                     <select name="network-filter" class="listing-filter__select" id="networks-groupby" data-ng-model="groupBy" data-ng-change="updateGroupBy()">
-                        <option value="fabric" selected="selected">Fabric</option>
-                        <option value="space">Space</option>
+                        <option value="fabric" selected="selected">Fabrics</option>
+                        <option value="space">Spaces</option>
                     </select>
                 </div>
             </form>

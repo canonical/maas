@@ -96,7 +96,7 @@ form {
     }
 
     label span {
-        color: #333;
+        color: #888;
     }
 
     fieldset {
@@ -212,42 +212,108 @@ select {
     }
 }
 
-.checkbox {
-    visibility: hidden;
-    width: 0;
-    height: 0;
-    margin-right: 0;
-    position: absolute;
+  /// Base for label styling
+  .checkbox {
 
-    & + .checkbox-label {
-        @include user-select();
-        padding-left: 20px;
-        position: relative;
+    &:not(:checked),
+    &:checked {
+      position: absolute;
+      left: -9999px;
+    }
+
+    + label {
+      position: relative;
+      padding-left: 25px;
+      cursor: pointer;
+      max-width: 100%;
+      display: inline;
+      vertical-align: middle;
+      width: auto;
+
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 3px;
+        width: 11px;
+        height: 11px;
+        border: 1px solid $mid-grey;
+        background: $white;
+        border-radius: 2px;
+      }
+    }
+
+    &:checked {
+
+      + label:before {
+        background-color: $ubuntu-orange;
+        border-color: $ubuntu-orange;
+      }
+
+      + label:after {
+        content: '✔';
+        position: absolute;
+        top: 3px;
+        left: 2px;
+        font-size: 10px;
+        color: $white;
+        transition: all .2s;
+      }
+    }
+
+    &[disabled] {
+      cursor: not-allowed;
+
+      + label {
+        cursor: not-allowed;
 
         &:before {
-            content: "";
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: url('../img/checkbox.svg') no-repeat;
-            background-size: 13px 13px;
-            background-position: 0px 3px;
+          opacity: .5;
         }
+      }
+    }
+  }
+
+  .radio {
+
+    &:not(:checked),
+    &:checked {
+      position: absolute;
+      left: -9999px;
     }
 
-    &:checked + .checkbox-label:before {
-        background: url('../img/checkbox-checked.svg') no-repeat;
-        background-position: 0px 3px;
+    + label {
+      position: relative;
+      padding-left: 25px;
+      cursor: pointer;
+
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 1px;
+        width: 13px;
+        height: 13px;
+        border: 1px solid $mid-grey;
+        background: $white;
+        border-radius: 50%;
+      }
     }
 
-    &[disabled="disabled"] + .checkbox-label:before {
-        cursor: default;
-        opacity: 0.5;
+    &:checked {
+
+      + label:after {
+        content: '';
+        position: absolute;
+        left: 3px;
+        top: 4px;
+        width: 9px;
+        height: 9px;
+        background: $ubuntu-orange;
+        border-radius: 50%;
+      }
     }
-}
+  }
 
 /* 3. FEEDBACK STYLES ------------------------------------------------
 --------------------------------------------------------------------*/
@@ -255,6 +321,10 @@ select {
 .field-error,
 .errors {
     color: #DF382C;
+
+    li {
+      margin: 7px 0;
+    }
 
     .errorlist {
         margin: 0;
@@ -290,6 +360,7 @@ select {
     label {
         display: inline-block;
         line-height: 37px;
+        color: #888;
 
         /**
          * Required to fix the inline block invisible margin
@@ -471,6 +542,7 @@ select {
         margin-bottom: 0;
         line-height: 36px;
         vertical-align: top;
+        color: #888;
       }
 
       input,
@@ -481,7 +553,7 @@ select {
         clear: none;
         margin: 0;
         float: none;
-        font-size: 16px
+        font-size: 16px;
       }
     }
 
@@ -505,10 +577,6 @@ select {
           outline: none;
           background-color: $white;
         }
-
-        &.invalid {
-            border-color: #d90000 !important;
-        }
       }
     }
   }
@@ -523,9 +591,7 @@ select {
       label {
         display: inline-block;
         max-width: 100%;
-        margin-bottom: 5px;
-        line-height: 36px;
-        vertical-align: top;
+        margin-bottom: 0px;
       }
 
       input,

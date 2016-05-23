@@ -20,7 +20,7 @@ angular.module('MAAS').controller('FabricDetailsController', [
 
         // Note: this value must match the top-level tab, in order for
         // highlighting to occur properly.
-        $rootScope.page = "fabrics";
+        $rootScope.page = "networks";
 
         // Initial values.
         $scope.fabric = null;

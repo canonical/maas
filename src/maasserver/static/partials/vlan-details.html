@@ -23,8 +23,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="page-header__dropdown ng-hide" data-ng-show="vlanDetails.actionOption">
+                <div class="page-header__dropdown border ng-hide" data-ng-show="vlanDetails.actionOption">
                     <div class="ng-hide" data-ng-hide="vlanDetails.isActionError()">
+                        <h3 class="u-padding--top" data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp'">Provide DHCP</h3>
                         <form>
                             <!-- This is just for visual reasons, since we need an additional border to begin the form if there is no error. -->
                             <div class="twelve-col"
@@ -115,26 +116,26 @@
                                 </fieldset>
                             </div>
                             <div class="form-inline border-top">
-                                <div class="left page-header__feedback" style="width: auto;"
+                                <div class="left page-header__feedback no-border--top" style="width: auto;"
                                      data-ng-show="vlanDetails.actionOption.name === 'disable_dhcp'">
                                     <p class="page-header__feedback-message warning">
                                         Are you sure you want to disable DHCP on this VLAN? All subnets on this VLAN will be affected.
                                     </p>
                                 </div>
-                                <div class="left page-header__feedback" style="width: auto;"
+                                <div class="left page-header__feedback no-border--top" style="width: auto;"
                                          data-ng-show="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">
                                     <p class="page-header__feedback-message info">
                                         No subnets are available on this VLAN. DHCP cannot be enabled.
                                     </p>
                                 </div>
-                                <div class="left page-header__feedback" style="width: auto;"
+                                <div class="left page-header__feedback no-border--top" style="width: auto;"
                                      data-ng-show="vlanDetails.actionOption.name === 'delete'">
                                     <p class="page-header__feedback-message warning">
                                         Are you sure you want to delete this VLAN?
                                     </p>
                                 </div>
                                 <div class="right padding-bottom padding-top">
-                                    <a href="" class="margin-right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
+                                    <a href="" class="link-cta-ubuntu text-button" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
                                     <button class="cta-ubuntu" data-ng-click="vlanDetails.actionGo()" data-ng-disabled="vlanDetails.actionOption.name === 'enable_dhcp' && vlanDetails.relatedSubnets.length === 0">{$ vlanDetails.actionOption.title $}</button>
                                 </div>
                             </div>
@@ -145,7 +146,7 @@
                         <p class="page-header__feedback-message info" style="">{$ vlanDetails.actionError $}</p>
                         <div class="form-inline">
                             <div class="right">
-                                <a href="" class="margin-right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
+                                <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="vlanDetails.actionCancel()">Cancel</a>
                                 <button class="cta-ubuntu" data-ng-click="vlanDetails.actionRetry()">Retry</button>
                             </div>
                         </div>
@@ -158,7 +159,7 @@
     <section class="row">
         <div class="inner-wrapper">
             <h2>VLAN Summary</h2>
-            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!isSuperUser()">
+            <maas-obj-form obj="vlanDetails.vlan" manager="vlanDetails.vlanManager" data-ng-disabled="!vlanDetails.isSuperUser()">
                 <fieldset class="six-col form">
                     <maas-obj-field type="text" key="vid" label="VID" placeholder="VLAN VID"
                         label-width="two" input-width="three" blur-on-enter="true"></maas-obj-field>

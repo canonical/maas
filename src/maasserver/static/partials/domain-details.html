@@ -17,16 +17,16 @@
             <div class="right no-margin-bottom last-col">
                 <button class="cta-ubuntu"
                     data-ng-click="deleteButton()"
-                    data-ng-hide="confirmingDelete">Delete Domain</button>
+                    data-ng-hide="confirmingDelete">Delete domain</button>
             </div>
         </div>
         <div class="page-header__dropdown ng-hide" data-ng-show="confirmingDelete">
             <div class="page-header__feedback ng-hide" data-ng-hide="canBeDeleted()">
-                <p class="page-header__feedback-message error">
+                  <p class="page-header__feedback-message error">
                     Domain cannot be deleted because it has resource records.  Remove all resource records from the domain to allow deletion.
                 </p>
                 <div class="right">
-                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <a href="" class="link-cta-ubuntu text-button" data-ng-click="cancelDeleteButton()">Cancel</a>
                 </div>
             </div>
             <div class="page-header__feedback ng-hide" data-ng-show="canBeDeleted() && !error">
@@ -34,7 +34,7 @@
                     Are you sure you want to delete this domain?
                 </p>
                 <div class="right">
-                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
                     <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Go</button>
                 </div>
             </div>
@@ -43,7 +43,7 @@
                     {$ error $}
                 </p>
                 <div class="right">
-                    <a href="" class="margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
+                    <a href="" class="link-cta-ubuntu text-button margin-right" data-ng-click="cancelDeleteButton()">Cancel</a>
                     <button class="cta-ubuntu" data-ng-click="deleteConfirmButton()">Retry</button>
                 </div>
             </div>
@@ -57,17 +57,17 @@
                 <div class="table">
                     <header class="table__head">
                         <div class="table__row">
-                            <div class="table__header table-col--20" data-ng-click="predicate='name'; reverse = !reverse"
+                            <div class="table__header table-col--25" data-ng-click="predicate='name'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'name', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Name</div>
-                            <div class="table__header table-col--5" data-ng-click="predicate='rrtype'; reverse = !reverse"
+                            <div class="table__header table-col--25" data-ng-click="predicate='rrtype'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'rrtype', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Type</div>
-                            <div class="table__header table-col--75" data-ng-click="predicate='rrdata'; reverse = !reverse"
+                            <div class="table__header table-col--50" data-ng-click="predicate='rrdata'; reverse = !reverse"
                                  data-ng-class="{sort: predicate === 'rrdata', 'sort-asc': reverse === false, 'sort-desc': reverse === true}">Data</div>
                         </div>
                     </header>
                     <main class="table-body">
                         <div class="table__row table__row--no-hover" data-ng-repeat="row in domain.rrsets | orderBy:predicate:reverse track by $index">
-                          <div class="table__data table-col--20">
+                          <div class="table__data table-col--25">
                             <span data-ng-if="row.system_id == null">{$ row.name $}</span>
                             <span data-ng-if="row.system_id !== null">
                                 <div data-ng-switch="row.node_type">
@@ -80,8 +80,8 @@
                                 </div>
                             </span>
                           </div>
-                          <div class="table__data table-col--5">{$ row.rrtype $}</div>
-                          <div class="table__data table-col--75">{$ row.rrdata $}</div>
+                          <div class="table__data table-col--25">{$ row.rrtype $}</div>
+                          <div class="table__data table-col--50">{$ row.rrdata $}</div>
                         </div>
                     </main>
                 </div>

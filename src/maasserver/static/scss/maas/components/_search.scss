@@ -25,24 +25,24 @@
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
         width: 100%;
         border: none;
-        padding: 13px 20px !important;
-        font-size: 1.25em;
+        padding: 10px !important;
+        font-size: 1em;
         max-height: none;
 
         &::-webkit-input-placeholder {
-           color: #000 !important;
+           color: #888 !important;
         }
 
         &:-moz-placeholder { /* Firefox 18- */
-           color: #000 !important;
+           color: #888 !important;
         }
 
         &::-moz-placeholder {  /* Firefox 19+ */
-           color: #000 !important;
+           color: #888 !important;
         }
 
         &:-ms-input-placeholder {
-           color: #000 !important;
+           color: #888 !important;
         }
 
         &[disabled="disabled"] {
@@ -59,8 +59,8 @@
 
     .search__submit {
         position: absolute;
-        top: 15px;
-        right: 25px;
+        top: 10px;
+        right: 15px;
         background-color: transparent;
         background-image: url('../img/search-icon.svg');
         background-repeat: no-repeat;

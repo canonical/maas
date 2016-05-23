@@ -314,6 +314,10 @@
     margin-bottom: 0;
 }
 
+.no-border--top {
+  border-top: 0 !important;
+}
+
 .width {
 
   &--auto {
@@ -331,6 +335,14 @@
 
 .box-sizing {
   box-sizing: border-box;
+}
+
+.u-display--inline {
+  display: inline;
+}
+
+.u-display--inline-block {
+  display: inline-block;
 }
 
 .tooltip {
