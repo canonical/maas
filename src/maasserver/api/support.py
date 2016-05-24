@@ -16,6 +16,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from maasserver.api.doc import get_api_description_hash
 from maasserver.exceptions import MAASAPIBadRequest
+from piston3.authentication import NoAuthentication
 from piston3.emitters import Emitter
 from piston3.handler import (
     AnonymousBaseHandler,
@@ -67,9 +68,34 @@ class OperationsResource(Resource):
         else:
             raise
 
+    @property
+    def is_authentication_attempted(self):
+        """Will use of this resource attempt to authenticate the client?
+
+        For example, `None`, ``[]``, and :class:`NoAuthentication` are all
+        examples of authentication handlers that do *not* count.
+        """
+        return len(self.authentication) != 0 and not any(
+            isinstance(auth, NoAuthentication) for auth in self.authentication)
+
 
 class RestrictedResource(OperationsResource):
     """A resource that's restricted to active users."""
+
+    def __init__(self, handler, *, authentication):
+        """A value for `authentication` MUST be provided AND be meaningful.
+
+        This prevents the situation where none of the following are restricted
+        at all::
+
+          handler = RestrictedResource(HandlerClass)
+          handler = RestrictedResource(HandlerClass, authentication=None)
+          handler = RestrictedResource(HandlerClass, authentication=[])
+
+        """
+        super(RestrictedResource, self).__init__(handler, authentication)
+        if not self.is_authentication_attempted:
+            raise AssertionError("Authentication must be attempted.")
 
     def authenticate(self, request, rm):
         actor, anonymous = super(

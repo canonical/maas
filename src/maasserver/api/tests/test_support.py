@@ -19,7 +19,10 @@ from django.core.urlresolvers import reverse
 from maasserver.api.doc import get_api_description_hash
 from maasserver.api.support import (
     admin_method,
+    AdminRestrictedResource,
     OperationsHandlerMixin,
+    OperationsResource,
+    RestrictedResource,
 )
 from maasserver.models.config import (
     Config,
@@ -28,7 +31,17 @@ from maasserver.models.config import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import Equals
+from piston3.authentication import NoAuthentication
+from testtools.matchers import (
+    Equals,
+    Is,
+)
+
+
+class StubHandler:
+    """A stub handler class that breaks when called."""
+    def __call__(self, request):
+        raise AssertionError("Do not call the stub handler.")
 
 
 class TestOperationsResource(APITestCase):
@@ -66,6 +79,59 @@ class TestOperationsResource(APITestCase):
         self.assertThat(
             response["X-MAAS-API-Hash"],
             Equals(get_api_description_hash()))
+
+    def test_authenticated_is_False_when_no_authentication_provided(self):
+        resource = OperationsResource(StubHandler)
+        self.assertThat(resource.is_authentication_attempted, Is(False))
+
+    def test_authenticated_is_False_when_authentication_is_empty(self):
+        resource = OperationsResource(StubHandler, authentication=[])
+        self.assertThat(resource.is_authentication_attempted, Is(False))
+
+    def test_authenticated_is_False_when_authentication_is_NoAuthn(self):
+        resource = OperationsResource(
+            StubHandler, authentication=NoAuthentication())
+        self.assertThat(resource.is_authentication_attempted, Is(False))
+
+    def test_authenticated_is_True_when_authentication_is_provided(self):
+        resource = OperationsResource(
+            StubHandler, authentication=sentinel.authentication)
+        self.assertThat(resource.is_authentication_attempted, Is(True))
+
+
+class TestRestrictedResources(APITestCase):
+    """Tests for `RestrictedResource` and `AdminRestrictedResource`."""
+
+    scenarios = (
+        ("user", dict(resource_type=RestrictedResource)),
+        ("admin", dict(resource_type=AdminRestrictedResource)),
+    )
+
+    def test_authentication_must_not_be_None(self):
+        error = self.assertRaises(
+            AssertionError, self.resource_type, StubHandler,
+            authentication=None)
+        self.assertThat(str(error), Equals(
+            "Authentication must be attempted."))
+
+    def test_authentication_must_be_non_empty(self):
+        error = self.assertRaises(
+            AssertionError, self.resource_type, StubHandler,
+            authentication=[])
+        self.assertThat(str(error), Equals(
+            "Authentication must be attempted."))
+
+    def test_authentication_must_be_meaningful(self):
+        error = self.assertRaises(
+            AssertionError, self.resource_type, StubHandler,
+            authentication=NoAuthentication())
+        self.assertThat(str(error), Equals(
+            "Authentication must be attempted."))
+
+    def test_authentication_is_okay(self):
+        resource = self.resource_type(
+            StubHandler, authentication=sentinel.authentication)
+        self.assertThat(resource.is_authentication_attempted, Is(True))
 
 
 class TestAdminMethodDecorator(APITestCase):
