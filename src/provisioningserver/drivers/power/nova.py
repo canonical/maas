@@ -35,7 +35,7 @@ class NovaPowerState:
 
 class NovaPowerDriver(PowerDriver):
     name = 'nova'
-    description = "OpenStack nova Power Driver."
+    description = "OpenStack Nova Power Driver."
     settings = []
     nova_api = None
 
