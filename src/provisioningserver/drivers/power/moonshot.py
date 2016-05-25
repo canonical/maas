@@ -34,8 +34,8 @@ class MoonshotIPMIPowerDriver(PowerDriver):
     settings = []
 
     def detect_missing_packages(self):
-        if not shell.has_command_available('ipmipower'):
-            return ['freeipmi-tools']
+        if not shell.has_command_available('ipmitool'):
+            return ['ipmitool']
         return []
 
     def _issue_ipmitool_command(
