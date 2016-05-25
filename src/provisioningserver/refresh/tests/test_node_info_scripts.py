@@ -287,8 +287,9 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
         check_output = self.patch(subprocess, "check_output")
         check_output.return_value = b""
         self.call_gather_physical_block_devices()
-        self.assertThat(check_output, MockCalledOnceWith(
-            ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")))
+        self.assertThat(check_output, MockCalledOnceWith((
+            "lsblk", "--exclude", "1,2,7", "-d", "-P",
+            "-o", "NAME,RO,RM,MODEL,ROTA")))
 
     def test__returns_empty_list_when_no_disks(self):
         check_output = self.patch(subprocess, "check_output")
@@ -306,7 +307,9 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             ]
         self.call_gather_physical_block_devices()
         self.assertThat(check_output, MockCallsMatch(
-            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
+            call((
+                "lsblk", "--exclude", "1,2,7", "-d", "-P",
+                "-o", "NAME,RO,RM,MODEL,ROTA")),
             call(("udevadm", "info", "-q", "all", "-n", name))))
 
     def test__returns_empty_list_when_cdrom_only(self):
@@ -336,7 +339,9 @@ class TestGatherPhysicalBlockDevices(MAASTestCase):
             ]
         self.call_gather_physical_block_devices()
         self.assertThat(check_output, MockCallsMatch(
-            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
+            call((
+                "lsblk", "--exclude", "1,2,7", "-d", "-P",
+                "-o", "NAME,RO,RM,MODEL,ROTA")),
             call(("udevadm", "info", "-q", "all", "-n", name)),
             call(("sudo", "blockdev", "--getsize64", "/dev/%s" % name)),
             call(("sudo", "blockdev", "--getbsz", "/dev/%s" % name))))
