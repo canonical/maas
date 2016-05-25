@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node actions.
@@ -90,12 +90,10 @@ class NodeAction(metaclass=ABCMeta):
         A list of NODE_TYPEs which are applicable for this action.
         """)
 
-    actionable_statuses = abstractproperty("""
-        Node states for which this action makes sense.
-
-        A collection of NODE_STATUS values.  The action will be available
-        only if `node.status in action.actionable_statuses`.
-        """)
+    # Optional node states for which this action makes sense.
+    # A collection of NODE_STATUS values.  The action will be available
+    # only if `node.status in action.actionable_statuses`.
+    actionable_statuses = None
 
     permission = abstractproperty("""
         Required permission.
@@ -210,10 +208,6 @@ class SetZone(NodeAction):
         """See `NodeAction.execute`."""
         zone = Zone.objects.get(id=zone_id)
         self.node.set_zone(zone)
-
-    def is_actionable(self):
-        """Returns true if the selected nodes can be added to a zone"""
-        return super(SetZone, self).is_actionable()
 
 
 class Commission(NodeAction):
@@ -350,10 +344,6 @@ class PowerOn(NodeAction):
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
-    def is_actionable(self):
-        is_actionable = super(PowerOn, self).is_actionable()
-        return is_actionable
-
 
 FAILED_STATUSES = [
     status for status in map_enum(NODE_STATUS).values()
@@ -470,6 +460,25 @@ class MarkFixed(NodeAction):
         return True
 
 
+class Refresh(NodeAction):
+    """Refresh a rack or region and rack controller."""
+    name = "refresh"
+    display = "Refresh"
+    display_sentence = "refreshed"
+    permission = NODE_PERMISSION.ADMIN
+    for_type = {
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER
+    }
+
+    def execute(self):
+        """See `NodeAction.execute`."""
+        try:
+            self.node.refresh()
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
+            raise NodeActionError(exception)
+
+
 ACTION_CLASSES = (
     Commission,
     Acquire,
@@ -482,6 +491,7 @@ ACTION_CLASSES = (
     MarkFixed,
     SetZone,
     Delete,
+    Refresh,
 )
 
 ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)

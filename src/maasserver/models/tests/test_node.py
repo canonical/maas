@@ -578,8 +578,8 @@ class TestNode(MAASServerTestCase):
         self.assertEqual('0.5', node.display_memory())
 
     def test_display_memory_returns_value_divided_by_1024(self):
-        node = factory.make_Node(memory=2048)
-        self.assertEqual('2', node.display_memory())
+        node = factory.make_Node(memory=2560)
+        self.assertEqual('2.5', node.display_memory())
 
     def test_physicalblockdevice_set_returns_physicalblockdevices(self):
         node = factory.make_Node(with_boot_disk=False)

@@ -9,6 +9,7 @@ __all__ = [
 
 from django.db.models.signals import post_save
 from maasserver.models import (
+    Controller,
     Device,
     Machine,
     Node,
@@ -24,6 +25,7 @@ NODE_CLASSES = [
     Node,
     Machine,
     Device,
+    Controller,
     RackController,
     RegionController,
 ]

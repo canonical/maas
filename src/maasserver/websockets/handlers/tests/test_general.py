@@ -13,6 +13,7 @@ from maasserver.enum import (
     BOND_MODE_CHOICES,
     BOND_XMIT_HASH_POLICY_CHOICES,
     BOOT_RESOURCE_TYPE,
+    NODE_TYPE,
 )
 from maasserver.models import BootSourceCache
 from maasserver.models.config import Config
@@ -28,7 +29,7 @@ import petname
 
 class TestGeneralHandler(MAASServerTestCase):
 
-    def dehydrate_actions(self, actions):
+    def dehydrate_actions(self, actions, node_type=None):
         return [
             {
                 "name": name,
@@ -36,6 +37,7 @@ class TestGeneralHandler(MAASServerTestCase):
                 "sentence": action.display_sentence,
             }
             for name, action in actions.items()
+            if node_type is None or node_type in action.for_type
             ]
 
     def test_architectures(self):
@@ -107,7 +109,8 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_machine_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
-        actions_expected = self.dehydrate_actions(ACTIONS_DICT)
+        actions_expected = self.dehydrate_actions(
+            ACTIONS_DICT, NODE_TYPE.MACHINE)
         self.assertItemsEqual(actions_expected, handler.machine_actions({}))
 
     def test_machine_actions_for_non_admin(self):
@@ -141,7 +144,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         self.assertItemsEqual(
-            ['delete', 'off', 'on', 'set-zone'],
+            ['delete', 'off', 'on', 'refresh', 'set-zone'],
             [action['name'] for action in handler.rack_controller_actions({})])
 
     def test_rack_controller_actions_for_non_admin(self):
@@ -151,7 +154,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_region_and_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         self.assertItemsEqual(
-            ['set-zone', 'delete'],
+            ['set-zone', 'refresh', 'delete'],
             [action['name']
              for action in handler.region_and_rack_controller_actions({})])
 
