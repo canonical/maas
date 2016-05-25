@@ -810,7 +810,9 @@
                     <td class="table-col--4 table-listing__cell align-center" data-maas-controller-status="controller" data-maas-services="services"></td>
                     <td class="table-col--25 table-listing__cell">{$ controller.node_type_display $}</td>
                     <td class="table-col--15 table-listing__cell">{$ controller.last_image_sync || 'Never' $}</td>
-                    <td class="table-col--15 table-listing__cell">{$ controller.image_sync_status || 'Checking...' $}</td>
+                    <td class="table-col--15 table-listing__cell">
+                        <maas-controller-image-status system-id="controller.system_id"></maas-controller-image-status>
+                    </td>
                 </tr>
             </tbody>
         </table>

@@ -82,5 +82,5 @@ class TestControllerHandler(MAASServerTestCase):
             {"system_id": node1.system_id},
             {"system_id": node2.system_id}])
         self.assertEqual({
-            node1.system_id: "unknown",
-            node2.system_id: "unknown"}, data)
+            node1.system_id: "Unknown",
+            node2.system_id: "Unknown"}, data)

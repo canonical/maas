@@ -80,6 +80,7 @@ MERGE_VIEWS = {
             "js/angular/directives/accordion.js",
             "js/angular/directives/call_to_action.js",
             "js/angular/directives/code_lines.js",
+            "js/angular/directives/controller_image_status.js",
             "js/angular/directives/controller_status.js",
             "js/angular/directives/dbl_click_overlay.js",
             "js/angular/directives/enter_blur.js",

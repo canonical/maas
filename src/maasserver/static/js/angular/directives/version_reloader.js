@@ -27,6 +27,9 @@ angular.module('MAAS').directive('maasVersionReloader', [
                         GeneralManager.enableAutoReload(true);
                         $scope.$watch("version.text",
                             function(newValue, oldValue) {
+                                console.log(
+                                    "Detected new MAAS version; " +
+                                    "forcing reload.");
                                 if(newValue !== oldValue) {
                                     $scope.reloadPage();
                                 }

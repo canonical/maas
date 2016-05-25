@@ -13,6 +13,12 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
         $interpolateProvider.startSymbol('{$');
         $interpolateProvider.endSymbol('$}');
 
+        // Helper that wrappers the templateUrl to append the files version
+        // to the path. Used to override client cache.
+        function versionedPath(path) {
+            return path + "?v=" + MAAS_config.files_version;
+        }
+
         // Setup routes only for the index page, all remaining pages should
         // not use routes. Once all pages are converted to using Angular this
         // will go away. Causing the page to never have to reload.
@@ -24,60 +30,73 @@ angular.module('MAAS', ['ngRoute', 'ngCookies', 'ngTagsInput']).config(
         if(path === href) {
             $routeProvider.
                 when('/nodes', {
-                    templateUrl: 'static/partials/nodes-list.html',
+                    templateUrl: versionedPath(
+                        'static/partials/nodes-list.html'),
                     controller: 'NodesListController'
                 }).
                 when('/node/:system_id/result/:filename', {
-                    templateUrl: 'static/partials/node-result.html',
+                    templateUrl: versionedPath(
+                        'static/partials/node-result.html'),
                     controller: 'NodeResultController'
                 }).
                 when('/node/:system_id/events', {
-                    templateUrl: 'static/partials/node-events.html',
+                    templateUrl: versionedPath(
+                        'static/partials/node-events.html'),
                     controller: 'NodeEventsController'
                 }).
                 when('/node/:type/:system_id', {
-                    templateUrl: 'static/partials/node-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
                 }).
                 when('/node/:system_id', {
-                    templateUrl: 'static/partials/node-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/node-details.html'),
                     controller: 'NodeDetailsController'
                 }).
                 when('/domains', {
-                    templateUrl: 'static/partials/domains-list.html',
+                    templateUrl: versionedPath(
+                        'static/partials/domains-list.html'),
                     controller: 'DomainsListController'
                 }).
                 when('/domain/:domain_id', {
-                    templateUrl: 'static/partials/domain-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/domain-details.html'),
                     controller: 'DomainDetailsController'
                 }).
                 when('/space/:space_id', {
-                    templateUrl: 'static/partials/space-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/space-details.html'),
                     controller: 'SpaceDetailsController'
                 }).
                 when('/fabric/:fabric_id', {
-                    templateUrl: 'static/partials/fabric-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/fabric-details.html'),
                     controller: 'FabricDetailsController'
                 }).
                 when('/subnets', {
                     redirectTo: '/networks?by=fabric'
                 }).
                 when('/networks', {
-                    templateUrl: 'static/partials/networks-list.html',
+                    templateUrl: versionedPath(
+                        'static/partials/networks-list.html'),
                     controller: 'NetworksListController',
                     reloadOnSearch: false
                 }).
                 when('/subnet/:subnet_id', {
-                    templateUrl: 'static/partials/subnet-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/subnet-details.html'),
                     controller: 'SubnetDetailsController'
                 }).
                 when('/vlan/:vlan_id', {
-                    templateUrl: 'static/partials/vlan-details.html',
+                    templateUrl: versionedPath(
+                        'static/partials/vlan-details.html'),
                     controller: 'VLANDetailsController',
                     controllerAs: 'vlanDetails'
                 }).
                 when('/settings/:section', {
-                    templateUrl: 'static/partials/settings.html',
+                    templateUrl: versionedPath(
+                        'static/partials/settings.html'),
                     controller: 'SettingsController'
                 }).
                 otherwise({

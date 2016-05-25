@@ -124,6 +124,7 @@ angular.module('MAAS').controller('NodesListController', [
             errors: {}
         };
         $scope.tabs.controllers.zoneSelection = null;
+        $scope.tabs.controllers.syncStatuses = {};
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = null;
@@ -570,21 +571,6 @@ angular.module('MAAS').controller('NodesListController', [
             return DEVICE_IP_ASSIGNMENT[ipAssignment];
         };
 
-        $scope.getControllersImageSyncStatus = function() {
-            ControllersManager.checkImageStates($scope.controllers).then(
-                    function(results) {
-                angular.forEach($scope.controllers, function(controller) {
-                    // Results is a map of system_id to displayable status.
-                    if(results[controller.system_id]) {
-                        controller.image_sync_status =
-                            results[controller.system_id];
-                    } else {
-                        controller.image_sync_status = "Unknown";
-                    }
-                });
-            });
-        };
-
         // Return true if the authenticated user is super user.
         $scope.isSuperUser = function() {
             return UsersManager.isSuperUser();
@@ -597,14 +583,6 @@ angular.module('MAAS').controller('NodesListController', [
             [MachinesManager, DevicesManager, ControllersManager,
             GeneralManager, ZonesManager, UsersManager, ServicesManager]).then(
             function() {
-
-                if($routeParams.tab === "controllers") {
-                    $scope.getControllersImageSyncStatus();
-                    $scope.statusPoll = $interval(function() {
-                        $scope.getControllersImageSyncStatus();
-                    }, 10000);
-                }
-
                 $scope.loading = false;
             });
 

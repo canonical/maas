@@ -2000,7 +2000,8 @@ angular.module('MAAS').controller('NodeStorageController', [
 
         // Returns true if there are storage layout errors
         $scope.hasStorageLayoutIssues = function() {
-            if(angular.isObject($scope.node)) {
+            if(angular.isObject($scope.node) &&
+                angular.isArray($scope.node.storage_layout_issues)) {
                 return $scope.node.storage_layout_issues.length > 0;
             }
             return false;

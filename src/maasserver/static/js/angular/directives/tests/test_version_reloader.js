@@ -35,6 +35,11 @@ describe("maasVersionReloader", function() {
         $scope = $rootScope.$new();
     }));
 
+    // Prevent console.log messages in tests.
+    beforeEach(function() {
+        spyOn(console, "log");
+    });
+
     // Return the compiled directive with the items from the scope.
     function compileDirective() {
         var directive;

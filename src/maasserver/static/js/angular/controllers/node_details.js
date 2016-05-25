@@ -185,8 +185,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 return;
             }
 
-            $scope.summary.zone.selected = ZonesManager.getItemFromList(
-                $scope.node.zone.id);
+            if(angular.isObject($scope.node.zone)) {
+                $scope.summary.zone.selected = ZonesManager.getItemFromList(
+                    $scope.node.zone.id);
+            }
             $scope.summary.architecture.selected = $scope.node.architecture;
             $scope.summary.min_hwe_kernel.selected = $scope.node.min_hwe_kernel;
             $scope.summary.tags = angular.copy($scope.node.tags);
@@ -335,23 +337,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             });
         }
 
-        function getControllersImageSyncStatus() {
-            if(angular.isObject($scope.node)) {
-                $scope.nodesManager.checkImageStates(
-                        [{system_id: $scope.node.system_id}]).then(
-                    function(results) {
-                        // Results is a map of system_id to displayable status.
-                        if(results[$scope.node.system_id]) {
-                            $scope.node.image_sync_status =
-                                results[$scope.node.system_id];
-                        } else {
-                            $scope.node.image_sync_status = "Unknown";
-                        }
-                    }
-                );
-            }
-        }
-
         // Starts the watchers on the scope.
         function startWatching() {
             // Update the title and name when the node fqdn changes.
@@ -398,13 +383,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.$watch("node.summary_yaml", updateMachineOutput);
             $scope.$watch("node.commissioning_results", updateMachineOutput);
             $scope.$watch("node.installation_results", updateMachineOutput);
-
-            if($scope.isController) {
-                getControllersImageSyncStatus();
-                $scope.imageStatusPoll = $interval(function() {
-                    getControllersImageSyncStatus();
-                }, 10000);
-            }
         }
 
         // Called when the node has been loaded.
@@ -867,7 +845,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
         };
 
         $scope.getPowerEventError = function() {
-            if(!angular.isObject($scope.node)) {
+            if(!angular.isObject($scope.node) ||
+                !angular.isArray($scope.node.events)) {
                 return;
             }
 

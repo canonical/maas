@@ -224,7 +224,7 @@
                                 </dd>
                         </dl>
                     </div>
-                    <div data-ng-show="isController">
+                    <div data-ng-if="isController">
                         <dl>
                             <dt class="two-col">Type</dt>
                                 <dd class="four-col last-col">
@@ -236,7 +236,7 @@
                                 </dd>
                             <dt class="two-col">Images status</dt>
                                 <dd class="four-col last-col">
-                                    {$ node.image_sync_status || 'Checking...' $}
+                                    <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
                                 </dd>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
