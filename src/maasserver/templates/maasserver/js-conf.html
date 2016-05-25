@@ -1,16 +1,3 @@
-<script type="text/javascript"
-    src="{% url "merge" filename="jquery.js" %}?v={{files_version}}">
-</script>
-<script type="text/javascript"
-    src="{% url "merge" filename="angular.js" %}?v={{files_version}}">
-</script>
-<script type="text/javascript"
-    src="{% url "merge" filename="ng-tags-input.js" %}?v={{files_version}}">
-</script>
-<script type="text/javascript"
-    src="{% url "merge" filename="maas-angular.js" %}?v={{files_version}}">
-</script>
-
 <script type="text/javascript">
 <!--
 var YUI_config = {
@@ -30,10 +17,25 @@ var MAAS_config = {
         account_handler: '{% url "account_handler" %}',
         images_handler: '{% url "images" %}'
         },
+    files_version: '{{files_version}}',
     debug: {% if YUI_DEBUG %}true{% else %}false{% endif %}
 };
 // -->
 </script>
+
+<script type="text/javascript"
+    src="{% url "merge" filename="jquery.js" %}?v={{files_version}}">
+</script>
+<script type="text/javascript"
+    src="{% url "merge" filename="angular.js" %}?v={{files_version}}">
+</script>
+<script type="text/javascript"
+    src="{% url "merge" filename="ng-tags-input.js" %}?v={{files_version}}">
+</script>
+<script type="text/javascript"
+    src="{% url "merge" filename="maas-angular.js" %}?v={{files_version}}">
+</script>
+
 <script type="text/javascript"
     src="{% url "merge" filename="yui.js" %}?v={{files_version}}">
 </script>
