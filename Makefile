@@ -160,6 +160,10 @@ bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install repl
 	@touch --no-create bin/py bin/ipy
 
+bin/coverage: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install coverage
+	@touch --no-create bin/coverage
+
 define karma-deps
   jasmine-core@2.4.1
   karma@0.13.19
@@ -218,16 +222,19 @@ test+coverage: test
 coverage-report: coverage/index.html
 	sensible-browser $< > /dev/null 2>&1 &
 
-coverage.xml: coverage.data
-	python3-coverage xml --include 'src/*' -o $@
+coverage.xml: bin/coverage coverage.data
+	bin/coverage xml --include 'src/*' -o $@
 
-coverage/index.html: coverage.data
+coverage/index.html: revno = $(or $(shell bzr revno 2>/dev/null),???)
+coverage/index.html: bin/coverage coverage.data
 	@$(RM) -r $(@D)
-	python3-coverage html --include 'src/*' -d $(@D)
+	bin/coverage html --include 'src/*' \
+	    --omit 'src/*/tests/*,src/*/testing/*' \
+	    --title "MAAS r$(revno)" --directory $(@D)
 
 coverage.data:
-	@$(error Use `$(MAKE) test+coverage` to generate coverage data, or invoke a \
-            test script using the `--with-coverage` flag)
+	@$(error Use `$(MAKE) test+coverage` to generate coverage data, \
+	    or invoke a test script using the `--with-coverage` flag)
 
 lint: lint-py lint-py-imports lint-js lint-doc lint-rst
 
