@@ -132,6 +132,7 @@ from maasserver.api.subnets import (
 )
 from maasserver.api.support import (
     AdminRestrictedResource,
+    OperationsResource,
     RestrictedResource,
 )
 from maasserver.api.tags import (
@@ -219,7 +220,7 @@ boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
-version_handler = RestrictedResource(VersionHandler)
+version_handler = OperationsResource(VersionHandler)
 node_results_handler = RestrictedResource(
     NodeResultsHandler, authentication=api_auth)
 sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)

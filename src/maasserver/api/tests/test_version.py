@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API version."""
@@ -18,18 +18,30 @@ __all__ = []
 import httplib
 import json
 
+from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
+from maasserver.testing.api import MultipleUsersScenarios
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import version as version_module
 
 
-class TestFindingResources(MAASServerTestCase):
-    """Tests for /version/ API."""
+class TestVersionAPIBasics(MAASServerTestCase):
+    """Basic tests for /version/ API."""
 
     def test_handler_path(self):
         self.assertEqual(
             '/api/1.0/version/', reverse('version_handler'))
+
+
+class TestVersionAPI(MultipleUsersScenarios, MAASServerTestCase):
+    """Tests for /version/ API."""
+
+    scenarios = [
+        ('anon', dict(userfactory=AnonymousUser)),
+        ('user', dict(userfactory=factory.make_User)),
+    ]
 
     def test_GET_returns_details(self):
         mock_apt = self.patch(version_module, "get_version_from_apt")
