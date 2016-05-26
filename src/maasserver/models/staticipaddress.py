@@ -321,12 +321,17 @@ class StaticIPAddressManager(Manager):
 
         # DISTINCT ON returns the first matching row for any given
         # hostname, using the query's ordering.  Here, we're trying to
-        # return the IP for the oldest Interface address.
+        # return the IPs for the oldest Interface address.
         #
         # For nodes that have disable_ipv4 set, leave out any IPv4 address.
         cursor.execute("""
-            SELECT DISTINCT ON (node.hostname, family(staticip.ip))
-                node.hostname, staticip.ip
+            SELECT DISTINCT ON (hostlabel, is_boot, family(staticip.ip))
+                substring(node.hostname from '[^\.]*') as hostlabel,
+                staticip.ip,
+                (
+                    node.boot_interface_id IS NOT NULL AND
+                    node.boot_interface_id = interface.id
+                ) as is_boot
             FROM maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
                 interface.id = rel.child_id
@@ -347,7 +352,8 @@ class StaticIPAddressManager(Manager):
                     family(staticip.ip) <> 4
                 )
             ORDER BY
-                node.hostname,
+                hostlabel,
+                is_boot,
                 family(staticip.ip),
                 CASE
                     WHEN interface.type = 'bond' AND
@@ -381,11 +387,28 @@ class StaticIPAddressManager(Manager):
                 interface.id
             """, (nodegroup.id,))
         mapping = defaultdict(list)
-        for hostname, ip in cursor.fetchall():
-            hostname = strip_domain(hostname)
+        iface_is_boot = defaultdict(bool)
+        # The records from the query provide, for each hostname (after
+        # stripping domain), the boot and non-boot interface ip address in ipv4
+        # and ipv6.  Our task: if there are boot interace IPs, they win.  If
+        # there are none, then whatever we got wins.  The ORDER BY means that
+        # we will see all of the non-boot interfaces before we see any boot
+        # interface IPs.  See Bug#1584850
+        # User reserved addresses always get included.
+        for hostname, ip, is_boot in cursor.fetchall():
+            if is_boot and not iface_is_boot[hostname]:
+                # This is the first boot-interface IP.  Clear out any of the
+                # non-boot-interface IPs we may have collected for this host.
+                mapping[hostname] = []
+                iface_is_boot[hostname] = is_boot
             mapping[hostname].append(ip)
         for hostname, ip in self._get_user_reserved_mappings():
             hostname = strip_domain(hostname)
+            if not iface_is_boot[hostname]:
+                # We may have found non-boot-interface IPs in the SQL. If so
+                # throw those away in favor of the user-reserved IPs.
+                mapping[hostname] = []
+                iface_is_boot[hostname] = True
             mapping[hostname].append(ip)
         return mapping
 

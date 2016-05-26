@@ -15,7 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 
-from random import randint
+from random import (
+    randint,
+    shuffle,
+)
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -953,6 +956,45 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
         self.assertEqual({node.hostname: [phy_staticip.ip]}, mapping)
+
+    def test_get_hostname_ip_mapping_does_not_return_discovered_and_auto(self):
+        self.patch_autospec(interface_module, "update_host_maps")
+        # Create a situation where we have an AUTO ip on the pxeboot interface,
+        # and a discovered IP of the other address class (v4/v6) on another
+        # interface.
+        cidrs = [factory.make_ipv6_network(), factory.make_ipv4_network()]
+        shuffle(cidrs)
+        subnets = [factory.make_Subnet(cidr=cidr) for cidr in cidrs]
+        # First, make a node with an interface on subnets[0].  We don't
+        # actually care that it creates a DISCOVERED IP, since we stomp on that
+        # a few lines down.
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnets[0],
+            vlan=subnets[0].vlan, disable_ipv4=False)
+        # Now create a NodeGroupInterface connected to subnets[1], and add an
+        # interface to then node that talks to that NodeGroupInterface, so that
+        # it can have an address on subnets[1].
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup=node.nodegroup, subnet=subnets[1])
+        iface1 = factory.make_Interface(
+            node=node, cluster_interface=ngi, vlan=subnets[1].vlan)
+        # Iface1 should _never_ be the boot_interface in this situation.
+        self.assertNotEqual(iface1.id, node.boot_interface.id)
+        # Finally, assign IP addresses and types to the two interfaces.
+        sip0 = node.boot_interface.ip_addresses.first()
+        ip0 = factory.pick_ip_in_network(cidrs[0])
+        sip0.ip = ip0
+        sip0.alloc_type = IPADDRESS_TYPE.AUTO
+        sip0.save()
+        ip1 = factory.pick_ip_in_network(cidrs[1])
+        sip1 = iface1.ip_addresses.first()
+        sip1.ip = ip1
+        sip1.alloc_type = IPADDRESS_TYPE.DISCOVERED
+        sip1.save()
+        # Confirm that the discovered IP is ignored.
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: [sip0.ip]}, mapping)
 
 
 class TestStaticIPAddress(MAASServerTestCase):
