@@ -5,7 +5,10 @@
 
 __all__ = []
 
-from random import randint
+from random import (
+    randint,
+    shuffle,
+)
 from unittest import skip
 from unittest.mock import sentinel
 
@@ -755,6 +758,42 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             child)
         self.assertEqual({node.fqdn: HostnameIPMapping(
             node.system_id, 30, {sip1.ip}, node.node_type)}, mapping)
+
+    def test_get_hostname_ip_mapping_does_not_return_discovered_and_auto(self):
+        # Create a situation where we have an AUTO ip on the pxeboot interface,
+        # and a discovered IP of the other address class (v4/v6) on another
+        # interface.
+        domain = Domain.objects.get_default_domain()
+        cidrs = [factory.make_ipv6_network(), factory.make_ipv4_network()]
+        shuffle(cidrs)
+        subnets = [factory.make_Subnet(cidr=cidr) for cidr in cidrs]
+        # First, make a node with an interface on subnets[0].  Assign the boot
+        # interface an AUTO IP on subnets[0].
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnets[0],
+            vlan=subnets[0].vlan, disable_ipv4=False)
+        sip0 = node.boot_interface.ip_addresses.first()
+        ip0 = factory.pick_ip_in_network(cidrs[0])
+        sip0.ip = ip0
+        sip0.alloc_type = IPADDRESS_TYPE.AUTO
+        sip0.save()
+        # Now create another interface, and give it a DISCOVERED IP of the
+        # other family from subnets[1].
+        iface1 = factory.make_Interface(node=node, vlan=subnets[1].vlan)
+        ip1 = factory.pick_ip_in_network(cidrs[1])
+        sip1 = factory.make_StaticIPAddress(
+            subnet=subnets[1], ip=ip1,
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
+            )
+        iface1.ip_addresses.add(sip1)
+        iface1.save()
+        # The only mapping we should get is for the boot interface.
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        expected_mapping = {
+            node.fqdn: HostnameIPMapping(
+                node.system_id, 30, {sip0.ip}, node.node_type
+            )}
+        self.assertEqual(expected_mapping, mapping)
 
 
 class TestStaticIPAddress(MAASServerTestCase):

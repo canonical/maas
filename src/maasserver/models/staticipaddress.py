@@ -304,7 +304,7 @@ class StaticIPAddressManager(Manager):
 
         # DISTINCT ON returns the first matching row for any given
         # hostname, using the query's ordering.  Here, we're trying to
-        # return the IP for the oldest Interface address.
+        # return the IPs for the oldest Interface address.
         #
         # For nodes that have disable_ipv4 set, leave out any IPv4 address.
         if isinstance(domain_or_subnet, Subnet):
@@ -331,12 +331,16 @@ class StaticIPAddressManager(Manager):
                     domain.ttl,
                     %s)""" % default_ttl
         sql_query = """
-            SELECT DISTINCT ON (node.hostname, family(staticip.ip))
+            SELECT DISTINCT ON (node.hostname, is_boot, family(staticip.ip))
                 node.hostname,
                 node.system_id,
                 node.node_type,
                 """ + ttl_clause + """ AS ttl,
-                domain.name, staticip.ip
+                domain.name, staticip.ip,
+                (
+                    node.boot_interface_id IS NOT NULL AND
+                    node.boot_interface_id = interface.id
+                ) as is_boot
             FROM
                 maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
@@ -366,6 +370,7 @@ class StaticIPAddressManager(Manager):
                 )
             ORDER BY
                 node.hostname,
+                is_boot,
                 family(staticip.ip),
                 CASE
                     WHEN interface.type = 'bond' AND
@@ -401,14 +406,30 @@ class StaticIPAddressManager(Manager):
         # We get user reserved et al mappings first, so that we can overwrite
         # TTL as we process the return from the SQL horror above.
         mapping = self._get_user_reserved_mappings(domain_or_subnet)
+        iface_is_boot = defaultdict(bool, {
+            hostname: True for hostname in mapping.keys()
+        })
         cursor.execute(sql_query, (domain_or_subnet.id,))
+        # The records from the query provide, for each hostname (after
+        # stripping domain), the boot and non-boot interface ip address in ipv4
+        # and ipv6.  Our task: if there are boot interace IPs, they win.  If
+        # there are none, then whatever we got wins.  The ORDER BY means that
+        # we will see all of the non-boot interfaces before we see any boot
+        # interface IPs.  See Bug#1584850
         for (node_name, system_id, node_type,
-                ttl, domain_name, ip) in cursor.fetchall():
+                ttl, domain_name, ip, is_boot) in cursor.fetchall():
             hostname = "%s.%s" % (strip_domain(node_name), domain_name)
             mapping[hostname].node_type = node_type
             mapping[hostname].system_id = system_id
             mapping[hostname].ttl = ttl
-            mapping[hostname].ips.add(ip)
+            # If this is a boot interface, and we have previously only found
+            # non-boot interface IPs, discard them. See also Bug#1584850.
+            if is_boot and not iface_is_boot[hostname]:
+                mapping[hostname].ips = set()
+                iface_is_boot[hostname] = True
+            # At this point, if the interface type is correct, keep the IP.
+            if is_boot == iface_is_boot[hostname]:
+                mapping[hostname].ips.add(ip)
         return mapping
 
     def filter_by_ip_family(self, family):
