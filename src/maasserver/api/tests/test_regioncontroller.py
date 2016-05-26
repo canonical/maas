@@ -12,7 +12,7 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 
 
-class TestRegionControllerAPI(APITestCase):
+class TestRegionControllerAPI(APITestCase.ForUser):
     """Tests for /api/2.0/regioncontrollers/<region>/."""
 
     def test_handler_path(self):
@@ -40,7 +40,7 @@ class TestRegionControllerAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestRegionControllersAPI(APITestCase):
+class TestRegionControllersAPI(APITestCase.ForUser):
     """Tests for /api/2.0/regioncontrollers/."""
 
     @staticmethod

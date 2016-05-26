@@ -11,21 +11,19 @@ import http.client
 from django.core.urlresolvers import reverse
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 
 
-class AdminCommissioningScriptsAPITest(MAASServerTestCase):
+class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
     """Tests for `CommissioningScriptsHandler`."""
 
     def get_url(self):
         return reverse('commissioning_scripts_handler')
 
     def test_GET_lists_commissioning_scripts(self):
-        self.client_log_in(as_admin=True)
         # Use lower-case names.  The database and the test may use
         # different collation orders with different ideas about case
         # sensitivity.
@@ -40,7 +38,6 @@ class AdminCommissioningScriptsAPITest(MAASServerTestCase):
             (response.status_code, json_load_bytes(response.content)))
 
     def test_POST_creates_commissioning_script(self):
-        self.client_log_in(as_admin=True)
         # This uses Piston's built-in POST code, so there are no tests for
         # corner cases (like "script already exists") here.
         name = factory.make_name('script')
@@ -65,7 +62,7 @@ class AdminCommissioningScriptsAPITest(MAASServerTestCase):
         self.assertEqual(content, stored_script.content)
 
 
-class CommissioningScriptsAPITest(APITestCase):
+class CommissioningScriptsAPITest(APITestCase.ForUser):
 
     def get_url(self):
         return reverse('commissioning_scripts_handler')
@@ -81,28 +78,25 @@ class CommissioningScriptsAPITest(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class AdminCommissioningScriptAPITest(MAASServerTestCase):
+class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
     """Tests for `CommissioningScriptHandler`."""
 
     def get_url(self, script_name):
         return reverse('commissioning_script_handler', args=[script_name])
 
     def test_GET_returns_script_contents(self):
-        self.client_log_in(as_admin=True)
         script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(script.content, response.content)
 
     def test_GET_preserves_binary_data(self):
-        self.client_log_in(as_admin=True)
         script = factory.make_CommissioningScript(content=sample_binary_data)
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(sample_binary_data, response.content)
 
     def test_PUT_updates_contents(self):
-        self.client_log_in(as_admin=True)
         old_content = b'old:%s' % factory.make_string().encode('ascii')
         script = factory.make_CommissioningScript(content=old_content)
         new_content = b'new:%s' % factory.make_string().encode('ascii')
@@ -115,7 +109,6 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
         self.assertEqual(new_content, reload_object(script).content)
 
     def test_DELETE_deletes_script(self):
-        self.client_log_in(as_admin=True)
         script = factory.make_CommissioningScript()
         self.client.delete(self.get_url(script.name))
         self.assertItemsEqual(
@@ -123,7 +116,7 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
             CommissioningScript.objects.filter(name=script.name))
 
 
-class CommissioningScriptAPITest(APITestCase):
+class CommissioningScriptAPITest(APITestCase.ForUser):
 
     def get_url(self, script_name):
         return reverse('commissioning_script_handler', args=[script_name])
@@ -148,7 +141,7 @@ class CommissioningScriptAPITest(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class NodeCommissionResultHandlerAPITest(APITestCase):
+class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
 
     def test_list_returns_commissioning_results(self):
         commissioning_results = [

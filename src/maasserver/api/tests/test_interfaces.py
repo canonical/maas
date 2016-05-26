@@ -67,7 +67,7 @@ def make_complex_interface(node, name=None):
     return bond_interface, parents, [vlan_nic_10, vlan_nic_11]
 
 
-class TestInterfacesAPI(APITestCase):
+class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -96,7 +96,7 @@ class TestInterfacesAPI(APITestCase):
     def test_read_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         uri = get_interfaces_uri(device)
@@ -144,7 +144,7 @@ class TestInterfacesAPI(APITestCase):
     def test_create_physical_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         mac = factory.make_mac_address()
         name = factory.make_name("eth")
         fabric = factory.make_Fabric()
@@ -340,7 +340,7 @@ class TestInterfacesAPI(APITestCase):
     def test_create_bond_404_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Node(
-            owner=self.logged_in_user, parent=parent,
+            owner=self.user, parent=parent,
             node_type=NODE_TYPE.DEVICE)
         uri = get_interfaces_uri(device)
         response = self.client.post(uri, {
@@ -455,7 +455,7 @@ class TestInterfacesAPI(APITestCase):
     def test_create_vlan_404_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Node(
-            owner=self.logged_in_user, parent=parent,
+            owner=self.user, parent=parent,
             node_type=NODE_TYPE.DEVICE)
         uri = get_interfaces_uri(device)
         response = self.client.post(uri, {
@@ -495,7 +495,7 @@ class TestInterfacesAPI(APITestCase):
             }, json_load_bytes(response.content))
 
 
-class TestInterfacesAPIForControllers(APITestCase):
+class TestInterfacesAPIForControllers(APITestCase.ForUser):
 
     scenarios = (
         ("region", {
@@ -504,7 +504,7 @@ class TestInterfacesAPIForControllers(APITestCase):
         ("rack", {
             "maker": factory.make_RackController,
         }),
-        ("region_rack", {
+        ("region-rack", {
             "maker": factory.make_RegionRackController,
         })
     )
@@ -602,7 +602,7 @@ class TestInterfacesAPIForControllers(APITestCase):
             http.client.NOT_FOUND, response.status_code, response.content)
 
 
-class TestNodeInterfaceAPI(APITestCase):
+class TestNodeInterfaceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node(interface=True)
@@ -763,7 +763,7 @@ class TestNodeInterfaceAPI(APITestCase):
     def test_update_device_physical_interface(self):
         node = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=node)
+            owner=self.user, parent=node)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         new_name = factory.make_name("name")
@@ -869,7 +869,7 @@ class TestNodeInterfaceAPI(APITestCase):
     def test_delete_deletes_device_interface(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         uri = get_interface_uri(interface)
@@ -946,7 +946,7 @@ class TestNodeInterfaceAPI(APITestCase):
     def test_link_subnet_creates_link_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         subnet = factory.make_Subnet(vlan=interface.vlan)
@@ -967,7 +967,7 @@ class TestNodeInterfaceAPI(APITestCase):
     def test_link_subnet_on_device_only_allows_static(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         for link_type in [
@@ -1061,7 +1061,7 @@ class TestNodeInterfaceAPI(APITestCase):
     def test_unlink_subnet_deletes_link_on_device(self):
         parent = factory.make_Node()
         device = factory.make_Device(
-            owner=self.logged_in_user, parent=parent)
+            owner=self.user, parent=parent)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=device)
         subnet = factory.make_Subnet()
@@ -1296,7 +1296,7 @@ class TestNodeInterfaceAPI(APITestCase):
         self.assertNotIn(tag_to_be_removed, interface.tags)
 
 
-class TestInterfaceAPIForControllers(APITestCase):
+class TestInterfaceAPIForControllers(APITestCase.ForUser):
 
     scenarios = (
         ("region", {
@@ -1305,7 +1305,7 @@ class TestInterfaceAPIForControllers(APITestCase):
         ("rack", {
             "maker": factory.make_RackController,
         }),
-        ("region_rack", {
+        ("region-rack", {
             "maker": factory.make_RegionRackController,
         })
     )

@@ -29,14 +29,11 @@ from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
 from maasserver.testing.api import (
     APITestCase,
-    log_in_as_normal_user,
+    APITransactionTestCase,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one
 from maastesting.matchers import MockCalledOnceWith
@@ -53,8 +50,9 @@ class TestAuthentication(MAASServerTestCase):
     def test_invalid_oauth_request(self):
         # An OAuth-signed request that does not validate is an error.
         user = factory.make_User()
-        client = OAuthAuthenticatedClient(user)
-        get_auth_tokens(user).delete()  # Delete the user's API keys.
+        client = MAASSensibleOAuthClient(user)
+        # Delete the user's API keys.
+        get_auth_tokens(user).delete()
         response = client.post(reverse('nodes_handler'), {'op': 'start'})
         observed = response.status_code, response.content
         expected = (
@@ -64,7 +62,7 @@ class TestAuthentication(MAASServerTestCase):
         self.assertThat(observed, MatchesListwise(expected))
 
 
-class TestXSSBugs(MAASServerTestCase):
+class TestXSSBugs(APITestCase.ForUser):
     """Tests for making sure we don't allow cross-site scripting bugs."""
 
     def test_invalid_signature_response_is_textplain(self):
@@ -75,7 +73,7 @@ class TestXSSBugs(MAASServerTestCase):
         self.assertNotIn("text/html", response.get("Content-Type"))
 
 
-class TestStoreNodeParameters(MAASServerTestCase):
+class TestStoreNodeParameters(APITestCase.ForUser):
     """Tests for `store_node_power_parameters`."""
 
     def setUp(self):
@@ -168,7 +166,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
         self.save.assert_called_once_with()
 
 
-class AccountAPITest(APITestCase):
+class AccountAPITest(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -207,7 +205,7 @@ class AccountAPITest(APITestCase):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
 
-class TestSSHKeyHandlers(APITestCase):
+class TestSSHKeyHandlers(APITestCase.ForUser):
 
     def test_sshkeys_handler_path(self):
         self.assertEqual(
@@ -219,7 +217,7 @@ class TestSSHKeyHandlers(APITestCase):
             reverse('sshkey_handler', args=['key']))
 
     def test_list_works(self):
-        _, keys = factory.make_user_with_keys(user=self.logged_in_user)
+        _, keys = factory.make_user_with_keys(user=self.user)
         response = self.client.get(reverse('sshkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json_load_bytes(response.content)
@@ -239,7 +237,7 @@ class TestSSHKeyHandlers(APITestCase):
 
     def test_get_by_id_works(self):
         _, keys = factory.make_user_with_keys(
-            n_keys=1, user=self.logged_in_user)
+            n_keys=1, user=self.user)
         key = keys[0]
         response = self.client.get(
             reverse('sshkey_handler', args=[key.id]))
@@ -254,12 +252,12 @@ class TestSSHKeyHandlers(APITestCase):
 
     def test_delete_by_id_works(self):
         _, keys = factory.make_user_with_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         response = self.client.delete(
             reverse('sshkey_handler', args=[keys[0].id]))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response)
-        keys_after = SSHKey.objects.filter(user=self.logged_in_user)
+        keys_after = SSHKey.objects.filter(user=self.user)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
 
@@ -277,7 +275,7 @@ class TestSSHKeyHandlers(APITestCase):
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_response = json_load_bytes(response.content)
         self.assertEqual(key_string, parsed_response["key"])
-        added_key = get_one(SSHKey.objects.filter(user=self.logged_in_user))
+        added_key = get_one(SSHKey.objects.filter(user=self.user))
         self.assertEqual(key_string, added_key.key)
 
     def test_adding_catches_key_validation_errors(self):
@@ -297,8 +295,8 @@ class TestSSHKeyHandlers(APITestCase):
             json_load_bytes(response.content))
 
 
-class MAASAPIAnonTest(MAASServerTestCase):
-    # The MAAS' handler is not accessible to anon users.
+class MAASAPIAnonTest(APITestCase.ForAnonymous):
+    """The MAAS' handler is not accessible to anon users."""
 
     def test_anon_get_config_forbidden(self):
         response = self.client.get(
@@ -315,7 +313,7 @@ class MAASAPIAnonTest(MAASServerTestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class MAASAPIVersioningTest(MAASServerTestCase):
+class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_api_version_handler_path(self):
         self.assertEqual('/api/version/', reverse('api_version'))
@@ -324,24 +322,22 @@ class MAASAPIVersioningTest(MAASServerTestCase):
         self.assertEqual('/api/1.0/', reverse('api_v1_error'))
 
     def test_get_api_version(self):
-        log_in_as_normal_user(self.client)
         response = self.client.get(reverse('api_version'))
-        self.assertEqual(http.client.OK, response.status_code)
+        self.assertResponseCode(http.client.OK, response)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(b'2.0', response.content)
 
     def test_old_api_request(self):
-        log_in_as_normal_user(self.client)
         old_api_url = reverse('api_v1_error') + "maas/" + factory.make_string()
         response = self.client.get(old_api_url)
-        self.assertEqual(http.client.GONE, response.status_code)
+        self.assertResponseCode(http.client.GONE, response)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
             b'The 1.0 API is no longer available. Please use API version 2.0.',
             response.content)
 
 
-class MAASAPITest(APITestCase):
+class MAASAPITest(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -484,7 +480,7 @@ class MAASAPITest(APITestCase):
             (response.status_code, json_load_bytes(response.content)))
 
 
-class APIErrorsTest(MAASTransactionServerTestCase):
+class APIErrorsTest(APITransactionTestCase.ForUserAndAdmin):
 
     def test_internal_error_generates_proper_api_response(self):
         error_message = factory.make_string()
@@ -501,13 +497,3 @@ class APIErrorsTest(MAASTransactionServerTestCase):
                 error_message.encode(settings.DEFAULT_CHARSET),
             ),
             (response.status_code, response.content))
-
-
-def dict_subset(obj, fields):
-    """Return a dict of a subset of the fields/values of an object."""
-    undefined = object()
-    values = (getattr(obj, field, undefined) for field in fields)
-    return {
-        field: value for field, value in zip(fields, values)
-        if value is not undefined
-    }

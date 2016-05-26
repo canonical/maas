@@ -22,7 +22,7 @@ def get_zone_uri(zone):
     return reverse('zone_handler', args=[zone.name])
 
 
-class TestZoneAPI(APITestCase):
+class TestZoneAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(

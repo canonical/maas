@@ -46,7 +46,7 @@ def get_partition_uri(partition, by_name=False):
         args=[node.system_id, block_device.id, partition_id])
 
 
-class TestPartitions(APITestCase):
+class TestPartitions(APITestCase.ForUser):
 
     def make_partition(self, node):
         device = factory.make_PhysicalBlockDevice(
@@ -189,7 +189,7 @@ class TestPartitions(APITestCase):
         self.assertEqual(partition.size, parsed_partition['size'])
 
     def test_delete_returns_403_for_non_admin(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         response = self.client.delete(uri)
@@ -222,7 +222,7 @@ class TestPartitions(APITestCase):
         self.become_admin()
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
@@ -274,7 +274,7 @@ class TestPartitions(APITestCase):
 
     def test_format_partition_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         partition = self.make_partition(node)
         uri = get_partition_uri(partition)
         fs_uuid = str(uuid4())
@@ -335,7 +335,7 @@ class TestPartitions(APITestCase):
         self.become_admin()
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition)
         uri = get_partition_uri(partition)
@@ -369,7 +369,7 @@ class TestPartitions(APITestCase):
 
     def test_unformat_partition_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         partition = self.make_partition(node)
         factory.make_Filesystem(partition=partition, acquired=True)
         uri = get_partition_uri(partition)
@@ -412,7 +412,7 @@ class TestPartitions(APITestCase):
         self.become_admin()
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -477,7 +477,7 @@ class TestPartitions(APITestCase):
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(
             block_device=block_device)
@@ -528,7 +528,7 @@ class TestPartitions(APITestCase):
         self.become_admin()
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         partition = self.make_partition(node)
         factory.make_Filesystem(
             partition=partition, mount_point="/mnt")
@@ -598,7 +598,7 @@ class TestPartitions(APITestCase):
 
     def test_unmount_unmounts_filesystem_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         partition = self.make_partition(node)
         filesystem = factory.make_Filesystem(
             partition=partition, mount_point="/mnt", acquired=True)

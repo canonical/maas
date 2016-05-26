@@ -34,7 +34,7 @@ def get_domain_uri(domain):
         'domain_handler', args=[domain.id])
 
 
-class TestDomainsAPI(APITestCase):
+class TestDomainsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -134,7 +134,7 @@ class TestDomainsAPI(APITestCase):
             http.client.BAD_REQUEST, response.status_code, response.content)
 
 
-class TestDomainAPI(APITestCase):
+class TestDomainAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         domain = factory.make_Domain()

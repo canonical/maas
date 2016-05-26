@@ -1,4 +1,4 @@
-# Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test related classes and functions for MAAS and its applications."""
@@ -31,6 +31,7 @@ from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
 import testtools
+from testtools.content import text_content
 import testtools.matchers
 
 
@@ -76,15 +77,15 @@ class MAASTestType(abc.ABCMeta):
 
     """
 
-    def __new__(cls, name, bases, attrs):
+    def __new__(meta, name, bases, attrs):
         scenarios = attrs.get("scenarios")
         if scenarios is not None:
             if not isinstance(scenarios, Sequence):
                 scenarios = attrs["scenarios"] = tuple(scenarios)
             if len(scenarios) == 0:
                 scenarios = attrs["scenarios"] = None
-        return super(MAASTestType, cls).__new__(
-            cls, name, bases, attrs)
+        return super(MAASTestType, meta).__new__(
+            meta, name, bases, attrs)
 
 
 class MAASTestCase(
@@ -138,6 +139,10 @@ class MAASTestCase(
             return MAASRunTest
 
     def setUp(self):
+        # Add the full test identifier as a detail because nose does not use
+        # it when reporting test failure or error details.
+        if self.id() != testtools.TestCase.id(self):
+            self.addDetail("test-id", text_content(self.id()))
         self.maybeCloseDatabaseConnections()
         super(MAASTestCase, self).setUp()
         self.setUpResources()

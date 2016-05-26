@@ -15,7 +15,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 
 
-class TestZonesAPI(APITestCase):
+class TestZonesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(

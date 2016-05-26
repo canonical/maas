@@ -31,7 +31,7 @@ def get_fabric_uri(fabric):
         'fabric_handler', args=[fabric.id])
 
 
-class TestFabricsAPI(APITestCase):
+class TestFabricsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -77,7 +77,7 @@ class TestFabricsAPI(APITestCase):
             http.client.FORBIDDEN, response.status_code, response.content)
 
 
-class TestFabricAPI(APITestCase):
+class TestFabricAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         fabric = factory.make_Fabric()

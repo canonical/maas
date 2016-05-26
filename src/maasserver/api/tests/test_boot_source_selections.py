@@ -32,7 +32,7 @@ def get_boot_source_selection_uri(boot_source_selection):
     )
 
 
-class TestBootSourceSelectionAPI(APITestCase):
+class TestBootSourceSelectionAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourceSelectionAPI, self).setUp()
@@ -125,7 +125,7 @@ class TestBootSourceSelectionAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestBootSourceSelectionsAPI(APITestCase):
+class TestBootSourceSelectionsAPI(APITestCase.ForUser):
     """Test the the boot source selections API."""
 
     def setUp(self):

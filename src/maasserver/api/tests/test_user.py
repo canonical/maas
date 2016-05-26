@@ -27,7 +27,7 @@ from testtools.matchers import (
 )
 
 
-class TestUsers(APITestCase):
+class TestUsers(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -107,7 +107,7 @@ class TestUsers(APITestCase):
             [user['username'] for user in listing],
             ContainsAll([user.username for user in users]))
 
-    def test__whoami_returns_logged_in_user(self):
+    def test__whoami_returns_user(self):
         factory.make_User()
         response = self.client.get(reverse('users_handler'), {
             'op': 'whoami'
@@ -116,10 +116,10 @@ class TestUsers(APITestCase):
             http.client.OK, response.status_code, response.content)
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
-            result['username'], Equals(self.logged_in_user.username))
+            result['username'], Equals(self.user.username))
 
     def test__whoami_returns_forbidden_if_not_logged_in(self):
-        self.logout()
+        self.client.logout()
         factory.make_User()
         response = self.client.get(reverse('users_handler'), {
             'op': 'whoami'
@@ -149,7 +149,7 @@ class TestUsers(APITestCase):
         self.assertEqual(sorted(users), users_as_returned)
 
 
-class TestUser(APITestCase):
+class TestUser(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -229,7 +229,7 @@ class TestUser(APITestCase):
 
     def test_DELETE_admin_cannot_delete_self(self):
         self.become_admin()
-        user = self.logged_in_user
+        user = self.user
         response = self.client.delete(
             reverse('user_handler', args=[user.username]))
         self.assertEqual(

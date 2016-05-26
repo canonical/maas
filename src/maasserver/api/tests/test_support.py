@@ -30,6 +30,7 @@ from maasserver.models.config import (
 )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
 from piston3.authentication import NoAuthentication
 from testtools.matchers import (
@@ -44,7 +45,7 @@ class StubHandler:
         raise AssertionError("Do not call the stub handler.")
 
 
-class TestOperationsResource(APITestCase):
+class TestOperationsResource(APITestCase.ForUser):
 
     def test_type_error_is_not_hidden(self):
         # This tests that bug #1228205 is fixed (i.e. that a
@@ -99,7 +100,7 @@ class TestOperationsResource(APITestCase):
         self.assertThat(resource.is_authentication_attempted, Is(True))
 
 
-class TestRestrictedResources(APITestCase):
+class TestRestrictedResources(MAASTestCase):
     """Tests for `RestrictedResource` and `AdminRestrictedResource`."""
 
     scenarios = (
@@ -134,7 +135,7 @@ class TestRestrictedResources(APITestCase):
         self.assertThat(resource.is_authentication_attempted, Is(True))
 
 
-class TestAdminMethodDecorator(APITestCase):
+class TestAdminMethodDecorator(MAASServerTestCase):
 
     def test_non_admin_are_rejected(self):
         FakeRequest = namedtuple('FakeRequest', ['user'])

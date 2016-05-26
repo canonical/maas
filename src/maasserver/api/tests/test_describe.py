@@ -11,15 +11,16 @@ from urllib.parse import urlparse
 
 import django.core.urlresolvers
 from django.core.urlresolvers import (
-    reverse,
     get_script_prefix,
+    reverse,
 )
 from django.test.client import RequestFactory
 from maasserver.api.doc import get_api_description_hash
 from maasserver.api.doc_handler import describe
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
+from maastesting.testcase import MAASTestCase
 from testscenarios import multiply_scenarios
 from testtools.matchers import (
     AfterPreprocessing,
@@ -35,7 +36,7 @@ from testtools.matchers import (
 )
 
 
-class TestDescribe(MAASServerTestCase):
+class TestDescribe(APITestCase.ForAnonymousAndUserAndAdmin):
     """Tests for the `describe` view."""
 
     def test_describe_returns_json(self):
@@ -67,7 +68,7 @@ class TestDescribe(MAASServerTestCase):
                 get_api_description_hash()))
 
 
-class TestDescribeAbsoluteURIs(MAASServerTestCase):
+class TestDescribeAbsoluteURIs(MAASTestCase):
     """Tests for the `describe` view's URI manipulation."""
 
     scenarios_schemes = (

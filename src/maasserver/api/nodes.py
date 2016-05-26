@@ -250,7 +250,7 @@ class AnonNodeHandler(AnonymousOperationsHandler):
 
 class AnonNodesHandler(AnonymousOperationsHandler):
     """Anonymous access to Nodes."""
-    create = update = delete = None
+    create = read = update = delete = None
 
     @operation(idempotent=True)
     def is_registered(self, request):

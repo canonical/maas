@@ -9,18 +9,18 @@ import http.client
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 
 
-class NotFoundHandlerTest(MAASServerTestCase):
+class NotFoundHandlerTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
-    scenarios = [
+    scenarios = (
         ("GET", dict(method="get")),
         ("POST", dict(method="post")),
         ("PUT", dict(method="put")),
         ("DELETE", dict(method="delete")),
-    ]
+    )
 
     def test_calling_bogus_handler_returns_not_found(self):
         # Use the nodes handler to get the API prefix right.

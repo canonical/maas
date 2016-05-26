@@ -37,9 +37,9 @@ from maasserver.api.support import (
     OperationsHandler,
     OperationsResource,
 )
+from maasserver.testing.api import APITestCase
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     IsCallable,
     MockCalledOnceWith,
@@ -64,7 +64,7 @@ from testtools.matchers import (
 )
 
 
-class TestFindingResources(MAASServerTestCase):
+class TestFindingResources(MAASTestCase):
     """Tests for API inspection support: finding resources."""
 
     def test_handler_path(self):
@@ -76,14 +76,6 @@ class TestFindingResources(MAASServerTestCase):
         """Return a new module with a fabricated name."""
         name = factory.make_name("module")
         return types.ModuleType(name)
-
-    def test_anon_api_doc(self):
-        # The documentation is accessible to anon users.
-        self.patch(sys, "stderr", StringIO())
-        response = self.client.get(reverse('api-doc'))
-        self.assertEqual(http.client.OK, response.status_code)
-        # No error or warning are emitted by docutils.
-        self.assertEqual("", sys.stderr.getvalue())
 
     def test_urlpatterns_empty(self):
         # No resources are found in empty modules.
@@ -140,7 +132,18 @@ class TestFindingResources(MAASServerTestCase):
         self.assertNotEqual(set(), find_api_resources(urlconf))
 
 
-class TestGeneratingDocs(MAASServerTestCase):
+class TestFindingResourcesAPI(APITestCase.ForAnonymousAndUserAndAdmin):
+    """The documentation is available to all comers."""
+
+    def test_api_doc_accessibility(self):
+        self.patch(sys, "stderr", StringIO())
+        response = self.client.get(reverse('api-doc'))
+        self.assertResponseCode(http.client.OK, response)
+        # No error or warning are emitted by docutils.
+        self.assertEqual("", sys.stderr.getvalue())
+
+
+class TestGeneratingDocs(MAASTestCase):
     """Tests for API inspection support: generating docs."""
 
     @staticmethod
@@ -188,7 +191,7 @@ class TestGeneratingDocs(MAASServerTestCase):
             str(error))
 
 
-class TestHandlers(MAASServerTestCase):
+class TestHandlers(MAASTestCase):
     """Test that the handlers have all the details needed to generate the
     API documentation.
     """
@@ -257,7 +260,7 @@ class ExampleFallbackHandler(OperationsHandler):
     create = read = delete = update = None
 
 
-class TestDescribingAPI(MAASServerTestCase):
+class TestDescribingAPI(MAASTestCase):
     """Tests for functions that describe a Piston API."""
 
     def setUp(self):
@@ -404,7 +407,7 @@ class TestDescribingAPI(MAASServerTestCase):
             }))
 
 
-class TestGeneratePowerTypesDoc(MAASServerTestCase):
+class TestGeneratePowerTypesDoc(MAASTestCase):
     """Tests for `generate_power_types_doc`."""
 
     def test__generate_power_types_doc_generates_doc(self):

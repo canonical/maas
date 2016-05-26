@@ -9,7 +9,6 @@ import http.client
 import json
 
 from django.conf import settings
-from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -22,10 +21,9 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.node import PowerInfo
-from maasserver.testing.api import MultipleUsersScenarios
+from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import (
@@ -34,14 +32,8 @@ from maasserver.utils.orm import (
 )
 
 
-class EnlistmentAPITest(MultipleUsersScenarios,
-                        MAASServerTestCase):
+class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
     """Enlistment tests."""
-    scenarios = [
-        ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_User)),
-        ('admin', dict(userfactory=factory.make_admin)),
-        ]
 
     def setUp(self):
         super().setUp()
@@ -300,19 +292,12 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(architecture, diane.architecture)
 
 
-class MachineHostnameEnlistmentTest(
-        MultipleUsersScenarios, MAASServerTestCase):
+class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def setUp(self):
         super().setUp()
         self.patch(Node, 'get_effective_power_info').return_value = (
             PowerInfo(False, False, False, None, None))
-
-    scenarios = [
-        ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_User)),
-        ('admin', dict(userfactory=factory.make_admin)),
-        ]
 
     def test_created_machine_gets_default_domain_appended(self):
         hostname_without_domain = factory.make_name('hostname')
@@ -334,14 +319,8 @@ class MachineHostnameEnlistmentTest(
             expected_hostname, parsed_result.get('fqdn'))
 
 
-class NonAdminEnlistmentAPITest(
-        MultipleUsersScenarios, MAASServerTestCase):
-    # Enlistment tests for non-admin users.
-
-    scenarios = [
-        ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_User)),
-        ]
+class NonAdminEnlistmentAPITest(APITestCase.ForAnonymousAndUser):
+    """Enlistment tests for non-admin users."""
 
     def setUp(self):
         super().setUp()
@@ -367,8 +346,8 @@ class NonAdminEnlistmentAPITest(
             Machine.objects.get(system_id=system_id).status)
 
 
-class AnonymousEnlistmentAPITest(MAASServerTestCase):
-    # Enlistment tests specific to anonymous users.
+class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
+    """Enlistment tests specific to anonymous users."""
 
     def setUp(self):
         super().setUp()
@@ -417,11 +396,12 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
             list(parsed_result))
 
 
-class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
+class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
     """Enlistment tests from the perspective of regular, non-admin users."""
 
     def setUp(self):
         super().setUp()
+        self.assertFalse(self.user.is_superuser)
         self.patch(Node, 'get_effective_power_info').return_value = (
             PowerInfo(False, False, False, None, None))
 
@@ -429,7 +409,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         # An non-admin user is not allowed to accept an anonymously
         # enlisted machine.  That would defeat the whole purpose of holding
         # those machines for approval.
-        self.client_log_in()
         machine_id = factory.make_Node(status=NODE_STATUS.NEW).system_id
         response = self.client.post(
             reverse('machines_handler'),
@@ -446,7 +425,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         # anonymously enlisted machines, but only those for which he/she has
         # admin privs will be accepted, which currently equates to none of
         # them.
-        self.client_log_in()
         factory.make_Node(status=NODE_STATUS.NEW),
         factory.make_Node(status=NODE_STATUS.NEW),
         response = self.client.post(
@@ -456,7 +434,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         self.assertEqual([], machines_returned)
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
-        self.client_log_in()
         new_power_address = factory.make_string()
         response = self.client.post(
             reverse('machines_handler'), {
@@ -476,7 +453,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
              machine.power_type))
 
     def test_POST_returns_limited_fields(self):
-        self.client_log_in()
         response = self.client.post(
             reverse('machines_handler'),
             {
@@ -528,7 +504,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
             list(parsed_result))
 
 
-class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
+class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
     """Enlistment tests from the perspective of admin users."""
 
     def setUp(self):
@@ -537,7 +513,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             PowerInfo(False, False, False, None, None))
 
     def test_POST_sets_power_type_if_admin(self):
-        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('machines_handler'), {
                 'architecture': make_usable_architecture(self),
@@ -553,7 +528,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
     def test_POST_sets_power_parameters_field(self):
         # The api allows the setting of a Machine's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
-        self.client_log_in(as_admin=True)
         new_power_id = factory.make_name('power_id')
         new_power_address = factory.make_ipv4_address()
         new_power_pass = factory.make_name('power_pass')
@@ -580,7 +554,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             reload_object(machine).power_parameters)
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
-        self.client_log_in(as_admin=True)
         hostname = factory.make_string()
         response = self.client.post(
             reverse('machines_handler'), {
@@ -602,7 +575,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
     def test_POST_new_sets_power_parameters_skip_check(self):
         # The api allows to skip the validation step and set arbitrary
         # power parameters.
-        self.client_log_in(as_admin=True)
         param = factory.make_string()
         response = self.client.post(
             reverse('machines_handler'), {
@@ -624,7 +596,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
     def test_POST_admin_creates_machine_in_commissioning_state(self):
         # When an admin user enlists a machine, it goes into the
         # Commissioning state.
-        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('machines_handler'),
             {
@@ -640,7 +611,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             Machine.objects.get(system_id=system_id).status)
 
     def test_POST_returns_limited_fields(self):
-        self.client_log_in(as_admin=True)
         response = self.client.post(
             reverse('machines_handler'),
             {
@@ -694,7 +664,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def test_POST_accept_all(self):
         # An admin user can accept all anonymously enlisted machines.
-        self.client_log_in(as_admin=True)
         machines = [
             factory.make_Node(status=NODE_STATUS.NEW),
             factory.make_Node(status=NODE_STATUS.NEW),

@@ -23,7 +23,7 @@ from maasserver.utils.orm import reload_object
 from testtools.matchers import Equals
 
 
-class TestIPAddressesAPI(APITestCase):
+class TestIPAddressesAPI(APITestCase.ForUser):
 
     def post_reservation_request(
             self, subnet=None, ip_address=None, network=None,
@@ -83,7 +83,7 @@ class TestIPAddressesAPI(APITestCase):
         self.assertEqual(expected, returned_address)
         self.assertEqual(
             IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
-        self.assertEqual(self.logged_in_user, staticipaddress.user)
+        self.assertEqual(self.user, staticipaddress.user)
 
     def test_POST_reserve_with_MAC_links_MAC_to_ip_address(self):
         subnet = factory.make_Subnet()
@@ -266,7 +266,7 @@ class TestIPAddressesAPI(APITestCase):
 
     def test_GET_returns_ipaddresses(self):
         original_ipaddress = factory.make_StaticIPAddress(
-            user=self.logged_in_user)
+            user=self.user)
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -297,7 +297,7 @@ class TestIPAddressesAPI(APITestCase):
         self.assertEqual([], json_load_bytes(response.content))
 
     def test_GET_only_returns_request_users_addresses(self):
-        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
+        ipaddress = factory.make_StaticIPAddress(user=self.user)
         factory.make_StaticIPAddress(user=factory.make_User())
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(
@@ -310,7 +310,7 @@ class TestIPAddressesAPI(APITestCase):
         addrs = []
         for _ in range(3):
             addrs.append(
-                factory.make_StaticIPAddress(user=self.logged_in_user))
+                factory.make_StaticIPAddress(user=self.user))
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -323,7 +323,7 @@ class TestIPAddressesAPI(APITestCase):
 
     def test_POST_release_deallocates_address(self):
         ipaddress = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)
@@ -334,7 +334,7 @@ class TestIPAddressesAPI(APITestCase):
         unknown_nic = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
         ipaddress = unknown_nic.link_subnet(
             INTERFACE_LINK_TYPE.STATIC, subnet,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
 
         self.post_release_request(ipaddress.ip)
         self.assertIsNone(reload_object(unknown_nic))
@@ -345,7 +345,7 @@ class TestIPAddressesAPI(APITestCase):
         subnet = factory.make_Subnet()
         ipaddress = attached_nic.link_subnet(
             INTERFACE_LINK_TYPE.STATIC, subnet,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
 
         self.post_release_request(ipaddress.ip)
         self.assertEqual(attached_nic, reload_object(attached_nic))
@@ -358,9 +358,9 @@ class TestIPAddressesAPI(APITestCase):
 
     def test_POST_release_does_not_delete_other_IPs_I_own(self):
         ipaddress = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
         other_address = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(
             http.client.OK, response.status_code, response.content)

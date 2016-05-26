@@ -1,17 +1,29 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""MAAS-specific test HTTP client."""
+"""MAAS-specific test HTTP clients."""
 
 __all__ = [
     'MAASSensibleClient',
-    ]
+    'MAASSensibleOAuthClient',
+]
 
+from time import time
+
+from maasserver.models.user import get_auth_tokens
 from maasserver.utils.orm import (
     post_commit_hooks,
     transactional,
 )
 from maastesting.djangoclient import SensibleClient
+from maastesting.factory import factory
+from oauth.oauth import (
+    generate_nonce,
+    OAuthConsumer,
+    OAuthRequest,
+    OAuthSignatureMethod_PLAINTEXT,
+    OAuthToken,
+)
 
 
 class MAASSensibleClient(SensibleClient):
@@ -19,6 +31,9 @@ class MAASSensibleClient(SensibleClient):
 
     This ensures that requests are performed in a transaction, and that
     post-commit hooks are alway fired or reset.
+
+    It also permits logging-in using just a user object. A password will be
+    configured and used to log-in.
     """
 
     def request(self, **request):
@@ -32,3 +47,94 @@ class MAASSensibleClient(SensibleClient):
         # hooks are fired in any case, hence the belt-n-braces context.
         with post_commit_hooks:
             return upcall(**request)
+
+    @transactional
+    def login(self, *, user=None, **credentials):
+        if user is None:
+            return super(MAASSensibleClient, self).login(**credentials)
+        elif user.is_anonymous():
+            self.logout()
+            return False
+        else:
+            credentials["password"] = password = factory.make_string()
+            credentials["username"] = user.username
+            user.set_password(password)
+            user.save()
+            return super(MAASSensibleClient, self).login(**credentials)
+
+
+class MAASSensibleOAuthClient(MAASSensibleClient):
+    """OAuth-authenticated client for Piston API testing."""
+
+    def __init__(self, user=None, token=None):
+        """Initialize an oauth-authenticated test client.
+
+        :param user: The user to authenticate.
+        :type user: django.contrib.auth.models.User
+        :param token: Optional token to authenticate `user` with.  If
+            no `token` is given, the user's first token will be used.
+        :type token: oauth.oauth.OAuthToken
+        """
+        super(MAASSensibleOAuthClient, self).__init__()
+        if user is not None or token is not None:
+            self.login(user=user, token=token)
+        else:
+            self.logout()
+
+    def login(self, *, user=None, token=None):
+        """Override Django's `Client.login`."""
+        if user is None:
+            assert token is not None
+            return self._token_set(token)
+        else:
+            if user.is_anonymous():
+                self._token_clear()
+                return False
+            elif token is None:
+                token = get_auth_tokens(user)[0]
+                return self._token_set(token)
+            else:
+                assert token.user == user
+                return self._token_set(token)
+
+    def logout(self):
+        """Override Django's `Client.logout`."""
+        self._token_clear()
+
+    def _token_set(self, token):
+        consumer = token.consumer
+        self.consumer = OAuthConsumer(consumer.key, consumer.secret)
+        self.token = OAuthToken(token.key, token.secret)
+
+    def _token_clear(self):
+        self.consumer = None
+        self.token = None
+
+    def _compose_auth_header(self, url):
+        """Return additional header entries for request to `url`."""
+        params = {
+            'oauth_version': "1.0",
+            'oauth_nonce': generate_nonce(),
+            'oauth_timestamp': int(time()),
+            'oauth_token': self.token.key,
+            'oauth_consumer_key': self.consumer.key,
+        }
+        req = OAuthRequest(http_url=url, parameters=params)
+        req.sign_request(
+            OAuthSignatureMethod_PLAINTEXT(), self.consumer, self.token)
+        header = req.to_header()
+        # Django uses the 'HTTP_AUTHORIZATION' to look up Authorization
+        # credentials.
+        header['HTTP_AUTHORIZATION'] = header['Authorization']
+        return header
+
+    def _compose_url(self, path):
+        """Put together a full URL for the resource at `path`."""
+        environ = self._base_environ()
+        return '%s://%s' % (environ['wsgi.url_scheme'], path)
+
+    def request(self, **kwargs):
+        url = self._compose_url(kwargs['PATH_INFO'])
+        if self.consumer is not None:
+            kwargs.update(self._compose_auth_header(url))
+        return super(MAASSensibleOAuthClient, self).request(**kwargs)

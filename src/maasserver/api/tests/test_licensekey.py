@@ -24,7 +24,7 @@ from maasserver.utils.orm import (
 )
 
 
-class TestLicenseKey(APITestCase):
+class TestLicenseKey(APITestCase.ForUser):
 
     def get_url(self, osystem, distro_series):
         """Return the URL for the license key of the given osystem and
@@ -146,7 +146,7 @@ class TestLicenseKey(APITestCase):
         self.assertEqual(response1.status_code, response2.status_code)
 
 
-class TestLicenseKeysAPI(APITestCase):
+class TestLicenseKeysAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(

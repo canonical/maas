@@ -17,7 +17,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.orm import get_one
 
 
-class TestSSLKeyHandlers(APITestCase):
+class TestSSLKeyHandlers(APITestCase.ForUser):
 
     def test_sslkeys_handler_path(self):
         self.assertEqual(
@@ -30,7 +30,7 @@ class TestSSLKeyHandlers(APITestCase):
 
     def test_list_works(self):
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
@@ -44,7 +44,7 @@ class TestSSLKeyHandlers(APITestCase):
 
     def test_list_sorts_output(self):
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
@@ -60,7 +60,7 @@ class TestSSLKeyHandlers(APITestCase):
         # other user
         factory.make_user_with_ssl_keys(n_keys=2)
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
         parsed_result = json.loads(
@@ -76,7 +76,7 @@ class TestSSLKeyHandlers(APITestCase):
         # other user
         factory.make_user_with_ssl_keys(n_keys=2)
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         self.become_admin()
         response = self.client.get(reverse('sslkeys_handler'))
         self.assertEqual(http.client.OK, response.status_code, response)
@@ -91,7 +91,7 @@ class TestSSLKeyHandlers(APITestCase):
 
     def test_get_by_id_works(self):
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=1, user=self.logged_in_user)
+            n_keys=1, user=self.user)
         key = keys[0]
         response = self.client.get(
             reverse('sslkey_handler', args=[key.id]))
@@ -108,7 +108,7 @@ class TestSSLKeyHandlers(APITestCase):
     def test_get_by_id_fails_for_non_owner(self):
         _, keys = factory.make_user_with_ssl_keys(n_keys=1)
         factory.make_user_with_ssl_keys(
-            n_keys=1, user=self.logged_in_user)
+            n_keys=1, user=self.user)
         key = keys[0]
         response = self.client.get(
             reverse('sslkey_handler', args=[key.id]))
@@ -117,7 +117,7 @@ class TestSSLKeyHandlers(APITestCase):
     def test_get_by_id_fails_for_non_owner_as_admin(self):
         _, keys = factory.make_user_with_ssl_keys(n_keys=1)
         factory.make_user_with_ssl_keys(
-            n_keys=1, user=self.logged_in_user)
+            n_keys=1, user=self.user)
         self.become_admin()
         key = keys[0]
         response = self.client.get(
@@ -126,12 +126,12 @@ class TestSSLKeyHandlers(APITestCase):
 
     def test_delete_by_id_works(self):
         _, keys = factory.make_user_with_ssl_keys(
-            n_keys=2, user=self.logged_in_user)
+            n_keys=2, user=self.user)
         response = self.client.delete(
             reverse('sslkey_handler', args=[keys[0].id]))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response)
-        keys_after = SSLKey.objects.filter(user=self.logged_in_user)
+        keys_after = SSLKey.objects.filter(user=self.user)
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
 
@@ -150,7 +150,7 @@ class TestSSLKeyHandlers(APITestCase):
         parsed_response = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(key_string, parsed_response["key"])
-        added_key = get_one(SSLKey.objects.filter(user=self.logged_in_user))
+        added_key = get_one(SSLKey.objects.filter(user=self.user))
         self.assertEqual(key_string, added_key.key)
 
     def test_adding_catches_key_validation_errors(self):

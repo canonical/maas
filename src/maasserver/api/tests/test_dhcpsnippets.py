@@ -21,7 +21,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
 
 
-class TestDHCPSnippetAPI(APITestCase):
+class TestDHCPSnippetAPI(APITestCase.ForUser):
     """Tests for /api/2.0/dhcp-snippets/<dhcp-snippet>/."""
 
     @staticmethod
@@ -239,7 +239,7 @@ class TestDHCPSnippetAPI(APITestCase):
             "%s not found in history" % textfile.id, response.content.decode())
 
 
-class TestDHCPSnippetsAPI(APITestCase):
+class TestDHCPSnippetsAPI(APITestCase.ForUser):
     """Tests for /api/2.0/dhcp-snippets."""
 
     @staticmethod

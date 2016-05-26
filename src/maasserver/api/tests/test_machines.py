@@ -11,11 +11,9 @@ import random
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
-from django.http import QueryDict
 from django.test import RequestFactory
 from maasserver import eventloop
 from maasserver.api import machines as machines_module
-from maasserver.api.utils import get_overridden_query_dict
 from maasserver.enum import (
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -39,7 +37,6 @@ from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
     APITestCase,
     APITransactionTestCase,
-    MultipleUsersScenarios,
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -47,7 +44,7 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
@@ -56,6 +53,7 @@ from maastesting.matchers import (
     MockCalledWith,
     MockNotCalled,
 )
+from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.utils.enum import map_enum
@@ -66,7 +64,7 @@ from testtools.matchers import (
 )
 
 
-class TestGetStorageLayoutParams(MAASServerTestCase):
+class TestGetStorageLayoutParams(MAASTestCase):
 
     def test_sets_request_data_to_mutable(self):
         data = {
@@ -80,13 +78,7 @@ class TestGetStorageLayoutParams(MAASServerTestCase):
         self.assertTrue(request.data._mutable)
 
 
-class MachineHostnameTest(
-        MultipleUsersScenarios, MAASServerTestCase):
-
-    scenarios = [
-        ('user', dict(userfactory=factory.make_User)),
-        ('admin', dict(userfactory=factory.make_admin)),
-    ]
+class MachineHostnameTest(APITestCase.ForUserAndAdmin):
 
     def test_GET_returns_fqdn_with_domain_name_from_node(self):
         # If DNS management is enabled, the domain part of a hostname
@@ -108,7 +100,7 @@ class MachineHostnameTest(
             [machine.get('fqdn') for machine in parsed_result])
 
 
-class MachineOwnerDataTest(APITestCase):
+class MachineOwnerDataTest(APITestCase.ForUser):
 
     def test_GET_returns_owner_data(self):
         owner_data = {
@@ -134,14 +126,12 @@ def extract_system_ids_from_machines(machines):
     return [machine.system_id for machine in machines]
 
 
-class RequestFixture:
-    def __init__(self, dict, fields):
-        self.user = factory.make_User()
-        self.GET = get_overridden_query_dict(dict, QueryDict(''), fields)
-
-
-class TestMachinesAPI(APITestCase):
+class TestMachinesAPI(APITestCase.ForUser):
     """Tests for /api/2.0/machines/."""
+
+    # XXX: GavinPanella 2016-05-24 bug=1585138: op=list_allocated does not
+    # work for clients authenticated via username and password.
+    clientfactories = {"oauth": MAASSensibleOAuthClient}
 
     def test_handler_path(self):
         self.assertEqual(
@@ -217,7 +207,7 @@ class TestMachinesAPI(APITestCase):
         # The api allows for fetching the list of Machines.
         machine1 = factory.make_Node()
         machine2 = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         response = self.client.get(reverse('machines_handler'))
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -453,17 +443,17 @@ class TestMachinesAPI(APITestCase):
         # list_allocated should only return the machines that have the
         # current request's token on them.
         machine_1 = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            token=get_auth_tokens(self.logged_in_user)[0])
-        second_token = create_auth_token(self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user,
+            token=get_auth_tokens(self.user)[0])
+        second_token = create_auth_token(self.user)
         factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            owner=self.user, status=NODE_STATUS.ALLOCATED,
             token=second_token)
 
         user_2 = factory.make_User()
         create_auth_token(user_2)
         factory.make_Node(
-            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
+            owner=self.user, status=NODE_STATUS.ALLOCATED,
             token=second_token)
 
         # At this point we have two machines owned by the same user but
@@ -483,12 +473,12 @@ class TestMachinesAPI(APITestCase):
     def test_GET_list_allocated_filters_by_id(self):
         # list_allocated takes an optional list of 'id' parameters to
         # filter returned results.
-        current_token = get_auth_tokens(self.logged_in_user)[0]
+        current_token = get_auth_tokens(self.user)[0]
         machines = []
         for _ in range(3):
             machines.append(factory.make_Node(
                 status=NODE_STATUS.ALLOCATED,
-                owner=self.logged_in_user, token=current_token))
+                owner=self.user, token=current_token))
 
         required_machine_ids = [machines[0].system_id, machines[1].system_id]
         response = self.client.get(reverse('machines_handler'), {
@@ -520,7 +510,7 @@ class TestMachinesAPI(APITestCase):
             status=available_status, owner=None, with_boot_disk=True)
         self.client.post(reverse('machines_handler'), {'op': 'allocate'})
         machine = Machine.objects.get(system_id=machine.system_id)
-        self.assertEqual(self.logged_in_user, machine.owner)
+        self.assertEqual(self.user, machine.owner)
 
     def test_POST_allocate_uses_machine_acquire_lock(self):
         # The "allocate" operation allocates the machine it returns.
@@ -1135,7 +1125,9 @@ class TestMachinesAPI(APITestCase):
         available_status = NODE_STATUS.READY
         machine = factory.make_Node(
             status=available_status, owner=None, with_boot_disk=True)
-        self.client.post(reverse('machines_handler'), {'op': 'allocate'})
+        response = self.client.post(
+            reverse('machines_handler'), {'op': 'allocate'})
+        self.assertResponseCode(http.client.OK, response)
         machine = Machine.objects.get(system_id=machine.system_id)
         oauth_key = self.client.token.key
         self.assertEqual(oauth_key, machine.token.key)
@@ -1335,7 +1327,7 @@ class TestMachinesAPI(APITestCase):
         machine_ids = {
             factory.make_Node(
                 status=NODE_STATUS.ALLOCATED,
-                owner=self.logged_in_user).system_id
+                owner=self.user).system_id
             for _ in range(3)
         }
         # And one with no owner
@@ -1359,7 +1351,7 @@ class TestMachinesAPI(APITestCase):
             RELEASABLE_STATUSES + [NODE_STATUS.READY])
         unacceptable_states = (
             set(map_enum(NODE_STATUS).values()) - acceptable_states)
-        owner = self.logged_in_user
+        owner = self.user
         machines = [
             factory.make_Node(status=status, owner=owner)
             for status in unacceptable_states]
@@ -1382,7 +1374,7 @@ class TestMachinesAPI(APITestCase):
         self.assertItemsEqual(expected, returned)
 
     def test_POST_release_returns_modified_machines(self):
-        owner = self.logged_in_user
+        owner = self.user
         self.patch(Machine, "_stop").return_value = None
         acceptable_states = [NODE_STATUS.READY] + RELEASABLE_STATUSES
         machines = [
@@ -1404,7 +1396,7 @@ class TestMachinesAPI(APITestCase):
             parsed_result)
 
     def test_POST_release_erases_disks_when_enabled(self):
-        owner = self.logged_in_user
+        owner = self.user
         self.patch(Machine, "_start").return_value = None
         machine = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.ALLOCATED, power_state=POWER_STATE.OFF,
@@ -1451,7 +1443,7 @@ class TestMachinesAPI(APITestCase):
         self.assertEqual(original_zone, machine.zone)
 
     def test_POST_set_zone_requires_admin(self):
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         original_zone = machine.zone
         response = self.client.post(
             reverse('machines_handler'),
@@ -1595,7 +1587,7 @@ class TestMachinesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertThat(
             add_chassis, MockCalledOnceWith(
-                self.logged_in_user.username, 'virsh', hostname, None, None,
+                self.user.username, 'virsh', hostname, None, None,
                 True, None, None, None, None, None))
 
     def test_POST_add_chassis_sends_accept_all_false_when_not_true(self):
@@ -1618,7 +1610,7 @@ class TestMachinesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertThat(
             add_chassis, MockCalledOnceWith(
-                self.logged_in_user.username, 'virsh', hostname, None, None,
+                self.user.username, 'virsh', hostname, None, None,
                 False, None, None, None, None, None))
 
     def test_POST_add_chassis_sends_prefix_filter(self):
@@ -1649,7 +1641,7 @@ class TestMachinesAPI(APITestCase):
                 http.client.OK, response.status_code, response.content)
             self.assertThat(
                 add_chassis, MockCalledWith(
-                    self.logged_in_user.username, chassis_type, hostname,
+                    self.user.username, chassis_type, hostname,
                     username, password, False, None, prefix_filter, None,
                     None, None))
 
@@ -1763,7 +1755,7 @@ class TestMachinesAPI(APITestCase):
                 http.client.OK, response.status_code, response.content)
             self.assertThat(
                 add_chassis, MockCalledWith(
-                    self.logged_in_user.username, chassis_type, hostname,
+                    self.user.username, chassis_type, hostname,
                     username, password, False, None, None, None, port, None))
 
     def test_POST_add_chasis_only_allows_port_with_vmware_and_msftocs(self):
@@ -1812,7 +1804,7 @@ class TestMachinesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertThat(
             add_chassis, MockCalledWith(
-                self.logged_in_user.username, 'vmware', hostname, username,
+                self.user.username, 'vmware', hostname, username,
                 password, False, None, None, None, None, protocol))
 
     def test_POST_add_chasis_only_allows_protocol_with_vmware(self):
@@ -1857,7 +1849,7 @@ class TestMachinesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertThat(
             add_chassis, MockCalledWith(
-                self.logged_in_user.username, 'virsh', hostname, None,
+                self.user.username, 'virsh', hostname, None,
                 None, False, domain.name, None, None, None, None))
 
     def test_POST_add_chassis_accept_domain_by_id(self):
@@ -1881,7 +1873,7 @@ class TestMachinesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         self.assertThat(
             add_chassis, MockCalledWith(
-                self.logged_in_user.username, 'virsh', hostname, None,
+                self.user.username, 'virsh', hostname, None,
                 None, False, domain.name, None, None, None, None))
 
     def test_POST_add_chassis_validates_domain(self):
@@ -1923,7 +1915,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(accessible_by_url, MockNotCalled())
         self.assertThat(
             add_chassis, MockCalledWith(
-                self.logged_in_user.username, 'virsh', hostname, None, None,
+                self.user.username, 'virsh', hostname, None, None,
                 False, None, None, None, None, None))
 
     def test_POST_add_chassis_accepts_hostname_for_rack_controller(self):
@@ -1948,7 +1940,7 @@ class TestMachinesAPI(APITestCase):
         self.assertThat(accessible_by_url, MockNotCalled())
         self.assertThat(
             add_chassis, MockCalledWith(
-                self.logged_in_user.username, 'virsh', hostname, None, None,
+                self.user.username, 'virsh', hostname, None, None,
                 False, None, None, None, None, None))
 
     def test_POST_add_chassis_rejects_invalid_rack_controller(self):
@@ -1995,7 +1987,7 @@ class TestMachinesAPI(APITestCase):
              hostname).encode('utf-8'), response.content)
 
 
-class TestPowerState(APITransactionTestCase):
+class TestPowerState(APITransactionTestCase.ForUser):
 
     def setUp(self):
         super(TestPowerState, self).setUp()

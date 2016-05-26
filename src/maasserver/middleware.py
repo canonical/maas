@@ -97,7 +97,10 @@ class AccessMiddleware:
             SIMPLESTREAMS_URL_REGEXP,
             # API calls are protected by piston.
             settings.API_URL_REGEXP,
-            ]
+            # API meta-information is publicly visible.
+            reverse('api_version'),
+            reverse('api_v1_error'),
+        ]
         # Add the defined combo loaders.
         for filename in MERGE_VIEWS.keys():
             public_url_roots.append(reverse('merge', args=[filename]))

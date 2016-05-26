@@ -31,7 +31,7 @@ def get_fannetwork_uri(fannetwork):
         'fannetwork_handler', args=[fannetwork.id])
 
 
-class TestFanNetworksAPI(APITestCase):
+class TestFanNetworksAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -106,7 +106,7 @@ class TestFanNetworksAPI(APITestCase):
             }, json_load_bytes(response.content))
 
 
-class TestFanNetworkAPI(APITestCase):
+class TestFanNetworkAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         fannetwork = factory.make_FanNetwork()

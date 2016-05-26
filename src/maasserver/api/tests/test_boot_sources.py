@@ -26,7 +26,7 @@ def get_boot_source_uri(boot_source):
         args=[boot_source.id])
 
 
-class TestBootSourceAPI(APITestCase):
+class TestBootSourceAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourceAPI, self).setUp()
@@ -103,7 +103,7 @@ class TestBootSourceAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestBootSourcesAPI(APITestCase):
+class TestBootSourcesAPI(APITestCase.ForUser):
     """Test the the boot source API."""
 
     def setUp(self):

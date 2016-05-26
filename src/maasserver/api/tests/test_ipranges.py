@@ -32,7 +32,7 @@ def get_iprange_uri(iprange):
         'iprange_handler', args=[iprange.id])
 
 
-class TestIPRangesAPI(APITestCase):
+class TestIPRangesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -127,10 +127,10 @@ class TestIPRangesAPI(APITestCase):
             http.client.OK, response.status_code, response.content)
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertThat(
-            data['user']['username'], Equals(self.logged_in_user.username))
+            data['user']['username'], Equals(self.user.username))
 
 
-class TestIPRangeAPI(APITestCase):
+class TestIPRangeAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -169,7 +169,7 @@ class TestIPRangeAPI(APITestCase):
     def test_update(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         iprange = factory.make_IPRange(
-            subnet, '10.0.0.2', '10.0.0.10', user=self.logged_in_user)
+            subnet, '10.0.0.2', '10.0.0.10', user=self.user)
         uri = get_iprange_uri(iprange)
         comment = factory.make_name("comment")
         response = self.client.put(uri, {
@@ -202,7 +202,7 @@ class TestIPRangeAPI(APITestCase):
     def test_delete_deletes_iprange(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         iprange = factory.make_IPRange(
-            subnet, '10.0.0.2', '10.0.0.10', user=self.logged_in_user)
+            subnet, '10.0.0.2', '10.0.0.10', user=self.user)
         uri = get_iprange_uri(iprange)
         response = self.client.delete(uri)
         self.assertEqual(

@@ -45,7 +45,7 @@ def get_blockdevice_uri(device, node=None, by_name=False):
         'blockdevice_handler', args=[node.system_id, device_id])
 
 
-class TestBlockDevices(APITestCase):
+class TestBlockDevices(APITestCase.ForUser):
 
     def test_read(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -262,7 +262,7 @@ class TestBlockDevices(APITestCase):
                          response.content)
 
 
-class TestBlockDeviceAPI(APITestCase):
+class TestBlockDeviceAPI(APITestCase.ForUser):
 
     def test_read_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -515,7 +515,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_format_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
@@ -559,7 +559,7 @@ class TestBlockDeviceAPI(APITestCase):
 
     def test_format_formats_block_device_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         fstype = factory.pick_filesystem_type()
         fsuuid = '%s' % uuid.uuid4()
@@ -581,7 +581,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_unformat_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
@@ -670,7 +670,7 @@ class TestBlockDeviceAPI(APITestCase):
 
     def test_unformat_deletes_filesystem_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device, acquired=True)
         uri = get_blockdevice_uri(block_device)
@@ -687,7 +687,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_mount_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device)
         uri = get_blockdevice_uri(block_device)
@@ -737,7 +737,7 @@ class TestBlockDeviceAPI(APITestCase):
 
     def test_mount_sets_mount_path_and_params_on_filesystem_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
             block_device=block_device, acquired=True)
@@ -768,7 +768,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_unmount_returns_409_if_not_allocated_or_ready(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.READY, NODE_STATUS.ALLOCATED])
-        node = factory.make_Node(status=status, owner=self.logged_in_user)
+        node = factory.make_Node(status=status, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         factory.make_Filesystem(block_device=block_device, mount_point="/mnt")
         uri = get_blockdevice_uri(block_device)
@@ -858,7 +858,7 @@ class TestBlockDeviceAPI(APITestCase):
 
     def test_unmount_unmounts_filesystem_as_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         filesystem = factory.make_Filesystem(
             block_device=block_device, mount_point="/mnt", acquired=True)
@@ -889,7 +889,7 @@ class TestBlockDeviceAPI(APITestCase):
         """
         self.become_admin()
         node = factory.make_Node(
-            status=NODE_STATUS.READY, owner=self.logged_in_user)
+            status=NODE_STATUS.READY, owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             name='myblockdevice',
@@ -915,7 +915,7 @@ class TestBlockDeviceAPI(APITestCase):
         """
         self.become_admin()
         node = factory.make_Node(
-            status=NODE_STATUS.READY, owner=self.logged_in_user)
+            status=NODE_STATUS.READY, owner=self.user)
         filesystem_group = factory.make_FilesystemGroup(
             node=node, group_type=factory.pick_enum(
                 FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG))
@@ -935,7 +935,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_update_physical_block_device_as_normal_user(self):
         """Check update block device with a physical one fails for a normal
         user."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             name='myblockdevice',
@@ -952,7 +952,7 @@ class TestBlockDeviceAPI(APITestCase):
     def test_update_virtual_block_device_as_normal_user(self):
         """Check update block device with a virtual one fails for a normal
         user."""
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         newname = factory.make_name("lv")
         block_device = factory.make_VirtualBlockDevice(
             node=node, name=newname)
@@ -981,7 +981,7 @@ class TestBlockDeviceAPI(APITestCase):
     """
     def test_set_boot_disk_returns_400_for_virtual_device(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         block_device = factory.make_VirtualBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(uri, {
@@ -994,7 +994,7 @@ class TestBlockDeviceAPI(APITestCase):
             response.content)
 
     def test_set_boot_disk_returns_403_for_normal_user(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(uri, {
@@ -1004,7 +1004,7 @@ class TestBlockDeviceAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_set_boot_disk_returns_404_for_block_device_not_on_node(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         block_device = factory.make_PhysicalBlockDevice()
         uri = get_blockdevice_uri(block_device, node=node)
         response = self.client.post(uri, {
@@ -1015,7 +1015,7 @@ class TestBlockDeviceAPI(APITestCase):
 
     def test_set_boot_disk_sets_boot_disk_for_admin(self):
         self.become_admin()
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_blockdevice_uri(block_device)
         response = self.client.post(uri, {

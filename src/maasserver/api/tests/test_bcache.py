@@ -42,7 +42,7 @@ def get_bcache_device_uri(bcache, node=None):
         'bcache_device_handler', args=[node.system_id, bcache.id])
 
 
-class TestBcacheDevicesAPI(APITestCase):
+class TestBcacheDevicesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -183,7 +183,7 @@ class TestBcacheDevicesAPI(APITestCase):
             parsed_content['__all__'])
 
 
-class TestBcacheDeviceAPI(APITestCase):
+class TestBcacheDeviceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()

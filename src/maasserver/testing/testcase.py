@@ -17,6 +17,7 @@ import sys
 import threading
 from unittest import SkipTest
 from unittest.mock import Mock
+import warnings
 import wsgiref
 
 import crochet
@@ -79,6 +80,10 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
         Sets `self.logged_in_user` to match the logged-in identity.
         """
+        warnings.warn(
+            "client_log_in assumes that the client uses password "
+            "authentication, but this is not always the case. Use "
+            "client.login instead.", DeprecationWarning)
         password = 'test'
         if as_admin:
             user = factory.make_admin(password=password)

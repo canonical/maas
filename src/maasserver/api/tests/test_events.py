@@ -70,7 +70,7 @@ def AfterBeingDecoded(matcher):
         matcher)
 
 
-class TestEventsAPI(APITestCase):
+class TestEventsAPI(APITestCase.ForUser):
     """Tests for /api/2.0/events/."""
 
     log_levels = (
@@ -586,7 +586,7 @@ class TestEventsAPI(APITestCase):
             "Number of queries is not independent of the number of nodes.")
 
 
-class TestEventsURIs(APITestCase):
+class TestEventsURIs(APITestCase.ForUser):
     """Tests for next_uri and prev_uri in responses from /api/2.0/events/.
 
     These test a few specific combinations of arguments to test
@@ -642,7 +642,7 @@ parameters = list(events_module.EventsHandler.all_params)
 parameters.remove("op")
 
 
-class TestEventsURIsWithoutEvents(APITestCase):
+class TestEventsURIsWithoutEvents(APITestCase.ForUser):
     """Tests for next_uri and prev_uri in responses from /api/2.0/events/.
 
     These test all cardinalities of combinations of query parameters, but

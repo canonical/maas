@@ -10,16 +10,13 @@ import http.client
 import json
 
 from django.conf import settings
-from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from maasserver.api.version import API_CAPABILITIES_LIST
-from maasserver.testing.api import MultipleUsersScenarios
-from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.api import APITestCase
 from maasserver.utils import version as version_module
 
 
-class TestVersionAPIBasics(MAASServerTestCase):
+class TestVersionAPIBasics(APITestCase.ForAnonymousAndUserAndAdmin):
     """Basic tests for /version/ API."""
 
     def test_handler_path(self):
@@ -27,13 +24,8 @@ class TestVersionAPIBasics(MAASServerTestCase):
             '/api/2.0/version/', reverse('version_handler'))
 
 
-class TestVersionAPI(MultipleUsersScenarios, MAASServerTestCase):
+class TestVersionAPI(APITestCase.ForAnonymousAndUser):
     """Tests for /version/ API."""
-
-    scenarios = [
-        ('anon', dict(userfactory=AnonymousUser)),
-        ('user', dict(userfactory=factory.make_User)),
-    ]
 
     def test_GET_returns_details(self):
         mock_apt = self.patch(version_module, "get_version_from_apt")

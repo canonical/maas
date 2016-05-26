@@ -25,9 +25,9 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -44,22 +44,29 @@ from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 class NodeAnonAPITest(MAASServerTestCase):
 
+    def test_anonymous_user_cannot_access(self):
+        client = MAASSensibleOAuthClient()
+        response = client.get(reverse('nodes_handler'))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            "Unrecognised signature: method=GET op=None",
+            response.content.decode())
+
     def test_node_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
-        client = OAuthAuthenticatedClient(get_node_init_user(), token)
+        client = MAASSensibleOAuthClient(get_node_init_user(), token)
         response = client.get(reverse('nodes_handler'))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class NodesAPILoggedInTest(MAASServerTestCase):
+class NodesAPILoggedInTest(APITestCase.ForUserAndAdmin):
+    """A logged-in user can access the API."""
 
     def setUp(self):
         super(NodesAPILoggedInTest, self).setUp()
         self.patch(node_module, 'wait_for_power_command')
 
     def test_nodes_GET_logged_in(self):
-        # A (Django) logged-in user can access the API.
-        self.client_log_in()
         node = factory.make_Node()
         response = self.client.get(reverse('nodes_handler'))
         parsed_result = json_load_bytes(response.content)
@@ -70,7 +77,7 @@ class NodesAPILoggedInTest(MAASServerTestCase):
             [parsed_node.get('system_id') for parsed_node in parsed_result])
 
 
-class TestNodeAPI(APITestCase):
+class TestNodeAPI(APITestCase.ForUser):
     """Tests for /api/2.0/nodes/<node>/."""
 
     def test_handler_path(self):
@@ -110,7 +117,7 @@ class TestNodeAPI(APITestCase):
         # When a Machine is returned by the API, the field 'resource_uri'
         # provides the URI for this Machine.
         machine = factory.make_Node(
-            hostname='diane', owner=self.logged_in_user,
+            hostname='diane', owner=self.user,
             architecture=make_usable_architecture(self))
         response = self.client.get(self.get_node_uri(machine))
         parsed_result = json_load_bytes(response.content)
@@ -125,7 +132,7 @@ class TestNodeAPI(APITestCase):
         # When a Device is returned by the API, the field 'resource_uri'
         # provides the URI for this Device.
         device = factory.make_Device(
-            hostname='diane', owner=self.logged_in_user)
+            hostname='diane', owner=self.user)
         response = self.client.get(self.get_node_uri(device))
         parsed_result = json_load_bytes(response.content)
 
@@ -139,7 +146,7 @@ class TestNodeAPI(APITestCase):
         # When a Device is returned by the API, the field 'resource_uri'
         # provides the URI for this Device.
         rack = factory.make_RackController(
-            hostname='diane', owner=self.logged_in_user)
+            hostname='diane', owner=self.user)
         response = self.client.get(self.get_node_uri(rack))
         parsed_result = json_load_bytes(response.content)
 
@@ -153,7 +160,7 @@ class TestNodeAPI(APITestCase):
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
         self.become_admin()
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         system_id = node.system_id
         response = self.client.delete(self.get_node_uri(node))
 
@@ -162,7 +169,7 @@ class TestNodeAPI(APITestCase):
 
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
@@ -199,7 +206,7 @@ class TestNodeAPI(APITestCase):
 
     def test_UPDATE_disabled(self):
         machine = factory.make_Node(
-            owner=self.logged_in_user,
+            owner=self.user,
             architecture=make_usable_architecture(self))
         response = self.client.put(
             self.get_node_uri(machine), {'hostname': 'francis'})
@@ -207,7 +214,7 @@ class TestNodeAPI(APITestCase):
             http.client.METHOD_NOT_ALLOWED, response.status_code)
 
 
-class TestGetDetails(APITestCase):
+class TestGetDetails(APITestCase.ForUser):
     """Tests for /api/2.0/nodes/<node>/?op=details."""
 
     def make_lshw_result(self, node, script_result=0):
@@ -255,7 +262,7 @@ class TestGetDetails(APITestCase):
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
 
-class TestPowerParameters(APITestCase):
+class TestPowerParameters(APITestCase.ForUser):
     def get_node_uri(self, node):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
@@ -289,7 +296,7 @@ class TestPowerParameters(APITestCase):
             http.client.FORBIDDEN, response.status_code, response.content)
 
 
-class TestSetOwnerData(APITestCase):
+class TestSetOwnerData(APITestCase.ForUser):
     """Tests for op=set_owner_data for both machines and devices."""
 
     scenarios = (
@@ -320,7 +327,7 @@ class TestSetOwnerData(APITestCase):
 
     def test_adds_data(self):
         node = self.maker(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         owner_data = {
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
@@ -338,7 +345,7 @@ class TestSetOwnerData(APITestCase):
             for _ in range(3)
         }
         node = self.maker(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            status=NODE_STATUS.ALLOCATED, owner=self.user,
             owner_data=owner_data)
         for key in owner_data.keys():
             owner_data[key] = factory.make_name("value")
@@ -355,7 +362,7 @@ class TestSetOwnerData(APITestCase):
             for _ in range(3)
         }
         node = self.maker(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            status=NODE_STATUS.ALLOCATED, owner=self.user,
             owner_data=owner_data)
         for key in owner_data.keys():
             owner_data[key] = ''
@@ -367,7 +374,7 @@ class TestSetOwnerData(APITestCase):
             {}, json_load_bytes(response.content)['owner_data'])
 
 
-class TestPowerMixin(APITestCase):
+class TestPowerMixin(APITestCase.ForUser):
     """Test the power mixin."""
 
     def get_node_uri(self, node):
@@ -388,7 +395,7 @@ class TestPowerMixin(APITestCase):
         # The machine may not be stopped because, for example, its power type
         # does not support it. In this case the machine is not returned to the
         # caller.
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         machine_stop = self.patch(node_module.Machine, 'stop')
         machine_stop.return_value = False
         response = self.client.post(
@@ -399,7 +406,7 @@ class TestPowerMixin(APITestCase):
             ANY, stop_mode=ANY, comment=None))
 
     def test_POST_power_off_returns_machine(self):
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         self.patch(node_module.Machine, 'stop').return_value = True
         response = self.client.post(
             self.get_node_uri(machine), {'op': 'power_off'})
@@ -409,7 +416,7 @@ class TestPowerMixin(APITestCase):
 
     def test_POST_power_off_may_be_repeated(self):
         machine = factory.make_Node(
-            owner=self.logged_in_user, interface=True,
+            owner=self.user, interface=True,
             power_type='manual')
         self.patch(machine, 'stop')
         self.client.post(self.get_node_uri(machine), {'op': 'power_off'})
@@ -418,7 +425,7 @@ class TestPowerMixin(APITestCase):
         self.assertEqual(http.client.OK, response.status_code)
 
     def test_POST_power_off_power_offs_machines(self):
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         machine_stop = self.patch(node_module.Machine, 'stop')
         stop_mode = factory.make_name('stop_mode')
         comment = factory.make_name('comment')
@@ -428,10 +435,10 @@ class TestPowerMixin(APITestCase):
         self.assertThat(
             machine_stop,
             MockCalledOnceWith(
-                self.logged_in_user, stop_mode=stop_mode, comment=comment))
+                self.user, stop_mode=stop_mode, comment=comment))
 
     def test_POST_power_off_handles_missing_comment(self):
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         machine_stop = self.patch(node_module.Machine, 'stop')
         stop_mode = factory.make_name('stop_mode')
         self.client.post(
@@ -440,10 +447,10 @@ class TestPowerMixin(APITestCase):
         self.assertThat(
             machine_stop,
             MockCalledOnceWith(
-                self.logged_in_user, stop_mode=stop_mode, comment=None))
+                self.user, stop_mode=stop_mode, comment=None))
 
     def test_POST_power_off_returns_503_when_power_already_in_progress(self):
-        machine = factory.make_Node(owner=self.logged_in_user)
+        machine = factory.make_Node(owner=self.user)
         exc_text = factory.make_name("exc_text")
         self.patch(
             node_module.Machine,
@@ -475,7 +482,7 @@ class TestPowerMixin(APITestCase):
     def test_POST_power_on_returns_machine(self):
         self.patch(node_module.Machine, "_start")
         machine = factory.make_Node(
-            owner=self.logged_in_user, interface=True,
+            owner=self.user, interface=True,
             power_type='manual',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)

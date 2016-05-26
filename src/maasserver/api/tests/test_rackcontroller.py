@@ -22,7 +22,7 @@ from maastesting.matchers import (
 )
 
 
-class TestRackControllerAPI(APITestCase):
+class TestRackControllerAPI(APITestCase.ForUser):
     """Tests for /api/2.0/rackcontrollers/<rack>/."""
 
     def test_handler_path(self):
@@ -37,7 +37,7 @@ class TestRackControllerAPI(APITestCase):
 
     def test_PUT_updates_rack_controller(self):
         self.become_admin()
-        rack = factory.make_RackController(owner=self.logged_in_user)
+        rack = factory.make_RackController(owner=self.user)
         zone = factory.make_zone()
         response = self.client.put(
             self.get_rack_uri(rack), {'zone': zone.name})
@@ -45,7 +45,7 @@ class TestRackControllerAPI(APITestCase):
         self.assertEqual(zone.name, reload_object(rack).zone.name)
 
     def test_PUT_requires_admin(self):
-        rack = factory.make_RackController(owner=self.logged_in_user)
+        rack = factory.make_RackController(owner=self.user)
         response = self.client.put(self.get_rack_uri(rack), {})
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
@@ -108,7 +108,7 @@ class TestRackControllerAPI(APITestCase):
             explain_unexpected_response(http.client.FORBIDDEN, response))
 
 
-class TestRackControllersAPI(APITestCase):
+class TestRackControllersAPI(APITestCase.ForUser):
     """Tests for /api/2.0/rackcontrollers/."""
 
     @staticmethod
@@ -122,7 +122,7 @@ class TestRackControllersAPI(APITestCase):
 
     def test_read_returns_limited_fields(self):
         self.become_admin()
-        factory.make_RackController(owner=self.logged_in_user)
+        factory.make_RackController(owner=self.user)
         response = self.client.get(reverse('rackcontrollers_handler'))
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(

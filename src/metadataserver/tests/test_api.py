@@ -43,8 +43,8 @@ from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.matchers import (
@@ -218,7 +218,7 @@ def make_node_client(node=None):
     if node is None:
         node = factory.make_Node()
     token = NodeKey.objects.get_token_for_node(node)
-    return OAuthAuthenticatedClient(get_node_init_user(), token)
+    return MAASSensibleOAuthClient(get_node_init_user(), token)
 
 
 def call_signal(client=None, version='latest', files={}, headers={}, **kwargs):
@@ -556,7 +556,7 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_other_user_than_node_cannot_signal_installation_result(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        client = OAuthAuthenticatedClient(factory.make_User())
+        client = MAASSensibleOAuthClient(factory.make_User())
         response = call_signal(client)
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(
@@ -653,7 +653,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        client = OAuthAuthenticatedClient(factory.make_User())
+        client = MAASSensibleOAuthClient(factory.make_User())
         response = call_signal(client)
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
         self.assertEqual(

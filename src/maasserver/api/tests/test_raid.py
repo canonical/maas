@@ -70,7 +70,7 @@ def get_devices_from_raid(parsed_device):
         parsed_block_device_spares, parsed_partition_spares)
 
 
-class TestRaidsAPI(APITestCase):
+class TestRaidsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -720,7 +720,7 @@ class TestRaidsAPI(APITestCase):
                          response.content)
 
 
-class TestRaidAPI(APITestCase):
+class TestRaidAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()

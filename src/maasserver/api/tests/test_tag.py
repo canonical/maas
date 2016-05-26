@@ -28,7 +28,7 @@ from maasserver.testing.api import (
     make_worker_client,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -38,7 +38,7 @@ from metadataserver.models.commissioningscript import inject_lshw_result
 from testtools.matchers import MatchesStructure
 
 
-class TestTagAPI(APITestCase):
+class TestTagAPI(APITestCase.ForUser):
     """Tests for /api/2.0/tags/<tagname>/."""
 
     def test_handler_path(self):
@@ -295,7 +295,7 @@ class TestTagAPI(APITestCase):
         self.assertEqual([node1.system_id],
                          [r['system_id'] for r in parsed_result])
         # However, for the other user, they should see the result
-        client2 = OAuthAuthenticatedClient(user2)
+        client2 = MAASSensibleOAuthClient(user2)
         response = client2.get(self.get_tag_uri(tag), {'op': 'nodes'})
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
@@ -515,7 +515,7 @@ class TestTagAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestTagsAPI(APITestCase):
+class TestTagsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(

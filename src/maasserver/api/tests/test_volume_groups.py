@@ -50,7 +50,7 @@ def get_volume_group_uri(volume_group, node=None):
         'volume_group_handler', args=[node.system_id, volume_group.id])
 
 
-class TestVolumeGroups(APITestCase):
+class TestVolumeGroups(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -171,7 +171,7 @@ class TestVolumeGroups(APITestCase):
             block_device_ids + partition_ids, parsed_device_ids)
 
 
-class TestVolumeGroupAPI(APITestCase):
+class TestVolumeGroupAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()

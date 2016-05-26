@@ -28,7 +28,6 @@ from maasserver.models import (
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import (
     post_commit_hooks,
@@ -46,7 +45,7 @@ def get_boot_resource_uri(resource):
         args=[resource.id])
 
 
-class TestHelpers(MAASServerTestCase):
+class TestHelpers(APITestCase.ForUser):
 
     def test_boot_resource_file_to_dict(self):
         size = random.randint(512, 1023)
@@ -119,7 +118,7 @@ def prevent_scheduling_of_image_imports(test):
     test.patch_autospec(RackControllersImporter, "schedule")
 
 
-class TestBootResourcesAPI(APITestCase):
+class TestBootResourcesAPI(APITestCase.ForUser):
     """Test the the boot resource API."""
 
     def test_handler_path(self):
@@ -392,7 +391,7 @@ class TestBootResourcesAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestBootResourceAPI(APITestCase):
+class TestBootResourceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -428,7 +427,7 @@ class TestBootResourceAPI(APITestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class TestBootResourceFileUploadAPI(APITestCase):
+class TestBootResourceFileUploadAPI(APITestCase.ForUser):
 
     def get_boot_resource_file_upload_uri(self, rfile):
         """Return a boot resource file's URI on the API."""

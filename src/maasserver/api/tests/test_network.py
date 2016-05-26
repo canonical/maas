@@ -19,7 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 
 
-class TestNetwork(APITestCase):
+class TestNetwork(APITestCase.ForUser):
 
     def get_url(self, subnet):
         """Return the URL for the network of the given subnet."""
@@ -108,7 +108,7 @@ class TestNetwork(APITestCase):
         self.assertEqual(http.client.GONE, response.status_code)
 
 
-class TestListConnectedMACs(APITestCase):
+class TestListConnectedMACs(APITestCase.ForUser):
     """Tests for /api/2.0/network/s<network>/?op=list_connected_macs."""
 
     def make_interface(self, subnets=None, owner=None, node=None):
@@ -152,7 +152,7 @@ class TestListConnectedMACs(APITestCase):
     def test_returns_connected_macs(self):
         subnet = factory.make_Subnet()
         interfaces = [
-            self.make_interface(subnets=[subnet], owner=self.logged_in_user)
+            self.make_interface(subnets=[subnet], owner=self.user)
             for _ in range(3)
             ]
         self.assertEqual(
@@ -161,8 +161,8 @@ class TestListConnectedMACs(APITestCase):
 
     def test_ignores_unconnected_macs(self):
         self.make_interface(
-            subnets=[factory.make_Subnet()], owner=self.logged_in_user)
-        self.make_interface(subnets=[], owner=self.logged_in_user)
+            subnets=[factory.make_Subnet()], owner=self.user)
+        self.make_interface(subnets=[], owner=self.user)
         self.assertEqual(
             [],
             self.request_connected_macs(factory.make_Subnet()))
@@ -170,7 +170,7 @@ class TestListConnectedMACs(APITestCase):
     def test_includes_MACs_for_nodes_visible_to_user(self):
         subnet = factory.make_Subnet()
         interface = self.make_interface(
-            subnets=[subnet], owner=self.logged_in_user)
+            subnets=[subnet], owner=self.user)
         self.assertEqual(
             [interface.mac_address],
             self.extract_macs(self.request_connected_macs(subnet)))
@@ -185,13 +185,13 @@ class TestListConnectedMACs(APITestCase):
         interfaces = [
             self.make_interface(
                 subnets=[subnet], node=factory.make_Node(sortable_name=True),
-                owner=self.logged_in_user)
+                owner=self.user)
             for _ in range(4)
             ]
         # Create MACs connected to the same node.
         interfaces = interfaces + [
             self.make_interface(
-                subnets=[subnet], owner=self.logged_in_user,
+                subnets=[subnet], owner=self.user,
                 node=interfaces[0].node)
             for _ in range(3)
             ]

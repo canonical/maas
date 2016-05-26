@@ -19,7 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 
 
-class TestNetworksAPI(APITestCase):
+class TestNetworksAPI(APITestCase.ForUser):
 
     def make_interface(self, subnets=None, owner=None, node=None):
         """Create a Interface.

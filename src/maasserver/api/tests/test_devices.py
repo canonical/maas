@@ -25,7 +25,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnce
 
 
-class DeviceOwnerDataTest(APITestCase):
+class DeviceOwnerDataTest(APITestCase.ForUser):
 
     def test_GET_returns_owner_data(self):
         owner_data = {
@@ -41,7 +41,7 @@ class DeviceOwnerDataTest(APITestCase):
             [device.get('owner_data') for device in parsed_result])
 
 
-class TestDevicesAPI(APITestCase):
+class TestDevicesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -66,7 +66,7 @@ class TestDevicesAPI(APITestCase):
         self.assertEqual(hostname, device.hostname)
         self.assertIsNone(device.parent)
         self.assertEquals(device.node_type, NODE_TYPE.DEVICE)
-        self.assertEquals(self.logged_in_user, device.owner)
+        self.assertEquals(self.user, device.owner)
         self.assertEquals(
             macs,
             {nic.mac_address for nic in device.interface_set.all()})
@@ -190,9 +190,9 @@ class TestDevicesAPI(APITestCase):
 
     def test_read_lists_devices(self):
         # The api allows for fetching the list of devices.
-        devices = self.create_devices(owner=self.logged_in_user)
+        devices = self.create_devices(owner=self.user)
         factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         response = self.client.get(reverse('devices_handler'))
         parsed_result = json_load_bytes(response.content)
 
@@ -203,7 +203,7 @@ class TestDevicesAPI(APITestCase):
 
     def test_read_ignores_nodes(self):
         factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         response = self.client.get(reverse('devices_handler'))
         parsed_result = json_load_bytes(response.content)
 
@@ -215,7 +215,7 @@ class TestDevicesAPI(APITestCase):
     def test_read_with_id_returns_matching_devices(self):
         # The "list" operation takes optional "id" parameters.  Only
         # devices with matching ids will be returned.
-        devices = self.create_devices(owner=self.logged_in_user)
+        devices = self.create_devices(owner=self.user)
         ids = [device.system_id for device in devices]
         matching_id = ids[0]
         response = self.client.get(reverse('devices_handler'), {
@@ -229,7 +229,7 @@ class TestDevicesAPI(APITestCase):
     def test_read_with_macaddress_returns_matching_devices(self):
         # The "list" operation takes optional "mac_address" parameters.  Only
         # devices with matching MAC addresses will be returned.
-        devices = self.create_devices(owner=self.logged_in_user)
+        devices = self.create_devices(owner=self.user)
         matching_device = devices[0]
         matching_mac = matching_device.get_boot_interface().mac_address
         response = self.client.get(reverse('devices_handler'), {
@@ -241,7 +241,7 @@ class TestDevicesAPI(APITestCase):
             [device.get('system_id') for device in parsed_result])
 
     def test_read_returns_limited_fields(self):
-        self.create_devices(owner=self.logged_in_user)
+        self.create_devices(owner=self.user)
         response = self.client.get(reverse('devices_handler'))
         parsed_result = json_load_bytes(response.content)
         self.assertItemsEqual(
@@ -270,7 +270,7 @@ def get_device_uri(device):
     return reverse('device_handler', args=[device.system_id])
 
 
-class TestDeviceAPI(APITestCase):
+class TestDeviceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         system_id = factory.make_name('system-id')
@@ -280,7 +280,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_POST_method_without_op_not_allowed(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.user)
 
         response = self.client.post(get_device_uri(device))
         self.assertEqual(
@@ -289,7 +289,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_GET_reads_device(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.user)
 
         response = self.client.get(get_device_uri(device))
         self.assertEqual(
@@ -299,7 +299,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_PUT_updates_device_hostname(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.user)
         new_hostname = factory.make_name('hostname')
 
         response = self.client.put(
@@ -313,7 +313,7 @@ class TestDeviceAPI(APITestCase):
     def test_PUT_updates_device_parent(self):
         parent = factory.make_Node()
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user,
+            node_type=NODE_TYPE.DEVICE, owner=self.user,
             parent=parent)
         new_parent = factory.make_Node()
 
@@ -338,7 +338,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_DELETE_removes_device(self):
         device = factory.make_Node(
-            node_type=NODE_TYPE.DEVICE, owner=self.logged_in_user)
+            node_type=NODE_TYPE.DEVICE, owner=self.user)
         response = self.client.delete(get_device_uri(device))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content)

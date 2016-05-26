@@ -32,7 +32,7 @@ def get_space_uri(space):
         'space_handler', args=[space.id])
 
 
-class TestSpacesAPI(APITestCase):
+class TestSpacesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -90,7 +90,7 @@ class TestSpacesAPI(APITestCase):
         self.assertEqual("space-%d" % data['id'], data['name'])
 
 
-class TestSpaceAPI(APITestCase):
+class TestSpaceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         space = factory.make_Space()

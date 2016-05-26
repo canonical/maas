@@ -37,7 +37,7 @@ def get_bcache_cache_set_uri(cache_set, node=None):
         'bcache_cache_set_handler', args=[node.system_id, cache_set.id])
 
 
-class TestBcacheCacheSetsAPI(APITestCase):
+class TestBcacheCacheSetsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -122,7 +122,7 @@ class TestBcacheCacheSetsAPI(APITestCase):
             parsed_content['__all__'])
 
 
-class TestBcacheCacheSetAPI(APITestCase):
+class TestBcacheCacheSetAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         node = factory.make_Node()
@@ -152,7 +152,7 @@ class TestBcacheCacheSetAPI(APITestCase):
             }))
 
     def test_read_404_when_invalid_id(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         uri = reverse(
             'bcache_cache_set_handler',
             args=[node.system_id, random.randint(100, 1000)])
@@ -161,7 +161,7 @@ class TestBcacheCacheSetAPI(APITestCase):
             http.client.NOT_FOUND, response.status_code, response.content)
 
     def test_read_404_when_node_mismatch(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         cache_set = factory.make_CacheSet(node=node)
         uri = get_bcache_cache_set_uri(cache_set, node=factory.make_Node())
         response = self.client.get(uri)

@@ -36,7 +36,7 @@ def get_vlan_uri(vlan, fabric=None):
             'vlan_handler', args=[fabric.id, vlan.vid])
 
 
-class TestVlansAPI(APITestCase):
+class TestVlansAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         fabric = factory.make_Fabric()
@@ -110,7 +110,7 @@ class TestVlansAPI(APITestCase):
             }, json.loads(response.content.decode(settings.DEFAULT_CHARSET)))
 
 
-class TestVlanAPI(APITestCase):
+class TestVlanAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         fabric = factory.make_Fabric()

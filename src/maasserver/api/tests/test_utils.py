@@ -18,9 +18,11 @@ from maasserver.api.utils import (
 from maasserver.exceptions import Unauthorized
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.testcase import MAASTestCase
 
 
-class TestExtractBool(MAASServerTestCase):
+class TestExtractBool(MAASTestCase):
+
     def test_asserts_against_raw_bytes(self):
         self.assertRaises(AssertionError, extract_bool, b'0')
 
@@ -45,7 +47,7 @@ class TestExtractBool(MAASServerTestCase):
         self.assertRaises(ValueError, extract_bool, '')
 
 
-class TestGetOverridedQueryDict(MAASServerTestCase):
+class TestGetOverridedQueryDict(MAASTestCase):
 
     def test_returns_QueryDict(self):
         fields = [factory.make_name('field')]
@@ -93,12 +95,13 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
         self.assertEqual([data_value2], results.getlist(key2))
 
 
-class TestOAuthHelpers(MAASServerTestCase):
+def make_fake_request(auth_header):
+    """Create a very simple fake request, with just an auth header."""
+    FakeRequest = namedtuple('FakeRequest', ['META'])
+    return FakeRequest(META={'HTTP_AUTHORIZATION': auth_header})
 
-    def make_fake_request(self, auth_header):
-        """Create a very simple fake request, with just an auth header."""
-        FakeRequest = namedtuple('FakeRequest', ['META'])
-        return FakeRequest(META={'HTTP_AUTHORIZATION': auth_header})
+
+class TestOAuthHelpers(MAASTestCase):
 
     def test_extract_oauth_key_from_auth_header_returns_key(self):
         token = factory.make_string(18)
@@ -113,19 +116,22 @@ class TestOAuthHelpers(MAASServerTestCase):
     def test_extract_oauth_key_raises_Unauthorized_if_no_auth_header(self):
         self.assertRaises(
             Unauthorized,
-            extract_oauth_key, self.make_fake_request(None))
+            extract_oauth_key, make_fake_request(None))
 
     def test_extract_oauth_key_raises_Unauthorized_if_no_key(self):
         self.assertRaises(
             Unauthorized,
-            extract_oauth_key, self.make_fake_request(''))
+            extract_oauth_key, make_fake_request(''))
 
     def test_extract_oauth_key_returns_key(self):
         token = factory.make_string(18)
         self.assertEqual(
             token,
-            extract_oauth_key(self.make_fake_request(
+            extract_oauth_key(make_fake_request(
                 factory.make_oauth_header(oauth_token=token))))
+
+
+class TestOAuthHelpersWithDatabase(MAASServerTestCase):
 
     def test_get_oauth_token_finds_token(self):
         user = factory.make_User()
@@ -133,7 +139,7 @@ class TestOAuthHelpers(MAASServerTestCase):
         self.assertEqual(
             token,
             get_oauth_token(
-                self.make_fake_request(
+                make_fake_request(
                     factory.make_oauth_header(oauth_token=token.key))))
 
     def test_get_oauth_token_raises_Unauthorized_for_unknown_token(self):
@@ -141,4 +147,4 @@ class TestOAuthHelpers(MAASServerTestCase):
         header = factory.make_oauth_header(oauth_token=fake_token)
         self.assertRaises(
             Unauthorized,
-            get_oauth_token, self.make_fake_request(header))
+            get_oauth_token, make_fake_request(header))

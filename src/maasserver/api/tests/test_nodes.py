@@ -22,13 +22,12 @@ from maasserver.enum import (
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 
 
-class AnonymousIsRegisteredAPITest(MAASServerTestCase):
+class AnonymousIsRegisteredAPITest(APITestCase.ForAnonymous):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.make_mac_address()
@@ -85,7 +84,7 @@ class RequestFixture:
         self.GET = get_overridden_query_dict(dict, QueryDict(''), fields)
 
 
-class TestFilteredNodesListFromRequest(APITestCase):
+class TestFilteredNodesListFromRequest(APITestCase.ForUser):
 
     def test_node_list_with_id_returns_matching_nodes(self):
         # The "list" operation takes optional "id" parameters.  Only
@@ -273,7 +272,7 @@ class TestFilteredNodesListFromRequest(APITestCase):
             extract_system_ids_from_nodes(node_list))
 
 
-class TestNodesAPI(APITestCase):
+class TestNodesAPI(APITestCase.ForUser):
     """Tests for /api/2.0/nodes/."""
 
     def test_handler_path(self):
@@ -284,7 +283,7 @@ class TestNodesAPI(APITestCase):
         # The api allows for fetching the list of Nodes.
         node1 = factory.make_Node()
         node2 = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+            status=NODE_STATUS.ALLOCATED, owner=self.user)
         response = self.client.get(reverse('nodes_handler'))
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET))
@@ -550,7 +549,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(original_zone, node.zone)
 
     def test_POST_set_zone_requires_admin(self):
-        node = factory.make_Node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.user)
         original_zone = node.zone
         response = self.client.post(
             reverse('nodes_handler'),
@@ -578,7 +577,7 @@ class TestNodesAPI(APITestCase):
             http.client.METHOD_NOT_ALLOWED, response.status_code)
 
 
-class TestPowersMixin(APITestCase):
+class TestPowersMixin(APITestCase.ForUser):
     """Test the powers mixin."""
 
     def get_node_uri(self, node):

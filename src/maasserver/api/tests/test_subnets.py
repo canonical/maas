@@ -22,7 +22,6 @@ from maasserver.testing.api import (
     explain_unexpected_response,
 )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from provisioningserver.utils.network import (
     inet_ntop,
@@ -51,7 +50,7 @@ def get_subnet_uri(subnet):
             'subnet_handler', args=[subnet.id])
 
 
-class TestSubnetsAPI(APITestCase):
+class TestSubnetsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -174,7 +173,7 @@ class TestSubnetsAPI(APITestCase):
             }, json.loads(response.content.decode(settings.DEFAULT_CHARSET)))
 
 
-class TestSubnetAPI(APITestCase):
+class TestSubnetAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         subnet = factory.make_Subnet()
@@ -302,8 +301,9 @@ class TestSubnetAPI(APITestCase):
             http.client.NOT_FOUND, response.status_code, response.content)
 
 
-class TestSubnetAPIAuth(MAASServerTestCase):
+class TestSubnetAPIAuth(APITestCase.ForAnonymous):
     """Authorization tests for subnet API."""
+
     def test__reserved_ip_ranges_fails_if_not_logged_in(self):
         subnet = factory.make_Subnet()
         response = self.client.get(
@@ -323,7 +323,7 @@ class TestSubnetAPIAuth(MAASServerTestCase):
             explain_unexpected_response(http.client.UNAUTHORIZED, response))
 
 
-class TestSubnetReservedIPRangesAPI(APITestCase):
+class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
 
     def test__returns_empty_list_for_empty_ipv4_subnet(self):
         subnet = factory.make_Subnet(version=4, dns_servers=[], gateway_ip='')
@@ -370,7 +370,7 @@ class TestSubnetReservedIPRangesAPI(APITestCase):
             }))
 
 
-class TestSubnetUnreservedIPRangesAPI(APITestCase):
+class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
 
     def test__returns_full_list_for_empty_subnet(self):
         subnet = factory.make_Subnet(
@@ -495,7 +495,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase):
             )
 
 
-class TestSubnetStatisticsAPI(APITestCase):
+class TestSubnetStatisticsAPI(APITestCase.ForUser):
 
     def test__default_does_not_include_ranges(self):
         subnet = factory.make_Subnet()
@@ -551,7 +551,7 @@ class TestSubnetStatisticsAPI(APITestCase):
         self.assertThat(result, Equals(expected_result))
 
 
-class TestSubnetIPAddressesAPI(APITestCase):
+class TestSubnetIPAddressesAPI(APITestCase.ForUser):
 
     def test__default_parameters(self):
         subnet = factory.make_Subnet()

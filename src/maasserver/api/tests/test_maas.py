@@ -19,7 +19,7 @@ from maasserver.testing.osystems import (
 )
 
 
-class MAASHandlerAPITest(APITestCase):
+class MAASHandlerAPITest(APITestCase.ForUser):
 
     def test_get_config_default_distro_series(self):
         self.become_admin()

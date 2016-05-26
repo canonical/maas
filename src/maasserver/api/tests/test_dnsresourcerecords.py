@@ -32,7 +32,7 @@ def get_dnsresourcerecord_uri(dnsresourcerecord):
         'dnsresourcerecord_handler', args=[dnsresourcerecord.id])
 
 
-class TestDNSResourceRecordsAPI(APITestCase):
+class TestDNSResourceRecordsAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -239,7 +239,7 @@ class TestDNSResourceRecordsAPI(APITestCase):
             http.client.BAD_REQUEST, response.status_code, response.content)
 
 
-class TestDNSResourceRecordAPI(APITestCase):
+class TestDNSResourceRecordAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         dnsdata = factory.make_DNSData()

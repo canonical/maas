@@ -33,7 +33,7 @@ def get_dnsresource_uri(dnsresource):
         'dnsresource_handler', args=[dnsresource.id])
 
 
-class TestDNSResourcesAPI(APITestCase):
+class TestDNSResourcesAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         self.assertEqual(
@@ -223,7 +223,7 @@ class TestDNSResourcesAPI(APITestCase):
             http.client.BAD_REQUEST, response.status_code, response.content)
 
 
-class TestDNSResourceAPI(APITestCase):
+class TestDNSResourceAPI(APITestCase.ForUser):
 
     def test_handler_path(self):
         dnsresource = factory.make_DNSResource()
