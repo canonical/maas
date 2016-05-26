@@ -10,6 +10,7 @@ from unittest.mock import ANY
 
 from django.db import transaction
 from maasserver import locks
+from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -39,6 +40,7 @@ from maasserver.node_action import (
     compile_node_actions,
     Delete,
     Deploy,
+    ImportImages,
     MarkBroken,
     MarkFixed,
     NodeAction,
@@ -823,6 +825,33 @@ class TestMarkFixedAction(MAASServerTestCase):
         actions = compile_node_actions(
             node, factory.make_admin(), classes=[MarkFixed])
         self.assertItemsEqual([], actions)
+
+
+class TestImportImages(MAASServerTestCase):
+
+    def test_import_images(self):
+        user = factory.make_admin()
+        rack = factory.make_RackController()
+        mock_import = self.patch(RackControllersImporter, 'schedule')
+
+        with post_commit_hooks:
+            ImportImages(rack, user).execute()
+
+        self.assertThat(mock_import, MockCalledOnce())
+
+    def test_requires_admin_permission(self):
+        user = factory.make_User()
+        rack = factory.make_RackController()
+        self.assertFalse(ImportImages(rack, user).is_permitted())
+
+    def test_requires_rack(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            node_type=factory.pick_choice(
+                NODE_TYPE_CHOICES, but_not=[
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER]))
+        self.assertFalse(ImportImages(node, user).is_actionable())
 
 
 class TestRefresh(MAASServerTestCase):

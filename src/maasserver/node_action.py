@@ -26,6 +26,7 @@ from collections import OrderedDict
 from crochet import TimeoutError
 from django.core.exceptions import ValidationError
 from maasserver import locks
+from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
@@ -43,6 +44,7 @@ from maasserver.node_status import (
     is_failed_status,
     NON_MONITORED_STATUSES,
 )
+from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_osystem_and_distro_series,
@@ -460,6 +462,26 @@ class MarkFixed(NodeAction):
         return True
 
 
+class ImportImages(NodeAction):
+    """Import images on a rack or region and rack controller."""
+    name = "import-images"
+    display = "Import Images"
+    display_sentence = "importing images"
+    permission = NODE_PERMISSION.ADMIN
+    for_type = {
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER
+    }
+
+    def execute(self):
+        """See `NodeAction.execute`."""
+        try:
+            post_commit_do(
+                RackControllersImporter.schedule, self.node.system_id)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+
+
 class Refresh(NodeAction):
     """Refresh a rack or region and rack controller."""
     name = "refresh"
@@ -491,6 +513,7 @@ ACTION_CLASSES = (
     MarkFixed,
     SetZone,
     Delete,
+    ImportImages,
     Refresh,
 )
 

@@ -22,7 +22,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.loaded = false;
         $scope.node = null;
         $scope.actionOption = null;
-        $scope.allActionOptions = GeneralManager.getData("machine_actions");
+        $scope.allActionOptions = null;
         $scope.availableActionOptions = [];
         $scope.actionError = null;
         $scope.power_types = GeneralManager.getData("power_types");
@@ -128,8 +128,14 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Update the available action options for the node.
         function updateAvailableActionOptions() {
             $scope.availableActionOptions = [];
-            if(!$scope.node) {
+            if(!angular.isObject($scope.node)) {
                 return;
+            }
+
+            // Initialize the allowed action list.
+            if($scope.allActionOptions === null) {
+                $scope.allActionOptions =
+                    $scope.getAllActionOptions($scope.node.node_type);
             }
 
             // Build the available action options control from the
@@ -405,6 +411,21 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 $scope.networkingController.nodeLoaded();
             }
         }
+
+        $scope.getAllActionOptions = function(node_type) {
+            if(typeof node_type !== 'number' ||
+                    node_type < 0 || node_type > 4) {
+                return [];
+            }
+            var actionTypeForNodeType = {
+                0: "machine_actions",
+                1: "device_actions",
+                2: "rack_controller_actions",
+                3: "region_controller_actions",
+                4: "region_and_rack_controller_actions"
+            };
+            return GeneralManager.getData(actionTypeForNodeType[node_type]);
+        };
 
         // Update the node with new data on the region.
         $scope.updateNode = function(node, queryPower) {
@@ -1007,15 +1028,15 @@ angular.module('MAAS').controller('NodeDetailsController', [
             DomainsManager,
             ServicesManager
         ]).then(function() {
-            // Possibly redirected from another controller that already had
-            // this node set to active. Only call setActiveItem if not already
-            // the activeItem.
             $scope.nodesManager = MachinesManager;
             $scope.isController = false;
             if('controller' === $routeParams.type) {
                 $scope.nodesManager = ControllersManager;
                 $scope.isController = true;
             }
+            // Possibly redirected from another controller that already had
+            // this node set to active. Only call setActiveItem if not already
+            // the activeItem.
             var activeNode = $scope.nodesManager.getActiveItem();
             if(angular.isObject(activeNode) &&
                 activeNode.system_id === $routeParams.system_id) {
@@ -1042,7 +1063,6 @@ angular.module('MAAS').controller('NodeDetailsController', [
         // Stop polling for architectures, hwe_kernels, and osinfo when the
         // scope is destroyed.
         $scope.$on("$destroy", function() {
-            $interval.cancel($scope.imageStatusPoll);
             GeneralManager.stopPolling("architectures");
             GeneralManager.stopPolling("hwe_kernels");
             GeneralManager.stopPolling("osinfo");

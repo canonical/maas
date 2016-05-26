@@ -3728,18 +3728,22 @@ class RackController(Controller):
 
     def get_image_sync_status(self, boot_images=None):
         """Return the status of the boot image import process."""
+        # Avoid circular imports.
+        from maasserver import bootresources
+        from maasserver.clusterrpc.boot_images import get_boot_images
         try:
-            if boot_images is None:
-                # Avoid circular imports.
-                from maasserver.clusterrpc.boot_images import get_boot_images
-                boot_images = get_boot_images(self)
-            if BootResource.objects.boot_images_are_in_sync(boot_images):
-                status = "synced"
+            if bootresources.is_import_resources_running():
+                status = "region-importing"
             else:
-                if self.is_import_boot_images_running():
-                    status = "syncing"
+                if boot_images is None:
+                    boot_images = get_boot_images(self)
+                if BootResource.objects.boot_images_are_in_sync(boot_images):
+                    status = "synced"
                 else:
-                    status = "out-of-sync"
+                    if self.is_import_boot_images_running():
+                        status = "syncing"
+                    else:
+                        status = "out-of-sync"
         except (NoConnectionsAvailable, TimeoutError):
             status = 'unknown'
         return status

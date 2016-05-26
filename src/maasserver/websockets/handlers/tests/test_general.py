@@ -144,7 +144,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         self.assertItemsEqual(
-            ['delete', 'off', 'on', 'refresh', 'set-zone'],
+            ['delete', 'import-images', 'off', 'on', 'refresh', 'set-zone'],
             [action['name'] for action in handler.rack_controller_actions({})])
 
     def test_rack_controller_actions_for_non_admin(self):
@@ -154,7 +154,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_region_and_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {})
         self.assertItemsEqual(
-            ['set-zone', 'refresh', 'delete'],
+            ['set-zone', 'refresh', 'delete', 'import-images'],
             [action['name']
              for action in handler.region_and_rack_controller_actions({})])
 

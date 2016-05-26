@@ -184,8 +184,7 @@ describe("NodeDetailsController", function() {
         expect($scope.loaded).toBe(false);
         expect($scope.node).toBeNull();
         expect($scope.actionOption).toBeNull();
-        expect($scope.allActionOptions).toBe(
-            GeneralManager.getData("machine_actions"));
+        expect($scope.allActionOptions).toBeNull();
         expect($scope.availableActionOptions).toEqual([]);
         expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
@@ -317,10 +316,26 @@ describe("NodeDetailsController", function() {
         expect($scope.loaded).toBe(true);
 
         expect(ControllersManager.getServices).toHaveBeenCalledWith(node);
-        expect($scope.services).not.toBe(null);
+        expect($scope.services).not.toBeNull();
         expect(Object.keys($scope.services).length).toBe(2);
         expect($scope.services.tgt.status).toBe('unknown');
         expect($scope.services.rackd.status).toBe('running');
+    });
+
+    it("getAllActionOptions called when node is loaded", function() {
+        spyOn(ControllersManager, "setActiveItem").and.returnValue(
+            $q.defer().promise);
+        var defer = $q.defer();
+        $routeParams.type = 'controller';
+        var controller = makeController(defer);
+        var getAllActionOptions = spyOn($scope, "getAllActionOptions");
+        var myNode = angular.copy(node);
+        // Make node a rack controller.
+        myNode.node_type = 2;
+        ControllersManager._activeItem = myNode;
+        defer.resolve();
+        $rootScope.$digest();
+        expect(getAllActionOptions).toHaveBeenCalledWith(2);
     });
 
     it("title is updated once setActiveItem resolves", function() {

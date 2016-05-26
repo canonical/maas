@@ -2316,18 +2316,18 @@ describe("NodeNetworkingController", function() {
         });
     });
 
-    describe("isShowingDeleteComfirm", function() {
+    describe("isShowingDeleteConfirm", function() {
 
         it("returns true in delete mode", function() {
             var controller = makeController();
             $scope.selectedMode = "delete";
-            expect($scope.isShowingDeleteComfirm()).toBe(true);
+            expect($scope.isShowingDeleteConfirm()).toBe(true);
         });
 
         it("returns false not in delete mode", function() {
             var controller = makeController();
             $scope.selectedMode = "single";
-            expect($scope.isShowingDeleteComfirm()).toBe(false);
+            expect($scope.isShowingDeleteConfirm()).toBe(false);
         });
     });
 

@@ -230,14 +230,16 @@
                                 <dd class="four-col last-col">
                                     {$ node.node_type_display $}
                                 </dd>
+                            <span data-ng-show="node.node_type == 2 || node.node_type == 4">
                             <dt class="two-col">Last image sync</dt>
                                 <dd class="four-col last-col">
-                                    {$ node.last_image_sync || 'Never' $}
+                                    {$ node.last_image_sync || 'never' $}
                                 </dd>
                             <dt class="two-col">Images status</dt>
                                 <dd class="four-col last-col">
                                     <maas-controller-image-status system-id="node.system_id"></maas-controller-image-status>
                                 </dd>
+                            </span>
                             <dt class="two-col">Zone</dt>
                                 <dd class="four-col last-col">
                                     {$ node.zone.name $}
@@ -729,7 +731,7 @@
                                                 <div class="table__data table_column--6"></div>
                                             </div>
                                         </div>
-                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: isShowingInterfaceOptions() || isShowingDeleteComfirm() || isShowingAdd() }">
+                                        <div class="table__row table__dropdown-row" data-ng-class="{ active: isShowingInterfaceOptions() || isShowingDeleteConfirm() || isShowingAdd() }">
                                             <div class="ng-hide" data-ng-show="isShowingInterfaceOptions()">
                                                 <div class="table__data left margin-left--thirty">
                                                       <button class="cta-ubuntu secondary"
@@ -742,7 +744,7 @@
                                                         data-ng-click="remove()">Remove {$ getRemoveTypeText(interface) $}</a>
                                                 </div>
                                             </div>
-                                            <div class="ng-hide" data-ng-show="isShowingDeleteComfirm()">
+                                            <div class="ng-hide" data-ng-show="isShowingDeleteConfirm()">
                                                 <div class="table__data left margin-top--five">
                                                       <p><span class="icon warning margin-right--ten"></span> Are you sure you want to remove this {$ getRemoveTypeText(interface) $}?</p>
                                                 </div>

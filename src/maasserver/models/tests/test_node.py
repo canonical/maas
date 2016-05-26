@@ -22,7 +22,10 @@ from django.core.exceptions import (
 )
 from django.db import transaction
 from fixtures import LoggerFixture
-from maasserver import preseed as preseed_module
+from maasserver import (
+    bootresources,
+    preseed as preseed_module,
+)
 from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.power import (
     power_off_node,
@@ -7072,50 +7075,56 @@ class TestRackController(MAASServerTestCase):
                         len(regions_with_processes) +
                         len(regions_without_processes)))))
 
+    fake_images = [
+        {
+            'release': 'custom_os',
+            'osystem': 'custom',
+            'architecture': 'amd64',
+            'subarchitecture': 'generic',
+        },
+        {
+            'release': 'trusty',
+            'osystem': 'ubuntu',
+            'architecture': 'amd64',
+            'subarchitecture': 'generic',
+        },
+        {
+            'release': 'trusty',
+            'osystem': 'ubuntu',
+            'architecture': 'amd64',
+            'subarchitecture': 'hwe-t',
+        },
+        {
+            'release': 'trusty',
+            'osystem': 'ubuntu',
+            'architecture': 'amd64',
+            'subarchitecture': 'hwe-x',
+        },
+    ]
+
+    expected_images = [
+        {
+            'name': 'ubuntu/trusty',
+            'architecture': 'amd64',
+            'subarches': ['generic', 'hwe-t', 'hwe-x'],
+        },
+        {
+            'name': 'custom_os',
+            'architecture': 'amd64',
+            'subarches': ['generic'],
+        }
+    ]
+
     def test_list_boot_images(self):
         rack_controller = factory.make_RackController()
-        self.patch(boot_images, 'get_boot_images').return_value = [
-            {
-                'release': 'custom_os',
-                'osystem': 'custom',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-t',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-x',
-            },
-        ]
+        self.patch(
+            boot_images, 'get_boot_images').return_value = self.fake_images
         self.patch(
             BootResource.objects,
             'boot_images_are_in_sync').return_value = True
         images = rack_controller.list_boot_images()
         self.assertTrue(images['connected'])
-        self.assertItemsEqual([
-            {
-                'name': 'ubuntu/trusty',
-                'architecture': 'amd64',
-                'subarches': ['generic', 'hwe-t', 'hwe-x'],
-            },
-            {
-                'name': 'custom_os',
-                'architecture': 'amd64',
-                'subarches': ['generic'],
-            }], images['images'])
+        self.assertItemsEqual(self.expected_images, images['images'])
         self.assertEquals('synced', images['status'])
         self.assertEquals('synced', rack_controller.get_image_sync_status())
 
@@ -7127,34 +7136,26 @@ class TestRackController(MAASServerTestCase):
         self.assertEquals('unknown', images['status'])
         self.assertEquals('unknown', rack_controller.get_image_sync_status())
 
+    def test_list_boot_images_region_importing(self):
+        rack_controller = factory.make_RackController()
+        self.patch(
+            boot_images, 'get_boot_images').return_value = self.fake_images
+        fake_is_import_resources_running = self.patch(
+            bootresources, 'is_import_resources_running')
+        fake_is_import_resources_running.return_value = True
+        images = rack_controller.list_boot_images()
+        self.assertThat(
+            fake_is_import_resources_running, MockCalledOnce())
+        self.assertTrue(images['connected'])
+        self.assertItemsEqual(self.expected_images, images['images'])
+        self.assertEquals('region-importing', images['status'])
+        self.assertEquals(
+            'region-importing', rack_controller.get_image_sync_status())
+
     def test_list_boot_images_syncing(self):
         rack_controller = factory.make_RackController()
-        self.patch(boot_images, 'get_boot_images').return_value = [
-            {
-                'release': 'custom_os',
-                'osystem': 'custom',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-t',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-x',
-            },
-        ]
+        self.patch(
+            boot_images, 'get_boot_images').return_value = self.fake_images
         self.patch(
             BootResource.objects,
             'boot_images_are_in_sync').return_value = False
@@ -7163,48 +7164,14 @@ class TestRackController(MAASServerTestCase):
             'is_import_boot_images_running').return_value = True
         images = rack_controller.list_boot_images()
         self.assertTrue(images['connected'])
-        self.assertItemsEqual([
-            {
-                'name': 'ubuntu/trusty',
-                'architecture': 'amd64',
-                'subarches': ['generic', 'hwe-t', 'hwe-x'],
-            },
-            {
-                'name': 'custom_os',
-                'architecture': 'amd64',
-                'subarches': ['generic'],
-            }], images['images'])
+        self.assertItemsEqual(self.expected_images, images['images'])
         self.assertEquals('syncing', images['status'])
         self.assertEquals('syncing', rack_controller.get_image_sync_status())
 
     def test_list_boot_images_out_of_sync(self):
         rack_controller = factory.make_RackController()
-        self.patch(boot_images, 'get_boot_images').return_value = [
-            {
-                'release': 'custom_os',
-                'osystem': 'custom',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'generic',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-t',
-            },
-            {
-                'release': 'trusty',
-                'osystem': 'ubuntu',
-                'architecture': 'amd64',
-                'subarchitecture': 'hwe-x',
-            },
-        ]
+        self.patch(
+            boot_images, 'get_boot_images').return_value = self.fake_images
         self.patch(
             BootResource.objects,
             'boot_images_are_in_sync').return_value = False
@@ -7213,17 +7180,7 @@ class TestRackController(MAASServerTestCase):
             'is_import_boot_images_running').return_value = False
         images = rack_controller.list_boot_images()
         self.assertTrue(images['connected'])
-        self.assertItemsEqual([
-            {
-                'name': 'ubuntu/trusty',
-                'architecture': 'amd64',
-                'subarches': ['generic', 'hwe-t', 'hwe-x'],
-            },
-            {
-                'name': 'custom_os',
-                'architecture': 'amd64',
-                'subarches': ['generic'],
-            }], images['images'])
+        self.assertItemsEqual(self.expected_images, images['images'])
         self.assertEquals('out-of-sync', images['status'])
         self.assertEquals(
             'out-of-sync', rack_controller.get_image_sync_status())

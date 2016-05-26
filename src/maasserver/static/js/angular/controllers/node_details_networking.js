@@ -838,7 +838,7 @@ angular.module('MAAS').controller('NodeNetworkingController', [
         };
 
         // Return true if the interface delete confirm is being shown.
-        $scope.isShowingDeleteComfirm = function() {
+        $scope.isShowingDeleteConfirm = function() {
             return $scope.selectedMode === SELECTION_MODE.DELETE;
         };
 

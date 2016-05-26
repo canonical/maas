@@ -98,5 +98,6 @@ class ControllerHandler(MachineHandler):
             # We use a RackController method; without the cast, it's a Node.
             node = typecast_to_node_type(node)
             if isinstance(node, RackController):
-                result[node.system_id] = node.get_image_sync_status().title()
+                result[node.system_id] = node.get_image_sync_status().replace(
+                    "-", " ").title()
         return result
