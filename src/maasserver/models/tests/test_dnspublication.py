@@ -118,3 +118,50 @@ class TestDNSPublicationManager(MAASServerTestCase):
         self.assertThat(DNSPublication.objects.all(), HasLength(0))
         DNSPublication.objects.collect_garbage()
         self.assertThat(DNSPublication.objects.all(), HasLength(0))
+
+    def test_collect_garbage_leaves_records_older_than_specified(self):
+        publications = {
+            timedelta(days=1): DNSPublication(source="1 day ago"),
+            timedelta(minutes=1): DNSPublication(source="1 minute ago"),
+            timedelta(seconds=0): DNSPublication(source="now"),
+        }
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT now()")
+            [now] = cursor.fetchone()
+
+        # Work from oldest to youngest so that the youngest gets the highest
+        # primary key; the primary key is used to determine the most recent.
+        for delta in sorted(publications, reverse=True):
+            publication = publications[delta]
+            publication.save()
+            # Use SQL to set `created`; Django's field validation prevents it.
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE maasserver_dnspublication SET created = %s"
+                    " WHERE id = %s", [now - delta, publication.id])
+
+        def get_ages():
+            pubs = DNSPublication.objects.all()
+            return {now - pub.created for pub in pubs}
+
+        deltas = set(publications)
+        self.assertThat(get_ages(), Equals(deltas))
+
+        one_second = timedelta(seconds=1)
+        # Work from oldest to youngest again, collecting garbage each time.
+        while len(deltas) > 1:
+            delta = max(deltas)
+            # Publications of exactly the specified age are not deleted.
+            DNSPublication.objects.collect_garbage(now - delta)
+            self.assertThat(get_ages(), Equals(deltas))
+            # Publications of just a second over are deleted.
+            DNSPublication.objects.collect_garbage(now - delta + one_second)
+            self.assertThat(get_ages(), Equals(deltas - {delta}))
+            # We're done with this one.
+            deltas.discard(delta)
+
+        # The most recent publication will never be deleted.
+        DNSPublication.objects.collect_garbage()
+        self.assertThat(get_ages(), Equals(deltas))
+        self.assertThat(deltas, HasLength(1))

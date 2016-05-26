@@ -94,6 +94,11 @@ def make_NonceCleanupService():
     return nonces_cleanup.NonceCleanupService()
 
 
+def make_DNSPublicationGarbageService():
+    from maasserver.dns import publication
+    return publication.DNSPublicationGarbageService()
+
+
 def make_StatusMonitorService():
     from maasserver import status_monitor
     return status_monitor.StatusMonitorService()
@@ -196,6 +201,11 @@ class RegionEventLoop:
         "nonce-cleanup": {
             "only_on_master": True,
             "factory": make_NonceCleanupService,
+            "requires": [],
+        },
+        "dns-publication-cleanup": {
+            "only_on_master": True,
+            "factory": make_DNSPublicationGarbageService,
             "requires": [],
         },
         "status-monitor": {

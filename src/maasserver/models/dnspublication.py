@@ -7,6 +7,8 @@ __all__ = [
     "DNSPublication",
 ]
 
+from datetime import datetime
+
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
@@ -54,14 +56,17 @@ class DNSPublicationManager(Manager):
             # use migrations to provide an initial publication.
             raise self.model.DoesNotExist() from None
 
-    def collect_garbage(self):
+    def collect_garbage(self, cutoff: datetime=None):
         """Delete all but the most recently inserted `DNSPublication`."""
         try:
             publication = self.get_most_recent()
         except self.model.DoesNotExist:
             pass  # Nothing to do.
         else:
-            self.filter(id__lt=publication.id).delete()
+            candidates = self.filter(id__lt=publication.id)
+            if cutoff is not None:
+                candidates = candidates.filter(created__lt=cutoff)
+            candidates.delete()
 
 
 class DNSPublication(Model):

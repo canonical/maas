@@ -93,6 +93,7 @@ class TestRegionServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "database-tasks",
+            "dns-publication-cleanup",
             "import-resources",
             "import-resources-progress",
             "nonce-cleanup",

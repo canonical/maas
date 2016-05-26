@@ -26,7 +26,7 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
     MatchesDict,
-    MatchesListwise,
+    MatchesSetwise,
 )
 
 
@@ -703,7 +703,7 @@ class TestNodeInterfaceAPI(APITestCase.ForUser):
             nic.name
             for nic in children
             ), parsed_interface["children"])
-        self.assertThat(parsed_interface["links"], MatchesListwise(links))
+        self.assertThat(parsed_interface["links"], MatchesSetwise(*links))
         json_discovered = parsed_interface["discovered"][0]
         self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
         self.assertEqual(discovered_ip, json_discovered["ip_address"])
@@ -1393,7 +1393,7 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             "params": Equals(interface.params),
             "effective_mtu": Equals(interface.get_effective_mtu()),
         }))
-        self.assertThat(parsed_interface["links"], MatchesListwise(links))
+        self.assertThat(parsed_interface["links"], MatchesSetwise(*links))
         json_discovered = parsed_interface["discovered"][0]
         self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
         self.assertEqual(discovered_ip, json_discovered["ip_address"])
