@@ -3097,6 +3097,16 @@ class Controller(Node):
     def __init__(self, *args, **kwargs):
         super(Controller, self).__init__(*args, **kwargs)
 
+    def _was_probably_machine(self):
+        """Best guess if a rack was a machine.
+
+        MAAS doesn't track node transitions so we have to look at
+        breadcrumbs. The first is the status. Only machines can have their
+        status changed to something other than NEW and a rack controller should
+        only be installable when the machine is in a deployed state.  Second a
+        machine must have power information."""
+        return self.status == NODE_STATUS.DEPLOYED and self.bmc is not None
+
 
 class RackController(Controller):
     """A node which is running rackd."""
@@ -3659,6 +3669,9 @@ class RackController(Controller):
 
     def delete(self):
         """Delete this rack controller."""
+        # Avoid circular imports
+        from maasserver.models import RegionRackRPCConnection
+
         primary_vlans = VLAN.objects.filter(primary_rack=self)
         if len(primary_vlans) != 0:
             raise ValidationError(
@@ -3666,6 +3679,10 @@ class RackController(Controller):
                 " controller on VLANs %s" %
                 (self.hostname,
                     ', '.join([str(vlan) for vlan in primary_vlans])))
+
+        # Disable and delete all services related to this node
+        Service.objects.mark_dead(self, dead_rack=True)
+        Service.objects.filter(node=self).delete()
 
         try:
             client = getClientFor(self.system_id, timeout=1)
@@ -3676,12 +3693,17 @@ class RackController(Controller):
             # is currently disconnected or rackd was killed
             pass
 
+        RegionRackRPCConnection.objects.filter(rack_controller=self).delete()
+
         for vlan in VLAN.objects.filter(secondary_rack=self):
             vlan.secondary_rack = None
             vlan.save()
 
         if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
             self.node_type = NODE_TYPE.REGION_CONTROLLER
+            self.save()
+        elif self._was_probably_machine():
+            self.node_type = NODE_TYPE.MACHINE
             self.save()
         else:
             super().delete()

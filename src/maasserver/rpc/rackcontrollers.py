@@ -83,8 +83,7 @@ def register_rackcontroller(
         if rackcontroller.url != url.geturl():
             rackcontroller.url = url.geturl()
             update_fields.append("url")
-    work_user = worker_user.get_worker_user()
-    if rackcontroller.owner != work_user:
+    if rackcontroller.owner is None:
         rackcontroller.owner = worker_user.get_worker_user()
         update_fields.append("owner")
     rackcontroller.save(update_fields=update_fields)

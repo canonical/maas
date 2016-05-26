@@ -772,6 +772,66 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
                NODE_TYPE.REGION_AND_RACK_CONTROLLER))
 
 
+def node_type_change():
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION node_type_change_notify()
+        RETURNS trigger AS $$
+        BEGIN
+          IF (OLD.node_type != NEW.node_type AND NOT (
+              (
+                OLD.node_type = {rack_controller} OR
+                OLD.node_type = {region_controller} OR
+                OLD.node_type = {region_and_rack_controller}
+              ) AND (
+                NEW.node_type = {rack_controller} OR
+                NEW.node_type = {region_controller} OR
+                NEW.node_type = {region_and_rack_controller}
+              ))) THEN
+            CASE OLD.node_type
+              WHEN {machine} THEN
+                PERFORM pg_notify('machine_delete',CAST(
+                  OLD.system_id AS TEXT));
+              WHEN {device} THEN
+                PERFORM pg_notify('device_delete',CAST(
+                  OLD.system_id AS TEXT));
+              WHEN {rack_controller} THEN
+                PERFORM pg_notify('controller_delete',CAST(
+                  OLD.system_id AS TEXT));
+              WHEN {region_controller} THEN
+                PERFORM pg_notify('controller_delete',CAST(
+                  OLD.system_id AS TEXT));
+              WHEN {region_and_rack_controller} THEN
+                PERFORM pg_notify('controller_delete',CAST(
+                  OLD.system_id AS TEXT));
+            END CASE;
+            CASE NEW.node_type
+              WHEN {machine} THEN
+                PERFORM pg_notify('machine_create',CAST(
+                  NEW.system_id AS TEXT));
+              WHEN {device} THEN
+                PERFORM pg_notify('device_create',CAST(
+                  NEW.system_id AS TEXT));
+              WHEN {rack_controller} THEN
+                PERFORM pg_notify('controller_create',CAST(
+                  NEW.system_id AS TEXT));
+              WHEN {region_controller} THEN
+                PERFORM pg_notify('controller_create',CAST(
+                  NEW.system_id AS TEXT));
+              WHEN {region_and_rack_controller} THEN
+                PERFORM pg_notify('controller_create',CAST(
+                  NEW.system_id AS TEXT));
+            END CASE;
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """.format(
+        machine=NODE_TYPE.MACHINE, device=NODE_TYPE.DEVICE,
+        rack_controller=NODE_TYPE.RACK_CONTROLLER,
+        region_controller=NODE_TYPE.REGION_CONTROLLER,
+        region_and_rack_controller=NODE_TYPE.REGION_AND_RACK_CONTROLLER))
+
+
 @transactional
 def register_websocket_triggers():
     """Register all websocket triggers into the database."""
@@ -1414,3 +1474,7 @@ def register_websocket_triggers():
         "maasserver_dhcpsnippet", "dhcpsnippet_update_notify", "update")
     register_trigger(
         "maasserver_dhcpsnippet", "dhcpsnippet_delete_notify", "delete")
+
+    register_procedure(node_type_change())
+    register_trigger(
+        "maasserver_node", "node_type_change_notify", "update")

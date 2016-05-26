@@ -4597,6 +4597,18 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             routable_racks, none_routable_racks)
 
 
+class TestController(MAASServerTestCase):
+
+    def test__was_probably_machine_true(self):
+        rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
+        rack.bmc = factory.make_BMC()
+        rack.save()
+        self.assertTrue(rack._was_probably_machine())
+
+    def test__was_probably_machine_false(self):
+        self.assertFalse(factory.make_RackController()._was_probably_machine())
+
+
 class TestRackControllerUpdateInterfaces(MAASServerTestCase):
 
     def create_empty_rack_controller(self):
@@ -7022,6 +7034,18 @@ class TestRackController(MAASServerTestCase):
             RackController.DoesNotExist,
             RackController.objects.get, system_id=rackcontroller.system_id)
 
+    def test_deletes_services(self):
+        rack = factory.make_RackController()
+        factory.make_Service(rack)
+        rack.delete()
+        self.assertItemsEqual([], Service.objects.all())
+
+    def test_deletes_region_rack_rpc_connections(self):
+        rack = factory.make_RackController()
+        factory.make_RegionRackRPCConnection(rack_controller=rack)
+        rack.delete()
+        self.assertItemsEqual([], RegionRackRPCConnection.objects.all())
+
     def test_delete_converts_region_and_rack_to_region(self):
         region_and_rack = factory.make_Node(
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
@@ -7030,6 +7054,16 @@ class TestRackController(MAASServerTestCase):
         self.assertEquals(
             NODE_TYPE.REGION_CONTROLLER,
             Node.objects.get(system_id=system_id).node_type)
+
+    def test_delete_converts_rack_to_machine(self):
+        rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
+        rack.power_parameters = {
+            'power_address': 'qemu+ssh://user@host/system',
+        }
+        rack.delete()
+        self.assertEquals(
+            NODE_TYPE.MACHINE,
+            Node.objects.get(system_id=rack.system_id).node_type)
 
     def test_update_rackd_status_calls_mark_dead_when_no_connections(self):
         rack_controller = factory.make_RackController()

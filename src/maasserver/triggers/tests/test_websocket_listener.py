@@ -2645,3 +2645,128 @@ class TestDHCPSnippetListener(
             self.assertEqual(('delete', '%s' % snippet.id), dv.value)
         finally:
             yield listener.stopService()
+
+
+class TestNodeTypeChange(
+        MAASTransactionServerTestCase, TransactionalHelpersMixin):
+    """End-to-end test of node type change triggers code."""
+
+    scenarios = (
+        ('machine_to_rack', {
+            'from_type': NODE_TYPE.MACHINE,
+            'from_listener': 'machine',
+            'to_type': NODE_TYPE.RACK_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('machine_to_region', {
+            'from_type': NODE_TYPE.MACHINE,
+            'from_listener': 'machine',
+            'to_type': NODE_TYPE.REGION_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('machine_to_rack_and_region', {
+            'from_type': NODE_TYPE.MACHINE,
+            'from_listener': 'machine',
+            'to_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('machine_to_device', {
+            'from_type': NODE_TYPE.MACHINE,
+            'from_listener': 'machine',
+            'to_type': NODE_TYPE.DEVICE,
+            'to_listener': 'device',
+            }),
+        ('rack_to_machine', {
+            'from_type': NODE_TYPE.RACK_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.MACHINE,
+            'to_listener': 'machine',
+            }),
+        ('rack_to_device', {
+            'from_type': NODE_TYPE.RACK_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.DEVICE,
+            'to_listener': 'device',
+            }),
+        ('region_to_machine', {
+            'from_type': NODE_TYPE.REGION_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.MACHINE,
+            'to_listener': 'machine',
+            }),
+        ('region_to_device', {
+            'from_type': NODE_TYPE.REGION_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.DEVICE,
+            'to_listener': 'device',
+            }),
+        ('region_and_rack_to_machine', {
+            'from_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.MACHINE,
+            'to_listener': 'machine',
+            }),
+        ('region_and_rack_to_device', {
+            'from_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            'from_listener': 'controller',
+            'to_type': NODE_TYPE.DEVICE,
+            'to_listener': 'device',
+            }),
+        ('device_to_rack', {
+            'from_type': NODE_TYPE.DEVICE,
+            'from_listener': 'device',
+            'to_type': NODE_TYPE.RACK_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('device_to_region', {
+            'from_type': NODE_TYPE.DEVICE,
+            'from_listener': 'device',
+            'to_type': NODE_TYPE.REGION_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('device_to_rack_and_region', {
+            'from_type': NODE_TYPE.DEVICE,
+            'from_listener': 'device',
+            'to_type': NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            'to_listener': 'controller',
+            }),
+        ('device_to_machine', {
+            'from_type': NODE_TYPE.DEVICE,
+            'from_listener': 'device',
+            'to_type': NODE_TYPE.MACHINE,
+            'to_listener': 'machine',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__transition_notifies(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener1 = self.make_listener_without_delay()
+        listener2 = self.make_listener_without_delay()
+        node = yield deferToDatabase(
+            self.create_node, {'node_type': self.from_type})
+        q_from, q_to = DeferredQueue(), DeferredQueue()
+        listener1.register(self.from_listener, lambda *args: q_from.put(args))
+        listener2.register(self.to_listener, lambda *args: q_to.put(args))
+        yield listener1.startService()
+        yield listener2.startService()
+        try:
+            node.node_type = self.to_type
+            yield deferToDatabase(node.save)
+            self.assertEqual(
+                ('delete', node.system_id),
+                (yield deferWithTimeout(2, q_from.get)))
+            self.assertEqual(
+                {
+                    ('create', node.system_id),
+                    ('update', node.system_id),
+                },
+                {
+                    (yield deferWithTimeout(2, q_to.get)),
+                    (yield deferWithTimeout(2, q_to.get)),
+                }
+            )
+        finally:
+            yield listener1.stopService()
+            yield listener2.stopService()

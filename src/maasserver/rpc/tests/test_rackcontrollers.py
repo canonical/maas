@@ -97,10 +97,16 @@ class TestHandleUpgrade(MAASServerTestCase):
 
 class TestRegisterRackController(MAASServerTestCase):
 
-    def test_sets_owner_to_worker(self):
+    def test_sets_owner_to_worker_when_none(self):
         node = factory.make_Node()
         rack_registered = register_rackcontroller(system_id=node.system_id)
         self.assertEqual(worker_user.get_worker_user(), rack_registered.owner)
+
+    def test_leaves_owner_when_owned(self):
+        user = factory.make_User()
+        node = factory.make_Machine(owner=user)
+        rack_registered = register_rackcontroller(system_id=node.system_id)
+        self.assertEqual(user, rack_registered.owner)
 
     def test_finds_existing_node_by_system_id(self):
         node = factory.make_Node()
