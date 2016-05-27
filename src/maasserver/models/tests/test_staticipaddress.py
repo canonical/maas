@@ -761,7 +761,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
 
     def test_get_hostname_ip_mapping_does_not_return_discovered_and_auto(self):
         # Create a situation where we have an AUTO ip on the pxeboot interface,
-        # and a discovered IP of the other address class (v4/v6) on another
+        # and a discovered IP of the other address family (v4/v6) on another
         # interface.
         domain = Domain.objects.get_default_domain()
         cidrs = [factory.make_ipv6_network(), factory.make_ipv4_network()]
@@ -792,6 +792,53 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {sip0.ip}, node.node_type
+            )}
+        self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_returns_correct_bond_ip(self):
+        # Create a situation where we have a STICKY ip on the pxeboot
+        # interface, a STICKY ip on a bond containing the pxeboot interface and
+        # another interface, and a discovered IP of the other address family
+        # (v4/v6) on another interface.  We should only get the bond ip.
+        domain = Domain.objects.get_default_domain()
+        cidrs = [factory.make_ipv6_network(), factory.make_ipv4_network()]
+        shuffle(cidrs)
+        subnets = [factory.make_Subnet(cidr=cidr) for cidr in cidrs]
+        # First, make a node with an interface on subnets[0].  Assign the boot
+        # interface an AUTO IP on subnets[0].
+        node = factory.make_Node_with_Interface_on_Subnet(
+            hostname=factory.make_name('host'), subnet=subnets[0],
+            vlan=subnets[0].vlan, disable_ipv4=False)
+        sip0 = node.boot_interface.ip_addresses.first()
+        ip0 = factory.pick_ip_in_network(cidrs[0])
+        sip0.ip = ip0
+        sip0.alloc_type = IPADDRESS_TYPE.STICKY
+        sip0.save()
+        # Now create another interface, and give it a DISCOVERED IP of the
+        # other family from subnets[1].
+        iface1 = factory.make_Interface(node=node, vlan=subnets[1].vlan)
+        ip1 = factory.pick_ip_in_network(cidrs[1])
+        sip1 = factory.make_StaticIPAddress(
+            subnet=subnets[1], ip=ip1,
+            alloc_type=IPADDRESS_TYPE.DISCOVERED
+            )
+        iface1.ip_addresses.add(sip1)
+        iface1.save()
+        # Now create a bond containing the boot interface, and assign it
+        # another IP from the same subnet as the boot interface.
+        iface0 = node.get_boot_interface()
+        iface2 = factory.make_Interface(node=node)
+        bondif = factory.make_Interface(
+            INTERFACE_TYPE.BOND, node=node, parents=[iface0, iface2])
+        bondip = factory.pick_ip_in_network(cidrs[0], but_not=[ip0])
+        bond_sip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY, interface=bondif,
+            subnet=subnets[0], ip=bondip)
+        # The only mapping we should get is for the bond interface.
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
+        expected_mapping = {
+            node.fqdn: HostnameIPMapping(
+                node.system_id, 30, {bond_sip.ip}, node.node_type
             )}
         self.assertEqual(expected_mapping, mapping)
 
