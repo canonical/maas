@@ -8,6 +8,7 @@ __all__ = []
 
 from unittest.mock import (
     ANY,
+    Mock,
     sentinel,
 )
 
@@ -36,6 +37,7 @@ from twisted.internet.defer import (
     fail,
     succeed,
 )
+from twisted.internet.error import ConnectionDone
 from twisted.internet.task import Clock
 
 
@@ -122,6 +124,20 @@ class TestNodePowerMonitorService(MAASTestCase):
         self.assertEqual(None, extract_result(d))
         self.assertDocTestMatches(
             "Rack controller '...' is not recognised.", maaslog.output)
+
+    def test_query_nodes_copes_with_losing_connection_to_region(self):
+        service = self.make_monitor_service()
+
+        client = Mock(return_value=fail(
+            ConnectionDone("Connection was closed cleanly.")))
+
+        with FakeLogger("maas") as maaslog:
+            d = service.query_nodes(client)
+            d.addErrback(service.query_nodes_failed, sentinel.ident)
+
+        self.assertEqual(None, extract_result(d))
+        self.assertDocTestMatches(
+            "Lost connection to region controller.", maaslog.output)
 
     def test_try_query_nodes_logs_other_errors(self):
         service = self.make_monitor_service()

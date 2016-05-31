@@ -20,6 +20,7 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.region import ListNodePowerParameters
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.error import ConnectionDone
 from twisted.python import log
 
 
@@ -74,6 +75,9 @@ class NodePowerMonitorService(TimerService, object):
         if failure.check(NoSuchCluster):
             maaslog.error(
                 "Rack controller '%s' is not recognised.", localIdent)
+        elif failure.check(ConnectionDone):
+            maaslog.error(
+                "Lost connection to region controller.")
         else:
             # Log the error in full to the Twisted log.
             log.err(failure, "Querying node power states.")
