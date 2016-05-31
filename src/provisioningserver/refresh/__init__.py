@@ -3,7 +3,6 @@
 
 """Functionality to refresh rack controller hardware and networking details."""
 import os
-import shutil
 import socket
 import stat
 import subprocess
@@ -107,18 +106,27 @@ def refresh(system_id, consumer_key, token_key, token_secret):
         'token_key': token_key,
         'token_secret': token_secret,
         'consumer_secret': '',
-        }
-
-    tmpdir = tempfile.mkdtemp(prefix='maas-commission-')
-    scripts_to_run = {
+    }
+    scripts = {
         name: config
         for name, config in NODE_INFO_SCRIPTS.items()
         if config["run_on_controller"]
     }
-    total_scripts = len(scripts_to_run)
+
+    with tempfile.TemporaryDirectory(prefix='maas-commission-') as tmpdir:
+        failed_scripts = runscripts(scripts, url, creds, tmpdir=tmpdir)
+
+    if len(failed_scripts) == 0:
+        signal(url, creds, "OK", "Finished refreshing %s" % system_id)
+    else:
+        signal(url, creds, "FAILED", "Failed refreshing %s" % system_id)
+
+
+def runscripts(scripts, url, creds, tmpdir):
+    total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
-    for output_name, config in scripts_to_run.items():
+    for output_name, config in scripts.items():
         signal(
             url, creds, "WORKING", "Starting %s [%d/%d]" %
             (config['name'], current_script, total_scripts))
@@ -143,12 +151,4 @@ def refresh(system_id, consumer_key, token_key, token_secret):
         if proc.returncode != 0:
             failed_scripts.append(config['name'])
         current_script += 1
-
-    shutil.rmtree(tmpdir)
-    fail_count = len(failed_scripts)
-    if fail_count == 0:
-        signal(
-            url, creds, "OK", "Finished refreshing %s" % system_id)
-    else:
-        signal(
-            url, creds, "FAILED", "Failed refreshing %s" % system_id)
+    return failed_scripts

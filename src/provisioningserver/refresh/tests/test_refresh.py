@@ -7,9 +7,12 @@ __all__ = []
 
 from collections import OrderedDict
 import os
+from pathlib import Path
 import random
 import re
+import tempfile
 from textwrap import dedent
+from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -18,6 +21,11 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
+from testtools.matchers import (
+    Contains,
+    DirExists,
+    Not,
+)
 
 
 class TestHelpers(MAASTestCase):
@@ -266,3 +274,37 @@ class TestRefresh(MAASTestCase):
             'FAILED',
             "Failed refreshing %s" % system_id],
             signal.call_args_list[2][0])
+
+    def test_refresh_clears_up_temporary_directory(self):
+
+        ScriptsBroken = factory.make_exception_type()
+
+        def find_temporary_directories():
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmpdir = Path(tmpdir).absolute()
+                return {
+                    entry.path for entry in tmpdir.parent.iterdir()
+                    if entry.is_dir() and entry != tmpdir
+                }
+
+        tmpdirs_during = set()
+        tmpdir_during = None
+
+        def runscripts(*args, tmpdir):
+            self.assertThat(tmpdir, DirExists())
+            nonlocal tmpdirs_during, tmpdir_during
+            tmpdirs_during |= find_temporary_directories()
+            tmpdir_during = tmpdir
+            raise ScriptsBroken("Foom")
+
+        self.patch(refresh, "runscripts", runscripts)
+
+        tmpdirs_before = find_temporary_directories()
+        self.assertRaises(
+            ScriptsBroken, refresh.refresh, sentinel.system_id,
+            sentinel.consumer_key, sentinel.token_key, sentinel.token_secret)
+        tmpdirs_after = find_temporary_directories()
+
+        self.assertThat(tmpdirs_before, Not(Contains(tmpdir_during)))
+        self.assertThat(tmpdirs_during, Contains(tmpdir_during))
+        self.assertThat(tmpdirs_after, Not(Contains(tmpdir_during)))
