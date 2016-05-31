@@ -276,6 +276,7 @@ angular.module('MAAS').controller('NodesListController', [
             if(!$scope.hasActionsFailed(tab)) {
                 if(!$scope.hasActionsInProgress(tab)) {
                      clearAction(tab);
+                     enterViewSelected(tab);
                 }
                 return;
             }

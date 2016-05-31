@@ -1100,7 +1100,7 @@ describe("NodesListController", function() {
                             $scope.tabs[tab].actionProgress.completed).toBe(1);
                     });
 
-                it("set search to previous search after complete",
+                it("set search to in:(Selected) search after complete",
                     function() {
                     var controller = makeController();
                     var defer = $q.defer();
@@ -1112,37 +1112,16 @@ describe("NodesListController", function() {
                     spyOn(
                         $scope, 'hasActionsInProgress').and.returnValue(false);
                     var object = makeObject(tab);
-                    var prev_search = makeName("search");
                     $scope.tabs[tab].manager._items.push(object);
                     $scope.tabs[tab].manager._selectedItems.push(object);
-                    $scope.tabs[tab].previous_search = prev_search;
+                    $scope.tabs[tab].previous_search = makeName("search");
                     $scope.tabs[tab].search = "in:(Selected)";
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.tabs[tab].filtered_items = [makeObject(tab)];
                     $scope.actionGo(tab);
                     defer.resolve();
                     $scope.$digest();
-                    expect($scope.tabs[tab].search).toBe(prev_search);
-                });
-
-                it("ignores search when not in:selected after complete",
-                    function() {
-                    var controller = makeController();
-                    var defer = $q.defer();
-                    spyOn(
-                        $scope.tabs[tab].manager,
-                        "performAction").and.returnValue(defer.promise);
-                    spyOn(
-                        $scope, 'hasActionsInProgress').and.returnValue(false);
-                    var object = makeObject(tab);
-                    $scope.tabs[tab].manager._items.push(object);
-                    $scope.tabs[tab].manager._selectedItems.push(object);
-                    $scope.tabs[tab].search = "other";
-                    $scope.tabs[tab].actionOption = { name: "start" };
-                    $scope.actionGo(tab);
-                    defer.resolve();
-                    $scope.$digest();
-                    expect($scope.tabs[tab].search).toBe("other");
+                    expect($scope.tabs[tab].search).toBe("in:(Selected)");
                 });
 
                 it("clears action option when complete", function() {
