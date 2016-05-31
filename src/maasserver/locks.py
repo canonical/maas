@@ -1,12 +1,17 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Region-wide locks."""
 
 __all__ = [
+    "dns",
     "eventloop",
+    "import_images",
+    "node_acquire",
+    "rack_registration",
     "security",
     "startup",
+    "staticip_acquire",
 ]
 
 from maasserver.utils.dblocks import (
@@ -35,3 +40,8 @@ node_acquire = DatabaseXactLock(7)
 
 # Lock to prevent concurrent allocation of StaticIPAddress
 staticip_acquire = DatabaseXactLock(8)
+
+# Lock to prevent concurrent registration of rack controllers. This can be a
+# problem because registration involves populating fabrics, VLANs, and other
+# information that may overlap between rack controller.
+rack_registration = DatabaseLock(9)

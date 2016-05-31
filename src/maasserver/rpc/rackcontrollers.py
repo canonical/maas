@@ -4,16 +4,19 @@
 """RPC helpers relating to rack controllers."""
 
 __all__ = [
-    "register_rackcontroller",
+    "handle_upgrade",
+    "register",
+    "update_interfaces",
     "update_last_image_sync",
 ]
 
-from django.db import (
-    IntegrityError,
-    transaction,
-)
+from typing import Optional
+
 from django.db.models import Q
-from maasserver import worker_user
+from maasserver import (
+    locks,
+    worker_user,
+)
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
     Node,
@@ -23,8 +26,13 @@ from maasserver.models import (
 )
 from maasserver.models.node import typecast_node
 from maasserver.models.timestampedmodel import now
-from maasserver.utils.orm import transactional
+from maasserver.utils import synchronised
+from maasserver.utils.orm import (
+    transactional,
+    with_connection,
+)
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -59,22 +67,37 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
 
 
 @synchronous
+@with_connection
+@synchronised(locks.rack_registration)
 @transactional
-def register_rackcontroller(
-        system_id=None, hostname='', interfaces={}, url=None,
-        nodegroup_uuid=None):
+def register(system_id=None, hostname='', interfaces=None, url=None):
     """Register a new rack controller if not already registered.
 
     Attempt to see if the rack controller was already registered as a node.
     This can be looked up either by system_id, hostname, or mac address. If
-    found convert the existing node into a rack controller. If not found create
-    a new rack controller. After the rack controller has been registered and
-    successfully connected we will refresh all commissioning data."""
-    rackcontroller = find_and_register_existing(
-        system_id, hostname, interfaces)
-    if rackcontroller is None:
-        rackcontroller = register_new_rackcontroller(system_id, hostname)
+    found convert the existing node into a rack controller. If not found
+    create a new rack controller. After the rack controller has been
+    registered and successfully connected we will refresh all commissioning
+    data.
 
+    :return: A ``(rack-controller, refresh-hint)`` tuple.
+    """
+    if interfaces is None:
+        interfaces = {}
+
+    node = find(system_id, hostname, interfaces)
+    if node is None:
+        node = RackController.objects.create(hostname=hostname)
+        maaslog.info("Created new rack controller %s.", node.hostname)
+    elif node.is_rack_controller:
+        maaslog.info("Registering existing rack controller %s.", node.hostname)
+    else:
+        maaslog.info(
+            "Found existing node %s as candidate for rack controller.",
+            node.hostname)
+
+    # This may be a no-op, but it does provide us with a refresh hint.
+    rackcontroller, needs_refresh = upgrade(node)
     # Update `rackcontroller.url` from the given URL, but only when the
     # hostname is not 'localhost' (i.e. the default value used when the master
     # cluster connects).
@@ -87,31 +110,46 @@ def register_rackcontroller(
         rackcontroller.owner = worker_user.get_worker_user()
         update_fields.append("owner")
     rackcontroller.save(update_fields=update_fields)
-    return rackcontroller
+    # Update networking information every time we see a rack.
+    rackcontroller.update_interfaces(interfaces)
+    # Hint to callers whether or not this rack needs to be refreshed.
+    return rackcontroller, needs_refresh
 
 
-def find_and_register_existing(system_id, hostname, interfaces):
-    mac_addresses = set(
-        interface["mac_address"]
-        for _, interface in interfaces.items()
+@typed
+def find(system_id: Optional[str], hostname: str, interfaces: dict):
+    """Find an existing node by `system_id`, `hostname`, and `interfaces`.
+
+    :type system_id: str or None
+    :type hostname: str
+    :type interfaces: dict
+    :return: An instance of :class:`Node` or `None`
+    """
+    mac_addresses = {
+        interface["mac_address"] for interface in interfaces.values()
         if "mac_address" in interface
+    }
+    query = (
+        Q(system_id=system_id) | Q(hostname=hostname) |
+        Q(interface__mac_address__in=mac_addresses)
     )
-    node = Node.objects.filter(
-        Q(system_id=system_id) |
-        Q(hostname=hostname) |
-        Q(interface__mac_address__in=mac_addresses)).first()
-    if node is None:
-        return None
+    return Node.objects.filter(query).first()
+
+
+def upgrade(node):
+    """Upgrade `node` to a rack controller if it isn't already.
+
+    Return a hint as to whether a refresh is necessary.
+
+    :return: A ``(rack-controller, refresh-hint)`` tuple.
+    """
     # Refresh whenever an existing node is converted for use as a rack
     # controller. This is needed for two reasons. First, when the region starts
     # it creates a node for itself but only gathers networking information.
     # Second, information about the node may have changed since its last use.
     needs_refresh = True
-    if node.node_type in (
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER):
-        maaslog.info(
-            "Registering existing rack controller %s." % node.hostname)
+
+    if node.is_rack_controller:
         # We don't want to refresh existing rack controllers as each time a
         # rack controller connects to a region it creates four connections.
         # This means for every region we connect to we would refresh
@@ -119,47 +157,17 @@ def find_and_register_existing(system_id, hostname, interfaces):
         # and memory is non-zero our information at this point should be
         # current and the user can always manually refresh.
         needs_refresh = (node.cpu_count == 0 or node.memory == 0)
-    elif node.node_type == NODE_TYPE.REGION_CONTROLLER:
+    elif node.is_region_controller:
         maaslog.info(
-            "Converting %s into a region and rack controller." % node.hostname)
+            "Converting %s into a region and rack controller.", node.hostname)
         node.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         node.save()
     else:
-        maaslog.info("Converting %s into a rack controller." % node.hostname)
+        maaslog.info("Converting %s into a rack controller.", node.hostname)
         node.node_type = NODE_TYPE.RACK_CONTROLLER
         node.save()
 
-    rackcontroller = typecast_node(node, RackController)
-    # Tell register RPC call a refresh isn't needed
-    rackcontroller.needs_refresh = needs_refresh
-    return rackcontroller
-
-
-def register_new_rackcontroller(system_id, hostname):
-    try:
-        with transaction.atomic():
-            rackcontroller = RackController.objects.create(hostname=hostname)
-            # Tell register RPC call a refresh is needed
-            rackcontroller.needs_refresh = True
-    except IntegrityError as e:
-        # regiond runs on each server with four threads. When a new rack
-        # controller connects it connects to all threads on all servers.  We
-        # use the fact that hostnames must be unique to prevent us from
-        # creating multiple node objects for a single node.
-        maaslog.info(
-            "Rack controller(%s) currently being registered, retrying..." %
-            hostname)
-        rackcontroller = find_and_register_existing(system_id, hostname, {})
-        if rackcontroller is not None:
-            return rackcontroller
-        else:
-            # If we still can't find it something has gone wrong so throw the
-            # exception
-            raise e from None
-    maaslog.info(
-        "%s has been created as a new rack controller" %
-        rackcontroller.hostname)
-    return rackcontroller
+    return typecast_node(node, RackController), needs_refresh
 
 
 @transactional

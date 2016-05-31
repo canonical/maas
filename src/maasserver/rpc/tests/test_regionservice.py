@@ -522,6 +522,10 @@ class TestRegionServer(MAASTransactionServerTestCase):
             port=random.randint(1, 400))
         protocol.transport.getHost.return_value = host
         mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
+        mock_deferToDatabase.side_effect = [
+            succeed((rack_controller, False)),
+            succeed(None),
+        ]
         yield call_responder(
             protocol, RegisterRackController, {
                 "system_id": rack_controller.system_id,

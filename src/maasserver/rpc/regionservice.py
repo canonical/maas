@@ -533,13 +533,10 @@ class RegionServer(Region):
             self, system_id, hostname, interfaces, url, nodegroup_uuid=None):
 
         try:
-            rack_controller = yield deferToDatabase(
-                rackcontrollers.register_rackcontroller, system_id=system_id,
+            # Register, which includes updating interfaces.
+            rack_controller, needs_refresh = yield deferToDatabase(
+                rackcontrollers.register, system_id=system_id,
                 hostname=hostname, interfaces=interfaces, url=url)
-
-            # Update the interfaces.
-            yield deferToDatabase(
-                transactional(rack_controller.update_interfaces), interfaces)
 
             # Check for upgrade.
             if nodegroup_uuid is not None:
@@ -571,7 +568,7 @@ class RegionServer(Region):
             # the information about the rack controller if needed.
             log.msg(
                 "Rack controller '%s' has been registered." % self.ident)
-            if self.hostIsRemote and rack_controller.needs_refresh:
+            if self.hostIsRemote and needs_refresh:
                 # Needs to be refresh. Perform this operation in a thread but
                 # we ignore when it is done.
                 log.msg(

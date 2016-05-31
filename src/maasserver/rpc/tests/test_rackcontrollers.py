@@ -8,9 +8,11 @@ __all__ = []
 import random
 from unittest.mock import sentinel
 
-from django.db import IntegrityError
 from fixtures import FakeLogger
-from maasserver import worker_user
+from maasserver import (
+    locks,
+    worker_user,
+)
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
@@ -21,11 +23,12 @@ from maasserver.models import (
     NodeGroupToRackController,
     RackController,
 )
+from maasserver.models.interface import PhysicalInterface
 from maasserver.models.timestampedmodel import now
+from maasserver.rpc import rackcontrollers
 from maasserver.rpc.rackcontrollers import (
     handle_upgrade,
-    register_new_rackcontroller,
-    register_rackcontroller,
+    register,
     update_foreign_dhcp,
     update_interfaces,
     update_last_image_sync,
@@ -34,6 +37,12 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
+from testtools.matchers import (
+    IsInstance,
+    MatchesAll,
+    MatchesSetwise,
+    MatchesStructure,
+)
 
 
 class TestHandleUpgrade(MAASServerTestCase):
@@ -99,23 +108,23 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_sets_owner_to_worker_when_none(self):
         node = factory.make_Node()
-        rack_registered = register_rackcontroller(system_id=node.system_id)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
         self.assertEqual(worker_user.get_worker_user(), rack_registered.owner)
 
     def test_leaves_owner_when_owned(self):
         user = factory.make_User()
         node = factory.make_Machine(owner=user)
-        rack_registered = register_rackcontroller(system_id=node.system_id)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
         self.assertEqual(user, rack_registered.owner)
 
     def test_finds_existing_node_by_system_id(self):
         node = factory.make_Node()
-        rack_registered = register_rackcontroller(system_id=node.system_id)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_hostname(self):
         node = factory.make_Node()
-        rack_registered = register_rackcontroller(hostname=node.hostname)
+        rack_registered, needs_refresh = register(hostname=node.hostname)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_node_by_mac(self):
@@ -131,7 +140,7 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered = register_rackcontroller(interfaces=interfaces)
+        rack_registered, needs_refresh = register(interfaces=interfaces)
         self.assertEqual(node.system_id, rack_registered.system_id)
 
     def test_finds_existing_controller_needs_refresh_with_bad_info(self):
@@ -140,8 +149,8 @@ class TestRegisterRackController(MAASServerTestCase):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         ])
         node = factory.make_Node(node_type=node_type)
-        rack_registered = register_rackcontroller(system_id=node.system_id)
-        self.assertTrue(rack_registered.needs_refresh)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
+        self.assertTrue(needs_refresh)
 
     def test_finds_existing_controller_doesnt_need_refresh_good_info(self):
         node_type = random.choice([
@@ -151,8 +160,8 @@ class TestRegisterRackController(MAASServerTestCase):
         node = factory.make_Node(
             node_type=node_type, cpu_count=random.randint(1, 32),
             memory=random.randint(1024, 8096))
-        rack_registered = register_rackcontroller(system_id=node.system_id)
-        self.assertFalse(rack_registered.needs_refresh)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
+        self.assertFalse(needs_refresh)
 
     def test_converts_existing_node_sets_needs_refresh_to_true(self):
         node_type = random.choice([
@@ -161,50 +170,54 @@ class TestRegisterRackController(MAASServerTestCase):
             NODE_TYPE.REGION_CONTROLLER,
         ])
         node = factory.make_Node(node_type=node_type)
-        rack_registered = register_rackcontroller(system_id=node.system_id)
-        self.assertTrue(rack_registered.needs_refresh)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
+        self.assertTrue(needs_refresh)
 
     def test_find_existing_keeps_type(self):
         node_type = random.choice(
             (NODE_TYPE.RACK_CONTROLLER, NODE_TYPE.REGION_AND_RACK_CONTROLLER))
         node = factory.make_Node(node_type=node_type)
-        register_rackcontroller(system_id=node.system_id)
+        register(system_id=node.system_id)
         self.assertEqual(node_type, node.node_type)
 
     def test_logs_finding_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        register_rackcontroller(system_id=node.system_id)
+        register(system_id=node.system_id)
         self.assertEqual(
             "Registering existing rack controller %s." % node.hostname,
             logger.output.strip())
 
     def test_converts_region_controller(self):
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        rack_registered = register_rackcontroller(system_id=node.system_id)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
         self.assertEqual(
             rack_registered.node_type, NODE_TYPE.REGION_AND_RACK_CONTROLLER)
 
     def test_logs_converting_region_controller(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        register_rackcontroller(system_id=node.system_id)
+        register(system_id=node.system_id)
         self.assertEqual(
-            "Converting %s into a region and rack controller." % node.hostname,
-            logger.output.strip())
+            "Found existing node %s as candidate for rack controller.\n"
+            "Converting %s into a region and rack controller.\n"
+            % (node.hostname, node.hostname),
+            logger.output)
 
     def test_converts_existing_node(self):
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        rack_registered = register_rackcontroller(system_id=node.system_id)
+        rack_registered, needs_refresh = register(system_id=node.system_id)
         self.assertEqual(rack_registered.node_type, NODE_TYPE.RACK_CONTROLLER)
 
     def test_logs_converting_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
-        register_rackcontroller(system_id=node.system_id)
+        register(system_id=node.system_id)
         self.assertEqual(
-            "Converting %s into a rack controller." % node.hostname,
-            logger.output.strip())
+            "Found existing node %s as candidate for rack controller.\n"
+            "Converting %s into a rack controller.\n"
+            % (node.hostname, node.hostname),
+            logger.output)
 
     def test_creates_new_rackcontroller(self):
         factory.make_Node()
@@ -218,7 +231,7 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        register_rackcontroller(interfaces=interfaces)
+        register(interfaces=interfaces)
         self.assertEqual(node_count + 1, len(Node.objects.all()))
 
     def test_creates_new_rackcontroller_sets_needs_refresh_to_true(self):
@@ -231,45 +244,84 @@ class TestRegisterRackController(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack_registered = register_rackcontroller(
-            interfaces=interfaces)
-        self.assertTrue(rack_registered.needs_refresh)
+        rack_registered, needs_refresh = register(interfaces=interfaces)
+        self.assertTrue(needs_refresh)
 
     def test_logs_creating_new_rackcontroller(self):
         logger = self.useFixture(FakeLogger("maas"))
         hostname = factory.make_name("hostname")
-        register_rackcontroller(hostname=hostname)
+        register(hostname=hostname)
         self.assertEqual(
-            "%s has been created as a new rack controller" % hostname,
+            "Created new rack controller %s." % hostname,
             logger.output.strip())
 
-    def test_retries_existing_on_new_integrity_error(self):
-        hostname = factory.make_name("hostname")
-        node = factory.make_Node(hostname=hostname)
-        patched_create = self.patch(RackController.objects, 'create')
-        patched_create.side_effect = IntegrityError()
-        rack_registered = register_new_rackcontroller(None, hostname)
-        self.assertEqual(rack_registered.system_id, node.system_id)
+    def test_sets_interfaces(self):
+        # Interfaces are set on new rack controllers.
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        rack_registered, needs_refresh = register(interfaces=interfaces)
+        self.assertThat(
+            rack_registered.interface_set.all(),
+            MatchesSetwise(*(
+                MatchesAll(
+                    IsInstance(PhysicalInterface),
+                    MatchesStructure.byEquality(
+                        name=name, mac_address=interface["mac_address"],
+                        enabled=interface["enabled"],
+                    ),
+                    first_only=True,
+                )
+                for name, interface in interfaces.items()
+            )))
 
-    def test_raises_exception_on_new_and_existing_failure(self):
-        patched_create = self.patch(RackController.objects, 'create')
-        patched_create.side_effect = IntegrityError()
-        self.assertRaises(
-            IntegrityError, register_new_rackcontroller,
-            None, factory.make_name("hostname"))
+    def test_updates_interfaces(self):
+        # Interfaces are set on existing rack controllers.
+        rack_controller = factory.make_RackController()
+        interfaces = {
+            factory.make_name("eth0"): {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        rack_registered, needs_refresh = register(
+            rack_controller.system_id, interfaces=interfaces)
+        self.assertThat(
+            rack_registered.interface_set.all(),
+            MatchesSetwise(*(
+                MatchesAll(
+                    IsInstance(PhysicalInterface),
+                    MatchesStructure.byEquality(
+                        name=name, mac_address=interface["mac_address"],
+                        enabled=interface["enabled"],
+                    ),
+                    first_only=True,
+                )
+                for name, interface in interfaces.items()
+            )))
 
-    def test_logs_retrying_existing_on_new_integrity_error(self):
-        logger = self.useFixture(FakeLogger("maas"))
-        hostname = factory.make_name("hostname")
-        patched_create = self.patch(RackController.objects, 'create')
-        patched_create.side_effect = IntegrityError()
-        try:
-            register_new_rackcontroller(None, hostname)
-        except IntegrityError:
-            pass
-        self.assertEqual(
-            "Rack controller(%s) currently being registered, retrying..." %
-            hostname, logger.output.strip())
+    def test_registers_with_rack_registration_lock_held(self):
+        lock_status = []
+
+        def record_lock_status(*args):
+            lock_status.append(locks.rack_registration.is_locked())
+            return None  # Simulate that no rack found.
+
+        find = self.patch(rackcontrollers, "find")
+        find.side_effect = record_lock_status
+
+        register()
+
+        self.assertEqual([True], lock_status)
 
 
 class TestUpdateForeignDHCP(MAASServerTestCase):

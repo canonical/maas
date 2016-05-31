@@ -319,16 +319,16 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         protocol = yield endpoints.connectProtocol(endpoint, protocol)
 
         # Mock the registration into the database, as the rack controller is
-        # already created. We reset this once registration is complete so not
-        # to interfer with other tests.
-        reg_original_func = rackcontrollers.register_rackcontroller
-        update_original_func = RackController.update_interfaces
-        rackcontrollers.register_rackcontroller = (
-            lambda *args, **kwargs: rack_controller)
-        RackController.update_interfaces = (
-            lambda *args, **kwargs: None)
+        # already created. We reset this once registration is complete so as
+        # to not interfere with other tests.
+        registered = rack_controller, False  # Hint that no refresh needed.
+        patcher = MonkeyPatcher()
+        patcher.add_patch(
+            rackcontrollers, "register",
+            (lambda *args, **kwargs: registered))
 
         # Register the rack controller with the region.
+        patcher.patch()
         try:
             yield protocol.callRemote(
                 region.RegisterRackController,
@@ -336,9 +336,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
                 hostname=rack_controller.hostname, interfaces={},
                 url=urlparse(""))
         finally:
-            # Restore the original functions.
-            rackcontrollers.register_rackcontroller = reg_original_func
-            RackController.update_interfaces = update_original_func
+            patcher.restore()
 
         defer.returnValue(protocol)
 
