@@ -12,7 +12,7 @@ from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
 )
 from maasserver.models import BootSourceSelection
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -36,7 +36,9 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourceSelectionAPI, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_handler_path(self):
         self.assertEqual(
@@ -130,7 +132,9 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourceSelectionsAPI, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_handler_path(self):
         self.assertEqual(

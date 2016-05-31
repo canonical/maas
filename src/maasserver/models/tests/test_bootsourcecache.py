@@ -6,7 +6,7 @@
 __all__ = []
 
 from maasserver.models.bootsourcecache import BootSourceCache
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -15,7 +15,9 @@ class TestBootSourceCache(MAASServerTestCase):
 
     def setUp(self):
         super(TestBootSourceCache, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_get_release_title_returns_None_for_unknown(self):
         self.assertIsNone(

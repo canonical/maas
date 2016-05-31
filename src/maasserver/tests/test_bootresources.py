@@ -58,6 +58,7 @@ from maasserver.models import (
     BootResourceSet,
     Config,
     LargeFile,
+    signals,
 )
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
@@ -1220,38 +1221,14 @@ class TestImportImages(MAASTransactionServerTestCase):
             fake_finalize,
             MockCalledOnceWith())
 
-    def test_has_synced_resources_returns_true(self):
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
-        self.assertTrue(bootresources.has_synced_resources())
-
-    def test_has_synced_resources_returns_false(self):
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
-        self.assertFalse(bootresources.has_synced_resources())
-
     def test__import_resources_exits_early_if_lock_held(self):
-        has_synced_resources = self.patch_autospec(
-            bootresources, "has_synced_resources")
+        set_simplestreams_env = self.patch_autospec(
+            bootresources, "set_simplestreams_env")
         with lock_held_in_other_thread(bootresources.locks.import_images):
-            bootresources._import_resources(force=True)
-        # The test for already-synced resources is not called if the
+            bootresources._import_resources()
+        # The test for set_simplestreams_env is not called if the
         # lock is already held.
-        self.assertThat(has_synced_resources, MockNotCalled())
-
-    def test__import_resources_exits_early_without_force(self):
-        has_synced_resources = self.patch(
-            bootresources, "has_synced_resources")
-        bootresources._import_resources(force=False)
-        # The test for already-synced resources is not performed if we're
-        # forcing a sync.
-        self.assertThat(has_synced_resources, MockCalledOnceWith())
-
-    def test__import_resources_continues_with_force(self):
-        has_synced_resources = self.patch(
-            bootresources, "has_synced_resources")
-        bootresources._import_resources(force=True)
-        # The test for already-synced resources is performed if we're not
-        # forcing a sync.
-        self.assertThat(has_synced_resources, MockNotCalled())
+        self.assertThat(set_simplestreams_env, MockNotCalled())
 
     def test__import_resources_holds_lock(self):
         fake_write_all_keyrings = self.patch(
@@ -1262,7 +1239,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             return []
         fake_write_all_keyrings.side_effect = test_for_held_lock
 
-        bootresources._import_resources(force=True)
+        bootresources._import_resources()
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
     def test__import_resources_calls_functions_with_correct_parameters(self):
@@ -1282,7 +1259,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         set_global_default_releases = self.patch(
             bootresources, 'set_global_default_releases')
 
-        bootresources._import_resources(force=True)
+        bootresources._import_resources()
 
         self.expectThat(
             bootresources.cache_boot_sources,
@@ -1312,12 +1289,13 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.patch(bootresources, 'map_products')
         capture = self.patch_and_capture_env_for_download_all_boot_resources()
 
-        bootresources._import_resources(force=True)
+        bootresources._import_resources()
         self.assertEqual(
             get_maas_user_gpghome(), capture.env['GNUPGHOME'])
 
     def test__import_resources_has_env_http_and_https_proxy_set(self):
         proxy_address = factory.make_name('proxy')
+        self.patch(signals.bootsources, "post_commit_do")
         Config.objects.set_config('http_proxy', proxy_address)
 
         fake_image_descriptions = self.patch(
@@ -1328,7 +1306,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.patch(bootresources, 'map_products')
         capture = self.patch_and_capture_env_for_download_all_boot_resources()
 
-        bootresources._import_resources(force=True)
+        bootresources._import_resources()
         self.assertEqual(
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['http_proxy']))
@@ -1337,7 +1315,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         from maasserver.clusterrpc import boot_images
         self.patch(boot_images.RackControllersImporter, "run")
 
-        bootresources._import_resources(force=True)
+        bootresources._import_resources()
 
         self.assertThat(
             boot_images.RackControllersImporter.run,
@@ -1349,24 +1327,24 @@ class TestImportResourcesInThread(MAASTestCase):
 
     def test__defers__import_resources_to_thread(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
-        bootresources._import_resources_in_thread(force=sentinel.force)
+        bootresources._import_resources_in_thread()
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(
-                bootresources._import_resources, force=sentinel.force))
+                bootresources._import_resources))
 
     def tests__defaults_force_to_False(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(
-                bootresources._import_resources, force=False))
+                bootresources._import_resources))
 
     def test__logs_errors_and_does_not_errback(self):
         logger = self.useFixture(TwistedLoggerFixture())
         exception_type = factory.make_exception_type()
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         deferToDatabase.return_value = fail(exception_type())
-        d = bootresources._import_resources_in_thread(force=sentinel.force)
+        d = bootresources._import_resources_in_thread()
         self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             """\
@@ -1383,7 +1361,7 @@ class TestImportResourcesInThread(MAASTestCase):
             factory.make_name("output"))
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         deferToDatabase.return_value = fail(exception)
-        d = bootresources._import_resources_in_thread(force=sentinel.force)
+        d = bootresources._import_resources_in_thread()
         self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             """\
@@ -1488,7 +1466,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
             service, "are_boot_images_available_in_the_region")
         are_region_func.return_value = region_answer
         are_cluster_func = self.patch_autospec(
-            service, "are_boot_images_available_in_any_cluster")
+            service, "are_boot_images_available_in_any_rack")
         are_cluster_func.return_value = cluster_answer
 
     def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
@@ -1502,10 +1480,10 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
-        One or more of your clusters currently has boot images, but your
-        region does not. Nodes will not be able to provision until you import
-        boot images into the region. Visit the <a href="%s">boot images</a>
-        page to start the import.
+        One or more of your rack controller(s) currently has boot images, but
+        your region controller does not. Machines will not be able to provision
+        until you import boot images into the region. Visit the
+        <a href="%s">boot images</a> page to start the import.
         """
         images_link = maas_url_path + '/images/'
         self.assertEqual(
@@ -1523,7 +1501,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
-        Boot image import process not started. Nodes will not be able to
+        Boot image import process not started. Machines will not be able to
         provision without boot images. Visit the <a href="%s">boot images</a>
         page to start the import.
         """
@@ -1571,7 +1549,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         factory.make_BootResource()
         self.assertTrue(service.are_boot_images_available_in_the_region())
 
-    def test__are_boot_images_available_in_any_cluster_v2(self):
+    def test__are_boot_images_available_in_any_rack_v2(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and
@@ -1589,7 +1567,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 
         # are_boot_images_available_in_the_region() returns False when there
         # are no clusters connected.
-        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+        self.assertFalse(service.are_boot_images_available_in_any_rack())
 
         # Connect a rack controller to the region via RPC.
         cluster_rpc = region_rpc.makeCluster(rack_controller, ListBootImagesV2)
@@ -1597,15 +1575,15 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # are_boot_images_available_in_the_region() returns False when none of
         # the clusters have any images.
         cluster_rpc.ListBootImagesV2.return_value = succeed({"images": []})
-        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+        self.assertFalse(service.are_boot_images_available_in_any_rack())
 
         # are_boot_images_available_in_the_region() returns True when a
         # cluster has an imported boot image.
         response = {"images": [make_rpc_boot_image()]}
         cluster_rpc.ListBootImagesV2.return_value = succeed(response)
-        self.assertTrue(service.are_boot_images_available_in_any_cluster())
+        self.assertTrue(service.are_boot_images_available_in_any_rack())
 
-    def test__are_boot_images_available_in_any_cluster_v1(self):
+    def test__are_boot_images_available_in_any_rack_v1(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and
@@ -1623,7 +1601,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
 
         # are_boot_images_available_in_the_region() returns False when there
         # are no clusters connected.
-        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+        self.assertFalse(service.are_boot_images_available_in_any_rack())
 
         # Connect a rack controller to the region via RPC.
         cluster_rpc = region_rpc.makeCluster(
@@ -1635,10 +1613,10 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         # are_boot_images_available_in_the_region() returns False when none of
         # the clusters have any images.
         cluster_rpc.ListBootImages.return_value = succeed({"images": []})
-        self.assertFalse(service.are_boot_images_available_in_any_cluster())
+        self.assertFalse(service.are_boot_images_available_in_any_rack())
 
         # are_boot_images_available_in_the_region() returns True when a
         # cluster has an imported boot image.
         response = {"images": [make_rpc_boot_image()]}
         cluster_rpc.ListBootImages.return_value = succeed(response)
-        self.assertTrue(service.are_boot_images_available_in_any_cluster())
+        self.assertTrue(service.are_boot_images_available_in_any_rack())

@@ -17,6 +17,7 @@ from maasserver import (
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.service import Service
+from maasserver.models.signals import bootsources
 from maasserver.rpc.regionservice import (
     RegionAdvertising,
     RegionAdvertisingService,
@@ -181,6 +182,10 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_off_and_unset(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),
@@ -206,6 +211,10 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_off_and_set(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),
@@ -220,6 +229,10 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_on_for_proxy_on_but_unset(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),
@@ -234,6 +247,10 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_expected_state_returns_off_for_proxy_on_and_set(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),

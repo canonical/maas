@@ -9,7 +9,7 @@ from io import BytesIO
 
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from maasserver.forms import BootSourceForm
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -21,7 +21,9 @@ class TestBootSourceForm(MAASServerTestCase):
 
     def setUp(self):
         super(TestBootSourceForm, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_edits_boot_source_object(self):
         boot_source = factory.make_BootSource()

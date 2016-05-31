@@ -8,6 +8,7 @@ __all__ = []
 from urllib.parse import urlparse
 
 from maasserver.models.config import Config
+from maasserver.models.signals import bootsources
 from maasserver.rpc.configuration import (
     get_archive_mirrors,
     get_proxies,
@@ -17,6 +18,12 @@ from maastesting.factory import factory
 
 
 class TestGetArchiveMirrors(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetArchiveMirrors, self).setUp()
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_returns_populated_dict_when_main_and_port_is_set(self):
         url = factory.make_parsed_url().geturl()
@@ -28,6 +35,12 @@ class TestGetArchiveMirrors(MAASServerTestCase):
 
 
 class TestGetProxies(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetProxies, self).setUp()
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_returns_populated_dict_when_http_proxy_is_not_set(self):
         Config.objects.set_config("enable_http_proxy", True)

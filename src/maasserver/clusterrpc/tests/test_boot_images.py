@@ -25,6 +25,7 @@ from maasserver.clusterrpc.boot_images import (
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models.config import Config
+from maasserver.models.signals import bootsources
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
@@ -500,6 +501,10 @@ class TestRackControllersImporterNew(MAASServerTestCase):
             sources=Equals([get_simplestream_endpoint()])))
 
     def test__new_obtains_proxy_if_not_given(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         proxy = factory.make_simple_http_url()
         Config.objects.set_config("http_proxy", proxy)
         importer = RackControllersImporter.new(system_ids=[], sources=[])
@@ -507,6 +512,10 @@ class TestRackControllersImporterNew(MAASServerTestCase):
             proxy=Equals(urlparse(proxy))))
 
     def test__new_obtains_None_proxy_if_disabled(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         proxy = factory.make_simple_http_url()
         Config.objects.set_config("http_proxy", proxy)
         Config.objects.set_config("enable_http_proxy", False)

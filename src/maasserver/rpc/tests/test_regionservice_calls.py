@@ -35,6 +35,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models.interface import PhysicalInterface
+from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc import (
     events as events_module,
@@ -442,6 +443,10 @@ class TestRegionProtocol_GetProxies(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_proxies_with_http_proxy_not_set(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         yield deferToDatabase(self.set_http_proxy, None)
 
         response = yield call_responder(Region(), GetProxies, {})
@@ -453,6 +458,10 @@ class TestRegionProtocol_GetProxies(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_proxies_with_http_proxy_set(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         url = factory.make_parsed_url()
         yield deferToDatabase(self.set_http_proxy, url.geturl())
 

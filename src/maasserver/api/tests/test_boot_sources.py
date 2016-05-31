@@ -10,7 +10,7 @@ import http.client
 from django.core.urlresolvers import reverse
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -30,7 +30,9 @@ class TestBootSourceAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourceAPI, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_handler_path(self):
         self.assertEqual(
@@ -108,7 +110,9 @@ class TestBootSourcesAPI(APITestCase.ForUser):
 
     def setUp(self):
         super(TestBootSourcesAPI, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_handler_path(self):
         self.assertEqual(

@@ -5,23 +5,15 @@
 
 __all__ = []
 
-from unittest.mock import (
-    ANY,
-    call,
-)
+from unittest.mock import call
 
 from maasserver import (
     eventloop,
     locks,
     start_up,
 )
-from maasserver.bootresources import ensure_boot_source_definition
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
-from maasserver.models import (
-    BootSource,
-    BootSourceSelection,
-)
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models import BootSource
+from maasserver.models.signals import bootsources
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -30,11 +22,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from testtools.matchers import (
-    Equals,
-    HasLength,
-)
-from twisted.internet import reactor
+from testtools.matchers import HasLength
 
 
 class LockChecker:
@@ -62,7 +50,6 @@ class TestStartUp(MAASServerTestCase):
         super(TestStartUp, self).setUp()
         self.useFixture(RegionEventLoopFixture())
         self.patch(start_up, 'create_gnupg_home')
-        self.patch(start_up, 'post_commit_do')
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()
@@ -70,7 +57,10 @@ class TestStartUp(MAASServerTestCase):
         eventloop.reset().wait(5)
 
     def test_inner_start_up_runs_in_exclusion(self):
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         lock_checker = LockChecker()
         self.patch(start_up, 'register_mac_type', lock_checker)
         start_up.inner_start_up()
@@ -94,58 +84,17 @@ class TestStartUp(MAASServerTestCase):
         self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
 
 
-class TestStartImportOnUpgrade(MAASServerTestCase):
-    """Tests for the `start_import_on_upgrade` function."""
-
-    def setUp(self):
-        super(TestStartImportOnUpgrade, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
-        self.patch_autospec(start_up, "get_all_available_boot_images")
-        self.patch_autospec(start_up, 'import_resources')
-        ensure_boot_source_definition()
-
-    def test__does_nothing_if_boot_resources_exist(self):
-        factory.make_BootResource()
-        start_up.start_import_on_upgrade()
-        self.assertThat(start_up.import_resources, MockNotCalled())
-
-    def test__does_nothing_if_no_cluster_has_any_images(self):
-        start_up.get_all_available_boot_images.return_value = []
-        start_up.start_import_on_upgrade()
-        self.assertThat(start_up.import_resources, MockNotCalled())
-
-    def test__calls_import_resources_when_any_cluster_has_an_image(self):
-        boot_images = [make_rpc_boot_image()]
-        start_up.get_all_available_boot_images.return_value = boot_images
-        start_up.start_import_on_upgrade()
-        self.assertThat(start_up.import_resources, MockCalledOnceWith())
-
-    def test__sets_source_selections_based_on_boot_images(self):
-        boot_images = [make_rpc_boot_image() for _ in range(3)]
-        start_up.get_all_available_boot_images.return_value = boot_images
-        start_up.start_import_on_upgrade()
-
-        boot_source = BootSource.objects.first()
-        for image in boot_images:
-            selection = BootSourceSelection.objects.get(
-                boot_source=boot_source, os=image["osystem"],
-                release=image["release"])
-            self.assertIsNotNone(selection)
-            self.expectThat(selection.arches, Equals([image["architecture"]]))
-            self.expectThat(selection.subarches, Equals(["*"]))
-            self.expectThat(selection.labels, Equals([image["label"]]))
-
-
 class TestInnerStartUp(MAASServerTestCase):
 
     """Tests for the actual work done in `inner_start_up`."""
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
         self.patch_autospec(start_up, 'create_gnupg_home')
-        self.patch_autospec(start_up, 'post_commit_do')
         self.patch_autospec(start_up, 'dns_kms_setting_changed')
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test__calls_create_gnupg_home_if_master(self):
         self.patch(start_up, "is_master_process").return_value = True
@@ -168,21 +117,6 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
         self.assertThat(BootSource.objects.all(), HasLength(0))
-
-    def test__calls_start_import_on_upgrade_if_master(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        start_up.inner_start_up()
-        self.assertThat(
-            start_up.post_commit_do, MockCalledOnceWith(
-                reactor.callLater, ANY,
-                reactor.threadpoolForDatabase.callInThread,
-                start_up.start_import_on_upgrade))
-
-    def test__doesnt_call_start_import_on_upgrade_if_bot_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
-        start_up.inner_start_up()
-        self.assertThat(
-            start_up.post_commit_do, MockNotCalled())
 
     def test__calls_dns_kms_setting_changed_if_master(self):
         self.patch(start_up, "is_master_process").return_value = True

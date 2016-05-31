@@ -14,6 +14,7 @@ from maasserver.enum import (
     PRESEED_TYPE,
 )
 from maasserver.models.config import Config
+from maasserver.models.signals import bootsources
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -79,6 +80,10 @@ class TestComposePreseed(MAASServerTestCase):
             }))
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING)
@@ -228,6 +233,10 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertSystemInfo(preseed)
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.READY)

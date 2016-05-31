@@ -15,7 +15,7 @@ def maas_nodegroup_worker_to_maas(apps, schema_editor):
         user.first_name = 'MAAS'
         user.email = 'maas@localhost'
         user.save()
-        
+
 class Migration(migrations.Migration):
 
     dependencies = [

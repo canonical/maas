@@ -183,7 +183,7 @@ class ConnectionWrapper:
 
 
 class SimpleStreamsHandler:
-    """Simplestreams endpoint, that the clusters talk to.
+    """Simplestreams endpoint, that the racks talk to.
 
     This is not called from piston3, as piston uses emitters which
     breaks the ability to return streaming content.
@@ -924,31 +924,20 @@ def set_global_default_releases():
             Config.objects.set_config("default_distro_series", release)
 
 
-@transactional
-def has_synced_resources():
-    """Return true if SYNCED `BootResource` exist."""
-    return BootResource.objects.filter(
-        rtype=BOOT_RESOURCE_TYPE.SYNCED).exists()
-
-
 @asynchronous(timeout=FOREVER)
-def _import_resources(force=False):
+def _import_resources():
     """Import boot resources.
 
     Pulls the sources from `BootSource`. This only starts the process if
     some SYNCED `BootResource` already exist.
 
     This MUST be called from outside of a database transaction.
-
-    :param force: True will force the import, even if no SYNCED `BootResource`
-        exist. This is used because we want the user to start the first import
-        action, not let it run automatically.
     """
     # Avoid circular import.
     from maasserver.clusterrpc.boot_images import RackControllersImporter
 
     # Sync boot resources into the region.
-    d = deferToDatabase(_import_resources_with_lock, force=force)
+    d = deferToDatabase(_import_resources_with_lock)
 
     def cb_import(_):
         d = deferToDatabase(RackControllersImporter.new)
@@ -965,7 +954,7 @@ def _import_resources(force=False):
 @synchronous
 @with_connection
 @synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
-def _import_resources_with_lock(force=False):
+def _import_resources_with_lock():
     """Import boot resources once the `import_images` lock is held.
 
     This should *not* be called in a transaction; it will manage transactions
@@ -983,11 +972,6 @@ def _import_resources_with_lock(force=False):
 
     # Keep the descriptions cache up-to-date.
     cache_boot_sources()
-
-    # If we're not being forced, don't sync unless we've already done it once
-    # before, i.e. we've been asked to explicitly sync by a user.
-    if not force and not has_synced_resources():
-        return
 
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
@@ -1015,13 +999,13 @@ def _import_resources_with_lock(force=False):
             len(sources))
 
 
-def _import_resources_in_thread(force=False):
+def _import_resources_in_thread():
     """Import boot resources in a thread managed by Twisted.
 
     Errors are logged. The returned `Deferred` will never errback so it's safe
     to use in a `TimerService`, for example.
     """
-    d = deferToDatabase(_import_resources, force=force)
+    d = deferToDatabase(_import_resources)
     d.addErrback(_handle_import_failures)
     return d
 
@@ -1044,7 +1028,7 @@ def import_resources():
     doesn't wait for it to be finished, as it can take several minutes to
     complete.
     """
-    reactor.callFromThread(_import_resources_in_thread, force=True)
+    reactor.callFromThread(_import_resources_in_thread)
 
 
 def is_import_resources_running():
@@ -1099,30 +1083,30 @@ class ImportResourcesProgressService(TimerService, object):
     def check_boot_images(self):
         if (yield deferToDatabase(
                 self.are_boot_images_available_in_the_region)):
-            # The region has boot resources. The clusters will too soon if
+            # The region has boot resources. The racks will too soon if
             # they haven't already. Nothing to see here, please move along.
             yield deferToDatabase(self.clear_import_warning)
         else:
-            # We can ask clusters if they somehow have some imported images
+            # We can ask racks if they somehow have some imported images
             # already, from another source perhaps. We can provide a better
             # message to the user in this case.
-            if (yield self.are_boot_images_available_in_any_cluster()):
-                warning = self.warning_cluster_has_boot_images
+            if (yield self.are_boot_images_available_in_any_rack()):
+                warning = self.warning_rack_has_boot_images
             else:
-                warning = self.warning_cluster_has_no_boot_images
+                warning = self.warning_rack_has_no_boot_images
             yield deferToDatabase(self.set_import_warning, warning)
 
-    warning_cluster_has_boot_images = dedent("""\
-    One or more of your clusters currently has boot images, but your region
-    does not. Nodes will not be able to provision until you import boot images
-    into the region. Visit the <a href="%(images_link)s">boot images</a> page
-    to start the import.
+    warning_rack_has_boot_images = dedent("""\
+    One or more of your rack controller(s) currently has boot images, but your
+    region controller does not. Machines will not be able to provision until
+    you import boot images into the region. Visit the
+    <a href="%(images_link)s">boot images</a> page to start the import.
     """)
 
-    warning_cluster_has_no_boot_images = dedent("""\
-    Boot image import process not started. Nodes will not be able to provision
-    without boot images. Visit the <a href="%(images_link)s">boot images</a>
-    page to start the import.
+    warning_rack_has_no_boot_images = dedent("""\
+    Boot image import process not started. Machines will not be able to
+    provision without boot images. Visit the
+    <a href="%(images_link)s">boot images</a> page to start the import.
     """)
 
     @transactional
@@ -1140,11 +1124,11 @@ class ImportResourcesProgressService(TimerService, object):
         return BootResource.objects.all().exists()
 
     @asynchronous(timeout=90)
-    def are_boot_images_available_in_any_cluster(self):
-        """Return true if there are boot images available in any cluster.
+    def are_boot_images_available_in_any_rack(self):
+        """Return true if there are boot images available in any rack.
 
-        Only considers clusters that are currently connected, and ignores
-        errors resulting from communicating with the clusters.
+        Only considers racks that are currently connected, and ignores
+        errors resulting from communicating with the racks.
         """
         clients = getAllClients()
 

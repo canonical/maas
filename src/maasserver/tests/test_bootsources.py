@@ -27,7 +27,9 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
 )
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals.bootsources import (
+    signals as bootsources_signals,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -92,7 +94,9 @@ class TestHelpers(MAASServerTestCase):
 
     def setUp(self):
         super(TestHelpers, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
 
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
@@ -119,7 +123,7 @@ class TestHelpers(MAASServerTestCase):
                 'release': 'xenial',
                 'arches': ['amd64'],
                 'subarches': ['*'],
-                'labels': ['release'],
+                'labels': ['*'],
             })
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
@@ -143,7 +147,9 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetOSInfoFromBootSources, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
 
     def test__returns_empty_sources_and_sets_when_cache_empty(self):
         self.assertEqual(
@@ -180,7 +186,9 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestPrivateCacheBootSources, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
 
     def test__has_env_GNUPGHOME_set(self):
         capture = (
@@ -274,7 +282,9 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestBadConnectionHandling, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources_signals.enable)
+        bootsources_signals.disable()
 
     def test__catches_connection_errors_and_sets_component_error(self):
         sources = [

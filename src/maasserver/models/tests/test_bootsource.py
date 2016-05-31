@@ -6,18 +6,12 @@
 __all__ = []
 
 import os
-from unittest import skip
 
 from django.core.exceptions import ValidationError
-from maasserver.bootsources import cache_boot_sources
-from maasserver.models import signals
 from maasserver.models.bootsource import BootSource
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import MockCalledOnceWith
-from twisted.internet import reactor
 
 
 def make_BootSource():
@@ -30,7 +24,9 @@ class TestBootSource(MAASServerTestCase):
 
     def setUp(self):
         super(TestBootSource, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_valid_boot_source_is_valid(self):
         boot_source = BootSource(
@@ -126,25 +122,3 @@ class TestBootSource(MAASServerTestCase):
         boot_source_dict[factory.make_name("key")] = factory.make_name("value")
         self.assertTrue(
             boot_source.compare_dict_without_selections(boot_source_dict))
-
-    # XXX: GavinPanella 2015-03-03 bug=1376317: This test is fragile, possibly
-    # due to isolation issues. Note: this test may not be superfluous.
-    @skip("Possible isolation issues")
-    def test_calls_cache_boot_sources_on_create(self):
-        mock_callLater = self.patch(reactor, 'callLater')
-        BootSource.objects.create(
-            url="http://test.test/", keyring_data=b"1234")
-        self.assertThat(
-            mock_callLater,
-            MockCalledOnceWith(
-                1, deferToDatabase, cache_boot_sources))
-
-
-class TestBootSourceSignals(MAASServerTestCase):
-    """Tests for the `BootSource` model's signals."""
-
-    def test_arranges_for_later_update_to_boot_sources_post_commit(self):
-        post_commit_do = self.patch(signals.bootsources, "post_commit_do")
-        make_BootSource()
-        self.assertThat(post_commit_do, MockCalledOnceWith(
-            reactor.callLater, 0, cache_boot_sources))

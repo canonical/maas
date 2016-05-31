@@ -21,7 +21,7 @@ from maasserver.models.bootresource import (
     BootResource,
     RTYPE_REQUIRING_OS_SERIES_NAME,
 )
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -289,7 +289,9 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetAvailableCommissioningResources, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test__returns_empty_if_no_cache(self):
         release = factory.make_name("release")

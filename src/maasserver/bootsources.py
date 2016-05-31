@@ -59,7 +59,7 @@ def ensure_boot_source_definition():
         BootSourceSelection.objects.create(
             boot_source=source, os=ubuntu.name,
             release=ubuntu.get_default_commissioning_release(),
-            arches=['amd64'], subarches=['*'], labels=['release'])
+            arches=['amd64'], subarches=['*'], labels=['*'])
 
 
 @transactional

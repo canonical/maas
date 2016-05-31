@@ -9,7 +9,7 @@ from maasserver.models import (
     BootSource,
     BootSourceSelection,
 )
-from maasserver.models.testing import UpdateBootSourceCacheDisconnected
+from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -19,7 +19,9 @@ class TestBootSourceSelection(MAASServerTestCase):
 
     def setUp(self):
         super(TestBootSourceSelection, self).setUp()
-        self.useFixture(UpdateBootSourceCacheDisconnected())
+        # Disable boot source cache signals.
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
 
     def test_can_create_selection(self):
         boot_source = BootSource(

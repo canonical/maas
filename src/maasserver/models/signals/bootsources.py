@@ -7,7 +7,10 @@ __all__ = [
     "signals",
 ]
 
-from django.db.models.signals import post_save
+from django.db.models.signals import (
+    post_delete,
+    post_save,
+)
 from maasserver.bootsources import cache_boot_sources
 from maasserver.models.bootsource import BootSource
 from maasserver.utils.orm import post_commit_do
@@ -18,7 +21,7 @@ from twisted.internet import reactor
 signals = SignalsManager()
 
 
-def update_boot_source_cache(sender, instance, **kwargs):
+def update_boot_source_cache(sender, instance, *args, **kwargs):
     """Update the `BootSourceCache` using the updated source.
 
     This only begins after a successful commit to the database, and is then
@@ -28,6 +31,9 @@ def update_boot_source_cache(sender, instance, **kwargs):
 
 
 signals.watch(post_save, update_boot_source_cache, BootSource)
+signals.watch(post_delete, update_boot_source_cache, BootSource)
+signals.watch_config(update_boot_source_cache, "enable_http_proxy")
+signals.watch_config(update_boot_source_cache, "http_proxy")
 
 
 # Enable all signals by default.

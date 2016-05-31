@@ -4,13 +4,9 @@
 """Testing helpers for ORM models and their supporting code."""
 
 __all__ = [
-    "UpdateBootSourceCacheDisconnected",
 ]
 
-from django.db.models.signals import post_save
 import fixtures
-from maasserver.models.bootsource import BootSource
-from maasserver.models.signals.bootsources import update_boot_source_cache
 
 
 class SignalDisconnected(fixtures.Fixture):  # DEPRECATED
@@ -62,14 +58,3 @@ class SignalsDisconnected(fixtures.Fixture):  # DEPRECATED
             with signal.lock:
                 self.addCleanup(restore, signal, signal.receivers)
                 signal.receivers = []
-
-
-class UpdateBootSourceCacheDisconnected(SignalDisconnected):  # DEPRECATED
-    """Disconnects `update_boot_source_cache`.
-
-    :deprecated: Use the manager in `m.models.signals.bootsources` instead.
-    """
-
-    def __init__(self, *signals):
-        super(UpdateBootSourceCacheDisconnected, self).__init__(
-            post_save, update_boot_source_cache, BootSource)
