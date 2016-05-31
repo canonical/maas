@@ -1,10 +1,12 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Moonshot IPMI Power Driver."""
 
 __all__ = []
 
+
+import re
 
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -30,29 +32,33 @@ class MoonshotIPMIPowerDriver(PowerDriver):
         return []
 
     def _issue_ipmitool_command(
-            self, power_change, power_hwaddress=None, power_address=None,
-            power_user=None, power_pass=None, ipmitool=None, **extra):
+            self, power_change, ipmitool=None, power_address=None,
+            power_user=None, power_pass=None, power_hwaddress=None, **extra):
+        """Issue ipmitool command for HP Moonshot cartridge."""
         command = (
-            ipmitool, '-I', 'lanplus', '-H', power_address, '-U', power_user,
-            '-P', power_pass, power_hwaddress, 'power', power_change
-        )
+            ipmitool, '-I', 'lanplus', '-H', power_address,
+            '-U', power_user, '-P', power_pass
+        ) + tuple(power_hwaddress.split())
+        if power_change == 'pxe':
+            command += ('chassis', 'bootdev', 'pxe')
+        else:
+            command += ('power', power_change)
         try:
-            output = call_and_check(command, env=select_c_utf8_locale())
-            output = output.decode('utf-8')
+            stdout = call_and_check(command, env=select_c_utf8_locale())
+            stdout = stdout.decode('utf-8')
         except ExternalProcessError as e:
             raise PowerActionError(
-                "Failed to power %s %s: %s" % (
-                    power_change, power_hwaddress, e.output_as_unicode))
+                "Failed to execute %s for cartridge %s at %s: %s" % (
+                    command, power_hwaddress,
+                    power_address, e.output_as_unicode))
         else:
-            if 'on' in output:
-                return 'on'
-            elif 'off' in output:
-                return 'off'
-            else:
-                raise PowerActionError(
-                    "Got unknown power state from ipmipower: %s" % output)
+            # Return output if power query
+            if power_change == 'status':
+                match = re.search(r'\b(on|off)\b$', stdout)
+                return stdout if match is None else match.group(0)
 
     def power_on(self, system_id, context):
+        self._issue_ipmitool_command('pxe', **context)
         self._issue_ipmitool_command('on', **context)
 
     def power_off(self, system_id, context):

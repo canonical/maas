@@ -23,6 +23,7 @@ QUERY_POWER_TYPES = [
     'amt',
     'hmc',
     'ipmi',
+    'moonshot',
     'mscm',
     'msftocs',
     'sm15k',
