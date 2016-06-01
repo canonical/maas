@@ -15,10 +15,12 @@ __metaclass__ = type
 __all__ = []
 
 
+import os
+import re
+
 from provisioningserver.drivers.power import (
     PowerActionError,
     PowerDriver,
-    PowerFatalError,
 )
 from provisioningserver.utils import shell
 from provisioningserver.utils.shell import (
@@ -39,28 +41,35 @@ class MoonshotIPMIPowerDriver(PowerDriver):
         return []
 
     def _issue_ipmitool_command(
-            self, power_change, power_hwaddress=None, power_address=None,
-            power_user=None, power_pass=None, ipmitool=None, **extra):
+            self, power_change, ipmitool=None, power_address=None,
+            power_user=None, power_pass=None, power_hwaddress=None, **extra):
+        """Issue ipmitool command for HP Moonshot cartridge."""
+        env = os.environ.copy()
+        env['LC_ALL'] = 'C'
         command = (
-            ipmitool, '-I', 'lanplus', '-H', power_address, '-U', power_user,
-            '-P', power_pass, power_hwaddress, 'power', power_change
-        )
-        try:
-            output = call_and_check(command)
-        except ExternalProcessError as e:
-            raise PowerFatalError(
-                "Failed to power %s %s: %s" % (
-                    power_change, power_hwaddress, e.output_as_unicode))
+            ipmitool, '-I', 'lanplus', '-H', power_address,
+            '-U', power_user, '-P', power_pass
+        ) + tuple(power_hwaddress.split())
+        if power_change == 'pxe':
+            command += ('chassis', 'bootdev', 'pxe')
         else:
-            if 'on' in output:
-                return 'on'
-            elif 'off' in output:
-                return 'off'
-            else:
-                raise PowerActionError(
-                    "Got unknown power state from ipmipower: %s" % output)
+            command += ('power', power_change)
+        try:
+            stdout = call_and_check(command, env=env)
+            stdout = stdout.decode('utf-8')
+        except ExternalProcessError as e:
+            raise PowerActionError(
+                "Failed to execute %s for cartridge %s at %s: %s" % (
+                    command, power_hwaddress,
+                    power_address, e.output_as_unicode))
+        else:
+            # Return output if power query
+            if power_change == 'status':
+                match = re.search(r'\b(on|off)\b$', stdout)
+                return stdout if match is None else match.group(0)
 
     def power_on(self, system_id, context):
+        self._issue_ipmitool_command('pxe', **context)
         self._issue_ipmitool_command('on', **context)
 
     def power_off(self, system_id, context):
