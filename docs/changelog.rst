@@ -2,6 +2,15 @@
 Changelog
 =========
 
+1.9.4
+=====
+
+LP: #1584850    [1.9] DNS record added for non-boot interface IP when no address of that family exists on the boot interface
+LP: #1583715    [1.9] Ensure that restricted resources also perform meaningful authentication of clients.
+LP: #1584211    [1.9] Exclude RAM, floppy, and loopback devices from lsblk during commissioning.
+LP: #1585400    [1.9] Change detect_missing_packages in moonshot power driver to look for `ipmitool` instead of `ipmipower`
+LP: #1581318    [1.9] Append version to templateUrl in maas.js angular code.
+
 1.9.3
 =====
 

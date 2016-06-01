@@ -328,9 +328,13 @@ class StaticIPAddressManager(Manager):
             SELECT DISTINCT ON (hostlabel, is_boot, family(staticip.ip))
                 substring(node.hostname from '[^\.]*') as hostlabel,
                 staticip.ip,
-                (
+                COALESCE(
                     node.boot_interface_id IS NOT NULL AND
-                    node.boot_interface_id = interface.id
+                    (
+                        node.boot_interface_id = interface.id OR
+                        node.boot_interface_id = parent.id
+                    ),
+                    False
                 ) as is_boot
             FROM maasserver_interface AS interface
             LEFT OUTER JOIN maasserver_interfacerelationship AS rel ON
