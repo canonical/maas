@@ -157,6 +157,28 @@ def update_node_network_information(node, output, exit_status):
             iface.delete()
 
 
+def update_node_network_interface_tags(node, output, exit_status):
+    """Updates the network interfaces tags from the results of `SRIOV_SCRIPT`.
+
+    Creates and deletes a tag on an Interface according to what we currently
+    know about this node's hardware.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+
+    """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+
+    decoded_output = output.decode("ascii")
+    for iface in PhysicalInterface.objects.filter(node=node):
+        if str(iface.mac_address) in decoded_output:
+            if 'sriov' not in str(iface.tags):
+                iface.tags.append("sriov")
+                iface.save()
+
+
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
 
@@ -388,6 +410,8 @@ NODE_INFO_SCRIPTS['00-maas-07-block-devices.out']['hook'] = (
     update_node_physical_block_devices)
 NODE_INFO_SCRIPTS['99-maas-03-network-interfaces.out']['hook'] = (
     update_node_network_information)
+NODE_INFO_SCRIPTS['99-maas-04-network-interfaces-with-sriov.out']['hook'] = (
+    update_node_network_interface_tags)
 
 
 def add_script_to_archive(tarball, name, content, mtime):

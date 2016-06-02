@@ -56,6 +56,7 @@ from metadataserver.models.commissioningscript import (
     set_virtual_tag,
     update_hardware_details,
     update_node_network_information,
+    update_node_network_interface_tags,
     update_node_physical_block_devices,
 )
 from metadataserver.models.noderesult import NodeResult
@@ -702,6 +703,43 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         update_node_physical_block_devices(node, json_output, 0)
         self.assertEquals(
             0, len(PhysicalBlockDevice.objects.filter(node=node)))
+
+
+class TestUpdateNodeNetworkInterfaceTags(MAASServerTestCase):
+    """Test the update_node_network_interface_tags function using data from
+    """
+
+    SRIOV_OUTPUT = dedent("""\
+        eth0 00:00:00:00:00:01
+        eth1 00:00:00:00:00:02
+        """).encode("utf-8")
+
+    def test_set_sriov_interface_tag(self):
+        """Test the update_node_network_interface_tags creates 'sriov' tag
+        for network interfaces in the commissioning output. (SRIOV_OUTPUT)
+        """
+        node = factory.make_Node()
+
+        # Create network interfaces to add the tags to.
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth0",
+                               mac_address="00:00:00:00:00:01", node=node)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth1",
+                               mac_address="00:00:00:00:00:02", node=node)
+        factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name="eth2",
+                               mac_address="00:00:00:00:00:03", node=node)
+
+        update_node_network_interface_tags(node, self.SRIOV_OUTPUT, 0)
+
+        # Test that interfaces in SRIOV_OUTPUT have tag
+        self.assertThat(Interface.objects.filter(node=node,
+                        mac_address="00:00:00:00:00:01").first().tags,
+                        Contains('sriov'))
+        self.assertThat(Interface.objects.filter(node=node,
+                        mac_address="00:00:00:00:00:02").first().tags,
+                        Contains('sriov'))
+        # Test that interfaces not in SRIOV_OUTPUT do not have the tag
+        self.assertNotIn('sriov', Interface.objects.filter(node=node,
+                         mac_address="00:00:00:00:00:03").first().tags)
 
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):

@@ -88,6 +88,17 @@ CPUINFO_SCRIPT = dedent("""\
     cat /proc/cpuinfo
     """)
 
+SRIOV_SCRIPT = dedent("""\
+    #!/bin/sh
+    for file in $(find /sys/devices/ -name sriov_numvfs); do
+        dir=$(dirname "$file")
+        for eth in $(ls "$dir/net/"); do
+            mac=`cat "$(dirname $file)/net/$eth/address"`
+            echo "$eth $mac"
+        done
+    done
+    """)
+
 
 # Run `dhclient` on all the unconfigured interfaces.
 # This is done to create records in the leases file for the
@@ -387,6 +398,11 @@ NODE_INFO_SCRIPTS = OrderedDict([
     }),
     ('99-maas-03-network-interfaces.out', {
         'content': IPADDR_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+        'run_on_controller': False,
+    }),
+    ('99-maas-04-network-interfaces-with-sriov.out', {
+        'content': SRIOV_SCRIPT.encode('ascii'),
         'hook': null_hook,
         'run_on_controller': False,
     }),
