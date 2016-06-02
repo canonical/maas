@@ -434,6 +434,34 @@ class TestDeviceHandler(MAASServerTestCase):
             StaticIPAddress.objects.filter(ip=external_ip_address).count(),
             Equals(1), "External StaticIPAddress was not created.")
 
+    def test_create_copes_with_mac_addresses_of_different_case(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        mac = factory.make_mac_address()
+        created_device = handler.create({
+            "hostname": factory.make_name("hostname"),
+            "primary_mac": mac.lower(),  # Lowercase.
+            "interfaces": [{
+                "mac": mac.upper(),  # Uppercase.
+                "ip_assignment": DEVICE_IP_ASSIGNMENT.DYNAMIC,
+            }],
+        })
+        self.assertThat(created_device["primary_mac"], Equals(mac))
+
+    def test_create_copes_with_mac_addresses_of_different_forms(self):
+        user = factory.make_User()
+        handler = DeviceHandler(user, {})
+        mac = factory.make_mac_address(delimiter=":")
+        created_device = handler.create({
+            "hostname": factory.make_name("hostname"),
+            "primary_mac": mac,  # Colons.
+            "interfaces": [{
+                "mac": mac.replace(":", "-"),  # Hyphens.
+                "ip_assignment": DEVICE_IP_ASSIGNMENT.DYNAMIC,
+            }],
+        })
+        self.assertThat(created_device["primary_mac"], Equals(mac))
+
     def test_missing_action_raises_error(self):
         user = factory.make_User()
         device = self.make_device_with_ip_address(owner=user)

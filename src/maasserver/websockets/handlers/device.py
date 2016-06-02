@@ -29,6 +29,7 @@ from maasserver.websockets.handlers.node import (
     node_prefetch,
     NodeHandler,
 )
+from netaddr import EUI
 from provisioningserver.logger import get_maas_logger
 
 
@@ -50,11 +51,16 @@ class DEVICE_IP_ASSIGNMENT:
 
 
 def get_Interface_from_list(interfaces, mac):
-    """Return the `Interface` object based on the mac value."""
-    for obj in interfaces:
-        if obj.mac_address == mac:
-            return obj
-    return None
+    """Return the `Interface` object with the given MAC address."""
+    # Compare using EUI instances so that we're not concerned with a MAC's
+    # canonical form, i.e. colons versus hyphens, uppercase versus lowercase.
+    mac = EUI(mac)
+    for interface in interfaces:
+        ifmac = interface.mac_address
+        if ifmac is not None and EUI(ifmac.raw) == mac:
+            return interface
+    else:
+        return None
 
 
 class DeviceHandler(NodeHandler):

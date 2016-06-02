@@ -11,6 +11,10 @@ __all__ = [
 from datetime import timedelta
 import hashlib
 from io import BytesIO
+from itertools import (
+    chain,
+    repeat,
+)
 import logging
 import random
 import time
@@ -127,9 +131,12 @@ from provisioningserver.utils.network import inet_ntop
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
 MAX_PUBLIC_KEYS = 5
 
-
+# Used to save a node without worrying about a valid transition.
 ALL_NODE_STATES = list(map_enum(NODE_STATUS).values())
 
+# Maximum PID available on this machine.
+with open("/proc/sys/kernel/pid_max") as fd:
+    PID_MAX = int(fd.read())
 
 # Use `undefined` instead of `None` for default factory arguments when `None`
 # is a reasonable value for the argument.
@@ -281,16 +288,25 @@ class Factory(maastesting.factory.Factory):
         region.save()
         return region
 
+    # PIDs for use with make_RegionControllerProcess. Note that the simpler
+    # cycle(range(...)) is not used because it gradually consumes all memory.
+    _rcp_pids = chain.from_iterable(repeat(range(PID_MAX)))
+
     def make_RegionControllerProcess(
             self, region=None, pid=None, updated=None):
         if region is None:
             region = self.make_RegionController()
         if pid is None:
-            pid = random.randint(1, 10000)
+            pid = next(self._rcp_pids)
         process = RegionControllerProcess(
             region=region, pid=pid, updated=updated)
         process.save()
         return process
+
+    # Ports for use with make_RegionControllerProcessEndpoint. Note that the
+    # simpler cycle(range(...)) is not used because it gradually consumes all
+    # memory.
+    _rcpe_ports = chain.from_iterable(repeat(range(2**16)))
 
     def make_RegionControllerProcessEndpoint(
             self, process=None, address=None, port=None):
@@ -299,7 +315,7 @@ class Factory(maastesting.factory.Factory):
         if address is None:
             address = self.make_ip_address()
         if port is None:
-            port = random.randint(1, 10000)
+            port = next(self._rcpe_ports)
         endpoint = RegionControllerProcessEndpoint(
             process=process, address=address, port=port)
         endpoint.save()
