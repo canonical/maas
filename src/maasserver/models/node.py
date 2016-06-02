@@ -3844,7 +3844,19 @@ class RegionController(Controller):
             raise ValidationError(
                 "Unable to delete %s as it's currently running."
                 % self.hostname)
-        super().delete()
+
+        if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
+            # typecast_to_node_type returns a RackController object when the
+            # node is a REGION_AND_RACK_CONTROLLER. Thus the API and websocket
+            # will transition a REGION_AND_RACK_CONTROLLER to a
+            # REGION_CONTROLLER.
+            self.node_type = NODE_TYPE.RACK_CONTROLLER
+            self.save()
+        elif self._was_probably_machine():
+            self.node_type = NODE_TYPE.MACHINE
+            self.save()
+        else:
+            super().delete()
 
 
 class Device(Node):

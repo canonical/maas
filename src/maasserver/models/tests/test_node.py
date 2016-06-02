@@ -7077,9 +7077,8 @@ class TestRackController(MAASServerTestCase):
 
     def test_delete_converts_rack_to_machine(self):
         rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
-        rack.power_parameters = {
-            'power_address': 'qemu+ssh://user@host/system',
-        }
+        rack.bmc = factory.make_BMC()
+        rack.save()
         rack.delete()
         self.assertEquals(
             NODE_TYPE.MACHINE,
@@ -7270,12 +7269,29 @@ class TestRackController(MAASServerTestCase):
 
 class TestRegionController(MAASServerTestCase):
 
-    def test_delete(self):
-        region = factory.make_RegionController()
-        region.delete()
-        self.assertIsNone(reload_object(region))
-
     def test_delete_prevented_when_running(self):
         region = factory.make_RegionController()
         factory.make_RegionControllerProcess(region=region)
         self.assertRaises(ValidationError, region.delete)
+
+    def test_delete_converts_region_and_rack_to_rack(self):
+        region_and_rack = factory.make_Node(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)
+        typecast_node(region_and_rack, RegionController).delete()
+        self.assertEquals(
+            NODE_TYPE.RACK_CONTROLLER,
+            Node.objects.get(system_id=region_and_rack.system_id).node_type)
+
+    def test_delete_converts_region_to_machine(self):
+        region = factory.make_RegionController(status=NODE_STATUS.DEPLOYED)
+        region.bmc = factory.make_BMC()
+        region.save()
+        region.delete()
+        self.assertEquals(
+            NODE_TYPE.MACHINE,
+            Node.objects.get(system_id=region.system_id).node_type)
+
+    def test_delete(self):
+        region = factory.make_RegionController()
+        region.delete()
+        self.assertIsNone(reload_object(region))
