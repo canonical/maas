@@ -1038,8 +1038,9 @@ class Factory(maastesting.factory.Factory):
             subnet.vlan.save()
         return subnet
 
-    def make_managed_Subnet(self, *args, **kwargs):
-        ipv6 = random.choice([True, False])
+    def make_managed_Subnet(self, *, ipv6=None):
+        if ipv6 is None:
+            ipv6 = random.choice([True, False])
         if ipv6:
             return self.make_managed_ipv6_Subnet()
         else:

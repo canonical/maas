@@ -587,6 +587,11 @@ class SubnetTest(MAASServerTestCase):
             self.assertEqual(
                 parent, subnet.get_smallest_enclosing_sane_subnet())
 
+    def test_cannot_delete_with_dhcp_enabled(self):
+        subnet = factory.make_managed_Subnet(ipv6=False)
+        with ExpectedException(ValidationError, ".*servicing a dynamic.*"):
+            subnet.delete()
+
 
 class SubnetIPRangeTest(MAASServerTestCase):
 

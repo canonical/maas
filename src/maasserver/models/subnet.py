@@ -393,6 +393,14 @@ class Subnet(CleanSave, TimestampedModel):
     def clean(self, *args, **kwargs):
         self.validate_gateway_ip()
 
+    def delete(self, *args, **kwargs):
+        # Check if DHCP is enabled on the VLAN this subnet is attached to.
+        if self.vlan.dhcp_on and self.get_dynamic_ranges().exists():
+            raise ValidationError(
+                "Cannot delete a subnet that is actively servicing a dynamic "
+                "IP range. (Delete the dynamic range or disable DHCP first.)")
+        super().delete(*args, **kwargs)
+
     def get_staticipaddresses_in_use(self):
         """Returns a list of `netaddr.IPAddress` objects to represent each
         IP address in use in this `Subnet`."""
