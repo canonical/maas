@@ -132,6 +132,26 @@ EVENT_NODE_NOTIFY = dedent("""\
 
 
 # Procedure that is called when a static ip address is linked or unlinked to
+# an Interface. Sends a notify message for domain_update
+INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      domain RECORD;
+    BEGIN
+      SELECT maasserver_domain.id INTO domain
+      FROM maasserver_node, maasserver_interface, maasserver_domain
+      WHERE maasserver_node.id = maasserver_interface.node_id
+      AND maasserver_domain.id = maasserver_node.domain_id
+      AND maasserver_interface.id = %s;
+
+      PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
+# Procedure that is called when a static ip address is linked or unlinked to
 # an Interface. Sends a notify message for machine_update or device_update
 # depending on if the node type is node.
 INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent("""\
@@ -708,6 +728,25 @@ DNSRESOURCE_DOMAIN_UPDATE_NOTIFY = dedent("""\
     """)
 
 
+# Procedure that is called when a static ip address is linked or unlinked to
+# an Interface. Sends a notify message for domain_update
+DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      domain RECORD;
+    BEGIN
+      SELECT maasserver_domain.id INTO domain
+      FROM maasserver_dnsresource, maasserver_domain
+      WHERE maasserver_domain.id = maasserver_dnsresource.domain_id
+      AND maasserver_dnsresource.id = %s;
+
+      PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """)
+
+
 def render_notification_procedure(proc_name, event_name, cast):
     return dedent("""\
         CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
@@ -1114,6 +1153,20 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_domain", "domain_delete_notify", "delete")
 
+    # MAC static ip address table, update to linked domain via dnsresource
+    register_procedure(
+        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'rrset_sipaddress_link_notify', 'NEW.dnsresource_id'))
+    register_procedure(
+        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'rrset_sipaddress_unlink_notify', 'OLD.dnsresource_id'))
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "rrset_sipaddress_link_notify", "insert")
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "rrset_sipaddress_unlink_notify", "delete")
+
     # Zone table
     register_procedure(
         render_notification_procedure(
@@ -1246,6 +1299,20 @@ def register_websocket_triggers():
     register_trigger(
         "maasserver_interface_ip_addresses",
         "nd_sipaddress_unlink_notify", "delete")
+
+    # MAC static ip address table, update to linked domain via node.
+    register_procedure(
+        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'nd_sipaddress_dns_link_notify', 'NEW.interface_id'))
+    register_procedure(
+        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY % (
+            'nd_sipaddress_dns_unlink_notify', 'OLD.interface_id'))
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "nd_sipaddress_dns_link_notify", "insert")
+    register_trigger(
+        "maasserver_interface_ip_addresses",
+        "nd_sipaddress_dns_unlink_notify", "delete")
 
     # Node result table, update to linked node.
     register_procedure(

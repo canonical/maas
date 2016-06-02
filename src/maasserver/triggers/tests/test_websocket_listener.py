@@ -1398,6 +1398,73 @@ class TestDomainListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test__calls_handler_with_update_on_node_ip_address_addition(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        params = {
+            'node_type': NODE_TYPE.MACHINE,
+            'domain': domain,
+        }
+        node = yield deferToDatabase(self.create_node, params)
+        interface = yield deferToDatabase(
+            self.create_interface, {
+                "node": node})
+        subnet = yield deferToDatabase(self.create_subnet)
+
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_staticipaddress, {
+                    "alloc_type": IPADDRESS_TYPE.STICKY,
+                    "interface": interface,
+                    "subnet": subnet,
+                    "ip": selected_ip})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_node_ip_address_removal(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        params = {
+            'node_type': NODE_TYPE.MACHINE,
+            'domain': domain,
+        }
+        node = yield deferToDatabase(self.create_node, params)
+        interface = yield deferToDatabase(
+            self.create_interface, {
+                "node": node})
+        subnet = yield deferToDatabase(self.create_subnet)
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        ipaddress = yield deferToDatabase(
+            self.create_staticipaddress, {
+                "alloc_type": IPADDRESS_TYPE.STICKY,
+                "interface": interface,
+                "subnet": subnet,
+                "ip": selected_ip,
+                })
+
+        listener = PostgresListenerService()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.delete_staticipaddress, ipaddress.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test__calls_handler_on_dnsresource_create_notification(self):
         domain = yield deferToDatabase(self.create_domain)
         yield deferToDatabase(register_websocket_triggers)
@@ -1408,6 +1475,53 @@ class TestDomainListener(
         try:
             yield deferToDatabase(
                 self.create_dnsresource, {"domain": domain})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_dnsresource_address_addition(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        dnsrr = yield deferToDatabase(
+            self.create_dnsresource, {
+                "domain": domain, "no_ip_addresses": True})
+        subnet = yield deferToDatabase(self.create_subnet)
+        listener.register("domain", lambda *args: dv.set(args))
+
+        yield listener.startService()
+        selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        try:
+            yield deferToDatabase(
+                self.create_staticipaddress, {
+                    "alloc_type": IPADDRESS_TYPE.STICKY,
+                    "dnsresource": dnsrr,
+                    "subnet": subnet,
+                    "ip": selected_ip,
+                    })
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % domain.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for(360000)
+    @inlineCallbacks
+    def test__calls_handler_on_dnsresource_address_removal(self):
+        domain = yield deferToDatabase(self.create_domain)
+        yield deferToDatabase(register_websocket_triggers)
+        dnsrr = yield deferToDatabase(self.create_dnsresource, {
+            'domain': domain})
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("domain", lambda *args: dv.set(args))
+        staticip = yield deferToDatabase(self.get_first_staticipaddress, dnsrr)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_staticipaddress, staticip.id)
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % domain.id), dv.value)
         finally:

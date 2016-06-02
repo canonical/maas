@@ -178,6 +178,10 @@ class TransactionalHelpersMixin:
         dnsresource.delete()
 
     @transactional
+    def get_first_staticipaddress(self, obj):
+        return obj.ip_addresses.first()
+
+    @transactional
     def create_dnsdata(self, params=None):
         if params is None:
             params = {}

@@ -44,7 +44,10 @@ angular.module('MAAS').controller('DomainDetailsController', [
 
         // Return true if this is the default domain.
         $scope.isDefaultDomain = function() {
-            return $scope.domain.id === 0;
+            if(angular.isObject($scope.domain)) {
+                return $scope.domain.id === 0;
+            }
+            return false;
         };
 
         // Called to check if the space can be deleted.

@@ -720,7 +720,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_StaticIPAddress(self, ip=UNDEFINED,
                              alloc_type=IPADDRESS_TYPE.AUTO, interface=None,
-                             user=None, subnet=None, **kwargs):
+                             user=None, subnet=None, dnsresource=None,
+                             **kwargs):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `interface` is passed, connect this IP address to the
@@ -748,6 +749,9 @@ class Factory(maastesting.factory.Factory):
         if interface is not None:
             interface.ip_addresses.add(ipaddress)
             interface.save()
+        if dnsresource is not None:
+            dnsresource.ip_addresses.add(ipaddress)
+            dnsresource.save()
         if hostname is not None:
             if not isinstance(hostname, (tuple, list)):
                 hostname = [hostname]
