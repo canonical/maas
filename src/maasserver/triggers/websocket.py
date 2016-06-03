@@ -144,7 +144,9 @@ INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
       AND maasserver_domain.id = maasserver_node.domain_id
       AND maasserver_interface.id = %s;
 
-      PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      IF domain.id IS NOT NULL THEN
+        PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -740,7 +742,9 @@ DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY = dedent("""\
       WHERE maasserver_domain.id = maasserver_dnsresource.domain_id
       AND maasserver_dnsresource.id = %s;
 
-      PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      IF domain.id IS NOT NULL THEN
+        PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+      END IF;
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
