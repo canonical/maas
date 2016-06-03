@@ -2,6 +2,77 @@
 Changelog
 =========
 
+2.0.0 (beta6)
+=============
+
+Issues fixed in this release
+----------------------------
+
+LP: #1572646    Spurious failures in test_regionservice
+
+LP: #1582836    use http for stream mirror, not https
+
+LP: #1583715    MAAS version API call should not require authentication
+
+LP: #1572740    Detect and identify NIC SR-IOV capability
+
+LP: #1584211    [1.9,2.0]Commissioning fails when BIOS reports floppy drive, but there is none installed
+
+LP: #1584850    [1.9,2.0] DNS record created against IPv6 address when it is not on the PXE interface
+
+LP: #1508741    [2.0] IPMI driver does not handle timeouts correctly
+
+LP: #1585759    [2.0] Display RAM amount to the first decimal place in the UI
+
+LP: #1585760    [2.0] Expose the refresh rack controller action over the UI
+
+LP: #1585768    [2.0] Rename maas-nodegrou-worker to MAAS
+
+LP: #1553841    [2.0a1] MAAS should ensure that BMC password is correct before saving
+
+LP: #1571645    [2.0b2] DNS zone serials are not stable
+
+LP: #1570985    [2.0b2] If you deploy a machine in MAAS, and manually install a rack controller in it, it disappears from the machine list"
+
+LP: #1576417    [2.0b3] rack / region controllers are visible to non-admins
+
+LP: #1577972    [2.0b4] external maas-rack-controller logs to syslog instead of maas.log
+
+LP: #1580817    [2.0b4] twisted.internet.error.ConnectionDone: Connection was closed cleanly.
+
+LP: #1581318    [2.0b4 UI/API] No notifications rack controller is disconnected. No power type available
+
+LP: #1580350    [2.0b5] AMT machines using wsman do not netboot
+
+LP: #1581737    [2.0b5] When installing secondary region controller on its on, last image sync is never
+
+LP: #1583685    [2.0b5] Can't force the import of images per Rack Controller
+
+LP: #1585649    [2.0b5] After changing proxy, MAAS cannot install images
+
+LP: #1584936    [2.0b5] MAAS doesn't import default images automatically
+
+LP: #1558635    [2.0b5] Trying to assign an IP address statically to a device results in builtins.AttributeError: 'NoneType' object has no attribute 'link_subnet' (vid, fabric_id)=(2, 0) already exists.
+
+LP: #1583333    [2.0b5] duplicate key on startup: Key
+
+LP: #1588531    [2.0b5] Deployed regions should be able to transistion back to machines
+
+LP: #1581224    [2.0b5] domain details page does not update as the domain contents change
+
+LP: #1583392    [2.0b5] Cannot disable DHCP if you remove the subnet first ("Cannot configure DHCP: At least one dynamic range is required.")
+
+LP: #1585628    [2.0, UI] Bulk actions-Nodes action doesn’t apply should be red
+
+LP: #1587936    [2.0, UI] Add fabric, VLAN, Space show's badly place form
+
+LP: #1587939    [2.0, UI] 'Commission' a node under the Node Listing Page shows actions not correctly formatted.
+
+LP: #1587998    [2.0, UI] Add domain show's badly place form
+
+LP: #1588000    [2.0, UI] There's no spacing between combo boxes under the Machine Details page
+
+
 2.0.0 (beta5)
 =============
 
