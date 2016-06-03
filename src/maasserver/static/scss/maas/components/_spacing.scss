@@ -1,0 +1,53 @@
+////
+/// @author       Web Team at Canonical Ltd
+/// @link         http://ubuntudesign.github.io/vanilla-framework/docs/#mixin-vf-forms
+/// @since        0.0.3
+////
+
+$base-spacing-unit: 20px !default;
+
+/// Spacing
+/// @group Spacing
+@mixin maas-spacing {
+  @include spacing(margin, $base-spacing-unit);
+  @include spacing(padding, $base-spacing-unit);
+}
+
+@mixin spacing($spacing, $spacing-unit) {
+  // scss-lint:disable ImportantRule
+  $directions:                    top right bottom left;
+  $sizes:                         (tiny: $spacing-unit / 4, small: $spacing-unit / 2, large: $spacing-unit * 2, huge: $spacing-unit * 4);
+
+  .u-#{$spacing} {
+    #{$spacing}: $spacing-unit;
+
+    &--none {
+      #{$spacing}: none !important;
+    }
+
+    @each $size, $division in $sizes {
+      &--#{$size} {
+        #{$spacing}: $division !important;
+      }
+    }
+
+    @each $direction in $directions {
+      &--#{$direction} {
+        #{$spacing}-#{$direction}: $spacing-unit !important;
+
+        &-none {
+          #{$spacing}-#{$direction}: none !important;
+        }
+
+        @each $size, $division in $sizes {
+          &-#{$size} {
+            #{$spacing}-#{$direction}: $division !important;
+          }
+        }
+      }
+    }
+  }
+  // scss-lint:enable ImportantRule
+}
+
+@include maas-spacing;

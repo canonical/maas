@@ -7,12 +7,14 @@
 angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the os-select.html into the template cache.
     $templateCache.put('directive/templates/os-select.html', [
-        '<select name="os" data-ng-model="ngModel.osystem" ',
+        '<select name="os" class="u-margin--right" ',
+            'data-ng-model="ngModel.osystem" ',
             'data-ng-change="selectedOSChanged()" ',
             'data-ng-options="',
             'os[0] as os[1] for os in maasOsSelect.osystems">',
         '</select>',
-        '<select name="release" data-ng-model="ngModel.release" ',
+        '<select name="release" class="u-margin--right" ',
+            'data-ng-model="ngModel.release" ',
             'data-ng-change="selectedReleaseChanged()" ',
             'data-ng-options="',
             'release[0] as release[1] for release in releases">',
