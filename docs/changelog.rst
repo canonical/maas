@@ -20,6 +20,8 @@ LP: #1584211    [1.9,2.0]Commissioning fails when BIOS reports floppy drive, but
 
 LP: #1584850    [1.9,2.0] DNS record created against IPv6 address when it is not on the PXE interface
 
+LP: #1586555    [2.0] MaaS 2.0 BMC information not removed when nodes are removed
+
 LP: #1508741    [2.0] IPMI driver does not handle timeouts correctly
 
 LP: #1585759    [2.0] Display RAM amount to the first decimal place in the UI
@@ -61,6 +63,8 @@ LP: #1588531    [2.0b5] Deployed regions should be able to transistion back to m
 LP: #1581224    [2.0b5] domain details page does not update as the domain contents change
 
 LP: #1583392    [2.0b5] Cannot disable DHCP if you remove the subnet first ("Cannot configure DHCP: At least one dynamic range is required.")
+
+LP: #1588846    [2.0b5] builtins.ValueError: invalid literal for int() with base 10
 
 LP: #1585628    [2.0, UI] Bulk actions-Nodes action doesn’t apply should be red
 
