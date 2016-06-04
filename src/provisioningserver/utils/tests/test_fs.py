@@ -5,10 +5,8 @@
 
 __all__ = []
 
-from base64 import urlsafe_b64encode
 import os
 import os.path
-import re
 from shutil import rmtree
 import stat
 from subprocess import (
@@ -42,6 +40,7 @@ from provisioningserver.utils.fs import (
     FileLock,
     get_maas_provision_command,
     incremental_write,
+    NamedLock,
     read_text_file,
     RunLock,
     sudo_delete_file,
@@ -51,13 +50,11 @@ from provisioningserver.utils.fs import (
     write_text_file,
 )
 import provisioningserver.utils.fs as fs_module
-from testtools.content import text_content
 from testtools.matchers import (
     DirExists,
     EndsWith,
     Equals,
     FileExists,
-    IsInstance,
     Not,
     SamePath,
     StartsWith,
@@ -538,13 +535,17 @@ class TestSystemLocks(MAASTestCase):
         ("FileLock", dict(locktype=FileLock)),
         ("RunLock", dict(locktype=RunLock)),
         ("SystemLock", dict(locktype=SystemLock)),
+        ("NamedLock", dict(locktype=NamedLock)),
     )
 
     def make_lock(self):
-        lockdir = self.make_dir()
-        lockpath = os.path.join(lockdir, factory.make_name("lockfile"))
-        lock = self.locktype(lockpath)
-        return lockpath, lock
+        if self.locktype is NamedLock:
+            lockname = factory.make_name("lock")
+            return self.locktype(lockname)
+        else:
+            lockdir = self.make_dir()
+            lockpath = os.path.join(lockdir, factory.make_name("lockfile"))
+            return self.locktype(lockpath)
 
     def ensure_global_lock_held_when_locking_and_unlocking(self, lock):
         # Patch the lock to check that PROCESS_LOCK is held when doing IO.
@@ -552,33 +553,33 @@ class TestSystemLocks(MAASTestCase):
         def do_lock():
             self.assertTrue(self.locktype.PROCESS_LOCK.locked())
             return True
-        self.patch(lock.fslock, "lock").side_effect = do_lock
+        self.patch(lock._fslock, "lock").side_effect = do_lock
 
         def do_unlock():
             self.assertTrue(self.locktype.PROCESS_LOCK.locked())
-        self.patch(lock.fslock, "unlock").side_effect = do_unlock
+        self.patch(lock._fslock, "unlock").side_effect = do_unlock
 
     def test__path_is_read_only(self):
-        lockpath, lock = self.make_lock()
+        lock = self.make_lock()
         with ExpectedException(AttributeError):
             lock.path = factory.make_name()
 
     def test__holds_file_system_lock(self):
-        _, lock = self.make_lock()
+        lock = self.make_lock()
         self.assertFalse(lockfile.isLocked(lock.path))
         with lock:
             self.assertTrue(lockfile.isLocked(lock.path))
         self.assertFalse(lockfile.isLocked(lock.path))
 
     def test__is_locked_reports_accurately(self):
-        lockpath, lock = self.make_lock()
+        lock = self.make_lock()
         self.assertFalse(lock.is_locked())
         with lock:
             self.assertTrue(lock.is_locked())
         self.assertFalse(lock.is_locked())
 
     def test__is_locked_holds_global_lock(self):
-        lockpath, lock = self.make_lock()
+        lock = self.make_lock()
         PROCESS_LOCK = self.patch(self.locktype, "PROCESS_LOCK")
         self.assertFalse(lock.is_locked())
         self.assertThat(
@@ -608,30 +609,30 @@ class TestSystemLocks(MAASTestCase):
           lockfile.NotLocked
 
         """
-        _, lock = self.make_lock()
+        lock = self.make_lock()
         with lock:
             with ExpectedException(self.locktype.NotAvailable, lock.path):
                 with lock:
                     pass
 
     def test__locks_and_unlocks_while_holding_global_lock(self):
-        lockpath, lock = self.make_lock()
+        lock = self.make_lock()
         self.ensure_global_lock_held_when_locking_and_unlocking(lock)
 
         with lock:
             self.assertFalse(self.locktype.PROCESS_LOCK.locked())
 
-        self.assertThat(lock.fslock.lock, MockCalledOnceWith())
-        self.assertThat(lock.fslock.unlock, MockCalledOnceWith())
+        self.assertThat(lock._fslock.lock, MockCalledOnceWith())
+        self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
     def test__wait_waits_until_lock_can_be_acquired(self):
         clock = self.patch(fs_module, "reactor", Clock())
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
 
-        lockpath, lock = self.make_lock()
-        do_lock = self.patch(lock.fslock, "lock")
-        do_unlock = self.patch(lock.fslock, "unlock")
+        lock = self.make_lock()
+        do_lock = self.patch(lock._fslock, "lock")
+        do_unlock = self.patch(lock._fslock, "unlock")
 
         do_lock.side_effect = [False, False, True]
 
@@ -647,9 +648,9 @@ class TestSystemLocks(MAASTestCase):
         sleep = self.patch(fs_module, "sleep")
         sleep.side_effect = clock.advance
 
-        lockpath, lock = self.make_lock()
-        do_lock = self.patch(lock.fslock, "lock")
-        do_unlock = self.patch(lock.fslock, "unlock")
+        lock = self.make_lock()
+        do_lock = self.patch(lock._fslock, "lock")
+        do_unlock = self.patch(lock._fslock, "unlock")
 
         do_lock.return_value = False
 
@@ -662,14 +663,14 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(do_unlock, MockNotCalled())
 
     def test__wait_locks_and_unlocks_while_holding_global_lock(self):
-        lockpath, lock = self.make_lock()
+        lock = self.make_lock()
         self.ensure_global_lock_held_when_locking_and_unlocking(lock)
 
         with lock.wait(10):
             self.assertFalse(self.locktype.PROCESS_LOCK.locked())
 
-        self.assertThat(lock.fslock.lock, MockCalledOnceWith())
-        self.assertThat(lock.fslock.unlock, MockCalledOnceWith())
+        self.assertThat(lock._fslock.lock, MockCalledOnceWith())
+        self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
 
 class TestSystemLock(MAASTestCase):
@@ -694,22 +695,44 @@ class TestFileLock(MAASTestCase):
 class TestRunLock(MAASTestCase):
     """Tests specific to `RunLock`."""
 
-    def test__path(self):
-        filename = self.make_file()
-        expected = '/run/lock/maas.%s.lock' % (
-            urlsafe_b64encode(filename.encode("utf-8")).decode("ascii"))
+    def test__string_path(self):
+        filename = '/foo/bar/123:456.txt'
+        expected = '/run/lock/maas@foo:bar:123::456.txt'
         observed = RunLock(filename).path
         self.assertEqual(expected, observed)
 
-    def test__uses_utf8_for_unicode_to_byte_conversions(self):
-        filename = os.path.abspath('\u304b\u3057\u3044')
-        path = RunLock(filename).path
-        self.addDetail("path", text_content(repr(path)))
-        self.assertThat(path, IsInstance(str))
-        path_from_lock = re.search('maas[.](.+)[.]lock', path).group(1)
-        self.assertThat(
-            path_from_lock, Equals(urlsafe_b64encode(
-                filename.encode("utf-8")).decode("ascii")))
+    def test__byte_path(self):
+        filename = b'/foo/bar/123:456.txt'
+        expected = '/run/lock/maas@foo:bar:123::456.txt'
+        observed = RunLock(filename).path
+        self.assertEqual(expected, observed)
 
-    def test__rejects_non_unicode_or_byte_string_in_path(self):
-        self.assertRaises(TypeError, RunLock, object())
+
+class TestNamedLock(MAASTestCase):
+    """Tests specific to `NamedLock`."""
+
+    def test__string_name(self):
+        name = factory.make_name("lock")
+        expected = '/run/lock/maas:' + name
+        observed = NamedLock(name).path
+        self.assertEqual(expected, observed)
+
+    def test__byte_name_is_rejected(self):
+        name = factory.make_name("lock").encode("ascii")
+        error = self.assertRaises(TypeError, NamedLock, name)
+        self.assertThat(str(error), Equals(
+            "Lock name must be str, not bytes"))
+
+    def test__name_rejects_unacceptable_characters(self):
+        # This demonstrates that validation is performed, but it is not an
+        # exhaustive test by any means.
+        self.assertRaises(ValueError, NamedLock, "foo:bar")
+        self.assertRaises(ValueError, NamedLock, "foo^bar")
+        self.assertRaises(ValueError, NamedLock, "(foobar)")
+        self.assertRaises(ValueError, NamedLock, "foo*bar")
+        self.assertRaises(ValueError, NamedLock, "foo/bar")
+        self.assertRaises(ValueError, NamedLock, "foo=bar")
+        # The error message contains all of the unacceptable characters.
+        error = self.assertRaises(ValueError, NamedLock, "[foo;bar]")
+        self.assertThat(str(error), Equals(
+            "Lock name contains illegal characters: ;[]"))

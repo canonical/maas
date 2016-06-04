@@ -10,6 +10,7 @@ __all__ = [
     'ensure_dir',
     'FileLock',
     'incremental_write',
+    'NamedLock',
     'read_text_file',
     'RunLock',
     'sudo_delete_file',
@@ -19,7 +20,6 @@ __all__ = [
     'write_text_file',
 ]
 
-from base64 import urlsafe_b64encode
 import codecs
 from contextlib import contextmanager
 import errno
@@ -30,12 +30,10 @@ from os import (
     rename,
     stat,
 )
-from os.path import (
-    abspath,
-    isdir,
-)
+from os.path import isdir
 from random import randint
 from shutil import rmtree
+import string
 from subprocess import (
     PIPE,
     Popen,
@@ -337,13 +335,23 @@ class SystemLock:
 
     There are options too:
 
-    * `SystemLock` attempts to lock exactly the file at the path given.
+    * `SystemLock` uses the given path as its lock file. This is the most
+      general lock.
 
-    * `FileLock` attempts to lock the file at the path given with an
-      additional suffix of ".lock".
+    * `FileLock` adds a suffix of ".lock" to the given path and uses that as
+      its lock file. Use this when updating a file in a writable directory,
+      for example.
 
-    * `RunLock` attempts to lock a file in ``/run/lock`` with a name based on
-      the given path and an optional "pretty" name.
+    * `RunLock` puts its lock file in ``/run/lock`` with a distinctive name
+      based on the given path. Use this when updating a file in a non-writable
+      directory, for example.
+
+    * `NamedLock` also puts its lock file in ``/run/lock`` but with a name
+      based on the given _name_. `NamedLock`'s lock file are named in such a
+      way that they will never conflict with a `RunLock`'s. Use this to
+      synchronise between processes on a single host, for example, where
+      synchronisation does not naturally revolve around access to a specific
+      file.
 
     """
 
@@ -361,16 +369,16 @@ class SystemLock:
 
     def __init__(self, path):
         super(SystemLock, self).__init__()
-        self.fslock = FilesystemLock(path)
+        self._fslock = FilesystemLock(path)
 
     def __enter__(self):
         with self.PROCESS_LOCK:
-            if not self.fslock.lock():
-                raise self.NotAvailable(self.fslock.name)
+            if not self._fslock.lock():
+                raise self.NotAvailable(self._fslock.name)
 
     def __exit__(self, *exc_info):
         with self.PROCESS_LOCK:
-            self.fslock.unlock()
+            self._fslock.unlock()
 
     @contextmanager
     def wait(self, timeout=86400):
@@ -383,22 +391,22 @@ class SystemLock:
 
         for _, _, wait in retries(timeout, interval, reactor):
             with self.PROCESS_LOCK:
-                if self.fslock.lock():
+                if self._fslock.lock():
                     break
             if wait > 0:
                 sleep(wait)
         else:
-            raise self.NotAvailable(self.fslock.name)
+            raise self.NotAvailable(self._fslock.name)
 
         try:
             yield
         finally:
             with self.PROCESS_LOCK:
-                self.fslock.unlock()
+                self._fslock.unlock()
 
     @property
     def path(self):
-        return self.fslock.name
+        return self._fslock.name
 
     def is_locked(self):
         """Is this lock already taken?
@@ -421,7 +429,7 @@ class SystemLock:
                know that the lock must have been locked; return ``False``.
 
         """
-        fslock = FilesystemLock(self.fslock.name)
+        fslock = FilesystemLock(self._fslock.name)
         with self.PROCESS_LOCK:
             if fslock.lock():
                 fslock.unlock()
@@ -438,25 +446,45 @@ class FileLock(SystemLock):
         super(FileLock, self).__init__(lockpath)
 
 
-def _ensure_bytes(string):
-    if isinstance(string, str):
-        return string.encode("utf-8")
-    elif isinstance(string, bytes):
-        return string
-    else:
-        raise TypeError(
-            "unicode/bytes expected, got: %r" % (string, ))
-
-
 class RunLock(SystemLock):
-    """Always create a lock file at ``/run/lock/maas.*.lock``.
+    """Always create a lock file at ``/run/lock/maas@${path,modified}``.
 
     This implements an advisory file lock, by proxy, on the given file-system
     path. This is especially useful if you do not have permissions to the
     directory in which the given path is located.
+
+    The path will be made absolute, colons will be replaced with two colons,
+    and forward slashes will be replaced with colons.
     """
 
     def __init__(self, path):
-        discriminator = urlsafe_b64encode(abspath(_ensure_bytes(path)))
-        lockpath = "/run/lock/maas.%s.lock" % discriminator.decode("ascii")
+        abspath = FilePath(path).asTextMode().path.lstrip("/")
+        discriminator = abspath.replace(":", "::").replace("/", ":")
+        lockpath = "/run/lock/maas@%s" % discriminator
         super(RunLock, self).__init__(lockpath)
+
+
+class NamedLock(SystemLock):
+    """Always create a lock file at ``/run/lock/maas.${name}``.
+
+    This implements an advisory lock, by proxy, for an abstract name. The name
+    must be a string and can contain only numerical digits, hyphens, and ASCII
+    letters.
+    """
+
+    ACCEPTABLE_CHARACTERS = frozenset().union(
+        string.ascii_letters, string.digits, "-")
+
+    def __init__(self, name):
+        if not isinstance(name, str):
+            raise TypeError(
+                "Lock name must be str, not %s"
+                % type(name).__qualname__)
+        elif not self.ACCEPTABLE_CHARACTERS.issuperset(name):
+            illegal = set(name) - self.ACCEPTABLE_CHARACTERS
+            raise ValueError(
+                "Lock name contains illegal characters: %s"
+                % "".join(sorted(illegal)))
+        else:
+            lockpath = "/run/lock/maas:%s" % name
+            super(NamedLock, self).__init__(lockpath)
