@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for adding sub-commands to the MAAS management commands."""
@@ -9,7 +9,10 @@ __all__ = [
     'MainScript',
     ]
 
-from argparse import ArgumentParser
+from argparse import (
+    ArgumentParser,
+    RawDescriptionHelpFormatter,
+)
 import io
 import signal
 from subprocess import CalledProcessError
@@ -61,7 +64,8 @@ class ActionScript:
             release/2.7/library/argparse.html#sub-commands
         """
         parser = self.subparsers.add_parser(
-            name, *args, help=handler.run.__doc__, **kwargs)
+            name, *args, help=handler.run.__doc__,
+            formatter_class=RawDescriptionHelpFormatter, **kwargs)
         parser.set_defaults(handler=handler)
         handler.add_arguments(parser)
         return parser
