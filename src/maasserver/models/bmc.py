@@ -79,11 +79,14 @@ class BMC(CleanSave, TimestampedModel):
         through="BMCRoutableRackControllerRelationship",
         related_name="routable_bmcs")
 
-    def __unicode__(self):
-        if self.ip_address:
-            return "%s (%s)" % (self.id, self.ip_address)
-        else:
-            return self.id
+    def __str__(self):
+        return "%s (%s)" % (
+            self.id, self.ip_address if self.ip_address else "No IP")
+
+    def delete(self):
+        """Delete this BMC."""
+        maaslog.info("%s: Deleting BMC", self)
+        super(BMC, self).delete()
 
     def clean(self):
         """ Update our ip_address if the address extracted from our power

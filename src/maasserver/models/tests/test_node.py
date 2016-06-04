@@ -769,6 +769,40 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(osystem=osystem, distro_series=series)
         self.assertEqual(license_key, node.get_effective_license_key())
 
+    # Deleting Node deletes BMC. Regression for lp:1586555.
+    def test_delete_node_deletes_owned_bmc(self):
+        node = factory.make_Node()
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.make_ipv4_address())})
+        node.bmc = bmc
+        node.save()
+        node.delete()
+        self.assertIsNone(reload_object(bmc))
+
+    # Deleting Node deletes BMC. Regression for lp:1586555.
+    def test_delete_node_doesnt_delete_shared_bmc(self):
+        nodes = [factory.make_Node(), factory.make_Node()]
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                'power_address':
+                "protocol://%s:8080/path/to/thing#tag" % (
+                    factory.make_ipv4_address())})
+        nodes[0].bmc = bmc
+        nodes[0].save()
+        nodes[1].bmc = bmc
+        nodes[1].save()
+        # Shouldn't delete BMC, as 2nd node is still using it.
+        nodes[0].delete()
+        self.assertIsNotNone(reload_object(bmc))
+        # Should now delete BMC, as nobody else is using it.
+        nodes[1].delete()
+        self.assertIsNone(reload_object(bmc))
+
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
         interface = node.add_physical_interface('AA:BB:CC:DD:EE:FF')

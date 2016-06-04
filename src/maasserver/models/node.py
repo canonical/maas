@@ -1723,9 +1723,17 @@ class Node(CleanSave, TimestampedModel):
         """Delete this node."""
         maaslog.info("%s: Deleting node", self.hostname)
 
-        # Delete the related interfaces. This wil remove all of IP addresses
+        # Delete the related interfaces. This will remove all of IP addresses
         # that are linked to those interfaces.
         self.interface_set.all().delete()
+
+        # Delete my BMC if no other Nodes are using it.
+        if self.bmc is not None and self.bmc.node_set.count() == 1 and (
+                self.bmc.node_set.first() == self):
+            # Delete my orphaned BMC.
+            maaslog.info(
+                "%s: Deleting my BMC '%s'", self.hostname, self.bmc)
+            self.bmc.delete()
 
         super(Node, self).delete()
 
