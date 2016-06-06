@@ -55,6 +55,8 @@ from testtools.matchers import (
     EndsWith,
     Equals,
     FileExists,
+    HasLength,
+    MatchesRegex,
     Not,
     SamePath,
     StartsWith,
@@ -191,14 +193,22 @@ class TestAtomicDelete(MAASTestCase):
         self.assertThat(filename, Not(FileExists()))
 
     def test_renames_file_before_deleting(self):
-        filename = self.make_file()
-        del_filename = "%s/.%s.del" % (
-            os.path.dirname(filename), os.path.basename(filename))
-        self.addCleanup(os.remove, del_filename)
-        mock_remove = self.patch(fs_module.os, "remove")
-        atomic_delete(filename)
-        self.assertThat(del_filename, FileExists())
-        self.assertThat(mock_remove, MockCalledOnceWith(del_filename))
+        # Intercept calls to os.remove.
+        os_remove = self.patch(fs_module.os, "remove")
+
+        contents = factory.make_name("contents").encode("ascii")
+        filepath = self.make_file(contents=contents)
+        filedir = os.path.dirname(filepath)
+
+        atomic_delete(filepath)
+
+        listing = os.listdir(filedir)
+        self.assertThat(listing, HasLength(1))
+        [deletedname] = listing
+        self.assertThat(deletedname, MatchesRegex(r"^[.][^.]+[.]deleted$"))
+        deletedpath = os.path.join(filedir, deletedname)
+        self.assertThat(os_remove, MockCalledOnceWith(deletedpath))
+        self.assertThat(deletedpath, FileContains(contents))
 
 
 class TestAtomicSymlink(MAASTestCase):
