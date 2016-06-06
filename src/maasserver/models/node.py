@@ -3641,8 +3641,6 @@ class RackController(Controller):
             self.osystem = response['osystem']
         if response['distro_series'] != '':
             self.distro_series = response['distro_series']
-        if response['swap_size'] > 0:
-            self.swap_size = response['swap_size']
         self.update_interfaces(response['interfaces'])
         self.save()
 

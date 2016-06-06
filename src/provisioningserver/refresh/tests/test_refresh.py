@@ -9,7 +9,6 @@ from collections import OrderedDict
 import os
 from pathlib import Path
 import random
-import re
 import tempfile
 from textwrap import dedent
 from unittest.mock import sentinel
@@ -29,22 +28,21 @@ from testtools.matchers import (
 
 
 class TestHelpers(MAASTestCase):
-    def test_get_architecture_returns_arch(self):
-        architecture = refresh.get_architecture()
-        self.assertIsInstance(architecture, str)
-        self.assertIsNot('', architecture)
+    def test_get_architecture_returns_arch_with_generic(self):
+        arch = random.choice(['i386', 'amd64', 'arm64', 'ppc64el'])
+        subarch = factory.make_name('subarch')
+        self.patch(refresh, 'call_and_check').return_value = (
+            "%s/%s" % (arch, subarch))
+        ret_arch = refresh.get_architecture()
+        self.assertEquals("%s/generic" % arch, ret_arch)
 
-    def test_get_swap_size_proc_meminfo_exists(self):
-        # This is a canary incase /proc/meminfo ever goes away
-        self.assertTrue(os.path.exists('/proc/meminfo'))
-        # Test that /proc/meminfo still provides SwapTotal
-        regex = re.compile('^SwapTotal:\s+[0-9]+ kB\n$')
-        with open('/proc/meminfo') as f:
-            for line in f:
-                result = regex.match(line)
-                if result is not None:
-                    return
-        self.assertTrue(False, '/proc/meminfo does not contain SwapTotal')
+    def test_get_architecture_returns_arch_with_subarch(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        architecture = "%s/%s" % (arch, subarch)
+        self.patch(refresh, 'call_and_check').return_value = architecture
+        ret_arch = refresh.get_architecture()
+        self.assertEquals(architecture, ret_arch)
 
     def test_get_os_release_etc_os_release_exists(self):
         # This is a canary incase /etc/os-release ever goes away

@@ -16,6 +16,10 @@ from provisioningserver.refresh.maas_api_helper import (
     geturl,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+)
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -24,20 +28,14 @@ maaslog = get_maas_logger("refresh")
 
 def get_architecture():
     """Get the architecture of the running system."""
-    proc = subprocess.Popen('archdetect', stdout=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if proc.returncode != 0:
+    try:
+        stdout = call_and_check('archdetect')
+    except ExternalProcessError:
         return ''
-    return stdout.strip().decode('utf-8')
-
-
-def get_swap_size():
-    """Get the current swap size of the running system."""
-    with open('/proc/meminfo') as f:
-        for line in f:
-            if 'SwapTotal' in line:
-                return int(line.split()[1]) * 1000
-    return 0
+    arch, subarch = stdout.strip().split('/')
+    if arch in ['i386', 'amd64', 'arm64', 'ppc64el']:
+        subarch = 'generic'
+    return '%s/%s' % (arch, subarch)
 
 
 def get_os_release():

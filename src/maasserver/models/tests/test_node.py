@@ -6908,7 +6908,6 @@ class TestRackController(MAASServerTestCase):
             'architecture': rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
-            'swap_size': 0,
             'interfaces': {},
         })
 
@@ -6934,7 +6933,6 @@ class TestRackController(MAASServerTestCase):
             'architecture': rackcontroller.architecture,
             'osystem': '',
             'distro_series': '',
-            'swap_size': 0,
             'interfaces': {},
         })
 
@@ -6951,7 +6949,6 @@ class TestRackController(MAASServerTestCase):
         rackcontroller = factory.make_RackController(status=NODE_STATUS.NEW)
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('distro_series')
-        swap_size = random.randint(1, 1024)
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -6971,7 +6968,6 @@ class TestRackController(MAASServerTestCase):
             'architecture': rackcontroller.architecture,
             'osystem': osystem,
             'distro_series': distro_series,
-            'swap_size': swap_size,
             'interfaces': interfaces
         })
 
@@ -6979,7 +6975,6 @@ class TestRackController(MAASServerTestCase):
         rackcontroller = reload_object(rackcontroller)
         self.assertEquals(osystem, rackcontroller.osystem)
         self.assertEquals(distro_series, rackcontroller.distro_series)
-        self.assertEquals(swap_size, rackcontroller.swap_size)
         self.assertIsNotNone(
             Interface.objects.filter(
                 node=rackcontroller,

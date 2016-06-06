@@ -453,7 +453,6 @@ class RefreshRackControllerInfo(amp.Command):
         (b"architecture", amp.Unicode()),
         (b"osystem", amp.Unicode()),
         (b"distro_series", amp.Unicode()),
-        (b"swap_size", amp.Integer()),
         (b"interfaces", StructureAsJSON()),
     ]
     errors = {}

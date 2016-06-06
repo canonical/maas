@@ -1956,7 +1956,7 @@ class TestClusterProtocol_Refresh(MAASTestCase):
             clusterservice, 'deferToThread')
         mock_deferToThread.side_effect = [
             succeed(None),
-            succeed(('', {}, 0, {})),
+            succeed(('', {}, {})),
         ]
 
         system_id = factory.make_name('system_id')
@@ -1987,7 +1987,6 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         architecture = factory.make_name("architecture")
         osystem = factory.make_name("osystem")
         distro_series = factory.make_name("distro_series")
-        swap_size = random.randint(1, 100)
         os_release = {
             'ID': osystem,
             'UBUNTU_CODENAME': distro_series,
@@ -1996,7 +1995,6 @@ class TestClusterProtocol_Refresh(MAASTestCase):
         self.patch(clusterservice, 'get_architecture').return_value = (
             architecture)
         self.patch(clusterservice, 'get_os_release').return_value = os_release
-        self.patch(clusterservice, 'get_swap_size').return_value = swap_size
 
         response = yield call_responder(
             Cluster(), cluster.RefreshRackControllerInfo, {
@@ -2010,7 +2008,6 @@ class TestClusterProtocol_Refresh(MAASTestCase):
             {
                 'osystem': osystem,
                 'distro_series': distro_series,
-                'swap_size': swap_size,
                 'architecture': architecture,
                 'interfaces': get_all_interfaces_definition(),
             }, response)

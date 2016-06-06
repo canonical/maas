@@ -39,7 +39,6 @@ from provisioningserver.power.query import get_power_state
 from provisioningserver.refresh import (
     get_architecture,
     get_os_release,
-    get_swap_size,
     refresh,
 )
 from provisioningserver.rpc import (
@@ -385,12 +384,11 @@ class Cluster(RPCProtocol):
         def perform_refresh():
             architecture = get_architecture()
             os_release = get_os_release()
-            swap_size = get_swap_size()
             interfaces, _ = get_interfaces_definition()
-            return architecture, os_release, swap_size, interfaces
+            return architecture, os_release, interfaces
 
         def cb_result(result):
-            architecture, os_release, swap_size, interfaces = result
+            architecture, os_release, interfaces = result
             if 'ID' in os_release:
                 osystem = os_release['ID']
             elif 'NAME' in os_release:
@@ -407,7 +405,6 @@ class Cluster(RPCProtocol):
                 'architecture': architecture,
                 'osystem': osystem,
                 'distro_series': distro_series,
-                'swap_size': swap_size,
                 'interfaces': interfaces
             }
 
