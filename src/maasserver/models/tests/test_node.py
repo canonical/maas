@@ -4663,15 +4663,21 @@ class TestController(MAASServerTestCase):
         self.assertFalse(factory.make_RackController()._was_probably_machine())
 
 
-class TestRackControllerUpdateInterfaces(MAASServerTestCase):
+class TestUpdateInterfaces(MAASServerTestCase):
 
-    def create_empty_rack_controller(self):
-        node = factory.make_Node(
-            node_type=NODE_TYPE.RACK_CONTROLLER)
-        return typecast_node(node, RackController)
+    scenarios = (
+        ("rack", dict(node_type=NODE_TYPE.RACK_CONTROLLER)),
+        ("region", dict(node_type=NODE_TYPE.REGION_CONTROLLER)),
+        ("region+rack", dict(
+            node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER)),
+    )
+
+    def create_empty_controller(self):
+        node = factory.make_Node(node_type=self.node_type)
+        return typecast_to_node_type(node)
 
     def test__order_of_calls_to_update_interface_is_always_the_same(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -4719,13 +4725,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         # Perform multiple times to make sure the call order is always
         # the same.
         for _ in range(5):
-            mock_update_interface = self.patch(rack, "_update_interface")
-            rack.update_interfaces(interfaces)
+            mock_update_interface = self.patch(controller, "_update_interface")
+            controller.update_interfaces(interfaces)
             self.assertThat(
                 mock_update_interface, MockCallsMatch(*expected_call_order))
 
     def test__all_new_physical_interfaces_no_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -4742,8 +4748,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": False,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -4752,7 +4758,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 enabled=True,
             ))
         self.assertThat(list(eth0.parents.all()), Equals([]))
-        eth1 = Interface.objects.get(name="eth1", node=rack)
+        eth1 = Interface.objects.get(name="eth1", node=controller)
         self.assertThat(
             eth1, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -4771,7 +4777,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             Contains(Fabric.objects.get_default_fabric().get_default_vlan()))
 
     def test__new_physical_with_new_subnet_link(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
         ip = factory.pick_ip_in_network(network)
         gateway_ip = factory.pick_ip_in_network(network, but_not=[ip])
@@ -4788,8 +4794,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -4818,7 +4824,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__new_physical_with_dhcp_link(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
         ip = factory.pick_ip_in_network(network)
         interfaces = {
@@ -4833,8 +4839,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -4871,7 +4877,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__new_physical_with_multiple_dhcp_link(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -4888,8 +4894,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
             eth0, MatchesStructure.byEquality(
@@ -4913,7 +4919,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__new_physical_with_existing_subnet_link_with_gateway(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         subnet = factory.make_Subnet()
         network = subnet.get_ipnetwork()
         gateway_ip = factory.pick_ip_in_network(network)
@@ -4935,8 +4941,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -4960,7 +4966,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__new_physical_with_existing_subnet_link_without_gateway(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         subnet = factory.make_Subnet()
         subnet.gateway_ip = None
         subnet.save()
@@ -4980,8 +4986,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5005,7 +5011,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__new_physical_with_multiple_subnets(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet1 = factory.make_Subnet(vlan=vlan)
         ip1 = factory.pick_ip_in_Subnet(subnet1)
@@ -5031,8 +5037,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        eth0 = Interface.objects.get(name="eth0", node=rack)
+        controller.update_interfaces(interfaces)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5057,12 +5063,12 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_existing_static_link(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip,
             subnet=subnet, interface=interface)
@@ -5079,8 +5085,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(1))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5099,12 +5105,12 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_existing_auto_link(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
@@ -5121,8 +5127,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(1))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5141,12 +5147,12 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_removes_old_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
@@ -5169,8 +5175,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(1))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(1))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5191,13 +5197,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             self.expectThat(reload_object(extra_ip), Is(None))
 
     def test__existing_physical_with_links_new_vlan_no_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
@@ -5222,8 +5228,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5242,7 +5248,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
         created_vlan = VLAN.objects.get(fabric=fabric, vid=vid_on_fabric)
         vlan_interface = VLANInterface.objects.get(
-            node=rack, vlan=created_vlan)
+            node=controller, vlan=created_vlan)
         self.assertThat(
             vlan_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -5252,13 +5258,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_links_new_vlan_new_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
@@ -5289,8 +5295,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5309,7 +5315,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
         created_vlan = VLAN.objects.get(fabric=fabric, vid=vid_on_fabric)
         vlan_interface = VLANInterface.objects.get(
-            node=rack, vlan=created_vlan)
+            node=controller, vlan=created_vlan)
         self.assertThat(
             vlan_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -5335,13 +5341,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_links_new_vlan_wrong_subnet_vid(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, ip=ip,
             subnet=subnet, interface=interface)
@@ -5373,8 +5379,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "vid": vid_on_fabric,
         }
         maaslog = self.patch(node_module, "maaslog")
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5393,7 +5399,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
         created_vlan = VLAN.objects.get(fabric=fabric, vid=vid_on_fabric)
         vlan_interface = VLANInterface.objects.get(
-            node=rack, vlan=created_vlan)
+            node=controller, vlan=created_vlan)
         self.assertThat(
             vlan_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -5406,18 +5412,18 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
                 "Unable to update IP address '%s' assigned to "
-                "interface '%s' on rack controller '%s'. Subnet '%s' "
+                "interface '%s' on controller '%s'. Subnet '%s' "
                 "for IP address is not on VLAN '%s.%d'." % (
-                    vlan_ip, "eth0.%d" % vid_on_fabric, rack.hostname,
+                    vlan_ip, "eth0.%d" % vid_on_fabric, controller.hostname,
                     wrong_subnet.name, wrong_subnet.vlan.fabric.name,
                     wrong_subnet.vlan.vid)))
 
     def test__existing_physical_with_no_links_new_vlan_no_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         vid_on_fabric = random.randint(1, 4094)
         interfaces = {
             "eth0": {
@@ -5435,8 +5441,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5447,7 +5453,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
         created_vlan = VLAN.objects.get(fabric=fabric, vid=vid_on_fabric)
         vlan_interface = VLANInterface.objects.get(
-            node=rack, vlan=created_vlan)
+            node=controller, vlan=created_vlan)
         self.assertThat(
             vlan_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -5457,11 +5463,11 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_no_links_new_vlan_with_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         other_fabric = factory.make_Fabric()
         new_vlan = factory.make_VLAN(fabric=other_fabric)
         subnet = factory.make_Subnet(vlan=new_vlan)
@@ -5486,8 +5492,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "enabled": True,
             "vid": new_vlan.vid,
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5497,7 +5503,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=other_fabric.get_default_vlan(),
             ))
         vlan_interface = VLANInterface.objects.get(
-            node=rack, vlan=new_vlan)
+            node=controller, vlan=new_vlan)
         self.assertThat(
             vlan_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -5515,11 +5521,11 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__existing_physical_with_no_links_vlan_with_wrong_subnet(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         new_vlan = factory.make_VLAN(fabric=fabric)
         vlan_interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=new_vlan, parents=[interface])
@@ -5551,8 +5557,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "vid": new_vlan.vid,
         }
         maaslog = self.patch(node_module, "maaslog")
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(2))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5579,21 +5585,21 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
                 "Unable to correctly identify VLAN for interface '%s' "
-                "on rack controller '%s'. Placing interface on "
-                "VLAN '%s.%d' without address assignments." % (
-                    "eth0.%d" % new_vlan.vid, rack.hostname,
+                "on controller '%s'. Placing interface on VLAN '%s.%d' "
+                "without address assignments." % (
+                    "eth0.%d" % new_vlan.vid, controller.hostname,
                     new_vlan.fabric.name, new_vlan.vid)))
         for link in links_to_remove:
             self.expectThat(reload_object(link), Is(None))
 
     def test__bond_with_existing_parents(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -5617,10 +5623,10 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         bond_interface = BondInterface.objects.get(
-            node=rack, mac_address=interfaces["bond0"]["mac_address"])
+            node=controller, mac_address=interfaces["bond0"]["mac_address"])
         self.assertThat(
             bond_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BOND,
@@ -5634,13 +5640,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             MatchesSetwise(Equals("eth0"), Equals("eth1")))
 
     def test__bridge_with_existing_parents(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -5664,10 +5670,10 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         bond_interface = BridgeInterface.objects.get(
-            node=rack, mac_address=interfaces["br0"]["mac_address"])
+            node=controller, mac_address=interfaces["br0"]["mac_address"])
         self.assertThat(
             bond_interface, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BRIDGE,
@@ -5681,16 +5687,17 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             MatchesSetwise(Equals("eth0"), Equals("eth1")))
 
     def test__bond_updates_existing_bond(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         bond0 = factory.make_Interface(
-            INTERFACE_TYPE.BOND, vlan=vlan, parents=[eth0, eth1], node=rack,
-            name="bond0", mac_address=factory.make_mac_address())
+            INTERFACE_TYPE.BOND, vlan=vlan, parents=[eth0, eth1],
+            node=controller, name="bond0",
+            mac_address=factory.make_mac_address())
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -5714,8 +5721,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(bond0), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BOND,
@@ -5729,16 +5736,17 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             Equals(["eth0"]))
 
     def test__bridge_updates_existing_bridge(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         br0 = factory.make_Interface(
-            INTERFACE_TYPE.BRIDGE, vlan=vlan, parents=[eth0, eth1], node=rack,
-            name="br0", mac_address=factory.make_mac_address())
+            INTERFACE_TYPE.BRIDGE, vlan=vlan, parents=[eth0, eth1],
+            node=controller, name="br0",
+            mac_address=factory.make_mac_address())
         interfaces = {
             "eth0": {
                 "type": "physical",
@@ -5762,8 +5770,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(br0), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BRIDGE,
@@ -5777,13 +5785,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             Equals(["eth0"]))
 
     def test__bond_creates_link_updates_parent_vlan(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[eth0, eth1], vlan=vlan)
         other_fabric = factory.make_Fabric()
@@ -5817,8 +5825,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(eth0), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5842,7 +5850,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 name="bond0",
                 mac_address=bond0.mac_address,
                 enabled=True,
-                node=rack,
+                node=controller,
                 vlan=bond0_vlan,
             ))
         self.assertThat(
@@ -5850,13 +5858,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             MatchesSetwise(Equals("eth0"), Equals("eth1")))
 
     def test__bridge_creates_link_updates_parent_vlan(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[eth0, eth1], vlan=vlan)
         other_fabric = factory.make_Fabric()
@@ -5890,8 +5898,8 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
-        self.assertThat(rack.interface_set.count(), Equals(3))
+        controller.update_interfaces(interfaces)
+        self.assertThat(controller.interface_set.count(), Equals(3))
         self.assertThat(
             reload_object(eth0), MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -5915,7 +5923,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 name="br0",
                 mac_address=br0.mac_address,
                 enabled=True,
-                node=rack,
+                node=controller,
                 vlan=br0_vlan,
             ))
         self.assertThat(
@@ -5923,28 +5931,28 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             MatchesSetwise(Equals("eth0"), Equals("eth1")))
 
     def test__removes_missing_interfaces(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[eth0, eth1], vlan=vlan)
-        rack.update_interfaces({})
+        controller.update_interfaces({})
         self.assertThat(reload_object(eth0), Is(None))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
 
     def test__removes_one_bond_parent(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, name="bond0", parents=[eth0, eth1], vlan=vlan)
         interfaces = {
@@ -5963,19 +5971,19 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Not(Is(None)))
 
     def test__removes_one_bridge_parent(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, name="br0", parents=[eth0, eth1], vlan=vlan)
         interfaces = {
@@ -5994,19 +6002,19 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Not(Is(None)))
 
     def test__removes_one_bond_and_one_parent(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[eth0, eth1], vlan=vlan)
         interfaces = {
@@ -6018,19 +6026,19 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
 
     def test__removes_one_bridge_and_one_parent(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         eth0 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         eth1 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan)
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[eth0, eth1], vlan=vlan)
         interfaces = {
@@ -6042,13 +6050,13 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         self.assertThat(reload_object(eth0), Not(Is(None)))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(br0), Is(None))
 
     def test__all_new_bond_with_vlan(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         bond0_fabric = factory.make_Fabric()
         bond0_untagged = bond0_fabric.get_default_vlan()
         bond0_subnet = factory.make_Subnet(vlan=bond0_untagged)
@@ -6095,9 +6103,9 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "vid": bond0_vlan.vid,
             "enabled": True,
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth0"]["mac_address"])
+            node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6107,7 +6115,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=bond0_untagged,
             ))
         eth1 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth1"]["mac_address"])
+            node=controller, mac_address=interfaces["eth1"]["mac_address"])
         self.assertThat(
             eth1, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6117,7 +6125,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=bond0_untagged,
             ))
         bond0 = BondInterface.objects.get(
-            node=rack, mac_address=interfaces["bond0"]["mac_address"])
+            node=controller, mac_address=interfaces["bond0"]["mac_address"])
         self.assertThat(
             bond0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BOND,
@@ -6138,7 +6146,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 subnet=bond0_subnet,
             ))
         bond0_vlan_nic = VLANInterface.objects.get(
-            node=rack, vlan=bond0_vlan)
+            node=controller, vlan=bond0_vlan)
         self.assertThat(
             bond0_vlan_nic, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -6159,7 +6167,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__all_new_bridge_with_vlan(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         br0_fabric = factory.make_Fabric()
         br0_untagged = br0_fabric.get_default_vlan()
         br0_subnet = factory.make_Subnet(vlan=br0_untagged)
@@ -6206,9 +6214,9 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             "vid": br0_vlan.vid,
             "enabled": True,
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth0"]["mac_address"])
+            node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6218,7 +6226,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=br0_untagged,
             ))
         eth1 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth1"]["mac_address"])
+            node=controller, mac_address=interfaces["eth1"]["mac_address"])
         self.assertThat(
             eth1, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6228,7 +6236,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=br0_untagged,
             ))
         br0 = BridgeInterface.objects.get(
-            node=rack, mac_address=interfaces["br0"]["mac_address"])
+            node=controller, mac_address=interfaces["br0"]["mac_address"])
         self.assertThat(
             br0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BRIDGE,
@@ -6249,7 +6257,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 subnet=br0_subnet,
             ))
         br0_vlan_nic = VLANInterface.objects.get(
-            node=rack, vlan=br0_vlan)
+            node=controller, vlan=br0_vlan)
         self.assertThat(
             br0_vlan_nic, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.VLAN,
@@ -6439,17 +6447,17 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 'type': 'vlan',
                 'vid': 16
             }}
-        rack1 = self.create_empty_rack_controller()
-        rack2 = self.create_empty_rack_controller()
-        rack1.update_interfaces(interfaces1)
-        rack2.update_interfaces(interfaces2)
+        controller1 = self.create_empty_controller()
+        controller2 = self.create_empty_controller()
+        controller1.update_interfaces(interfaces1)
+        controller2.update_interfaces(interfaces2)
         r1_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.2"))
         self.assertIsNotNone(r1_ens5_16)
         r2_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.3"))
         self.assertIsNotNone(r2_ens5_16)
 
     def test__all_new_bridge_on_vlan_interface_with_identical_macs(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         default_vlan = VLAN.objects.get_default_vlan()
         br0_fabric = factory.make_Fabric()
         eth0_100_vlan = factory.make_VLAN(vid=100, fabric=br0_fabric)
@@ -6537,9 +6545,9 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth0"]["mac_address"])
+            node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6549,7 +6557,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=default_vlan,
             ))
         eth0_100 = VLANInterface.objects.get(
-            node=rack, name="eth0.100",
+            node=controller, name="eth0.100",
             mac_address=interfaces["eth0.100"]["mac_address"])
         self.assertThat(
             eth0_100, MatchesStructure.byEquality(
@@ -6560,7 +6568,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=eth0_100_vlan,
             ))
         br0 = BridgeInterface.objects.get(
-            node=rack, name="br0",
+            node=controller, name="br0",
             mac_address=interfaces["br0"]["mac_address"])
         self.assertThat(
             br0, MatchesStructure.byEquality(
@@ -6579,7 +6587,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 subnet=br0_subnet,
             ))
         br0_nic = BridgeInterface.objects.get(
-            node=rack, vlan=eth0_100_vlan)
+            node=controller, vlan=eth0_100_vlan)
         self.assertThat(
             br0_nic, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BRIDGE,
@@ -6589,7 +6597,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test__bridge_on_vlan_interface_with_identical_macs_replacing_phy(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         br0_fabric = factory.make_Fabric()
         eth0_100_vlan = factory.make_VLAN(vid=100, fabric=br0_fabric)
         br0_subnet = factory.make_Subnet(vlan=eth0_100_vlan)
@@ -6683,9 +6691,9 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces_old)
+        controller.update_interfaces(interfaces_old)
         eth0 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces_old["eth0"]["mac_address"])
+            node=controller, mac_address=interfaces_old["eth0"]["mac_address"])
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6772,9 +6780,9 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 "enabled": True,
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = PhysicalInterface.objects.get(
-            node=rack, mac_address=interfaces["eth0"]["mac_address"])
+            node=controller, mac_address=interfaces["eth0"]["mac_address"])
         self.assertThat(
             eth0, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
@@ -6784,7 +6792,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=eth0.vlan,
             ))
         eth0_100 = VLANInterface.objects.get(
-            node=rack, name="eth0.100",
+            node=controller, name="eth0.100",
             mac_address=interfaces["eth0.100"]["mac_address"])
         self.assertThat(
             eth0_100, MatchesStructure.byEquality(
@@ -6795,7 +6803,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 vlan=eth0_100_vlan,
             ))
         br0 = BridgeInterface.objects.get(
-            node=rack, name="br0",
+            node=controller, name="br0",
             mac_address=interfaces["br0"]["mac_address"])
         self.assertThat(
             br0, MatchesStructure.byEquality(
@@ -6814,7 +6822,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 subnet=br0_subnet,
             ))
         br0_nic = BridgeInterface.objects.get(
-            node=rack, vlan=eth0_100_vlan)
+            node=controller, vlan=eth0_100_vlan)
         self.assertThat(
             br0_nic, MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.BRIDGE,
@@ -6824,7 +6832,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
             ))
 
     def test_registers_bridge_with_no_parents_and_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         interfaces = {
             'br0': {
                 'enabled': True,
@@ -6846,10 +6854,11 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 'type': 'physical'
             }
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = get_one(
-            PhysicalInterface.objects.filter(node=rack, name='eth0'))
-        br0 = get_one(BridgeInterface.objects.filter(node=rack, name='br0'))
+            PhysicalInterface.objects.filter(node=controller, name='eth0'))
+        br0 = get_one(
+            BridgeInterface.objects.filter(node=controller, name='br0'))
         self.assertIsNotNone(eth0)
         self.assertIsNotNone(br0)
         subnet = get_one(Subnet.objects.filter(cidr='192.168.0.0/24'))
@@ -6857,7 +6866,7 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
         self.assertThat(subnet.vlan, Equals(br0.vlan))
 
     def test_registers_bridge_with_no_parents_and_no_links(self):
-        rack = self.create_empty_rack_controller()
+        controller = self.create_empty_controller()
         interfaces = {
             'br0': {
                 'enabled': True,
@@ -6876,10 +6885,11 @@ class TestRackControllerUpdateInterfaces(MAASServerTestCase):
                 'type': 'physical'
             },
         }
-        rack.update_interfaces(interfaces)
+        controller.update_interfaces(interfaces)
         eth0 = get_one(
-            PhysicalInterface.objects.filter(node=rack, name='eth0'))
-        br0 = get_one(BridgeInterface.objects.filter(node=rack, name='br0'))
+            PhysicalInterface.objects.filter(node=controller, name='eth0'))
+        br0 = get_one(
+            BridgeInterface.objects.filter(node=controller, name='br0'))
         self.assertIsNotNone(eth0)
         self.assertIsNotNone(br0)
 
@@ -6941,7 +6951,7 @@ class TestRackController(MAASServerTestCase):
         rackcontroller = factory.make_RackController(status=NODE_STATUS.NEW)
         osystem = factory.make_name('osystem')
         distro_series = factory.make_name('distro_series')
-        swap_size = random.randint(1, 1000)
+        swap_size = random.randint(1, 1024)
         interfaces = {
             "eth0": {
                 "type": "physical",
