@@ -16,7 +16,6 @@ from maasserver import (
     locks,
     security,
 )
-from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.fields import register_mac_type
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.utils import synchronised
@@ -27,7 +26,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.twisted import (
     asynchronous,
     FOREVER,
@@ -103,13 +101,5 @@ def inner_start_up():
     # Only perform the following if the master process for the
     # region controller.
     if is_master_process():
-        # Make sure that maas user's GNUPG home directory exists. This is
-        # needed for importing of boot resources, which occurs on the region
-        # as well as the clusters.
-        create_gnupg_home()
-
-        # If there are no boot-source definitions yet, create defaults.
-        ensure_boot_source_definition()
-
         # Freshen the kms SRV records.
         dns_kms_setting_changed()

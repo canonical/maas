@@ -82,6 +82,7 @@ from provisioningserver.rpc.cluster import (
     ListBootImages,
     ListBootImagesV2,
 )
+from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -970,8 +971,15 @@ def _import_resources_with_lock():
         "_import_resources_with_lock() must not be called within a "
         "preexisting transaction; it manages its own.")
 
-    # Keep the descriptions cache up-to-date.
-    cache_boot_sources()
+    # Make sure that maas user's GNUPG home directory exists. This is
+    # needed for importing of boot resources, which occurs on the region
+    # as well as the clusters.
+    create_gnupg_home()
+
+    # Ensure that boot sources exist.
+    if not ensure_boot_source_definition():
+        # Nothing was created so cache the boot sources before import.
+        cache_boot_sources()
 
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.

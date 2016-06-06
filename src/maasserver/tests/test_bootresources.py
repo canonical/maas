@@ -1171,6 +1171,12 @@ class TestImportImages(MAASTransactionServerTestCase):
     def setUp(self):
         super(TestImportImages, self).setUp()
         self.useFixture(SimplestreamsEnvFixture())
+        # Don't create the gnupg home directory.
+        self.patch_autospec(bootresources, 'create_gnupg_home')
+        # Don't actually create the sources as that will make the cache update.
+        self.patch_autospec(
+            bootresources,
+            'ensure_boot_source_definition').return_value = False
         # We're not testing cache_boot_sources() here, so patch it out to
         # avoid inadvertently calling it and wondering why the test blocks.
         self.patch_autospec(bootresources, 'cache_boot_sources')
@@ -1261,6 +1267,12 @@ class TestImportImages(MAASTransactionServerTestCase):
 
         bootresources._import_resources()
 
+        self.expectThat(
+            bootresources.create_gnupg_home,
+            MockCalledOnceWith())
+        self.expectThat(
+            bootresources.ensure_boot_source_definition,
+            MockCalledOnceWith())
         self.expectThat(
             bootresources.cache_boot_sources,
             MockCalledOnceWith())

@@ -60,6 +60,9 @@ def ensure_boot_source_definition():
             boot_source=source, os=ubuntu.name,
             release=ubuntu.get_default_commissioning_release(),
             arches=['amd64'], subarches=['*'], labels=['*'])
+        return True
+    else:
+        return False
 
 
 @transactional

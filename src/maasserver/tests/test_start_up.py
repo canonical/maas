@@ -12,7 +12,6 @@ from maasserver import (
     locks,
     start_up,
 )
-from maasserver.models import BootSource
 from maasserver.models.signals import bootsources
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
@@ -22,7 +21,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
-from testtools.matchers import HasLength
 
 
 class LockChecker:
@@ -49,7 +47,6 @@ class TestStartUp(MAASServerTestCase):
     def setUp(self):
         super(TestStartUp, self).setUp()
         self.useFixture(RegionEventLoopFixture())
-        self.patch(start_up, 'create_gnupg_home')
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()
@@ -90,33 +87,10 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()
-        self.patch_autospec(start_up, 'create_gnupg_home')
         self.patch_autospec(start_up, 'dns_kms_setting_changed')
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-
-    def test__calls_create_gnupg_home_if_master(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        start_up.inner_start_up()
-        self.assertThat(start_up.create_gnupg_home, MockCalledOnceWith())
-
-    def test__doesnt_call_create_gnupg_home_if_not_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
-        start_up.inner_start_up()
-        self.assertThat(start_up.create_gnupg_home, MockNotCalled())
-
-    def test__initialises_boot_source_config_if_master(self):
-        self.patch(start_up, "is_master_process").return_value = True
-        self.assertItemsEqual([], BootSource.objects.all())
-        start_up.inner_start_up()
-        self.assertThat(BootSource.objects.all(), HasLength(1))
-
-    def test__doesnt_initialises_boot_source_config_if_not_master(self):
-        self.patch(start_up, "is_master_process").return_value = False
-        self.assertItemsEqual([], BootSource.objects.all())
-        start_up.inner_start_up()
-        self.assertThat(BootSource.objects.all(), HasLength(0))
 
     def test__calls_dns_kms_setting_changed_if_master(self):
         self.patch(start_up, "is_master_process").return_value = True

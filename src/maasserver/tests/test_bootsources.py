@@ -100,7 +100,11 @@ class TestHelpers(MAASServerTestCase):
 
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
-        ensure_boot_source_definition()
+        created = ensure_boot_source_definition()
+        self.assertTrue(
+            created,
+            "Should have returned True signaling that the "
+            "sources where added.")
         sources = BootSource.objects.all()
         self.assertThat(sources, HasLength(1))
         [source] = sources
@@ -131,7 +135,11 @@ class TestHelpers(MAASServerTestCase):
             factory.make_BootSource()
             for _ in range(3)
             ]
-        ensure_boot_source_definition()
+        created = ensure_boot_source_definition()
+        self.assertFalse(
+            created,
+            "Should have returned False signaling that the "
+            "sources where not added.")
         self.assertItemsEqual(sources, BootSource.objects.all())
 
     def test_get_boot_sources(self):
