@@ -373,11 +373,22 @@ class SystemLock:
         self._fslock = FilesystemLock(path)
 
     def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, *exc_info):
+        self.release()
+
+    def acquire(self):
+        """Acquire the lock.
+
+        :raise NotAvailable: When the lock has already been acquired.
+        """
         with self.PROCESS_LOCK:
             if not self._fslock.lock():
                 raise self.NotAvailable(self._fslock.name)
 
-    def __exit__(self, *exc_info):
+    def release(self):
+        """Release the lock."""
         with self.PROCESS_LOCK:
             self._fslock.unlock()
 

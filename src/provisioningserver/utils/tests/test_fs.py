@@ -682,6 +682,30 @@ class TestSystemLocks(MAASTestCase):
         self.assertThat(lock._fslock.lock, MockCalledOnceWith())
         self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
 
+    def test__context_is_implemented_using_acquire_and_release(self):
+        # Thus implying that all the earlier tests are valid for both.
+        lock = self.make_lock()
+        acquire = self.patch(lock, "acquire")
+        release = self.patch(lock, "release")
+
+        self.assertThat(acquire, MockNotCalled())
+        self.assertThat(release, MockNotCalled())
+        # Not locked at first, naturally.
+        self.assertFalse(lock.is_locked())
+        lock.acquire()
+        try:
+            self.assertThat(acquire, MockCalledOnceWith())
+            self.assertThat(release, MockNotCalled())
+            # The lock is not locked because — ah ha! — we've patched out the
+            # method that does the locking.
+            self.assertFalse(lock.is_locked())
+        finally:
+            lock.release()
+        self.assertThat(acquire, MockCalledOnceWith())
+        self.assertThat(release, MockCalledOnceWith())
+        # Still not locked, without surprise.
+        self.assertFalse(lock.is_locked())
+
 
 class TestSystemLock(MAASTestCase):
     """Tests specific to `SystemLock`."""
