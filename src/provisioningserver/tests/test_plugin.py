@@ -29,7 +29,7 @@ from provisioningserver.pserv_services.lease_socket_service import (
     LeaseSocketService,
 )
 from provisioningserver.pserv_services.networks_monitoring_service import (
-    NetworksMonitoringService,
+    RackNetworksMonitoringService,
 )
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
@@ -132,7 +132,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
         service = service_maker.makeService(options)
         networks_monitor = service.getServiceNamed("networks_monitor")
-        self.assertIsInstance(networks_monitor, NetworksMonitoringService)
+        self.assertIsInstance(networks_monitor, RackNetworksMonitoringService)
 
     def test_dhcp_probe_service(self):
         options = Options()

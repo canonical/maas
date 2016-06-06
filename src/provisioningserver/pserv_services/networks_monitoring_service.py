@@ -1,88 +1,30 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Networks monitoring service."""
+"""Networks monitoring service for rack controllers."""
 
 __all__ = [
-    "NetworksMonitoringService",
-    ]
-
-
-from datetime import timedelta
+    "RackNetworksMonitoringService",
+]
 
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.networks import (
-    clear_current_interfaces_definition,
-    get_interfaces_definition,
-)
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateInterfaces
-from provisioningserver.utils.twisted import (
-    pause,
-    retries,
-)
-from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.threads import deferToThread
+from provisioningserver.utils.services import NetworksMonitoringService
 
 
 maaslog = get_maas_logger("networks.monitor")
 
 
-class NetworksMonitoringService(TimerService, object):
-    """Service to monitor the interfaces definition on the rack controller.
+class RackNetworksMonitoringService(NetworksMonitoringService):
+    """Rack service to monitor network interfaces for configuration changes."""
 
-    Parsed the "/etc/network/interfaces" and "ip addr show" to update the
-    region controller anytime the interfaces definition changes.
+    def __init__(self, clientService, reactor):
+        super(RackNetworksMonitoringService, self).__init__(reactor)
+        self.clientService = clientService
 
-    :param reactor: An `IReactor` instance.
-    """
-
-    check_interval = timedelta(seconds=30).total_seconds()
-
-    def __init__(self, client_service, reactor):
-        # Call self.try_update_interfaces() every self.check_interval.
-        super(NetworksMonitoringService, self).__init__(
-            self.check_interval, self.tryUpdateInterfaces)
-        self.clock = reactor
-        self.client_service = client_service
-
-    @inlineCallbacks
-    def updateInterfaces(self):
-        """Update the interface definition and send it to the region when it
-        changes."""
-        client = None
-        for elapsed, remaining, wait in retries(15, 5, self.clock):
-            try:
-                client = self.client_service.getClient()
-                break
-            except NoConnectionsAvailable:
-                yield pause(wait, self.clock)
-        else:
-            maaslog.error(
-                "Can't update rack controllers interface definition, no RPC "
-                "connection to region.")
-            return
-
-        interfaces, changed = yield deferToThread(get_interfaces_definition)
-        if changed:
-            try:
-                yield client(
-                    UpdateInterfaces,
-                    system_id=client.localIdent,
-                    interfaces=interfaces)
-            except:
-                # Failed to update the region. Clear the interface definition
-                # so next time it will update the region.
-                clear_current_interfaces_definition()
-                raise
-
-    @inlineCallbacks
-    def tryUpdateInterfaces(self):
-        try:
-            yield self.updateInterfaces()
-        except Exception as error:
-            maaslog.error(
-                "Failed to update region about the interface "
-                "configuration: %s",
-                str(error))
+    def recordInterfaces(self, interfaces):
+        """Record the interfaces information."""
+        client = self.clientService.getClient()
+        return client(
+            UpdateInterfaces, system_id=client.localIdent,
+            interfaces=interfaces)

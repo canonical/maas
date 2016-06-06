@@ -127,8 +127,8 @@ class ProvisioningServiceMaker:
 
     def _makeNetworksMonitoringService(self, rpc_service):
         from provisioningserver.pserv_services.networks_monitoring_service \
-            import NetworksMonitoringService
-        networks_monitor = NetworksMonitoringService(rpc_service, reactor)
+            import RackNetworksMonitoringService
+        networks_monitor = RackNetworksMonitoringService(rpc_service, reactor)
         networks_monitor.setName("networks_monitor")
         return networks_monitor
 
