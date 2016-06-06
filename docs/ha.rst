@@ -99,7 +99,11 @@ for PostgreSQL.::
 
     $ sudo apt update
     $ sudo apt install maas-region-api maas-dns
+    $ sudo systemctl stop maas-regiond
+    $ sudo rm /var/lib/maas/{maas_id,secret}
     $ sudo scp <ubuntu@initial-region>:/etc/maas/regiond.conf /etc/maas/regiond.conf
+    $ sudo chown root:maas /etc/maas/regiond.conf
+    $ sudo chmod 640 /etc/maas/regiond.conf
     $ sudo maas-region local_config_set --database-host <postgresql-primary-ip>
     $ sudo systemctl restart maas-regiond
 
