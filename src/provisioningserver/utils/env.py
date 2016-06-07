@@ -11,7 +11,10 @@ from contextlib import contextmanager
 import os
 
 from provisioningserver.path import get_path
-from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.fs import (
+    atomic_delete,
+    atomic_write,
+)
 
 
 @contextmanager
@@ -37,14 +40,30 @@ def get_maas_id():
     when either the rack or region first starts.
     """
     maas_id_path = get_path('/var/lib/maas/maas_id')
-    if os.path.exists(maas_id_path):
+    try:
         with open(maas_id_path, "r", encoding="ascii") as fp:
-            return fp.read().strip()
-    else:
+            contents = fp.read().strip()
+    except FileNotFoundError:
         return None
+    else:
+        return _normalise_maas_id(contents)
 
 
 def set_maas_id(system_id):
     """Set the system_id for this rack/region permanently for MAAS."""
     maas_id_path = get_path('/var/lib/maas/maas_id')
-    atomic_write(system_id.encode("ascii"), maas_id_path)
+    if _normalise_maas_id(system_id) is None:
+        try:
+            atomic_delete(maas_id_path)
+        except FileNotFoundError:
+            pass  # Job done already.
+    else:
+        atomic_write(system_id.encode("ascii"), maas_id_path)
+
+
+def _normalise_maas_id(system_id):
+    if system_id is None:
+        return None
+    else:
+        system_id = system_id.strip()
+        return None if system_id == "" else system_id
