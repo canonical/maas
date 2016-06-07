@@ -24,6 +24,7 @@ import random
 import string
 import subprocess
 import time
+import unicodedata
 from unittest import mock
 import urllib.error
 import urllib.parse
@@ -84,12 +85,46 @@ class Factory:
 
     random_octets = iter(random_octet, None)
 
+    random_unicode_codepoint = partial(random.randint, 0, 0x10ffff)
+
+    random_unicode_codepoints = iter(random_unicode_codepoint, None)
+
+    random_unicode_characters = (
+        char for char in map(chr, random_unicode_codepoints)
+        if unicodedata.category(char)[0] in "LMNPS")
+
+    random_unicode_non_ascii_characters = (
+        char for char in random_unicode_characters
+        if ord(char) >= 128)
+
+    random_unicode_characters_with_spaces = (
+        char for char in map(chr, random_unicode_codepoints)
+        if unicodedata.category(char)[0] in "LMNPSZ")
+
+    random_unicode_non_ascii_characters_with_spaces = (
+        char for char in random_unicode_characters_with_spaces
+        if char == " " or ord(char) >= 128)
+
     def make_string(self, size=10, spaces=False, prefix=""):
-        if spaces:
-            return prefix + "".join(
-                islice(self.random_letters_with_spaces, size))
-        else:
-            return prefix + "".join(islice(self.random_letters, size))
+        """Return a `str` filled with random ASCII letters or digits."""
+        source = (
+            self.random_letters_with_spaces
+            if spaces else self.random_letters)
+        return prefix + "".join(islice(source, size))
+
+    def make_unicode_string(self, size=10, spaces=False, prefix=""):
+        """Return a `str` filled with random Unicode characters."""
+        source = (
+            self.random_unicode_characters_with_spaces
+            if spaces else self.random_unicode_characters)
+        return prefix + "".join(islice(source, size))
+
+    def make_unicode_non_ascii_string(self, size=10, spaces=False, prefix=""):
+        """Return a `str` filled with random non-ASCII Unicode characters."""
+        source = (
+            self.random_unicode_non_ascii_characters_with_spaces
+            if spaces else self.random_unicode_non_ascii_characters)
+        return prefix + "".join(islice(source, size))
 
     def make_bytes(self, size=10):
         """Return a `bytes` filled with random data."""
